@@ -1,0 +1,71 @@
+MCP SERVERS MIGRATED FROM CLAUDE DESKTOP
+========================================
+
+Found 7 MCP servers in your Claude Desktop installation:
+
+CROSS-PLATFORM SERVERS (Can use with Claude Code)
+-------------------------------------------------
+
+1. ✅ Filesystem (v0.2.0)
+   - Read/write files, create directories, search files
+   - Install: npm install -g @modelcontextprotocol/server-filesystem
+   - Status: Was DISABLED (needs directory configuration)
+
+2. ✅ PDF Toolkit (v0.4.0)
+   - Analyze, fill forms, extract data from PDFs
+   - Install: Clone from https://github.com/silverstein/pdf-filler-simple
+   - Status: Was ENABLED
+
+3. ✅ Postman MCP (v2.3.6)
+   - Connect to Postman API
+   - Install: Clone from https://github.com/postmanlabs/postman-mcp-server
+   - Status: Was DISABLED (needs API key)
+
+
+MACOS-ONLY SERVERS
+------------------
+
+4. 🍎 OSAScript (v0.0.1)
+   - Execute AppleScript to automate macOS
+   - Install: Clone from https://github.com/k6l3/osascript-dxt
+   - Status: Was ENABLED
+
+5. 🍎 Chrome Control (v0.1.5) [Anthropic Official]
+   - Control Chrome browser tabs, navigation, execute JS
+   - Status: Was ENABLED
+   - Note: Currently only available in Claude Desktop
+
+6. 🍎 MS Office Excel (v0.3.0) [Anthropic Official]
+   - Control Microsoft Excel, create workbooks, formulas, charts
+   - Status: Was ENABLED
+   - Note: Currently only available in Claude Desktop
+
+7. 🍎 Apple Notes (v0.1.7) [Anthropic Official]
+   - Read/write Apple Notes
+   - Status: Was ENABLED
+   - Note: Currently only available in Claude Desktop
+
+
+QUICK START
+-----------
+
+1. Run setup script:
+   ./setup-mcps.sh
+
+2. Configure:
+   Edit mcp-config-template.json with your paths/keys
+
+3. Read docs:
+   See docs/MCP_MIGRATION.md for detailed info
+
+4. Configure Claude Code:
+   Follow Claude Code docs to add MCP servers
+
+
+FILES CREATED
+-------------
+- README.md                    Main documentation
+- setup-mcps.sh               Automated setup script
+- mcp-config-template.json    MCP configuration template
+- docs/MCP_MIGRATION.md       Detailed migration guide
+- MCP_SUMMARY.txt             This file

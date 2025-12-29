@@ -1,0 +1,39 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/nickchua/Desktop",
+        "/Users/nickchua/Documents"
+      ]
+    },
+    "pdf-toolkit": {
+      "command": "node",
+      "args": [
+        "/Users/nickchua/Desktop/AI/mcp-servers/pdf-filler-simple/server/index.js"
+      ],
+      "env": {
+        "DEFAULT_PDF_DIR": "/Users/nickchua/Documents",
+        "DEFAULT_PROFILES_DIR": "/Users/nickchua/.pdf-filler-profiles"
+      }
+    },
+    "osascript": {
+      "command": "node",
+      "args": [
+        "/Users/nickchua/Desktop/AI/mcp-servers/osascript-dxt/server/index.js"
+      ]
+    },
+    "postman": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@postmanlabs/mcp-server"
+      ],
+      "env": {
+        "POSTMAN_API_KEY": "YOUR_POSTMAN_API_KEY_HERE"
+      }
+    }
+  }
+}
