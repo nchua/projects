@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STRENGTH // DASHBOARD</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0b;
+            --bg-secondary: #111113;
+            --bg-card: #161618;
+            --bg-elevated: #1c1c1f;
+            --border: #2a2a2e;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #52525b;
+            --squat: #3b82f6;
+            --bench: #ef4444;
+            --row: #22c55e;
+            --curl: #a855f7;
+            --pullup: #f59e0b;
+            --accent: #06b6d4;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .font-display {
+            font-family: 'Bebas Neue', sans-serif;
+            letter-spacing: 0.05em;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Noise texture overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .lift-indicator {
+            width: 4px;
+            height: 100%;
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+
+        .percentile-bar {
+            height: 6px;
+            background: var(--bg-elevated);
+            border-radius: 3px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .percentile-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .ratio-indicator {
+            position: relative;
+            height: 8px;
+            background: var(--bg-elevated);
+            border-radius: 4px;
+        }
+
+        .ratio-range {
+            position: absolute;
+            height: 100%;
+            background: rgba(34, 197, 94, 0.2);
+            border-radius: 4px;
+        }
+
+        .ratio-marker {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 12px;
+            height: 12px;
+            background: var(--text-primary);
+            border-radius: 50%;
+            box-shadow: 0 0 0 3px var(--bg-card);
+        }
+
+        .bw-bar {
+            height: 24px;
+            background: var(--bg-elevated);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bw-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .bw-milestone {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 2px;
+            background: rgba(255,255,255,0.2);
+        }
+
+        .bw-milestone::after {
+            content: attr(data-label);
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .insight-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .insight-tag.positive {
+            background: rgba(34, 197, 94, 0.1);
+            border-color: rgba(34, 197, 94, 0.3);
+            color: #22c55e;
+        }
+
+        .grid-lines {
+            background-image:
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-in {
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+        .delay-5 { animation-delay: 0.5s; }
+        .delay-6 { animation-delay: 0.6s; }
+
+        .glow-squat { box-shadow: 0 0 30px -10px var(--squat); }
+        .glow-bench { box-shadow: 0 0 30px -10px var(--bench); }
+        .glow-row { box-shadow: 0 0 30px -10px var(--row); }
+
+        .chart-container {
+            position: relative;
+            height: 280px;
+        }
+
+        /* Modal styles */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-backdrop.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.95);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 85vh;
+            overflow-y: auto;
+            z-index: 101;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .modal-backdrop.active .modal-content {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .lift-card-clickable {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .lift-card-clickable:hover {
+            transform: translateY(-2px);
+            border-color: var(--text-muted);
+        }
+
+        .lift-card-clickable:hover .lift-indicator {
+            width: 6px;
+        }
+
+        .session-row {
+            display: grid;
+            grid-template-columns: 100px 1fr 80px;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            align-items: center;
+        }
+
+        .session-row:last-child {
+            border-bottom: none;
+        }
+
+        .set-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: var(--bg-elevated);
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .volume-bar {
+            height: 20px;
+            background: var(--bg-elevated);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .volume-fill {
+            height: 100%;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--bg-primary);
+            font-weight: 600;
+        }
+
+        .mini-chart {
+            height: 120px;
+        }
+
+        .pr-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 6px;
+            background: rgba(245, 158, 11, 0.2);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            border-radius: 4px;
+            font-size: 10px;
+            color: #f59e0b;
+            font-family: 'JetBrains Mono', monospace;
+        }
+    </style>
+</head>
+<body class="grid-lines">
+    <!-- Lift Detail Modal -->
+    <div class="modal-backdrop" id="liftModal" onclick="closeLiftModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="p-6" id="modalContent">
+                <!-- Content injected by JS -->
+            </div>
+        </div>
+    </div>
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="mb-10 animate-in">
+            <div class="flex items-end justify-between border-b border-[var(--border)] pb-6">
+                <div>
+                    <h1 class="font-display text-5xl md:text-6xl tracking-wide text-[var(--text-primary)]">
+                        STRENGTH<span class="text-[var(--accent)]">//</span>DASHBOARD
+                    </h1>
+                    <p class="text-[var(--text-secondary)] mt-2 font-mono text-sm">
+                        Objective tracking. No ego. Just data.
+                    </p>
+                </div>
+                <div class="text-right">
+                    <div class="font-mono text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">Athlete Profile</div>
+                    <div class="flex items-center gap-4 text-[var(--text-secondary)]">
+                        <span class="font-mono"><span id="bodyweight" class="text-[var(--text-primary)] font-semibold">166</span> lb</span>
+                        <span class="text-[var(--border)]">|</span>
+                        <span class="font-mono"><span id="age" class="text-[var(--text-primary)] font-semibold">29</span>yo</span>
+                        <span class="text-[var(--border)]">|</span>
+                        <span class="font-mono uppercase" id="sex">Male</span>
+                    </div>
+                    <div class="font-mono text-xs text-[var(--text-muted)] mt-2">
+                        Last updated: <span id="lastUpdated">--</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Strength Overview Cards -->
+        <section class="mb-10">
+            <div class="flex items-center gap-3 mb-5 animate-in delay-1">
+                <h2 class="font-display text-2xl tracking-wide">CURRENT LIFTS</h2>
+                <div class="flex-1 h-px bg-[var(--border)]"></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="liftCards">
+                <!-- Cards injected by JS -->
+            </div>
+        </section>
+
+        <!-- Charts Row -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+            <!-- E1RM Trends -->
+            <div class="card rounded-lg p-6 animate-in delay-3">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="font-display text-xl tracking-wide">E1RM TRENDS</h3>
+                    <div class="flex gap-2">
+                        <button class="font-mono text-xs px-3 py-1 rounded bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors" onclick="setTimeRange('4w')">4W</button>
+                        <button class="font-mono text-xs px-3 py-1 rounded bg-[var(--accent)] text-black" onclick="setTimeRange('12w')">12W</button>
+                        <button class="font-mono text-xs px-3 py-1 rounded bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors" onclick="setTimeRange('all')">ALL</button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="trendsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Percentile Radar -->
+            <div class="card rounded-lg p-6 animate-in delay-4">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="font-display text-xl tracking-wide">PERCENTILE MAP</h3>
+                    <span class="font-mono text-xs text-[var(--text-muted)]">vs gym population</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="radarChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Lift Balance & Relative Strength -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+            <!-- Lift Balance -->
+            <div class="card rounded-lg p-6 animate-in delay-5">
+                <div class="flex items-center gap-3 mb-6">
+                    <h3 class="font-display text-xl tracking-wide">LIFT BALANCE</h3>
+                    <span class="font-mono text-xs text-[var(--text-muted)]">ratio analysis</span>
+                </div>
+
+                <div class="space-y-6" id="ratioCards">
+                    <!-- Ratio cards injected by JS -->
+                </div>
+            </div>
+
+            <!-- Relative Strength -->
+            <div class="card rounded-lg p-6 animate-in delay-5">
+                <div class="flex items-center gap-3 mb-6">
+                    <h3 class="font-display text-xl tracking-wide">RELATIVE STRENGTH</h3>
+                    <span class="font-mono text-xs text-[var(--text-muted)]">bodyweight multiples</span>
+                </div>
+
+                <div class="space-y-5" id="relativeStrengthBars">
+                    <!-- Bars injected by JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Insights Section -->
+        <section class="card rounded-lg p-6 animate-in delay-6">
+            <div class="flex items-center gap-3 mb-6">
+                <h3 class="font-display text-xl tracking-wide">KEY INSIGHTS</h3>
+                <div class="flex-1 h-px bg-[var(--border)]"></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="insightsGrid">
+                <!-- Insights injected by JS -->
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="mt-10 pt-6 border-t border-[var(--border)] text-center">
+            <p class="font-mono text-xs text-[var(--text-muted)]">
+                STRENGTH//DASHBOARD v1.0 — Data-driven training analysis
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        // Color palette
+        const colors = {
+            squat: '#3b82f6',
+            bench: '#ef4444',
+            row: '#22c55e',
+            curl: '#a855f7',
+            pullup: '#f59e0b',
+            rdl: '#06b6d4'
+        };
+
+        let dashboardData = null;
+        let workoutLog = null;
+        let trendsChart = null;
+        let radarChart = null;
+        let currentTimeRange = '12w';
+        let currentLifts = null;
+
+        // Load data
+        async function loadData() {
+            try {
+                // Load both dashboard data and workout log
+                const [dashboardResponse, workoutResponse] = await Promise.all([
+                    fetch('dashboard_data.json'),
+                    fetch('workout_log.json').catch(() => null)
+                ]);
+
+                dashboardData = await dashboardResponse.json();
+                console.log('Dashboard data loaded:', dashboardData);
+
+                if (workoutResponse && workoutResponse.ok) {
+                    workoutLog = await workoutResponse.json();
+                    console.log('Workout log loaded:', workoutLog.workout_sessions?.length, 'sessions');
+                } else {
+                    console.log('No workout log found, using fallback');
+                }
+
+                renderDashboard();
+            } catch (error) {
+                console.error('Failed to load data:', error);
+                // Use embedded fallback data
+                dashboardData = getFallbackData();
+                renderDashboard();
+            }
+        }
+
+        function getFallbackData() {
+            return {
+                profile: { sex: "male", age: 29, height_in: 69, bodyweight_lb: 166, last_updated: "2025-12-29" },
+                lifts: {
+                    squat: { name: "Back Squat", current_e1rm: 270, relative_strength: 1.63, percentile_gym: 70, classification: "Late Intermediate" },
+                    bench: { name: "Bench Press", current_e1rm: 185, relative_strength: 1.11, percentile_gym: 50, classification: "Early Intermediate" },
+                    row: { name: "Barbell Row", current_e1rm: 170, relative_strength: 1.02, percentile_gym: 65, classification: "High Intermediate" },
+                    pullup: { name: "Pull-ups", current_reps: 7, percentile_gym: 25, classification: "Early-Mid Intermediate" }
+                },
+                ratios: {
+                    squat_to_bench: { current: 1.46, expected_low: 1.2, expected_high: 1.4, status: "balanced" },
+                    row_to_bench: { current: 0.92, expected_low: 0.8, expected_high: 1.0, status: "balanced" }
+                },
+                insights: {
+                    primary_limiter: "grip",
+                    grip_assessment: { status: "underexposed", expected_improvement: "Pull-ups +2-3 reps in 4-6 weeks" },
+                    strength_areas: ["squat", "row", "curl"],
+                    opportunity_areas: ["bench", "pullup", "grip"]
+                }
+            };
+        }
+
+        function renderDashboard() {
+            const { profile, lifts, ratios, insights } = dashboardData;
+
+            // Update header
+            document.getElementById('bodyweight').textContent = profile.bodyweight_lb;
+            document.getElementById('age').textContent = profile.age;
+            document.getElementById('sex').textContent = profile.sex;
+            document.getElementById('lastUpdated').textContent = profile.last_updated;
+
+            // Render lift cards
+            renderLiftCards(lifts);
+
+            // Render charts
+            renderTrendsChart(lifts);
+            renderRadarChart(lifts);
+
+            // Render ratio analysis
+            renderRatioCards(ratios);
+
+            // Render relative strength bars
+            renderRelativeStrengthBars(lifts, profile.bodyweight_lb);
+
+            // Render insights
+            renderInsights(insights);
+        }
+
+        function renderLiftCards(lifts) {
+            const container = document.getElementById('liftCards');
+            const mainLifts = ['squat', 'bench', 'row', 'pullup'];
+
+            container.innerHTML = mainLifts.map((key, index) => {
+                const lift = lifts[key];
+                if (!lift) return '';
+
+                const value = lift.current_e1rm ? `${lift.current_e1rm}` : `${lift.current_reps}`;
+                const unit = lift.current_e1rm ? 'lb e1RM' : 'reps';
+                const percentile = lift.percentile_gym || 0;
+
+                return `
+                    <div class="card lift-card-clickable rounded-lg p-5 animate-in delay-${index + 2}"
+                         style="--lift-color: ${colors[key]}"
+                         onclick="openLiftModal('${key}')">
+                        <div class="lift-indicator" style="background: ${colors[key]}"></div>
+                        <div class="pl-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="font-mono text-xs text-[var(--text-muted)] uppercase tracking-wider">${lift.name}</span>
+                                <span class="font-mono text-xs px-2 py-0.5 rounded" style="background: ${colors[key]}20; color: ${colors[key]}">${lift.classification}</span>
+                            </div>
+                            <div class="flex items-baseline gap-2 mb-4">
+                                <span class="stat-value text-4xl" style="color: ${colors[key]}">${value}</span>
+                                <span class="font-mono text-sm text-[var(--text-secondary)]">${unit}</span>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex justify-between font-mono text-xs">
+                                    <span class="text-[var(--text-muted)]">Percentile (gym)</span>
+                                    <span class="text-[var(--text-secondary)]">${percentile}%</span>
+                                </div>
+                                <div class="percentile-bar">
+                                    <div class="percentile-fill" style="width: ${percentile}%; background: ${colors[key]}"></div>
+                                </div>
+                            </div>
+                            <div class="mt-3 text-center">
+                                <span class="font-mono text-xs text-[var(--text-muted)]">Click for details →</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Linear regression for projections
+        function linearRegression(data) {
+            const n = data.length;
+            let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+            for (let i = 0; i < n; i++) {
+                sumX += i;
+                sumY += data[i];
+                sumXY += i * data[i];
+                sumXX += i * i;
+            }
+            const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+            return { slope, intercept };
+        }
+
+        function renderTrendsChart(lifts, timeRange = currentTimeRange) {
+            // Store lifts for re-rendering
+            currentLifts = lifts;
+
+            // Destroy existing chart if it exists
+            if (trendsChart) {
+                trendsChart.destroy();
+                trendsChart = null;
+            }
+
+            const ctx = document.getElementById('trendsChart').getContext('2d');
+
+            // Set history and projection weeks based on time range
+            let historyWeeks, projectionWeeks;
+            switch (timeRange) {
+                case '4w':
+                    historyWeeks = 4;
+                    projectionWeeks = 2;
+                    break;
+                case '12w':
+                    historyWeeks = 12;
+                    projectionWeeks = 6;
+                    break;
+                case 'all':
+                default:
+                    historyWeeks = 24;
+                    projectionWeeks = 8;
+                    break;
+            }
+            const totalWeeks = historyWeeks + projectionWeeks;
+
+            const labels = Array.from({length: totalWeeks}, (_, i) => {
+                const date = new Date();
+                date.setDate(date.getDate() + (i - historyWeeks + 1) * 7);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            });
+
+            // Simulate progression curves
+            const generateProgression = (current, volatility = 0.03) => {
+                const data = [];
+                let val = current * 0.92; // Start at ~92% of current
+                for (let i = 0; i < historyWeeks; i++) {
+                    val = val * (1 + (Math.random() * volatility * 2 - volatility * 0.5));
+                    if (i === historyWeeks - 1) val = current; // End at current
+                    data.push(Math.round(val));
+                }
+                return data;
+            };
+
+            // Generate projection data using linear regression
+            const generateProjection = (historyData, color) => {
+                const { slope, intercept } = linearRegression(historyData);
+                const projectionData = new Array(historyWeeks - 1).fill(null); // null for history portion
+                projectionData.push(historyData[historyData.length - 1]); // Connect at last point
+
+                for (let i = 1; i <= projectionWeeks; i++) {
+                    const projectedValue = Math.round(intercept + slope * (historyWeeks - 1 + i));
+                    projectionData.push(projectedValue);
+                }
+                return projectionData;
+            };
+
+            // Generate history data
+            const squatHistory = generateProgression(lifts.squat?.current_e1rm || 270);
+            const benchHistory = generateProgression(lifts.bench?.current_e1rm || 185);
+            const rowHistory = generateProgression(lifts.row?.current_e1rm || 170);
+
+            // Extend history arrays with nulls for the projection period
+            const extendWithNulls = (data) => [...data, ...new Array(projectionWeeks).fill(null)];
+
+            trendsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        // Actual data lines
+                        {
+                            label: 'Squat',
+                            data: extendWithNulls(squatHistory),
+                            borderColor: colors.squat,
+                            backgroundColor: colors.squat + '20',
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Bench',
+                            data: extendWithNulls(benchHistory),
+                            borderColor: colors.bench,
+                            backgroundColor: colors.bench + '20',
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Row',
+                            data: extendWithNulls(rowHistory),
+                            borderColor: colors.row,
+                            backgroundColor: colors.row + '20',
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
+                            borderWidth: 2
+                        },
+                        // Projection lines (dashed)
+                        {
+                            label: 'Squat (projected)',
+                            data: generateProjection(squatHistory),
+                            borderColor: colors.squat,
+                            backgroundColor: 'transparent',
+                            fill: false,
+                            tension: 0,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            borderWidth: 2,
+                            borderDash: [6, 4],
+                            spanGaps: true
+                        },
+                        {
+                            label: 'Bench (projected)',
+                            data: generateProjection(benchHistory),
+                            borderColor: colors.bench,
+                            backgroundColor: 'transparent',
+                            fill: false,
+                            tension: 0,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            borderWidth: 2,
+                            borderDash: [6, 4],
+                            spanGaps: true
+                        },
+                        {
+                            label: 'Row (projected)',
+                            data: generateProjection(rowHistory),
+                            borderColor: colors.row,
+                            backgroundColor: 'transparent',
+                            fill: false,
+                            tension: 0,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            borderWidth: 2,
+                            borderDash: [6, 4],
+                            spanGaps: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#a1a1aa',
+                                font: { family: 'JetBrains Mono', size: 11 },
+                                padding: 20,
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                filter: (item) => !item.text.includes('projected') // Hide projection labels
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#1c1c1f',
+                            borderColor: '#2a2a2e',
+                            borderWidth: 1,
+                            titleFont: { family: 'Space Grotesk', size: 12 },
+                            bodyFont: { family: 'JetBrains Mono', size: 11 },
+                            padding: 12,
+                            callbacks: {
+                                label: (ctx) => {
+                                    if (ctx.raw === null) return null;
+                                    const isProjection = ctx.dataset.label.includes('projected');
+                                    const liftName = ctx.dataset.label.replace(' (projected)', '');
+                                    return `${liftName}: ${ctx.raw} lb${isProjection ? ' (projected)' : ''}`;
+                                }
+                            }
+                        },
+                        // Add annotation for "NOW" line
+                        annotation: {
+                            annotations: {
+                                nowLine: {
+                                    type: 'line',
+                                    xMin: historyWeeks - 1,
+                                    xMax: historyWeeks - 1,
+                                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                                    borderWidth: 1,
+                                    borderDash: [4, 4],
+                                    label: {
+                                        display: true,
+                                        content: 'NOW',
+                                        position: 'start'
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: (ctx) => ctx.index === historyWeeks - 1 ? 'rgba(255,255,255,0.2)' : '#2a2a2e',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#52525b',
+                                font: { family: 'JetBrains Mono', size: 10 },
+                                maxRotation: 45,
+                                callback: function(val, index) {
+                                    // Show fewer labels on mobile
+                                    if (index === historyWeeks - 1) return '● NOW';
+                                    if (index % 2 === 0) return this.getLabelForValue(val);
+                                    return '';
+                                }
+                            }
+                        },
+                        y: {
+                            grace: '10%',
+                            grid: { color: '#2a2a2e', drawBorder: false },
+                            ticks: {
+                                color: '#52525b',
+                                font: { family: 'JetBrains Mono', size: 10 },
+                                callback: (val) => val + ' lb',
+                                padding: 8,
+                                maxTicksLimit: 8
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderRadarChart(lifts) {
+            const ctx = document.getElementById('radarChart').getContext('2d');
+
+            const liftData = [
+                { name: 'Squat', percentile: lifts.squat?.percentile_gym || 70 },
+                { name: 'Bench', percentile: lifts.bench?.percentile_gym || 50 },
+                { name: 'Row', percentile: lifts.row?.percentile_gym || 65 },
+                { name: 'Pull-ups', percentile: lifts.pullup?.percentile_gym || 25 }
+            ];
+
+            radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: liftData.map(l => l.name),
+                    datasets: [{
+                        label: 'Current Percentile',
+                        data: liftData.map(l => l.percentile),
+                        backgroundColor: 'rgba(6, 182, 212, 0.2)',
+                        borderColor: '#06b6d4',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#06b6d4',
+                        pointBorderColor: '#0a0a0b',
+                        pointBorderWidth: 2,
+                        pointRadius: 5
+                    }, {
+                        label: '50th Percentile',
+                        data: [50, 50, 50, 50],
+                        backgroundColor: 'transparent',
+                        borderColor: '#52525b',
+                        borderWidth: 1,
+                        borderDash: [5, 5],
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#a1a1aa',
+                                font: { family: 'JetBrains Mono', size: 11 },
+                                padding: 20,
+                                usePointStyle: true
+                            }
+                        }
+                    },
+                    scales: {
+                        r: {
+                            min: 0,
+                            max: 100,
+                            ticks: {
+                                stepSize: 25,
+                                color: '#52525b',
+                                font: { family: 'JetBrains Mono', size: 9 },
+                                backdropColor: 'transparent'
+                            },
+                            grid: { color: '#2a2a2e' },
+                            angleLines: { color: '#2a2a2e' },
+                            pointLabels: {
+                                color: '#a1a1aa',
+                                font: { family: 'Space Grotesk', size: 12, weight: 500 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderRatioCards(ratios) {
+            const container = document.getElementById('ratioCards');
+
+            const ratioConfig = [
+                { key: 'squat_to_bench', label: 'Squat : Bench', description: 'Push pattern balance' },
+                { key: 'row_to_bench', label: 'Row : Bench', description: 'Horizontal push/pull balance' }
+            ];
+
+            container.innerHTML = ratioConfig.map(({ key, label, description }) => {
+                const ratio = ratios[key];
+                if (!ratio) return '';
+
+                // Calculate positions (scale 0.5 to 2.0 maps to 0-100%)
+                const scale = (val) => ((val - 0.5) / 1.5) * 100;
+                const rangeLeft = scale(ratio.expected_low);
+                const rangeWidth = scale(ratio.expected_high) - rangeLeft;
+                const markerPos = scale(ratio.current);
+
+                const isBalanced = ratio.current >= ratio.expected_low && ratio.current <= ratio.expected_high;
+                const statusColor = isBalanced ? '#22c55e' : '#f59e0b';
+
+                return `
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="font-mono text-sm text-[var(--text-primary)]">${label}</span>
+                                <span class="font-mono text-xs text-[var(--text-muted)] ml-2">${description}</span>
+                            </div>
+                            <span class="stat-value text-lg" style="color: ${statusColor}">${ratio.current.toFixed(2)}</span>
+                        </div>
+                        <div class="ratio-indicator">
+                            <div class="ratio-range" style="left: ${rangeLeft}%; width: ${rangeWidth}%"></div>
+                            <div class="ratio-marker" style="left: ${markerPos}%"></div>
+                        </div>
+                        <div class="flex justify-between font-mono text-xs text-[var(--text-muted)]">
+                            <span>0.5</span>
+                            <span>Expected: ${ratio.expected_low}–${ratio.expected_high}</span>
+                            <span>2.0</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderRelativeStrengthBars(lifts, bodyweight) {
+            const container = document.getElementById('relativeStrengthBars');
+
+            const liftOrder = ['squat', 'bench', 'row', 'rdl'];
+            const maxMultiple = 2.5; // Scale to 2.5x BW
+
+            container.innerHTML = liftOrder.map(key => {
+                const lift = lifts[key];
+                if (!lift || !lift.relative_strength) return '';
+
+                const percentage = (lift.relative_strength / maxMultiple) * 100;
+
+                return `
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-mono text-sm text-[var(--text-secondary)]">${lift.name}</span>
+                            <span class="stat-value text-lg" style="color: ${colors[key]}">${lift.relative_strength.toFixed(2)}×</span>
+                        </div>
+                        <div class="bw-bar">
+                            <div class="bw-milestone" style="left: ${(1/maxMultiple)*100}%" data-label="1×"></div>
+                            <div class="bw-milestone" style="left: ${(1.5/maxMultiple)*100}%" data-label="1.5×"></div>
+                            <div class="bw-milestone" style="left: ${(2/maxMultiple)*100}%" data-label="2×"></div>
+                            <div class="bw-fill" style="width: ${Math.min(percentage, 100)}%; background: linear-gradient(90deg, ${colors[key]}, ${colors[key]}88)"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderInsights(insights) {
+            const container = document.getElementById('insightsGrid');
+
+            container.innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-[var(--bench)]"></span>
+                        <span class="font-mono text-xs text-[var(--text-muted)] uppercase tracking-wider">Primary Limiter</span>
+                    </div>
+                    <p class="text-xl font-medium capitalize">${insights.primary_limiter}</p>
+                    <p class="text-sm text-[var(--text-secondary)]">${insights.grip_assessment?.status || 'Under investigation'}</p>
+                    <div class="insight-tag">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v20M2 12h20"/>
+                        </svg>
+                        ${insights.grip_assessment?.expected_improvement || 'Improvement pending'}
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-[var(--row)]"></span>
+                        <span class="font-mono text-xs text-[var(--text-muted)] uppercase tracking-wider">Strength Areas</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        ${(insights.strength_areas || []).map(area => `
+                            <span class="insight-tag positive capitalize">${area}</span>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-[var(--pullup)]"></span>
+                        <span class="font-mono text-xs text-[var(--text-muted)] uppercase tracking-wider">Opportunity Areas</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        ${(insights.opportunity_areas || []).map(area => `
+                            <span class="insight-tag capitalize" style="background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3); color: #f59e0b">${area}</span>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function setTimeRange(range) {
+            // Update button states
+            document.querySelectorAll('[onclick^="setTimeRange"]').forEach(btn => {
+                btn.classList.remove('bg-[var(--accent)]', 'text-black');
+                btn.classList.add('bg-[var(--bg-elevated)]', 'text-[var(--text-secondary)]');
+            });
+            event.target.classList.remove('bg-[var(--bg-elevated)]', 'text-[var(--text-secondary)]');
+            event.target.classList.add('bg-[var(--accent)]', 'text-black');
+
+            // Update current time range and re-render chart
+            currentTimeRange = range;
+            if (currentLifts) {
+                renderTrendsChart(currentLifts, range);
+            }
+        }
+
+        // Modal functionality
+        let modalChart = null;
+
+        // Map lift keys to exercise names in workout log
+        const liftNameMap = {
+            squat: ['Back Squat', 'Squat', 'Barbell Squat'],
+            bench: ['Bench Press', 'Bench', 'Barbell Bench Press', 'Incline Bench Press', 'Incline Bench'],
+            row: ['Barbell Row', 'Row', 'Bent Over Row'],
+            pullup: ['Pull-Up', 'Pull-ups', 'Pullup', 'Chin-Up'],
+            rdl: ['Romanian Deadlift', 'RDL'],
+            curl: ['Barbell Curl', 'Curl', 'Bicep Curl']
+        };
+
+        function getSessionsFromWorkoutLog(liftKey) {
+            if (!workoutLog || !workoutLog.workout_sessions) return [];
+
+            const matchNames = liftNameMap[liftKey] || [];
+            const sessions = [];
+
+            workoutLog.workout_sessions.forEach(session => {
+                session.exercises.forEach(exercise => {
+                    // Check if this exercise matches the lift
+                    const isMatch = matchNames.some(name =>
+                        exercise.name.toLowerCase().includes(name.toLowerCase()) ||
+                        name.toLowerCase().includes(exercise.name.toLowerCase())
+                    );
+
+                    if (isMatch) {
+                        // Parse date
+                        let dateStr = session.date || session.timeframe || 'Recent';
+                        let displayDate = dateStr;
+
+                        if (session.date) {
+                            const date = new Date(session.date);
+                            displayDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        } else if (session.timeframe === 'this_week') {
+                            displayDate = 'This week';
+                        }
+
+                        // Process sets - handle collapsed format (sets: N) and expanded format
+                        const allSets = [];
+                        exercise.sets.forEach(set => {
+                            const numSets = set.sets || 1;
+                            for (let i = 0; i < numSets; i++) {
+                                allSets.push({
+                                    weight: set.weight_lb || 0,
+                                    reps: set.reps || (set.reps_range ? set.reps_range[1] : 0)
+                                });
+                            }
+                        });
+
+                        // Find top set (highest weight working set, skip warmups < 80% of max)
+                        const maxWeight = Math.max(...allSets.map(s => s.weight));
+                        const workingSets = allSets.filter(s => s.weight >= maxWeight * 0.9 || s.weight === 0);
+
+                        // Calculate e1RM from top set
+                        const topSet = workingSets.reduce((best, s) => {
+                            const e1rm = s.weight > 0 ? s.weight * (1 + s.reps / 30) : 0;
+                            const bestE1rm = best.weight > 0 ? best.weight * (1 + best.reps / 30) : 0;
+                            return e1rm > bestE1rm ? s : best;
+                        }, { weight: 0, reps: 0 });
+
+                        const e1rm = topSet.weight > 0 ? Math.round(topSet.weight * (1 + topSet.reps / 30)) : null;
+
+                        // Calculate total volume
+                        const volume = allSets.reduce((sum, s) => sum + (s.weight * s.reps), 0);
+
+                        // Group working sets for display
+                        const setGroups = [];
+                        exercise.sets.forEach(set => {
+                            setGroups.push({
+                                weight: set.weight_lb || 0,
+                                reps: set.reps || (set.reps_range ? `${set.reps_range[0]}-${set.reps_range[1]}` : 0),
+                                sets: set.sets || 1
+                            });
+                        });
+
+                        sessions.push({
+                            date: displayDate,
+                            rawDate: session.date,
+                            setGroups,
+                            topSet,
+                            e1rm,
+                            volume,
+                            totalReps: allSets.reduce((sum, s) => sum + s.reps, 0),
+                            notes: exercise.notes || [],
+                            variation: exercise.variation,
+                            isPR: false // Could track PRs separately
+                        });
+                    }
+                });
+            });
+
+            // Sort by date (most recent first)
+            sessions.sort((a, b) => {
+                if (!a.rawDate && !b.rawDate) return 0;
+                if (!a.rawDate) return 1;
+                if (!b.rawDate) return -1;
+                return new Date(b.rawDate) - new Date(a.rawDate);
+            });
+
+            return sessions;
+        }
+
+        function generateSessionHistory(liftKey, lift) {
+            // First try to get real data from workout log
+            const realSessions = getSessionsFromWorkoutLog(liftKey);
+
+            if (realSessions.length > 0) {
+                return realSessions;
+            }
+
+            // Fallback to showing "no data" message
+            return [];
+        }
+
+        function openLiftModal(liftKey) {
+            const lift = dashboardData.lifts[liftKey];
+            if (!lift) return;
+
+            const sessions = generateSessionHistory(liftKey, lift);
+            const color = colors[liftKey];
+            const volumeValues = sessions.map(s => s.volume).filter(v => v > 0);
+            const maxVolume = volumeValues.length > 0 ? Math.max(...volumeValues) : 1;
+
+            // Calculate stats from real data
+            const e1rmValues = sessions.filter(s => s.e1rm).map(s => s.e1rm);
+            const avgE1rm = e1rmValues.length > 0
+                ? e1rmValues.reduce((sum, v) => sum + v, 0) / e1rmValues.length
+                : 0;
+            const totalVolume = sessions.reduce((sum, s) => sum + (s.volume || 0), 0);
+            const bestE1rm = e1rmValues.length > 0 ? Math.max(...e1rmValues) : (lift.current_e1rm || 0);
+
+            const modalContent = document.getElementById('modalContent');
+            modalContent.innerHTML = `
+                <!-- Header -->
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-4">
+                        <div class="w-2 h-12 rounded" style="background: ${color}"></div>
+                        <div>
+                            <h2 class="font-display text-3xl tracking-wide">${lift.name.toUpperCase()}</h2>
+                            <span class="font-mono text-sm px-2 py-0.5 rounded" style="background: ${color}20; color: ${color}">${lift.classification}</span>
+                        </div>
+                    </div>
+                    <button onclick="closeLiftModal()" class="p-2 hover:bg-[var(--bg-elevated)] rounded-lg transition-colors">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Stats Row -->
+                <div class="grid grid-cols-4 gap-4 mb-6">
+                    <div class="bg-[var(--bg-elevated)] rounded-lg p-4">
+                        <div class="font-mono text-xs text-[var(--text-muted)] uppercase mb-1">Current</div>
+                        <div class="stat-value text-2xl" style="color: ${color}">${lift.current_e1rm || lift.current_reps}${lift.current_e1rm ? ' lb' : ' reps'}</div>
+                    </div>
+                    <div class="bg-[var(--bg-elevated)] rounded-lg p-4">
+                        <div class="font-mono text-xs text-[var(--text-muted)] uppercase mb-1">Best e1RM</div>
+                        <div class="stat-value text-2xl">${bestE1rm ? bestE1rm + ' lb' : 'N/A'}</div>
+                    </div>
+                    <div class="bg-[var(--bg-elevated)] rounded-lg p-4">
+                        <div class="font-mono text-xs text-[var(--text-muted)] uppercase mb-1">Avg e1RM</div>
+                        <div class="stat-value text-2xl">${avgE1rm ? Math.round(avgE1rm) + ' lb' : 'N/A'}</div>
+                    </div>
+                    <div class="bg-[var(--bg-elevated)] rounded-lg p-4">
+                        <div class="font-mono text-xs text-[var(--text-muted)] uppercase mb-1">Total Volume</div>
+                        <div class="stat-value text-2xl">${(totalVolume / 1000).toFixed(1)}k</div>
+                    </div>
+                </div>
+
+                <!-- Mini Chart -->
+                ${e1rmValues.length > 0 ? `
+                    <div class="mb-6">
+                        <h3 class="font-mono text-xs text-[var(--text-muted)] uppercase tracking-wider mb-3">E1RM Progression</h3>
+                        <div class="mini-chart bg-[var(--bg-elevated)] rounded-lg p-4">
+                            <canvas id="modalMiniChart"></canvas>
+                        </div>
+                    </div>
+                ` : (sessions.length > 0 && sessions.some(s => s.totalReps) ? `
+                    <div class="mb-6">
+                        <h3 class="font-mono text-xs text-[var(--text-muted)] uppercase tracking-wider mb-3">Rep Progression</h3>
+                        <div class="mini-chart bg-[var(--bg-elevated)] rounded-lg p-4">
+                            <canvas id="modalMiniChart"></canvas>
+                        </div>
+                    </div>
+                ` : '')}
+
+                <!-- Session History -->
+                <div>
+                    <h3 class="font-mono text-xs text-[var(--text-muted)] uppercase tracking-wider mb-3">Recent Sessions</h3>
+                    ${sessions.length > 0 ? `
+                        <div class="bg-[var(--bg-elevated)] rounded-lg p-4">
+                            <div class="session-row font-mono text-xs text-[var(--text-muted)] uppercase" style="border-bottom: 1px solid var(--border)">
+                                <span>Date</span>
+                                <span>Sets</span>
+                                <span class="text-right">Volume</span>
+                            </div>
+                            ${sessions.map(session => `
+                                <div class="session-row">
+                                    <div class="font-mono text-sm text-[var(--text-secondary)]">
+                                        ${session.date}
+                                        ${session.isPR ? '<span class="pr-badge ml-2">PR</span>' : ''}
+                                        ${session.variation && session.variation !== 'unspecified' ? `<div class="text-xs text-[var(--text-muted)]">${session.variation}</div>` : ''}
+                                    </div>
+                                    <div class="flex flex-wrap gap-2">
+                                        ${session.setGroups ? session.setGroups.map(sg =>
+                                            sg.weight > 0
+                                                ? `<span class="set-pill"><span style="color: ${color}">${sg.weight}</span> × ${sg.reps} × ${sg.sets}</span>`
+                                                : `<span class="set-pill"><span style="color: ${color}">${sg.reps}</span> reps × ${sg.sets}</span>`
+                                        ).join('') : (
+                                            session.weight
+                                                ? `<span class="set-pill"><span style="color: ${color}">${session.weight}</span> × ${session.reps} × ${session.sets}</span>`
+                                                : `<span class="set-pill"><span style="color: ${color}">${session.reps}</span> reps × ${session.sets}</span>`
+                                        )}
+                                        ${session.e1rm ? `<span class="set-pill text-[var(--text-muted)]">e1RM: ${session.e1rm}</span>` : ''}
+                                    </div>
+                                    <div class="volume-bar">
+                                        <div class="volume-fill" style="width: ${maxVolume > 0 ? (session.volume / maxVolume) * 100 : 0}%; background: ${color}">
+                                            ${session.volume > 0 ? session.volume.toLocaleString() : session.totalReps + ' reps'}
+                                        </div>
+                                    </div>
+                                </div>
+                                ${session.notes && session.notes.length > 0 ? `
+                                    <div class="text-xs text-[var(--text-muted)] italic pl-4 -mt-2 mb-2">${session.notes.join(', ')}</div>
+                                ` : ''}
+                            `).join('')}
+                        </div>
+                    ` : `
+                        <div class="bg-[var(--bg-elevated)] rounded-lg p-8 text-center">
+                            <div class="text-[var(--text-muted)] mb-2">No session data found</div>
+                            <div class="text-xs text-[var(--text-muted)]">Add workouts to workout_log.json to see history here</div>
+                        </div>
+                    `}
+                </div>
+
+                ${lift.notes ? `
+                    <div class="mt-6 p-4 bg-[var(--bg-elevated)] rounded-lg border-l-4" style="border-color: ${color}">
+                        <div class="font-mono text-xs text-[var(--text-muted)] uppercase mb-1">Notes</div>
+                        <p class="text-sm text-[var(--text-secondary)]">${lift.notes}</p>
+                    </div>
+                ` : ''}
+            `;
+
+            // Show modal
+            document.getElementById('liftModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+
+            // Render mini chart after modal is visible
+            setTimeout(() => {
+                renderModalChart(sessions, color);
+            }, 100);
+        }
+
+        function renderModalChart(sessions, color) {
+            const ctx = document.getElementById('modalMiniChart');
+            if (!ctx || sessions.length === 0) return;
+
+            if (modalChart) {
+                modalChart.destroy();
+            }
+
+            // Reverse sessions to show oldest first (chronological order for chart)
+            const chronoSessions = [...sessions].reverse();
+
+            // Determine if we're showing e1RM or reps
+            const hasE1rm = chronoSessions.some(s => s.e1rm);
+            const dataKey = hasE1rm ? 'e1rm' : 'totalReps';
+            const label = hasE1rm ? 'e1RM' : 'Reps';
+            const unit = hasE1rm ? ' lb' : '';
+
+            const labels = chronoSessions.map(s => s.date);
+            const data = chronoSessions.map(s => hasE1rm ? s.e1rm : s.totalReps);
+
+            modalChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label,
+                        data,
+                        borderColor: color,
+                        backgroundColor: color + '30',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 6,
+                        pointBackgroundColor: color,
+                        pointBorderColor: '#161618',
+                        pointBorderWidth: 2,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1c1c1f',
+                            borderColor: '#2a2a2e',
+                            borderWidth: 1,
+                            titleFont: { family: 'Space Grotesk', size: 11 },
+                            bodyFont: { family: 'JetBrains Mono', size: 11 },
+                            padding: 8,
+                            callbacks: {
+                                label: (ctx) => ctx.raw ? `${label}: ${ctx.raw}${unit}` : ''
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: {
+                                color: '#52525b',
+                                font: { family: 'JetBrains Mono', size: 9 }
+                            }
+                        },
+                        y: {
+                            grace: '10%',
+                            grid: { color: '#2a2a2e' },
+                            ticks: {
+                                color: '#52525b',
+                                font: { family: 'JetBrains Mono', size: 9 },
+                                callback: (val) => val + unit,
+                                padding: 8,
+                                maxTicksLimit: 6
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function closeLiftModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('liftModal').classList.remove('active');
+            document.body.style.overflow = '';
+            if (modalChart) {
+                modalChart.destroy();
+                modalChart = null;
+            }
+        }
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeLiftModal();
+        });
+
+        // Initialize
+        loadData();
+    </script>
+</body>
+</html>

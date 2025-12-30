@@ -1,0 +1,62 @@
+{
+  "workout_session": {
+    "date": "2024-12-29",
+    "duration_minutes": 75,
+    "session_rpe": 7.5,
+    "location": "home gym",
+    "exercises": [
+      {
+        "exercise_name": "Squat",
+        "variation": "high bar",
+        "equipment": "barbell",
+        "sets": [
+          {"reps": 5, "weight": 135, "weight_unit": "lb", "is_warmup": true},
+          {"reps": 5, "weight": 185, "weight_unit": "lb", "is_warmup": true},
+          {"reps": 5, "weight": 225, "weight_unit": "lb", "is_warmup": true},
+          {"reps": 5, "weight": 225, "weight_unit": "lb", "rir": 3},
+          {"reps": 5, "weight": 225, "weight_unit": "lb", "rir": 2},
+          {"reps": 5, "weight": 225, "weight_unit": "lb", "rir": 1}
+        ],
+        "notes": "Felt strong, good depth"
+      },
+      {
+        "exercise_name": "Bench Press",
+        "equipment": "barbell",
+        "sets": [
+          {"reps": 5, "weight": 95, "weight_unit": "lb", "is_warmup": true},
+          {"reps": 5, "weight": 135, "weight_unit": "lb", "is_warmup": true},
+          {"reps": 5, "weight": 185, "weight_unit": "lb", "rir": 3},
+          {"reps": 5, "weight": 185, "weight_unit": "lb", "rir": 2},
+          {"reps": 8, "weight": 165, "weight_unit": "lb", "rir": 1}
+        ]
+      },
+      {
+        "exercise_name": "Pull-ups",
+        "sets": [
+          {"reps": 8, "weight": 25, "weight_unit": "lb", "notes": "weighted"},
+          {"reps": 7, "weight": 25, "weight_unit": "lb"},
+          {"reps": 6, "weight": 0, "weight_unit": "lb", "notes": "bodyweight"}
+        ]
+      },
+      {
+        "exercise_name": "Barbell Curl",
+        "equipment": "ez bar",
+        "sets": [
+          {"reps": 12, "weight": 65, "weight_unit": "lb"},
+          {"reps": 10, "weight": 65, "weight_unit": "lb"},
+          {"reps": 8, "weight": 65, "weight_unit": "lb"}
+        ]
+      },
+      {
+        "exercise_name": "Face Pull",
+        "equipment": "cable",
+        "sets": [
+          {"reps": 15, "weight": 40, "weight_unit": "lb"},
+          {"reps": 15, "weight": 40, "weight_unit": "lb"},
+          {"reps": 12, "weight": 40, "weight_unit": "lb"}
+        ]
+      }
+    ],
+    "notes": "Good session overall. Energy was high."
+  }
+}

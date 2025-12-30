@@ -1,0 +1,19 @@
+{
+  "bodyweight_entries": [
+    {"date": "2024-12-15", "weight": 166.2, "weight_unit": "lb", "time_of_day": "morning"},
+    {"date": "2024-12-16", "weight": 165.8, "weight_unit": "lb", "time_of_day": "morning"},
+    {"date": "2024-12-17", "weight": 166.4, "weight_unit": "lb", "time_of_day": "morning"},
+    {"date": "2024-12-18", "weight": 165.6, "weight_unit": "lb", "time_of_day": "morning"},
+    {"date": "2024-12-19", "weight": 166.0, "weight_unit": "lb", "time_of_day": "morning"},
+    {"date": "2024-12-20", "weight": 165.4, "weight_unit": "lb", "time_of_day": "morning"},
+    {"date": "2024-12-21", "weight": 165.8, "weight_unit": "lb", "time_of_day": "morning"},
+    {"date": "2024-12-22", "weight": 165.2, "weight_unit": "lb", "time_of_day": "morning"},
+    {"date": "2024-12-23", "weight": 165.6, "weight_unit": "lb", "time_of_day": "morning"},
+    {"date": "2024-12-24", "weight": 166.0, "weight_unit": "lb", "time_of_day": "morning"},
+    {"date": "2024-12-25", "weight": 167.2, "weight_unit": "lb", "time_of_day": "morning", "notes": "Holiday meal"},
+    {"date": "2024-12-26", "weight": 166.8, "weight_unit": "lb", "time_of_day": "morning"},
+    {"date": "2024-12-27", "weight": 166.0, "weight_unit": "lb", "time_of_day": "morning"},
+    {"date": "2024-12-28", "weight": 165.4, "weight_unit": "lb", "time_of_day": "morning"},
+    {"date": "2024-12-29", "weight": 165.6, "weight_unit": "lb", "time_of_day": "morning"}
+  ]
+}

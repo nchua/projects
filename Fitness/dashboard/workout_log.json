@@ -1,0 +1,503 @@
+{
+  "schema_version": "1.0",
+  "units": {
+    "weight": "lb"
+  },
+  "user_context": {
+    "sex": "male",
+    "age_years": 29,
+    "height_in": 69,
+    "bodyweight_lb": 166
+  },
+  "workout_sessions": [
+    {
+      "session_id": "sess_2025-12-12_lower",
+      "date": "2025-12-12",
+      "date_confidence": "high",
+      "session_name": "Lower Day",
+      "duration_minutes": 41,
+      "source": "screenshot_IMG_9333-9335",
+      "summary": {
+        "tonnage_lb": 12600,
+        "total_reps": 89,
+        "exercises": 3,
+        "sets": 14
+      },
+      "exercises": [
+        {
+          "name": "Back Squat",
+          "equipment": "barbell",
+          "sets": [
+            { "weight_lb": 135, "reps": 8, "sets": 1, "is_warmup": true },
+            { "weight_lb": 185, "reps": 5, "sets": 1, "is_warmup": true },
+            { "weight_lb": 185, "reps": 10, "sets": 1 },
+            { "weight_lb": 205, "reps": 5, "sets": 3 }
+          ],
+          "total_reps": 38,
+          "total_volume_lb": 6930
+        },
+        {
+          "name": "Romanian Deadlift",
+          "equipment": "barbell",
+          "sets": [
+            { "weight_lb": 135, "reps": 6, "sets": 4 }
+          ],
+          "total_reps": 24,
+          "total_volume_lb": 3240
+        },
+        {
+          "name": "Calf Raise",
+          "equipment": "machine",
+          "variation": "seated",
+          "sets": [
+            { "weight_lb": 90, "reps": 6, "sets": 4 },
+            { "weight_lb": 90, "reps": 3, "sets": 1 }
+          ],
+          "total_reps": 27,
+          "total_volume_lb": 2430
+        }
+      ]
+    },
+    {
+      "session_id": "sess_2025-12-13_upper",
+      "date": "2025-12-13",
+      "date_confidence": "high",
+      "session_name": "Upper Day",
+      "duration_minutes": 28,
+      "source": "screenshot_IMG_9331-9332",
+      "summary": {
+        "tonnage_lb": 7900,
+        "total_reps": 105,
+        "exercises": 3,
+        "sets": 12
+      },
+      "exercises": [
+        {
+          "name": "Bench Press",
+          "equipment": "barbell",
+          "sets": [
+            { "weight_lb": 95, "reps": 8, "sets": 1, "is_warmup": true },
+            { "weight_lb": 135, "reps": 8, "sets": 4 },
+            { "weight_lb": 135, "reps": 6, "sets": 1 }
+          ],
+          "total_reps": 38,
+          "total_volume_lb": 4810
+        },
+        {
+          "name": "Overhead Press",
+          "equipment": "dumbbell",
+          "variation": "seated",
+          "sets": [
+            { "weight_lb": 70, "reps": 8, "sets": 1 },
+            { "weight_lb": 80, "reps": 8, "sets": 1 },
+            { "weight_lb": 90, "reps": 6, "sets": 1 },
+            { "weight_lb": 90, "reps": 5, "sets": 3 }
+          ],
+          "total_reps": 37,
+          "total_volume_lb": 3090,
+          "notes": ["Weight is per dumbbell"]
+        }
+      ]
+    },
+    {
+      "session_id": "sess_2025-12-14_pull",
+      "date": "2025-12-14",
+      "date_confidence": "high",
+      "session_name": "Pull Day",
+      "duration_minutes": 32,
+      "source": "screenshot_IMG_9328-9330",
+      "summary": {
+        "tonnage_lb": 10365,
+        "total_reps": 80,
+        "exercises": 3,
+        "sets": 11
+      },
+      "exercises": [
+        {
+          "name": "Deadlift",
+          "equipment": "barbell",
+          "sets": [
+            { "weight_lb": 135, "reps": 8, "sets": 1, "is_warmup": true },
+            { "weight_lb": 185, "reps": 6, "sets": 1, "is_warmup": true },
+            { "weight_lb": 205, "reps": 5, "sets": 3 }
+          ],
+          "total_reps": 29,
+          "total_volume_lb": 5265
+        },
+        {
+          "name": "Dumbbell High Pull",
+          "equipment": "dumbbell",
+          "sets": [
+            { "weight_lb": 55, "reps": 8, "sets": 3 }
+          ],
+          "total_reps": 24,
+          "total_volume_lb": 1320,
+          "notes": ["Weight is per dumbbell"]
+        },
+        {
+          "name": "Shrugs",
+          "equipment": "dumbbell",
+          "sets": [
+            { "weight_lb": 140, "reps": 10, "sets": 1 },
+            { "weight_lb": 140, "reps": 9, "sets": 1 },
+            { "weight_lb": 140, "reps": 8, "sets": 1 }
+          ],
+          "total_reps": 27,
+          "total_volume_lb": 3780,
+          "notes": ["Weight is per dumbbell"]
+        }
+      ]
+    },
+    {
+      "session_id": "sess_2025-12-21_lower",
+      "date": "2025-12-21",
+      "date_confidence": "high",
+      "session_name": "Lower Day",
+      "duration_minutes": 28,
+      "source": "screenshot_IMG_9326-9327",
+      "summary": {
+        "tonnage_lb": 10530,
+        "total_reps": 62,
+        "exercises": 2,
+        "sets": 9
+      },
+      "exercises": [
+        {
+          "name": "Back Squat",
+          "equipment": "barbell",
+          "sets": [
+            { "weight_lb": 135, "reps": 8, "sets": 1, "is_warmup": true },
+            { "weight_lb": 185, "reps": 8, "sets": 1, "is_warmup": true },
+            { "weight_lb": 205, "reps": 6, "sets": 1, "is_warmup": true },
+            { "weight_lb": 225, "reps": 5, "sets": 2 }
+          ],
+          "total_reps": 32,
+          "total_volume_lb": 6040
+        },
+        {
+          "name": "Romanian Deadlift",
+          "equipment": "barbell",
+          "sets": [
+            { "weight_lb": 135, "reps": 8, "sets": 1, "is_warmup": true },
+            { "weight_lb": 155, "reps": 8, "sets": 2 },
+            { "weight_lb": 155, "reps": 6, "sets": 1 }
+          ],
+          "total_reps": 30,
+          "total_volume_lb": 4490
+        }
+      ]
+    },
+    {
+      "session_id": "sess_2025-12-23_pull",
+      "date": "2025-12-23",
+      "date_confidence": "high",
+      "session_name": "Pull Day",
+      "duration_minutes": 32,
+      "source": "screenshot_IMG_9323-9325",
+      "summary": {
+        "tonnage_lb": 14615,
+        "total_reps": 95,
+        "exercises": 3,
+        "sets": 13
+      },
+      "exercises": [
+        {
+          "name": "Deadlift",
+          "equipment": "barbell",
+          "sets": [
+            { "weight_lb": 135, "reps": 8, "sets": 1, "is_warmup": true },
+            { "weight_lb": 185, "reps": 6, "sets": 2, "is_warmup": true },
+            { "weight_lb": 205, "reps": 5, "sets": 3 }
+          ],
+          "total_reps": 35,
+          "total_volume_lb": 6375
+        },
+        {
+          "name": "Bent Over Row",
+          "equipment": "barbell",
+          "sets": [
+            { "weight_lb": 135, "reps": 8, "sets": 4 }
+          ],
+          "total_reps": 32,
+          "total_volume_lb": 4320
+        },
+        {
+          "name": "Shrugs",
+          "equipment": "dumbbell",
+          "sets": [
+            { "weight_lb": 140, "reps": 8, "sets": 2 },
+            { "weight_lb": 140, "reps": 6, "sets": 2 }
+          ],
+          "total_reps": 28,
+          "total_volume_lb": 3920,
+          "notes": ["Weight is per dumbbell"]
+        }
+      ]
+    },
+    {
+      "session_id": "sess_2025-12-24_upper",
+      "date": "2025-12-24",
+      "date_confidence": "high",
+      "session_name": "Upper Two",
+      "duration_minutes": 39,
+      "source": "screenshot_IMG_9318-9321",
+      "summary": {
+        "tonnage_lb": 12645,
+        "total_reps": 157,
+        "exercises": 5,
+        "sets": 21
+      },
+      "exercises": [
+        {
+          "name": "Bench Press",
+          "equipment": "barbell",
+          "sets": [
+            { "weight_lb": 135, "reps": 8, "sets": 1, "is_warmup": true },
+            { "weight_lb": 155, "reps": 5, "sets": 2 },
+            { "weight_lb": 155, "reps": 4, "sets": 2 }
+          ],
+          "total_reps": 26,
+          "total_volume_lb": 3870
+        },
+        {
+          "name": "Incline Bench Press",
+          "equipment": "barbell",
+          "sets": [
+            { "weight_lb": 115, "reps": 7, "sets": 1, "is_warmup": true },
+            { "weight_lb": 135, "reps": 5, "sets": 2 },
+            { "weight_lb": 135, "reps": 4, "sets": 2 }
+          ],
+          "total_reps": 25,
+          "total_volume_lb": 3235
+        },
+        {
+          "name": "Overhead Press",
+          "equipment": "dumbbell",
+          "variation": "seated",
+          "sets": [
+            { "weight_lb": 100, "reps": 5, "sets": 4 }
+          ],
+          "total_reps": 20,
+          "total_volume_lb": 2000,
+          "notes": ["Weight is per dumbbell (total 200lb working weight)", "Superset with lateral raises"]
+        },
+        {
+          "name": "Lateral Shoulder Raise",
+          "equipment": "dumbbell",
+          "sets": [
+            { "weight_lb": 30, "reps": 15, "sets": 4 }
+          ],
+          "total_reps": 60,
+          "total_volume_lb": 1800,
+          "notes": ["Weight is per dumbbell", "Superset with overhead press"]
+        },
+        {
+          "name": "Barbell Curl",
+          "equipment": "barbell",
+          "sets": [
+            { "weight_lb": 70, "reps": 6, "sets": 3 },
+            { "weight_lb": 60, "reps": 8, "sets": 1 }
+          ],
+          "total_reps": 26,
+          "total_volume_lb": 1740
+        }
+      ]
+    },
+    {
+      "session_id": "sess_2025-12-26_lower",
+      "date": "2025-12-26",
+      "date_confidence": "high",
+      "session_name": "Lower Accessories",
+      "duration_minutes": 47,
+      "source": "screenshot_IMG_9315-9317",
+      "summary": {
+        "tonnage_lb": 8400,
+        "total_reps": 174,
+        "exercises": 3,
+        "sets": 12
+      },
+      "exercises": [
+        {
+          "name": "Alternating Lunge",
+          "equipment": "dumbbell",
+          "sets": [
+            { "weight_lb": 60, "reps": 16, "sets": 6 }
+          ],
+          "total_reps": 96,
+          "total_volume_lb": 5760,
+          "notes": ["Weight is per dumbbell"]
+        },
+        {
+          "name": "Romanian Deadlift",
+          "equipment": "dumbbell",
+          "variation": "single leg alternating",
+          "sets": [
+            { "weight_lb": 30, "reps": 16, "sets": 3 }
+          ],
+          "total_reps": 48,
+          "total_volume_lb": 1440,
+          "notes": ["Weight is per dumbbell"]
+        },
+        {
+          "name": "Triceps Pulldown",
+          "equipment": "cable",
+          "variation": "rope attachment",
+          "sets": [
+            { "weight_lb": 40, "reps": 10, "sets": 3 }
+          ],
+          "total_reps": 30,
+          "total_volume_lb": 1200
+        }
+      ]
+    },
+    {
+      "session_id": "sess_2025-12-28_upper",
+      "date": "2025-12-28",
+      "date_confidence": "high",
+      "session_name": "Upper Three",
+      "duration_minutes": 57,
+      "source": "screenshot_IMG_9311-9314",
+      "summary": {
+        "tonnage_lb": 10700,
+        "total_reps": 158,
+        "exercises": 5,
+        "sets": 22
+      },
+      "exercises": [
+        {
+          "name": "Bench Press",
+          "equipment": "barbell",
+          "sets": [
+            { "weight_lb": 135, "reps": 7, "sets": 1, "is_warmup": true },
+            { "weight_lb": 155, "reps": 6, "sets": 4 },
+            { "weight_lb": 155, "reps": 5, "sets": 1 }
+          ],
+          "total_reps": 30,
+          "total_volume_lb": 4510
+        },
+        {
+          "name": "Chest Dip",
+          "equipment": "bodyweight",
+          "sets": [
+            { "reps": 6, "sets": 4 }
+          ],
+          "total_reps": 24
+        },
+        {
+          "name": "Overhead Press",
+          "equipment": "dumbbell",
+          "variation": "seated",
+          "sets": [
+            { "weight_lb": 90, "reps": 8, "sets": 1, "is_warmup": true },
+            { "weight_lb": 95, "reps": 6, "sets": 3 }
+          ],
+          "total_reps": 26,
+          "total_volume_lb": 2430,
+          "notes": ["Weight is per dumbbell (total 190lb working weight)"]
+        },
+        {
+          "name": "Lateral Shoulder Raise",
+          "equipment": "dumbbell",
+          "sets": [
+            { "weight_lb": 40, "reps": 12, "sets": 1, "is_warmup": true },
+            { "weight_lb": 45, "reps": 10, "sets": 4 }
+          ],
+          "total_reps": 52,
+          "total_volume_lb": 2280,
+          "notes": ["Weight is per dumbbell"]
+        },
+        {
+          "name": "Triceps Pulldown",
+          "equipment": "cable",
+          "variation": "rope attachment",
+          "sets": [
+            { "weight_lb": 50, "reps": 8, "sets": 1, "is_warmup": true },
+            { "weight_lb": 60, "reps": 6, "sets": 3 }
+          ],
+          "total_reps": 26,
+          "total_volume_lb": 1480
+        }
+      ]
+    },
+    {
+      "session_id": "sess_2025-12-29_lower",
+      "date": "2025-12-29",
+      "date_confidence": "high",
+      "source": "screenshot_IMG_9307-9309",
+      "summary": {
+        "tonnage_lb": 14555,
+        "total_reps": 117
+      },
+      "exercises": [
+        {
+          "name": "Back Squat",
+          "equipment": "barbell",
+          "sets": [
+            { "weight_lb": 135, "reps": 8, "sets": 1, "is_warmup": true },
+            { "weight_lb": 185, "reps": 6, "sets": 1, "is_warmup": true },
+            { "weight_lb": 225, "reps": 5, "sets": 1, "is_warmup": true },
+            { "weight_lb": 235, "reps": 5, "sets": 4 }
+          ],
+          "total_reps": 39,
+          "total_volume_lb": 8015
+        },
+        {
+          "name": "Romanian Deadlift",
+          "equipment": "barbell",
+          "variation": "double overhand grip",
+          "sets": [
+            { "weight_lb": 135, "reps": 6, "sets": 1, "is_warmup": true },
+            { "weight_lb": 155, "reps": 5, "sets": 5 }
+          ],
+          "total_reps": 31,
+          "total_volume_lb": 4685,
+          "notes": ["Grip appears to be limiting factor for pulling movements"]
+        }
+      ]
+    },
+    {
+      "session_id": "sess_unknown_date_accessories_1",
+      "date": null,
+      "date_confidence": "low",
+      "source_text": "I'm doing bicep curls of 65 pounds barbell 8x4; barbell row 135 x8 x4; pull ups 6-7 clean reps",
+      "exercises": [
+        {
+          "name": "Barbell Curl",
+          "equipment": "barbell",
+          "variation": "strict (assumed)",
+          "sets": [
+            { "weight_lb": 65, "reps": 8, "sets": 4 }
+          ]
+        },
+        {
+          "name": "Barbell Row",
+          "equipment": "barbell",
+          "variation": "unspecified",
+          "sets": [
+            { "weight_lb": 135, "reps": 8, "sets": 4 }
+          ],
+          "notes": [
+            "User reports room to go higher"
+          ]
+        },
+        {
+          "name": "Pull-Up",
+          "equipment": "bodyweight",
+          "variation": "strict",
+          "sets": [
+            { "reps": 6, "sets": 1, "reps_range": [6, 7] }
+          ],
+          "notes": [
+            "User believes pull-ups are weak"
+          ]
+        }
+      ]
+    }
+  ],
+  "performance_notes": [
+    {
+      "topic": "grip_limitation",
+      "details": "User reports grip is the limiting factor on deadlifts; fails double overhand and cannot deadlift without supinated/mixed grip. Has not used straps and does not train grip specifically."
+    }
+  ]
+}
