@@ -1,0 +1,9 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Create a pie chart showing portfolio allocation: 60% stocks, 30% bonds, 10% cash"
+    }
+  ],
+  "model": "claude-opus-4-5-20251101"
+}
