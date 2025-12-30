@@ -6,6 +6,7 @@
     <title>STRENGTH // DASHBOARD</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -224,6 +225,11 @@
             height: 280px;
         }
 
+        .chart-container-sm {
+            position: relative;
+            height: 200px;
+        }
+
         /* Modal styles */
         .modal-backdrop {
             position: fixed;
@@ -419,6 +425,19 @@
             </div>
         </section>
 
+        <!-- Ancillary Lifts -->
+        <section class="mb-10">
+            <div class="card rounded-lg p-6 animate-in delay-5">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="font-display text-xl tracking-wide">ANCILLARY LIFTS</h3>
+                    <span class="font-mono text-xs text-[var(--text-muted)]">click for details</span>
+                </div>
+                <div class="chart-container-sm">
+                    <canvas id="ancillaryChart"></canvas>
+                </div>
+            </div>
+        </section>
+
         <!-- Lift Balance & Relative Strength -->
         <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
             <!-- Lift Balance -->
@@ -471,16 +490,19 @@
         const colors = {
             squat: '#3b82f6',
             bench: '#ef4444',
+            deadlift: '#8b5cf6',  // Violet for deadlift (main lift)
             row: '#22c55e',
             curl: '#a855f7',
             pullup: '#f59e0b',
-            rdl: '#06b6d4'
+            rdl: '#06b6d4',
+            ohp: '#ec4899'  // Pink for overhead press
         };
 
         let dashboardData = null;
         let workoutLog = null;
         let trendsChart = null;
         let radarChart = null;
+        let ancillaryChart = null;
         let currentTimeRange = '12w';
         let currentLifts = null;
 
@@ -489,8 +511,8 @@
             try {
                 // Load both dashboard data and workout log
                 const [dashboardResponse, workoutResponse] = await Promise.all([
-                    fetch('dashboard_data.json'),
-                    fetch('workout_log.json').catch(() => null)
+                    fetch('dashboard_data.json?v=' + Date.now()),
+                    fetch('workout_log.json?v=' + Date.now()).catch(() => null)
                 ]);
 
                 dashboardData = await dashboardResponse.json();
@@ -548,6 +570,7 @@
 
             // Render charts
             renderTrendsChart(lifts);
+            renderAncillaryChart(lifts);
             renderRadarChart(lifts);
 
             // Render ratio analysis
@@ -562,7 +585,7 @@
 
         function renderLiftCards(lifts) {
             const container = document.getElementById('liftCards');
-            const mainLifts = ['squat', 'bench', 'row', 'pullup'];
+            const mainLifts = ['squat', 'bench', 'deadlift', 'pullup'];
 
             container.innerHTML = mainLifts.map((key, index) => {
                 const lift = lifts[key];
@@ -619,6 +642,23 @@
             return { slope, intercept };
         }
 
+        // Extract real E1RM history from workout log
+        function getE1RMHistory(liftKey, cutoffWeeks) {
+            const sessions = getSessionsFromWorkoutLog(liftKey);
+            if (!sessions.length) return [];
+
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - (cutoffWeeks * 7));
+
+            return sessions
+                .filter(s => s.rawDate && s.e1rm && new Date(s.rawDate) >= cutoffDate)
+                .map(s => ({
+                    x: new Date(s.rawDate),
+                    y: s.e1rm
+                }))
+                .sort((a, b) => a.x - b.x);
+        }
+
         function renderTrendsChart(lifts, timeRange = currentTimeRange) {
             // Store lifts for re-rendering
             currentLifts = lifts;
@@ -648,90 +688,90 @@
                     projectionWeeks = 8;
                     break;
             }
-            const totalWeeks = historyWeeks + projectionWeeks;
 
-            const labels = Array.from({length: totalWeeks}, (_, i) => {
-                const date = new Date();
-                date.setDate(date.getDate() + (i - historyWeeks + 1) * 7);
-                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            });
-
-            // Simulate progression curves
-            const generateProgression = (current, volatility = 0.03) => {
-                const data = [];
-                let val = current * 0.92; // Start at ~92% of current
-                for (let i = 0; i < historyWeeks; i++) {
-                    val = val * (1 + (Math.random() * volatility * 2 - volatility * 0.5));
-                    if (i === historyWeeks - 1) val = current; // End at current
-                    data.push(Math.round(val));
+            // Generate projection data using linear regression on real data
+            const generateProjection = (historyData, currentE1rm) => {
+                if (!historyData.length) {
+                    // No history, just project from current value
+                    const today = new Date();
+                    const projData = [{ x: today, y: currentE1rm }];
+                    for (let i = 1; i <= projectionWeeks; i++) {
+                        const futureDate = new Date();
+                        futureDate.setDate(today.getDate() + i * 7);
+                        projData.push({ x: futureDate, y: currentE1rm });
+                    }
+                    return projData;
                 }
-                return data;
-            };
 
-            // Generate projection data using linear regression
-            const generateProjection = (historyData, color) => {
-                const { slope, intercept } = linearRegression(historyData);
-                const projectionData = new Array(historyWeeks - 1).fill(null); // null for history portion
-                projectionData.push(historyData[historyData.length - 1]); // Connect at last point
+                // Use y values for regression
+                const yValues = historyData.map(d => d.y);
+                const { slope, intercept } = linearRegression(yValues);
+
+                // Start projection from the last data point
+                const lastPoint = historyData[historyData.length - 1];
+                const projData = [{ x: new Date(lastPoint.x), y: lastPoint.y }];
 
                 for (let i = 1; i <= projectionWeeks; i++) {
-                    const projectedValue = Math.round(intercept + slope * (historyWeeks - 1 + i));
-                    projectionData.push(projectedValue);
+                    const futureDate = new Date(lastPoint.x);
+                    futureDate.setDate(futureDate.getDate() + i * 7);
+                    const projectedValue = Math.round(intercept + slope * (yValues.length - 1 + i));
+                    projData.push({ x: futureDate, y: projectedValue });
                 }
-                return projectionData;
+                return projData;
             };
 
-            // Generate history data
-            const squatHistory = generateProgression(lifts.squat?.current_e1rm || 270);
-            const benchHistory = generateProgression(lifts.bench?.current_e1rm || 185);
-            const rowHistory = generateProgression(lifts.row?.current_e1rm || 170);
+            // Get real E1RM history data from workout log
+            const squatHistory = getE1RMHistory('squat', historyWeeks);
+            const benchHistory = getE1RMHistory('bench', historyWeeks);
+            const deadliftHistory = getE1RMHistory('deadlift', historyWeeks);
 
-            // Extend history arrays with nulls for the projection period
-            const extendWithNulls = (data) => [...data, ...new Array(projectionWeeks).fill(null)];
+            // Get current E1RM values for fallback
+            const currentSquat = lifts.squat?.current_e1rm || 270;
+            const currentBench = lifts.bench?.current_e1rm || 185;
+            const currentDeadlift = lifts.deadlift?.current_e1rm || 225;
 
             trendsChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels,
                     datasets: [
-                        // Actual data lines
+                        // Actual data lines - real workout data
                         {
                             label: 'Squat',
-                            data: extendWithNulls(squatHistory),
+                            data: squatHistory,
                             borderColor: colors.squat,
-                            backgroundColor: colors.squat + '20',
+                            backgroundColor: colors.squat,
                             fill: false,
-                            tension: 0.3,
-                            pointRadius: 0,
-                            pointHoverRadius: 6,
+                            tension: 0,
+                            pointRadius: 5,
+                            pointHoverRadius: 8,
                             borderWidth: 2
                         },
                         {
                             label: 'Bench',
-                            data: extendWithNulls(benchHistory),
+                            data: benchHistory,
                             borderColor: colors.bench,
-                            backgroundColor: colors.bench + '20',
+                            backgroundColor: colors.bench,
                             fill: false,
-                            tension: 0.3,
-                            pointRadius: 0,
-                            pointHoverRadius: 6,
+                            tension: 0,
+                            pointRadius: 5,
+                            pointHoverRadius: 8,
                             borderWidth: 2
                         },
                         {
-                            label: 'Row',
-                            data: extendWithNulls(rowHistory),
-                            borderColor: colors.row,
-                            backgroundColor: colors.row + '20',
+                            label: 'Deadlift',
+                            data: deadliftHistory,
+                            borderColor: colors.deadlift,
+                            backgroundColor: colors.deadlift,
                             fill: false,
-                            tension: 0.3,
-                            pointRadius: 0,
-                            pointHoverRadius: 6,
+                            tension: 0,
+                            pointRadius: 5,
+                            pointHoverRadius: 8,
                             borderWidth: 2
                         },
                         // Projection lines (dashed)
                         {
                             label: 'Squat (projected)',
-                            data: generateProjection(squatHistory),
+                            data: generateProjection(squatHistory, currentSquat),
                             borderColor: colors.squat,
                             backgroundColor: 'transparent',
                             fill: false,
@@ -744,7 +784,7 @@
                         },
                         {
                             label: 'Bench (projected)',
-                            data: generateProjection(benchHistory),
+                            data: generateProjection(benchHistory, currentBench),
                             borderColor: colors.bench,
                             backgroundColor: 'transparent',
                             fill: false,
@@ -756,9 +796,9 @@
                             spanGaps: true
                         },
                         {
-                            label: 'Row (projected)',
-                            data: generateProjection(rowHistory),
-                            borderColor: colors.row,
+                            label: 'Deadlift (projected)',
+                            data: generateProjection(deadliftHistory, currentDeadlift),
+                            borderColor: colors.deadlift,
                             backgroundColor: 'transparent',
                             fill: false,
                             tension: 0,
@@ -798,27 +838,31 @@
                             padding: 12,
                             callbacks: {
                                 label: (ctx) => {
-                                    if (ctx.raw === null) return null;
+                                    if (ctx.raw === null || ctx.raw === undefined) return null;
+                                    const value = typeof ctx.raw === 'object' ? ctx.raw.y : ctx.raw;
+                                    if (value === null || value === undefined) return null;
                                     const isProjection = ctx.dataset.label.includes('projected');
                                     const liftName = ctx.dataset.label.replace(' (projected)', '');
-                                    return `${liftName}: ${ctx.raw} lb${isProjection ? ' (projected)' : ''}`;
+                                    return `${liftName}: ${value} lb${isProjection ? ' (projected)' : ''}`;
                                 }
                             }
                         },
-                        // Add annotation for "NOW" line
+                        // Add annotation for "NOW" line at today's date
                         annotation: {
                             annotations: {
                                 nowLine: {
                                     type: 'line',
-                                    xMin: historyWeeks - 1,
-                                    xMax: historyWeeks - 1,
+                                    xMin: new Date(),
+                                    xMax: new Date(),
                                     borderColor: 'rgba(255, 255, 255, 0.3)',
                                     borderWidth: 1,
                                     borderDash: [4, 4],
                                     label: {
                                         display: true,
                                         content: 'NOW',
-                                        position: 'start'
+                                        position: 'start',
+                                        color: '#a1a1aa',
+                                        font: { family: 'JetBrains Mono', size: 10 }
                                     }
                                 }
                             }
@@ -826,20 +870,24 @@
                     },
                     scales: {
                         x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                displayFormats: {
+                                    day: 'MMM d'
+                                },
+                                tooltipFormat: 'MMM d, yyyy'
+                            },
                             grid: {
-                                color: (ctx) => ctx.index === historyWeeks - 1 ? 'rgba(255,255,255,0.2)' : '#2a2a2e',
+                                color: '#2a2a2e',
                                 drawBorder: false
                             },
                             ticks: {
                                 color: '#52525b',
                                 font: { family: 'JetBrains Mono', size: 10 },
                                 maxRotation: 45,
-                                callback: function(val, index) {
-                                    // Show fewer labels on mobile
-                                    if (index === historyWeeks - 1) return '● NOW';
-                                    if (index % 2 === 0) return this.getLabelForValue(val);
-                                    return '';
-                                }
+                                autoSkip: true,
+                                maxTicksLimit: 10
                             }
                         },
                         y: {
@@ -851,6 +899,156 @@
                                 callback: (val) => val + ' lb',
                                 padding: 8,
                                 maxTicksLimit: 8
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderAncillaryChart(lifts) {
+            // Destroy existing chart if it exists
+            if (ancillaryChart) {
+                ancillaryChart.destroy();
+                ancillaryChart = null;
+            }
+
+            const ctx = document.getElementById('ancillaryChart').getContext('2d');
+
+            // Get history for ancillary lifts (use 12 weeks for consistency)
+            const rowHistory = getE1RMHistory('row', 12);
+            const curlHistory = getE1RMHistory('curl', 12);
+            const rdlHistory = getE1RMHistory('rdl', 12);
+            const ohpHistory = getE1RMHistory('ohp', 12);
+
+            ancillaryChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Row',
+                            data: rowHistory,
+                            borderColor: colors.row,
+                            backgroundColor: colors.row,
+                            fill: false,
+                            tension: 0,
+                            pointRadius: 4,
+                            pointHoverRadius: 7,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Curl',
+                            data: curlHistory,
+                            borderColor: colors.curl,
+                            backgroundColor: colors.curl,
+                            fill: false,
+                            tension: 0,
+                            pointRadius: 4,
+                            pointHoverRadius: 7,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'RDL',
+                            data: rdlHistory,
+                            borderColor: colors.rdl,
+                            backgroundColor: colors.rdl,
+                            fill: false,
+                            tension: 0,
+                            pointRadius: 4,
+                            pointHoverRadius: 7,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'OHP',
+                            data: ohpHistory,
+                            borderColor: colors.ohp,
+                            backgroundColor: colors.ohp,
+                            fill: false,
+                            tension: 0,
+                            pointRadius: 4,
+                            pointHoverRadius: 7,
+                            borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const datasetIndex = elements[0].datasetIndex;
+                            const liftKeys = ['row', 'curl', 'rdl', 'ohp'];
+                            openLiftModal(liftKeys[datasetIndex]);
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#a1a1aa',
+                                font: { family: 'JetBrains Mono', size: 11 },
+                                padding: 15,
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            },
+                            onClick: (e, legendItem, legend) => {
+                                const liftKeys = ['row', 'curl', 'rdl', 'ohp'];
+                                openLiftModal(liftKeys[legendItem.datasetIndex]);
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#1c1c1f',
+                            borderColor: '#2a2a2e',
+                            borderWidth: 1,
+                            titleFont: { family: 'Space Grotesk', size: 12 },
+                            bodyFont: { family: 'JetBrains Mono', size: 11 },
+                            padding: 12,
+                            callbacks: {
+                                label: (ctx) => {
+                                    if (ctx.raw === null || ctx.raw === undefined) return null;
+                                    const value = typeof ctx.raw === 'object' ? ctx.raw.y : ctx.raw;
+                                    if (value === null || value === undefined) return null;
+                                    return `${ctx.dataset.label}: ${value} lb`;
+                                },
+                                footer: () => 'Click for details'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                displayFormats: {
+                                    day: 'MMM d'
+                                },
+                                tooltipFormat: 'MMM d, yyyy'
+                            },
+                            grid: {
+                                color: '#2a2a2e',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#52525b',
+                                font: { family: 'JetBrains Mono', size: 10 },
+                                maxRotation: 45,
+                                autoSkip: true,
+                                maxTicksLimit: 8
+                            }
+                        },
+                        y: {
+                            grace: '10%',
+                            grid: { color: '#2a2a2e', drawBorder: false },
+                            ticks: {
+                                color: '#52525b',
+                                font: { family: 'JetBrains Mono', size: 10 },
+                                callback: (val) => val + ' lb',
+                                padding: 8,
+                                maxTicksLimit: 6
                             }
                         }
                     }
@@ -1067,27 +1265,77 @@
 
         // Map lift keys to exercise names in workout log
         const liftNameMap = {
-            squat: ['Back Squat', 'Squat', 'Barbell Squat'],
-            bench: ['Bench Press', 'Bench', 'Barbell Bench Press', 'Incline Bench Press', 'Incline Bench'],
-            row: ['Barbell Row', 'Row', 'Bent Over Row'],
+            squat: ['Back Squat', 'Barbell Squat'],
+            bench: ['Bench Press', 'Flat Bench'],  // Flat bench only, no incline
+            deadlift: ['Deadlift'],  // Exact match only - see matching logic below
+            row: ['Barbell Row', 'Bent Over Row'],
             pullup: ['Pull-Up', 'Pull-ups', 'Pullup', 'Chin-Up'],
             rdl: ['Romanian Deadlift', 'RDL'],
-            curl: ['Barbell Curl', 'Curl', 'Bicep Curl']
+            curl: ['Barbell Curl', 'Bicep Curl'],
+            ohp: ['Overhead Press', 'OHP', 'Shoulder Press']
+        };
+
+        // Lifts that require exact name matching (to avoid "Deadlift" matching "Romanian Deadlift")
+        const exactMatchLifts = ['deadlift'];
+
+        // Variations to EXCLUDE for each lift (checks variation field)
+        const variationExclusions = {
+            squat: ['split', 'single leg', 'bulgarian', 'lunge'],
+            bench: ['single arm'],
+            row: ['single arm', 'one arm'],
+            rdl: ['single leg', 'single-leg', 'unilateral', 'alternating'],
+            curl: ['single arm', 'concentration'],
+            ohp: ['single arm'],
+        };
+
+        // Name patterns to EXCLUDE for each lift (checks exercise name)
+        const nameExclusions = {
+            bench: ['incline', 'decline', 'close grip', 'close-grip'],
         };
 
         function getSessionsFromWorkoutLog(liftKey) {
             if (!workoutLog || !workoutLog.workout_sessions) return [];
 
             const matchNames = liftNameMap[liftKey] || [];
+            const useExactMatch = exactMatchLifts.includes(liftKey);
+            const varExclusions = variationExclusions[liftKey] || [];
+            const nameExcl = nameExclusions[liftKey] || [];
             const sessions = [];
 
             workoutLog.workout_sessions.forEach(session => {
                 session.exercises.forEach(exercise => {
                     // Check if this exercise matches the lift
-                    const isMatch = matchNames.some(name =>
-                        exercise.name.toLowerCase().includes(name.toLowerCase()) ||
-                        name.toLowerCase().includes(exercise.name.toLowerCase())
-                    );
+                    let isMatch;
+                    if (useExactMatch) {
+                        // Exact match for lifts like "Deadlift" to avoid matching "Romanian Deadlift"
+                        isMatch = matchNames.some(name =>
+                            exercise.name.toLowerCase() === name.toLowerCase()
+                        );
+                    } else {
+                        // Partial match for other lifts
+                        isMatch = matchNames.some(name =>
+                            exercise.name.toLowerCase().includes(name.toLowerCase()) ||
+                            name.toLowerCase().includes(exercise.name.toLowerCase())
+                        );
+                    }
+
+                    // Check for excluded variations (e.g., "single leg" for RDL)
+                    if (isMatch && varExclusions.length > 0) {
+                        const variationText = (exercise.variation || '').toLowerCase();
+                        const isVarExcluded = varExclusions.some(exc => variationText.includes(exc));
+                        if (isVarExcluded) {
+                            isMatch = false;
+                        }
+                    }
+
+                    // Check for excluded name patterns (e.g., "incline" for bench)
+                    if (isMatch && nameExcl.length > 0) {
+                        const exerciseName = exercise.name.toLowerCase();
+                        const isNameExcluded = nameExcl.some(exc => exerciseName.includes(exc));
+                        if (isNameExcluded) {
+                            isMatch = false;
+                        }
+                    }
 
                     if (isMatch) {
                         // Parse date
@@ -1409,6 +1657,93 @@
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeLiftModal();
         });
+
+        // Debug function to validate lift data matching (call from browser console)
+        window.validateLiftData = function() {
+            if (!workoutLog || !workoutLog.workout_sessions) {
+                console.log('No workout log loaded');
+                return;
+            }
+
+            console.log('=== LIFT DATA VALIDATION ===\n');
+
+            // Track all exercises for summary
+            const allExercises = new Map();
+            const excludedExercises = [];
+
+            Object.keys(liftNameMap).forEach(liftKey => {
+                const matchNames = liftNameMap[liftKey] || [];
+                const useExactMatch = exactMatchLifts.includes(liftKey);
+                const varExcl = variationExclusions[liftKey] || [];
+                const nameExcl = nameExclusions[liftKey] || [];
+
+                console.log(`\n--- ${liftKey.toUpperCase()} ---`);
+                console.log(`Match names: ${matchNames.join(', ')}`);
+                console.log(`Exact match: ${useExactMatch}`);
+                console.log(`Excluded variations: ${varExcl.length > 0 ? varExcl.join(', ') : 'none'}`);
+                console.log(`Excluded name patterns: ${nameExcl.length > 0 ? nameExcl.join(', ') : 'none'}`);
+
+                const matched = [];
+                const excluded = [];
+
+                workoutLog.workout_sessions.forEach(session => {
+                    session.exercises.forEach(exercise => {
+                        let isMatch;
+                        if (useExactMatch) {
+                            isMatch = matchNames.some(name =>
+                                exercise.name.toLowerCase() === name.toLowerCase()
+                            );
+                        } else {
+                            isMatch = matchNames.some(name =>
+                                exercise.name.toLowerCase().includes(name.toLowerCase()) ||
+                                name.toLowerCase().includes(exercise.name.toLowerCase())
+                            );
+                        }
+
+                        if (isMatch) {
+                            const variationText = (exercise.variation || '').toLowerCase();
+                            const exerciseName = exercise.name.toLowerCase();
+                            const isVarExcluded = varExcl.some(exc => variationText.includes(exc));
+                            const isNameExcluded = nameExcl.some(exc => exerciseName.includes(exc));
+                            const isExcluded = isVarExcluded || isNameExcluded;
+
+                            const info = {
+                                date: session.date,
+                                name: exercise.name,
+                                variation: exercise.variation || '',
+                                equipment: exercise.equipment,
+                                excludeReason: isVarExcluded ? 'variation' : (isNameExcluded ? 'name pattern' : '')
+                            };
+
+                            if (isExcluded) {
+                                excluded.push(info);
+                                excludedExercises.push({ liftKey, ...info });
+                            } else {
+                                matched.push(info);
+                            }
+                        }
+                    });
+                });
+
+                console.log(`\nMatched (${matched.length}):`);
+                matched.forEach(m => console.log(`  ${m.date}: ${m.name} ${m.variation ? `(${m.variation})` : ''} [${m.equipment}]`));
+
+                if (excluded.length > 0) {
+                    console.log(`\nExcluded (${excluded.length}):`);
+                    excluded.forEach(e => console.log(`  ${e.date}: ${e.name} ${e.variation ? `(${e.variation})` : ''} [${e.equipment}] - EXCLUDED (${e.excludeReason})`));
+                }
+            });
+
+            // Summary of excluded exercises
+            if (excludedExercises.length > 0) {
+                console.log('\n\n=== EXCLUDED EXERCISES SUMMARY ===');
+                excludedExercises.forEach(e =>
+                    console.log(`${e.liftKey}: ${e.name} (${e.variation}) on ${e.date}`)
+                );
+            }
+
+            console.log('\n=== VALIDATION COMPLETE ===');
+        };
 
         // Initialize
         loadData();

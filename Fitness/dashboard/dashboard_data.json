@@ -33,6 +33,19 @@
         { "date": "2025-12-29", "e1rm": 185, "top_set": { "weight": 155, "reps": 6 } }
       ]
     },
+    "deadlift": {
+      "name": "Deadlift",
+      "working_sets": "205 x 5 x 3",
+      "current_e1rm": 239,
+      "relative_strength": 1.44,
+      "percentile_gym": 55,
+      "percentile_general": 80,
+      "classification": "Early Intermediate",
+      "notes": "Grip limiting factor - fails DOH at working weights",
+      "history": [
+        { "date": "2025-12-23", "e1rm": 239, "top_set": { "weight": 205, "reps": 5 } }
+      ]
+    },
     "row": {
       "name": "Barbell Row",
       "working_sets": "135 x 8 x 4",
@@ -66,6 +79,18 @@
       "notes": "Lagging - limited by grip endurance",
       "history": [
         { "date": "2025-12-29", "reps": 7 }
+      ]
+    },
+    "ohp": {
+      "name": "Overhead Press",
+      "working_sets": "95 x 6 x 3 (per DB)",
+      "current_e1rm": 114,
+      "relative_strength": 0.69,
+      "percentile_gym": 45,
+      "classification": "Intermediate",
+      "notes": "Dumbbell seated press - weight shown per dumbbell",
+      "history": [
+        { "date": "2025-12-28", "e1rm": 114, "top_set": { "weight": 95, "reps": 6 } }
       ]
     },
     "rdl": {

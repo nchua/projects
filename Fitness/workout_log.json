@@ -456,9 +456,9 @@
       ]
     },
     {
-      "session_id": "sess_unknown_date_accessories_1",
-      "date": null,
-      "date_confidence": "low",
+      "session_id": "sess_2025-12-29_accessories",
+      "date": "2025-12-29",
+      "date_confidence": "high",
       "source_text": "I'm doing bicep curls of 65 pounds barbell 8x4; barbell row 135 x8 x4; pull ups 6-7 clean reps",
       "exercises": [
         {
