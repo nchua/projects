@@ -161,7 +161,7 @@
       "Step 9: Verify all data stored correctly",
       "Step 10: Return complete workout with IDs"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -176,7 +176,7 @@
       "Step 7: Verify correct number of workouts returned",
       "Step 8: Verify workout data is complete"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -189,7 +189,7 @@
       "Step 5: Test with invalid ID returns 404",
       "Step 6: Verify user cannot access other user's workouts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
