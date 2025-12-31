@@ -1,0 +1,883 @@
+[
+  {
+    "category": "functional",
+    "description": "Project initialization: Set up Xcode project with SwiftUI and basic tab structure",
+    "steps": [
+      "Step 1: Create new Xcode project with SwiftUI",
+      "Step 2: Configure iOS 17+ deployment target",
+      "Step 3: Create TabView with 5 tabs (Home, Log, History, Progress, Profile)",
+      "Step 4: Verify app builds and runs on simulator",
+      "Step 5: Verify all tab icons and labels are visible"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Backend initialization: Set up FastAPI project structure with basic health check",
+    "steps": [
+      "Step 1: Create FastAPI project directory structure",
+      "Step 2: Set up virtual environment and install dependencies",
+      "Step 3: Create main.py with basic FastAPI app",
+      "Step 4: Add /health endpoint that returns status OK",
+      "Step 5: Start server and verify endpoint responds correctly"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Database setup: Configure local SQLite database with GRDB/SwiftData on iOS",
+    "steps": [
+      "Step 1: Add GRDB or SwiftData dependency to iOS project",
+      "Step 2: Define database schema matching spec (users, exercises, workouts, sets, etc.)",
+      "Step 3: Create migration/initialization code",
+      "Step 4: Verify database file is created on app launch",
+      "Step 5: Test basic CRUD operations on a test table"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Backend database setup: Configure PostgreSQL with SQLAlchemy models",
+    "steps": [
+      "Step 1: Install PostgreSQL and SQLAlchemy dependencies",
+      "Step 2: Create SQLAlchemy models for all tables in spec",
+      "Step 3: Set up Alembic for migrations",
+      "Step 4: Create initial migration",
+      "Step 5: Run migration and verify tables created",
+      "Step 6: Test connection and basic query"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Exercise library seed data: Populate 50+ common exercises with categories",
+    "steps": [
+      "Step 1: Create seed data file with 50+ exercises",
+      "Step 2: Include exercise categories (Push, Pull, Legs, Core, Accessories)",
+      "Step 3: Add muscle group tags for each exercise",
+      "Step 4: Include common aliases (e.g., Squat = Back Squat)",
+      "Step 5: Run seed script to populate database",
+      "Step 6: Verify all exercises are queryable"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Auth endpoints: Implement user registration with email and password",
+    "steps": [
+      "Step 1: Create POST /auth/register endpoint",
+      "Step 2: Validate email format and password strength",
+      "Step 3: Hash password using bcrypt or similar",
+      "Step 4: Store user in database",
+      "Step 5: Return success response with user ID",
+      "Step 6: Test with valid and invalid inputs",
+      "Step 7: Verify duplicate email returns error"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Auth endpoints: Implement login with JWT token generation",
+    "steps": [
+      "Step 1: Create POST /auth/login endpoint",
+      "Step 2: Verify email and password against database",
+      "Step 3: Generate JWT token with user ID and expiration",
+      "Step 4: Return token and refresh token",
+      "Step 5: Test successful login",
+      "Step 6: Test invalid credentials return 401",
+      "Step 7: Verify token can be decoded and validated"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Auth endpoints: Implement token refresh mechanism",
+    "steps": [
+      "Step 1: Create POST /auth/refresh endpoint",
+      "Step 2: Accept refresh token in request",
+      "Step 3: Validate refresh token",
+      "Step 4: Generate new access token",
+      "Step 5: Test with valid refresh token",
+      "Step 6: Test with expired/invalid token returns error"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "User profile: Create and retrieve user profile with bodyweight, age, and settings",
+    "steps": [
+      "Step 1: Create GET /profile endpoint with JWT auth",
+      "Step 2: Create PUT /profile endpoint to update profile",
+      "Step 3: Implement profile model with age, sex, bodyweight, training experience",
+      "Step 4: Add preferred units (lb/kg) and e1RM formula preference",
+      "Step 5: Test creating profile with all fields",
+      "Step 6: Test retrieving profile",
+      "Step 7: Test updating individual fields",
+      "Step 8: Verify unauthorized access returns 401"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Exercise endpoints: List all exercises with filtering and search",
+    "steps": [
+      "Step 1: Create GET /exercises endpoint",
+      "Step 2: Return all seeded exercises",
+      "Step 3: Add query parameter for category filter",
+      "Step 4: Add query parameter for search by name",
+      "Step 5: Test fetching all exercises",
+      "Step 6: Test filtering by category",
+      "Step 7: Test search functionality",
+      "Step 8: Verify response includes all required fields"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Exercise endpoints: Create custom exercises for users",
+    "steps": [
+      "Step 1: Create POST /exercises endpoint with JWT auth",
+      "Step 2: Accept exercise name, category, and muscle groups",
+      "Step 3: Associate custom exercise with user_id",
+      "Step 4: Store in database with is_custom=true",
+      "Step 5: Test creating custom exercise",
+      "Step 6: Verify custom exercise appears in user's exercise list",
+      "Step 7: Verify other users cannot see this custom exercise"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Workout logging: Create new workout session and add exercises",
+    "steps": [
+      "Step 1: Create POST /workouts endpoint",
+      "Step 2: Accept date, notes, and optional session_rpe",
+      "Step 3: Create workout_session record",
+      "Step 4: Accept array of exercises with sets",
+      "Step 5: Create workout_exercises and sets records",
+      "Step 6: Calculate e1RM for each set",
+      "Step 7: Test creating workout with multiple exercises",
+      "Step 8: Test creating workout with single exercise",
+      "Step 9: Verify all data stored correctly",
+      "Step 10: Return complete workout with IDs"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Workout endpoints: Retrieve workout history with pagination",
+    "steps": [
+      "Step 1: Create GET /workouts endpoint with JWT auth",
+      "Step 2: Implement pagination with limit and offset",
+      "Step 3: Return workouts ordered by date descending",
+      "Step 4: Include exercise and set data in response",
+      "Step 5: Test fetching first page",
+      "Step 6: Test fetching subsequent pages",
+      "Step 7: Verify correct number of workouts returned",
+      "Step 8: Verify workout data is complete"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Workout endpoints: Get detailed workout by ID",
+    "steps": [
+      "Step 1: Create GET /workouts/{id} endpoint",
+      "Step 2: Fetch workout with all exercises and sets",
+      "Step 3: Include calculated e1RM for each set",
+      "Step 4: Test with valid workout ID",
+      "Step 5: Test with invalid ID returns 404",
+      "Step 6: Verify user cannot access other user's workouts"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Workout endpoints: Update existing workout",
+    "steps": [
+      "Step 1: Create PUT /workouts/{id} endpoint",
+      "Step 2: Allow updating date, notes, session_rpe",
+      "Step 3: Allow updating exercises and sets",
+      "Step 4: Recalculate e1RM if weight/reps changed",
+      "Step 5: Test updating workout notes",
+      "Step 6: Test adding new set to exercise",
+      "Step 7: Test removing set from exercise",
+      "Step 8: Verify changes persisted correctly"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Workout endpoints: Delete workout",
+    "steps": [
+      "Step 1: Create DELETE /workouts/{id} endpoint",
+      "Step 2: Delete workout and all associated exercises/sets",
+      "Step 3: Use soft delete with deleted_at timestamp",
+      "Step 4: Test deleting workout",
+      "Step 5: Verify workout no longer appears in list",
+      "Step 6: Verify associated data is deleted/soft-deleted"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "e1RM calculation: Implement Epley formula for estimated 1RM",
+    "steps": [
+      "Step 1: Create e1RM calculation function using Epley formula: weight * (1 + reps/30)",
+      "Step 2: Apply to all sets when workout is logged",
+      "Step 3: Store calculated e1RM in sets table",
+      "Step 4: Test with various weight/rep combinations",
+      "Step 5: Verify calculation accuracy",
+      "Step 6: Test edge cases (1 rep, high reps)"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "e1RM calculation: Support multiple formulas (Brzycki, Wathan, Lombardi)",
+    "steps": [
+      "Step 1: Implement Brzycki formula: weight * (36 / (37 - reps))",
+      "Step 2: Implement Wathan formula: 100 * weight / (48.8 + 53.8 * e^(-0.075 * reps))",
+      "Step 3: Implement Lombardi formula: weight * reps^0.1",
+      "Step 4: Create formula selector based on user preference",
+      "Step 5: Test each formula with known values",
+      "Step 6: Verify formulas produce reasonable results",
+      "Step 7: Allow user to switch formula in profile settings"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Analytics: Get exercise trend data showing e1RM progression over time",
+    "steps": [
+      "Step 1: Create GET /analytics/exercise/{id}/trend endpoint",
+      "Step 2: Calculate weekly best e1RM for given exercise",
+      "Step 3: Calculate 4-week rolling average",
+      "Step 4: Determine trend direction (improving/stable/regressing)",
+      "Step 5: Calculate percentage change over specified period",
+      "Step 6: Return time series data for charting",
+      "Step 7: Test with exercise that has multiple workouts",
+      "Step 8: Test with different time ranges",
+      "Step 9: Verify calculations are accurate",
+      "Step 10: Test with insufficient data returns appropriate response"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Analytics: Get complete set history for an exercise",
+    "steps": [
+      "Step 1: Create GET /analytics/exercise/{id}/history endpoint",
+      "Step 2: Return all sets for given exercise ordered by date",
+      "Step 3: Include weight, reps, RPE, RIR, e1RM",
+      "Step 4: Group by workout session",
+      "Step 5: Test with exercise that has long history",
+      "Step 6: Verify data is complete and ordered correctly"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Analytics: Calculate strength percentiles based on bodyweight, age, and sex",
+    "steps": [
+      "Step 1: Create GET /analytics/percentiles endpoint",
+      "Step 2: Get user's current max e1RM for tracked lifts",
+      "Step 3: Fetch user's bodyweight, age, sex from profile",
+      "Step 4: Calculate bodyweight multiplier (e1RM / bodyweight)",
+      "Step 5: Compare to population standards database",
+      "Step 6: Determine percentile rank (0-100)",
+      "Step 7: Assign classification label (Beginner/Novice/Intermediate/Advanced/Elite)",
+      "Step 8: Test with various user profiles",
+      "Step 9: Verify percentiles are reasonable",
+      "Step 10: Test with missing profile data handles gracefully"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "PR detection: Automatically detect and record e1RM PRs",
+    "steps": [
+      "Step 1: After each workout, check if any e1RM exceeds previous best",
+      "Step 2: Create PR record with type=e1rm, value, and date",
+      "Step 3: Associate PR with exercise and user",
+      "Step 4: Test logging workout that sets new e1RM PR",
+      "Step 5: Verify PR is recorded in prs table",
+      "Step 6: Test logging workout that doesn't exceed PR",
+      "Step 7: Verify no new PR is created"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "PR detection: Automatically detect and record rep PRs",
+    "steps": [
+      "Step 1: Check if reps at given weight exceed previous best",
+      "Step 2: Create PR record with type=rep_pr, weight, reps, and date",
+      "Step 3: Test setting rep PR with same weight, more reps",
+      "Step 4: Verify rep PR is recorded",
+      "Step 5: Test with first time performing exercise",
+      "Step 6: Verify first time is considered a PR"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Analytics: Get all PRs for user with filtering options",
+    "steps": [
+      "Step 1: Create GET /analytics/prs endpoint",
+      "Step 2: Return all PRs ordered by date descending",
+      "Step 3: Include exercise name and details",
+      "Step 4: Add filter by exercise_id",
+      "Step 5: Add filter by PR type (e1rm or rep_pr)",
+      "Step 6: Add filter by date range",
+      "Step 7: Test fetching all PRs",
+      "Step 8: Test filtering by exercise",
+      "Step 9: Test filtering by type",
+      "Step 10: Verify response includes all necessary data"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Bodyweight tracking: Log daily bodyweight entries",
+    "steps": [
+      "Step 1: Create POST /bodyweight endpoint",
+      "Step 2: Accept date and weight in user's preferred unit",
+      "Step 3: Convert to standard unit (lb) for storage",
+      "Step 4: Associate with user_id",
+      "Step 5: Test logging bodyweight",
+      "Step 6: Test updating existing entry for same date",
+      "Step 7: Verify duplicate dates are handled (upsert)"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Bodyweight tracking: Get bodyweight history with rolling averages",
+    "steps": [
+      "Step 1: Create GET /bodyweight endpoint",
+      "Step 2: Return all bodyweight entries ordered by date",
+      "Step 3: Calculate 7-day rolling average",
+      "Step 4: Determine weight trend (gaining/losing/maintaining)",
+      "Step 5: Detect plateau (stable for 14+ days)",
+      "Step 6: Test with various bodyweight histories",
+      "Step 7: Verify calculations are accurate",
+      "Step 8: Test with insufficient data handles gracefully"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Insights generation: Generate personalized workout insights",
+    "steps": [
+      "Step 1: Create GET /analytics/insights endpoint",
+      "Step 2: Analyze recent workout data (last 4 weeks)",
+      "Step 3: Generate insights for improving exercises",
+      "Step 4: Generate insights for plateauing exercises",
+      "Step 5: Generate insights for regressing exercises",
+      "Step 6: Compare to population percentiles for relevant insights",
+      "Step 7: Generate volume comparison insights",
+      "Step 8: Prioritize insights by importance",
+      "Step 9: Test with various workout patterns",
+      "Step 10: Verify insights are accurate and actionable"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Weekly review: Generate comprehensive weekly summary",
+    "steps": [
+      "Step 1: Create GET /analytics/weekly-review endpoint",
+      "Step 2: Calculate total workouts completed this week",
+      "Step 3: List all PRs achieved this week",
+      "Step 4: Calculate volume change vs previous week",
+      "Step 5: Highlight fastest improving exercise",
+      "Step 6: Identify any regressing exercises",
+      "Step 7: Generate summary insights",
+      "Step 8: Test with various weekly patterns",
+      "Step 9: Verify summary is comprehensive",
+      "Step 10: Test with no workouts returns appropriate message"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Sync: Implement bulk sync endpoint for offline changes",
+    "steps": [
+      "Step 1: Create POST /sync endpoint",
+      "Step 2: Accept array of workouts with client-side timestamps",
+      "Step 3: Accept array of bodyweight entries",
+      "Step 4: Accept array of profile updates",
+      "Step 5: Implement conflict resolution (last-write-wins with device priority)",
+      "Step 6: Update synced_at timestamps",
+      "Step 7: Return sync results with conflicts",
+      "Step 8: Test syncing multiple workouts at once",
+      "Step 9: Test conflict resolution",
+      "Step 10: Verify all data synced correctly"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Sync: Get last sync status and timestamp",
+    "steps": [
+      "Step 1: Create GET /sync/status endpoint",
+      "Step 2: Return last successful sync timestamp",
+      "Step 3: Return count of pending changes",
+      "Step 4: Test after successful sync",
+      "Step 5: Test with pending changes",
+      "Step 6: Verify status is accurate"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "iOS: Home screen with dashboard and quick stats",
+    "steps": [
+      "Step 1: Create Home screen view in SwiftUI",
+      "Step 2: Display workouts completed this week counter",
+      "Step 3: Display PRs achieved this month counter",
+      "Step 4: Show recent workout card with exercises",
+      "Step 5: Add 'Repeat Workout' button on recent workout card",
+      "Step 6: Create scrollable insight cards",
+      "Step 7: Add mini e1RM chart for primary lift",
+      "Step 8: Test loading screen with real data",
+      "Step 9: Verify all elements render correctly",
+      "Step 10: Test with no data shows appropriate empty state"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "iOS: Workout logging screen with exercise picker",
+    "steps": [
+      "Step 1: Create Log screen view in SwiftUI",
+      "Step 2: Implement searchable exercise picker",
+      "Step 3: Filter exercises by category",
+      "Step 4: Display favorite exercises at top",
+      "Step 5: Allow selecting multiple exercises",
+      "Step 6: Test search functionality",
+      "Step 7: Test category filtering",
+      "Step 8: Test adding exercises to workout",
+      "Step 9: Verify exercises can be reordered",
+      "Step 10: Test removing exercises from workout"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "iOS: Set logging form with weight, reps, RPE, and RIR",
+    "steps": [
+      "Step 1: Create set logging form UI",
+      "Step 2: Add weight input with number pad",
+      "Step 3: Add reps input with number pad",
+      "Step 4: Add RPE picker (1-10)",
+      "Step 5: Add RIR picker (0-5)",
+      "Step 6: Add quick-add buttons for weight increments (+2.5, +5, +10)",
+      "Step 7: Display previous performance hint below form",
+      "Step 8: Add 'Complete Set' button",
+      "Step 9: Test logging a set with all fields",
+      "Step 10: Test quick-add buttons increment correctly",
+      "Step 11: Verify previous performance hint shows accurate data",
+      "Step 12: Add haptic feedback on set completion"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "iOS: Rest timer with countdown and notifications",
+    "steps": [
+      "Step 1: Create rest timer UI component",
+      "Step 2: Start timer automatically after completing set",
+      "Step 3: Display countdown timer",
+      "Step 4: Allow custom timer duration",
+      "Step 5: Show notification when rest is complete",
+      "Step 6: Add pause/resume functionality",
+      "Step 7: Test timer starts correctly",
+      "Step 8: Test notification triggers",
+      "Step 9: Verify timer can be customized",
+      "Step 10: Test pause/resume works correctly"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "iOS: Workout session auto-save to local database",
+    "steps": [
+      "Step 1: Implement auto-save on each set completion",
+      "Step 2: Save to local SQLite database",
+      "Step 3: Handle app backgrounding gracefully",
+      "Step 4: Restore in-progress workout on app relaunch",
+      "Step 5: Test logging sets and backgrounding app",
+      "Step 6: Verify data persisted to local DB",
+      "Step 7: Test relaunching app restores workout",
+      "Step 8: Test completing and finishing workout"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "iOS: Workout history screen with calendar view",
+    "steps": [
+      "Step 1: Create History screen view",
+      "Step 2: Implement calendar view with workout dots on dates",
+      "Step 3: Allow tapping date to filter workouts",
+      "Step 4: Display list of workouts below calendar",
+      "Step 5: Test calendar displays correctly",
+      "Step 6: Test workout dots appear on correct dates",
+      "Step 7: Test tapping date filters workouts",
+      "Step 8: Verify list shows correct workouts"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "iOS: Workout history list with detail sheets",
+    "steps": [
+      "Step 1: Display workout list with date and exercises",
+      "Step 2: Show quick stats (duration, volume, exercises count)",
+      "Step 3: Implement tap to open detail sheet",
+      "Step 4: Show full workout details in sheet (all exercises and sets)",
+      "Step 5: Add edit and delete buttons in sheet",
+      "Step 6: Test opening workout detail",
+      "Step 7: Verify all data displayed correctly",
+      "Step 8: Test edit button navigates to edit view",
+      "Step 9: Test delete with confirmation dialog"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "iOS: Progress screen with exercise selector and e1RM chart",
+    "steps": [
+      "Step 1: Create Progress screen view",
+      "Step 2: Add exercise picker dropdown",
+      "Step 3: Fetch e1RM trend data for selected exercise",
+      "Step 4: Implement line chart using Swift Charts",
+      "Step 5: Display e1RM progression over time",
+      "Step 6: Add time range selector (4wk, 12wk, 1yr, all time)",
+      "Step 7: Show trend indicator (up/stable/down arrow)",
+      "Step 8: Display percentage change",
+      "Step 9: Test chart with real data",
+      "Step 10: Test changing exercises updates chart",
+      "Step 11: Test changing time range updates chart",
+      "Step 12: Verify chart animates smoothly"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "iOS: Volume bar chart by muscle group",
+    "steps": [
+      "Step 1: Create volume chart section on Progress screen",
+      "Step 2: Calculate weekly sets by muscle group",
+      "Step 3: Implement bar chart using Swift Charts",
+      "Step 4: Group by muscle groups from exercise tags",
+      "Step 5: Show last 4 weeks of volume data",
+      "Step 6: Test chart with workout data",
+      "Step 7: Verify calculations are accurate",
+      "Step 8: Test chart updates when new workouts logged"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "iOS: Percentile gauge/progress ring display",
+    "steps": [
+      "Step 1: Create percentile display section",
+      "Step 2: Fetch percentile data from API",
+      "Step 3: Implement gauge or progress ring UI",
+      "Step 4: Display current percentile (e.g., 75th percentile)",
+      "Step 5: Show classification label (Beginner/Novice/etc.)",
+      "Step 6: Display bodyweight multiplier",
+      "Step 7: Test with various percentile values",
+      "Step 8: Verify gauge displays correctly",
+      "Step 9: Test with missing data shows appropriate state"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "iOS: PR wall/timeline showing recent achievements",
+    "steps": [
+      "Step 1: Create PR timeline section",
+      "Step 2: Fetch recent PRs from API",
+      "Step 3: Display PRs in chronological order",
+      "Step 4: Show PR type (e1RM or rep PR)",
+      "Step 5: Display exercise name and value",
+      "Step 6: Add visual celebration elements for PRs",
+      "Step 7: Test with multiple PRs",
+      "Step 8: Verify PRs display correctly",
+      "Step 9: Test empty state when no PRs"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "iOS: Profile screen with user settings",
+    "steps": [
+      "Step 1: Create Profile screen view",
+      "Step 2: Display current profile data (age, weight, sex)",
+      "Step 3: Add editable fields for all profile attributes",
+      "Step 4: Add training experience selector",
+      "Step 5: Add unit preference toggle (lb/kg)",
+      "Step 6: Add e1RM formula selector",
+      "Step 7: Test updating profile fields",
+      "Step 8: Verify changes save to local DB",
+      "Step 9: Test syncing profile changes to server",
+      "Step 10: Verify profile changes affect calculations"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "iOS: Offline functionality - log workout without network",
+    "steps": [
+      "Step 1: Disable network connection",
+      "Step 2: Navigate to Log screen",
+      "Step 3: Add exercises and log sets",
+      "Step 4: Complete workout",
+      "Step 5: Verify workout saved to local database",
+      "Step 6: Navigate to History and verify workout appears",
+      "Step 7: Enable network connection",
+      "Step 8: Trigger sync",
+      "Step 9: Verify workout synced to server",
+      "Step 10: Verify synced_at timestamp updated"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "iOS: Background sync on app launch",
+    "steps": [
+      "Step 1: Log workout while offline",
+      "Step 2: Close app",
+      "Step 3: Enable network connection",
+      "Step 4: Relaunch app",
+      "Step 5: Verify sync starts automatically",
+      "Step 6: Check sync status indicator",
+      "Step 7: Verify workout synced to server",
+      "Step 8: Test with multiple pending changes",
+      "Step 9: Verify all changes synced correctly"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "iOS: Sync conflict resolution with device priority",
+    "steps": [
+      "Step 1: Create workout on device while offline",
+      "Step 2: Modify same workout on different device/server",
+      "Step 3: Sync from original device",
+      "Step 4: Verify device changes take priority",
+      "Step 5: Test with various conflict scenarios",
+      "Step 6: Verify conflict resolution is consistent",
+      "Step 7: Test user is notified of conflicts if applicable"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "iOS: Pull-to-refresh with sync indicator",
+    "steps": [
+      "Step 1: Implement pull-to-refresh on main screens",
+      "Step 2: Trigger sync on pull-to-refresh",
+      "Step 3: Display sync indicator during sync",
+      "Step 4: Show success/failure message",
+      "Step 5: Test pulling to refresh",
+      "Step 6: Verify sync indicator appears",
+      "Step 7: Verify data updates after sync",
+      "Step 8: Test with network error shows appropriate message"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "iOS: Copy previous workout as template",
+    "steps": [
+      "Step 1: View workout in History",
+      "Step 2: Add 'Copy as Template' button",
+      "Step 3: Tap button to copy workout",
+      "Step 4: Navigate to Log screen with exercises pre-populated",
+      "Step 5: Pre-fill weights from previous workout",
+      "Step 6: Allow editing before completing",
+      "Step 7: Test copying workout",
+      "Step 8: Verify exercises and weights copied correctly",
+      "Step 9: Test modifying copied workout",
+      "Step 10: Verify new workout is separate from original"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "iOS: Mark exercises as favorites for quick access",
+    "steps": [
+      "Step 1: Add favorite toggle to exercise picker",
+      "Step 2: Store favorite status in local database",
+      "Step 3: Display favorite exercises at top of list",
+      "Step 4: Add star icon to indicate favorite status",
+      "Step 5: Test marking exercise as favorite",
+      "Step 6: Verify favorite appears at top of list",
+      "Step 7: Test unfavoriting exercise",
+      "Step 8: Verify favorite status persists across app launches"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "iOS: e1RM calculator tool for quick calculations",
+    "steps": [
+      "Step 1: Create calculator screen accessible from menu",
+      "Step 2: Add weight input field",
+      "Step 3: Add reps input field",
+      "Step 4: Display calculated e1RM",
+      "Step 5: Show e1RM using all formulas for comparison",
+      "Step 6: Test calculator with various inputs",
+      "Step 7: Verify calculations are accurate",
+      "Step 8: Test with edge cases (1 rep, high reps)"
+    ],
+    "passes": false
+  },
+  {
+    "category": "style",
+    "description": "Design system: Implement dark color palette throughout app",
+    "steps": [
+      "Step 1: Create color palette constants matching spec",
+      "Step 2: Apply background color #0D0D0D to main views",
+      "Step 3: Apply surface color #1A1A1A to secondary elements",
+      "Step 4: Apply card color #242424 to elevated cards",
+      "Step 5: Use primary color #FF6B35 for CTAs and PRs",
+      "Step 6: Use secondary color #4ECDC4 for secondary actions",
+      "Step 7: Use success/warning/danger colors for trends",
+      "Step 8: Take screenshots of all main screens",
+      "Step 9: Verify color consistency across app",
+      "Step 10: Verify sufficient contrast for accessibility"
+    ],
+    "passes": false
+  },
+  {
+    "category": "style",
+    "description": "Typography: Apply SF Pro font family throughout app",
+    "steps": [
+      "Step 1: Configure SF Pro Display for headers",
+      "Step 2: Configure SF Pro Text for body text",
+      "Step 3: Configure SF Mono for numbers and stats",
+      "Step 4: Set appropriate font sizes and weights",
+      "Step 5: Take screenshots of various screens",
+      "Step 6: Verify typography is consistent",
+      "Step 7: Verify readability on different iPhone sizes"
+    ],
+    "passes": false
+  },
+  {
+    "category": "style",
+    "description": "Component style: Rounded cards with subtle shadows",
+    "steps": [
+      "Step 1: Create reusable card component",
+      "Step 2: Apply rounded corners (12-16pt radius)",
+      "Step 3: Add subtle shadow for depth",
+      "Step 4: Use card background color #242424",
+      "Step 5: Apply to all card elements (workouts, insights, stats)",
+      "Step 6: Take screenshots showing cards",
+      "Step 7: Verify consistent styling",
+      "Step 8: Verify shadows are subtle and not overwhelming"
+    ],
+    "passes": false
+  },
+  {
+    "category": "style",
+    "description": "Haptic feedback: Add haptic feedback on set completion",
+    "steps": [
+      "Step 1: Implement haptic feedback on 'Complete Set' button tap",
+      "Step 2: Use success haptic pattern",
+      "Step 3: Add haptic on PR achievement",
+      "Step 4: Use celebration/heavy haptic pattern",
+      "Step 5: Test haptic triggers correctly",
+      "Step 6: Verify haptic feels appropriate for action",
+      "Step 7: Test on physical device (simulator may not show haptics)"
+    ],
+    "passes": false
+  },
+  {
+    "category": "style",
+    "description": "Chart animations: Smooth animations on data loading",
+    "steps": [
+      "Step 1: Add animation to e1RM line chart",
+      "Step 2: Use slide-in or fade-in animation",
+      "Step 3: Add animation to volume bar chart",
+      "Step 4: Add animation to percentile gauge",
+      "Step 5: Set animation duration to 0.5-1 second",
+      "Step 6: Test chart loading animations",
+      "Step 7: Verify animations are smooth and not jarring",
+      "Step 8: Test animations when switching between charts"
+    ],
+    "passes": false
+  },
+  {
+    "category": "style",
+    "description": "UI polish: Ensure responsive layout on all iPhone sizes",
+    "steps": [
+      "Step 1: Test app on iPhone SE (smallest screen)",
+      "Step 2: Test app on iPhone 15 Pro (standard screen)",
+      "Step 3: Test app on iPhone 15 Pro Max (largest screen)",
+      "Step 4: Verify all content is visible without horizontal scrolling",
+      "Step 5: Verify tap targets are at least 44pt",
+      "Step 6: Verify text is readable on all sizes",
+      "Step 7: Take screenshots on all sizes",
+      "Step 8: Verify charts scale appropriately",
+      "Step 9: Verify forms are usable on small screens",
+      "Step 10: Verify no layout breaking or overlapping elements"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Performance: Charts load in under 1 second",
+    "steps": [
+      "Step 1: Load Progress screen with e1RM chart",
+      "Step 2: Measure time from screen load to chart display",
+      "Step 3: Verify chart appears in under 1 second",
+      "Step 4: Test with large dataset (100+ workouts)",
+      "Step 5: Optimize queries if necessary",
+      "Step 6: Test on older device (iPhone 12 or earlier)",
+      "Step 7: Verify performance is acceptable"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Performance: Log a set in under 5 seconds",
+    "steps": [
+      "Step 1: Navigate to Log screen with exercise selected",
+      "Step 2: Enter weight, reps, RPE",
+      "Step 3: Tap 'Complete Set' button",
+      "Step 4: Measure time from screen load to set saved",
+      "Step 5: Verify entire flow takes under 5 seconds",
+      "Step 6: Test on various devices",
+      "Step 7: Optimize UI responsiveness if necessary"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "End-to-end: Complete user journey from registration to viewing first PR",
+    "steps": [
+      "Step 1: Register new user account",
+      "Step 2: Complete profile setup (age, weight, sex, experience)",
+      "Step 3: Navigate to Log screen",
+      "Step 4: Search for and add 'Bench Press' exercise",
+      "Step 5: Log 3 sets (135x10, 155x8, 165x6)",
+      "Step 6: Complete and save workout",
+      "Step 7: Navigate to Progress screen",
+      "Step 8: Select Bench Press exercise",
+      "Step 9: Verify e1RM chart shows data point",
+      "Step 10: Navigate to History screen",
+      "Step 11: Verify workout appears in list",
+      "Step 12: Navigate to Home screen",
+      "Step 13: Verify PR notification appears",
+      "Step 14: Check PRs section shows bench press PR",
+      "Step 15: Verify entire flow is smooth and intuitive"
+    ],
+    "passes": false
+  }
+]
