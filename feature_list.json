@@ -73,7 +73,7 @@
       "Step 6: Test with valid and invalid inputs",
       "Step 7: Verify duplicate email returns error"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -87,7 +87,7 @@
       "Step 6: Test invalid credentials return 401",
       "Step 7: Verify token can be decoded and validated"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -100,7 +100,7 @@
       "Step 5: Test with valid refresh token",
       "Step 6: Test with expired/invalid token returns error"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",

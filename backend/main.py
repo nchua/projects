@@ -40,9 +40,12 @@ async def health_check():
         "app": settings.APP_NAME
     }
 
-# TODO: Import and include API routers
-# from app.api import auth, profile, exercises, workouts, analytics, bodyweight, sync
-# app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+# Import and include API routers
+from app.api import auth
+app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+
+# TODO: Include remaining routers
+# from app.api import profile, exercises, workouts, analytics, bodyweight, sync
 # app.include_router(profile.router, prefix="/profile", tags=["Profile"])
 # app.include_router(exercises.router, prefix="/exercises", tags=["Exercises"])
 # app.include_router(workouts.router, prefix="/workouts", tags=["Workouts"])

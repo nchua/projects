@@ -8,6 +8,7 @@ python-multipart
 pydantic
 pydantic-settings
 python-dotenv
+email-validator
 pytest
 pytest-asyncio
 httpx
