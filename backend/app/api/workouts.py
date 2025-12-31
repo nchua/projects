@@ -15,6 +15,7 @@ from app.schemas.workout import (
     WorkoutCreate, WorkoutUpdate, WorkoutResponse, WorkoutSummary,
     WorkoutExerciseResponse, SetResponse
 )
+from app.services.pr_detection import detect_and_create_prs
 
 router = APIRouter()
 
@@ -85,6 +86,7 @@ async def create_workout(
         db.flush()  # Get workout_exercise.id
 
         # Create sets
+        exercise_sets = []
         for set_data in exercise_data.sets:
             # Calculate e1RM
             if set_data.rpe is not None:
@@ -110,6 +112,11 @@ async def create_workout(
                 e1rm=round(e1rm, 2)
             )
             db.add(set_obj)
+            exercise_sets.append(set_obj)
+
+        # Detect and create PRs for this exercise
+        db.flush()  # Ensure sets have IDs
+        detect_and_create_prs(db, current_user.id, workout_exercise, exercise_sets)
 
     db.commit()
     db.refresh(workout_session)
@@ -146,12 +153,13 @@ async def list_workouts(
     Returns:
         List of workout summaries ordered by date descending
     """
-    # Query workouts with pagination
+    # Query workouts with pagination (exclude soft-deleted)
     workouts = db.query(WorkoutSession).options(
         joinedload(WorkoutSession.workout_exercises)
         .joinedload(WorkoutExercise.sets)
     ).filter(
-        WorkoutSession.user_id == current_user.id
+        WorkoutSession.user_id == current_user.id,
+        WorkoutSession.deleted_at == None
     ).order_by(
         WorkoutSession.date.desc()
     ).limit(limit).offset(offset).all()
@@ -198,7 +206,7 @@ async def get_workout(
     Raises:
         HTTPException: If workout not found or not accessible
     """
-    # Fetch workout with relationships
+    # Fetch workout with relationships (exclude soft-deleted)
     workout = db.query(WorkoutSession).options(
         joinedload(WorkoutSession.workout_exercises)
         .joinedload(WorkoutExercise.sets),
@@ -206,7 +214,8 @@ async def get_workout(
         .joinedload(WorkoutExercise.exercise)
     ).filter(
         WorkoutSession.id == workout_id,
-        WorkoutSession.user_id == current_user.id
+        WorkoutSession.user_id == current_user.id,
+        WorkoutSession.deleted_at == None
     ).first()
 
     if not workout:
@@ -240,10 +249,11 @@ async def update_workout(
     Raises:
         HTTPException: If workout not found or not accessible
     """
-    # Fetch existing workout
+    # Fetch existing workout (exclude soft-deleted)
     workout = db.query(WorkoutSession).filter(
         WorkoutSession.id == workout_id,
-        WorkoutSession.user_id == current_user.id
+        WorkoutSession.user_id == current_user.id,
+        WorkoutSession.deleted_at == None
     ).first()
 
     if not workout:
@@ -341,6 +351,43 @@ async def update_workout(
     ).filter(WorkoutSession.id == workout_id).first()
 
     return _build_workout_response(updated_workout)
+
+
+@router.delete("/{workout_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_workout(
+    workout_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a workout session (soft delete)
+
+    Args:
+        workout_id: Workout ID
+        current_user: Currently authenticated user
+        db: Database session
+
+    Raises:
+        HTTPException: If workout not found or not accessible
+    """
+    # Fetch existing workout
+    workout = db.query(WorkoutSession).filter(
+        WorkoutSession.id == workout_id,
+        WorkoutSession.user_id == current_user.id,
+        WorkoutSession.deleted_at == None  # Only find non-deleted workouts
+    ).first()
+
+    if not workout:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workout not found"
+        )
+
+    # Soft delete by setting deleted_at timestamp
+    workout.deleted_at = datetime.utcnow()
+    db.commit()
+
+    return None
 
 
 def _build_workout_response(workout: WorkoutSession) -> WorkoutResponse:

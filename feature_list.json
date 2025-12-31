@@ -217,7 +217,7 @@
       "Step 5: Verify workout no longer appears in list",
       "Step 6: Verify associated data is deleted/soft-deleted"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -230,7 +230,7 @@
       "Step 5: Verify calculation accuracy",
       "Step 6: Test edge cases (1 rep, high reps)"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -244,7 +244,7 @@
       "Step 6: Verify formulas produce reasonable results",
       "Step 7: Allow user to switch formula in profile settings"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -261,7 +261,7 @@
       "Step 9: Verify calculations are accurate",
       "Step 10: Test with insufficient data returns appropriate response"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -274,7 +274,7 @@
       "Step 5: Test with exercise that has long history",
       "Step 6: Verify data is complete and ordered correctly"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -291,7 +291,7 @@
       "Step 9: Verify percentiles are reasonable",
       "Step 10: Test with missing profile data handles gracefully"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -305,7 +305,7 @@
       "Step 6: Test logging workout that doesn't exceed PR",
       "Step 7: Verify no new PR is created"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -318,7 +318,7 @@
       "Step 5: Test with first time performing exercise",
       "Step 6: Verify first time is considered a PR"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -335,7 +335,7 @@
       "Step 9: Test filtering by type",
       "Step 10: Verify response includes all necessary data"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -349,7 +349,7 @@
       "Step 6: Test updating existing entry for same date",
       "Step 7: Verify duplicate dates are handled (upsert)"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -364,7 +364,7 @@
       "Step 7: Verify calculations are accurate",
       "Step 8: Test with insufficient data handles gracefully"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -381,7 +381,7 @@
       "Step 9: Test with various workout patterns",
       "Step 10: Verify insights are accurate and actionable"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -398,7 +398,7 @@
       "Step 9: Verify summary is comprehensive",
       "Step 10: Test with no workouts returns appropriate message"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -415,7 +415,7 @@
       "Step 9: Test conflict resolution",
       "Step 10: Verify all data synced correctly"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -428,7 +428,7 @@
       "Step 5: Test with pending changes",
       "Step 6: Verify status is accurate"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",

@@ -41,17 +41,14 @@ async def health_check():
     }
 
 # Import and include API routers
-from app.api import auth, profile, exercises, workouts
+from app.api import auth, profile, exercises, workouts, bodyweight, analytics, sync
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(profile.router, prefix="/profile", tags=["Profile"])
 app.include_router(exercises.router, prefix="/exercises", tags=["Exercises"])
 app.include_router(workouts.router, prefix="/workouts", tags=["Workouts"])
-
-# TODO: Include remaining routers
-# from app.api import analytics, bodyweight, sync
-# app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
-# app.include_router(bodyweight.router, prefix="/bodyweight", tags=["Bodyweight"])
-# app.include_router(sync.router, prefix="/sync", tags=["Sync"])
+app.include_router(bodyweight.router, prefix="/bodyweight", tags=["Bodyweight"])
+app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
+app.include_router(sync.router, prefix="/sync", tags=["Sync"])
 
 if __name__ == "__main__":
     import uvicorn
