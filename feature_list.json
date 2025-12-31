@@ -115,7 +115,7 @@
       "Step 7: Test updating individual fields",
       "Step 8: Verify unauthorized access returns 401"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
