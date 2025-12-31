@@ -130,7 +130,7 @@
       "Step 7: Test search functionality",
       "Step 8: Verify response includes all required fields"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -144,7 +144,7 @@
       "Step 6: Verify custom exercise appears in user's exercise list",
       "Step 7: Verify other users cannot see this custom exercise"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
