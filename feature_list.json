@@ -21,7 +21,7 @@
       "Step 4: Add /health endpoint that returns status OK",
       "Step 5: Start server and verify endpoint responds correctly"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -46,7 +46,7 @@
       "Step 5: Run migration and verify tables created",
       "Step 6: Test connection and basic query"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -59,7 +59,7 @@
       "Step 5: Run seed script to populate database",
       "Step 6: Verify all exercises are queryable"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
