@@ -78,6 +78,15 @@ class WorkoutResponse(BaseModel):
         from_attributes = True
 
 
+class WorkoutUpdate(BaseModel):
+    """Schema for updating a workout"""
+    date: Optional[datetime] = Field(None, description="Workout date/time")
+    duration_minutes: Optional[int] = Field(None, ge=1, le=600, description="Workout duration in minutes")
+    session_rpe: Optional[int] = Field(None, ge=1, le=10, description="Overall session RPE")
+    notes: Optional[str] = Field(None, max_length=1000, description="Workout notes")
+    exercises: Optional[List[WorkoutExerciseCreate]] = Field(None, min_length=1, description="Exercises in workout")
+
+
 class WorkoutSummary(BaseModel):
     """Schema for workout summary (list view)"""
     id: str

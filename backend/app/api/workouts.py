@@ -12,7 +12,7 @@ from app.models.user import User, E1RMFormula
 from app.models.workout import WorkoutSession, WorkoutExercise, Set
 from app.models.exercise import Exercise
 from app.schemas.workout import (
-    WorkoutCreate, WorkoutResponse, WorkoutSummary,
+    WorkoutCreate, WorkoutUpdate, WorkoutResponse, WorkoutSummary,
     WorkoutExerciseResponse, SetResponse
 )
 
@@ -216,6 +216,131 @@ async def get_workout(
         )
 
     return _build_workout_response(workout)
+
+
+@router.put("/{workout_id}", response_model=WorkoutResponse)
+async def update_workout(
+    workout_id: str,
+    workout_data: WorkoutUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Update an existing workout session
+
+    Args:
+        workout_id: Workout ID
+        workout_data: Updated workout data
+        current_user: Currently authenticated user
+        db: Database session
+
+    Returns:
+        Updated workout details
+
+    Raises:
+        HTTPException: If workout not found or not accessible
+    """
+    # Fetch existing workout
+    workout = db.query(WorkoutSession).filter(
+        WorkoutSession.id == workout_id,
+        WorkoutSession.user_id == current_user.id
+    ).first()
+
+    if not workout:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workout not found"
+        )
+
+    # Update basic fields
+    if workout_data.date is not None:
+        workout.date = workout_data.date
+    if workout_data.duration_minutes is not None:
+        workout.duration_minutes = workout_data.duration_minutes
+    if workout_data.session_rpe is not None:
+        workout.session_rpe = workout_data.session_rpe
+    if workout_data.notes is not None:
+        workout.notes = workout_data.notes
+
+    # If exercises are provided, replace all exercises and sets
+    if workout_data.exercises is not None:
+        # Get user's preferred e1RM formula
+        from app.models.user import UserProfile
+        user_profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
+        e1rm_formula = E1RMFormula.EPLEY  # Default
+        if user_profile and user_profile.e1rm_formula:
+            e1rm_formula = user_profile.e1rm_formula
+
+        # Delete existing exercises and sets (cascade will handle sets)
+        db.query(WorkoutExercise).filter(
+            WorkoutExercise.session_id == workout_id
+        ).delete()
+
+        # Create new exercises and sets
+        for exercise_data in workout_data.exercises:
+            # Verify exercise exists and user has access to it
+            exercise = db.query(Exercise).filter(Exercise.id == exercise_data.exercise_id).first()
+            if not exercise:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Exercise {exercise_data.exercise_id} not found"
+                )
+
+            # Check access for custom exercises
+            if exercise.is_custom and exercise.user_id != current_user.id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"You don't have access to exercise {exercise.name}"
+                )
+
+            # Create workout exercise
+            workout_exercise = WorkoutExercise(
+                session_id=workout_id,
+                exercise_id=exercise_data.exercise_id,
+                order_index=exercise_data.order_index
+            )
+            db.add(workout_exercise)
+            db.flush()  # Get workout_exercise.id
+
+            # Create sets
+            for set_data in exercise_data.sets:
+                # Calculate e1RM
+                if set_data.rpe is not None:
+                    e1rm = calculate_e1rm_from_rpe(
+                        set_data.weight, set_data.reps, set_data.rpe, e1rm_formula
+                    )
+                elif set_data.rir is not None:
+                    e1rm = calculate_e1rm_from_rir(
+                        set_data.weight, set_data.reps, set_data.rir, e1rm_formula
+                    )
+                else:
+                    e1rm = calculate_e1rm(set_data.weight, set_data.reps, e1rm_formula)
+
+                # Create set
+                set_obj = Set(
+                    workout_exercise_id=workout_exercise.id,
+                    weight=set_data.weight,
+                    weight_unit=set_data.weight_unit,
+                    reps=set_data.reps,
+                    rpe=set_data.rpe,
+                    rir=set_data.rir,
+                    set_number=set_data.set_number,
+                    e1rm=round(e1rm, 2)
+                )
+                db.add(set_obj)
+
+    db.commit()
+    db.refresh(workout)
+
+    # Fetch complete workout with relationships
+    updated_workout = db.query(WorkoutSession).options(
+        joinedload(WorkoutSession.workout_exercises)
+        .joinedload(WorkoutExercise.sets),
+        joinedload(WorkoutSession.workout_exercises)
+        .joinedload(WorkoutExercise.exercise)
+    ).filter(WorkoutSession.id == workout_id).first()
+
+    return _build_workout_response(updated_workout)
 
 
 def _build_workout_response(workout: WorkoutSession) -> WorkoutResponse:
