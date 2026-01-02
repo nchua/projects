@@ -5,6 +5,9 @@ from app.models.exercise import Exercise
 from app.models.workout import WorkoutSession, WorkoutExercise, Set, WeightUnit
 from app.models.bodyweight import BodyweightEntry
 from app.models.pr import PR, PRType
+from app.models.progress import UserProgress, HunterRank
+from app.models.achievement import AchievementDefinition, UserAchievement
+from app.models.quest import QuestDefinition, UserQuest, QuestType, QuestDifficulty
 
 __all__ = [
     "User",
@@ -20,4 +23,12 @@ __all__ = [
     "BodyweightEntry",
     "PR",
     "PRType",
+    "UserProgress",
+    "HunterRank",
+    "AchievementDefinition",
+    "UserAchievement",
+    "QuestDefinition",
+    "UserQuest",
+    "QuestType",
+    "QuestDifficulty",
 ]

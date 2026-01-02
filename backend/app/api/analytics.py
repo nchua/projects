@@ -312,7 +312,8 @@ async def get_percentiles(
         bodyweight = profile.bodyweight_lb
         age = profile.age
         if profile.sex:
-            sex = profile.sex.value
+            # profile.sex is "M" or "F", map to "male"/"female" for standards lookup
+            sex = "male" if profile.sex == "M" else "female"
 
     # Get best e1RM for each tracked exercise
     subquery = db.query(

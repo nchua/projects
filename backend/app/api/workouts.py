@@ -13,15 +13,19 @@ from app.models.workout import WorkoutSession, WorkoutExercise, Set
 from app.models.exercise import Exercise
 from app.schemas.workout import (
     WorkoutCreate, WorkoutUpdate, WorkoutResponse, WorkoutSummary,
-    WorkoutExerciseResponse, SetResponse
+    WorkoutExerciseResponse, SetResponse, WorkoutCreateResponse, AchievementUnlocked
 )
 from app.services.pr_detection import detect_and_create_prs
+from app.services.xp_service import calculate_workout_xp, award_xp, get_or_create_user_progress
+from app.services.achievement_service import check_and_unlock_achievements
+from app.services.quest_service import update_quest_progress
+from app.models.pr import PR
 
 router = APIRouter()
 
 
-@router.post("", response_model=WorkoutResponse, status_code=status.HTTP_201_CREATED)
-@router.post("/", response_model=WorkoutResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=WorkoutCreateResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=WorkoutCreateResponse, status_code=status.HTTP_201_CREATED)
 async def create_workout(
     workout_data: WorkoutCreate,
     current_user: User = Depends(get_current_user),
@@ -121,6 +125,53 @@ async def create_workout(
     db.commit()
     db.refresh(workout_session)
 
+    # Calculate and award XP for this workout
+    # Count new PRs created for this workout
+    workout_prs = db.query(PR).filter(
+        PR.user_id == current_user.id,
+        PR.set_id.in_([s.id for we in workout_session.workout_exercises for s in we.sets])
+    ).count()
+
+    # Calculate XP
+    xp_result = calculate_workout_xp(db, workout_session, prs_achieved=workout_prs)
+
+    # Award XP and handle level/rank progression
+    xp_award = award_xp(
+        db,
+        current_user.id,
+        xp_result["xp_earned"],
+        workout_date=workout_session.date
+    )
+
+    # Update user progress stats
+    progress = get_or_create_user_progress(db, current_user.id)
+    progress.total_volume_lb += xp_result["total_volume"]
+    progress.total_prs += workout_prs
+
+    # Check for newly unlocked achievements
+    # Build context for achievement checking
+    all_prs = db.query(PR).filter(PR.user_id == current_user.id).all()
+    exercise_prs = {}
+    for pr in all_prs:
+        exercise_name = pr.exercise.name.lower() if pr.exercise else ""
+        if exercise_name not in exercise_prs or pr.weight > exercise_prs[exercise_name]:
+            exercise_prs[exercise_name] = pr.weight
+
+    achievement_context = {
+        "workout_count": progress.total_workouts,
+        "level": progress.level,
+        "rank": progress.rank,
+        "prs_count": progress.total_prs,
+        "current_streak": progress.current_streak,
+        "exercise_prs": exercise_prs
+    }
+    newly_unlocked = check_and_unlock_achievements(db, current_user.id, achievement_context)
+
+    # Update quest progress based on this workout
+    completed_quest_ids = update_quest_progress(db, current_user.id, workout_session)
+
+    db.commit()
+
     # Fetch complete workout with relationships
     workout = db.query(WorkoutSession).options(
         joinedload(WorkoutSession.workout_exercises)
@@ -129,8 +180,37 @@ async def create_workout(
         .joinedload(WorkoutExercise.exercise)
     ).filter(WorkoutSession.id == workout_session.id).first()
 
-    # Build response
-    return _build_workout_response(workout)
+    # Build workout response
+    workout_response = _build_workout_response(workout)
+
+    # Build achievements unlocked list
+    achievements_unlocked = [
+        AchievementUnlocked(
+            id=ach["id"],
+            name=ach["name"],
+            description=ach["description"],
+            icon=ach["icon"],
+            xp_reward=ach["xp_reward"],
+            rarity=ach["rarity"]
+        )
+        for ach in newly_unlocked
+    ]
+
+    # Return full response with XP info
+    return WorkoutCreateResponse(
+        workout=workout_response,
+        xp_earned=xp_result["xp_earned"],
+        xp_breakdown=xp_result["breakdown"],
+        total_xp=xp_award["total_xp"],
+        level=xp_award["new_level"],
+        leveled_up=xp_award["leveled_up"],
+        new_level=xp_award["new_level"] if xp_award["leveled_up"] else None,
+        rank=xp_award["new_rank"],
+        rank_changed=xp_award["rank_changed"],
+        new_rank=xp_award["new_rank"] if xp_award["rank_changed"] else None,
+        current_streak=xp_award["current_streak"],
+        achievements_unlocked=achievements_unlocked
+    )
 
 
 @router.get("", response_model=List[WorkoutSummary])

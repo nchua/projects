@@ -78,6 +78,44 @@ class WorkoutResponse(BaseModel):
         from_attributes = True
 
 
+class XPBreakdown(BaseModel):
+    """XP breakdown for workout"""
+    workout_complete: int = 0
+    volume_bonus: int = 0
+    big_three_bonus: int = 0
+    pr_bonus: int = 0
+    streak_bonus: int = 0
+
+
+class AchievementUnlocked(BaseModel):
+    """Achievement unlocked during workout"""
+    id: str
+    name: str
+    description: str
+    icon: str
+    xp_reward: int
+    rarity: str
+
+
+class WorkoutCreateResponse(BaseModel):
+    """Response for workout creation including XP info"""
+    workout: WorkoutResponse
+    xp_earned: int
+    xp_breakdown: dict
+    total_xp: int
+    level: int
+    leveled_up: bool
+    new_level: Optional[int] = None
+    rank: str
+    rank_changed: bool
+    new_rank: Optional[str] = None
+    current_streak: int
+    achievements_unlocked: List[AchievementUnlocked] = []
+
+    class Config:
+        from_attributes = True
+
+
 class WorkoutUpdate(BaseModel):
     """Schema for updating a workout"""
     date: Optional[datetime] = Field(None, description="Workout date/time")

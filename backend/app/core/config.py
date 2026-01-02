@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     # JWT Authentication
     SECRET_KEY: str = Field(default="your-secret-key-here-change-in-production")
     ALGORITHM: str = Field(default="HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30)
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=43200)  # 30 days
 
     class Config:
         env_file = ".env"
