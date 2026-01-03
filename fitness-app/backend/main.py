@@ -90,6 +90,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Debug middleware to log all requests/responses
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+
+class DebugMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        print(f"REQUEST: {request.method} {request.url.path}", flush=True)
+        try:
+            response = await call_next(request)
+            print(f"RESPONSE: {request.url.path} -> {response.status_code}", flush=True)
+            return response
+        except Exception as e:
+            print(f"MIDDLEWARE EXCEPTION: {request.url.path} -> {type(e).__name__}: {e}", flush=True)
+            raise
+
+app.add_middleware(DebugMiddleware)
+
 @app.get("/")
 async def root():
     """Root endpoint - API information"""
