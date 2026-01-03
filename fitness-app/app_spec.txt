@@ -1,0 +1,427 @@
+<project_specification>
+  <project_name>fitness-app</project_name>
+
+  <overview>
+    A native iOS fitness tracking app for logging weight training workouts with
+    comprehensive analytics. Users can track exercises (weight, reps, sets, RPE),
+    view their estimated 1RM progression over time, compare their strength to
+    population percentiles based on age/weight/training experience, and identify
+    trends (improving, plateauing, or regressing).
+
+    The app provides intelligent insights like "Your squat is improving at 2%/week"
+    or "Your bench is below average for your experience level" along with
+    actionable recommendations. A dashboard displays line charts of e1RM progression,
+    weekly volume breakdowns, and strength percentile gauges.
+
+    Core architecture: SwiftUI frontend with local SQLite storage for offline use,
+    syncing to a FastAPI backend (which can reuse analytics from the existing
+    strength-coach Python codebase) when online.
+
+    Future integration targets: Apple Health (export workouts, import body weight)
+    and Whoop (recovery scores to inform training readiness).
+  </overview>
+
+  <technology_stack>
+    <frontend>
+      <framework>SwiftUI (iOS 17+)</framework>
+      <local_storage>SQLite via GRDB or SwiftData</local_storage>
+      <charts>Swift Charts framework</charts>
+      <architecture>MVVM with Combine/async-await</architecture>
+    </frontend>
+    <backend>
+      <runtime>Python 3.11+ with FastAPI</runtime>
+      <database>PostgreSQL (production), SQLite (development)</database>
+      <orm>SQLAlchemy 2.0</orm>
+      <auth>JWT tokens</auth>
+      <analytics>Reuse strength-coach Python modules</analytics>
+    </backend>
+  </technology_stack>
+
+  <core_features>
+    <workout_logging>
+      - Create new workout session with date and optional notes
+      - Add exercises from searchable exercise library
+      - Log sets with weight, reps, RPE (1-10), and RIR (0-5)
+      - Quick-add buttons for common weight increments (+2.5, +5, +10 lb)
+      - Copy previous workout as template
+      - Edit/delete sets and exercises
+      - Session timer with rest timer between sets
+      - Auto-save workout progress locally
+    </workout_logging>
+
+    <exercise_library>
+      - Pre-populated library of 50+ common exercises
+      - Exercise categories (Push, Pull, Legs, Core, Accessories)
+      - Exercise aliases (e.g., "Squat" = "Back Squat" = "BB Squat")
+      - Muscle group tagging for volume tracking
+      - Add custom exercises
+      - Mark favorite exercises for quick access
+    </exercise_library>
+
+    <e1rm_analytics>
+      - Calculate estimated 1RM using Epley formula (default)
+      - Support for multiple formulas (Brzycki, Wathan, Lombardi)
+      - Automatic PR detection (e1RM and rep PRs)
+      - PR history with dates and context
+      - e1RM calculator tool for quick calculations
+    </e1rm_analytics>
+
+    <trend_analysis>
+      - Weekly best e1RM tracking per exercise
+      - 4-week rolling average e1RM
+      - Trend direction indicator (up improving, stable, down regressing)
+      - Percentage change over configurable time periods
+      - Compare trends across exercises
+      - Identify fastest/slowest progressing lifts
+    </trend_analysis>
+
+    <strength_percentiles>
+      - Compare e1RM to population standards
+      - Adjust for bodyweight, age, and sex
+      - Classification labels (Beginner, Novice, Intermediate, Advanced, Elite)
+      - Percentile display (e.g., "Stronger than 75% of lifters")
+      - Bodyweight multiplier display (e.g., "1.5x BW squat")
+      - Track percentile progression over time
+    </strength_percentiles>
+
+    <body_weight_tracking>
+      - Log daily body weight
+      - 7-day rolling average
+      - Weight trend analysis (gaining, losing, maintaining)
+      - Plateau detection
+      - Integration with strength trends for recomp signals
+    </body_weight_tracking>
+
+    <dashboard_and_charts>
+      - Home dashboard with recent activity summary
+      - Line chart: e1RM progression over time (per exercise)
+      - Bar chart: Weekly volume (sets) by muscle group
+      - Gauge/progress ring: Current percentile vs previous
+      - PR wall/timeline showing recent achievements
+      - Customizable time range (4wk, 12wk, 1yr, all time)
+    </dashboard_and_charts>
+
+    <insights_and_recommendations>
+      - "Your squat improved 8% this month"
+      - "Bench press is plateauing - consider deload or variation"
+      - "You're above average for your experience level on deadlift"
+      - "Volume is down 20% from last week"
+      - "You hit a new PR on overhead press!"
+      - Weekly summary notification with highlights
+    </insights_and_recommendations>
+
+    <user_profile>
+      - Set bodyweight, age, sex for percentile calculations
+      - Training experience level (Beginner, Intermediate, Advanced)
+      - Preferred units (lb/kg)
+      - Default e1RM formula preference
+    </user_profile>
+
+    <offline_and_sync>
+      - Full offline functionality for logging and viewing
+      - Local SQLite database on device
+      - Background sync to server when online
+      - Conflict resolution (last-write-wins with device priority)
+      - Sync status indicator
+    </offline_and_sync>
+  </core_features>
+
+  <database_schema>
+    <tables>
+      <table name="users">
+        - id (UUID, primary key)
+        - email (unique)
+        - password_hash
+        - created_at, updated_at
+      </table>
+
+      <table name="user_profiles">
+        - id, user_id (FK)
+        - age, sex, bodyweight_lb
+        - training_experience (enum: beginner, intermediate, advanced)
+        - preferred_unit (lb/kg)
+        - e1rm_formula (enum)
+      </table>
+
+      <table name="exercises">
+        - id, name, canonical_id
+        - category, primary_muscle, secondary_muscles
+        - is_custom, user_id (nullable FK for custom)
+      </table>
+
+      <table name="workout_sessions">
+        - id, user_id (FK)
+        - date, duration_minutes
+        - session_rpe, notes
+        - synced_at (nullable, for sync tracking)
+      </table>
+
+      <table name="workout_exercises">
+        - id, session_id (FK), exercise_id (FK)
+        - order_index
+      </table>
+
+      <table name="sets">
+        - id, workout_exercise_id (FK)
+        - weight, weight_unit, reps
+        - rpe, rir
+        - set_number
+        - e1rm (computed)
+      </table>
+
+      <table name="bodyweight_entries">
+        - id, user_id (FK)
+        - date, weight_lb
+        - source (manual, apple_health)
+      </table>
+
+      <table name="prs">
+        - id, user_id (FK), exercise_id (FK)
+        - pr_type (e1rm, rep_pr)
+        - value, reps (for rep PRs)
+        - achieved_at
+      </table>
+    </tables>
+  </database_schema>
+
+  <api_endpoints>
+    <auth>
+      POST /auth/register - Create account
+      POST /auth/login - Get JWT token
+      POST /auth/refresh - Refresh token
+    </auth>
+
+    <profile>
+      GET /profile - Get user profile
+      PUT /profile - Update profile
+    </profile>
+
+    <exercises>
+      GET /exercises - List all exercises
+      POST /exercises - Create custom exercise
+      GET /exercises/{id} - Get exercise details
+    </exercises>
+
+    <workouts>
+      GET /workouts - List workouts (paginated)
+      POST /workouts - Create/sync workout
+      GET /workouts/{id} - Get workout details
+      PUT /workouts/{id} - Update workout
+      DELETE /workouts/{id} - Delete workout
+    </workouts>
+
+    <analytics>
+      GET /analytics/exercise/{id}/trend - Get exercise trend data
+      GET /analytics/exercise/{id}/history - Get set history
+      GET /analytics/percentiles - Get current percentiles for tracked lifts
+      GET /analytics/prs - Get all PRs
+      GET /analytics/weekly-review - Get weekly summary
+      GET /analytics/insights - Get personalized insights
+    </analytics>
+
+    <bodyweight>
+      GET /bodyweight - Get bodyweight history
+      POST /bodyweight - Log bodyweight entry
+    </bodyweight>
+
+    <sync>
+      POST /sync - Bulk sync local changes
+      GET /sync/status - Get last sync time
+    </sync>
+  </api_endpoints>
+
+  <ui_layout>
+    <tab_bar>
+      - Home (Dashboard)
+      - Log (New Workout)
+      - History (Past Workouts)
+      - Progress (Charts/Analytics)
+      - Profile (Settings)
+    </tab_bar>
+
+    <home_screen>
+      - Quick stats: workouts this week, PRs this month
+      - Recent workout card with quick "repeat" action
+      - Insight cards (scrollable)
+      - Mini e1RM chart for primary lift
+    </home_screen>
+
+    <log_screen>
+      - Exercise search/picker
+      - Set logging form (weight, reps, RPE)
+      - Previous performance hint ("Last time: 225x5")
+      - Rest timer
+      - Running session summary
+    </log_screen>
+
+    <history_screen>
+      - Calendar view with workout dots
+      - List view of past workouts
+      - Filter by exercise, date range
+      - Workout detail sheet
+    </history_screen>
+
+    <progress_screen>
+      - Exercise picker (filter charts)
+      - e1RM line chart (primary)
+      - Volume bar chart
+      - Percentile cards
+      - PR timeline
+    </progress_screen>
+  </ui_layout>
+
+  <design_system>
+    <color_palette>
+      <background>#0D0D0D (near black)</background>
+      <surface>#1A1A1A (dark gray)</surface>
+      <card>#242424 (elevated surface)</card>
+      <primary>#FF6B35 (vibrant orange - PRs, CTAs)</primary>
+      <secondary>#4ECDC4 (teal - secondary actions)</secondary>
+      <success>#2ECC71 (green - improvements, up trends)</success>
+      <warning>#F39C12 (amber - plateaus, caution)</warning>
+      <danger>#E74C3C (red - regressions, down trends)</danger>
+      <text_primary>#FFFFFF</text_primary>
+      <text_secondary>#888888</text_secondary>
+    </color_palette>
+
+    <typography>
+      - SF Pro Display for headers
+      - SF Pro Text for body
+      - SF Mono for numbers/stats
+    </typography>
+
+    <components>
+      - Rounded cards with subtle shadows
+      - Haptic feedback on set completion
+      - Smooth chart animations
+      - Pull-to-refresh with sync indicator
+    </components>
+  </design_system>
+
+  <implementation_steps>
+    <step number="1">
+      <title>Project Setup</title>
+      <tasks>
+        - Create Xcode project with SwiftUI
+        - Set up FastAPI backend project structure
+        - Configure local SQLite with GRDB/SwiftData
+        - Set up PostgreSQL for backend
+        - Create shared data models
+      </tasks>
+    </step>
+
+    <step number="2">
+      <title>Core Data Layer</title>
+      <tasks>
+        - Implement iOS local database schema
+        - Implement backend database models with SQLAlchemy
+        - Create repository pattern for data access
+        - Set up exercise library seed data
+      </tasks>
+    </step>
+
+    <step number="3">
+      <title>Workout Logging</title>
+      <tasks>
+        - Build exercise picker UI
+        - Implement set logging form
+        - Add rest timer functionality
+        - Create workout session management
+        - Auto-save to local database
+      </tasks>
+    </step>
+
+    <step number="4">
+      <title>Analytics Engine</title>
+      <tasks>
+        - Port e1RM calculations from strength-coach
+        - Implement trend analysis
+        - Build PR detection logic
+        - Add percentile calculations
+        - Create insights generator
+      </tasks>
+    </step>
+
+    <step number="5">
+      <title>Charts and Dashboard</title>
+      <tasks>
+        - Implement e1RM line charts with Swift Charts
+        - Build volume bar charts
+        - Create percentile gauge views
+        - Design home dashboard layout
+        - Add progress screen with filtering
+      </tasks>
+    </step>
+
+    <step number="6">
+      <title>Backend API</title>
+      <tasks>
+        - Implement auth endpoints (JWT)
+        - Create workout CRUD endpoints
+        - Build analytics endpoints
+        - Set up sync endpoint for bulk updates
+      </tasks>
+    </step>
+
+    <step number="7">
+      <title>Offline Sync</title>
+      <tasks>
+        - Implement change tracking in local DB
+        - Build sync queue manager
+        - Handle conflict resolution
+        - Add sync status UI indicators
+        - Background sync on app launch
+      </tasks>
+    </step>
+
+    <step number="8">
+      <title>Polish and Insights</title>
+      <tasks>
+        - Add haptic feedback
+        - Implement insight notifications
+        - Build weekly summary view
+        - Add onboarding flow
+        - Performance optimization
+      </tasks>
+    </step>
+  </implementation_steps>
+
+  <future_enhancements>
+    <apple_health>
+      - Export workouts to Apple Health
+      - Import bodyweight from Apple Health
+      - Sync active calories burned
+    </apple_health>
+
+    <whoop_integration>
+      - Import recovery scores
+      - Training readiness indicator
+      - Strain correlation analysis
+    </whoop_integration>
+
+    <additional>
+      - Training program templates
+      - AI coaching recommendations
+      - Social features (share PRs)
+      - Apple Watch companion app
+    </additional>
+  </future_enhancements>
+
+  <success_criteria>
+    <functionality>
+      - Log a complete workout with multiple exercises and sets
+      - View e1RM trends over 12+ weeks
+      - See accurate percentile comparisons
+      - Receive relevant insights based on data
+      - Work fully offline and sync when online
+    </functionality>
+
+    <user_experience>
+      - Log a set in under 5 seconds
+      - Intuitive navigation between tabs
+      - Charts load in under 1 second
+      - Clear visual feedback for PRs and trends
+      - Responsive on all iPhone sizes
+    </user_experience>
+  </success_criteria>
+</project_specification>

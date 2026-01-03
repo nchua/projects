@@ -1,0 +1,251 @@
+# Next Steps for Future Agents
+
+## Current Progress
+
+**Backend: 100% Core + Gamification Foundation**
+- All API endpoints implemented and tested
+- Authentication with JWT
+- Workout logging with e1RM calculations
+- Analytics (trends, percentiles, PRs, insights)
+- Bodyweight tracking with rolling averages
+- Sync endpoints for offline support
+- **NEW (Session 4):** XP & Leveling system
+- **NEW (Session 4):** Achievement system (18 badges)
+- **NEW (Session 4):** User progress tracking
+
+**iOS Frontend: Xcode Project Complete & Running ✅**
+- Xcode project generated via xcodegen
+- All Swift files integrated
+- JSON decoding issues fixed (explicit CodingKeys)
+- App runs on physical device with full backend connectivity
+- All tabs working: Home, Log, History, Progress, Profile
+- **NEW (Session 4):** Real XP/level display on HomeView
+- **NEW (Session 4):** Achievement showcase on ProfileView
+- **NEW (Session 4):** Clickable chart data points
+- **NEW (Session 4):** Sheet presentation race condition fixed
+
+## Quick Start
+
+The app is fully functional! Here's how to run it:
+
+### 1. Start the Backend
+
+```bash
+cd /Users/nickchua/Desktop/AI/claude-quickstarts/autonomous-coding/generations/fitness-app/backend
+source venv/bin/activate
+python main.py
+```
+
+### 2. Run the iOS App
+
+**Option A: Open in Xcode**
+```bash
+cd /Users/nickchua/Desktop/AI/claude-quickstarts/autonomous-coding/generations/fitness-app/ios
+open FitnessApp.xcodeproj
+# Press Cmd+R to build and run
+```
+
+**Option B: Command Line**
+```bash
+cd /Users/nickchua/Desktop/AI/claude-quickstarts/autonomous-coding/generations/fitness-app/ios
+xcodebuild -project FitnessApp.xcodeproj -scheme FitnessApp -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
+xcrun simctl launch booted com.fitnessapp.ios
+```
+
+### 3. Login
+- **Email:** nick.chua14@gmail.com
+- **Password:** TestPass123
+
+### API Documentation
+```bash
+# Health check
+curl http://localhost:8000/health
+
+# Interactive docs
+open http://localhost:8000/docs
+```
+
+## Remaining Work
+
+### Completed
+- ✅ Backend initialization and database setup
+- ✅ Exercise library with 50+ exercises
+- ✅ Authentication (register, login, refresh)
+- ✅ User profile endpoints
+- ✅ Exercise endpoints (list, create custom)
+- ✅ Workout CRUD endpoints
+- ✅ e1RM calculations (4 formulas)
+- ✅ Analytics (trends, history, percentiles)
+- ✅ PR detection (e1RM and rep PRs)
+- ✅ Bodyweight tracking with rolling averages
+- ✅ Insights and weekly review
+- ✅ Sync endpoints
+- ✅ XP & Leveling system (backend + iOS)
+- ✅ Achievement system (18 badges)
+- ✅ Home screen tile click fix
+- ✅ Clickable chart data points
+- ✅ Single Leg RDL exercise added
+
+### Priority 1: Complete Gamification Loop
+- [ ] **Wire up XP Reward Popup** - Show XPRewardView after workout in LogView
+- [ ] **Daily Quest System** - Backend models, endpoints, iOS UI
+- [ ] **Weekly Challenges** - Larger goals with bigger rewards
+- [ ] **Streak System** - Visual counter, protection, milestones
+
+### Priority 2: Advanced Features
+- [ ] Achievement progress tracking (show "45/100 workouts")
+- [ ] PR celebration animation
+- [ ] Workout recommendations
+- [ ] Offline functionality
+- [ ] Background sync
+- [ ] Pull-to-refresh
+
+### Priority 3: Polish
+- [ ] Haptic feedback
+- [ ] Chart animations
+- [ ] Performance testing
+- [ ] End-to-end user journey test
+
+## Implementation Tips
+
+### For Backend Features
+
+1. **Create the endpoint file** in `backend/app/api/`
+   ```python
+   # Example: backend/app/api/auth.py
+   from fastapi import APIRouter, Depends, HTTPException
+   from sqlalchemy.orm import Session
+   from app.core.database import get_db
+
+   router = APIRouter()
+
+   @router.post("/register")
+   async def register(data: RegisterSchema, db: Session = Depends(get_db)):
+       # Implementation
+       pass
+   ```
+
+2. **Create Pydantic schemas** in `backend/app/schemas/`
+   ```python
+   # Example: backend/app/schemas/auth.py
+   from pydantic import BaseModel, EmailStr
+
+   class RegisterSchema(BaseModel):
+       email: EmailStr
+       password: str
+   ```
+
+3. **Create business logic** in `backend/app/services/`
+   ```python
+   # Example: backend/app/services/auth.py
+   def create_user(db: Session, email: str, password: str):
+       # Implementation
+       pass
+   ```
+
+4. **Include router in main.py**
+   ```python
+   from app.api import auth
+   app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+   ```
+
+5. **Test with curl or httpx**
+   ```bash
+   curl -X POST http://localhost:8000/auth/register \
+     -H "Content-Type: application/json" \
+     -d '{"email": "test@example.com", "password": "securepass"}'
+   ```
+
+6. **Mark feature as passing** in feature_list.json ONLY when all test steps pass
+
+### For iOS Features
+
+1. **Create Xcode project** following `ios/README.md`
+
+2. **Set up SwiftData or GRDB** for local database
+
+3. **Create models** matching backend schema
+
+4. **Implement API client** with URLSession
+
+5. **Build views** following design system in spec
+
+6. **Test on simulator** following feature test steps
+
+7. **Mark feature as passing** when fully working
+
+## Testing Features
+
+For each feature in feature_list.json:
+
+1. Read the description and steps carefully
+2. Implement the feature
+3. Follow EVERY step in the test
+4. Only change `"passes": false` to `"passes": true` when ALL steps pass
+5. NEVER remove or edit features - only mark as passing
+6. Commit after each feature completion
+
+## Seed Data
+
+Create seed data for exercise library (Feature 5). Example:
+
+```python
+# backend/seed_exercises.py
+from app.core.database import SessionLocal, engine
+from app.models import Exercise, Base
+
+Base.metadata.create_all(bind=engine)
+
+exercises = [
+    {"name": "Squat", "canonical_id": "squat", "category": "Legs", "primary_muscle": "Quadriceps"},
+    {"name": "Back Squat", "canonical_id": "squat", "category": "Legs", "primary_muscle": "Quadriceps"},
+    {"name": "Bench Press", "canonical_id": "bench", "category": "Push", "primary_muscle": "Chest"},
+    {"name": "Deadlift", "canonical_id": "deadlift", "category": "Pull", "primary_muscle": "Back"},
+    # Add 46+ more exercises...
+]
+
+db = SessionLocal()
+for ex in exercises:
+    db.add(Exercise(**ex, is_custom=False))
+db.commit()
+```
+
+## Git Workflow
+
+1. Work on ONE feature at a time
+2. Test thoroughly
+3. Update feature_list.json to mark as passing
+4. Commit with clear message: `"Implement [feature]: [description]"`
+5. Update claude-progress.txt
+6. Move to next feature
+
+## Monitoring Progress
+
+```bash
+# View all features
+cat feature_list.json | jq '.[] | {description: .description, passes: .passes}'
+
+# Count completed
+cat feature_list.json | jq '[.[] | select(.passes == true)] | length'
+
+# View next feature to implement
+cat feature_list.json | jq '.[] | select(.passes == false) | .description' | head -1
+```
+
+## Important Reminders
+
+- ⚠️ **NEVER** remove or edit features in feature_list.json
+- ⚠️ **ONLY** change `"passes": false` to `"passes": true`
+- ⚠️ Test ALL steps before marking as passing
+- ⚠️ Commit frequently with descriptive messages
+- ⚠️ Update claude-progress.txt at end of each session
+
+## Resources
+
+- **Spec**: `app_spec.txt` - Complete project specification
+- **Features**: `feature_list.json` - All 56 test cases
+- **API Docs**: http://localhost:8000/docs (when backend running)
+- **Progress**: `claude-progress.txt` - Session notes
+- **This File**: Instructions for next steps
+
+Good luck! The foundation is solid. Focus on quality over speed. 🏋️
