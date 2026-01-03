@@ -119,9 +119,9 @@ async def process_screenshot(
 
     # Convert exercises to response model (for gym workouts)
     exercises = []
-    for ex in result.get("exercises", []):
+    for ex in (result.get("exercises") or []):
         sets = []
-        for s in ex.get("sets", []):
+        for s in (ex.get("sets") or []):
             sets.append(ExtractedSet(
                 weight_lb=s.get("weight_lb", 0),
                 reps=s.get("reps", 0),
@@ -143,7 +143,7 @@ async def process_screenshot(
 
     # Convert heart rate zones for WHOOP screenshots
     heart_rate_zones = []
-    for zone in result.get("heart_rate_zones", []):
+    for zone in (result.get("heart_rate_zones") or []):
         heart_rate_zones.append(HeartRateZone(
             zone=zone.get("zone"),
             bpm_range=zone.get("bpm_range"),
@@ -282,9 +282,9 @@ async def process_screenshots_batch(
 
     # Convert exercises to response model
     exercises = []
-    for ex in merged.get("exercises", []):
+    for ex in (merged.get("exercises") or []):
         sets = []
-        for s in ex.get("sets", []):
+        for s in (ex.get("sets") or []):
             sets.append(ExtractedSet(
                 weight_lb=s.get("weight_lb", 0),
                 reps=s.get("reps", 0),
@@ -306,7 +306,7 @@ async def process_screenshots_batch(
 
     # Convert heart rate zones for WHOOP screenshots
     heart_rate_zones = []
-    for zone in merged.get("heart_rate_zones", []):
+    for zone in (merged.get("heart_rate_zones") or []):
         heart_rate_zones.append(HeartRateZone(
             zone=zone.get("zone"),
             bpm_range=zone.get("bpm_range"),

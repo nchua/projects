@@ -291,7 +291,7 @@ async def extract_workout_from_screenshot(
             "avg_hr": extracted_data.get("avg_hr"),
             "max_hr": extracted_data.get("max_hr"),
             "source": extracted_data.get("source"),
-            "heart_rate_zones": extracted_data.get("heart_rate_zones", []),
+            "heart_rate_zones": extracted_data.get("heart_rate_zones") or [],
             "processing_confidence": "high",
             # Include empty exercises array for compatibility
             "exercises": [],
@@ -310,7 +310,8 @@ async def extract_workout_from_screenshot(
     overall_confidence = "high"
     unmatched_count = 0
 
-    for exercise in extracted_data.get("exercises", []):
+    # Use 'or []' to handle null values from Claude
+    for exercise in (extracted_data.get("exercises") or []):
         exercise_name = exercise.get("name", "")
         exercise_id, matched_name, confidence = match_exercise_name(
             exercise_name, candidates
