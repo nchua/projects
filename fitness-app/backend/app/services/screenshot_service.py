@@ -6,12 +6,15 @@ import os
 import base64
 import json
 import re
+import logging
 from typing import Optional, Tuple, List, Dict, Any
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 import anthropic
+
+logger = logging.getLogger(__name__)
 from rapidfuzz import fuzz, process
 
 from app.models.exercise import Exercise
@@ -215,9 +218,12 @@ async def extract_workout_from_screenshot(
     Returns:
         Dict with extracted workout data and matched exercise IDs
     """
+    logger.info(f"Processing screenshot: {filename}, size: {len(image_data)} bytes")
+
     # Check for API key
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
+        logger.error("ANTHROPIC_API_KEY not set")
         raise ValueError("ANTHROPIC_API_KEY environment variable not set")
 
     # Initialize Anthropic client
@@ -253,10 +259,11 @@ async def extract_workout_from_screenshot(
             ]
         )
     except anthropic.APIError as e:
-        print(f"[Screenshot Service] Claude API error: {e}")
+        logger.error(f"Claude API error: {e}")
         raise ValueError(f"Claude API error: {str(e)}")
 
     response_text = message.content[0].text
+    logger.info(f"Claude response received, length: {len(response_text)}")
     cleaned_json = clean_json_response(response_text)
 
     # Parse JSON response
@@ -264,7 +271,7 @@ async def extract_workout_from_screenshot(
         extracted_data = json.loads(cleaned_json)
     except json.JSONDecodeError as e:
         # Log the actual response for debugging
-        print(f"[Screenshot Service] Failed to parse JSON. Raw response: {response_text[:500]}")
+        logger.error(f"Failed to parse JSON. Raw response: {response_text[:500]}")
         raise ValueError(f"Failed to parse Claude response as JSON: {e}. Response preview: {response_text[:200]}")
 
     # Check screenshot type
