@@ -228,29 +228,33 @@ async def extract_workout_from_screenshot(
     media_type = get_media_type(filename)
 
     # Call Claude Vision API
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=2000,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": media_type,
-                            "data": image_base64
+    try:
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=2000,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": media_type,
+                                "data": image_base64
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": EXTRACTION_PROMPT
                         }
-                    },
-                    {
-                        "type": "text",
-                        "text": EXTRACTION_PROMPT
-                    }
-                ]
-            }
-        ]
-    )
+                    ]
+                }
+            ]
+        )
+    except anthropic.APIError as e:
+        print(f"[Screenshot Service] Claude API error: {e}")
+        raise ValueError(f"Claude API error: {str(e)}")
 
     response_text = message.content[0].text
     cleaned_json = clean_json_response(response_text)
@@ -259,7 +263,9 @@ async def extract_workout_from_screenshot(
     try:
         extracted_data = json.loads(cleaned_json)
     except json.JSONDecodeError as e:
-        raise ValueError(f"Failed to parse Claude response as JSON: {e}")
+        # Log the actual response for debugging
+        print(f"[Screenshot Service] Failed to parse JSON. Raw response: {response_text[:500]}")
+        raise ValueError(f"Failed to parse Claude response as JSON: {e}. Response preview: {response_text[:200]}")
 
     # Check screenshot type
     screenshot_type = extracted_data.get("screenshot_type", "gym_workout")
