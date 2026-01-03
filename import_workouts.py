@@ -2,9 +2,12 @@
 """Import workout data from workout_log.json into the fitness app backend."""
 
 import json
+import os
 import requests
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
+EMAIL = os.environ.get("SEED_USER_EMAIL", "test@example.com")
+PASSWORD = os.environ.get("SEED_USER_PASSWORD", "TestPass123!")
 TOKEN = None
 
 def login():
@@ -12,8 +15,8 @@ def login():
     global TOKEN
     # Try to login first
     resp = requests.post(f"{BASE_URL}/auth/login", json={
-        "email": "test@example.com",
-        "password": "TestPass123!"
+        "email": EMAIL,
+        "password": PASSWORD
     })
     if resp.status_code == 200:
         TOKEN = resp.json()["access_token"]
@@ -22,16 +25,16 @@ def login():
 
     # If login fails, register
     resp = requests.post(f"{BASE_URL}/auth/register", json={
-        "email": "test@example.com",
-        "password": "TestPass123!"
+        "email": EMAIL,
+        "password": PASSWORD
     })
     if resp.status_code == 200:
         print("Registered new user")
 
     # Now login
     resp = requests.post(f"{BASE_URL}/auth/login", json={
-        "email": "test@example.com",
-        "password": "TestPass123!"
+        "email": EMAIL,
+        "password": PASSWORD
     })
     if resp.status_code == 200:
         TOKEN = resp.json()["access_token"]

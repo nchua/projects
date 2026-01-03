@@ -5,9 +5,11 @@ import requests
 import json
 from datetime import datetime
 
-BASE_URL = "https://backend-production-e316.up.railway.app"
-EMAIL = "test@example.com"
-PASSWORD = "TestPass123"
+import os
+
+BASE_URL = os.environ.get("API_BASE_URL", "https://backend-production-e316.up.railway.app")
+EMAIL = os.environ.get("SEED_USER_EMAIL", "test@example.com")
+PASSWORD = os.environ.get("SEED_USER_PASSWORD", "TestPass123!")
 
 # Load real workout data
 WORKOUT_LOG_PATH = "/Users/nickchua/Desktop/AI/Fitness/workout_log.json"
