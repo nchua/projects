@@ -37,6 +37,14 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: NO
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+    entitlements:
+      path: FitnessApp/FitnessApp.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
+        com.apple.developer.healthkit.background-delivery: true
+    capabilities:
+      HealthKit: true
     info:
       path: FitnessApp/Info.plist
       properties:
@@ -47,6 +55,11 @@ targets:
         UILaunchScreen: {}
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
+        NSHealthShareUsageDescription: "Arise syncs your steps, calories, and activity data to track your overall fitness progress alongside your workouts."
+        NSHealthUpdateUsageDescription: "Arise can log your strength workouts to Apple Health."
+        UIBackgroundModes:
+          - fetch
+          - processing
 
   FitnessAppTests:
     type: bundle.unit-test

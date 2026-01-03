@@ -61,6 +61,27 @@ struct HomeView: View {
                                 .padding(.horizontal)
                         }
 
+                        // Activity Rings (HealthKit)
+                        if viewModel.healthKitAuthorized {
+                            ActivityRingsCard(
+                                steps: viewModel.todaySteps,
+                                calories: viewModel.todayCalories,
+                                exerciseMinutes: viewModel.todayExerciseMinutes,
+                                standHours: viewModel.todayStandHours,
+                                isSyncing: viewModel.isHealthKitSyncing,
+                                onSync: {
+                                    Task { await viewModel.syncHealthKit() }
+                                }
+                            )
+                            .padding(.horizontal)
+                        } else if HealthKitManager.shared.isHealthDataAvailable {
+                            // Show connect button if HealthKit available but not authorized
+                            HealthKitConnectCard {
+                                Task { await viewModel.requestHealthKitAccess() }
+                            }
+                            .padding(.horizontal)
+                        }
+
                         // Hunter Stats Section
                         AriseSectionHeader(title: "Hunter Stats")
                             .padding(.horizontal)
@@ -1476,6 +1497,174 @@ struct TodaysWorkoutCard: View {
     let workout: WorkoutSummaryResponse
     var body: some View {
         LastQuestCard(workout: workout)
+    }
+}
+
+// MARK: - Activity Rings Card (HealthKit)
+
+struct ActivityRingsCard: View {
+    let steps: Int
+    let calories: Int
+    let exerciseMinutes: Int
+    let standHours: Int
+    var isSyncing: Bool = false
+    var onSync: (() -> Void)? = nil
+
+    // Goals
+    private let stepsGoal = 10000
+    private let caloriesGoal = 500
+    private let exerciseGoal = 30
+    private let standGoal = 12
+
+    var body: some View {
+        VStack(spacing: 16) {
+            // Header
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("[ DAILY ACTIVITY ]")
+                        .font(.ariseMono(size: 10, weight: .medium))
+                        .foregroundColor(.systemPrimary)
+                        .tracking(1)
+
+                    Text("Apple Health Sync")
+                        .font(.ariseHeader(size: 16, weight: .semibold))
+                        .foregroundColor(.textPrimary)
+                }
+
+                Spacer()
+
+                if isSyncing {
+                    ProgressView()
+                        .tint(.systemPrimary)
+                        .scaleEffect(0.8)
+                } else {
+                    Button {
+                        onSync?()
+                    } label: {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.systemPrimary)
+                    }
+                }
+            }
+
+            // Activity Stats Grid
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                ActivityStatItem(
+                    icon: "figure.walk",
+                    iconColor: .green,
+                    value: steps.formatted(),
+                    label: "Steps",
+                    progress: min(Double(steps) / Double(stepsGoal), 1.0)
+                )
+
+                ActivityStatItem(
+                    icon: "flame.fill",
+                    iconColor: .red,
+                    value: "\(calories)",
+                    label: "Calories",
+                    progress: min(Double(calories) / Double(caloriesGoal), 1.0)
+                )
+
+                ActivityStatItem(
+                    icon: "figure.run",
+                    iconColor: .green,
+                    value: "\(exerciseMinutes)m",
+                    label: "Exercise",
+                    progress: min(Double(exerciseMinutes) / Double(exerciseGoal), 1.0)
+                )
+
+                ActivityStatItem(
+                    icon: "figure.stand",
+                    iconColor: .cyan,
+                    value: "\(standHours)h",
+                    label: "Stand",
+                    progress: min(Double(standHours) / Double(standGoal), 1.0)
+                )
+            }
+        }
+        .padding(16)
+        .systemPanelStyle()
+    }
+}
+
+struct ActivityStatItem: View {
+    let icon: String
+    let iconColor: Color
+    let value: String
+    let label: String
+    let progress: Double
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Icon with progress ring
+            ZStack {
+                Circle()
+                    .stroke(iconColor.opacity(0.2), lineWidth: 3)
+                    .frame(width: 36, height: 36)
+
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(iconColor, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .frame(width: 36, height: 36)
+                    .rotationEffect(.degrees(-90))
+
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(iconColor)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(value)
+                    .font(.ariseDisplay(size: 18, weight: .bold))
+                    .foregroundColor(.textPrimary)
+
+                Text(label)
+                    .font(.ariseMono(size: 10))
+                    .foregroundColor(.textMuted)
+                    .textCase(.uppercase)
+            }
+
+            Spacer()
+        }
+        .padding(10)
+        .background(Color.voidLight.opacity(0.3))
+        .cornerRadius(4)
+    }
+}
+
+struct HealthKitConnectCard: View {
+    var onConnect: () -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            HStack(spacing: 12) {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 24))
+                    .foregroundColor(.red)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Connect Apple Health")
+                        .font(.ariseHeader(size: 16, weight: .semibold))
+                        .foregroundColor(.textPrimary)
+
+                    Text("Sync steps, calories & activity rings")
+                        .font(.ariseMono(size: 12))
+                        .foregroundColor(.textMuted)
+                }
+
+                Spacer()
+            }
+
+            Button(action: onConnect) {
+                Text("CONNECT")
+                    .font(.ariseHeader(size: 14, weight: .semibold))
+                    .tracking(2)
+            }
+            .systemButtonStyle(isPrimary: true)
+        }
+        .padding(16)
+        .systemPanelStyle()
     }
 }
 

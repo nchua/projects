@@ -634,3 +634,167 @@ struct QuestClaimResponse: Decodable {
         case newRank = "new_rank"
     }
 }
+
+// MARK: - Activity (HealthKit Sync)
+
+enum ActivitySource: String, Codable {
+    case appleFitness = "apple_fitness"
+    case whoop = "whoop"
+    case garmin = "garmin"
+    case fitbit = "fitbit"
+    case manual = "manual"
+}
+
+struct ActivityCreate: Encodable {
+    let date: String
+    let source: String
+    let steps: Int?
+    let activeCalories: Int?
+    let totalCalories: Int?
+    let activeMinutes: Int?
+    let exerciseMinutes: Int?
+    let standHours: Int?
+    let moveCalories: Int?
+    let strain: Double?
+    let recoveryScore: Int?
+    let hrv: Int?
+    let restingHeartRate: Int?
+    let sleepHours: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case date, source, steps, strain, hrv
+        case activeCalories = "active_calories"
+        case totalCalories = "total_calories"
+        case activeMinutes = "active_minutes"
+        case exerciseMinutes = "exercise_minutes"
+        case standHours = "stand_hours"
+        case moveCalories = "move_calories"
+        case recoveryScore = "recovery_score"
+        case restingHeartRate = "resting_heart_rate"
+        case sleepHours = "sleep_hours"
+    }
+}
+
+struct ActivityResponse: Decodable, Identifiable {
+    let id: String
+    let userId: String
+    let date: String
+    let source: String
+    let steps: Int?
+    let activeCalories: Int?
+    let totalCalories: Int?
+    let activeMinutes: Int?
+    let exerciseMinutes: Int?
+    let standHours: Int?
+    let moveCalories: Int?
+    let strain: Double?
+    let recoveryScore: Int?
+    let hrv: Int?
+    let restingHeartRate: Int?
+    let sleepHours: Double?
+    let createdAt: String
+    let updatedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, date, source, steps, strain, hrv
+        case userId = "user_id"
+        case activeCalories = "active_calories"
+        case totalCalories = "total_calories"
+        case activeMinutes = "active_minutes"
+        case exerciseMinutes = "exercise_minutes"
+        case standHours = "stand_hours"
+        case moveCalories = "move_calories"
+        case recoveryScore = "recovery_score"
+        case restingHeartRate = "resting_heart_rate"
+        case sleepHours = "sleep_hours"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+}
+
+struct ActivityHistoryResponse: Decodable {
+    let entries: [ActivityResponse]
+    let total: Int
+    let hasMore: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case entries, total
+        case hasMore = "has_more"
+    }
+}
+
+struct LastSyncResponse: Decodable {
+    let lastSyncedDate: String?
+    let source: String
+
+    enum CodingKeys: String, CodingKey {
+        case source
+        case lastSyncedDate = "last_synced_date"
+    }
+}
+
+// MARK: - Screenshot Processing
+
+struct ExtractedSet: Decodable {
+    let weightLb: Double
+    let reps: Int
+    let sets: Int
+    let isWarmup: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case reps, sets
+        case weightLb = "weight_lb"
+        case isWarmup = "is_warmup"
+    }
+}
+
+struct ExtractedExercise: Decodable, Identifiable {
+    let name: String
+    let equipment: String?
+    let variation: String?
+    let sets: [ExtractedSet]
+    let totalReps: Int?
+    let totalVolumeLb: Double?
+    let matchedExerciseId: String?
+    let matchedExerciseName: String?
+    let matchConfidence: Int?
+
+    var id: String { name + (matchedExerciseId ?? UUID().uuidString) }
+
+    enum CodingKeys: String, CodingKey {
+        case name, equipment, variation, sets
+        case totalReps = "total_reps"
+        case totalVolumeLb = "total_volume_lb"
+        case matchedExerciseId = "matched_exercise_id"
+        case matchedExerciseName = "matched_exercise_name"
+        case matchConfidence = "match_confidence"
+    }
+}
+
+struct ExtractedSummary: Decodable {
+    let tonnageLb: Double?
+    let totalReps: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case tonnageLb = "tonnage_lb"
+        case totalReps = "total_reps"
+    }
+}
+
+struct ScreenshotProcessResponse: Decodable {
+    let sessionDate: String?
+    let sessionName: String?
+    let durationMinutes: Int?
+    let summary: ExtractedSummary?
+    let exercises: [ExtractedExercise]
+    let processingConfidence: String
+
+    enum CodingKeys: String, CodingKey {
+        case exercises
+        case sessionDate = "session_date"
+        case sessionName = "session_name"
+        case durationMinutes = "duration_minutes"
+        case summary
+        case processingConfidence = "processing_confidence"
+    }
+}

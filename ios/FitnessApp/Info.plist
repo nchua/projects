@@ -25,6 +25,15 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Arise syncs your steps, calories, and activity data to track your overall fitness progress alongside your workouts.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Arise can log your strength workouts to Apple Health.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 </dict>

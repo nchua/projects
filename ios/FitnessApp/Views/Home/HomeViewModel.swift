@@ -24,6 +24,14 @@ class HomeViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var error: String?
 
+    // HealthKit integration
+    @Published var healthKitAuthorized = false
+    @Published var todaySteps: Int = 0
+    @Published var todayCalories: Int = 0
+    @Published var todayExerciseMinutes: Int = 0
+    @Published var todayStandHours: Int = 0
+    @Published var isHealthKitSyncing = false
+
     // Computed properties for easier access
     var hunterLevel: Int { userProgress?.level ?? 1 }
     var hunterRank: HunterRank { HunterRank(rawValue: userProgress?.rank ?? "E") ?? .e }
@@ -100,6 +108,57 @@ class HomeViewModel: ObservableObject {
         }
 
         isLoading = false
+
+        // Load HealthKit data after main data
+        await loadHealthKitData()
+    }
+
+    // MARK: - HealthKit
+
+    func requestHealthKitAccess() async {
+        let manager = HealthKitManager.shared
+        await manager.requestAuthorization()
+        healthKitAuthorized = manager.isAuthorized
+
+        if healthKitAuthorized {
+            await loadHealthKitData()
+        }
+    }
+
+    func loadHealthKitData() async {
+        let manager = HealthKitManager.shared
+
+        // Skip if HealthKit not available or not authorized
+        guard manager.isHealthDataAvailable else { return }
+
+        // Request authorization if not yet authorized
+        if !manager.isAuthorized {
+            await manager.requestAuthorization()
+        }
+
+        healthKitAuthorized = manager.isAuthorized
+        guard healthKitAuthorized else { return }
+
+        // Fetch today's stats
+        await manager.fetchTodayStats()
+
+        // Update local published properties
+        todaySteps = manager.todaySteps
+        todayCalories = manager.todayActiveCalories
+        todayExerciseMinutes = manager.todayExerciseMinutes
+        todayStandHours = manager.todayStandHours
+
+        // Sync to backend in background
+        isHealthKitSyncing = true
+        await manager.syncTodayOnly()
+        isHealthKitSyncing = false
+    }
+
+    func syncHealthKit() async {
+        isHealthKitSyncing = true
+        await HealthKitManager.shared.syncToBackend()
+        await loadHealthKitData()
+        isHealthKitSyncing = false
     }
 
     func claimQuest(_ questId: String) async {

@@ -215,6 +215,100 @@ class APIClient {
         let _: SeedResponse = try await post("/quests/seed", body: EmptyBody())
     }
 
+    // MARK: - Activity (HealthKit Sync)
+
+    func syncActivity(_ activity: ActivityCreate) async throws -> ActivityResponse {
+        return try await post("/activity", body: activity)
+    }
+
+    func syncActivityBulk(_ activities: [ActivityCreate]) async throws -> [ActivityResponse] {
+        return try await post("/activity/bulk", body: activities)
+    }
+
+    func getActivityHistory(limit: Int = 30, startDate: String? = nil, endDate: String? = nil) async throws -> ActivityHistoryResponse {
+        var path = "/activity?limit=\(limit)"
+        if let startDate = startDate { path += "&start_date=\(startDate)" }
+        if let endDate = endDate { path += "&end_date=\(endDate)" }
+        return try await get(path)
+    }
+
+    func getTodayActivity(source: String = "apple_fitness") async throws -> ActivityResponse? {
+        do {
+            return try await get("/activity/today?source=\(source)")
+        } catch APIError.notFound {
+            return nil
+        }
+    }
+
+    func getLastSync(source: String = "apple_fitness") async throws -> LastSyncResponse {
+        return try await get("/activity/last-sync?source=\(source)")
+    }
+
+    // MARK: - Screenshot Processing
+
+    func processScreenshot(imageData: Data, filename: String) async throws -> ScreenshotProcessResponse {
+        guard let url = URL(string: baseURL + "/screenshot/process") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 60 // Longer timeout for AI processing
+
+        if let token = accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        // Create multipart form data
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        var body = Data()
+
+        // Add file field
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
+
+        // Determine content type from filename
+        let contentType = filename.lowercased().hasSuffix(".png") ? "image/png" : "image/jpeg"
+        body.append("Content-Type: \(contentType)\r\n\r\n".data(using: .utf8)!)
+        body.append(imageData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+
+        request.httpBody = body
+
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch let error as URLError {
+            switch error.code {
+            case .notConnectedToInternet:
+                throw APIError.networkError("No internet connection")
+            case .timedOut:
+                throw APIError.networkError("Processing timed out. Please try again.")
+            case .cannotConnectToHost, .cannotFindHost:
+                throw APIError.networkError("Cannot connect to server")
+            default:
+                throw APIError.networkError("Network error: \(error.localizedDescription)")
+            }
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 200...299:
+            return try JSONDecoder().decode(ScreenshotProcessResponse.self, from: data)
+        case 401:
+            throw APIError.unauthorized
+        case 422:
+            throw APIError.validationError
+        default:
+            throw APIError.serverError(httpResponse.statusCode)
+        }
+    }
+
     // MARK: - Private Helpers
 
     private func get<T: Decodable>(_ path: String) async throws -> T {
