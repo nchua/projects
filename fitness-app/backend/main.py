@@ -1,6 +1,21 @@
 """
 Fitness Tracker API - Main application entry point
 """
+import logging
+import sys
+
+# Configure logging to stdout for Railway
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+# Ensure logs are flushed immediately
+for handler in logging.root.handlers:
+    handler.flush = sys.stdout.flush
+
+logger = logging.getLogger(__name__)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings

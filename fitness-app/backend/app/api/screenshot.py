@@ -2,6 +2,7 @@
 Screenshot Processing API endpoints
 Handles workout screenshot uploads and Claude Vision extraction
 """
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -9,6 +10,8 @@ from datetime import date, datetime
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
+
+logger = logging.getLogger(__name__)
 from app.schemas.screenshot import (
     ScreenshotProcessResponse, ScreenshotBatchResponse,
     ExtractedExercise, ExtractedSet, HeartRateZone
@@ -64,8 +67,11 @@ async def process_screenshot(
     Raises:
         HTTPException: If file type is invalid, file is too large, or processing fails
     """
+    logger.info(f"Screenshot process request received: filename={file.filename}, content_type={file.content_type}")
+
     # Validate content type
     if file.content_type not in ALLOWED_CONTENT_TYPES:
+        logger.warning(f"Invalid content type: {file.content_type}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid file type: {file.content_type}. Allowed types: {', '.join(ALLOWED_CONTENT_TYPES)}"
@@ -73,6 +79,7 @@ async def process_screenshot(
 
     # Read file content
     content = await file.read()
+    logger.info(f"File read successfully, size: {len(content)} bytes")
 
     # Validate file size
     if len(content) > MAX_FILE_SIZE:
@@ -83,18 +90,22 @@ async def process_screenshot(
 
     # Process the screenshot
     try:
+        logger.info("Calling extract_workout_from_screenshot...")
         result = await extract_workout_from_screenshot(
             image_data=content,
             filename=file.filename or "screenshot.png",
             db=db,
             user_id=current_user.id
         )
+        logger.info(f"Extraction complete, screenshot_type: {result.get('screenshot_type')}")
     except ValueError as e:
+        logger.error(f"ValueError during extraction: {e}")
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e)
         )
     except Exception as e:
+        logger.error(f"Unexpected error during extraction: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process screenshot: {str(e)}"
