@@ -7,8 +7,27 @@ from app.core.config import settings
 from app.core.database import engine, Base
 from app import models  # Import models to register them
 
-# Create database tables on startup
-Base.metadata.create_all(bind=engine)
+# Run alembic migrations on startup
+import subprocess
+import os
+try:
+    print("Running database migrations...")
+    result = subprocess.run(
+        ["alembic", "upgrade", "head"],
+        cwd=os.path.dirname(os.path.abspath(__file__)),
+        capture_output=True,
+        text=True
+    )
+    if result.returncode == 0:
+        print("Migrations completed successfully")
+    else:
+        print(f"Migration warning: {result.stderr}")
+        # Fall back to create_all for new tables
+        Base.metadata.create_all(bind=engine)
+except Exception as e:
+    print(f"Migration error: {e}")
+    # Fall back to create_all
+    Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -32,10 +51,10 @@ async def root():
     """Root endpoint - API information"""
     return {
         "message": "Fitness Tracker API",
-        "version": "0.2.0-quests",
+        "version": "0.2.1-pr-fix",
         "status": "running",
         "docs": "/docs",
-        "deploy_check": "2026-01-02-v1"
+        "deploy_check": "2026-01-02-v2"
     }
 
 @app.get("/health")
@@ -45,6 +64,20 @@ async def health_check():
         "status": "ok",
         "app": settings.APP_NAME
     }
+
+
+# Debug endpoint to add sports exercises
+@app.post("/debug/add-sports")
+async def add_sports_exercises_endpoint():
+    """Add sports and cardio exercises to the database"""
+    from app.core.database import SessionLocal
+    from add_sports_exercises import add_sports_exercises
+    db = SessionLocal()
+    try:
+        add_sports_exercises(db)
+        return {"status": "ok", "message": "Sports exercises added"}
+    finally:
+        db.close()
 
 # Import and include API routers
 from app.api import auth, profile, exercises, workouts, bodyweight, analytics, sync, progress, quests
