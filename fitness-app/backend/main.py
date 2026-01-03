@@ -52,6 +52,18 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+# Add validation error handler to log details
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    logger.error(f"Validation error on {request.url.path}: {exc.errors()}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors()}
+    )
+
 # Configure CORS for iOS app
 app.add_middleware(
     CORSMiddleware,
