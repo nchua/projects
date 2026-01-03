@@ -58,7 +58,7 @@ from fastapi.responses import JSONResponse
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
-    logger.error(f"Validation error on {request.url.path}: {exc.errors()}")
+    print(f"VALIDATION ERROR on {request.url.path}: {exc.errors()}", flush=True)
     return JSONResponse(
         status_code=422,
         content={"detail": exc.errors()}
