@@ -175,10 +175,18 @@ def award_xp(
     # Handle streak tracking
     streak_bonus = 0
     if workout_date:
-        today = workout_date if isinstance(workout_date, date) else workout_date.date()
+        # Always convert to date for consistent comparison
+        if hasattr(workout_date, 'date'):
+            today = workout_date.date()
+        else:
+            today = workout_date
 
         if progress.last_workout_date:
-            days_since = (today - progress.last_workout_date).days
+            # Ensure last_workout_date is also a date object for comparison
+            last_date = progress.last_workout_date
+            if hasattr(last_date, 'date'):
+                last_date = last_date.date()
+            days_since = (today - last_date).days
 
             if days_since == 1:
                 # Consecutive day - extend streak

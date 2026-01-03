@@ -68,6 +68,10 @@ struct HomeView: View {
                                 calories: viewModel.todayCalories,
                                 exerciseMinutes: viewModel.todayExerciseMinutes,
                                 standHours: viewModel.todayStandHours,
+                                weeklySteps: viewModel.weeklySteps,
+                                weeklyCalories: viewModel.weeklyCalories,
+                                weeklyExerciseMinutes: viewModel.weeklyExerciseMinutes,
+                                weeklyAvgSteps: viewModel.weeklyAvgSteps,
                                 isSyncing: viewModel.isHealthKitSyncing,
                                 onSync: {
                                     Task { await viewModel.syncHealthKit() }
@@ -1507,8 +1511,14 @@ struct ActivityRingsCard: View {
     let calories: Int
     let exerciseMinutes: Int
     let standHours: Int
+    var weeklySteps: Int = 0
+    var weeklyCalories: Int = 0
+    var weeklyExerciseMinutes: Int = 0
+    var weeklyAvgSteps: Int = 0
     var isSyncing: Bool = false
     var onSync: (() -> Void)? = nil
+
+    @State private var showWeekly = false
 
     // Goals
     private let stepsGoal = 10000
@@ -1518,10 +1528,10 @@ struct ActivityRingsCard: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            // Header
+            // Header with toggle
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("[ DAILY ACTIVITY ]")
+                    Text(showWeekly ? "[ WEEKLY ACTIVITY ]" : "[ TODAY'S ACTIVITY ]")
                         .font(.ariseMono(size: 10, weight: .medium))
                         .foregroundColor(.systemPrimary)
                         .tracking(1)
@@ -1532,6 +1542,21 @@ struct ActivityRingsCard: View {
                 }
 
                 Spacer()
+
+                // Toggle button
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showWeekly.toggle()
+                    }
+                } label: {
+                    Text(showWeekly ? "7D" : "1D")
+                        .font(.ariseMono(size: 12, weight: .semibold))
+                        .foregroundColor(.voidBlack)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Color.systemPrimary)
+                        .cornerRadius(4)
+                }
 
                 if isSyncing {
                     ProgressView()
@@ -1548,43 +1573,109 @@ struct ActivityRingsCard: View {
                 }
             }
 
-            // Activity Stats Grid
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                ActivityStatItem(
-                    icon: "figure.walk",
-                    iconColor: .green,
-                    value: steps.formatted(),
-                    label: "Steps",
-                    progress: min(Double(steps) / Double(stepsGoal), 1.0)
-                )
+            if showWeekly {
+                // Weekly Stats
+                VStack(spacing: 12) {
+                    HStack(spacing: 16) {
+                        WeeklyStatItem(
+                            icon: "figure.walk",
+                            iconColor: .green,
+                            value: weeklySteps.formatted(),
+                            label: "Total Steps"
+                        )
+                        WeeklyStatItem(
+                            icon: "flame.fill",
+                            iconColor: .red,
+                            value: weeklyCalories.formatted(),
+                            label: "Calories"
+                        )
+                    }
+                    HStack(spacing: 16) {
+                        WeeklyStatItem(
+                            icon: "chart.bar.fill",
+                            iconColor: .green,
+                            value: weeklyAvgSteps.formatted(),
+                            label: "Avg Steps/Day"
+                        )
+                        WeeklyStatItem(
+                            icon: "figure.run",
+                            iconColor: .orange,
+                            value: "\(weeklyExerciseMinutes)m",
+                            label: "Exercise"
+                        )
+                    }
+                }
+            } else {
+                // Today's Stats Grid
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                    ActivityStatItem(
+                        icon: "figure.walk",
+                        iconColor: .green,
+                        value: steps.formatted(),
+                        label: "Steps",
+                        progress: min(Double(steps) / Double(stepsGoal), 1.0)
+                    )
 
-                ActivityStatItem(
-                    icon: "flame.fill",
-                    iconColor: .red,
-                    value: "\(calories)",
-                    label: "Calories",
-                    progress: min(Double(calories) / Double(caloriesGoal), 1.0)
-                )
+                    ActivityStatItem(
+                        icon: "flame.fill",
+                        iconColor: .red,
+                        value: "\(calories)",
+                        label: "Calories",
+                        progress: min(Double(calories) / Double(caloriesGoal), 1.0)
+                    )
 
-                ActivityStatItem(
-                    icon: "figure.run",
-                    iconColor: .green,
-                    value: "\(exerciseMinutes)m",
-                    label: "Exercise",
-                    progress: min(Double(exerciseMinutes) / Double(exerciseGoal), 1.0)
-                )
+                    ActivityStatItem(
+                        icon: "figure.run",
+                        iconColor: .green,
+                        value: "\(exerciseMinutes)m",
+                        label: "Exercise",
+                        progress: min(Double(exerciseMinutes) / Double(exerciseGoal), 1.0)
+                    )
 
-                ActivityStatItem(
-                    icon: "figure.stand",
-                    iconColor: .cyan,
-                    value: "\(standHours)h",
-                    label: "Stand",
-                    progress: min(Double(standHours) / Double(standGoal), 1.0)
-                )
+                    ActivityStatItem(
+                        icon: "figure.stand",
+                        iconColor: .cyan,
+                        value: "\(standHours)h",
+                        label: "Stand",
+                        progress: min(Double(standHours) / Double(standGoal), 1.0)
+                    )
+                }
             }
         }
         .padding(16)
         .systemPanelStyle()
+    }
+}
+
+struct WeeklyStatItem: View {
+    let icon: String
+    let iconColor: Color
+    let value: String
+    let label: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(iconColor)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(value)
+                    .font(.ariseDisplay(size: 18, weight: .bold))
+                    .foregroundColor(.textPrimary)
+
+                Text(label)
+                    .font(.ariseMono(size: 9))
+                    .foregroundColor(.textMuted)
+                    .textCase(.uppercase)
+            }
+
+            Spacer()
+        }
+        .padding(10)
+        .background(Color.voidLight.opacity(0.3))
+        .cornerRadius(4)
     }
 }
 

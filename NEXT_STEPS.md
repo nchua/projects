@@ -1,131 +1,110 @@
 # Next Steps for Future Agents
 
+## Current Progress
+
+**Backend: 100% Core + Gamification Foundation**
+- All API endpoints implemented and tested
+- Authentication with JWT
+- Workout logging with e1RM calculations
+- Analytics (trends, percentiles, PRs, insights)
+- Bodyweight tracking with rolling averages
+- Sync endpoints for offline support
+- **NEW (Session 4):** XP & Leveling system
+- **NEW (Session 4):** Achievement system (18 badges)
+- **NEW (Session 4):** User progress tracking
+
+**iOS Frontend: Xcode Project Complete & Running ✅**
+- Xcode project generated via xcodegen
+- All Swift files integrated
+- JSON decoding issues fixed (explicit CodingKeys)
+- App runs on physical device with full backend connectivity
+- All tabs working: Home, Log, History, Progress, Profile
+- **NEW (Session 4):** Real XP/level display on HomeView
+- **NEW (Session 4):** Achievement showcase on ProfileView
+- **NEW (Session 4):** Clickable chart data points
+- **NEW (Session 4):** Sheet presentation race condition fixed
+
 ## Quick Start
 
-The foundation is complete! Here's how to pick up where we left off:
+The app is fully functional! Here's how to run it:
 
-### 1. Set Up Development Environment
-
-```bash
-# Run the initialization script
-./init.sh
-
-# This will:
-# - Create Python virtual environment
-# - Install all dependencies
-# - Create .env file
-# - Offer to start the backend server
-```
-
-### 2. Create Database Tables
+### 1. Start the Backend
 
 ```bash
-cd backend
+cd /Users/nickchua/Desktop/AI/claude-quickstarts/autonomous-coding/generations/fitness-app/backend
 source venv/bin/activate
-
-# Generate initial migration from models
-alembic revision --autogenerate -m "Initial database schema"
-
-# Apply migration to create tables
-alembic upgrade head
-
-# Verify tables created
-python -c "from app.core.database import engine; from sqlalchemy import inspect; print(inspect(engine).get_table_names())"
-```
-
-### 3. Test Backend Health Check
-
-```bash
-# Start the backend (from backend directory)
 python main.py
-
-# In another terminal, test endpoints:
-curl http://localhost:8000/
-curl http://localhost:8000/health
-curl http://localhost:8000/docs  # Interactive API documentation
 ```
 
-If these work, mark this feature as passing:
-- ✅ "Backend initialization: Set up FastAPI project structure with basic health check"
+### 2. Run the iOS App
 
-## Priority Order for Implementation
+**Option A: Open in Xcode**
+```bash
+cd /Users/nickchua/Desktop/AI/claude-quickstarts/autonomous-coding/generations/fitness-app/ios
+open FitnessApp.xcodeproj
+# Press Cmd+R to build and run
+```
 
-Work through `feature_list.json` in order. Here's the recommended sequence:
+**Option B: Command Line**
+```bash
+cd /Users/nickchua/Desktop/AI/claude-quickstarts/autonomous-coding/generations/fitness-app/ios
+xcodebuild -project FitnessApp.xcodeproj -scheme FitnessApp -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
+xcrun simctl launch booted com.fitnessapp.ios
+```
 
-### Phase 1: Backend Core (Features 1-4)
-1. ✅ Backend initialization (test with health check)
-2. Database setup (generate and run migrations)
-3. Database setup backend (PostgreSQL models - already done with SQLite)
-4. Exercise library seed data
+### 3. Login
+- **Email:** nick.chua14@gmail.com
+- **Password:** TestPass123
 
-### Phase 2: Authentication (Features 6-8)
-5. POST /auth/register endpoint
-6. POST /auth/login endpoint with JWT
-7. POST /auth/refresh endpoint
+### API Documentation
+```bash
+# Health check
+curl http://localhost:8000/health
 
-### Phase 3: User Profile (Feature 9)
-8. GET /profile and PUT /profile endpoints
+# Interactive docs
+open http://localhost:8000/docs
+```
 
-### Phase 4: Exercise Endpoints (Features 10-11)
-9. GET /exercises with filtering
-10. POST /exercises for custom exercises
+## Remaining Work
 
-### Phase 5: Workout Logging (Features 12-16)
-11. POST /workouts - Create workout
-12. GET /workouts - List with pagination
-13. GET /workouts/{id} - Get details
-14. PUT /workouts/{id} - Update
-15. DELETE /workouts/{id} - Delete
+### Completed
+- ✅ Backend initialization and database setup
+- ✅ Exercise library with 50+ exercises
+- ✅ Authentication (register, login, refresh)
+- ✅ User profile endpoints
+- ✅ Exercise endpoints (list, create custom)
+- ✅ Workout CRUD endpoints
+- ✅ e1RM calculations (4 formulas)
+- ✅ Analytics (trends, history, percentiles)
+- ✅ PR detection (e1RM and rep PRs)
+- ✅ Bodyweight tracking with rolling averages
+- ✅ Insights and weekly review
+- ✅ Sync endpoints
+- ✅ XP & Leveling system (backend + iOS)
+- ✅ Achievement system (18 badges)
+- ✅ Home screen tile click fix
+- ✅ Clickable chart data points
+- ✅ Single Leg RDL exercise added
 
-### Phase 6: Analytics Engine (Features 17-27)
-16. e1RM calculations (Epley formula)
-17. Multiple e1RM formulas (Brzycki, Wathan, Lombardi)
-18. GET /analytics/exercise/{id}/trend
-19. GET /analytics/exercise/{id}/history
-20. GET /analytics/percentiles
-21. PR detection (e1RM)
-22. PR detection (rep PRs)
-23. GET /analytics/prs
-24. Bodyweight tracking
-25. Bodyweight history with rolling averages
-26. Insights generation
-27. Weekly review
+### Priority 1: Complete Gamification Loop
+- [ ] **Wire up XP Reward Popup** - Show XPRewardView after workout in LogView
+- [ ] **Daily Quest System** - Backend models, endpoints, iOS UI
+- [ ] **Weekly Challenges** - Larger goals with bigger rewards
+- [ ] **Streak System** - Visual counter, protection, milestones
 
-### Phase 7: Sync (Features 28-29)
-28. POST /sync bulk endpoint
-29. GET /sync/status
+### Priority 2: Advanced Features
+- [ ] Achievement progress tracking (show "45/100 workouts")
+- [ ] PR celebration animation
+- [ ] Workout recommendations
+- [ ] Offline functionality
+- [ ] Background sync
+- [ ] Pull-to-refresh
 
-### Phase 8: iOS Frontend (Features 30-46)
-30. Home screen dashboard
-31. Workout logging screen
-32. Set logging form
-33. Rest timer
-34. Auto-save to local DB
-35. History screen with calendar
-36. History list with detail sheets
-37. Progress screen with e1RM chart
-38. Volume bar chart
-39. Percentile gauges
-40. PR timeline
-41. Profile screen
-42. Offline functionality
-43. Background sync
-44. Conflict resolution
-45. Pull-to-refresh
-46. Copy workout as template
-47. Favorite exercises
-48. e1RM calculator tool
-
-### Phase 9: Design & Polish (Features 49-56)
-49. Dark color palette
-50. Typography (SF Pro)
-51. Rounded cards
-52. Haptic feedback
-53. Chart animations
-54. Responsive layouts
-55. Performance - Charts load < 1s
-56. Performance - Log set < 5s
-57. End-to-end user journey test
+### Priority 3: Polish
+- [ ] Haptic feedback
+- [ ] Chart animations
+- [ ] Performance testing
+- [ ] End-to-end user journey test
 
 ## Implementation Tips
 

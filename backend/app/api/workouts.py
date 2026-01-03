@@ -24,12 +24,34 @@ from app.models.pr import PR
 router = APIRouter()
 
 
+@router.post("/debug-error")
+async def debug_workout_error(
+    workout_data: WorkoutCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Debug endpoint that returns the actual error"""
+    import traceback
+    try:
+        return await _create_workout_impl(workout_data, current_user, db)
+    except Exception as e:
+        return {"error": str(e), "traceback": traceback.format_exc()}
+
+
 @router.post("", response_model=WorkoutCreateResponse, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=WorkoutCreateResponse, status_code=status.HTTP_201_CREATED)
 async def create_workout(
     workout_data: WorkoutCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
+):
+    return await _create_workout_impl(workout_data, current_user, db)
+
+
+async def _create_workout_impl(
+    workout_data: WorkoutCreate,
+    current_user: User,
+    db: Session
 ):
     """
     Create a new workout session with exercises and sets
@@ -154,8 +176,11 @@ async def create_workout(
     exercise_prs = {}
     for pr in all_prs:
         exercise_name = pr.exercise.name.lower() if pr.exercise else ""
-        if exercise_name not in exercise_prs or pr.weight > exercise_prs[exercise_name]:
-            exercise_prs[exercise_name] = pr.weight
+        # Use e1rm value if weight is None (for E1RM PRs)
+        pr_weight = pr.weight if pr.weight is not None else pr.value
+        if pr_weight is not None:
+            if exercise_name not in exercise_prs or pr_weight > exercise_prs.get(exercise_name, 0):
+                exercise_prs[exercise_name] = pr_weight
 
     achievement_context = {
         "workout_count": progress.total_workouts,

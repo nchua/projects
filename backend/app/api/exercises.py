@@ -307,3 +307,151 @@ async def seed_exercises(
         "message": f"Seeded {exercises_created} exercise entries ({len(EXERCISES_DATA)} unique exercises with aliases)",
         "exercises_created": exercises_created
     }
+
+
+@router.post("/test-create-workout", status_code=status.HTTP_200_OK)
+async def test_create_workout(db: Session = Depends(get_db)):
+    """Debug endpoint to test workout creation with full error logging"""
+    from app.models.workout import WorkoutSession, WorkoutExercise, Set
+    from app.models.exercise import Exercise
+    from app.services.pr_detection import detect_and_create_prs
+    from app.services.xp_service import calculate_workout_xp, award_xp, get_or_create_user_progress
+    from app.services.achievement_service import check_and_unlock_achievements
+    from app.services.quest_service import update_quest_progress
+    from app.models.pr import PR
+    from datetime import datetime
+    import traceback
+
+    result = {"steps": []}
+
+    try:
+        # Find user
+        from app.models.user import User
+        user = db.query(User).first()
+        if not user:
+            return {"error": "No user found"}
+        result["steps"].append(f"Found user: {user.email}")
+
+        # Find exercise
+        exercise = db.query(Exercise).filter(Exercise.name == "Squat").first()
+        if not exercise:
+            return {"error": "Squat exercise not found"}
+        result["steps"].append(f"Found exercise: {exercise.name} ({exercise.id})")
+
+        # Create workout
+        workout = WorkoutSession(
+            user_id=user.id,
+            date=datetime.utcnow(),
+            duration_minutes=60
+        )
+        db.add(workout)
+        db.flush()
+        result["steps"].append(f"Created workout: {workout.id}")
+
+        # Create exercise entry
+        workout_ex = WorkoutExercise(
+            session_id=workout.id,
+            exercise_id=exercise.id,
+            order_index=0
+        )
+        db.add(workout_ex)
+        db.flush()
+        result["steps"].append(f"Created workout exercise: {workout_ex.id}")
+
+        # Create set
+        set_obj = Set(
+            workout_exercise_id=workout_ex.id,
+            weight=225,
+            reps=5,
+            set_number=1,
+            e1rm=250.0
+        )
+        db.add(set_obj)
+        db.flush()
+        result["steps"].append(f"Created set: {set_obj.id}")
+
+        # Try PR detection
+        try:
+            prs = detect_and_create_prs(db, user.id, workout_ex, [set_obj])
+            result["steps"].append(f"PR detection done: {len(prs)} PRs")
+        except Exception as e:
+            result["steps"].append(f"PR detection error: {str(e)}")
+            result["pr_traceback"] = traceback.format_exc()
+
+        db.commit()
+        result["steps"].append("Committed to DB")
+
+        # Try XP calculation
+        try:
+            workout_prs = db.query(PR).filter(
+                PR.user_id == user.id,
+                PR.set_id.in_([set_obj.id])
+            ).count()
+            result["steps"].append(f"PR count: {workout_prs}")
+        except Exception as e:
+            result["steps"].append(f"PR count error: {str(e)}")
+            result["pr_count_traceback"] = traceback.format_exc()
+
+        try:
+            xp_result = calculate_workout_xp(db, workout, prs_achieved=0)
+            result["steps"].append(f"XP calculation done: {xp_result}")
+        except Exception as e:
+            result["steps"].append(f"XP error: {str(e)}")
+            result["xp_traceback"] = traceback.format_exc()
+
+        try:
+            xp_award = award_xp(db, user.id, 50, workout_date=workout.date)
+            result["steps"].append(f"XP awarded: {xp_award}")
+        except Exception as e:
+            result["steps"].append(f"Award XP error: {str(e)}")
+            result["award_xp_traceback"] = traceback.format_exc()
+
+        try:
+            progress = get_or_create_user_progress(db, user.id)
+            result["steps"].append(f"Got progress: level {progress.level}")
+        except Exception as e:
+            result["steps"].append(f"Progress error: {str(e)}")
+            result["progress_traceback"] = traceback.format_exc()
+
+        try:
+            completed_quests = update_quest_progress(db, user.id, workout)
+            result["steps"].append(f"Quest progress: {completed_quests}")
+        except Exception as e:
+            result["steps"].append(f"Quest error: {str(e)}")
+            result["quest_traceback"] = traceback.format_exc()
+
+        db.commit()
+        result["success"] = True
+        return result
+
+    except Exception as e:
+        result["error"] = str(e)
+        result["traceback"] = traceback.format_exc()
+        return result
+
+
+@router.post("/migrate-db", status_code=status.HTTP_200_OK)
+async def migrate_database(db: Session = Depends(get_db)):
+    """
+    Run database migrations to add missing columns.
+    This is a temporary endpoint for fixing production database schema.
+    """
+    from sqlalchemy import text
+    migrations = []
+
+    # Check if set_id column exists in prs table
+    try:
+        result = db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='prs' AND column_name='set_id'"))
+        exists = result.fetchone() is not None
+        if exists:
+            migrations.append("set_id column already exists in prs table")
+        else:
+            db.execute(text("ALTER TABLE prs ADD COLUMN set_id VARCHAR"))
+            db.execute(text("CREATE INDEX IF NOT EXISTS ix_prs_set_id ON prs(set_id)"))
+            db.commit()
+            migrations.append("Added set_id column to prs table")
+    except Exception as e:
+        db.rollback()
+        migrations.append(f"Error: {str(e)}")
+
+    return {"migrations": migrations}

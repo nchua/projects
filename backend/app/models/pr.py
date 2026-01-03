@@ -22,6 +22,7 @@ class PR(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
     exercise_id = Column(String, ForeignKey("exercises.id"), nullable=False, index=True)
+    set_id = Column(String, ForeignKey("sets.id"), nullable=True, index=True)  # Links PR to the set that achieved it
 
     pr_type = Column(Enum(PRType), nullable=False)
 

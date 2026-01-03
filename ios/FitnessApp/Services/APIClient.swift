@@ -309,6 +309,77 @@ class APIClient {
         }
     }
 
+    func processScreenshotsBatch(images: [(data: Data, filename: String)], saveWorkout: Bool = true) async throws -> ScreenshotBatchResponse {
+        guard let url = URL(string: baseURL + "/screenshot/process/batch") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 120 // Longer timeout for multiple images
+
+        if let token = accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        // Create multipart form data
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        var body = Data()
+
+        // Add each file
+        for (index, image) in images.enumerated() {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"files\"; filename=\"\(image.filename)\"\r\n".data(using: .utf8)!)
+
+            let contentType = image.filename.lowercased().hasSuffix(".png") ? "image/png" : "image/jpeg"
+            body.append("Content-Type: \(contentType)\r\n\r\n".data(using: .utf8)!)
+            body.append(image.data)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+
+        // Add save_workout field
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"save_workout\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(saveWorkout)\r\n".data(using: .utf8)!)
+
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+
+        request.httpBody = body
+
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch let error as URLError {
+            switch error.code {
+            case .notConnectedToInternet:
+                throw APIError.networkError("No internet connection")
+            case .timedOut:
+                throw APIError.networkError("Processing timed out. Please try again.")
+            case .cannotConnectToHost, .cannotFindHost:
+                throw APIError.networkError("Cannot connect to server")
+            default:
+                throw APIError.networkError("Network error: \(error.localizedDescription)")
+            }
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 200...299:
+            return try JSONDecoder().decode(ScreenshotBatchResponse.self, from: data)
+        case 401:
+            throw APIError.unauthorized
+        case 422:
+            throw APIError.validationError
+        default:
+            throw APIError.serverError(httpResponse.statusCode)
+        }
+    }
+
     // MARK: - Private Helpers
 
     private func get<T: Decodable>(_ path: String) async throws -> T {

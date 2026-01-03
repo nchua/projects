@@ -3,9 +3,12 @@ import UIKit
 
 struct LogView: View {
     @StateObject private var viewModel = LogViewModel()
+    @StateObject private var screenshotViewModel = ScreenshotProcessingViewModel()
     @State private var showDatePicker = false
     @State private var isSessionActive = false
     @State private var showCancelConfirmation = false
+    @State private var showScreenshotPicker = false
+    @State private var showScreenshotPreview = false
 
     var body: some View {
         NavigationStack {
@@ -14,11 +17,16 @@ struct LogView: View {
 
                 if !isSessionActive {
                     // Idle State - No active quest
-                    IdleQuestView(onStartQuest: {
-                        withAnimation(.smoothSpring) {
-                            isSessionActive = true
+                    IdleQuestView(
+                        onStartQuest: {
+                            withAnimation(.smoothSpring) {
+                                isSessionActive = true
+                            }
+                        },
+                        onScanQuestLog: {
+                            showScreenshotPicker = true
                         }
-                    })
+                    )
                 } else {
                     // Active Quest Session
                     ActiveQuestView(
@@ -73,6 +81,25 @@ struct LogView: View {
             } message: {
                 Text("Warning: All progress will be lost. The System does not forgive weakness.")
             }
+            .sheet(isPresented: $showScreenshotPicker) {
+                ScreenshotPickerView(isPresented: $showScreenshotPicker) { imagesData in
+                    screenshotViewModel.selectedImagesData = imagesData
+                    showScreenshotPreview = true
+                }
+            }
+            .sheet(isPresented: $showScreenshotPreview) {
+                ScreenshotPreviewView(
+                    viewModel: screenshotViewModel,
+                    isPresented: $showScreenshotPreview
+                ) { exercises in
+                    // Populate the log view model with extracted exercises
+                    viewModel.selectedExercises = exercises
+                    // Start the session with pre-populated exercises
+                    withAnimation(.smoothSpring) {
+                        isSessionActive = true
+                    }
+                }
+            }
         }
         .task {
             await viewModel.loadExercises()
@@ -84,6 +111,7 @@ struct LogView: View {
 
 struct IdleQuestView: View {
     let onStartQuest: () -> Void
+    var onScanQuestLog: (() -> Void)? = nil
     @State private var showContent = false
     @State private var pulseAnimation = false
 
@@ -164,6 +192,33 @@ struct IdleQuestView: View {
             .shadow(color: .systemPrimaryGlow, radius: 20, x: 0, y: 0)
             .padding(.horizontal, 24)
             .opacity(showContent ? 1 : 0)
+
+            // Scan Quest Log Button
+            if let onScan = onScanQuestLog {
+                Button {
+                    let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                    impactFeedback.impactOccurred()
+                    onScan()
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "camera.viewfinder")
+                            .font(.system(size: 14))
+                        Text("SCAN QUEST LOG")
+                            .font(.ariseHeader(size: 14, weight: .semibold))
+                            .tracking(2)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                .background(Color.voidMedium)
+                .foregroundColor(.textPrimary)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(Color.ariseBorder, lineWidth: 1)
+                )
+                .padding(.horizontal, 24)
+                .opacity(showContent ? 1 : 0)
+            }
 
             Spacer()
                 .frame(height: 100)

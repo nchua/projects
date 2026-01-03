@@ -788,6 +788,8 @@ struct ScreenshotProcessResponse: Decodable {
     let summary: ExtractedSummary?
     let exercises: [ExtractedExercise]
     let processingConfidence: String
+    let workoutId: String?
+    let workoutSaved: Bool
 
     enum CodingKeys: String, CodingKey {
         case exercises
@@ -796,5 +798,31 @@ struct ScreenshotProcessResponse: Decodable {
         case durationMinutes = "duration_minutes"
         case summary
         case processingConfidence = "processing_confidence"
+        case workoutId = "workout_id"
+        case workoutSaved = "workout_saved"
+    }
+}
+
+struct ScreenshotBatchResponse: Decodable {
+    let screenshotsProcessed: Int
+    let sessionDate: String?
+    let sessionName: String?
+    let durationMinutes: Int?
+    let summary: ExtractedSummary?
+    let exercises: [ExtractedExercise]
+    let processingConfidence: String
+    let workoutId: String?
+    let workoutSaved: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case screenshotsProcessed = "screenshots_processed"
+        case sessionDate = "session_date"
+        case sessionName = "session_name"
+        case durationMinutes = "duration_minutes"
+        case summary
+        case exercises
+        case processingConfidence = "processing_confidence"
+        case workoutId = "workout_id"
+        case workoutSaved = "workout_saved"
     }
 }

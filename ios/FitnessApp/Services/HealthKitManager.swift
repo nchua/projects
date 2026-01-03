@@ -17,6 +17,12 @@ class HealthKitManager: ObservableObject {
     @Published var isSyncing = false
     @Published var lastSyncDate: Date?
 
+    // Weekly stats (last 7 days)
+    @Published var weeklySteps: Int = 0
+    @Published var weeklyCalories: Int = 0
+    @Published var weeklyExerciseMinutes: Int = 0
+    @Published var weeklyAvgSteps: Int = 0
+
     // HealthKit types we want to read
     private let readTypes: Set<HKObjectType> = {
         var types = Set<HKObjectType>()
@@ -56,7 +62,6 @@ class HealthKitManager: ObservableObject {
             try await healthStore.requestAuthorization(toShare: [], read: readTypes)
             isAuthorized = true
             authorizationError = nil
-            // Fetch today's data after authorization
             await fetchTodayStats()
         } catch {
             authorizationError = error.localizedDescription
@@ -81,6 +86,28 @@ class HealthKitManager: ObservableObject {
         todayActiveCalories = Int(ac)
         todayExerciseMinutes = Int(em)
         todayStandHours = sh
+
+        await fetchWeeklyStats()
+    }
+
+    // MARK: - Fetch Weekly Stats (Last 7 Days)
+
+    func fetchWeeklyStats() async {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let sevenDaysAgo = calendar.date(byAdding: .day, value: -6, to: today)!
+        let endOfToday = calendar.date(byAdding: .day, value: 1, to: today)!
+
+        async let steps = fetchSum(.stepCount, start: sevenDaysAgo, end: endOfToday)
+        async let calories = fetchSum(.activeEnergyBurned, start: sevenDaysAgo, end: endOfToday)
+        async let exercise = fetchSum(.appleExerciseTime, start: sevenDaysAgo, end: endOfToday)
+
+        let (s, c, e) = await (steps, calories, exercise)
+
+        weeklySteps = Int(s)
+        weeklyCalories = Int(c)
+        weeklyExerciseMinutes = Int(e)
+        weeklyAvgSteps = Int(s) / 7
     }
 
     // MARK: - Fetch Data for Date Range
@@ -196,8 +223,7 @@ class HealthKitManager: ObservableObject {
                 quantitySamplePredicate: predicate,
                 options: .cumulativeSum
             ) { _, result, error in
-                if let error = error {
-                    print("HealthKit query error for \(identifier): \(error)")
+                if error != nil {
                     continuation.resume(returning: 0)
                     return
                 }
@@ -224,13 +250,11 @@ class HealthKitManager: ObservableObject {
                 limit: HKObjectQueryNoLimit,
                 sortDescriptors: nil
             ) { _, samples, error in
-                if let error = error {
-                    print("HealthKit stand hours query error: \(error)")
+                if error != nil {
                     continuation.resume(returning: 0)
                     return
                 }
 
-                // Count hours where user stood
                 let standCount = (samples as? [HKCategorySample])?.filter {
                     $0.value == HKCategoryValueAppleStandHour.stood.rawValue
                 }.count ?? 0

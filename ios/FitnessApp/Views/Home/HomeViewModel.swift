@@ -32,6 +32,12 @@ class HomeViewModel: ObservableObject {
     @Published var todayStandHours: Int = 0
     @Published var isHealthKitSyncing = false
 
+    // Weekly HealthKit stats
+    @Published var weeklySteps: Int = 0
+    @Published var weeklyCalories: Int = 0
+    @Published var weeklyExerciseMinutes: Int = 0
+    @Published var weeklyAvgSteps: Int = 0
+
     // Computed properties for easier access
     var hunterLevel: Int { userProgress?.level ?? 1 }
     var hunterRank: HunterRank { HunterRank(rawValue: userProgress?.rank ?? "E") ?? .e }
@@ -128,10 +134,8 @@ class HomeViewModel: ObservableObject {
     func loadHealthKitData() async {
         let manager = HealthKitManager.shared
 
-        // Skip if HealthKit not available or not authorized
         guard manager.isHealthDataAvailable else { return }
 
-        // Request authorization if not yet authorized
         if !manager.isAuthorized {
             await manager.requestAuthorization()
         }
@@ -139,14 +143,20 @@ class HomeViewModel: ObservableObject {
         healthKitAuthorized = manager.isAuthorized
         guard healthKitAuthorized else { return }
 
-        // Fetch today's stats
+        // Fetch today's stats (also fetches weekly)
         await manager.fetchTodayStats()
 
-        // Update local published properties
+        // Update local published properties - today
         todaySteps = manager.todaySteps
         todayCalories = manager.todayActiveCalories
         todayExerciseMinutes = manager.todayExerciseMinutes
         todayStandHours = manager.todayStandHours
+
+        // Update weekly stats
+        weeklySteps = manager.weeklySteps
+        weeklyCalories = manager.weeklyCalories
+        weeklyExerciseMinutes = manager.weeklyExerciseMinutes
+        weeklyAvgSteps = manager.weeklyAvgSteps
 
         // Sync to backend in background
         isHealthKitSyncing = true

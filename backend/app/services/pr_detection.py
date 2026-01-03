@@ -54,6 +54,7 @@ def detect_and_create_prs(
             pr = PR(
                 user_id=user_id,
                 exercise_id=exercise_id,
+                set_id=set_obj.id,
                 pr_type=PRType.E1RM,
                 value=set_obj.e1rm,
                 achieved_at=achieved_at
@@ -75,6 +76,7 @@ def detect_and_create_prs(
             pr = PR(
                 user_id=user_id,
                 exercise_id=exercise_id,
+                set_id=set_obj.id,
                 pr_type=PRType.REP_PR,
                 weight=weight,
                 reps=reps,
