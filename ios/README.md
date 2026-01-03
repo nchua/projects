@@ -2,23 +2,42 @@
 
 Native iOS fitness tracking app built with SwiftUI.
 
+## Current Status
+
+**All Swift source code has been created!** The app includes:
+- Complete MVVM architecture with ViewModels for each screen
+- 5-tab navigation (Home, Log, History, Progress, Profile)
+- API client with all endpoints
+- SwiftData models for local storage
+- Swift Charts integration for progress visualization
+- Dark theme color system
+- All major screens implemented
+
 ## Project Structure
 
 ```
 FitnessApp/
+├── FitnessApp.swift    # Main app entry with SwiftData
 ├── Views/              # SwiftUI views
-│   ├── Home/          # Dashboard and home screen
-│   ├── Log/           # Workout logging interface
-│   ├── History/       # Past workouts and calendar
-│   ├── Progress/      # Charts and analytics
-│   ├── Profile/       # User settings and profile
-│   └── Components/    # Reusable UI components
-├── ViewModels/        # MVVM view models
-├── Models/            # Data models
-├── Services/          # API client and database services
-│   ├── API/           # Network layer
-│   └── Database/      # Local SQLite/SwiftData
-└── Utils/             # Helpers, extensions, constants
+│   ├── ContentView.swift  # Tab navigation + Auth
+│   ├── Home/          # Dashboard with stats, PRs, insights
+│   ├── Log/           # Workout logging with exercise picker
+│   ├── History/       # Calendar view and workout list
+│   ├── Progress/      # Charts for strength & bodyweight
+│   └── Profile/       # User settings and bodyweight logging
+├── Models/            # SwiftData models
+│   ├── User.swift
+│   ├── Exercise.swift
+│   ├── Workout.swift
+│   ├── BodyweightEntry.swift
+│   └── PersonalRecord.swift
+├── Services/          # API client and auth
+│   ├── APIClient.swift
+│   ├── APITypes.swift
+│   └── AuthManager.swift
+└── Utils/             # Helpers and extensions
+    ├── Colors.swift
+    └── Extensions.swift
 ```
 
 ## Setup
@@ -28,7 +47,7 @@ FitnessApp/
 - macOS Sonoma or later
 - iOS 17+ SDK
 
-### Creating the Project
+### Creating the Xcode Project
 
 1. Open Xcode
 2. File → New → Project
@@ -39,9 +58,31 @@ FitnessApp/
    - Organization Identifier: `com.yourcompany`
    - Interface: **SwiftUI**
    - Language: **Swift**
-   - Storage: **SwiftData** (or use GRDB for SQLite)
+   - Storage: **SwiftData**
    - Include Tests: Yes
-5. Save in this `ios/` directory
+5. Save in this `ios/` directory (replace the default ContentView.swift)
+
+### Integrating the Existing Swift Files
+
+After creating the Xcode project, integrate the existing Swift files:
+
+1. **Delete default files**: Remove the auto-generated `ContentView.swift` and `FitnessAppApp.swift`
+
+2. **Add existing files to project**:
+   - In Xcode, right-click on the `FitnessApp` folder in the navigator
+   - Select "Add Files to 'FitnessApp'..."
+   - Navigate to the `FitnessApp/` folder containing the Swift files
+   - Select all `.swift` files and folders (Models, Views, Services, Utils)
+   - Check "Copy items if needed" and "Create groups"
+   - Click "Add"
+
+3. **Verify file structure**:
+   - Ensure all 22 Swift files are added to the project
+   - Build the project (Cmd+B) to verify there are no errors
+
+4. **Add required frameworks**:
+   - Charts framework is included automatically with iOS 16+
+   - SwiftData is included automatically with iOS 17+
 
 ### Dependencies
 
