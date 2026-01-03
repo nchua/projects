@@ -67,6 +67,9 @@ async def process_screenshot(
     Raises:
         HTTPException: If file type is invalid, file is too large, or processing fails
     """
+    import sys
+    sys.stderr.write(f"SCREENSHOT ENDPOINT HIT: filename={file.filename}, content_type={file.content_type}\n")
+    sys.stderr.flush()
     logger.info(f"Screenshot process request received: filename={file.filename}, content_type={file.content_type}")
 
     # Validate content type
