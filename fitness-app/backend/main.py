@@ -96,13 +96,17 @@ from starlette.requests import Request
 
 class DebugMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        print(f"REQUEST: {request.method} {request.url.path}", flush=True)
+        import sys
+        sys.stderr.write(f"REQUEST: {request.method} {request.url.path}\n")
+        sys.stderr.flush()
         try:
             response = await call_next(request)
-            print(f"RESPONSE: {request.url.path} -> {response.status_code}", flush=True)
+            sys.stderr.write(f"RESPONSE: {request.url.path} -> {response.status_code}\n")
+            sys.stderr.flush()
             return response
         except Exception as e:
-            print(f"MIDDLEWARE EXCEPTION: {request.url.path} -> {type(e).__name__}: {e}", flush=True)
+            sys.stderr.write(f"MIDDLEWARE EXCEPTION: {request.url.path} -> {type(e).__name__}: {e}\n")
+            sys.stderr.flush()
             raise
 
 app.add_middleware(DebugMiddleware)
