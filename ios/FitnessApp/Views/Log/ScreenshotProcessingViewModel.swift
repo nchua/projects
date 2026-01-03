@@ -66,17 +66,8 @@ class ScreenshotProcessingViewModel: ObservableObject {
                 )
 
                 // Convert batch response to standard response for UI compatibility
+                // Note: batch data is kept separately and processedData mirrors it
                 if let batch = batchData {
-                    processedData = ScreenshotProcessResponse(
-                        sessionDate: batch.sessionDate,
-                        sessionName: batch.sessionName,
-                        durationMinutes: batch.durationMinutes,
-                        summary: batch.summary,
-                        exercises: batch.exercises,
-                        processingConfidence: batch.processingConfidence,
-                        workoutId: batch.workoutId,
-                        workoutSaved: batch.workoutSaved
-                    )
                     workoutSaved = batch.workoutSaved
                     savedWorkoutId = batch.workoutId
                 }
@@ -97,6 +88,11 @@ class ScreenshotProcessingViewModel: ObservableObject {
 
     func convertToLoggedExercises() -> [LoggedExercise] {
         guard let data = processedData else { return [] }
+
+        // WHOOP activities don't have exercises to log
+        if data.isWhoopActivity {
+            return []
+        }
 
         return data.exercises.compactMap { extracted -> LoggedExercise? in
             // Only include exercises that were matched to the database
@@ -183,5 +179,34 @@ class ScreenshotProcessingViewModel: ObservableObject {
         default:
             return "LOW CONFIDENCE"
         }
+    }
+
+    // WHOOP/Activity detection
+    var isWhoopActivity: Bool {
+        processedData?.isWhoopActivity ?? batchData?.isWhoopActivity ?? false
+    }
+
+    var activityType: String? {
+        processedData?.activityType ?? batchData?.activityType
+    }
+
+    var whoopStrain: Double? {
+        processedData?.strain ?? batchData?.strain
+    }
+
+    var whoopCalories: Int? {
+        processedData?.calories ?? batchData?.calories
+    }
+
+    var whoopSteps: Int? {
+        processedData?.steps ?? batchData?.steps
+    }
+
+    var whoopAvgHR: Int? {
+        processedData?.avgHr ?? batchData?.avgHr
+    }
+
+    var whoopTimeRange: String? {
+        processedData?.timeRange ?? batchData?.timeRange
     }
 }

@@ -132,6 +132,7 @@ struct WorkoutSummaryResponse: Decodable, Identifiable {
     let notes: String?
     let exerciseCount: Int
     let totalSets: Int
+    let exerciseNames: [String]?
     let createdAt: String
     let updatedAt: String
 
@@ -142,6 +143,7 @@ struct WorkoutSummaryResponse: Decodable, Identifiable {
         case sessionRpe = "session_rpe"
         case exerciseCount = "exercise_count"
         case totalSets = "total_sets"
+        case exerciseNames = "exercise_names"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
@@ -781,7 +783,21 @@ struct ExtractedSummary: Decodable {
     }
 }
 
+struct HeartRateZone: Decodable {
+    let zone: Int?
+    let bpmRange: String?
+    let percentage: Double?
+    let duration: String?
+
+    enum CodingKeys: String, CodingKey {
+        case zone, percentage, duration
+        case bpmRange = "bpm_range"
+    }
+}
+
 struct ScreenshotProcessResponse: Decodable {
+    // Common fields
+    let screenshotType: String?
     let sessionDate: String?
     let sessionName: String?
     let durationMinutes: Int?
@@ -791,20 +807,42 @@ struct ScreenshotProcessResponse: Decodable {
     let workoutId: String?
     let workoutSaved: Bool
 
+    // WHOOP/Activity-specific fields
+    let activityType: String?
+    let timeRange: String?
+    let strain: Double?
+    let steps: Int?
+    let calories: Int?
+    let avgHr: Int?
+    let maxHr: Int?
+    let source: String?
+    let heartRateZones: [HeartRateZone]?
+
+    // Helper computed property
+    var isWhoopActivity: Bool {
+        screenshotType == "whoop_activity"
+    }
+
     enum CodingKeys: String, CodingKey {
-        case exercises
+        case exercises, summary, strain, steps, calories, source
+        case screenshotType = "screenshot_type"
         case sessionDate = "session_date"
         case sessionName = "session_name"
         case durationMinutes = "duration_minutes"
-        case summary
         case processingConfidence = "processing_confidence"
         case workoutId = "workout_id"
         case workoutSaved = "workout_saved"
+        case activityType = "activity_type"
+        case timeRange = "time_range"
+        case avgHr = "avg_hr"
+        case maxHr = "max_hr"
+        case heartRateZones = "heart_rate_zones"
     }
 }
 
 struct ScreenshotBatchResponse: Decodable {
     let screenshotsProcessed: Int
+    let screenshotType: String?
     let sessionDate: String?
     let sessionName: String?
     let durationMinutes: Int?
@@ -814,15 +852,36 @@ struct ScreenshotBatchResponse: Decodable {
     let workoutId: String?
     let workoutSaved: Bool
 
+    // WHOOP/Activity-specific fields
+    let activityType: String?
+    let timeRange: String?
+    let strain: Double?
+    let steps: Int?
+    let calories: Int?
+    let avgHr: Int?
+    let maxHr: Int?
+    let source: String?
+    let heartRateZones: [HeartRateZone]?
+
+    // Helper computed property
+    var isWhoopActivity: Bool {
+        screenshotType == "whoop_activity"
+    }
+
     enum CodingKeys: String, CodingKey {
+        case exercises, summary, strain, steps, calories, source
         case screenshotsProcessed = "screenshots_processed"
+        case screenshotType = "screenshot_type"
         case sessionDate = "session_date"
         case sessionName = "session_name"
         case durationMinutes = "duration_minutes"
-        case summary
-        case exercises
         case processingConfidence = "processing_confidence"
         case workoutId = "workout_id"
         case workoutSaved = "workout_saved"
+        case activityType = "activity_type"
+        case timeRange = "time_range"
+        case avgHr = "avg_hr"
+        case maxHr = "max_hr"
+        case heartRateZones = "heart_rate_zones"
     }
 }

@@ -135,6 +135,7 @@ class WorkoutSummary(BaseModel):
     notes: Optional[str]
     exercise_count: int
     total_sets: int
+    exercise_names: List[str] = []
     created_at: str
     updated_at: str
 

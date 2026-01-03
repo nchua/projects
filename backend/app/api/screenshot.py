@@ -11,7 +11,7 @@ from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.screenshot import (
     ScreenshotProcessResponse, ScreenshotBatchResponse,
-    ExtractedExercise, ExtractedSet
+    ExtractedExercise, ExtractedSet, HeartRateZone
 )
 from app.services.screenshot_service import (
     extract_workout_from_screenshot,
@@ -100,7 +100,10 @@ async def process_screenshot(
             detail=f"Failed to process screenshot: {str(e)}"
         )
 
-    # Convert to response model
+    # Get screenshot type
+    screenshot_type = result.get("screenshot_type", "gym_workout")
+
+    # Convert exercises to response model (for gym workouts)
     exercises = []
     for ex in result.get("exercises", []):
         sets = []
@@ -124,10 +127,20 @@ async def process_screenshot(
             match_confidence=ex.get("match_confidence")
         ))
 
-    # Auto-save workout if requested
+    # Convert heart rate zones for WHOOP screenshots
+    heart_rate_zones = []
+    for zone in result.get("heart_rate_zones", []):
+        heart_rate_zones.append(HeartRateZone(
+            zone=zone.get("zone"),
+            bpm_range=zone.get("bpm_range"),
+            percentage=zone.get("percentage"),
+            duration=zone.get("duration")
+        ))
+
+    # Auto-save workout if requested (only for gym workouts with matched exercises)
     workout_id = None
     workout_saved = False
-    if save_workout:
+    if save_workout and screenshot_type == "gym_workout" and exercises:
         try:
             # Parse session_date if provided
             parsed_date = None
@@ -148,14 +161,25 @@ async def process_screenshot(
             pass
 
     return ScreenshotProcessResponse(
+        screenshot_type=screenshot_type,
         session_date=result.get("session_date"),
-        session_name=result.get("session_name"),
+        session_name=result.get("session_name") or result.get("activity_type"),
         duration_minutes=result.get("duration_minutes"),
         summary=result.get("summary"),
         exercises=exercises,
         processing_confidence=result.get("processing_confidence", "medium"),
         workout_id=workout_id,
-        workout_saved=workout_saved
+        workout_saved=workout_saved,
+        # WHOOP-specific fields
+        activity_type=result.get("activity_type"),
+        time_range=result.get("time_range"),
+        strain=result.get("strain"),
+        steps=result.get("steps"),
+        calories=result.get("calories"),
+        avg_hr=result.get("avg_hr"),
+        max_hr=result.get("max_hr"),
+        source=result.get("source"),
+        heart_rate_zones=heart_rate_zones
     )
 
 
@@ -239,6 +263,9 @@ async def process_screenshots_batch(
     # Merge all extractions
     merged = merge_extractions(extractions)
 
+    # Get screenshot type
+    screenshot_type = merged.get("screenshot_type", "gym_workout")
+
     # Convert exercises to response model
     exercises = []
     for ex in merged.get("exercises", []):
@@ -263,10 +290,20 @@ async def process_screenshots_batch(
             match_confidence=ex.get("match_confidence")
         ))
 
-    # Auto-save workout if requested
+    # Convert heart rate zones for WHOOP screenshots
+    heart_rate_zones = []
+    for zone in merged.get("heart_rate_zones", []):
+        heart_rate_zones.append(HeartRateZone(
+            zone=zone.get("zone"),
+            bpm_range=zone.get("bpm_range"),
+            percentage=zone.get("percentage"),
+            duration=zone.get("duration")
+        ))
+
+    # Auto-save workout if requested (only for gym workouts)
     workout_id = None
     workout_saved = False
-    if save_workout:
+    if save_workout and screenshot_type == "gym_workout" and exercises:
         try:
             parsed_date = None
             if session_date:
@@ -286,12 +323,23 @@ async def process_screenshots_batch(
 
     return ScreenshotBatchResponse(
         screenshots_processed=len(files),
+        screenshot_type=screenshot_type,
         session_date=merged.get("session_date"),
-        session_name=merged.get("session_name"),
+        session_name=merged.get("session_name") or merged.get("activity_type"),
         duration_minutes=merged.get("duration_minutes"),
         summary=merged.get("summary"),
         exercises=exercises,
         processing_confidence=merged.get("processing_confidence", "medium"),
         workout_id=workout_id,
-        workout_saved=workout_saved
+        workout_saved=workout_saved,
+        # WHOOP-specific fields
+        activity_type=merged.get("activity_type"),
+        time_range=merged.get("time_range"),
+        strain=merged.get("strain"),
+        steps=merged.get("steps"),
+        calories=merged.get("calories"),
+        avg_hr=merged.get("avg_hr"),
+        max_hr=merged.get("max_hr"),
+        source=merged.get("source"),
+        heart_rate_zones=heart_rate_zones
     )

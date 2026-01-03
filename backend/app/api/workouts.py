@@ -261,7 +261,9 @@ async def list_workouts(
     # Query workouts with pagination (exclude soft-deleted)
     workouts = db.query(WorkoutSession).options(
         joinedload(WorkoutSession.workout_exercises)
-        .joinedload(WorkoutExercise.sets)
+        .joinedload(WorkoutExercise.sets),
+        joinedload(WorkoutSession.workout_exercises)
+        .joinedload(WorkoutExercise.exercise)
     ).filter(
         WorkoutSession.user_id == current_user.id,
         WorkoutSession.deleted_at == None
@@ -274,6 +276,9 @@ async def list_workouts(
     for workout in workouts:
         exercise_count = len(workout.workout_exercises)
         total_sets = sum(len(we.sets) for we in workout.workout_exercises)
+        # Get exercise names in order
+        sorted_exercises = sorted(workout.workout_exercises, key=lambda we: we.order_index)
+        exercise_names = [we.exercise.name for we in sorted_exercises if we.exercise]
 
         summaries.append(WorkoutSummary(
             id=workout.id,
@@ -284,6 +289,7 @@ async def list_workouts(
             notes=workout.notes,
             exercise_count=exercise_count,
             total_sets=total_sets,
+            exercise_names=exercise_names,
             created_at=workout.created_at.isoformat(),
             updated_at=workout.updated_at.isoformat()
         ))

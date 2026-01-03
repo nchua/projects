@@ -351,6 +351,16 @@ struct LastQuestCard: View {
     let workout: WorkoutSummaryResponse
     var onViewDetails: (() -> Void)? = nil
 
+    // Get exercise names to display (up to 3), falling back to generic names if not available
+    var exerciseNamesToShow: [String] {
+        if let names = workout.exerciseNames, !names.isEmpty {
+            return Array(names.prefix(3))
+        } else {
+            // Fallback to generic names if exercise_names not available
+            return (0..<min(3, workout.exerciseCount)).map { "Exercise \($0 + 1)" }
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -393,14 +403,14 @@ struct LastQuestCard: View {
 
             // Exercise list preview
             VStack(spacing: 0) {
-                ForEach(0..<min(3, workout.exerciseCount), id: \.self) { index in
+                ForEach(Array(exerciseNamesToShow.enumerated()), id: \.offset) { index, name in
                     HStack(spacing: 12) {
                         Rectangle()
-                            .fill(Color.exerciseColor(for: "exercise \(index)"))
+                            .fill(Color.exerciseColor(for: name))
                             .frame(width: 3)
 
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Exercise \(index + 1)")
+                            Text(name)
                                 .font(.ariseHeader(size: 14, weight: .medium))
                                 .foregroundColor(.textPrimary)
 

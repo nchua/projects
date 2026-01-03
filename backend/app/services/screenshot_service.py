@@ -26,12 +26,18 @@ from app.services.quest_service import update_quest_progress
 from app.models.pr import PR
 
 
-# Extraction prompt - proven to work well with workout screenshots
-EXTRACTION_PROMPT = """Analyze this workout screenshot from a fitness tracking app.
+# Extraction prompt - handles both gym workout screenshots and WHOOP/activity screenshots
+EXTRACTION_PROMPT = """Analyze this fitness screenshot and extract the data.
 
-Extract ALL workout data visible in the image and return it as JSON in this exact format:
+FIRST, determine the screenshot type:
+1. "gym_workout" - Traditional weight training screenshot with exercises, sets, reps, weights
+2. "whoop_activity" - WHOOP app or cardio/activity screenshot with metrics like strain, heart rate, calories, steps
 
+Based on the type, return JSON in the appropriate format:
+
+FOR GYM WORKOUT SCREENSHOTS (screenshot_type: "gym_workout"):
 {
+  "screenshot_type": "gym_workout",
   "session_date": "YYYY-MM-DD or null if not visible",
   "session_name": "Name of workout if shown (e.g., 'Upper Three', 'Leg Day')",
   "duration_minutes": number or null,
@@ -49,7 +55,7 @@ Extract ALL workout data visible in the image and return it as JSON in this exac
           "weight_lb": weight in pounds (0 for bodyweight),
           "reps": number of reps,
           "sets": number of sets at this weight/rep combo,
-          "is_warmup": true if this appears to be a warmup set (lighter weight, higher reps before working sets)
+          "is_warmup": true if this appears to be a warmup set
         }
       ],
       "total_reps": total reps for this exercise,
@@ -58,15 +64,34 @@ Extract ALL workout data visible in the image and return it as JSON in this exac
   ]
 }
 
+FOR WHOOP/ACTIVITY SCREENSHOTS (screenshot_type: "whoop_activity"):
+{
+  "screenshot_type": "whoop_activity",
+  "activity_type": "Activity name (e.g., 'TENNIS', 'RUNNING', 'CYCLING')",
+  "session_date": "YYYY-MM-DD or null",
+  "time_range": "Start to end time if visible (e.g., '7:03 PM to 8:46 PM')",
+  "duration_minutes": number or null,
+  "strain": activity strain score if visible (e.g., 14.6),
+  "steps": step count if visible,
+  "calories": calories burned if visible,
+  "avg_hr": average heart rate in BPM if visible,
+  "max_hr": max heart rate in BPM if visible,
+  "source": "Data source if shown (e.g., 'VIA APPLE WATCH')",
+  "heart_rate_zones": [
+    {
+      "zone": zone number (0-5),
+      "bpm_range": "BPM range (e.g., '93-111')",
+      "percentage": percentage of time in zone,
+      "duration": "time in zone (e.g., '15:30')"
+    }
+  ]
+}
+
 Important:
-- Convert all weights to pounds (lb)
-- Mark warmup sets based on the progression pattern (lighter weights before working sets)
-- If the same weight/rep combo is done multiple times, consolidate into one entry with sets > 1
-- For bodyweight exercises, use weight_lb: 0
-- For dumbbell exercises, note if the weight shown is per dumbbell or total
+- Convert all weights to pounds (lb) for gym workouts
 - Extract the exact numbers shown - don't estimate
-- If you can see a date or time, extract it
-- Return ONLY valid JSON, no other text"""
+- Return ONLY valid JSON, no other text
+- For WHOOP screenshots, extract all visible metrics even if some are missing"""
 
 
 def get_media_type(filename: str) -> str:
@@ -236,6 +261,34 @@ async def extract_workout_from_screenshot(
     except json.JSONDecodeError as e:
         raise ValueError(f"Failed to parse Claude response as JSON: {e}")
 
+    # Check screenshot type
+    screenshot_type = extracted_data.get("screenshot_type", "gym_workout")
+
+    # Handle WHOOP/activity screenshots differently - no exercise matching needed
+    if screenshot_type == "whoop_activity":
+        return {
+            "screenshot_type": "whoop_activity",
+            "activity_type": extracted_data.get("activity_type"),
+            "session_date": extracted_data.get("session_date"),
+            "time_range": extracted_data.get("time_range"),
+            "duration_minutes": extracted_data.get("duration_minutes"),
+            "strain": extracted_data.get("strain"),
+            "steps": extracted_data.get("steps"),
+            "calories": extracted_data.get("calories"),
+            "avg_hr": extracted_data.get("avg_hr"),
+            "max_hr": extracted_data.get("max_hr"),
+            "source": extracted_data.get("source"),
+            "heart_rate_zones": extracted_data.get("heart_rate_zones", []),
+            "processing_confidence": "high",
+            # Include empty exercises array for compatibility
+            "exercises": [],
+            "summary": {
+                "tonnage_lb": 0,
+                "total_reps": 0
+            }
+        }
+
+    # For gym workouts, continue with exercise matching
     # Build exercise candidates for matching
     candidates = build_exercise_candidates(db, user_id)
 
@@ -272,6 +325,7 @@ async def extract_workout_from_screenshot(
             overall_confidence = "low"
 
     return {
+        "screenshot_type": "gym_workout",
         "session_date": extracted_data.get("session_date"),
         "session_name": extracted_data.get("session_name"),
         "duration_minutes": extracted_data.get("duration_minutes"),

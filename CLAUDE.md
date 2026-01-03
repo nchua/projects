@@ -131,3 +131,81 @@ git gc --prune=now --aggressive
 
 # 7. CHANGE THE EXPOSED PASSWORD if used elsewhere!
 ```
+
+---
+
+## Workout Data Display Guidelines
+
+### IMPORTANT: When Changing Workout Data Sources
+
+When modifying how workout data is fetched, stored, or structured, you MUST update ALL places that display workout information. The app displays workouts in multiple locations:
+
+**Backend data flow:**
+1. `backend/app/schemas/workout.py` - `WorkoutSummary` and `WorkoutResponse` schemas
+2. `backend/app/api/workouts.py` - `/workouts` list endpoint and `/workouts/{id}` detail endpoint
+3. `backend/app/services/screenshot_service.py` - Screenshot extraction and processing
+
+**iOS display locations:**
+1. `ios/.../Views/Home/HomeView.swift` - `LastQuestCard` shows recent workout summary
+2. `ios/.../Views/History/HistoryView.swift` - `CompletedQuestRow` and `QuestDetailView`
+3. `ios/.../Services/APITypes.swift` - `WorkoutSummaryResponse`, `WorkoutResponse`, `ScreenshotProcessResponse`
+
+### Checklist When Adding New Workout Fields
+
+- [ ] Add field to backend Pydantic schema (`schemas/workout.py`)
+- [ ] Update backend API endpoint to populate the field (`api/workouts.py`)
+- [ ] Add field to iOS Decodable struct (`APITypes.swift`)
+- [ ] Update iOS views that display workout data (`HomeView.swift`, `HistoryView.swift`)
+- [ ] If screenshot-related, update `screenshot_service.py` and `schemas/screenshot.py`
+
+---
+
+## Recent Changes Summary (Jan 2026)
+
+### Bug Fix: Exercise Names in Completed Quest Card
+
+**Problem**: `LastQuestCard` in `HomeView.swift` displayed "Exercise 1", "Exercise 2" instead of actual names.
+
+**Root Cause**: `WorkoutSummaryResponse` only had `exerciseCount` (integer), not actual names. The UI used loop index: `Text("Exercise \(index + 1)")`.
+
+**Files Modified**:
+- `backend/app/schemas/workout.py` - Added `exercise_names: List[str]` to `WorkoutSummary`
+- `backend/app/api/workouts.py` - Updated `/workouts` endpoint to include exercise names
+- `ios/.../APITypes.swift` - Added `exerciseNames: [String]?` to `WorkoutSummaryResponse`
+- `ios/.../HomeView.swift` - `LastQuestCard` now uses `exerciseNamesToShow` computed property
+
+### Feature: WHOOP Screenshot Support
+
+**Problem**: Screenshot analyzer only recognized gym workout screenshots, not WHOOP activity screenshots.
+
+**Solution**: Updated Claude Vision prompt to detect screenshot type and extract appropriate data.
+
+**Files Modified**:
+- `backend/app/services/screenshot_service.py`:
+  - Updated `EXTRACTION_PROMPT` to detect `gym_workout` vs `whoop_activity`
+  - Added WHOOP-specific extraction (strain, HR zones, calories, steps, activity type)
+  - Modified `extract_workout_from_screenshot()` to return appropriate data per type
+
+- `backend/app/schemas/screenshot.py`:
+  - Added `HeartRateZone` model
+  - Added WHOOP fields to `ScreenshotProcessResponse` and `ScreenshotBatchResponse`
+  - Added `screenshot_type` field
+
+- `backend/app/api/screenshot.py`:
+  - Updated both endpoints to include WHOOP data in response
+  - Only auto-saves workouts for gym screenshots (not WHOOP activities)
+
+- `ios/.../APITypes.swift`:
+  - Added `HeartRateZone` struct
+  - Added WHOOP fields and `isWhoopActivity` computed property to response structs
+
+- `ios/.../ScreenshotProcessingViewModel.swift`:
+  - Added WHOOP detection properties (`isWhoopActivity`, `activityType`, `whoopStrain`, etc.)
+  - Updated `convertToLoggedExercises()` to return empty for WHOOP activities
+
+**WHOOP Data Extracted**:
+- `activity_type` (e.g., "TENNIS", "RUNNING")
+- `strain` score
+- `steps`, `calories`, `avg_hr`, `max_hr`
+- `heart_rate_zones` with BPM ranges, percentages, durations
+- `time_range` and `source` (e.g., "VIA APPLE WATCH")

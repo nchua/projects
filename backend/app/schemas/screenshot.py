@@ -42,8 +42,20 @@ class ExtractedSummary(BaseModel):
     total_reps: Optional[int] = Field(None, description="Total reps across all exercises")
 
 
+class HeartRateZone(BaseModel):
+    """Schema for heart rate zone data from WHOOP"""
+    zone: Optional[int] = Field(None, description="Zone number (0-5)")
+    bpm_range: Optional[str] = Field(None, description="BPM range (e.g., '93-111')")
+    percentage: Optional[float] = Field(None, description="Percentage of time in zone")
+    duration: Optional[str] = Field(None, description="Time in zone (e.g., '15:30')")
+
+
 class ScreenshotProcessResponse(BaseModel):
     """Schema for screenshot processing response"""
+    # Screenshot type indicator
+    screenshot_type: str = Field(default="gym_workout", description="Type: gym_workout or whoop_activity")
+
+    # Common fields
     session_date: Optional[str] = Field(None, description="Workout date (YYYY-MM-DD)")
     session_name: Optional[str] = Field(None, description="Workout name/title")
     duration_minutes: Optional[int] = Field(None, description="Workout duration in minutes")
@@ -56,6 +68,17 @@ class ScreenshotProcessResponse(BaseModel):
     workout_id: Optional[str] = Field(None, description="Created workout ID if saved")
     workout_saved: bool = Field(default=False, description="Whether workout was saved")
 
+    # WHOOP/Activity-specific fields
+    activity_type: Optional[str] = Field(None, description="Activity type (e.g., 'TENNIS', 'RUNNING')")
+    time_range: Optional[str] = Field(None, description="Activity time range (e.g., '7:03 PM to 8:46 PM')")
+    strain: Optional[float] = Field(None, description="WHOOP activity strain score")
+    steps: Optional[int] = Field(None, description="Step count")
+    calories: Optional[int] = Field(None, description="Calories burned")
+    avg_hr: Optional[int] = Field(None, description="Average heart rate in BPM")
+    max_hr: Optional[int] = Field(None, description="Max heart rate in BPM")
+    source: Optional[str] = Field(None, description="Data source (e.g., 'VIA APPLE WATCH')")
+    heart_rate_zones: List[HeartRateZone] = Field(default_factory=list, description="Heart rate zone breakdown")
+
     class Config:
         from_attributes = True
 
@@ -63,6 +86,7 @@ class ScreenshotProcessResponse(BaseModel):
 class ScreenshotBatchResponse(BaseModel):
     """Response for batch screenshot processing"""
     screenshots_processed: int = Field(..., description="Number of screenshots processed")
+    screenshot_type: str = Field(default="gym_workout", description="Type: gym_workout or whoop_activity")
     session_date: Optional[str] = Field(None, description="Combined session date")
     session_name: Optional[str] = Field(None, description="Combined session name")
     duration_minutes: Optional[int] = Field(None, description="Total duration")
@@ -71,6 +95,17 @@ class ScreenshotBatchResponse(BaseModel):
     processing_confidence: str = Field(default="medium", description="Overall confidence")
     workout_id: Optional[str] = Field(None, description="Created workout ID if saved")
     workout_saved: bool = Field(default=False, description="Whether workout was saved")
+
+    # WHOOP/Activity-specific fields
+    activity_type: Optional[str] = Field(None, description="Activity type (e.g., 'TENNIS', 'RUNNING')")
+    time_range: Optional[str] = Field(None, description="Activity time range")
+    strain: Optional[float] = Field(None, description="WHOOP activity strain score")
+    steps: Optional[int] = Field(None, description="Step count")
+    calories: Optional[int] = Field(None, description="Calories burned")
+    avg_hr: Optional[int] = Field(None, description="Average heart rate in BPM")
+    max_hr: Optional[int] = Field(None, description="Max heart rate in BPM")
+    source: Optional[str] = Field(None, description="Data source")
+    heart_rate_zones: List[HeartRateZone] = Field(default_factory=list, description="Heart rate zone breakdown")
 
     class Config:
         from_attributes = True
