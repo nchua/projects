@@ -54,7 +54,7 @@ async def root():
         "version": "0.2.1-pr-fix",
         "status": "running",
         "docs": "/docs",
-        "deploy_check": "2026-01-02-v2"
+        "deploy_check": "2026-01-03-screenshot-fix"
     }
 
 @app.get("/health")
