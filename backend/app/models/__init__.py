@@ -8,6 +8,7 @@ from app.models.pr import PR, PRType
 from app.models.progress import UserProgress, HunterRank
 from app.models.achievement import AchievementDefinition, UserAchievement
 from app.models.quest import QuestDefinition, UserQuest, QuestType, QuestDifficulty
+from app.models.activity import DailyActivity
 
 __all__ = [
     "User",
@@ -31,4 +32,5 @@ __all__ = [
     "UserQuest",
     "QuestType",
     "QuestDifficulty",
+    "DailyActivity",
 ]

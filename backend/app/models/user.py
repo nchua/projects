@@ -46,6 +46,7 @@ class User(Base):
     custom_exercises = relationship("Exercise", back_populates="user", cascade="all, delete-orphan")
     bodyweight_entries = relationship("BodyweightEntry", back_populates="user", cascade="all, delete-orphan")
     prs = relationship("PR", back_populates="user", cascade="all, delete-orphan")
+    daily_activities = relationship("DailyActivity", back_populates="user", cascade="all, delete-orphan")
 
 
 class UserProfile(Base):
