@@ -6,9 +6,6 @@ struct HomeView: View {
     @State private var selectedInsight: InsightResponse?
     @State private var selectedWorkout: WorkoutSummaryResponse?
 
-    // Hunter name from profile (could be enhanced to load from profile)
-    private let hunterName = "Hunter"
-
     var body: some View {
         NavigationStack {
             ZStack {
@@ -19,7 +16,8 @@ struct HomeView: View {
                     VStack(spacing: 24) {
                         // ARISE Hunter Header - Now using real data from viewModel
                         HunterStatusHeader(
-                            name: hunterName,
+                            name: viewModel.hunterName,
+                            initials: viewModel.hunterInitials,
                             rank: viewModel.hunterRank,
                             level: viewModel.hunterLevel,
                             currentXP: viewModel.currentXP,
@@ -173,6 +171,7 @@ struct HomeView: View {
 
 struct HunterStatusHeader: View {
     let name: String
+    var initials: String = ""
     let rank: HunterRank
     let level: Int
     let currentXP: Int
@@ -180,18 +179,24 @@ struct HunterStatusHeader: View {
     let levelProgress: Double
     let streakDays: Int
 
+    var avatarInitials: String {
+        initials.isEmpty ? String(name.prefix(1)) : initials
+    }
+
     var body: some View {
         VStack(spacing: 16) {
             // Top row: Avatar + Name + Level
             HStack(spacing: 16) {
                 // Hunter Avatar with Rank Badge
-                HunterAvatarView(initial: String(name.prefix(1)), rank: rank, size: 60)
+                HunterAvatarView(initial: avatarInitials, rank: rank, size: 60)
 
                 // Name and Title
                 VStack(alignment: .leading, spacing: 4) {
                     Text(name)
-                        .font(.ariseHeader(size: 22, weight: .bold))
+                        .font(.ariseHeader(size: 20, weight: .bold))
                         .foregroundColor(.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
 
                     Text("\"\(rank.title)\"")
                         .font(.ariseMono(size: 12))

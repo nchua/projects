@@ -21,6 +21,7 @@ class HomeViewModel: ObservableObject {
     @Published var userProgress: UserProgressResponse?
     @Published var recentAchievements: [AchievementResponse] = []
     @Published var dailyQuests: DailyQuestsResponse?
+    @Published var profile: ProfileResponse?
     @Published var isLoading = false
     @Published var error: String?
 
@@ -46,6 +47,23 @@ class HomeViewModel: ObservableObject {
     var levelProgress: Double { userProgress?.levelProgress ?? 0.0 }
     var streakDays: Int { userProgress?.currentStreak ?? 0 }
 
+    // Profile-based properties for avatar sync
+    var hunterName: String {
+        guard let email = profile?.email else { return "Hunter" }
+        return email.components(separatedBy: "@").first?.capitalized ?? "Hunter"
+    }
+
+    var hunterInitials: String {
+        guard let email = profile?.email else { return "H" }
+        let components = email.components(separatedBy: "@").first?.components(separatedBy: ".") ?? []
+        if components.count >= 2 {
+            return String(components[0].prefix(1) + components[1].prefix(1)).uppercased()
+        } else if let first = components.first, first.count >= 2 {
+            return String(first.prefix(2)).uppercased()
+        }
+        return "NC"
+    }
+
     func loadData() async {
         isLoading = true
         error = nil
@@ -58,20 +76,23 @@ class HomeViewModel: ObservableObject {
             async let progressTask = APIClient.shared.getUserProgress()
             async let achievementsTask = APIClient.shared.getRecentAchievements(limit: 3)
             async let questsTask = APIClient.shared.getDailyQuests()
+            async let profileTask = APIClient.shared.getProfile()
 
-            let (workouts, weekly, prs, insightsResponse, progress, achievements, quests) = try await (
+            let (workouts, weekly, prs, insightsResponse, progress, achievements, quests, profileResult) = try await (
                 workoutsTask,
                 weeklyTask,
                 prsTask,
                 insightsTask,
                 progressTask,
                 achievementsTask,
-                questsTask
+                questsTask,
+                profileTask
             )
 
             userProgress = progress
             recentAchievements = achievements.achievements
             dailyQuests = quests
+            profile = profileResult
 
             recentWorkout = workouts.first
             weeklyReview = weekly

@@ -54,6 +54,17 @@ class ProfileViewModel: ObservableObject {
         return Array(unlocked) + Array(locked)
     }
 
+    // All achievements for the full list view
+    var allAchievements: [AchievementResponse] {
+        // Sort with unlocked first, then by name
+        achievements.sorted { a, b in
+            if a.unlocked != b.unlocked {
+                return a.unlocked
+            }
+            return a.name < b.name
+        }
+    }
+
     func loadProfile() async {
         isLoading = true
         error = nil

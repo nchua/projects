@@ -5,6 +5,9 @@ struct ProfileView: View {
     @StateObject private var viewModel = ProfileViewModel()
     @EnvironmentObject var authManager: AuthManager
     @State private var showLogoutConfirmation = false
+    @State private var showAllAchievements = false
+    @State private var showImagePicker = false
+    @State private var profileImage: UIImage?
 
     var body: some View {
         NavigationStack {
@@ -27,7 +30,9 @@ struct ProfileView: View {
                             HunterProfileHeader(
                                 email: viewModel.profile?.email ?? "",
                                 level: viewModel.hunterLevel,
-                                rank: viewModel.hunterRank
+                                rank: viewModel.hunterRank,
+                                profileImage: profileImage,
+                                onEditPhoto: { showImagePicker = true }
                             )
 
                             // Hunter Stats
@@ -38,7 +43,10 @@ struct ProfileView: View {
                             )
 
                             // Achievements
-                            HunterAchievementsSection(achievements: viewModel.featuredAchievements)
+                            HunterAchievementsSection(
+                                achievements: viewModel.featuredAchievements,
+                                onViewAll: { showAllAchievements = true }
+                            )
 
                             // Vessel Section (Bodyweight)
                             VesselSection(viewModel: viewModel)
@@ -144,6 +152,22 @@ struct ProfileView: View {
             .sheet(isPresented: $viewModel.showBodyweightEntry) {
                 VesselEntrySheet(viewModel: viewModel)
             }
+            .sheet(isPresented: $showAllAchievements) {
+                AchievementsListView(achievements: viewModel.allAchievements)
+            }
+            .sheet(isPresented: $showImagePicker) {
+                ImagePicker(image: $profileImage)
+            }
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .font(.ariseMono(size: 14, weight: .semibold))
+                    .foregroundColor(.systemPrimary)
+                }
+            }
         }
         .task {
             await viewModel.loadProfile()
@@ -157,6 +181,8 @@ struct HunterProfileHeader: View {
     let email: String
     let level: Int
     let rank: HunterRank
+    var profileImage: UIImage? = nil
+    var onEditPhoto: (() -> Void)? = nil
     @State private var showContent = false
 
     var hunterName: String {
@@ -185,9 +211,38 @@ struct HunterProfileHeader: View {
 
             // Hunter Avatar with Rank
             HStack(spacing: 20) {
-                HunterAvatarView(initial: initials, rank: rank, size: 80)
-                    .opacity(showContent ? 1 : 0)
-                    .scaleEffect(showContent ? 1 : 0.9)
+                ZStack(alignment: .bottomTrailing) {
+                    if let image = profileImage {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 80, height: 80)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(rank.color, lineWidth: 3)
+                            )
+                    } else {
+                        HunterAvatarView(initial: initials, rank: rank, size: 80)
+                    }
+
+                    Button {
+                        onEditPhoto?()
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(Color.voidDark)
+                                .frame(width: 28, height: 28)
+
+                            Image(systemName: "pencil.circle.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(.systemPrimary)
+                        }
+                    }
+                    .offset(x: 4, y: 4)
+                }
+                .opacity(showContent ? 1 : 0)
+                .scaleEffect(showContent ? 1 : 0.9)
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text(hunterName)
@@ -310,6 +365,7 @@ struct HunterStatItem: View {
 
 struct HunterAchievementsSection: View {
     let achievements: [AchievementResponse]
+    var onViewAll: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -319,7 +375,7 @@ struct HunterAchievementsSection: View {
                 Spacer()
 
                 Button {
-                    // View all achievements
+                    onViewAll?()
                 } label: {
                     Text("VIEW ALL")
                         .font(.ariseMono(size: 11, weight: .semibold))
@@ -759,7 +815,10 @@ struct HunterAttributesSection: View {
                                 .multilineTextAlignment(.center)
                                 .font(.ariseMono(size: 14, weight: .medium))
                                 .foregroundColor(.textPrimary)
-                                .frame(width: 28)
+                                .frame(width: 44, height: 36)
+                                .background(Color.voidLight.opacity(0.5))
+                                .cornerRadius(6)
+                                .contentShape(Rectangle())
 
                             Text("ft")
                                 .font(.ariseMono(size: 10))
@@ -770,7 +829,10 @@ struct HunterAttributesSection: View {
                                 .multilineTextAlignment(.center)
                                 .font(.ariseMono(size: 14, weight: .medium))
                                 .foregroundColor(.textPrimary)
-                                .frame(width: 28)
+                                .frame(width: 44, height: 36)
+                                .background(Color.voidLight.opacity(0.5))
+                                .cornerRadius(6)
+                                .contentShape(Rectangle())
 
                             Text("in")
                                 .font(.ariseMono(size: 10))
@@ -792,8 +854,10 @@ struct HunterAttributesSection: View {
                                     .tag(option)
                             }
                         }
+                        .font(.ariseMono(size: 12, weight: .medium))
                         .pickerStyle(.menu)
                         .tint(.textPrimary)
+                        .fixedSize(horizontal: true, vertical: false)
                     }
                 )
             }
