@@ -371,19 +371,30 @@ async def get_percentiles(
     )
 
 
+def get_canonical_exercise_name(db: Session, canonical_id: str) -> str:
+    """Get the primary name for a canonical exercise group (the first seeded exercise)"""
+    primary = db.query(Exercise).filter(
+        Exercise.canonical_id == canonical_id,
+        Exercise.is_custom == False
+    ).order_by(Exercise.created_at).first()
+    return primary.name if primary else "Unknown"
+
+
 @router.get("/prs", response_model=PRListResponse)
 async def get_prs(
     exercise_id: Optional[str] = Query(None, description="Filter by exercise"),
     pr_type: Optional[str] = Query(None, description="Filter by type: e1rm or rep_pr"),
     start_date: Optional[date] = Query(None, description="Start date filter"),
     end_date: Optional[date] = Query(None, description="End date filter"),
+    group_by_canonical: bool = Query(True, description="Group PRs by canonical exercise"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Get all PRs for user with filtering options
+    Get all PRs for user with filtering options.
+    When group_by_canonical=True, returns only the best PR per canonical exercise per type.
     """
     query = db.query(PR).options(
         joinedload(PR.exercise)
@@ -404,26 +415,60 @@ async def get_prs(
     if end_date:
         query = query.filter(PR.achieved_at <= datetime.combine(end_date, datetime.max.time()))
 
-    # Get total count
-    total_count = query.count()
+    # Get all matching PRs
+    all_prs = query.order_by(desc(PR.achieved_at)).all()
 
-    # Get PRs with pagination
-    prs = query.order_by(desc(PR.achieved_at)).offset(offset).limit(limit).all()
+    if group_by_canonical:
+        # Group PRs by (canonical_id, pr_type) and keep only the best
+        best_prs = {}
+        for pr in all_prs:
+            if not pr.exercise:
+                continue
 
-    pr_responses = [
-        PRResponse(
+            canonical_id = pr.exercise.canonical_id or pr.exercise_id
+            key = (canonical_id, pr.pr_type)
+
+            if key not in best_prs:
+                best_prs[key] = pr
+            else:
+                existing = best_prs[key]
+                # For e1rm: keep the one with highest value
+                if pr.pr_type == PRTypeModel.E1RM:
+                    if pr.value and (not existing.value or pr.value > existing.value):
+                        best_prs[key] = pr
+                # For rep_pr: keep the one with highest weight (most impressive)
+                else:
+                    if pr.weight and (not existing.weight or pr.weight > existing.weight):
+                        best_prs[key] = pr
+
+        # Sort by achieved_at descending
+        prs = sorted(best_prs.values(), key=lambda p: p.achieved_at, reverse=True)
+        total_count = len(prs)
+
+        # Apply pagination
+        prs = prs[offset:offset + limit]
+    else:
+        total_count = query.count()
+        prs = all_prs[offset:offset + limit]
+
+    pr_responses = []
+    for pr in prs:
+        canonical_id = pr.exercise.canonical_id if pr.exercise else None
+        canonical_name = get_canonical_exercise_name(db, canonical_id) if canonical_id else None
+
+        pr_responses.append(PRResponse(
             id=pr.id,
             exercise_id=pr.exercise_id,
-            exercise_name=pr.exercise.name,
+            exercise_name=pr.exercise.name if pr.exercise else "Unknown",
+            canonical_id=canonical_id,
+            canonical_exercise_name=canonical_name,
             pr_type=PRType.E1RM if pr.pr_type == PRTypeModel.E1RM else PRType.REP_PR,
             value=round(pr.value, 2) if pr.value else None,
             reps=pr.reps,
             weight=round(pr.weight, 2) if pr.weight else None,
             achieved_at=pr.achieved_at.isoformat(),
             created_at=pr.created_at.isoformat()
-        )
-        for pr in prs
-    ]
+        ))
 
     return PRListResponse(prs=pr_responses, total_count=total_count)
 

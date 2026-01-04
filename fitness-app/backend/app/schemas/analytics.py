@@ -110,6 +110,8 @@ class PRResponse(BaseModel):
     id: str
     exercise_id: str
     exercise_name: str
+    canonical_id: Optional[str] = None
+    canonical_exercise_name: Optional[str] = None
     pr_type: PRType
     value: Optional[float] = None  # For e1RM PRs
     reps: Optional[int] = None  # For rep PRs
