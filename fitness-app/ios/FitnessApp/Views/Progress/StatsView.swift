@@ -1331,11 +1331,11 @@ struct RecordCard: View {
     let pr: PRResponse
 
     var exerciseColor: Color {
-        Color.exerciseColor(for: pr.exerciseName)
+        Color.exerciseColor(for: pr.displayName)
     }
 
     var fantasyName: String {
-        ExerciseFantasyNames.fantasyName(for: pr.exerciseName)
+        ExerciseFantasyNames.fantasyName(for: pr.displayName)
     }
 
     var body: some View {
@@ -1359,7 +1359,7 @@ struct RecordCard: View {
 
                 // Info
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(pr.exerciseName)
+                    Text(pr.displayName)
                         .font(.ariseHeader(size: 14, weight: .semibold))
                         .foregroundColor(.textPrimary)
 
@@ -1404,10 +1404,19 @@ struct RecordCard: View {
     }
 
     private func formatDate(_ dateString: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        if let date = formatter.date(from: dateString) {
+        // Try with fractional seconds first (handles timestamps like 2026-01-02T06:36:56.105367)
+        let formatterWithFraction = ISO8601DateFormatter()
+        formatterWithFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatterWithFraction.date(from: dateString) {
             return date.formattedRelative
         }
+
+        // Fallback to standard ISO8601 (no fractional seconds)
+        let standardFormatter = ISO8601DateFormatter()
+        if let date = standardFormatter.date(from: dateString) {
+            return date.formattedRelative
+        }
+
         return dateString
     }
 }

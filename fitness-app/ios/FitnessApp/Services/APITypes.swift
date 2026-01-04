@@ -347,6 +347,8 @@ struct PRResponse: Decodable, Identifiable {
     let id: String
     let exerciseId: String
     let exerciseName: String
+    let canonicalId: String?
+    let canonicalExerciseName: String?
     let prType: String
     let value: Double?
     let reps: Int?
@@ -354,10 +356,17 @@ struct PRResponse: Decodable, Identifiable {
     let achievedAt: String
     let createdAt: String
 
+    /// Returns the canonical name if available, otherwise the exercise name
+    var displayName: String {
+        canonicalExerciseName ?? exerciseName
+    }
+
     enum CodingKeys: String, CodingKey {
         case id, value, reps, weight
         case exerciseId = "exercise_id"
         case exerciseName = "exercise_name"
+        case canonicalId = "canonical_id"
+        case canonicalExerciseName = "canonical_exercise_name"
         case prType = "pr_type"
         case achievedAt = "achieved_at"
         case createdAt = "created_at"
