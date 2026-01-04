@@ -5,6 +5,9 @@ struct ScreenshotPreviewView: View {
     @Binding var isPresented: Bool
     let onConfirm: ([LoggedExercise]) -> Void
 
+    @State private var hasStartedProcessing = false
+    @State private var showDatePicker = false
+
     private var buttonText: String {
         if viewModel.workoutSaved || viewModel.activitySaved {
             return "DONE"
@@ -20,7 +23,9 @@ struct ScreenshotPreviewView: View {
             ZStack {
                 VoidBackground(showGrid: true, glowIntensity: 0.05)
 
-                if viewModel.isProcessing {
+                if !hasStartedProcessing {
+                    dateSelectionView
+                } else if viewModel.isProcessing {
                     processingView
                 } else if viewModel.error != nil {
                     errorView
@@ -51,8 +56,108 @@ struct ScreenshotPreviewView: View {
             .toolbarBackground(Color.voidBlack, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
         }
-        .task {
-            await viewModel.processScreenshot()
+    }
+
+    // MARK: - Date Selection View (shown before processing)
+
+    private var dateSelectionView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            // Header
+            VStack(spacing: 12) {
+                Text("[ SET QUEST DATE ]")
+                    .font(.ariseMono(size: 11, weight: .medium))
+                    .foregroundColor(.systemPrimary)
+                    .tracking(2)
+
+                ZStack {
+                    Circle()
+                        .fill(Color.systemPrimary.opacity(0.05))
+                        .frame(width: 80, height: 80)
+
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 32))
+                        .foregroundColor(.systemPrimary)
+                }
+
+                Text("When did this workout happen?")
+                    .font(.ariseHeader(size: 18, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+
+                Text("\(viewModel.imageCount) screenshot\(viewModel.imageCount > 1 ? "s" : "") selected")
+                    .font(.ariseBody(size: 14))
+                    .foregroundColor(.textSecondary)
+            }
+
+            // Date Picker Button
+            VStack(spacing: 12) {
+                Button {
+                    showDatePicker.toggle()
+                } label: {
+                    HStack {
+                        Image(systemName: "calendar")
+                            .foregroundColor(.systemPrimary)
+
+                        Text(viewModel.formattedSelectedDate)
+                            .font(.ariseHeader(size: 16, weight: .semibold))
+                            .foregroundColor(.textPrimary)
+
+                        Spacer()
+
+                        Image(systemName: showDatePicker ? "chevron.up" : "chevron.down")
+                            .foregroundColor(.textMuted)
+                    }
+                    .padding()
+                    .background(Color.voidMedium)
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.systemPrimary.opacity(0.3), lineWidth: 1)
+                    )
+                }
+                .padding(.horizontal, 24)
+
+                if showDatePicker {
+                    DatePicker(
+                        "Quest Date",
+                        selection: $viewModel.selectedDate,
+                        displayedComponents: .date
+                    )
+                    .datePickerStyle(.graphical)
+                    .tint(.systemPrimary)
+                    .padding(.horizontal, 24)
+                    .background(Color.voidMedium)
+                    .cornerRadius(8)
+                    .padding(.horizontal, 24)
+                }
+            }
+
+            Spacer()
+
+            // Process Button
+            Button {
+                hasStartedProcessing = true
+                Task {
+                    await viewModel.processScreenshot()
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "wand.and.rays")
+                        .font(.system(size: 16))
+                    Text("ANALYZE SCREENSHOTS")
+                        .font(.ariseHeader(size: 14, weight: .semibold))
+                        .tracking(2)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(Color.systemPrimary)
+                .foregroundColor(.voidBlack)
+                .cornerRadius(4)
+                .shadow(color: .systemPrimaryGlow, radius: 15, x: 0, y: 0)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 32)
         }
     }
 

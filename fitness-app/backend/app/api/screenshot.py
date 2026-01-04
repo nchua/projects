@@ -184,10 +184,16 @@ async def process_screenshot(
     activity_saved = False
     if screenshot_type == "whoop_activity":
         try:
+            # Parse session_date if provided (for manual date override)
+            parsed_date = None
+            if session_date:
+                parsed_date = datetime.strptime(session_date, "%Y-%m-%d")
+
             activity_id, whoop_workout_id = await save_whoop_activity(
                 db=db,
                 user_id=current_user.id,
-                extraction_result=result
+                extraction_result=result,
+                activity_date=parsed_date
             )
             activity_saved = True
             # Set workout_id so it shows in quests calendar
@@ -367,10 +373,16 @@ async def process_screenshots_batch(
     activity_saved = False
     if screenshot_type == "whoop_activity":
         try:
+            # Parse session_date if provided (for manual date override)
+            parsed_activity_date = None
+            if session_date:
+                parsed_activity_date = datetime.strptime(session_date, "%Y-%m-%d")
+
             activity_id, whoop_workout_id = await save_whoop_activity(
                 db=db,
                 user_id=current_user.id,
-                extraction_result=merged
+                extraction_result=merged,
+                activity_date=parsed_activity_date
             )
             activity_saved = True
             # Set workout_id so it shows in quests calendar

@@ -13,6 +13,7 @@ class ScreenshotProcessingViewModel: ObservableObject {
     @Published var savedWorkoutId: String?
     @Published var activitySaved = false
     @Published var savedActivityId: String?
+    @Published var selectedDate: Date = Date()  // User-selectable date for the workout
 
     var isBatchMode: Bool {
         selectedImagesData.count > 1
@@ -43,7 +44,8 @@ class ScreenshotProcessingViewModel: ObservableObject {
                 let filename = "workout_\(Int(Date().timeIntervalSince1970)).jpg"
                 processedData = try await APIClient.shared.processScreenshot(
                     imageData: selectedImagesData[0],
-                    filename: filename
+                    filename: filename,
+                    sessionDate: selectedDate
                 )
                 processingProgress = "Complete!"
 
@@ -68,7 +70,8 @@ class ScreenshotProcessingViewModel: ObservableObject {
 
                 batchData = try await APIClient.shared.processScreenshotsBatch(
                     images: images,
-                    saveWorkout: true
+                    saveWorkout: true,
+                    sessionDate: selectedDate
                 )
 
                 // Convert batch response to standard response for UI compatibility
@@ -166,6 +169,13 @@ class ScreenshotProcessingViewModel: ObservableObject {
         savedWorkoutId = nil
         activitySaved = false
         savedActivityId = nil
+        selectedDate = Date()
+    }
+
+    var formattedSelectedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, yyyy"
+        return formatter.string(from: selectedDate)
     }
 
     var hasMatchedExercises: Bool {

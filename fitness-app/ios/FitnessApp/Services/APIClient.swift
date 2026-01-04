@@ -246,7 +246,7 @@ class APIClient {
 
     // MARK: - Screenshot Processing
 
-    func processScreenshot(imageData: Data, filename: String) async throws -> ScreenshotProcessResponse {
+    func processScreenshot(imageData: Data, filename: String, sessionDate: Date? = nil) async throws -> ScreenshotProcessResponse {
         guard let url = URL(string: baseURL + "/screenshot/process") else {
             throw APIError.invalidURL
         }
@@ -273,7 +273,21 @@ class APIClient {
         let contentType = filename.lowercased().hasSuffix(".png") ? "image/png" : "image/jpeg"
         body.append("Content-Type: \(contentType)\r\n\r\n".data(using: .utf8)!)
         body.append(imageData)
-        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        body.append("\r\n".data(using: .utf8)!)
+
+        // Add session_date field if provided
+        if let date = sessionDate {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            formatter.timeZone = .current
+            let dateString = formatter.string(from: date)
+
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"session_date\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(dateString)\r\n".data(using: .utf8)!)
+        }
+
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
 
         request.httpBody = body
 
@@ -309,7 +323,7 @@ class APIClient {
         }
     }
 
-    func processScreenshotsBatch(images: [(data: Data, filename: String)], saveWorkout: Bool = true) async throws -> ScreenshotBatchResponse {
+    func processScreenshotsBatch(images: [(data: Data, filename: String)], saveWorkout: Bool = true, sessionDate: Date? = nil) async throws -> ScreenshotBatchResponse {
         guard let url = URL(string: baseURL + "/screenshot/process/batch") else {
             throw APIError.invalidURL
         }
@@ -343,6 +357,18 @@ class APIClient {
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"save_workout\"\r\n\r\n".data(using: .utf8)!)
         body.append("\(saveWorkout)\r\n".data(using: .utf8)!)
+
+        // Add session_date field if provided
+        if let date = sessionDate {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            formatter.timeZone = .current
+            let dateString = formatter.string(from: date)
+
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"session_date\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(dateString)\r\n".data(using: .utf8)!)
+        }
 
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
 
