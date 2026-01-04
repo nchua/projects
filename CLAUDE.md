@@ -1,141 +1,206 @@
-# CLAUDE.md
+# CLAUDE.md - Fitness Tracking System
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Project instructions for Claude Code when working with this codebase.
 
-## Repository Purpose
+## Project Overview
 
-This repository contains MCP (Model Context Protocol) server configurations migrated from Claude Desktop App to work with Claude Code CLI. It includes setup scripts, configuration templates, and locally installed MCP server implementations.
+A Solo Leveling-inspired fitness tracking ecosystem with:
+- **iOS App**: Swift/SwiftUI frontend with gamification (XP, ranks, quests)
+- **Python Backend**: FastAPI server deployed on Railway
+- **Strength Coach**: CLI tool for advanced analytics
+- **Legacy Dashboard**: HTML/JS fitness dashboard with screenshot processing
+
+## Repository Structure
+
+```
+fitness-app/
+├── fitness-app/              # Main iOS + Backend app
+│   ├── backend/              # FastAPI backend (Python)
+│   │   ├── app/
+│   │   │   ├── api/          # Endpoints: auth, workouts, exercises, bodyweight, etc.
+│   │   │   ├── core/         # Config, security, database, e1RM calculations
+│   │   │   ├── models/       # SQLAlchemy models (User, Workout, Exercise, Set, PR)
+│   │   │   ├── schemas/      # Pydantic request/response schemas
+│   │   │   └── services/     # Screenshot processing service
+│   │   ├── alembic/          # Database migrations
+│   │   └── main.py
+│   ├── ios/FitnessApp/       # iOS app (Swift/SwiftUI)
+│   │   ├── Views/            # SwiftUI views (Home, Log, History, Profile, Progress)
+│   │   ├── Services/         # APIClient, AuthManager, HealthKitManager
+│   │   ├── Models/           # Data models
+│   │   ├── Components/       # Reusable UI (XPBar, StatCard, RankBadge, etc.)
+│   │   └── Utils/            # Colors, Fonts, Extensions
+│   └── *.js                  # Test scripts (test-auth.js, test-workouts.js, etc.)
+│
+├── Fitness/                  # Legacy fitness tracking
+│   ├── scripts/              # Screenshot processing Python scripts
+│   ├── dashboard/            # HTML dashboard + workout_log.json
+│   └── strength-coach/       # CLI analytics tool
+│       └── src/strength_coach/
+│           ├── models/       # Pydantic models (workout, exercise, bodyweight)
+│           ├── analytics/    # e1RM, volume, trends, PRs
+│           ├── storage/      # SQLite storage
+│           ├── reporting/    # Markdown reports, weekly reviews
+│           └── cli/          # Command-line interface
+│
+└── financial-analyst-agent/  # Separate project (not fitness-related)
+```
 
 ## Common Commands
 
-### Setup and Installation
+### Backend (FastAPI)
+```bash
+cd fitness-app/backend
+source venv/bin/activate
+python main.py                              # Run locally on port 8000
+alembic upgrade head                        # Apply migrations
+alembic revision --autogenerate -m "desc"   # Create migration
+```
+
+### iOS
+```bash
+cd fitness-app/ios
+xcodegen generate                           # Regenerate Xcode project
+open FitnessApp.xcodeproj                   # Open in Xcode
+```
+
+### Testing
+```bash
+node fitness-app/test-auth.js               # Test authentication
+node fitness-app/test-workouts.js           # Test workout endpoints
+node fitness-app/test-exercises.js          # Test exercise endpoints
+```
+
+### Strength Coach CLI
+```bash
+cd Fitness/strength-coach
+pip install -e .
+coach init                                  # Initialize database
+coach ingest examples/sample_workout.json   # Import workout
+coach add-weight 166.2 --unit lb            # Log bodyweight
+coach review                                # Generate weekly review
+coach lift squat                            # Check lift progress
+coach prs                                   # View personal records
+```
+
+## Deployment
+
+- **Backend**: Railway (https://backend-production-e316.up.railway.app)
+- **Git**: https://github.com/nchua/projects.git
+- **Auto-deploy**: Push to `main` triggers Railway deployment
 
 ```bash
-# Initial setup - installs all MCP servers
-./setup-mcps.sh
-
-# Check installed global MCP servers
-npm list -g --depth=0 | grep mcp
-
-# Check Node.js and npm versions
-node --version && npm --version
+git push origin main                        # Deploy to Railway
 ```
 
-### Testing MCP Servers
+## Environment Variables
 
-```bash
-# Test filesystem MCP server (global installation)
-npx -y @modelcontextprotocol/server-filesystem /Users/nickchua/Desktop
+### Backend (Railway)
+- `DATABASE_URL` - PostgreSQL connection string
+- `SECRET_KEY` / `JWT_SECRET_KEY` - JWT signing key
+- `ANTHROPIC_API_KEY` - For Claude Vision screenshot processing
 
-# Test PDF toolkit MCP server (local installation)
-node mcp-servers/pdf-filler-simple/server/index.js
+### Local Development
+- `API_BASE_URL` - Backend URL (default: localhost:8000)
+- `SEED_USER_EMAIL` - Email for seed scripts
+- `SEED_USER_PASSWORD` - Password for seed scripts
 
-# Test OSAScript MCP server (local installation)
-node mcp-servers/osascript-dxt/server/index.js
+## Data Models
+
+### Workout Structure
+```
+User
+├── WorkoutSession (date, duration_minutes, session_rpe, notes)
+│   └── WorkoutExercise (order_index)
+│       └── Set (weight, weight_unit, reps, rpe, rir, e1rm)
+├── BodyweightEntry (weight, unit, date)
+└── PersonalRecord (exercise_id, weight, reps, e1rm, date)
 ```
 
-### Updating MCP Servers
+### Exercise Schema
+Exercises have: name, category (compound/isolation), muscle_groups, equipment, aliases
 
-```bash
-# Update global filesystem server
-npm update -g @modelcontextprotocol/server-filesystem
+## Key Features
 
-# Update local MCP servers
-cd mcp-servers/osascript-dxt && git pull && npm install
-cd ../pdf-filler-simple && git pull && npm install
-```
+### Screenshot Processing
+- Uses Claude Vision API to extract workout data from gym app screenshots
+- Supports both gym workout and WHOOP activity screenshots
+- Backend: `backend/app/services/screenshot_service.py`
+- iOS: `Views/Log/ScreenshotProcessingViewModel.swift`
 
-## Architecture Overview
+### e1RM Calculation
+- Uses Epley formula: `weight * (1 + reps/30)`
+- Calculated on backend when saving sets
+- Used for PR detection and strength tracking
 
-### MCP Server Organization Strategy
+### Gamification
+- XP system with level progression
+- Rank badges (E-rank to S-rank)
+- Daily quests for workout goals
 
-This repository uses a **hybrid installation approach** for MCP servers:
+---
 
-1. **Global npm packages** (via `npm install -g`)
-   - Used for: Official MCP servers from npm registry
-   - Example: `@modelcontextprotocol/server-filesystem`
-   - Benefit: Easily accessible via `npx`, automatic PATH resolution
+## Security Guidelines
 
-2. **Local git clones** (in `mcp-servers/` directory)
-   - Used for: Community MCP servers from GitHub
-   - Examples: `osascript-dxt`, `pdf-filler-simple`
-   - Benefit: Full source code access, easier to debug and modify
+### NEVER Commit Credentials
+- No hardcoded emails, passwords, API keys, or tokens
+- Use environment variables: `os.environ.get("VAR_NAME")`
+- Use placeholder values in code: `test@example.com`, `TestPass123!`
 
-### Configuration Template System
+### Sensitive Files to Watch
+- `backend/seed_user_data.py`
+- `import_workouts.py`
+- Any new seed/test scripts
 
-The `mcp-config-template.json` file demonstrates the MCP server configuration format for Claude Code:
+---
 
-- **Global servers**: Use `npx -y <package-name>` as the command
-- **Local servers**: Use `node <absolute-path-to-server/index.js>` as the command
-- **Environment variables**: Passed via the `env` object for each server
+## Workout Data Display Guidelines
 
-Key configuration patterns:
-```json
-{
-  "mcpServers": {
-    "server-name": {
-      "command": "npx" | "node",
-      "args": ["..."],
-      "env": { /* optional environment variables */ }
-    }
-  }
-}
-```
+When modifying workout data sources, update ALL display locations:
 
-### Directory Structure Logic
+### Backend
+1. `backend/app/schemas/workout.py` - Pydantic schemas
+2. `backend/app/api/workouts.py` - API endpoints
+3. `backend/app/services/screenshot_service.py` - Screenshot extraction
 
-```
-/Users/nickchua/Desktop/AI/
-├── mcp-servers/              # Local MCP server installations (git clones)
-│   ├── osascript-dxt/       # macOS AppleScript automation
-│   └── pdf-filler-simple/   # PDF toolkit with node_modules
-├── docs/                     # Migration documentation
-│   └── MCP_MIGRATION.md     # Detailed server descriptions and tools
-├── setup-mcps.sh            # Automated installation script
-└── mcp-config-template.json # Configuration reference
-```
+### iOS
+1. `ios/.../Views/Home/HomeView.swift` - Recent workout card
+2. `ios/.../Views/History/HistoryView.swift` - Workout history
+3. `ios/.../Services/APITypes.swift` - Decodable structs
 
-## Important Implementation Details
+---
 
-### Platform-Specific Considerations
+## Problem-Solving Guidelines
 
-- **macOS-only servers**: `osascript-dxt`, Chrome Control, Excel, Apple Notes
-  - Require macOS system permissions (Automation, Accessibility)
-  - Use AppleScript under the hood
+### When Auto-Fixes Fail, Add Manual Controls
+Instead of debugging complex automatic behavior, give users control:
+- **Timezone issues**: Let users pick the date
+- **Data extraction errors**: Let users edit extracted data
+- **Ambiguous inputs**: Ask users to clarify
 
-- **Cross-platform servers**: filesystem, PDF toolkit, Postman
-  - Work on macOS, Linux, Windows
-  - No special OS permissions required (except filesystem directories)
+---
 
-### Environment Variable Patterns
+## API Endpoints Reference
 
-MCP servers use environment variables for configuration:
+### Authentication
+- `POST /api/auth/register` - Create account
+- `POST /api/auth/login` - Get JWT token
 
-- **PDF Toolkit**:
-  - `DEFAULT_PDF_DIR`: Where to look for PDFs (default: Documents folder)
-  - `DEFAULT_PROFILES_DIR`: Where to store form profiles (default: `~/.pdf-filler-profiles`)
+### Workouts
+- `GET /api/workouts` - List user workouts
+- `POST /api/workouts` - Create workout session
+- `GET /api/workouts/{id}` - Get workout details
+- `PUT /api/workouts/{id}` - Update workout
+- `DELETE /api/workouts/{id}` - Soft delete workout
 
-- **Postman MCP**:
-  - `POSTMAN_API_KEY`: Required API key for Postman integration
+### Exercises
+- `GET /api/exercises` - List all exercises
+- `GET /api/exercises/search?q=` - Search exercises
 
-- **Filesystem MCP**:
-  - Allowed directories passed as command arguments, NOT environment variables
-  - Example: `npx @modelcontextprotocol/server-filesystem /path1 /path2`
+### Progress
+- `GET /api/progress/summary` - Overall stats
+- `GET /api/progress/prs` - Personal records
 
-### Anthropic Official vs Community Servers
-
-The original Claude Desktop setup included 7 MCP servers:
-
-- **3 Anthropic official macOS-only** (Chrome Control, Excel, Notes): Currently only available in Claude Desktop app, not migrated
-- **1 Anthropic official cross-platform** (Filesystem): Migrated via npm
-- **3 Community servers** (OSAScript, PDF Toolkit, Postman): Migrated via git clone or npm
-
-## Migration Reference
-
-See `docs/MCP_MIGRATION.md` for:
-- Complete list of all available tools for each MCP server
-- Detailed descriptions of each server's capabilities
-- Migration paths from Claude Desktop to Claude Code
-- Security and permission requirements
-
-See `MCP_SUMMARY.txt` for a quick reference of what was migrated.
+### Screenshot Processing
+- `POST /api/screenshot/process` - Process single screenshot
+- `POST /api/screenshot/batch` - Process multiple screenshots
