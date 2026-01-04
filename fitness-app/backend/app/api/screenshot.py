@@ -179,17 +179,20 @@ async def process_screenshot(
             # Just return without workout_id
             pass
 
-    # Auto-save WHOOP activity data
+    # Auto-save WHOOP activity data (also creates a WorkoutSession for calendar)
     activity_id = None
     activity_saved = False
     if screenshot_type == "whoop_activity":
         try:
-            activity_id = await save_whoop_activity(
+            activity_id, whoop_workout_id = await save_whoop_activity(
                 db=db,
                 user_id=current_user.id,
                 extraction_result=result
             )
             activity_saved = True
+            # Set workout_id so it shows in quests calendar
+            workout_id = whoop_workout_id
+            workout_saved = True
         except Exception as e:
             # Don't fail if activity save fails
             logger.error(f"Failed to save WHOOP activity: {e}")

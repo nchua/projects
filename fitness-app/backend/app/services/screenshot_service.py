@@ -580,9 +580,10 @@ async def save_whoop_activity(
     user_id: str,
     extraction_result: dict,
     activity_date: Optional[datetime] = None
-) -> str:
+) -> Tuple[str, str]:
     """
-    Save WHOOP activity data to DailyActivity table.
+    Save WHOOP activity data to DailyActivity table AND create a WorkoutSession
+    so it appears in the quests calendar.
 
     Args:
         db: Database session
@@ -591,19 +592,22 @@ async def save_whoop_activity(
         activity_date: Optional override date
 
     Returns:
-        Activity ID of saved/updated record
+        Tuple of (activity_id, workout_id)
     """
     from app.models.activity import DailyActivity
 
     # Parse date from extraction or use provided/today
     if activity_date:
         date = activity_date.date() if hasattr(activity_date, 'date') else activity_date
+        workout_datetime = activity_date if isinstance(activity_date, datetime) else datetime.combine(activity_date, datetime.min.time())
     elif extraction_result.get("session_date"):
         date = datetime.strptime(extraction_result["session_date"], "%Y-%m-%d").date()
+        workout_datetime = datetime.strptime(extraction_result["session_date"], "%Y-%m-%d")
     else:
         date = datetime.now().date()
+        workout_datetime = datetime.now()
 
-    # Check for existing activity on this date from whoop_screenshot source
+    # Save to DailyActivity for metrics tracking
     existing = db.query(DailyActivity).filter(
         DailyActivity.user_id == user_id,
         DailyActivity.date == date,
@@ -611,7 +615,6 @@ async def save_whoop_activity(
     ).first()
 
     if existing:
-        # Update existing record with new data
         if extraction_result.get("strain") is not None:
             existing.strain = extraction_result["strain"]
         if extraction_result.get("calories") is not None:
@@ -623,7 +626,6 @@ async def save_whoop_activity(
         existing.updated_at = datetime.utcnow()
         activity_id = str(existing.id)
     else:
-        # Create new activity record
         activity = DailyActivity(
             user_id=user_id,
             date=date,
@@ -637,5 +639,30 @@ async def save_whoop_activity(
         db.flush()
         activity_id = str(activity.id)
 
+    # Create WorkoutSession so it appears in quests calendar
+    activity_type = extraction_result.get("activity_type") or extraction_result.get("session_name") or "Activity"
+    strain = extraction_result.get("strain")
+    calories = extraction_result.get("calories")
+
+    # Build notes with WHOOP metrics
+    notes_parts = [f"{activity_type} - WHOOP Activity"]
+    if strain:
+        notes_parts.append(f"Strain: {strain}")
+    if calories:
+        notes_parts.append(f"Calories: {calories}")
+    if extraction_result.get("time_range"):
+        notes_parts.append(f"Time: {extraction_result['time_range']}")
+    notes = " | ".join(notes_parts)
+
+    workout_session = WorkoutSession(
+        user_id=user_id,
+        date=workout_datetime,
+        duration_minutes=extraction_result.get("duration_minutes"),
+        notes=notes
+    )
+    db.add(workout_session)
+    db.flush()
+    workout_id = str(workout_session.id)
+
     db.commit()
-    return activity_id
+    return activity_id, workout_id
