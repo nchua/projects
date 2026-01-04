@@ -54,10 +54,11 @@ node test-exercises.js            # Test exercise endpoints
 ## Deployment
 
 - **Backend**: Railway (https://backend-production-e316.up.railway.app)
-- **Git**: https://github.com/nchua/projects.git (branch: `fitness`)
+- **Git**: https://github.com/nchua/projects.git
+- **Branch**: `main` (Railway watches this branch for auto-deploy)
 
 ```bash
-git push origin main:fitness      # Deploy to Railway
+git push origin main              # Deploy to Railway
 ```
 
 ## Environment Variables
@@ -122,7 +123,7 @@ fi
 ' --tag-name-filter cat -- --all
 
 # 5. Force push
-git push origin main:fitness --force
+git push origin main --force
 
 # 6. Clean up
 rm -rf .git/refs/original
