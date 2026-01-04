@@ -277,9 +277,11 @@ async def extract_workout_from_screenshot(
 
     # Check screenshot type
     screenshot_type = extracted_data.get("screenshot_type", "gym_workout")
+    logger.info(f"Extracted screenshot_type: {screenshot_type}, session_date: {extracted_data.get('session_date')}, activity_type: {extracted_data.get('activity_type')}")
 
     # Handle WHOOP/activity screenshots differently - no exercise matching needed
     if screenshot_type == "whoop_activity":
+        logger.info(f"WHOOP extraction - full data: {extracted_data}")
         return {
             "screenshot_type": "whoop_activity",
             "activity_type": extracted_data.get("activity_type"),
@@ -372,7 +374,12 @@ def merge_extractions(extractions: List[Dict[str, Any]]) -> Dict[str, Any]:
         }
 
     if len(extractions) == 1:
+        logger.info(f"Single extraction, session_date: {extractions[0].get('session_date')}")
         return extractions[0]
+
+    # Log each extraction's session_date for debugging
+    for i, ext in enumerate(extractions):
+        logger.info(f"Extraction {i}: session_date={ext.get('session_date')}, type={ext.get('screenshot_type')}")
 
     # Determine screenshot type - if any is WHOOP, treat as WHOOP
     screenshot_types = [ext.get("screenshot_type", "gym_workout") for ext in extractions]
@@ -479,6 +486,7 @@ def merge_extractions(extractions: List[Dict[str, Any]]) -> Dict[str, Any]:
         result["max_hr"] = max_max_hr
         result["heart_rate_zones"] = all_heart_rate_zones if all_heart_rate_zones else None
 
+    logger.info(f"Merged result session_date: {result.get('session_date')}")
     return result
 
 
