@@ -282,10 +282,8 @@ struct AriseCalendarView: View {
     }
 
     private func hasWorkout(on date: Date) -> Bool {
-        // Use local timezone formatter to match the date string format from backend
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = .current
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
         return datesWithWorkouts.contains(formatter.string(from: date))
     }
 }
@@ -420,18 +418,10 @@ struct CompletedQuestRow: View {
     }
 
     private func formatDate(_ dateString: String) -> String {
-        // Parse date string directly without timezone conversion
-        // "2026-01-04" should display as "Jan 4, 2026" regardless of user's timezone
-        let inputFormatter = DateFormatter()
-        inputFormatter.dateFormat = "yyyy-MM-dd"
-        inputFormatter.timeZone = TimeZone(identifier: "UTC")
-
-        let outputFormatter = DateFormatter()
-        outputFormatter.dateFormat = "MMM d, yyyy"
-        outputFormatter.timeZone = TimeZone(identifier: "UTC")
-
-        if let date = inputFormatter.date(from: String(dateString.prefix(10))) {
-            return outputFormatter.string(from: date)
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+        if let date = formatter.date(from: dateString) {
+            return date.formattedMedium
         }
         return dateString
     }
@@ -642,18 +632,10 @@ struct QuestSummaryCard: View {
     }
 
     private func formatDate(_ dateString: String) -> String {
-        // Parse date string directly without timezone conversion
-        // "2026-01-04" should display as "Jan 4, 2026" regardless of user's timezone
-        let inputFormatter = DateFormatter()
-        inputFormatter.dateFormat = "yyyy-MM-dd"
-        inputFormatter.timeZone = TimeZone(identifier: "UTC")
-
-        let outputFormatter = DateFormatter()
-        outputFormatter.dateFormat = "MMM d, yyyy"
-        outputFormatter.timeZone = TimeZone(identifier: "UTC")
-
-        if let date = inputFormatter.date(from: String(dateString.prefix(10))) {
-            return outputFormatter.string(from: date)
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+        if let date = formatter.date(from: dateString) {
+            return date.formattedMedium
         }
         return dateString
     }
