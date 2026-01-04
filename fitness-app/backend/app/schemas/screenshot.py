@@ -67,6 +67,8 @@ class ScreenshotProcessResponse(BaseModel):
     )
     workout_id: Optional[str] = Field(None, description="Created workout ID if saved")
     workout_saved: bool = Field(default=False, description="Whether workout was saved")
+    activity_id: Optional[str] = Field(None, description="Created activity ID if saved (WHOOP)")
+    activity_saved: bool = Field(default=False, description="Whether activity was saved (WHOOP)")
 
     # WHOOP/Activity-specific fields
     activity_type: Optional[str] = Field(None, description="Activity type (e.g., 'TENNIS', 'RUNNING')")
@@ -95,6 +97,8 @@ class ScreenshotBatchResponse(BaseModel):
     processing_confidence: str = Field(default="medium", description="Overall confidence")
     workout_id: Optional[str] = Field(None, description="Created workout ID if saved")
     workout_saved: bool = Field(default=False, description="Whether workout was saved")
+    activity_id: Optional[str] = Field(None, description="Created activity ID if saved (WHOOP)")
+    activity_saved: bool = Field(default=False, description="Whether activity was saved (WHOOP)")
 
     # WHOOP/Activity-specific fields
     activity_type: Optional[str] = Field(None, description="Activity type (e.g., 'TENNIS', 'RUNNING')")

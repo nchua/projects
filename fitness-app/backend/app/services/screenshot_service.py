@@ -573,3 +573,69 @@ async def save_extracted_workout(
     db.commit()
 
     return workout_session.id
+
+
+async def save_whoop_activity(
+    db: Session,
+    user_id: str,
+    extraction_result: dict,
+    activity_date: Optional[datetime] = None
+) -> str:
+    """
+    Save WHOOP activity data to DailyActivity table.
+
+    Args:
+        db: Database session
+        user_id: User ID
+        extraction_result: Extracted WHOOP data from screenshot
+        activity_date: Optional override date
+
+    Returns:
+        Activity ID of saved/updated record
+    """
+    from app.models.activity import DailyActivity
+
+    # Parse date from extraction or use provided/today
+    if activity_date:
+        date = activity_date.date() if hasattr(activity_date, 'date') else activity_date
+    elif extraction_result.get("session_date"):
+        date = datetime.strptime(extraction_result["session_date"], "%Y-%m-%d").date()
+    else:
+        date = datetime.now().date()
+
+    # Check for existing activity on this date from whoop_screenshot source
+    existing = db.query(DailyActivity).filter(
+        DailyActivity.user_id == user_id,
+        DailyActivity.date == date,
+        DailyActivity.source == "whoop_screenshot"
+    ).first()
+
+    if existing:
+        # Update existing record with new data
+        if extraction_result.get("strain") is not None:
+            existing.strain = extraction_result["strain"]
+        if extraction_result.get("calories") is not None:
+            existing.active_calories = extraction_result["calories"]
+        if extraction_result.get("steps") is not None:
+            existing.steps = extraction_result["steps"]
+        if extraction_result.get("duration_minutes") is not None:
+            existing.active_minutes = extraction_result["duration_minutes"]
+        existing.updated_at = datetime.utcnow()
+        activity_id = str(existing.id)
+    else:
+        # Create new activity record
+        activity = DailyActivity(
+            user_id=user_id,
+            date=date,
+            source="whoop_screenshot",
+            strain=extraction_result.get("strain"),
+            active_calories=extraction_result.get("calories"),
+            steps=extraction_result.get("steps"),
+            active_minutes=extraction_result.get("duration_minutes")
+        )
+        db.add(activity)
+        db.flush()
+        activity_id = str(activity.id)
+
+    db.commit()
+    return activity_id

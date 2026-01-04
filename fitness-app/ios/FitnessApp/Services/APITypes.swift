@@ -806,6 +806,8 @@ struct ScreenshotProcessResponse: Decodable {
     let processingConfidence: String
     let workoutId: String?
     let workoutSaved: Bool
+    let activityId: String?
+    let activitySaved: Bool
 
     // WHOOP/Activity-specific fields
     let activityType: String?
@@ -832,6 +834,8 @@ struct ScreenshotProcessResponse: Decodable {
         case processingConfidence = "processing_confidence"
         case workoutId = "workout_id"
         case workoutSaved = "workout_saved"
+        case activityId = "activity_id"
+        case activitySaved = "activity_saved"
         case activityType = "activity_type"
         case timeRange = "time_range"
         case avgHr = "avg_hr"
@@ -851,6 +855,8 @@ struct ScreenshotBatchResponse: Decodable {
     let processingConfidence: String
     let workoutId: String?
     let workoutSaved: Bool
+    let activityId: String?
+    let activitySaved: Bool
 
     // WHOOP/Activity-specific fields
     let activityType: String?
@@ -878,6 +884,8 @@ struct ScreenshotBatchResponse: Decodable {
         case processingConfidence = "processing_confidence"
         case workoutId = "workout_id"
         case workoutSaved = "workout_saved"
+        case activityId = "activity_id"
+        case activitySaved = "activity_saved"
         case activityType = "activity_type"
         case timeRange = "time_range"
         case avgHr = "avg_hr"

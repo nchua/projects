@@ -11,6 +11,8 @@ class ScreenshotProcessingViewModel: ObservableObject {
     @Published var processingProgress: String = ""
     @Published var workoutSaved = false
     @Published var savedWorkoutId: String?
+    @Published var activitySaved = false
+    @Published var savedActivityId: String?
 
     var isBatchMode: Bool {
         selectedImagesData.count > 1
@@ -30,6 +32,8 @@ class ScreenshotProcessingViewModel: ObservableObject {
         error = nil
         workoutSaved = false
         savedWorkoutId = nil
+        activitySaved = false
+        savedActivityId = nil
 
         if selectedImagesData.count == 1 {
             // Single image - use regular endpoint
@@ -43,10 +47,12 @@ class ScreenshotProcessingViewModel: ObservableObject {
                 )
                 processingProgress = "Complete!"
 
-                // Check if workout was saved
+                // Check if workout/activity was saved
                 if let data = processedData {
                     workoutSaved = data.workoutSaved
                     savedWorkoutId = data.workoutId
+                    activitySaved = data.activitySaved
+                    savedActivityId = data.activityId
                 }
             } catch {
                 self.error = error.localizedDescription
@@ -70,6 +76,8 @@ class ScreenshotProcessingViewModel: ObservableObject {
                 if let batch = batchData {
                     workoutSaved = batch.workoutSaved
                     savedWorkoutId = batch.workoutId
+                    activitySaved = batch.activitySaved
+                    savedActivityId = batch.activityId
                 }
 
                 processingProgress = "Complete! Processed \(batchData?.screenshotsProcessed ?? 0) screenshots."
@@ -145,10 +153,16 @@ class ScreenshotProcessingViewModel: ObservableObject {
         processingProgress = ""
         workoutSaved = false
         savedWorkoutId = nil
+        activitySaved = false
+        savedActivityId = nil
     }
 
     var hasMatchedExercises: Bool {
         guard let data = processedData else { return false }
+        // WHOOP activities don't have exercises but should still be usable
+        if data.isWhoopActivity {
+            return true
+        }
         return data.exercises.contains { $0.matchedExerciseId != nil }
     }
 

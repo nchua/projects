@@ -19,7 +19,8 @@ from app.schemas.screenshot import (
 from app.services.screenshot_service import (
     extract_workout_from_screenshot,
     save_extracted_workout,
-    merge_extractions
+    merge_extractions,
+    save_whoop_activity
 )
 
 router = APIRouter()
@@ -178,6 +179,22 @@ async def process_screenshot(
             # Just return without workout_id
             pass
 
+    # Auto-save WHOOP activity data
+    activity_id = None
+    activity_saved = False
+    if screenshot_type == "whoop_activity":
+        try:
+            activity_id = await save_whoop_activity(
+                db=db,
+                user_id=current_user.id,
+                extraction_result=result
+            )
+            activity_saved = True
+        except Exception as e:
+            # Don't fail if activity save fails
+            logger.error(f"Failed to save WHOOP activity: {e}")
+            pass
+
     return ScreenshotProcessResponse(
         screenshot_type=screenshot_type,
         session_date=result.get("session_date"),
@@ -188,6 +205,8 @@ async def process_screenshot(
         processing_confidence=result.get("processing_confidence", "medium"),
         workout_id=workout_id,
         workout_saved=workout_saved,
+        activity_id=activity_id,
+        activity_saved=activity_saved,
         # WHOOP-specific fields
         activity_type=result.get("activity_type"),
         time_range=result.get("time_range"),

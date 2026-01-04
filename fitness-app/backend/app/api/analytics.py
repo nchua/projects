@@ -51,9 +51,13 @@ def get_time_range_days(time_range: str) -> Optional[int]:
     """Convert time range string to number of days"""
     if time_range == "4w":
         return 28
+    elif time_range == "8w":
+        return 56
     elif time_range == "12w":
         return 84
-    elif time_range == "1y":
+    elif time_range == "26w":
+        return 182
+    elif time_range == "52w" or time_range == "1y":
         return 365
     return None  # all time
 

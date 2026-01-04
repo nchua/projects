@@ -5,6 +5,16 @@ struct ScreenshotPreviewView: View {
     @Binding var isPresented: Bool
     let onConfirm: ([LoggedExercise]) -> Void
 
+    private var buttonText: String {
+        if viewModel.workoutSaved || viewModel.activitySaved {
+            return "DONE"
+        } else if viewModel.isWhoopActivity {
+            return "ACTIVITY LOGGED"
+        } else {
+            return "USE THIS DATA"
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -239,18 +249,18 @@ struct ScreenshotPreviewView: View {
 
             // Action buttons
             VStack(spacing: 12) {
-                // Workout saved confirmation
-                if viewModel.workoutSaved {
+                // Workout/Activity saved confirmation
+                if viewModel.workoutSaved || viewModel.activitySaved {
                     HStack(spacing: 12) {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.system(size: 20))
                             .foregroundColor(.green)
 
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Workout Logged Successfully")
+                            Text(viewModel.activitySaved ? "Activity Logged Successfully" : "Workout Logged Successfully")
                                 .font(.ariseHeader(size: 14, weight: .semibold))
                                 .foregroundColor(.textPrimary)
-                            Text("Your quest log has been recorded")
+                            Text(viewModel.activitySaved ? "Your activity has been recorded" : "Your quest log has been recorded")
                                 .font(.ariseBody(size: 12))
                                 .foregroundColor(.textSecondary)
                         }
@@ -267,8 +277,8 @@ struct ScreenshotPreviewView: View {
                 }
 
                 Button {
-                    if viewModel.workoutSaved {
-                        // Just close if already saved
+                    if viewModel.workoutSaved || viewModel.activitySaved || viewModel.isWhoopActivity {
+                        // Just close if already saved or WHOOP activity (auto-saved by backend)
                         isPresented = false
                         viewModel.reset()
                     } else {
@@ -279,20 +289,20 @@ struct ScreenshotPreviewView: View {
                     }
                 } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: viewModel.workoutSaved ? "checkmark" : "checkmark.circle.fill")
+                        Image(systemName: (viewModel.workoutSaved || viewModel.activitySaved) ? "checkmark" : "checkmark.circle.fill")
                             .font(.system(size: 16))
-                        Text(viewModel.workoutSaved ? "DONE" : "USE THIS DATA")
+                        Text(buttonText)
                             .font(.ariseHeader(size: 14, weight: .semibold))
                             .tracking(2)
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
-                    .background(viewModel.workoutSaved ? Color.green : (viewModel.hasMatchedExercises ? Color.systemPrimary : Color.gray))
+                    .background((viewModel.workoutSaved || viewModel.activitySaved) ? Color.green : (viewModel.hasMatchedExercises || viewModel.isWhoopActivity ? Color.systemPrimary : Color.gray))
                     .foregroundColor(.voidBlack)
                     .cornerRadius(4)
-                    .shadow(color: viewModel.workoutSaved ? Color.green.opacity(0.3) : .systemPrimaryGlow, radius: 15, x: 0, y: 0)
+                    .shadow(color: (viewModel.workoutSaved || viewModel.activitySaved) ? Color.green.opacity(0.3) : .systemPrimaryGlow, radius: 15, x: 0, y: 0)
                 }
-                .disabled(!viewModel.workoutSaved && !viewModel.hasMatchedExercises)
+                .disabled(!viewModel.workoutSaved && !viewModel.activitySaved && !viewModel.hasMatchedExercises && !viewModel.isWhoopActivity)
             }
             .padding()
             .background(Color.voidMedium)
