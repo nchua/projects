@@ -388,7 +388,7 @@ def merge_extractions(extractions: List[Dict[str, Any]]) -> Dict[str, Any]:
     # Combine all exercises
     all_exercises = []
     for ext in extractions:
-        all_exercises.extend(ext.get("exercises", []))
+        all_exercises.extend(ext.get("exercises") or [])
 
     # Calculate combined summary
     total_tonnage = 0
@@ -474,7 +474,7 @@ async def save_extracted_workout(
 
     # Create exercises and sets
     order_index = 0
-    for exercise_data in extraction_result.get("exercises", []):
+    for exercise_data in (extraction_result.get("exercises") or []):
         exercise_id = exercise_data.get("matched_exercise_id")
 
         # Skip exercises that weren't matched
@@ -499,7 +499,7 @@ async def save_extracted_workout(
         # Create sets
         set_number = 1
         exercise_sets = []
-        for set_data in exercise_data.get("sets", []):
+        for set_data in (exercise_data.get("sets") or []):
             # Skip warmups if not included
             if not include_warmups and set_data.get("is_warmup", False):
                 continue

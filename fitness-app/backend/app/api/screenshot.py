@@ -68,7 +68,11 @@ async def process_screenshot(
         HTTPException: If file type is invalid, file is too large, or processing fails
     """
     import sys
-    sys.stderr.write(f"SCREENSHOT ENDPOINT HIT: filename={file.filename}, content_type={file.content_type}\n")
+    # Read first few bytes to check actual file format
+    first_bytes = await file.read(16)
+    await file.seek(0)  # Reset to beginning
+    hex_preview = first_bytes.hex()[:32]
+    sys.stderr.write(f"SCREENSHOT: filename={file.filename}, content_type={file.content_type}, first_bytes={hex_preview}\n")
     sys.stderr.flush()
     logger.info(f"Screenshot process request received: filename={file.filename}, content_type={file.content_type}")
 
