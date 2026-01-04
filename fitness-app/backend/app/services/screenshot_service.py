@@ -361,6 +361,7 @@ def merge_extractions(extractions: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     if not extractions:
         return {
+            "screenshot_type": "gym_workout",
             "session_date": None,
             "session_name": None,
             "duration_minutes": None,
@@ -372,10 +373,26 @@ def merge_extractions(extractions: List[Dict[str, Any]]) -> Dict[str, Any]:
     if len(extractions) == 1:
         return extractions[0]
 
+    # Determine screenshot type - if any is WHOOP, treat as WHOOP
+    screenshot_types = [ext.get("screenshot_type", "gym_workout") for ext in extractions]
+    is_whoop = "whoop_activity" in screenshot_types
+    screenshot_type = "whoop_activity" if is_whoop else "gym_workout"
+
     # Take session info from first extraction that has it
     session_date = None
     session_name = None
     duration_minutes = None
+    activity_type = None
+    time_range = None
+    source = None
+
+    # WHOOP-specific fields - aggregate
+    total_strain = None
+    total_steps = None
+    total_calories = None
+    max_avg_hr = None
+    max_max_hr = None
+    all_heart_rate_zones = []
 
     for ext in extractions:
         if not session_date and ext.get("session_date"):
@@ -384,6 +401,34 @@ def merge_extractions(extractions: List[Dict[str, Any]]) -> Dict[str, Any]:
             session_name = ext["session_name"]
         if not duration_minutes and ext.get("duration_minutes"):
             duration_minutes = ext["duration_minutes"]
+        if not activity_type and ext.get("activity_type"):
+            activity_type = ext["activity_type"]
+        if not time_range and ext.get("time_range"):
+            time_range = ext["time_range"]
+        if not source and ext.get("source"):
+            source = ext["source"]
+
+        # Aggregate WHOOP metrics
+        if ext.get("strain"):
+            total_strain = (total_strain or 0) + ext["strain"]
+        if ext.get("steps"):
+            total_steps = (total_steps or 0) + ext["steps"]
+        if ext.get("calories"):
+            total_calories = (total_calories or 0) + ext["calories"]
+        if ext.get("avg_hr"):
+            max_avg_hr = max(max_avg_hr or 0, ext["avg_hr"])
+        if ext.get("max_hr"):
+            max_max_hr = max(max_max_hr or 0, ext["max_hr"])
+        if ext.get("heart_rate_zones"):
+            all_heart_rate_zones.extend(ext["heart_rate_zones"])
+
+    # Sum duration if we have multiple
+    total_duration = 0
+    for ext in extractions:
+        if ext.get("duration_minutes"):
+            total_duration += ext["duration_minutes"]
+    if total_duration > 0:
+        duration_minutes = total_duration
 
     # Combine all exercises
     all_exercises = []
@@ -408,9 +453,10 @@ def merge_extractions(extractions: List[Dict[str, Any]]) -> Dict[str, Any]:
     else:
         overall_confidence = "high"
 
-    return {
+    result = {
+        "screenshot_type": screenshot_type,
         "session_date": session_date,
-        "session_name": session_name,
+        "session_name": session_name or activity_type,
         "duration_minutes": duration_minutes,
         "summary": {
             "tonnage_lb": total_tonnage,
@@ -419,6 +465,20 @@ def merge_extractions(extractions: List[Dict[str, Any]]) -> Dict[str, Any]:
         "exercises": all_exercises,
         "processing_confidence": overall_confidence
     }
+
+    # Add WHOOP-specific fields if applicable
+    if is_whoop:
+        result["activity_type"] = activity_type
+        result["time_range"] = time_range
+        result["source"] = source
+        result["strain"] = total_strain
+        result["steps"] = total_steps
+        result["calories"] = total_calories
+        result["avg_hr"] = max_avg_hr
+        result["max_hr"] = max_max_hr
+        result["heart_rate_zones"] = all_heart_rate_zones if all_heart_rate_zones else None
+
+    return result
 
 
 async def save_extracted_workout(

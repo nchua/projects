@@ -26,6 +26,8 @@ struct ScreenshotPreviewView: View {
                     errorView
                 } else if let data = viewModel.processedData {
                     resultView(data: data)
+                } else if let batch = viewModel.batchData {
+                    batchResultView(batch: batch)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -308,6 +310,222 @@ struct ScreenshotPreviewView: View {
             .background(Color.voidMedium)
         }
     }
+
+    // MARK: - Batch Result View
+
+    private func batchResultView(batch: ScreenshotBatchResponse) -> some View {
+        VStack(spacing: 0) {
+            // Header
+            VStack(spacing: 12) {
+                HStack {
+                    Text(viewModel.workoutSaved ? "[ WORKOUT SAVED ]" : "[ EXTRACTION COMPLETE ]")
+                        .font(.ariseMono(size: 10, weight: .medium))
+                        .foregroundColor(viewModel.workoutSaved ? .green : .systemPrimary)
+                        .tracking(2)
+
+                    Spacer()
+
+                    // Confidence badge
+                    Text(viewModel.confidenceText)
+                        .font(.ariseMono(size: 9, weight: .medium))
+                        .foregroundColor(viewModel.confidenceColor)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(viewModel.confidenceColor.opacity(0.1))
+                        .cornerRadius(4)
+                }
+
+                // Batch indicator
+                HStack(spacing: 8) {
+                    Image(systemName: "photo.stack")
+                        .foregroundColor(.systemPrimary)
+                    Text("\(batch.screenshotsProcessed) screenshots combined")
+                        .font(.ariseMono(size: 11))
+                        .foregroundColor(.textSecondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                if let sessionName = batch.sessionName ?? batch.activityType {
+                    Text(sessionName.uppercased())
+                        .font(.ariseHeader(size: 20, weight: .bold))
+                        .foregroundColor(.textPrimary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                HStack(spacing: 16) {
+                    if let date = batch.sessionDate {
+                        Label(date, systemImage: "calendar")
+                            .font(.ariseMono(size: 12))
+                            .foregroundColor(.textSecondary)
+                    }
+
+                    if let duration = batch.durationMinutes {
+                        Label("\(duration) min", systemImage: "clock")
+                            .font(.ariseMono(size: 12))
+                            .foregroundColor(.textSecondary)
+                    }
+
+                    // Show activity type for WHOOP, exercises count for gym workouts
+                    if batch.isWhoopActivity {
+                        if let activityType = batch.activityType {
+                            Label(activityType, systemImage: "figure.run")
+                                .font(.ariseMono(size: 12))
+                                .foregroundColor(.textSecondary)
+                        }
+                        if let strain = batch.strain {
+                            Label(String(format: "%.1f strain", strain), systemImage: "flame")
+                                .font(.ariseMono(size: 12))
+                                .foregroundColor(.textSecondary)
+                        }
+                    } else {
+                        Label("\(batch.exercises.count) exercises", systemImage: "dumbbell")
+                            .font(.ariseMono(size: 12))
+                            .foregroundColor(.textSecondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding()
+            .background(Color.voidMedium)
+
+            // Content area - exercises or WHOOP activity details
+            ScrollView {
+                VStack(spacing: 12) {
+                    if batch.isWhoopActivity {
+                        // WHOOP Activity Card
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Image(systemName: "figure.run")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(.systemPrimary)
+                                Text(batch.activityType?.uppercased() ?? "ACTIVITY")
+                                    .font(.ariseHeader(size: 18, weight: .bold))
+                                    .foregroundColor(.textPrimary)
+                                Spacer()
+                            }
+
+                            // Metrics grid
+                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                                if let strain = batch.strain {
+                                    MetricCard(icon: "flame", label: "STRAIN", value: String(format: "%.1f", strain))
+                                }
+                                if let calories = batch.calories {
+                                    MetricCard(icon: "flame.fill", label: "CALORIES", value: "\(calories)")
+                                }
+                                if let avgHr = batch.avgHr {
+                                    MetricCard(icon: "heart", label: "AVG HR", value: "\(avgHr) bpm")
+                                }
+                                if let maxHr = batch.maxHr {
+                                    MetricCard(icon: "heart.fill", label: "MAX HR", value: "\(maxHr) bpm")
+                                }
+                                if let steps = batch.steps {
+                                    MetricCard(icon: "figure.walk", label: "STEPS", value: "\(steps)")
+                                }
+                            }
+
+                            if let timeRange = batch.timeRange {
+                                HStack {
+                                    Image(systemName: "clock")
+                                        .foregroundColor(.textMuted)
+                                    Text(timeRange)
+                                        .font(.ariseMono(size: 12))
+                                        .foregroundColor(.textSecondary)
+                                }
+                            }
+                        }
+                        .padding()
+                        .background(Color.voidLight)
+                        .cornerRadius(8)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.systemPrimary.opacity(0.3), lineWidth: 1)
+                        )
+                    } else {
+                        // Gym workout exercises
+                        ForEach(batch.exercises) { exercise in
+                            ExercisePreviewCard(exercise: exercise)
+                        }
+
+                        // Unmatched warning
+                        let unmatchedCount = batch.exercises.filter { $0.matchedExerciseId == nil }.count
+                        if unmatchedCount > 0 {
+                            HStack(spacing: 12) {
+                                Image(systemName: "exclamationmark.circle")
+                                    .foregroundColor(.yellow)
+
+                                Text("\(unmatchedCount) exercise(s) could not be matched and will be skipped")
+                                    .font(.ariseBody(size: 12))
+                                    .foregroundColor(.textSecondary)
+                            }
+                            .padding()
+                            .background(Color.yellow.opacity(0.1))
+                            .cornerRadius(8)
+                        }
+                    }
+                }
+                .padding()
+            }
+
+            // Action buttons
+            VStack(spacing: 12) {
+                // Workout/Activity saved confirmation
+                if viewModel.workoutSaved || viewModel.activitySaved {
+                    HStack(spacing: 12) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.green)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(viewModel.activitySaved ? "Activity Logged Successfully" : "Workout Logged Successfully")
+                                .font(.ariseHeader(size: 14, weight: .semibold))
+                                .foregroundColor(.textPrimary)
+                            Text(viewModel.activitySaved ? "Your activity has been recorded" : "Your quest log has been recorded")
+                                .font(.ariseBody(size: 12))
+                                .foregroundColor(.textSecondary)
+                        }
+
+                        Spacer()
+                    }
+                    .padding()
+                    .background(Color.green.opacity(0.1))
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.green.opacity(0.3), lineWidth: 1)
+                    )
+                }
+
+                Button {
+                    if viewModel.workoutSaved || viewModel.activitySaved || viewModel.isWhoopActivity {
+                        isPresented = false
+                        viewModel.reset()
+                    } else {
+                        let exercises = viewModel.convertToLoggedExercises()
+                        onConfirm(exercises)
+                        isPresented = false
+                        viewModel.reset()
+                    }
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: (viewModel.workoutSaved || viewModel.activitySaved) ? "checkmark" : "checkmark.circle.fill")
+                            .font(.system(size: 16))
+                        Text(buttonText)
+                            .font(.ariseHeader(size: 14, weight: .semibold))
+                            .tracking(2)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .background((viewModel.workoutSaved || viewModel.activitySaved) ? Color.green : (viewModel.hasMatchedExercises || viewModel.isWhoopActivity ? Color.systemPrimary : Color.gray))
+                    .foregroundColor(.voidBlack)
+                    .cornerRadius(4)
+                    .shadow(color: (viewModel.workoutSaved || viewModel.activitySaved) ? Color.green.opacity(0.3) : .systemPrimaryGlow, radius: 15, x: 0, y: 0)
+                }
+                .disabled(!viewModel.workoutSaved && !viewModel.activitySaved && !viewModel.hasMatchedExercises && !viewModel.isWhoopActivity)
+            }
+            .padding()
+            .background(Color.voidMedium)
+        }
+    }
 }
 
 // MARK: - Exercise Preview Card
@@ -415,5 +633,33 @@ struct SetPreviewBadge: View {
         .padding(.vertical, 6)
         .background(set.isWarmup ? Color.yellow.opacity(0.1) : Color.voidMedium)
         .cornerRadius(4)
+    }
+}
+
+// MARK: - Metric Card (for WHOOP activities)
+
+struct MetricCard: View {
+    let icon: String
+    let label: String
+    let value: String
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundColor(.systemPrimary)
+
+            Text(value)
+                .font(.ariseHeader(size: 16, weight: .bold))
+                .foregroundColor(.textPrimary)
+
+            Text(label)
+                .font(.ariseMono(size: 9))
+                .foregroundColor(.textMuted)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(Color.voidMedium)
+        .cornerRadius(8)
     }
 }

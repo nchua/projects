@@ -119,7 +119,7 @@ async def root():
         "version": "0.2.1-pr-fix",
         "status": "running",
         "docs": "/docs",
-        "deploy_check": "2026-01-04-whoop-calendar-fix"
+        "deploy_check": "2026-01-04-batch-whoop-fix"
     }
 
 @app.get("/health")

@@ -359,6 +359,26 @@ async def process_screenshots_batch(
             workout_saved = True
         except Exception as e:
             # Don't fail if save fails
+            logger.error(f"Failed to save batch workout: {e}")
+            pass
+
+    # Auto-save WHOOP activity data (also creates a WorkoutSession for calendar)
+    activity_id = None
+    activity_saved = False
+    if screenshot_type == "whoop_activity":
+        try:
+            activity_id, whoop_workout_id = await save_whoop_activity(
+                db=db,
+                user_id=current_user.id,
+                extraction_result=merged
+            )
+            activity_saved = True
+            # Set workout_id so it shows in quests calendar
+            workout_id = whoop_workout_id
+            workout_saved = True
+        except Exception as e:
+            # Don't fail if activity save fails
+            logger.error(f"Failed to save batch WHOOP activity: {e}")
             pass
 
     return ScreenshotBatchResponse(
@@ -372,6 +392,8 @@ async def process_screenshots_batch(
         processing_confidence=merged.get("processing_confidence", "medium"),
         workout_id=workout_id,
         workout_saved=workout_saved,
+        activity_id=activity_id,
+        activity_saved=activity_saved,
         # WHOOP-specific fields
         activity_type=merged.get("activity_type"),
         time_range=merged.get("time_range"),

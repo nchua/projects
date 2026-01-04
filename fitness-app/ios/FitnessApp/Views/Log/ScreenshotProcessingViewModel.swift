@@ -95,14 +95,25 @@ class ScreenshotProcessingViewModel: ObservableObject {
     }
 
     func convertToLoggedExercises() -> [LoggedExercise] {
-        guard let data = processedData else { return [] }
-
-        // WHOOP activities don't have exercises to log
-        if data.isWhoopActivity {
+        // Get exercises from either processedData or batchData
+        let exercises: [ExtractedExercise]
+        if let data = processedData {
+            // WHOOP activities don't have exercises to log
+            if data.isWhoopActivity {
+                return []
+            }
+            exercises = data.exercises
+        } else if let batch = batchData {
+            // WHOOP activities don't have exercises to log
+            if batch.isWhoopActivity {
+                return []
+            }
+            exercises = batch.exercises
+        } else {
             return []
         }
 
-        return data.exercises.compactMap { extracted -> LoggedExercise? in
+        return exercises.compactMap { extracted -> LoggedExercise? in
             // Only include exercises that were matched to the database
             guard let exerciseId = extracted.matchedExerciseId else {
                 return nil
@@ -158,22 +169,36 @@ class ScreenshotProcessingViewModel: ObservableObject {
     }
 
     var hasMatchedExercises: Bool {
-        guard let data = processedData else { return false }
-        // WHOOP activities don't have exercises but should still be usable
-        if data.isWhoopActivity {
-            return true
+        // Check processedData first, then batchData
+        if let data = processedData {
+            if data.isWhoopActivity {
+                return true
+            }
+            return data.exercises.contains { $0.matchedExerciseId != nil }
         }
-        return data.exercises.contains { $0.matchedExerciseId != nil }
+        if let batch = batchData {
+            if batch.isWhoopActivity {
+                return true
+            }
+            return batch.exercises.contains { $0.matchedExerciseId != nil }
+        }
+        return false
     }
 
     var unmatchedExerciseCount: Int {
-        guard let data = processedData else { return 0 }
-        return data.exercises.filter { $0.matchedExerciseId == nil }.count
+        if let data = processedData {
+            return data.exercises.filter { $0.matchedExerciseId == nil }.count
+        }
+        if let batch = batchData {
+            return batch.exercises.filter { $0.matchedExerciseId == nil }.count
+        }
+        return 0
     }
 
     var confidenceColor: Color {
-        guard let data = processedData else { return .textMuted }
-        switch data.processingConfidence {
+        let confidence = processedData?.processingConfidence ?? batchData?.processingConfidence
+        guard let conf = confidence else { return .textMuted }
+        switch conf {
         case "high":
             return .systemPrimary
         case "medium":
@@ -184,8 +209,9 @@ class ScreenshotProcessingViewModel: ObservableObject {
     }
 
     var confidenceText: String {
-        guard let data = processedData else { return "" }
-        switch data.processingConfidence {
+        let confidence = processedData?.processingConfidence ?? batchData?.processingConfidence
+        guard let conf = confidence else { return "" }
+        switch conf {
         case "high":
             return "HIGH CONFIDENCE"
         case "medium":
