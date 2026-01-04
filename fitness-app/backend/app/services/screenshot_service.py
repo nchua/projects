@@ -657,15 +657,34 @@ async def save_whoop_activity(
     from app.models.activity import DailyActivity
 
     # Parse date from extraction or use provided/today
+    logger.info(f"save_whoop_activity: activity_date={activity_date}, session_date={extraction_result.get('session_date')}")
     if activity_date:
         date = activity_date.date() if hasattr(activity_date, 'date') else activity_date
         workout_datetime = activity_date if isinstance(activity_date, datetime) else datetime.combine(activity_date, datetime.min.time())
+        logger.info(f"Using provided activity_date: {date}")
     elif extraction_result.get("session_date"):
-        date = datetime.strptime(extraction_result["session_date"], "%Y-%m-%d").date()
-        workout_datetime = datetime.strptime(extraction_result["session_date"], "%Y-%m-%d")
+        session_date_str = extraction_result["session_date"]
+        # Try multiple date formats
+        parsed_date = None
+        for fmt in ["%Y-%m-%d", "%B %d, %Y", "%b %d, %Y", "%m/%d/%Y", "%d/%m/%Y"]:
+            try:
+                parsed_date = datetime.strptime(session_date_str, fmt)
+                logger.info(f"Parsed session_date '{session_date_str}' with format '{fmt}' -> {parsed_date}")
+                break
+            except ValueError:
+                continue
+        if parsed_date:
+            date = parsed_date.date()
+            workout_datetime = parsed_date
+        else:
+            logger.warning(f"Could not parse session_date: {session_date_str}, using today")
+            date = datetime.now().date()
+            workout_datetime = datetime.now()
     else:
+        logger.info("No session_date in extraction, using today's date")
         date = datetime.now().date()
         workout_datetime = datetime.now()
+    logger.info(f"Final workout date: {date}, datetime: {workout_datetime}")
 
     # Save to DailyActivity for metrics tracking
     existing = db.query(DailyActivity).filter(
