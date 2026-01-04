@@ -7,12 +7,15 @@ import base64
 import json
 import re
 import logging
+import io
 from typing import Optional, Tuple, List, Dict, Any
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 import anthropic
+from PIL import Image
+from PIL.ExifTags import TAGS
 
 logger = logging.getLogger(__name__)
 from rapidfuzz import fuzz, process
@@ -114,6 +117,29 @@ def get_media_type(filename: str) -> str:
 def encode_image_bytes(image_data: bytes) -> str:
     """Encode image bytes to base64 string."""
     return base64.standard_b64encode(image_data).decode('utf-8')
+
+
+def extract_date_from_image(image_data: bytes) -> Optional[str]:
+    """
+    Extract date from image EXIF metadata.
+    Returns date in YYYY-MM-DD format or None if not found.
+    """
+    try:
+        image = Image.open(io.BytesIO(image_data))
+        exif_data = image._getexif()
+        if exif_data:
+            for tag_id, value in exif_data.items():
+                tag = TAGS.get(tag_id, tag_id)
+                # Look for DateTimeOriginal or DateTime
+                if tag in ['DateTimeOriginal', 'DateTime', 'DateTimeDigitized']:
+                    # EXIF date format is "YYYY:MM:DD HH:MM:SS"
+                    if isinstance(value, str) and len(value) >= 10:
+                        date_part = value[:10].replace(':', '-')
+                        logger.info(f"Extracted EXIF date: {date_part} from tag {tag}")
+                        return date_part
+    except Exception as e:
+        logger.debug(f"Could not extract EXIF date: {e}")
+    return None
 
 
 def clean_json_response(response_text: str) -> str:
@@ -282,10 +308,21 @@ async def extract_workout_from_screenshot(
     # Handle WHOOP/activity screenshots differently - no exercise matching needed
     if screenshot_type == "whoop_activity":
         logger.info(f"WHOOP extraction - full data: {extracted_data}")
+
+        # Use Claude's extracted date, or fall back to EXIF date from image
+        session_date = extracted_data.get("session_date")
+        if not session_date:
+            exif_date = extract_date_from_image(image_data)
+            if exif_date:
+                session_date = exif_date
+                logger.info(f"Using EXIF date as fallback: {session_date}")
+            else:
+                logger.info("No session_date from Claude and no EXIF date available")
+
         return {
             "screenshot_type": "whoop_activity",
             "activity_type": extracted_data.get("activity_type"),
-            "session_date": extracted_data.get("session_date"),
+            "session_date": session_date,
             "time_range": extracted_data.get("time_range"),
             "duration_minutes": extracted_data.get("duration_minutes"),
             "strain": extracted_data.get("strain"),
