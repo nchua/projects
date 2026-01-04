@@ -161,6 +161,39 @@ When modifying how workout data is fetched, stored, or structured, you MUST upda
 
 ---
 
+## Problem-Solving Guidelines
+
+### When Automatic Fixes Fail, Consider Manual User Controls
+
+**Lesson Learned (Jan 2026)**: When debugging timezone/date issues with workout dates showing on the wrong calendar day, multiple attempts to fix the automatic date handling (ISO8601DateFormatter, timezone conversions, UTC vs local time) did not resolve the issue quickly.
+
+**Better Approach**: Instead of continuing to debug complex automatic behavior, add a **manual override option** that gives users direct control.
+
+**Example - Date Selection for Screenshots**:
+- **Problem**: Workouts uploaded via screenshot showed on wrong calendar date due to server UTC vs user local time
+- **Attempted fixes**: Multiple timezone conversion fixes in iOS and backend - none worked reliably
+- **Solution**: Added a date picker screen before screenshot processing, letting users explicitly select the workout date
+
+**When to consider manual controls**:
+1. **Timezone/date issues** - Let users pick the date instead of auto-detecting
+2. **Data extraction errors** - Let users edit/correct extracted data
+3. **Ambiguous inputs** - Ask users to clarify rather than guessing
+4. **Environment-dependent behavior** - Server vs client differences
+
+**Benefits of manual controls**:
+- Users get correct results immediately
+- Avoids complex debugging of edge cases
+- More transparent behavior
+- Often simpler to implement than fixing root cause
+
+**Implementation pattern**:
+```
+Before: Auto-process → Save with auto-detected values → User sees wrong result
+After:  Show preview → User adjusts values → Process with user's values → Correct result
+```
+
+---
+
 ## Recent Changes Summary (Jan 2026)
 
 ### Bug Fix: Exercise Names in Completed Quest Card
