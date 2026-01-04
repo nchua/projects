@@ -71,7 +71,7 @@ FOR WHOOP/ACTIVITY SCREENSHOTS (screenshot_type: "whoop_activity"):
 {
   "screenshot_type": "whoop_activity",
   "activity_type": "Activity name (e.g., 'TENNIS', 'RUNNING', 'CYCLING')",
-  "session_date": "YYYY-MM-DD or null",
+  "session_date": "YYYY-MM-DD - IMPORTANT: Look for the date at the top of the screen, in headers, or near the activity name. Convert any date format to YYYY-MM-DD.",
   "time_range": "Start to end time if visible (e.g., '7:03 PM to 8:46 PM')",
   "duration_minutes": number or null,
   "strain": activity strain score if visible (e.g., 14.6),
@@ -94,7 +94,8 @@ Important:
 - Convert all weights to pounds (lb) for gym workouts
 - Extract the exact numbers shown - don't estimate
 - Return ONLY valid JSON, no other text
-- For WHOOP screenshots, extract all visible metrics even if some are missing"""
+- For WHOOP screenshots, extract all visible metrics even if some are missing
+- CRITICAL: Always look for and extract the date (session_date) - check the top of screen, headers, navigation bars, or anywhere a date might appear. Convert formats like "Jan 3, 2026", "January 3", "1/3/26", "Friday, Jan 3" to YYYY-MM-DD format."""
 
 
 def get_media_type(filename: str) -> str:
