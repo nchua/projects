@@ -902,3 +902,90 @@ struct ScreenshotBatchResponse: Decodable {
         case heartRateZones = "heart_rate_zones"
     }
 }
+
+// MARK: - Recovery
+
+struct AffectedExercise: Decodable, Identifiable {
+    let exerciseId: String
+    let exerciseName: String
+    let workoutDate: String
+    let fatigueType: String  // "primary" or "secondary"
+
+    var id: String { exerciseId + workoutDate }
+
+    enum CodingKeys: String, CodingKey {
+        case exerciseId = "exercise_id"
+        case exerciseName = "exercise_name"
+        case workoutDate = "workout_date"
+        case fatigueType = "fatigue_type"
+    }
+}
+
+struct MuscleRecoveryStatus: Decodable, Identifiable {
+    let muscleGroup: String
+    let status: String
+    let recoveryPercent: Double
+    let hoursRemaining: Int
+    let lastTrained: String
+    let affectedExercises: [AffectedExercise]
+
+    var id: String { muscleGroup }
+
+    /// Display name for the muscle group
+    var displayName: String {
+        switch muscleGroup {
+        case "chest": return "Chest"
+        case "quads": return "Quads"
+        case "hamstrings": return "Hamstrings"
+        case "biceps": return "Biceps"
+        case "triceps": return "Triceps"
+        case "shoulders": return "Shoulders"
+        default: return muscleGroup.capitalized
+        }
+    }
+
+    /// Fantasy name for the muscle group (Solo Leveling theme)
+    var fantasyName: String {
+        switch muscleGroup {
+        case "chest": return "Titan's Core"
+        case "quads": return "Earth Pillars"
+        case "hamstrings": return "Shadow Tendons"
+        case "biceps": return "Iron Coils"
+        case "triceps": return "Storm Arms"
+        case "shoulders": return "Atlas Frame"
+        default: return muscleGroup.capitalized
+        }
+    }
+
+    /// Formatted time remaining
+    var timeRemainingFormatted: String {
+        if hoursRemaining >= 24 {
+            let days = hoursRemaining / 24
+            let hours = hoursRemaining % 24
+            if hours > 0 {
+                return "\(days)d \(hours)h"
+            }
+            return "\(days)d"
+        }
+        return "\(hoursRemaining)h"
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case muscleGroup = "muscle_group"
+        case recoveryPercent = "recovery_percent"
+        case hoursRemaining = "hours_remaining"
+        case lastTrained = "last_trained"
+        case affectedExercises = "affected_exercises"
+    }
+}
+
+struct RecoveryResponse: Decodable {
+    let fatiguedMuscles: [MuscleRecoveryStatus]
+    let generatedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case fatiguedMuscles = "fatigued_muscles"
+        case generatedAt = "generated_at"
+    }
+}

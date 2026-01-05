@@ -27,6 +27,12 @@ struct HomeView: View {
                         )
                         .padding(.horizontal)
 
+                        // Recovery Status Card - Only show if there are fatigued muscles
+                        if !viewModel.recoveryStatus.isEmpty {
+                            RecoveryCard(recoveryData: viewModel.recoveryStatus)
+                                .padding(.horizontal)
+                        }
+
                         // Daily Quests Card
                         if let quests = viewModel.dailyQuests, !quests.quests.isEmpty {
                             DailyQuestsCard(

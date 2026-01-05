@@ -137,6 +137,10 @@ class APIClient {
         return try await get("/analytics/weekly-review")
     }
 
+    func getRecoveryStatus() async throws -> RecoveryResponse {
+        return try await get("/analytics/recovery")
+    }
+
     // MARK: - Sync
 
     func sync(_ data: SyncRequest) async throws -> SyncResponse {

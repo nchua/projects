@@ -22,6 +22,7 @@ class HomeViewModel: ObservableObject {
     @Published var recentAchievements: [AchievementResponse] = []
     @Published var dailyQuests: DailyQuestsResponse?
     @Published var profile: ProfileResponse?
+    @Published var recoveryStatus: [MuscleRecoveryStatus] = []
     @Published var isLoading = false
     @Published var error: String?
 
@@ -77,8 +78,9 @@ class HomeViewModel: ObservableObject {
             async let achievementsTask = APIClient.shared.getRecentAchievements(limit: 3)
             async let questsTask = APIClient.shared.getDailyQuests()
             async let profileTask = APIClient.shared.getProfile()
+            async let recoveryTask = APIClient.shared.getRecoveryStatus()
 
-            let (workouts, weekly, prs, insightsResponse, progress, achievements, quests, profileResult) = try await (
+            let (workouts, weekly, prs, insightsResponse, progress, achievements, quests, profileResult, recovery) = try await (
                 workoutsTask,
                 weeklyTask,
                 prsTask,
@@ -86,13 +88,15 @@ class HomeViewModel: ObservableObject {
                 progressTask,
                 achievementsTask,
                 questsTask,
-                profileTask
+                profileTask,
+                recoveryTask
             )
 
             userProgress = progress
             recentAchievements = achievements.achievements
             dailyQuests = quests
             profile = profileResult
+            recoveryStatus = recovery.fatiguedMuscles
 
             recentWorkout = workouts.first
             weeklyReview = weekly
