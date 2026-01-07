@@ -231,3 +231,32 @@ curl -H "Authorization: Bearer <token>" \
 3. **Historical Cooldown Data:** Track cooldown patterns over time
 4. **Custom Cooldown Times:** Allow users to adjust cooldown times based on their experience level
 5. **Integration with Sleep/HRV:** Factor in sleep quality and HRV for more accurate cooldown estimates
+6. **Dynamic Cooldown Calculation:** Make cooldown times adaptive based on multiple research-backed factors:
+
+   **A. Muscle Group-Specific Recovery**
+   - Different muscles have different baseline recovery needs based on fiber composition
+   - Chest/Pecs: 65% fast-twitch fibers → longer recovery (72h baseline)
+   - Lower body: generally needs longer recovery than upper body
+   - Multi-joint movements need longer recovery than single-joint exercises
+   - Sources: [PMC Systematic Review 2024](https://pmc.ncbi.nlm.nih.gov/articles/PMC11057610/)
+
+   **B. Age-Based Recovery Benchmarks**
+   - Research shows recovery time increases significantly with age
+   - Suggested modifiers:
+     - Under 30: 1.0x baseline
+     - 30-40: 1.15x baseline
+     - 40-50: 1.3x baseline
+     - 50+: 1.5x baseline
+   - Sources: [Age-Related Recovery Research](https://pmc.ncbi.nlm.nih.gov/articles/PMC10854791/)
+
+   **C. Workout Intensity Factors**
+   - Number of sets performed for that muscle group (higher volume = longer cooldown)
+   - Weight lifted relative to user's max (e.g., 90% of 1RM = +20% cooldown)
+   - Training to failure adds 24-48h to recovery time per research
+   - RPE/RIR if logged (RPE 10 = +50% cooldown time)
+
+   **D. Training Frequency Adaptation (Detraining Effect)**
+   - Less frequent training of a muscle = longer perceived fatigue
+   - Regular training = muscles adapt and recover faster
+   - Track historical frequency per muscle group
+   - First workout after 2+ weeks off = +25% cooldown time
