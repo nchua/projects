@@ -983,9 +983,11 @@ struct MuscleCooldownStatus: Decodable, Identifiable {
 struct CooldownResponse: Decodable {
     let musclesCooling: [MuscleCooldownStatus]
     let generatedAt: String
+    let ageModifier: Double
 
     enum CodingKeys: String, CodingKey {
         case musclesCooling = "muscles_cooling"
         case generatedAt = "generated_at"
+        case ageModifier = "age_modifier"
     }
 }

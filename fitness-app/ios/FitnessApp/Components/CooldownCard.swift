@@ -4,8 +4,10 @@ import SwiftUI
 /// Shows which muscle groups are still cooling down from recent workouts
 struct CooldownCard: View {
     let cooldownData: [MuscleCooldownStatus]
+    var ageModifier: Double = 1.0
 
     @State private var isExpanded = false
+    @State private var showingInfoSheet = false
 
     /// Maximum hours remaining across all muscles
     var maxHoursRemaining: Int {
@@ -75,6 +77,9 @@ struct CooldownCard: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 2))
         .shadow(color: Color.systemPrimary.opacity(0.15), radius: 10, x: 0, y: 0)
+        .sheet(isPresented: $showingInfoSheet) {
+            CooldownInfoSheet(ageModifier: ageModifier)
+        }
     }
 
     // MARK: - Card Content
@@ -110,19 +115,15 @@ struct CooldownCard: View {
 
                 Spacer()
 
-                // Active badge
-                Text("ACTIVE")
-                    .font(.ariseMono(size: 10, weight: .semibold))
-                    .foregroundColor(.systemPrimary)
-                    .tracking(1)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Color.systemPrimary.opacity(0.1))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 2)
-                            .stroke(Color.systemPrimary, lineWidth: 1)
-                    )
-                    .cornerRadius(2)
+                // Info button
+                Button {
+                    showingInfoSheet = true
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 16))
+                        .foregroundColor(.textMuted)
+                }
+                .buttonStyle(PlainButtonStyle())
 
                 // Expand chevron
                 Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
@@ -341,6 +342,179 @@ struct CooldownMuscleDetailRow: View {
             return names.joined(separator: ", ")
         }
         return "\(names[0]), \(names[1]) +\(names.count - 2) more"
+    }
+}
+
+// MARK: - Info Sheet
+
+struct CooldownInfoSheet: View {
+    let ageModifier: Double
+    @Environment(\.dismiss) private var dismiss
+
+    /// Get the age range description based on the modifier
+    private var userAgeRange: String {
+        switch ageModifier {
+        case 1.0: return "Under 30"
+        case 1.15: return "30-40"
+        case 1.3: return "40-50"
+        case 1.5: return "50+"
+        default: return "Unknown"
+        }
+    }
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color.voidDark.ignoresSafeArea()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        // Header explanation
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("About Cooldowns")
+                                .font(.ariseHeader(size: 20, weight: .bold))
+                                .foregroundColor(.textPrimary)
+
+                            Text("Muscle recovery times are based on exercise science research. Your cooldown times are personalized based on your age.")
+                                .font(.ariseMono(size: 13))
+                                .foregroundColor(.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        // Base cooldown times
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("BASE RECOVERY TIMES")
+                                .font(.ariseMono(size: 11, weight: .semibold))
+                                .foregroundColor(.systemPrimary)
+                                .tracking(1)
+
+                            VStack(spacing: 8) {
+                                cooldownRow(muscle: "Chest", hours: 72)
+                                cooldownRow(muscle: "Hamstrings", hours: 72)
+                                cooldownRow(muscle: "Quads", hours: 48)
+                                cooldownRow(muscle: "Shoulders", hours: 48)
+                                cooldownRow(muscle: "Biceps", hours: 36)
+                                cooldownRow(muscle: "Triceps", hours: 36)
+                            }
+                        }
+                        .padding(16)
+                        .background(Color.voidLight.opacity(0.3))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 2)
+                                .stroke(Color.ariseBorder, lineWidth: 1)
+                        )
+
+                        // Age modifiers
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("AGE-BASED MODIFIERS")
+                                .font(.ariseMono(size: 11, weight: .semibold))
+                                .foregroundColor(.systemPrimary)
+                                .tracking(1)
+
+                            Text("Recovery time naturally increases with age. Your times are adjusted accordingly.")
+                                .font(.ariseMono(size: 12))
+                                .foregroundColor(.textMuted)
+
+                            VStack(spacing: 8) {
+                                ageModifierRow(range: "Under 30", modifier: 1.0, isActive: ageModifier == 1.0)
+                                ageModifierRow(range: "30-40", modifier: 1.15, isActive: ageModifier == 1.15)
+                                ageModifierRow(range: "40-50", modifier: 1.3, isActive: ageModifier == 1.3)
+                                ageModifierRow(range: "50+", modifier: 1.5, isActive: ageModifier == 1.5)
+                            }
+                        }
+                        .padding(16)
+                        .background(Color.voidLight.opacity(0.3))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 2)
+                                .stroke(Color.ariseBorder, lineWidth: 1)
+                        )
+
+                        // Current modifier callout
+                        if ageModifier > 1.0 {
+                            HStack(spacing: 12) {
+                                Image(systemName: "person.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.systemPrimary)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Your Modifier: \(String(format: "%.0f%%", (ageModifier - 1) * 100)) longer")
+                                        .font(.ariseMono(size: 13, weight: .semibold))
+                                        .foregroundColor(.textPrimary)
+
+                                    Text("Based on age range: \(userAgeRange)")
+                                        .font(.ariseMono(size: 11))
+                                        .foregroundColor(.textMuted)
+                                }
+
+                                Spacer()
+                            }
+                            .padding(16)
+                            .background(Color.systemPrimary.opacity(0.1))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 2)
+                                    .stroke(Color.systemPrimary.opacity(0.5), lineWidth: 1)
+                            )
+                        }
+
+                        Spacer(minLength: 40)
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .foregroundColor(.systemPrimary)
+                }
+            }
+        }
+    }
+
+    private func cooldownRow(muscle: String, hours: Int) -> some View {
+        HStack {
+            Text(muscle)
+                .font(.ariseMono(size: 13))
+                .foregroundColor(.textPrimary)
+
+            Spacer()
+
+            Text("\(hours) hours")
+                .font(.ariseMono(size: 13, weight: .medium))
+                .foregroundColor(.textSecondary)
+        }
+    }
+
+    private func ageModifierRow(range: String, modifier: Double, isActive: Bool) -> some View {
+        HStack {
+            Text(range)
+                .font(.ariseMono(size: 13))
+                .foregroundColor(isActive ? .systemPrimary : .textPrimary)
+
+            Spacer()
+
+            if modifier == 1.0 {
+                Text("Baseline")
+                    .font(.ariseMono(size: 13, weight: .medium))
+                    .foregroundColor(isActive ? .systemPrimary : .textSecondary)
+            } else {
+                Text("+\(Int((modifier - 1) * 100))%")
+                    .font(.ariseMono(size: 13, weight: .medium))
+                    .foregroundColor(isActive ? .systemPrimary : .textSecondary)
+            }
+
+            if isActive {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(.systemPrimary)
+            }
+        }
+        .padding(.vertical, 4)
+        .padding(.horizontal, 8)
+        .background(isActive ? Color.systemPrimary.opacity(0.1) : Color.clear)
+        .cornerRadius(4)
     }
 }
 

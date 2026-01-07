@@ -29,8 +29,11 @@ struct HomeView: View {
 
                         // Cooldown Status Card - Only show if there are muscles cooling down
                         if !viewModel.cooldownStatus.isEmpty {
-                            CooldownCard(cooldownData: viewModel.cooldownStatus)
-                                .padding(.horizontal)
+                            CooldownCard(
+                                cooldownData: viewModel.cooldownStatus,
+                                ageModifier: viewModel.cooldownAgeModifier
+                            )
+                            .padding(.horizontal)
                         }
 
                         // Daily Quests Card

@@ -23,6 +23,7 @@ class HomeViewModel: ObservableObject {
     @Published var dailyQuests: DailyQuestsResponse?
     @Published var profile: ProfileResponse?
     @Published var cooldownStatus: [MuscleCooldownStatus] = []
+    @Published var cooldownAgeModifier: Double = 1.0
     @Published var isLoading = false
     @Published var error: String?
 
@@ -97,6 +98,7 @@ class HomeViewModel: ObservableObject {
             dailyQuests = quests
             profile = profileResult
             cooldownStatus = cooldowns.musclesCooling
+            cooldownAgeModifier = cooldowns.ageModifier
 
             recentWorkout = workouts.first
             weeklyReview = weekly
