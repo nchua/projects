@@ -1,7 +1,7 @@
 """
-Recovery/Cooldown Pydantic schemas for muscle recovery tracking.
+Cooldown Pydantic schemas for muscle cooldown tracking.
 
-Science-based recovery times:
+Science-based cooldown times:
 - Large muscles (Quads, Hamstrings, Chest): 48-72 hours
 - Medium muscles (Shoulders): 48 hours
 - Small muscles (Biceps, Triceps): 24-48 hours
@@ -12,7 +12,7 @@ from enum import Enum
 
 
 class MuscleGroup(str, Enum):
-    """Target muscle groups for recovery tracking"""
+    """Target muscle groups for cooldown tracking"""
     CHEST = "chest"
     QUADS = "quads"
     HAMSTRINGS = "hamstrings"
@@ -21,10 +21,10 @@ class MuscleGroup(str, Enum):
     SHOULDERS = "shoulders"
 
 
-class RecoveryStatus(str, Enum):
-    """Recovery status for a muscle group"""
-    RECOVERING = "recovering"
-    RECOVERED = "recovered"
+class CooldownStatus(str, Enum):
+    """Cooldown status for a muscle group"""
+    COOLING = "cooling"
+    READY = "ready"
 
 
 class AffectedExercise(BaseModel):
@@ -35,17 +35,17 @@ class AffectedExercise(BaseModel):
     fatigue_type: str  # "primary" or "secondary"
 
 
-class MuscleRecoveryStatus(BaseModel):
-    """Recovery status for a single muscle group"""
+class MuscleCooldownStatus(BaseModel):
+    """Cooldown status for a single muscle group"""
     muscle_group: str
     status: str
-    recovery_percent: float  # 0-100, 100 = fully recovered
-    hours_remaining: int  # hours until fully recovered
+    cooldown_percent: float  # 0-100, 100 = fully ready
+    hours_remaining: int  # hours until fully ready
     last_trained: str  # ISO datetime
     affected_exercises: List[AffectedExercise]
 
 
-class RecoveryResponse(BaseModel):
-    """Response for recovery endpoint"""
-    fatigued_muscles: List[MuscleRecoveryStatus]
+class CooldownResponse(BaseModel):
+    """Response for cooldown endpoint"""
+    muscles_cooling: List[MuscleCooldownStatus]
     generated_at: str

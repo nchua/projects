@@ -22,8 +22,8 @@ from app.schemas.analytics import (
     InsightsResponse, Insight, InsightType, InsightPriority,
     WeeklyReviewResponse
 )
-from app.schemas.recovery import RecoveryResponse
-from app.services.recovery_service import calculate_recovery
+from app.schemas.cooldown import CooldownResponse
+from app.services.cooldown_service import calculate_cooldowns
 
 router = APIRouter()
 
@@ -719,21 +719,21 @@ async def get_weekly_review(
     )
 
 
-@router.get("/recovery", response_model=RecoveryResponse)
-async def get_recovery_status(
+@router.get("/cooldowns", response_model=CooldownResponse)
+async def get_cooldown_status(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Get muscle recovery status for the current user.
+    Get muscle cooldown status for the current user.
 
-    Returns only muscle groups that are currently fatigued (still recovering).
+    Returns only muscle groups that are currently cooling down.
     Each muscle group includes:
-    - recovery_percent: 0-100% (100 = fully recovered)
-    - hours_remaining: hours until fully recovered
+    - cooldown_percent: 0-100% (100 = fully ready)
+    - hours_remaining: hours until fully ready
     - affected_exercises: list of exercises that caused the fatigue
 
-    Recovery times are science-based:
+    Cooldown times are science-based:
     - Large muscles (Chest, Hamstrings): 72 hours
     - Medium muscles (Quads, Shoulders): 48 hours
     - Small muscles (Biceps, Triceps): 36 hours
@@ -742,5 +742,5 @@ async def get_recovery_status(
     - Primary muscles: 100% fatigue
     - Secondary muscles: 50% fatigue
     """
-    recovery_data = calculate_recovery(db, current_user.id)
-    return RecoveryResponse(**recovery_data)
+    cooldown_data = calculate_cooldowns(db, current_user.id)
+    return CooldownResponse(**cooldown_data)

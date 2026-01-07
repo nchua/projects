@@ -1,9 +1,9 @@
 """
-Muscle Recovery Service
+Muscle Cooldown Service
 
-Calculates muscle fatigue and recovery status based on workout history.
+Calculates muscle fatigue and cooldown status based on workout history.
 
-Science-based recovery time calculations:
+Science-based cooldown time calculations:
 - Large muscles (Quads, Hamstrings, Chest): 48-72 hours
 - Medium muscles (Shoulders): 48 hours
 - Small muscles (Biceps, Triceps): 24-48 hours
@@ -21,8 +21,8 @@ from app.models.workout import WorkoutSession, WorkoutExercise
 from app.models.exercise import Exercise
 
 
-# Recovery times in hours for each muscle group
-RECOVERY_TIMES = {
+# Cooldown times in hours for each muscle group
+COOLDOWN_TIMES = {
     "chest": 72,
     "quads": 48,
     "hamstrings": 72,
@@ -223,16 +223,16 @@ def map_primary_muscle(muscle_name: str) -> str | None:
     return PRIMARY_MUSCLE_MAP.get(name_lower)
 
 
-def calculate_recovery(
+def calculate_cooldowns(
     db: Session,
     user_id: str,
     lookback_hours: int = 96  # 4 days lookback
 ) -> Dict:
     """
-    Calculate muscle recovery status for a user.
+    Calculate muscle cooldown status for a user.
 
     Returns dict with:
-    - fatigued_muscles: List of muscles that are still recovering
+    - muscles_cooling: List of muscles that are still cooling down
     - generated_at: timestamp
     """
     now = datetime.utcnow()
@@ -250,7 +250,7 @@ def calculate_recovery(
     muscle_fatigue: Dict[str, dict] = defaultdict(lambda: {
         "last_trained": None,
         "exercises": [],
-        "total_fatigue_hours": 0,
+        "total_cooldown_hours": 0,
     })
 
     for workout in workouts:
@@ -269,22 +269,22 @@ def calculate_recovery(
             # Fall back to exercise model fields if our mapping is empty
             if not primary_muscles and exercise.primary_muscle:
                 mapped_muscle = map_primary_muscle(exercise.primary_muscle)
-                if mapped_muscle and mapped_muscle in RECOVERY_TIMES:
+                if mapped_muscle and mapped_muscle in COOLDOWN_TIMES:
                     primary_muscles = [mapped_muscle]
 
             if not secondary_muscles and exercise.secondary_muscles:
                 for sm in exercise.secondary_muscles:
                     mapped_muscle = map_primary_muscle(sm)
-                    if mapped_muscle and mapped_muscle in RECOVERY_TIMES:
+                    if mapped_muscle and mapped_muscle in COOLDOWN_TIMES:
                         secondary_muscles.append(mapped_muscle)
 
             # Apply fatigue to primary muscles (100%)
             for muscle in primary_muscles:
-                if muscle in RECOVERY_TIMES:
+                if muscle in COOLDOWN_TIMES:
                     # Update last trained if this workout is more recent
                     if muscle_fatigue[muscle]["last_trained"] is None or workout_date > muscle_fatigue[muscle]["last_trained"]:
                         muscle_fatigue[muscle]["last_trained"] = workout_date
-                        muscle_fatigue[muscle]["total_fatigue_hours"] = RECOVERY_TIMES[muscle]
+                        muscle_fatigue[muscle]["total_cooldown_hours"] = COOLDOWN_TIMES[muscle]
 
                     # Add exercise to affected list (avoid duplicates)
                     exercise_entry = {
@@ -298,15 +298,15 @@ def calculate_recovery(
 
             # Apply fatigue to secondary muscles (50%)
             for muscle in secondary_muscles:
-                if muscle in RECOVERY_TIMES:
-                    secondary_fatigue = int(RECOVERY_TIMES[muscle] * SECONDARY_FATIGUE_PERCENT)
+                if muscle in COOLDOWN_TIMES:
+                    secondary_fatigue = int(COOLDOWN_TIMES[muscle] * SECONDARY_FATIGUE_PERCENT)
 
                     # Update last trained if this workout is more recent
                     if muscle_fatigue[muscle]["last_trained"] is None or workout_date > muscle_fatigue[muscle]["last_trained"]:
                         muscle_fatigue[muscle]["last_trained"] = workout_date
                         # For secondary, use reduced fatigue time (but don't reduce existing primary fatigue)
-                        muscle_fatigue[muscle]["total_fatigue_hours"] = max(
-                            muscle_fatigue[muscle]["total_fatigue_hours"],
+                        muscle_fatigue[muscle]["total_cooldown_hours"] = max(
+                            muscle_fatigue[muscle]["total_cooldown_hours"],
                             secondary_fatigue
                         )
 
@@ -320,8 +320,8 @@ def calculate_recovery(
                     if exercise_entry not in muscle_fatigue[muscle]["exercises"]:
                         muscle_fatigue[muscle]["exercises"].append(exercise_entry)
 
-    # Calculate recovery status for each muscle
-    fatigued_muscles = []
+    # Calculate cooldown status for each muscle
+    muscles_cooling = []
 
     for muscle, data in muscle_fatigue.items():
         if data["last_trained"] is None:
@@ -329,28 +329,28 @@ def calculate_recovery(
 
         # Calculate hours since last trained
         hours_since_trained = (now - data["last_trained"]).total_seconds() / 3600
-        recovery_time = data["total_fatigue_hours"]
+        cooldown_time = data["total_cooldown_hours"]
 
-        # Skip if fully recovered
-        if hours_since_trained >= recovery_time:
+        # Skip if fully ready
+        if hours_since_trained >= cooldown_time:
             continue
 
-        hours_remaining = int(recovery_time - hours_since_trained)
-        recovery_percent = min(100, (hours_since_trained / recovery_time) * 100)
+        hours_remaining = int(cooldown_time - hours_since_trained)
+        cooldown_percent = min(100, (hours_since_trained / cooldown_time) * 100)
 
-        fatigued_muscles.append({
+        muscles_cooling.append({
             "muscle_group": muscle,
-            "status": "recovering",
-            "recovery_percent": round(recovery_percent, 1),
+            "status": "cooling",
+            "cooldown_percent": round(cooldown_percent, 1),
             "hours_remaining": max(0, hours_remaining),
             "last_trained": data["last_trained"].isoformat(),
             "affected_exercises": data["exercises"]
         })
 
-    # Sort by hours remaining (most recovery needed first)
-    fatigued_muscles.sort(key=lambda x: x["hours_remaining"], reverse=True)
+    # Sort by hours remaining (most cooldown needed first)
+    muscles_cooling.sort(key=lambda x: x["hours_remaining"], reverse=True)
 
     return {
-        "fatigued_muscles": fatigued_muscles,
+        "muscles_cooling": muscles_cooling,
         "generated_at": now.isoformat()
     }

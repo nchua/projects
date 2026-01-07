@@ -11,6 +11,7 @@
 		05CC6AEBFD7BF822803F46FD /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED58B7E30BB84AE9A98C885 /* StatsView.swift */; };
 		128C3BEF27F1FADEE9533255 /* Workout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30B6448810F2D9AE2EB9E6E7 /* Workout.swift */; };
 		19BEF26C39177C374BE4D396 /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08CCA5CC781543F5685156FC /* HomeViewModel.swift */; };
+		19D2744D980A096BD3E90C07 /* RecoveryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE15D19C1335CBD7C4E473E0 /* RecoveryCard.swift */; };
 		2943518C9A7FAF40CC41308F /* JetBrainsMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D56976681220CBFB0C3BCDA6 /* JetBrainsMono-Medium.ttf */; };
 		2CB4AD01F621551C9C16B843 /* VoidBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = EED34A2D176E81C9F5DFCEED /* VoidBackground.swift */; };
 		2D5485AA0052928F9070FCF0 /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D0BA5EF12A720AECF7A1CF6 /* Exercise.swift */; };
@@ -115,6 +116,7 @@
 		D56976681220CBFB0C3BCDA6 /* JetBrainsMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Medium.ttf"; sourceTree = "<group>"; };
 		D5D6F00D821F65A269678B30 /* FitnessAppTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = FitnessAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		DB83BF408BFC9A75EE16A3DD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		DE15D19C1335CBD7C4E473E0 /* RecoveryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryCard.swift; sourceTree = "<group>"; };
 		EED34A2D176E81C9F5DFCEED /* VoidBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoidBackground.swift; sourceTree = "<group>"; };
 		F0A0F9BC78395829B3FD6E72 /* FitnessAppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitnessAppTests.swift; sourceTree = "<group>"; };
 		F4C96A0FDFB19923AC061970 /* XPRewardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XPRewardView.swift; sourceTree = "<group>"; };
@@ -139,6 +141,7 @@
 				A971480DB0D51347A4285BDF /* DailyQuestsCard.swift */,
 				C7126810EA67EBBBD241CA71 /* ImagePicker.swift */,
 				C9F64535FBE31A54DBE47FFF /* RankBadgeView.swift */,
+				DE15D19C1335CBD7C4E473E0 /* RecoveryCard.swift */,
 				C68D331EA8FE8B1C6A105FE9 /* StatCard.swift */,
 				EED34A2D176E81C9F5DFCEED /* VoidBackground.swift */,
 				21C560832A36E3F4D5FF5735 /* XPBarView.swift */,
@@ -439,6 +442,7 @@
 				8714FA87386C4B44FEF75DF2 /* ProfileViewModel.swift in Sources */,
 				8C36406D3B4272678C3FAE7E /* ProgressViewModel.swift in Sources */,
 				82A75718FCA9F00ED57AB446 /* RankBadgeView.swift in Sources */,
+				19D2744D980A096BD3E90C07 /* RecoveryCard.swift in Sources */,
 				F286067EDCBE1B25D7055849 /* ScreenshotPickerView.swift in Sources */,
 				4DE2F4CEF8CDDCED4C17A591 /* ScreenshotPreviewView.swift in Sources */,
 				AA1968CFD12652D717FF76B6 /* ScreenshotProcessingViewModel.swift in Sources */,

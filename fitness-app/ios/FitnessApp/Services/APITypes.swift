@@ -903,7 +903,7 @@ struct ScreenshotBatchResponse: Decodable {
     }
 }
 
-// MARK: - Recovery
+// MARK: - Cooldowns
 
 struct AffectedExercise: Decodable, Identifiable {
     let exerciseId: String
@@ -921,10 +921,10 @@ struct AffectedExercise: Decodable, Identifiable {
     }
 }
 
-struct MuscleRecoveryStatus: Decodable, Identifiable {
+struct MuscleCooldownStatus: Decodable, Identifiable {
     let muscleGroup: String
     let status: String
-    let recoveryPercent: Double
+    let cooldownPercent: Double
     let hoursRemaining: Int
     let lastTrained: String
     let affectedExercises: [AffectedExercise]
@@ -973,19 +973,19 @@ struct MuscleRecoveryStatus: Decodable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case status
         case muscleGroup = "muscle_group"
-        case recoveryPercent = "recovery_percent"
+        case cooldownPercent = "cooldown_percent"
         case hoursRemaining = "hours_remaining"
         case lastTrained = "last_trained"
         case affectedExercises = "affected_exercises"
     }
 }
 
-struct RecoveryResponse: Decodable {
-    let fatiguedMuscles: [MuscleRecoveryStatus]
+struct CooldownResponse: Decodable {
+    let musclesCooling: [MuscleCooldownStatus]
     let generatedAt: String
 
     enum CodingKeys: String, CodingKey {
-        case fatiguedMuscles = "fatigued_muscles"
+        case musclesCooling = "muscles_cooling"
         case generatedAt = "generated_at"
     }
 }

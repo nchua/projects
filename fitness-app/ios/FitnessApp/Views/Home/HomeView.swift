@@ -27,9 +27,9 @@ struct HomeView: View {
                         )
                         .padding(.horizontal)
 
-                        // Recovery Status Card - Only show if there are fatigued muscles
-                        if !viewModel.recoveryStatus.isEmpty {
-                            RecoveryCard(recoveryData: viewModel.recoveryStatus)
+                        // Cooldown Status Card - Only show if there are muscles cooling down
+                        if !viewModel.cooldownStatus.isEmpty {
+                            CooldownCard(cooldownData: viewModel.cooldownStatus)
                                 .padding(.horizontal)
                         }
 

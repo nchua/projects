@@ -1,15 +1,15 @@
 import SwiftUI
 
-/// Muscle recovery status card with Solo Leveling "System Window" styling
-/// Shows which muscle groups are still recovering from recent workouts
-struct RecoveryCard: View {
-    let recoveryData: [MuscleRecoveryStatus]
+/// Muscle cooldown status card with Solo Leveling "System Window" styling
+/// Shows which muscle groups are still cooling down from recent workouts
+struct CooldownCard: View {
+    let cooldownData: [MuscleCooldownStatus]
 
     @State private var isExpanded = false
 
     /// Maximum hours remaining across all muscles
     var maxHoursRemaining: Int {
-        recoveryData.map(\.hoursRemaining).max() ?? 0
+        cooldownData.map(\.hoursRemaining).max() ?? 0
     }
 
     /// Formatted max time remaining
@@ -97,7 +97,7 @@ struct RecoveryCard: View {
 
                 // Title and subtitle
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("RECOVERY STATUS")
+                    Text("COOLDOWNS")
                         .font(.ariseHeader(size: 13, weight: .semibold))
                         .foregroundColor(.systemPrimary)
                         .tracking(2)
@@ -132,8 +132,8 @@ struct RecoveryCard: View {
 
             // Muscle grid
             LazyVGrid(columns: gridColumns, spacing: 8) {
-                ForEach(recoveryData) { muscle in
-                    MuscleCell(muscle: muscle)
+                ForEach(cooldownData) { muscle in
+                    CooldownMuscleCell(muscle: muscle)
                 }
             }
         }
@@ -142,7 +142,7 @@ struct RecoveryCard: View {
 
     private var gridColumns: [GridItem] {
         // Adjust columns based on count
-        let count = min(recoveryData.count, 3)
+        let count = min(cooldownData.count, 3)
         return Array(repeating: GridItem(.flexible(), spacing: 8), count: max(count, 2))
     }
 
@@ -157,10 +157,10 @@ struct RecoveryCard: View {
 
             // Detail rows for each muscle
             VStack(spacing: 0) {
-                ForEach(recoveryData) { muscle in
-                    MuscleDetailRow(muscle: muscle)
+                ForEach(cooldownData) { muscle in
+                    CooldownMuscleDetailRow(muscle: muscle)
 
-                    if muscle.id != recoveryData.last?.id {
+                    if muscle.id != cooldownData.last?.id {
                         Rectangle()
                             .fill(Color.ariseBorder.opacity(0.5))
                             .frame(height: 1)
@@ -174,8 +174,8 @@ struct RecoveryCard: View {
 
 // MARK: - Muscle Cell
 
-struct MuscleCell: View {
-    let muscle: MuscleRecoveryStatus
+struct CooldownMuscleCell: View {
+    let muscle: MuscleCooldownStatus
 
     var body: some View {
         VStack(spacing: 4) {
@@ -188,7 +188,7 @@ struct MuscleCell: View {
                 .font(.ariseDisplay(size: 14, weight: .bold))
                 .foregroundColor(.systemPrimary)
 
-            Text("\(Int(muscle.recoveryPercent))%")
+            Text("\(Int(muscle.cooldownPercent))%")
                 .font(.ariseMono(size: 9))
                 .foregroundColor(.textMuted)
         }
@@ -196,7 +196,7 @@ struct MuscleCell: View {
         .padding(.vertical, 10)
         .padding(.horizontal, 8)
         .background(
-            // Fill-up effect based on recovery percent
+            // Fill-up effect based on cooldown percent
             GeometryReader { geo in
                 Rectangle()
                     .fill(
@@ -209,7 +209,7 @@ struct MuscleCell: View {
                             endPoint: .top
                         )
                     )
-                    .frame(height: geo.size.height * (muscle.recoveryPercent / 100))
+                    .frame(height: geo.size.height * (muscle.cooldownPercent / 100))
                     .frame(maxHeight: .infinity, alignment: .bottom)
             }
         )
@@ -223,8 +223,8 @@ struct MuscleCell: View {
 
 // MARK: - Muscle Detail Row
 
-struct MuscleDetailRow: View {
-    let muscle: MuscleRecoveryStatus
+struct CooldownMuscleDetailRow: View {
+    let muscle: MuscleCooldownStatus
 
     @State private var showExercises = false
 
@@ -293,7 +293,7 @@ struct MuscleDetailRow: View {
 
                     RoundedRectangle(cornerRadius: 2)
                         .fill(Color.systemPrimary)
-                        .frame(width: geo.size.width * (muscle.recoveryPercent / 100), height: 4)
+                        .frame(width: geo.size.width * (muscle.cooldownPercent / 100), height: 4)
                 }
             }
             .frame(height: 4)
@@ -352,11 +352,11 @@ struct MuscleDetailRow: View {
 
         ScrollView {
             VStack(spacing: 24) {
-                RecoveryCard(recoveryData: [
-                    MuscleRecoveryStatus(
+                CooldownCard(cooldownData: [
+                    MuscleCooldownStatus(
                         muscleGroup: "chest",
-                        status: "recovering",
-                        recoveryPercent: 35.0,
+                        status: "cooling",
+                        cooldownPercent: 35.0,
                         hoursRemaining: 36,
                         lastTrained: "2026-01-04T10:00:00",
                         affectedExercises: [
@@ -374,10 +374,10 @@ struct MuscleDetailRow: View {
                             )
                         ]
                     ),
-                    MuscleRecoveryStatus(
+                    MuscleCooldownStatus(
                         muscleGroup: "triceps",
-                        status: "recovering",
-                        recoveryPercent: 45.0,
+                        status: "cooling",
+                        cooldownPercent: 45.0,
                         hoursRemaining: 20,
                         lastTrained: "2026-01-04T10:00:00",
                         affectedExercises: [
@@ -395,10 +395,10 @@ struct MuscleDetailRow: View {
                             )
                         ]
                     ),
-                    MuscleRecoveryStatus(
+                    MuscleCooldownStatus(
                         muscleGroup: "shoulders",
-                        status: "recovering",
-                        recoveryPercent: 75.0,
+                        status: "cooling",
+                        cooldownPercent: 75.0,
                         hoursRemaining: 12,
                         lastTrained: "2026-01-04T10:00:00",
                         affectedExercises: [
@@ -414,7 +414,7 @@ struct MuscleDetailRow: View {
                 .padding(.horizontal)
 
                 // Empty state test
-                Text("When all recovered, card is hidden")
+                Text("When all cooled down, card is hidden")
                     .font(.ariseMono(size: 11))
                     .foregroundColor(.textMuted)
             }
