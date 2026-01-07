@@ -21,6 +21,28 @@ from app.models.workout import WorkoutSession, WorkoutExercise
 from app.models.exercise import Exercise
 
 
+def get_age_modifier(age: int | None) -> float:
+    """
+    Get cooldown multiplier based on user age.
+
+    Research shows recovery time increases with age:
+    - Under 30: baseline recovery
+    - 30-40: ~15% longer recovery
+    - 40-50: ~30% longer recovery
+    - 50+: ~50% longer recovery
+    """
+    if age is None:
+        return 1.0  # Default if age not set
+    if age < 30:
+        return 1.0
+    elif age < 40:
+        return 1.15
+    elif age < 50:
+        return 1.3
+    else:
+        return 1.5
+
+
 # Cooldown times in hours for each muscle group
 COOLDOWN_TIMES = {
     "chest": 72,
@@ -226,16 +248,25 @@ def map_primary_muscle(muscle_name: str) -> str | None:
 def calculate_cooldowns(
     db: Session,
     user_id: str,
+    user_age: int | None = None,
     lookback_hours: int = 96  # 4 days lookback
 ) -> Dict:
     """
     Calculate muscle cooldown status for a user.
 
+    Args:
+        db: Database session
+        user_id: User ID to calculate cooldowns for
+        user_age: Optional user age for applying age-based cooldown modifiers
+        lookback_hours: How far back to look for workouts (default 96 hours)
+
     Returns dict with:
     - muscles_cooling: List of muscles that are still cooling down
     - generated_at: timestamp
+    - age_modifier: The multiplier applied based on user age (if provided)
     """
     now = datetime.utcnow()
+    age_modifier = get_age_modifier(user_age)
     lookback_start = now - timedelta(hours=lookback_hours)
 
     # Get recent workouts with exercises
@@ -284,7 +315,8 @@ def calculate_cooldowns(
                     # Update last trained if this workout is more recent
                     if muscle_fatigue[muscle]["last_trained"] is None or workout_date > muscle_fatigue[muscle]["last_trained"]:
                         muscle_fatigue[muscle]["last_trained"] = workout_date
-                        muscle_fatigue[muscle]["total_cooldown_hours"] = COOLDOWN_TIMES[muscle]
+                        # Apply age modifier to base cooldown time
+                        muscle_fatigue[muscle]["total_cooldown_hours"] = int(COOLDOWN_TIMES[muscle] * age_modifier)
 
                     # Add exercise to affected list (avoid duplicates)
                     exercise_entry = {
@@ -299,7 +331,8 @@ def calculate_cooldowns(
             # Apply fatigue to secondary muscles (50%)
             for muscle in secondary_muscles:
                 if muscle in COOLDOWN_TIMES:
-                    secondary_fatigue = int(COOLDOWN_TIMES[muscle] * SECONDARY_FATIGUE_PERCENT)
+                    # Apply both secondary fatigue reduction and age modifier
+                    secondary_fatigue = int(COOLDOWN_TIMES[muscle] * SECONDARY_FATIGUE_PERCENT * age_modifier)
 
                     # Update last trained if this workout is more recent
                     if muscle_fatigue[muscle]["last_trained"] is None or workout_date > muscle_fatigue[muscle]["last_trained"]:
@@ -352,5 +385,6 @@ def calculate_cooldowns(
 
     return {
         "muscles_cooling": muscles_cooling,
-        "generated_at": now.isoformat()
+        "generated_at": now.isoformat(),
+        "age_modifier": age_modifier
     }

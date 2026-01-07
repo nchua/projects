@@ -741,6 +741,16 @@ async def get_cooldown_status(
     Compound exercises transfer fatigue:
     - Primary muscles: 100% fatigue
     - Secondary muscles: 50% fatigue
+
+    Age-based modifiers:
+    - Under 30: 1.0x baseline
+    - 30-40: 1.15x baseline
+    - 40-50: 1.3x baseline
+    - 50+: 1.5x baseline
     """
-    cooldown_data = calculate_cooldowns(db, current_user.id)
+    # Fetch user profile to get age for cooldown modifier
+    user_profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
+    user_age = user_profile.age if user_profile else None
+
+    cooldown_data = calculate_cooldowns(db, current_user.id, user_age=user_age)
     return CooldownResponse(**cooldown_data)

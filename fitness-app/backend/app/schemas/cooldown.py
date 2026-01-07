@@ -49,3 +49,4 @@ class CooldownResponse(BaseModel):
     """Response for cooldown endpoint"""
     muscles_cooling: List[MuscleCooldownStatus]
     generated_at: str
+    age_modifier: float = 1.0  # Age-based recovery modifier (1.0 = baseline)
