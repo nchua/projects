@@ -227,14 +227,39 @@ struct CooldownMuscleCell: View {
 struct CooldownMuscleDetailRow: View {
     let muscle: MuscleCooldownStatus
 
-    @State private var showExercises = false
+    @State private var showStats = false
+
+    /// Check if all exercises are secondary (indirect work)
+    private var isSecondaryOnly: Bool {
+        !muscle.affectedExercises.isEmpty &&
+        muscle.affectedExercises.allSatisfy { $0.fatigueType == "secondary" }
+    }
+
+    /// Get intensity label from factor
+    private var intensityLabel: String {
+        guard let breakdown = muscle.fatigueBreakdown else { return "Moderate" }
+        let factor = breakdown.avgIntensityFactor
+        if factor < 0.85 { return "Light" }
+        if factor < 1.15 { return "Moderate" }
+        if factor < 1.45 { return "Heavy" }
+        return "Max"
+    }
+
+    /// Get intensity percentage for bar (0-100)
+    private var intensityPercent: Double {
+        guard let breakdown = muscle.fatigueBreakdown else { return 50 }
+        let factor = breakdown.avgIntensityFactor
+        // Map 0.7-1.6 to 0-100
+        let normalized = (factor - 0.7) / (1.6 - 0.7)
+        return min(100, max(0, normalized * 100))
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Main row
+            // Main row - always visible
             Button {
                 withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
-                    showExercises.toggle()
+                    showStats.toggle()
                 }
             } label: {
                 HStack(spacing: 12) {
@@ -276,11 +301,9 @@ struct CooldownMuscleDetailRow: View {
                     }
 
                     // Expand indicator
-                    if !muscle.affectedExercises.isEmpty {
-                        Image(systemName: showExercises ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 10))
-                            .foregroundColor(.textMuted)
-                    }
+                    Image(systemName: showStats ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 10))
+                        .foregroundColor(.textMuted)
                 }
             }
             .buttonStyle(PlainButtonStyle())
@@ -299,40 +322,168 @@ struct CooldownMuscleDetailRow: View {
             }
             .frame(height: 4)
 
-            // Affected exercises (expanded)
-            if showExercises && !muscle.affectedExercises.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("AFFECTED BY:")
-                        .font(.ariseMono(size: 9, weight: .semibold))
-                        .foregroundColor(.textMuted)
-                        .tracking(1)
-                        .padding(.top, 4)
-
-                    ForEach(muscle.affectedExercises) { exercise in
-                        HStack(spacing: 8) {
-                            Rectangle()
-                                .fill(Color.exerciseColor(for: exercise.exerciseName))
-                                .frame(width: 3, height: 16)
-                                .cornerRadius(1)
-
-                            Text(exercise.exerciseName)
-                                .font(.ariseMono(size: 12))
-                                .foregroundColor(.textSecondary)
-
-                            Spacer()
-
-                            Text(exercise.fatigueType.uppercased())
-                                .font(.ariseMono(size: 9, weight: .medium))
-                                .foregroundColor(exercise.fatigueType == "primary" ? .systemPrimary : .textMuted)
-                        }
-                    }
-                }
-                .padding(.top, 4)
+            // Session Stats (expanded)
+            if showStats {
+                sessionStatsPanel
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(Color.voidDark.opacity(0.3))
+    }
+
+    // MARK: - Session Stats Panel
+
+    private var sessionStatsPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Title
+            HStack(spacing: 6) {
+                Text(">")
+                    .font(.ariseMono(size: 10))
+                    .foregroundColor(.systemPrimary)
+                Text("SESSION STATS")
+                    .font(.ariseMono(size: 10, weight: .semibold))
+                    .foregroundColor(.systemPrimary.opacity(0.8))
+                    .tracking(1)
+            }
+            .padding(.top, 8)
+
+            // Secondary muscle indicator (conditional)
+            if isSecondaryOnly {
+                secondaryMuscleTag
+            }
+
+            // Stats grid
+            if let breakdown = muscle.fatigueBreakdown {
+                statsGrid(breakdown: breakdown)
+            }
+
+            // Intensity bar
+            intensityBar
+
+            // Collapse indicator
+            HStack {
+                Spacer()
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.up")
+                        .font(.system(size: 8))
+                    Text("tap to collapse")
+                        .font(.ariseMono(size: 9))
+                }
+                .foregroundColor(.systemPrimary.opacity(0.5))
+                Spacer()
+            }
+            .padding(.top, 8)
+        }
+        .padding(.top, 8)
+    }
+
+    // MARK: - Secondary Muscle Tag
+
+    private var secondaryMuscleTag: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "arrow.right")
+                .font(.system(size: 10))
+                .foregroundColor(.textMuted.opacity(0.6))
+
+            Text("Indirect work from compound lifts")
+                .font(.ariseMono(size: 10))
+                .foregroundColor(.textMuted.opacity(0.8))
+                .italic()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.textMuted.opacity(0.1))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(Color.textMuted.opacity(0.2), lineWidth: 1)
+        )
+        .cornerRadius(6)
+    }
+
+    // MARK: - Stats Grid
+
+    private func statsGrid(breakdown: FatigueBreakdown) -> some View {
+        LazyVGrid(columns: [
+            GridItem(.flexible(), spacing: 8),
+            GridItem(.flexible(), spacing: 8)
+        ], spacing: 8) {
+            // Sets
+            StatCell(label: "SETS", value: "\(breakdown.totalSets)")
+
+            // Effective Sets
+            StatCell(
+                label: "EFFECTIVE",
+                value: String(format: "%.1f", breakdown.effectiveSets),
+                isHighlighted: breakdown.effectiveSets != Double(breakdown.totalSets)
+            )
+
+            // Base Cooldown
+            StatCell(label: "BASE", value: "\(breakdown.baseCooldownHours)h")
+
+            // Final Cooldown
+            StatCell(
+                label: "CALCULATED",
+                value: "\(breakdown.finalCooldownHours)h",
+                isHighlighted: breakdown.finalCooldownHours > breakdown.baseCooldownHours
+            )
+        }
+    }
+
+    // MARK: - Intensity Bar
+
+    private var intensityBar: some View {
+        VStack(spacing: 6) {
+            HStack {
+                Text("WORKOUT INTENSITY")
+                    .font(.ariseMono(size: 9))
+                    .foregroundColor(.textMuted)
+                    .tracking(0.5)
+
+                Spacer()
+
+                Text(intensityLabel)
+                    .font(.ariseMono(size: 10, weight: .semibold))
+                    .foregroundColor(.systemPrimary)
+            }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    // Background
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Color.voidLight.opacity(0.5))
+                        .frame(height: 6)
+
+                    // Fill with gradient
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.systemPrimary.opacity(0.4),
+                                    Color.systemPrimary.opacity(0.7),
+                                    Color.systemPrimary
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: geo.size.width * (intensityPercent / 100), height: 6)
+                        .shadow(color: Color.systemPrimary.opacity(0.5), radius: 4)
+
+                    // Marker at end
+                    if intensityPercent > 5 {
+                        RoundedRectangle(cornerRadius: 1)
+                            .fill(Color.white)
+                            .frame(width: 3, height: 10)
+                            .shadow(color: Color.white.opacity(0.5), radius: 4)
+                            .offset(x: geo.size.width * (intensityPercent / 100) - 3)
+                    }
+                }
+            }
+            .frame(height: 10)
+        }
+        .padding(.top, 8)
     }
 
     private var exercisesSummary: String {
@@ -342,6 +493,35 @@ struct CooldownMuscleDetailRow: View {
             return names.joined(separator: ", ")
         }
         return "\(names[0]), \(names[1]) +\(names.count - 2) more"
+    }
+}
+
+// MARK: - Stat Cell
+
+struct StatCell: View {
+    let label: String
+    let value: String
+    var isHighlighted: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.ariseMono(size: 8))
+                .foregroundColor(.textMuted)
+                .tracking(0.5)
+
+            Text(value)
+                .font(.ariseDisplay(size: 15, weight: .semibold))
+                .foregroundColor(isHighlighted ? .systemPrimary : .textPrimary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(isHighlighted ? Color.systemPrimary.opacity(0.08) : Color.voidLight.opacity(0.3))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(isHighlighted ? Color.systemPrimary.opacity(0.2) : Color.ariseBorder.opacity(0.5), lineWidth: 1)
+        )
+        .cornerRadius(6)
     }
 }
 
@@ -528,64 +708,82 @@ struct CooldownInfoSheet: View {
             VStack(spacing: 24) {
                 CooldownCard(cooldownData: [
                     MuscleCooldownStatus(
-                        muscleGroup: "chest",
+                        muscleGroup: "hamstrings",
                         status: "cooling",
-                        cooldownPercent: 35.0,
-                        hoursRemaining: 36,
-                        lastTrained: "2026-01-04T10:00:00",
+                        cooldownPercent: 28.0,
+                        hoursRemaining: 86,
+                        lastTrained: "2026-01-09T10:00:00",
                         affectedExercises: [
                             AffectedExercise(
                                 exerciseId: "1",
-                                exerciseName: "Bench Press",
-                                workoutDate: "2026-01-04T10:00:00",
-                                fatigueType: "primary"
+                                exerciseName: "Barbell Back Squat",
+                                workoutDate: "2026-01-09T10:00:00",
+                                fatigueType: "secondary"
                             ),
                             AffectedExercise(
                                 exerciseId: "2",
-                                exerciseName: "Incline Dumbbell Press",
-                                workoutDate: "2026-01-04T10:00:00",
+                                exerciseName: "Romanian Deadlift",
+                                workoutDate: "2026-01-09T10:00:00",
                                 fatigueType: "primary"
                             )
                         ],
-                        fatigueBreakdown: nil
+                        fatigueBreakdown: FatigueBreakdown(
+                            baseCooldownHours: 72,
+                            totalSets: 12,
+                            effectiveSets: 8.5,
+                            avgIntensityFactor: 1.3,
+                            volumeMultiplier: 1.6,
+                            ageModifier: 1.0,
+                            finalCooldownHours: 120
+                        )
                     ),
                     MuscleCooldownStatus(
-                        muscleGroup: "triceps",
+                        muscleGroup: "quads",
                         status: "cooling",
-                        cooldownPercent: 45.0,
-                        hoursRemaining: 20,
-                        lastTrained: "2026-01-04T10:00:00",
+                        cooldownPercent: 37.0,
+                        hoursRemaining: 57,
+                        lastTrained: "2026-01-09T10:00:00",
                         affectedExercises: [
                             AffectedExercise(
                                 exerciseId: "1",
-                                exerciseName: "Bench Press",
-                                workoutDate: "2026-01-04T10:00:00",
-                                fatigueType: "secondary"
-                            ),
+                                exerciseName: "Barbell Back Squat",
+                                workoutDate: "2026-01-09T10:00:00",
+                                fatigueType: "primary"
+                            )
+                        ],
+                        fatigueBreakdown: FatigueBreakdown(
+                            baseCooldownHours: 48,
+                            totalSets: 7,
+                            effectiveSets: 7.0,
+                            avgIntensityFactor: 1.35,
+                            volumeMultiplier: 1.42,
+                            ageModifier: 1.0,
+                            finalCooldownHours: 91
+                        )
+                    ),
+                    MuscleCooldownStatus(
+                        muscleGroup: "biceps",
+                        status: "cooling",
+                        cooldownPercent: 93.0,
+                        hoursRemaining: 2,
+                        lastTrained: "2026-01-09T10:00:00",
+                        affectedExercises: [
                             AffectedExercise(
                                 exerciseId: "3",
-                                exerciseName: "Tricep Pushdowns",
-                                workoutDate: "2026-01-04T10:00:00",
-                                fatigueType: "primary"
-                            )
-                        ],
-                        fatigueBreakdown: nil
-                    ),
-                    MuscleCooldownStatus(
-                        muscleGroup: "shoulders",
-                        status: "cooling",
-                        cooldownPercent: 75.0,
-                        hoursRemaining: 12,
-                        lastTrained: "2026-01-04T10:00:00",
-                        affectedExercises: [
-                            AffectedExercise(
-                                exerciseId: "1",
-                                exerciseName: "Bench Press",
-                                workoutDate: "2026-01-04T10:00:00",
+                                exerciseName: "Barbell Row",
+                                workoutDate: "2026-01-09T10:00:00",
                                 fatigueType: "secondary"
                             )
                         ],
-                        fatigueBreakdown: nil
+                        fatigueBreakdown: FatigueBreakdown(
+                            baseCooldownHours: 36,
+                            totalSets: 4,
+                            effectiveSets: 2.0,
+                            avgIntensityFactor: 1.0,
+                            volumeMultiplier: 1.0,
+                            ageModifier: 1.0,
+                            finalCooldownHours: 36
+                        )
                     )
                 ])
                 .padding(.horizontal)
