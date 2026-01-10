@@ -15,6 +15,11 @@ struct LogView: View {
     @State private var rankUpData: (previousRank: HunterRank, newRank: HunterRank, newLevel: Int)?
     @State private var pendingXPResponse: WorkoutCreateResponse?
 
+    // Debug mode for testing celebrations
+    #if DEBUG
+    @State private var showDebugCelebration = false
+    #endif
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -32,6 +37,12 @@ struct LogView: View {
                             showScreenshotPicker = true
                         }
                     )
+                    #if DEBUG
+                    .onLongPressGesture(minimumDuration: 2.0) {
+                        // Debug: Trigger rank-up celebration for testing
+                        showDebugCelebration = true
+                    }
+                    #endif
                 } else {
                     // Active Quest Session
                     ActiveQuestView(
@@ -100,19 +111,34 @@ struct LogView: View {
                     }
                 )
             }
+            // Debug celebration for testing (long-press idle view for 2 seconds)
+            #if DEBUG
+            .fullScreenCover(isPresented: $showDebugCelebration) {
+                RankUpCelebrationView(
+                    previousRank: .c,
+                    newRank: .b,
+                    newLevel: 46,
+                    onContinue: {
+                        showDebugCelebration = false
+                    }
+                )
+            }
+            #endif
             // Intercept workout response to check for rank change
-            .onChange(of: viewModel.xpRewardResponse) { oldValue, newValue in
-                if let response = newValue, response.rankChanged, let newRankStr = response.newRank {
-                    // Rank changed! Show celebration first
-                    let newRank = HunterRank(rawValue: newRankStr) ?? .e
-                    let previousRank = getPreviousRank(from: newRank)
-                    let newLevel = response.newLevel ?? response.level
+            .onChange(of: viewModel.xpRewardResponse?.id) { oldValue, newValue in
+                guard let response = viewModel.xpRewardResponse,
+                      response.rankChanged,
+                      let newRankStr = response.newRank else { return }
 
-                    rankUpData = (previousRank, newRank, newLevel)
-                    pendingXPResponse = response
-                    viewModel.xpRewardResponse = nil  // Clear to prevent showing XP view yet
-                    showRankUpCelebration = true
-                }
+                // Rank changed! Show celebration first
+                let newRank = HunterRank(rawValue: newRankStr) ?? .e
+                let previousRank = getPreviousRank(from: newRank)
+                let newLevel = response.newLevel ?? response.level
+
+                rankUpData = (previousRank, newRank, newLevel)
+                pendingXPResponse = response
+                viewModel.xpRewardResponse = nil  // Clear to prevent showing XP view yet
+                showRankUpCelebration = true
             }
             .alert("System Error", isPresented: .constant(viewModel.error != nil)) {
                 Button("DISMISS", role: .cancel) {
