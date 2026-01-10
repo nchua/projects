@@ -10,6 +10,11 @@ struct LogView: View {
     @State private var showScreenshotPicker = false
     @State private var showScreenshotPreview = false
 
+    // Celebration states
+    @State private var showRankUpCelebration = false
+    @State private var rankUpData: (previousRank: HunterRank, newRank: HunterRank, newLevel: Int)?
+    @State private var pendingXPResponse: WorkoutCreateResponse?
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -59,6 +64,25 @@ struct LogView: View {
             .sheet(isPresented: $viewModel.showExercisePicker) {
                 ExercisePickerView(viewModel: viewModel)
             }
+            // Rank-Up Celebration (shows first if rank changed)
+            .fullScreenCover(isPresented: $showRankUpCelebration) {
+                if let data = rankUpData {
+                    RankUpCelebrationView(
+                        previousRank: data.previousRank,
+                        newRank: data.newRank,
+                        newLevel: data.newLevel,
+                        onContinue: {
+                            showRankUpCelebration = false
+                            // Now show the XP reward
+                            if let response = pendingXPResponse {
+                                viewModel.xpRewardResponse = response
+                                pendingXPResponse = nil
+                            }
+                        }
+                    )
+                }
+            }
+            // XP Reward View (shows after rank-up celebration, or directly if no rank change)
             .fullScreenCover(item: $viewModel.xpRewardResponse) { response in
                 XPRewardView(
                     xpEarned: response.xpEarned,
@@ -75,6 +99,20 @@ struct LogView: View {
                         }
                     }
                 )
+            }
+            // Intercept workout response to check for rank change
+            .onChange(of: viewModel.xpRewardResponse) { oldValue, newValue in
+                if let response = newValue, response.rankChanged, let newRankStr = response.newRank {
+                    // Rank changed! Show celebration first
+                    let newRank = HunterRank(rawValue: newRankStr) ?? .e
+                    let previousRank = getPreviousRank(from: newRank)
+                    let newLevel = response.newLevel ?? response.level
+
+                    rankUpData = (previousRank, newRank, newLevel)
+                    pendingXPResponse = response
+                    viewModel.xpRewardResponse = nil  // Clear to prevent showing XP view yet
+                    showRankUpCelebration = true
+                }
             }
             .alert("System Error", isPresented: .constant(viewModel.error != nil)) {
                 Button("DISMISS", role: .cancel) {
@@ -116,6 +154,18 @@ struct LogView: View {
         }
         .task {
             await viewModel.loadExercises()
+        }
+    }
+
+    /// Determine the previous rank based on the new rank
+    private func getPreviousRank(from newRank: HunterRank) -> HunterRank {
+        switch newRank {
+        case .e: return .e  // Can't go lower than E
+        case .d: return .e
+        case .c: return .d
+        case .b: return .c
+        case .a: return .b
+        case .s: return .a
         }
     }
 }
