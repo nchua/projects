@@ -87,8 +87,8 @@ class LogViewModel: ObservableObject {
         guard let lastSet = selectedExercises[exerciseIndex].sets.last else { return }
         let newSet = LoggedSet(
             setNumber: lastSet.setNumber + 1,
-            weight: lastSet.weight,
-            reps: lastSet.reps,
+            weightText: lastSet.weightText,
+            repsText: lastSet.repsText,
             rpe: lastSet.rpe
         )
         selectedExercises[exerciseIndex].sets.append(newSet)
@@ -165,7 +165,11 @@ struct LoggedExercise: Identifiable {
 struct LoggedSet: Identifiable {
     let id = UUID()
     var setNumber: Int
-    var weight: Double = 0
-    var reps: Int = 0
+    var weightText: String = ""   // String binding for TextField (allows empty)
+    var repsText: String = ""     // String binding for TextField (allows empty)
     var rpe: Int?
+
+    // Computed properties for API/calculations
+    var weight: Double { Double(weightText) ?? 0 }
+    var reps: Int { Int(repsText) ?? 0 }
 }

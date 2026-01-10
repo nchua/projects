@@ -638,12 +638,23 @@ struct AddSkillSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.voidDark, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+            .onTapGesture {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
                         dismiss()
                     }
                     .font(.ariseMono(size: 14, weight: .medium))
+                    .foregroundColor(.systemPrimary)
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .font(.ariseMono(size: 14, weight: .semibold))
                     .foregroundColor(.systemPrimary)
                 }
             }
@@ -1556,12 +1567,23 @@ struct SkillPickerSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.voidDark, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+            .onTapGesture {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
                         dismiss()
                     }
                     .font(.ariseMono(size: 14, weight: .medium))
+                    .foregroundColor(.systemPrimary)
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .font(.ariseMono(size: 14, weight: .semibold))
                     .foregroundColor(.systemPrimary)
                 }
             }

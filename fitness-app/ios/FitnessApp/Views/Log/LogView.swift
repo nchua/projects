@@ -43,6 +43,19 @@ struct LogView: View {
                 }
             }
             .navigationBarHidden(true)
+            .onTapGesture {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .font(.ariseMono(size: 14, weight: .semibold))
+                    .foregroundColor(.systemPrimary)
+                }
+            }
             .sheet(isPresented: $viewModel.showExercisePicker) {
                 ExercisePickerView(viewModel: viewModel)
             }
@@ -802,7 +815,7 @@ struct AriseSetRow: View {
 
             // Weight input
             HStack(spacing: 4) {
-                TextField("0", value: $set.weight, format: .number)
+                TextField("", text: $set.weightText)
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.center)
                     .font(.ariseMono(size: 15, weight: .medium))
@@ -823,7 +836,7 @@ struct AriseSetRow: View {
             .frame(maxWidth: .infinity)
 
             // Reps input
-            TextField("0", value: $set.reps, format: .number)
+            TextField("", text: $set.repsText)
                 .keyboardType(.numberPad)
                 .multilineTextAlignment(.center)
                 .font(.ariseMono(size: 15, weight: .medium))
