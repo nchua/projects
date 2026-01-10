@@ -8,6 +8,66 @@ Comprehensive plan to enhance the Solo Leveling-inspired fitness app with a full
 
 ---
 
+## Progress Log
+
+### Session: January 10, 2026
+
+#### Completed
+- [x] **Fixed iOS/backend rank threshold mismatch** - Synced `HunterRank.minLevel` and `forLevel()` in `Colors.swift` to match backend values (E:1, D:11, C:26, B:46, A:71, S:91)
+
+- [x] **Phase 1: Visual Celebrations (Partial)**
+  - Created `RankUpCelebrationView.swift` - Full-screen dramatic animation with:
+    - "RANK UP!" header with rank-color glow
+    - Old → New rank badge transition with arrow
+    - Pulsing glow effect behind new badge
+    - Fantasy title reveal (e.g., "YOU ARE NOW A ELITE")
+    - Staggered animation sequence (~2.5 seconds)
+  - Created `PRCelebrationView.swift` - Compact overlay with gold shimmer (ready for integration)
+  - Integrated rank-up celebration into `LogView.swift` workout completion flow
+  - Added DEBUG mode: Long-press (2s) on idle quest view triggers test celebration
+  - **Tested successfully in simulator** - C→B rank-up working with all animations
+
+#### Commits
+- `18878b8` - Fix numeric input deletion and add keyboard dismissal
+- `ae15f36` - Add gamification enhancement roadmap
+- `faa18b3` - Add Phase 1 celebration views
+- `b4b55b4` - Fix Equatable issue and add debug mode for testing
+
+#### Files Created/Modified
+| File | Action | Description |
+|------|--------|-------------|
+| `ios/.../Components/RankUpCelebrationView.swift` | Created | Full-screen rank-up animation |
+| `ios/.../Components/PRCelebrationView.swift` | Created | PR celebration overlay (not yet integrated) |
+| `ios/.../Views/Log/LogView.swift` | Modified | Added celebration chain + debug mode |
+| `ios/.../Utils/Colors.swift` | Modified | Fixed rank thresholds |
+| `GAMIFICATION_PLAN.md` | Created | This roadmap |
+| `QUICK_START.md` | Modified | Added lessons learned (#6, #7) |
+
+---
+
+### Next Steps
+
+#### Immediate (Phase 1 Completion)
+- [ ] **Integrate PR celebration** - Requires backend to return PR exercise details in `WorkoutCreateResponse`
+  - Add `prs_achieved: [{exercise_name, pr_type, value}]` to response
+  - Chain PR celebration before XP reward view
+- [ ] **Add level-up animation enhancement** - Animate XP bar fill + level number increment in `XPRewardView`
+
+#### Phase 2: HealthKit Expansion
+- [ ] Add sleep data (hours, quality stages) to `HealthKitManager.swift`
+- [ ] Add HRV and resting heart rate
+- [ ] Add auto-workout detection from Apple Watch
+- [ ] Add bodyweight sync from smart scales
+- [ ] Update backend `DailyActivity` model with new fields
+
+#### Phase 3: Stats System (After Phase 2)
+- [ ] Design stat calculation formulas
+- [ ] Create `HunterStats` backend model
+- [ ] Build `StatHexagonView.swift` radar chart
+- [ ] Integrate into profile screen
+
+---
+
 ## The Six Hunter Stats
 
 | Stat | Name | Calculation | Source |
