@@ -1,8 +1,8 @@
 """
 Workout schemas for request/response validation
 """
-from pydantic import BaseModel, Field
-from typing import Optional, List
+from pydantic import BaseModel, Field, field_validator
+from typing import Optional, List, Union
 from datetime import datetime
 from app.models.workout import WeightUnit
 
@@ -55,11 +55,30 @@ class WorkoutExerciseResponse(BaseModel):
 
 class WorkoutCreate(BaseModel):
     """Schema for creating a workout"""
-    date: datetime = Field(default_factory=datetime.utcnow, description="Workout date/time")
+    date: Union[datetime, str] = Field(default_factory=datetime.utcnow, description="Workout date/time")
     duration_minutes: Optional[int] = Field(None, ge=1, le=600, description="Workout duration in minutes")
     session_rpe: Optional[int] = Field(None, ge=1, le=10, description="Overall session RPE")
     notes: Optional[str] = Field(None, max_length=1000, description="Workout notes")
     exercises: List[WorkoutExerciseCreate] = Field(..., min_length=1, description="Exercises in workout")
+
+    @field_validator('date', mode='before')
+    @classmethod
+    def parse_date(cls, v):
+        """Parse date from various formats (date-only string, full ISO datetime, or datetime object)"""
+        if isinstance(v, datetime):
+            return v
+        if isinstance(v, str):
+            # Try parsing date-only format first (e.g., "2026-01-09")
+            try:
+                return datetime.strptime(v, "%Y-%m-%d")
+            except ValueError:
+                pass
+            # Try ISO format with time (e.g., "2026-01-09T10:30:00")
+            try:
+                return datetime.fromisoformat(v.replace('Z', '+00:00'))
+            except ValueError:
+                pass
+        raise ValueError(f"Cannot parse date: {v}")
 
 
 class WorkoutResponse(BaseModel):
@@ -118,11 +137,30 @@ class WorkoutCreateResponse(BaseModel):
 
 class WorkoutUpdate(BaseModel):
     """Schema for updating a workout"""
-    date: Optional[datetime] = Field(None, description="Workout date/time")
+    date: Optional[Union[datetime, str]] = Field(None, description="Workout date/time")
     duration_minutes: Optional[int] = Field(None, ge=1, le=600, description="Workout duration in minutes")
     session_rpe: Optional[int] = Field(None, ge=1, le=10, description="Overall session RPE")
     notes: Optional[str] = Field(None, max_length=1000, description="Workout notes")
     exercises: Optional[List[WorkoutExerciseCreate]] = Field(None, min_length=1, description="Exercises in workout")
+
+    @field_validator('date', mode='before')
+    @classmethod
+    def parse_date(cls, v):
+        """Parse date from various formats"""
+        if v is None:
+            return v
+        if isinstance(v, datetime):
+            return v
+        if isinstance(v, str):
+            try:
+                return datetime.strptime(v, "%Y-%m-%d")
+            except ValueError:
+                pass
+            try:
+                return datetime.fromisoformat(v.replace('Z', '+00:00'))
+            except ValueError:
+                pass
+        raise ValueError(f"Cannot parse date: {v}")
 
 
 class WorkoutSummary(BaseModel):
