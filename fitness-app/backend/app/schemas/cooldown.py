@@ -35,6 +35,17 @@ class AffectedExercise(BaseModel):
     fatigue_type: str  # "primary" or "secondary"
 
 
+class FatigueBreakdown(BaseModel):
+    """Detailed breakdown of how cooldown time was calculated"""
+    base_cooldown_hours: int      # Base time for muscle group (36-72h)
+    total_sets: int               # Raw set count (includes secondary hits)
+    effective_sets: float         # Weighted sets (primary=1.0, secondary=0.5)
+    avg_intensity_factor: float   # Average intensity factor across sets
+    volume_multiplier: float      # Volume-based multiplier (1.0-2.0)
+    age_modifier: float           # Age-based multiplier (1.0-1.5)
+    final_cooldown_hours: int     # Calculated cooldown after all factors
+
+
 class MuscleCooldownStatus(BaseModel):
     """Cooldown status for a single muscle group"""
     muscle_group: str
@@ -43,6 +54,7 @@ class MuscleCooldownStatus(BaseModel):
     hours_remaining: int  # hours until fully ready
     last_trained: str  # ISO datetime
     affected_exercises: List[AffectedExercise]
+    fatigue_breakdown: FatigueBreakdown | None = None  # Detailed calculation breakdown
 
 
 class CooldownResponse(BaseModel):

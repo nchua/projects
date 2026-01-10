@@ -921,6 +921,27 @@ struct AffectedExercise: Decodable, Identifiable {
     }
 }
 
+/// Detailed breakdown of how cooldown time was calculated
+struct FatigueBreakdown: Decodable {
+    let baseCooldownHours: Int        // Base time for muscle group (36-72h)
+    let totalSets: Int                // Raw set count (includes secondary hits)
+    let effectiveSets: Double         // Weighted sets (primary=1.0, secondary=0.5)
+    let avgIntensityFactor: Double    // Average intensity factor across sets
+    let volumeMultiplier: Double      // Volume-based multiplier (1.0-2.0)
+    let ageModifier: Double           // Age-based multiplier (1.0-1.5)
+    let finalCooldownHours: Int       // Calculated cooldown after all factors
+
+    enum CodingKeys: String, CodingKey {
+        case baseCooldownHours = "base_cooldown_hours"
+        case totalSets = "total_sets"
+        case effectiveSets = "effective_sets"
+        case avgIntensityFactor = "avg_intensity_factor"
+        case volumeMultiplier = "volume_multiplier"
+        case ageModifier = "age_modifier"
+        case finalCooldownHours = "final_cooldown_hours"
+    }
+}
+
 struct MuscleCooldownStatus: Decodable, Identifiable {
     let muscleGroup: String
     let status: String
@@ -928,6 +949,7 @@ struct MuscleCooldownStatus: Decodable, Identifiable {
     let hoursRemaining: Int
     let lastTrained: String
     let affectedExercises: [AffectedExercise]
+    let fatigueBreakdown: FatigueBreakdown?  // Detailed calculation breakdown
 
     var id: String { muscleGroup }
 
@@ -977,6 +999,7 @@ struct MuscleCooldownStatus: Decodable, Identifiable {
         case hoursRemaining = "hours_remaining"
         case lastTrained = "last_trained"
         case affectedExercises = "affected_exercises"
+        case fatigueBreakdown = "fatigue_breakdown"
     }
 }
 
