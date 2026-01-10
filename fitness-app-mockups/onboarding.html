@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onboarding Flow - Class Assignment</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --void-black: #0A0A0F;
+            --void-dark: #12121A;
+            --void-medium: #1A1A24;
+            --void-light: #252530;
+            --system-primary: #00D4FF;
+            --system-dim: #00A8CC;
+            --system-glow: rgba(0, 212, 255, 0.4);
+            --text-primary: #FFFFFF;
+            --text-secondary: #A0A0B0;
+            --text-muted: #606070;
+            
+            /* Rarity colors */
+            --rarity-common: #808080;
+            --rarity-uncommon: #4A9B4A;
+            --rarity-rare: #4A7BB5;
+            --rarity-legendary: #9B4A9B;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--void-black);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container { max-width: 900px; margin: 0 auto; }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--void-light);
+        }
+
+        .page-header h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: 0.2em;
+            color: var(--system-primary);
+            text-shadow: 0 0 20px var(--system-glow);
+        }
+
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 8px;
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: var(--system-primary);
+            text-decoration: none;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8rem;
+        }
+
+        .back-link:hover { text-decoration: underline; }
+
+        /* Designer Controls (outside phone) */
+        .designer-controls {
+            background: var(--void-dark);
+            border: 1px solid var(--void-light);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .designer-controls-header {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .designer-controls-header::before {
+            content: '⚙️';
+        }
+
+        .class-preview-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .class-preview-btn {
+            padding: 8px 14px;
+            background: var(--void-medium);
+            border: 2px solid var(--void-light);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .class-preview-btn:hover {
+            border-color: var(--text-muted);
+        }
+
+        .class-preview-btn.active {
+            border-color: var(--system-primary);
+            color: var(--system-primary);
+        }
+
+        .class-preview-btn .rarity-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .class-preview-btn[data-rarity="common"] .rarity-dot { background: var(--rarity-common); }
+        .class-preview-btn[data-rarity="uncommon"] .rarity-dot { background: var(--rarity-uncommon); }
+        .class-preview-btn[data-rarity="rare"] .rarity-dot { background: var(--rarity-rare); }
+        .class-preview-btn[data-rarity="legendary"] .rarity-dot { background: var(--rarity-legendary); }
+
+        .rarity-legend {
+            display: flex;
+            gap: 16px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--void-light);
+        }
+
+        .rarity-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6rem;
+            color: var(--text-muted);
+        }
+
+        .rarity-legend-item .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .step-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--void-light);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .step-dot.active {
+            background: var(--system-primary);
+            box-shadow: 0 0 10px var(--system-glow);
+        }
+
+        .step-dot.completed { background: var(--system-dim); }
+
+        .mockup-container { display: flex; justify-content: center; }
+
+        .phone-frame {
+            width: 375px;
+            min-height: 650px;
+            background: var(--void-black);
+            border-radius: 20px;
+            padding: 40px 16px 20px;
+            border: 2px solid var(--void-light);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .phone-frame::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 24px;
+            background: var(--void-dark);
+            border-radius: 0 0 16px 16px;
+        }
+
+        .screen { display: none; }
+        .screen.active { display: block; animation: fadeIn 0.4s ease; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Common screen styles */
+        .screen-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 6px;
+        }
+
+        .screen-subtitle {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .screen-content { padding-top: 10px; }
+
+        /* Welcome screen */
+        .welcome-screen {
+            text-align: center;
+            padding-top: 30px;
+        }
+
+        .system-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background: linear-gradient(90deg, var(--system-primary), var(--system-dim));
+            border-radius: 4px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--void-black);
+            letter-spacing: 0.2em;
+            margin-bottom: 24px;
+        }
+
+        .welcome-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .welcome-subtitle {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .input-group {
+            margin-bottom: 16px;
+            text-align: left;
+        }
+
+        .input-label {
+            display: block;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            letter-spacing: 0.02em;
+            margin-bottom: 6px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--void-dark);
+            border: 1px solid var(--void-light);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--system-primary);
+            box-shadow: 0 0 10px var(--system-glow);
+        }
+
+        .input-field::placeholder { color: var(--text-muted); }
+
+        /* Option cards */
+        .option-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px;
+            background: var(--void-dark);
+            border: 2px solid var(--void-light);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .option-card:hover { border-color: var(--text-muted); }
+
+        .option-card.selected {
+            border-color: var(--system-primary);
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        .option-radio {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--void-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .option-card.selected .option-radio { border-color: var(--system-primary); }
+        .option-card.selected .option-radio::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--system-primary);
+            border-radius: 50%;
+        }
+
+        .option-content { flex: 1; }
+        .option-name { font-size: 0.95rem; font-weight: 600; }
+        .option-desc { font-family: 'Share Tech Mono', monospace; font-size: 0.65rem; color: var(--text-muted); margin-top: 2px; }
+        .option-icon { font-size: 1.3rem; }
+
+        /* Chips */
+        .chip-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+
+        .chip {
+            padding: 8px 14px;
+            background: var(--void-dark);
+            border: 2px solid var(--void-light);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .chip:hover { border-color: var(--text-muted); }
+        .chip.selected { border-color: var(--system-primary); background: rgba(0, 212, 255, 0.1); color: var(--system-primary); }
+        .chip-icon { font-size: 1rem; }
+
+        /* Goals */
+        .goal-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            background: var(--void-dark);
+            border: 2px solid var(--void-light);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .goal-option:hover { border-color: var(--text-muted); }
+        .goal-option.selected { border-color: var(--system-primary); background: rgba(0, 212, 255, 0.05); }
+
+        .goal-checkbox {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--void-light);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .goal-option.selected .goal-checkbox { background: var(--system-primary); border-color: var(--system-primary); }
+        .goal-checkbox::after {
+            content: '';
+            width: 10px;
+            height: 6px;
+            border-left: 2px solid var(--void-black);
+            border-bottom: 2px solid var(--void-black);
+            transform: rotate(-45deg) translateY(-1px);
+            opacity: 0;
+        }
+        .goal-option.selected .goal-checkbox::after { opacity: 1; }
+
+        .goal-content { flex: 1; }
+        .goal-name { font-size: 0.9rem; font-weight: 600; }
+        .goal-desc { font-family: 'Share Tech Mono', monospace; font-size: 0.6rem; color: var(--text-muted); }
+        .goal-icon { font-size: 1.2rem; }
+
+        /* Processing */
+        .processing-screen { text-align: center; padding-top: 60px; }
+
+        .scan-animation { width: 100px; height: 100px; margin: 0 auto 24px; position: relative; }
+
+        .scan-ring {
+            position: absolute;
+            inset: 0;
+            border: 2px solid var(--system-primary);
+            border-radius: 50%;
+            animation: scanPulse 1.5s ease-in-out infinite;
+        }
+        .scan-ring:nth-child(2) { animation-delay: 0.3s; }
+        .scan-ring:nth-child(3) { animation-delay: 0.6s; }
+
+        @keyframes scanPulse {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        .scan-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 36px;
+            height: 36px;
+            background: var(--system-primary);
+            border-radius: 50%;
+            box-shadow: 0 0 30px var(--system-glow);
+        }
+
+        .processing-text {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--system-primary);
+            animation: textBlink 1s ease-in-out infinite;
+        }
+
+        @keyframes textBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .processing-details {
+            margin-top: 24px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            line-height: 1.8;
+        }
+
+        .check-item { margin: 4px 0; }
+        .check-item.done { color: var(--system-primary); }
+
+        /* Class Reveal */
+        .reveal-screen { text-align: center; padding-top: 20px; }
+
+        .reveal-header {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            letter-spacing: 0.3em;
+            margin-bottom: 16px;
+        }
+
+        .class-reveal-card {
+            background: linear-gradient(180deg, var(--void-medium) 0%, var(--void-dark) 100%);
+            border: 3px solid var(--current-class-color, var(--system-primary));
+            border-radius: 16px;
+            padding: 24px 16px;
+            position: relative;
+            overflow: hidden;
+            animation: cardReveal 0.8s ease-out;
+        }
+
+        @keyframes cardReveal {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .class-reveal-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(from 0deg, transparent, var(--current-class-glow, var(--system-glow)), transparent);
+            animation: borderRotate 3s linear infinite;
+        }
+
+        @keyframes borderRotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .class-reveal-card .inner {
+            position: relative;
+            background: var(--void-dark);
+            border-radius: 12px;
+            padding: 20px;
+            z-index: 1;
+        }
+
+        .rarity-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.55rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            margin-bottom: 12px;
+        }
+
+        .rarity-badge.common { background: var(--rarity-common); color: var(--void-black); }
+        .rarity-badge.uncommon { background: var(--rarity-uncommon); color: var(--void-black); }
+        .rarity-badge.rare { background: var(--rarity-rare); color: var(--void-black); }
+        .rarity-badge.legendary {
+            background: linear-gradient(90deg, var(--rarity-legendary), #FFD700);
+            color: var(--void-black);
+            animation: legendaryPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes legendaryPulse {
+            0%, 100% { box-shadow: 0 0 10px var(--rarity-legendary); }
+            50% { box-shadow: 0 0 20px #FFD700, 0 0 30px var(--rarity-legendary); }
+        }
+
+        .class-emblem {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 16px;
+            background: linear-gradient(135deg, var(--void-light), var(--void-dark));
+            border: 3px solid var(--current-class-color, var(--system-primary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 30px var(--current-class-glow, var(--system-glow));
+        }
+
+        .class-emblem-icon { font-size: 2.5rem; }
+
+        .class-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--current-class-color, var(--system-primary));
+            text-shadow: 0 0 20px var(--current-class-glow, var(--system-glow));
+            margin-bottom: 6px;
+        }
+
+        .class-desc {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .class-stats { display: flex; justify-content: center; gap: 20px; }
+        .class-stat { text-align: center; }
+        .class-stat-value { font-family: 'Orbitron', sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--text-primary); }
+        .class-stat-label { font-family: 'Share Tech Mono', monospace; font-size: 0.55rem; color: var(--text-muted); }
+
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 16px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, var(--system-dim), var(--system-primary));
+            color: var(--void-black);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 0 20px var(--system-glow);
+            transform: translateY(-2px);
+        }
+
+        .section-label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            letter-spacing: 0.02em;
+            margin-bottom: 10px;
+            margin-top: 8px;
+        }
+
+        .scroll-area {
+            max-height: 420px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .scroll-area::-webkit-scrollbar { width: 4px; }
+        .scroll-area::-webkit-scrollbar-track { background: var(--void-dark); }
+        .scroll-area::-webkit-scrollbar-thumb { background: var(--void-light); border-radius: 2px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">< Back to Status Mockups</a>
+
+        <header class="page-header">
+            <h1>Onboarding flow</h1>
+            <p>// Class assignment system</p>
+        </header>
+
+        <!-- Designer Preview Controls (not shown to users) -->
+        <div class="designer-controls">
+            <div class="designer-controls-header">Designer Preview - Class Assignment Result</div>
+            <div class="class-preview-grid">
+                <button class="class-preview-btn" data-class="guardian" data-rarity="common" onclick="previewClass('guardian')">
+                    <span class="rarity-dot"></span> Guardian
+                </button>
+                <button class="class-preview-btn active" data-class="warrior" data-rarity="uncommon" onclick="previewClass('warrior')">
+                    <span class="rarity-dot"></span> Warrior
+                </button>
+                <button class="class-preview-btn" data-class="titan" data-rarity="uncommon" onclick="previewClass('titan')">
+                    <span class="rarity-dot"></span> Titan
+                </button>
+                <button class="class-preview-btn" data-class="ranger" data-rarity="uncommon" onclick="previewClass('ranger')">
+                    <span class="rarity-dot"></span> Ranger
+                </button>
+                <button class="class-preview-btn" data-class="monk" data-rarity="rare" onclick="previewClass('monk')">
+                    <span class="rarity-dot"></span> Monk
+                </button>
+                <button class="class-preview-btn" data-class="berserker" data-rarity="rare" onclick="previewClass('berserker')">
+                    <span class="rarity-dot"></span> Berserker
+                </button>
+                <button class="class-preview-btn" data-class="shadow" data-rarity="legendary" onclick="previewClass('shadow')">
+                    <span class="rarity-dot"></span> Shadow
+                </button>
+            </div>
+            <div class="rarity-legend">
+                <div class="rarity-legend-item"><span class="dot" style="background: var(--rarity-common)"></span> Common (~40%)</div>
+                <div class="rarity-legend-item"><span class="dot" style="background: var(--rarity-uncommon)"></span> Uncommon (~35%)</div>
+                <div class="rarity-legend-item"><span class="dot" style="background: var(--rarity-rare)"></span> Rare (~20%)</div>
+                <div class="rarity-legend-item"><span class="dot" style="background: var(--rarity-legendary)"></span> Legendary (<5%)</div>
+            </div>
+        </div>
+
+        <div class="step-indicator">
+            <div class="step-dot active" data-step="1"></div>
+            <div class="step-dot" data-step="2"></div>
+            <div class="step-dot" data-step="3"></div>
+            <div class="step-dot" data-step="4"></div>
+            <div class="step-dot" data-step="5"></div>
+            <div class="step-dot" data-step="6"></div>
+            <div class="step-dot" data-step="7"></div>
+        </div>
+
+        <div class="mockup-container">
+            <div class="phone-frame">
+
+                <!-- Step 1: Welcome -->
+                <div class="screen active" id="step-1">
+                    <div class="welcome-screen">
+                        <div class="system-badge">[System initializing]</div>
+                        <h1 class="welcome-title">Awakening</h1>
+                        <p class="welcome-subtitle">The system has detected your potential.<br>Answer truthfully to determine your class.</p>
+                        <div class="input-group">
+                            <label class="input-label">What should we call you?</label>
+                            <input type="text" class="input-field" placeholder="Enter your name" value="Nick">
+                        </div>
+                        <button class="btn btn-primary" onclick="nextStep(2)">Begin analysis</button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Experience Level -->
+                <div class="screen" id="step-2">
+                    <div class="screen-content">
+                        <h2 class="screen-title">Training Experience</h2>
+                        <p class="screen-subtitle">How long have you been training?</p>
+                        <div class="option-card" onclick="selectOption(this, 'exp')">
+                            <div class="option-radio"></div>
+                            <div class="option-content">
+                                <div class="option-name">New to Training</div>
+                                <div class="option-desc">Less than 6 months</div>
+                            </div>
+                            <span class="option-icon">🌱</span>
+                        </div>
+                        <div class="option-card selected" onclick="selectOption(this, 'exp')">
+                            <div class="option-radio"></div>
+                            <div class="option-content">
+                                <div class="option-name">Intermediate</div>
+                                <div class="option-desc">6 months to 2 years</div>
+                            </div>
+                            <span class="option-icon">💪</span>
+                        </div>
+                        <div class="option-card" onclick="selectOption(this, 'exp')">
+                            <div class="option-radio"></div>
+                            <div class="option-content">
+                                <div class="option-name">Advanced</div>
+                                <div class="option-desc">2 to 5 years consistent</div>
+                            </div>
+                            <span class="option-icon">🔥</span>
+                        </div>
+                        <div class="option-card" onclick="selectOption(this, 'exp')">
+                            <div class="option-radio"></div>
+                            <div class="option-content">
+                                <div class="option-name">Elite</div>
+                                <div class="option-desc">5+ years, competitive level</div>
+                            </div>
+                            <span class="option-icon">⚡</span>
+                        </div>
+                        <button class="btn btn-primary" onclick="nextStep(3)">Continue</button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Sports Background -->
+                <div class="screen" id="step-3">
+                    <div class="screen-content">
+                        <h2 class="screen-title">Athletic Background</h2>
+                        <p class="screen-subtitle">Select any sports you've played seriously</p>
+                        <div class="scroll-area">
+                            <div class="section-label">Combat / Martial Arts</div>
+                            <div class="chip-grid">
+                                <div class="chip" onclick="toggleChip(this)"><span class="chip-icon">🥊</span> Boxing</div>
+                                <div class="chip" onclick="toggleChip(this)"><span class="chip-icon">🥋</span> MMA</div>
+                                <div class="chip" onclick="toggleChip(this)"><span class="chip-icon">🤼</span> Wrestling</div>
+                                <div class="chip" onclick="toggleChip(this)"><span class="chip-icon">🥷</span> BJJ</div>
+                            </div>
+                            <div class="section-label">Team Sports</div>
+                            <div class="chip-grid">
+                                <div class="chip selected" onclick="toggleChip(this)"><span class="chip-icon">🏀</span> Basketball</div>
+                                <div class="chip" onclick="toggleChip(this)"><span class="chip-icon">🏈</span> Football</div>
+                                <div class="chip" onclick="toggleChip(this)"><span class="chip-icon">⚽</span> Soccer</div>
+                                <div class="chip" onclick="toggleChip(this)"><span class="chip-icon">🏐</span> Volleyball</div>
+                                <div class="chip" onclick="toggleChip(this)"><span class="chip-icon">🏒</span> Hockey</div>
+                                <div class="chip" onclick="toggleChip(this)"><span class="chip-icon">⚾</span> Baseball</div>
+                            </div>
+                            <div class="section-label">Individual Sports</div>
+                            <div class="chip-grid">
+                                <div class="chip" onclick="toggleChip(this)"><span class="chip-icon">🏊</span> Swimming</div>
+                                <div class="chip" onclick="toggleChip(this)"><span class="chip-icon">🏃</span> Track</div>
+                                <div class="chip" onclick="toggleChip(this)"><span class="chip-icon">🎾</span> Tennis</div>
+                                <div class="chip" onclick="toggleChip(this)"><span class="chip-icon">🚴</span> Cycling</div>
+                                <div class="chip" onclick="toggleChip(this)"><span class="chip-icon">🏋️</span> Weightlifting</div>
+                                <div class="chip" onclick="toggleChip(this)"><span class="chip-icon">🤸</span> Gymnastics</div>
+                            </div>
+                            <div class="section-label">Other</div>
+                            <div class="chip-grid">
+                                <div class="chip" onclick="toggleChip(this)"><span class="chip-icon">🧘</span> Yoga</div>
+                                <div class="chip" onclick="toggleChip(this)"><span class="chip-icon">💃</span> Dance</div>
+                                <div class="chip" onclick="toggleChip(this)"><span class="chip-icon">🧗</span> Climbing</div>
+                                <div class="chip" onclick="toggleChip(this)"><span class="chip-icon">🎯</span> CrossFit</div>
+                                <div class="chip" onclick="toggleChip(this)"><span class="chip-icon">🚫</span> None</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="nextStep(4)">Continue</button>
+                    </div>
+                </div>
+
+                <!-- Step 4: Training Style -->
+                <div class="screen" id="step-4">
+                    <div class="screen-content">
+                        <h2 class="screen-title">Training Style</h2>
+                        <p class="screen-subtitle">What type of training do you enjoy most?</p>
+                        <div class="option-card selected" onclick="selectOption(this, 'style')">
+                            <div class="option-radio"></div>
+                            <div class="option-content">
+                                <div class="option-name">Heavy Compound Lifts</div>
+                                <div class="option-desc">Squat, bench, deadlift, overhead press</div>
+                            </div>
+                            <span class="option-icon">🏋️</span>
+                        </div>
+                        <div class="option-card" onclick="selectOption(this, 'style')">
+                            <div class="option-radio"></div>
+                            <div class="option-content">
+                                <div class="option-name">Bodybuilding / Isolation</div>
+                                <div class="option-desc">High volume, pump work, aesthetics</div>
+                            </div>
+                            <span class="option-icon">💎</span>
+                        </div>
+                        <div class="option-card" onclick="selectOption(this, 'style')">
+                            <div class="option-radio"></div>
+                            <div class="option-content">
+                                <div class="option-name">Functional / Athletic</div>
+                                <div class="option-desc">Mixed movements, conditioning, agility</div>
+                            </div>
+                            <span class="option-icon">⚡</span>
+                        </div>
+                        <div class="option-card" onclick="selectOption(this, 'style')">
+                            <div class="option-radio"></div>
+                            <div class="option-content">
+                                <div class="option-name">Calisthenics / Bodyweight</div>
+                                <div class="option-desc">Pull-ups, dips, skills, mobility</div>
+                            </div>
+                            <span class="option-icon">🤸</span>
+                        </div>
+                        <div class="option-card" onclick="selectOption(this, 'style')">
+                            <div class="option-radio"></div>
+                            <div class="option-content">
+                                <div class="option-name">Cardio / Endurance</div>
+                                <div class="option-desc">Running, cycling, swimming, LISS</div>
+                            </div>
+                            <span class="option-icon">🏃</span>
+                        </div>
+                        <button class="btn btn-primary" onclick="nextStep(5)">Continue</button>
+                    </div>
+                </div>
+
+                <!-- Step 5: Goals -->
+                <div class="screen" id="step-5">
+                    <div class="screen-content">
+                        <h2 class="screen-title">Primary Goals</h2>
+                        <p class="screen-subtitle">Select all that apply</p>
+                        <div class="scroll-area">
+                            <div class="goal-option selected" onclick="toggleGoal(this)">
+                                <div class="goal-checkbox"></div>
+                                <div class="goal-content">
+                                    <div class="goal-name">Get Stronger</div>
+                                    <div class="goal-desc">Increase max lifts, build raw power</div>
+                                </div>
+                                <span class="goal-icon">💪</span>
+                            </div>
+                            <div class="goal-option" onclick="toggleGoal(this)">
+                                <div class="goal-checkbox"></div>
+                                <div class="goal-content">
+                                    <div class="goal-name">Build Muscle</div>
+                                    <div class="goal-desc">Increase size, improve aesthetics</div>
+                                </div>
+                                <span class="goal-icon">🏋️</span>
+                            </div>
+                            <div class="goal-option" onclick="toggleGoal(this)">
+                                <div class="goal-checkbox"></div>
+                                <div class="goal-content">
+                                    <div class="goal-name">Lose Fat</div>
+                                    <div class="goal-desc">Body recomposition, get lean</div>
+                                </div>
+                                <span class="goal-icon">🔥</span>
+                            </div>
+                            <div class="goal-option" onclick="toggleGoal(this)">
+                                <div class="goal-checkbox"></div>
+                                <div class="goal-content">
+                                    <div class="goal-name">Improve Endurance</div>
+                                    <div class="goal-desc">Better cardio, run farther</div>
+                                </div>
+                                <span class="goal-icon">🏃</span>
+                            </div>
+                            <div class="goal-option" onclick="toggleGoal(this)">
+                                <div class="goal-checkbox"></div>
+                                <div class="goal-content">
+                                    <div class="goal-name">Increase Mobility</div>
+                                    <div class="goal-desc">Flexibility, injury prevention</div>
+                                </div>
+                                <span class="goal-icon">🧘</span>
+                            </div>
+                            <div class="goal-option" onclick="toggleGoal(this)">
+                                <div class="goal-checkbox"></div>
+                                <div class="goal-content">
+                                    <div class="goal-name">Athletic Performance</div>
+                                    <div class="goal-desc">Speed, power, sport-specific</div>
+                                </div>
+                                <span class="goal-icon">⚡</span>
+                            </div>
+                            <div class="goal-option" onclick="toggleGoal(this)">
+                                <div class="goal-checkbox"></div>
+                                <div class="goal-content">
+                                    <div class="goal-name">General Health</div>
+                                    <div class="goal-desc">Longevity, feel better daily</div>
+                                </div>
+                                <span class="goal-icon">❤️</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="nextStep(6)">Analyze profile</button>
+                    </div>
+                </div>
+
+                <!-- Step 6: Processing -->
+                <div class="screen" id="step-6">
+                    <div class="processing-screen">
+                        <div class="scan-animation">
+                            <div class="scan-ring"></div>
+                            <div class="scan-ring"></div>
+                            <div class="scan-ring"></div>
+                            <div class="scan-center"></div>
+                        </div>
+                        <div class="processing-text">Analyzing hunter profile...</div>
+                        <div class="processing-details">
+                            <div class="check-item done">✓ Experience level assessed</div>
+                            <div class="check-item done">✓ Athletic background analyzed</div>
+                            <div class="check-item done">✓ Training preferences logged</div>
+                            <div class="check-item done">✓ Goals identified</div>
+                            <div class="check-item">⟳ Determining optimal class...</div>
+                        </div>
+                        <button class="btn btn-primary" onclick="nextStep(7)" style="margin-top: 30px;">Reveal class</button>
+                    </div>
+                </div>
+
+                <!-- Step 7: Class Reveal (dynamic based on preview selection) -->
+                <div class="screen" id="step-7">
+                    <div class="reveal-screen">
+                        <div class="reveal-header">Class assignment complete</div>
+                        <div class="class-reveal-card" id="reveal-card">
+                            <div class="inner">
+                                <div class="rarity-badge uncommon" id="reveal-rarity">Uncommon</div>
+                                <div class="class-emblem" id="reveal-emblem">
+                                    <span class="class-emblem-icon" id="reveal-icon">⚔️</span>
+                                </div>
+                                <div class="class-name" id="reveal-name">Warrior</div>
+                                <p class="class-desc" id="reveal-desc">Your background in team sports and focus on compound lifts reveals a true Warrior. You seek raw power above all else.</p>
+                                <div class="class-stats">
+                                    <div class="class-stat">
+                                        <div class="class-stat-value">1</div>
+                                        <div class="class-stat-label">Level</div>
+                                    </div>
+                                    <div class="class-stat">
+                                        <div class="class-stat-value">E</div>
+                                        <div class="class-stat-label">Rank</div>
+                                    </div>
+                                    <div class="class-stat">
+                                        <div class="class-stat-value" id="reveal-bonus">0</div>
+                                        <div class="class-stat-label" id="reveal-bonus-label">XP</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" style="margin-top: 24px;">Begin your journey</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const classData = {
+            guardian: {
+                name: 'Guardian',
+                icon: '🛡️',
+                rarity: 'common',
+                color: '#808080',
+                glow: 'rgba(128, 128, 128, 0.4)',
+                desc: 'Balanced and steady. You value overall health and sustainable progress. The foundation of any strong guild.',
+                bonus: '0',
+                bonusLabel: 'XP'
+            },
+            warrior: {
+                name: 'Warrior',
+                icon: '⚔️',
+                rarity: 'uncommon',
+                color: '#4A9B4A',
+                glow: 'rgba(74, 155, 74, 0.4)',
+                desc: 'Your background in team sports and focus on compound lifts reveals a true Warrior. You seek raw power above all else.',
+                bonus: '0',
+                bonusLabel: 'XP'
+            },
+            titan: {
+                name: 'Titan',
+                icon: '💎',
+                rarity: 'uncommon',
+                color: '#4A9B4A',
+                glow: 'rgba(74, 155, 74, 0.4)',
+                desc: 'You sculpt your body like a work of art. Volume, isolation, and aesthetics drive your training journey.',
+                bonus: '0',
+                bonusLabel: 'XP'
+            },
+            ranger: {
+                name: 'Ranger',
+                icon: '🏹',
+                rarity: 'uncommon',
+                color: '#4A9B4A',
+                glow: 'rgba(74, 155, 74, 0.4)',
+                desc: 'Endurance is your weapon. You thrive on the long road, where others falter. Miles are your measure.',
+                bonus: '0',
+                bonusLabel: 'XP'
+            },
+            monk: {
+                name: 'Monk',
+                icon: '☯️',
+                rarity: 'rare',
+                color: '#4A7BB5',
+                glow: 'rgba(74, 123, 181, 0.4)',
+                desc: 'Body and mind in harmony. Calisthenics, mobility, and control define your path. Rare discipline.',
+                bonus: '+25',
+                bonusLabel: 'Bonus XP'
+            },
+            berserker: {
+                name: 'Berserker',
+                icon: '🔥',
+                rarity: 'rare',
+                color: '#4A7BB5',
+                glow: 'rgba(74, 123, 181, 0.4)',
+                desc: 'Intensity without limits. CrossFit, HIIT, chaos—you embrace the pain. Few can match your ferocity.',
+                bonus: '+25',
+                bonusLabel: 'Bonus XP'
+            },
+            shadow: {
+                name: 'Shadow',
+                icon: '👁️',
+                rarity: 'legendary',
+                color: '#9B4A9B',
+                glow: 'rgba(155, 74, 155, 0.5)',
+                desc: 'A contradiction made manifest. Combat + Calisthenics + Strength + Fat loss. Your path defies definition.',
+                bonus: '+50',
+                bonusLabel: 'Bonus XP'
+            }
+        };
+
+        function nextStep(step) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('step-' + step).classList.add('active');
+            document.querySelectorAll('.step-dot').forEach((dot, i) => {
+                dot.classList.remove('active', 'completed');
+                if (i + 1 < step) dot.classList.add('completed');
+                if (i + 1 === step) dot.classList.add('active');
+            });
+        }
+
+        function selectOption(el, group) {
+            el.parentElement.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+
+        function toggleChip(el) { el.classList.toggle('selected'); }
+        function toggleGoal(el) { el.classList.toggle('selected'); }
+
+        function previewClass(className) {
+            const data = classData[className];
+            
+            // Update preview buttons
+            document.querySelectorAll('.class-preview-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`[data-class="${className}"]`).classList.add('active');
+            
+            // Update reveal card
+            document.getElementById('reveal-name').textContent = data.name;
+            document.getElementById('reveal-icon').textContent = data.icon;
+            document.getElementById('reveal-desc').textContent = data.desc;
+            document.getElementById('reveal-bonus').textContent = data.bonus;
+            document.getElementById('reveal-bonus-label').textContent = data.bonusLabel;
+            
+            // Update rarity badge
+            const rarityBadge = document.getElementById('reveal-rarity');
+            rarityBadge.className = 'rarity-badge ' + data.rarity;
+            rarityBadge.textContent = data.rarity.toUpperCase();
+            
+            // Update colors
+            document.getElementById('reveal-card').style.setProperty('--current-class-color', data.color);
+            document.getElementById('reveal-card').style.setProperty('--current-class-glow', data.glow);
+            document.getElementById('reveal-emblem').style.borderColor = data.color;
+            document.getElementById('reveal-emblem').style.boxShadow = `0 0 30px ${data.glow}`;
+            document.getElementById('reveal-name').style.color = data.color;
+            document.getElementById('reveal-name').style.textShadow = `0 0 20px ${data.glow}`;
+        }
+
+        document.querySelectorAll('.step-dot').forEach(dot => {
+            dot.addEventListener('click', () => nextStep(parseInt(dot.dataset.step)));
+        });
+
+        // Initialize with warrior selected
+        previewClass('warrior');
+    </script>
+</body>
+</html>

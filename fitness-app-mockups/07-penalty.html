@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARISE - Penalty Warning</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      background: #0a0008;
+    }
+
+    .bg-void {
+      background:
+        radial-gradient(ellipse at 50% 50%, rgba(139, 0, 0, 0.1) 0%, transparent 50%),
+        #0a0008;
+    }
+
+    .bg-grid {
+      background-image:
+        linear-gradient(rgba(139, 0, 0, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(139, 0, 0, 0.05) 1px, transparent 1px);
+      background-size: 50px 50px;
+    }
+
+    .penalty-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    /* Red pulse effect */
+    .red-pulse {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(circle at center, rgba(139, 0, 0, 0.2) 0%, transparent 70%);
+      animation: redPulse 2s ease-in-out infinite;
+      z-index: -1;
+    }
+
+    @keyframes redPulse {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.6; }
+    }
+
+    /* Warning Banner */
+    .warning-banner {
+      font-family: var(--font-display);
+      font-size: 0.9rem;
+      color: var(--warning-red);
+      letter-spacing: 0.3em;
+      padding: 12px 24px;
+      border: 2px solid var(--warning-red);
+      margin-bottom: 40px;
+      animation: glitchBanner 0.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes glitchBanner {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-2px); }
+      50% { transform: translateX(2px); }
+      75% { transform: translateX(-1px); }
+      100% { transform: translateX(0); }
+    }
+
+    /* Penalty Panel */
+    .penalty-panel {
+      max-width: 420px;
+      width: 100%;
+      background: linear-gradient(180deg, rgba(20, 0, 5, 0.95) 0%, rgba(10, 0, 3, 0.98) 100%);
+      border: 1px solid rgba(139, 0, 0, 0.4);
+      box-shadow: 0 0 40px rgba(139, 0, 0, 0.2);
+      animation: panelShake 0.1s ease-in-out 3;
+    }
+
+    @keyframes panelShake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-3px); }
+      75% { transform: translateX(3px); }
+    }
+
+    .penalty-panel::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--warning-red), transparent);
+    }
+
+    .penalty-header {
+      text-align: center;
+      padding: 32px 24px;
+      border-bottom: 1px solid rgba(139, 0, 0, 0.3);
+    }
+
+    .penalty-tag {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--warning-red);
+      letter-spacing: 0.15em;
+      margin-bottom: 16px;
+      animation: textFlicker 0.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes textFlicker {
+      0% { opacity: 1; }
+      50% { opacity: 0.8; }
+      100% { opacity: 1; }
+    }
+
+    .penalty-title {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      color: var(--warning-red);
+      letter-spacing: 0.15em;
+      text-shadow: 0 0 20px rgba(255, 51, 51, 0.5);
+      margin-bottom: 16px;
+    }
+
+    .penalty-message {
+      font-family: var(--font-header);
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .penalty-message .emphasis {
+      color: var(--warning-red);
+      font-weight: 600;
+    }
+
+    /* Divider */
+    .penalty-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(139, 0, 0, 0.5), transparent);
+      margin: 0;
+    }
+
+    /* Penalty Details */
+    .penalty-details {
+      padding: 24px;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(139, 0, 0, 0.1);
+    }
+
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+
+    .detail-label {
+      font-family: var(--font-header);
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .detail-value {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      color: var(--warning-red);
+    }
+
+    .detail-value.severe {
+      color: #ff0000;
+      font-weight: 600;
+    }
+
+    /* Penalty Quest Info */
+    .penalty-quest {
+      padding: 24px;
+      background: rgba(139, 0, 0, 0.1);
+      border-top: 1px solid rgba(139, 0, 0, 0.2);
+    }
+
+    .pq-header {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--warning-red);
+      letter-spacing: 0.1em;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .pq-timer {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .pq-timer-label {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .pq-timer-value {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      color: var(--warning-red);
+      text-shadow: 0 0 15px rgba(255, 51, 51, 0.5);
+    }
+
+    .pq-exercises {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 4px;
+      padding: 16px;
+    }
+
+    .pq-exercise {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(139, 0, 0, 0.1);
+    }
+
+    .pq-exercise:last-child {
+      border-bottom: none;
+    }
+
+    .pq-exercise-name {
+      font-family: var(--font-header);
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .pq-exercise-target {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--warning-red);
+    }
+
+    .multiplier-badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      padding: 2px 6px;
+      background: rgba(255, 51, 51, 0.2);
+      border: 1px solid var(--warning-red);
+      color: var(--warning-red);
+      border-radius: 2px;
+      margin-left: 8px;
+    }
+
+    /* Footer Message */
+    .penalty-footer {
+      padding: 24px;
+      text-align: center;
+      border-top: 1px solid rgba(139, 0, 0, 0.2);
+    }
+
+    .footer-message {
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-style: italic;
+      line-height: 1.6;
+    }
+
+    /* Buttons */
+    .button-group {
+      display: flex;
+      gap: 16px;
+      padding: 24px;
+    }
+
+    .btn-accept-penalty {
+      flex: 1;
+      background: transparent;
+      border: 2px solid var(--warning-red);
+      color: var(--warning-red);
+      font-family: var(--font-header);
+      font-size: 1rem;
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      text-decoration: none;
+      text-align: center;
+    }
+
+    .btn-accept-penalty:hover {
+      background: rgba(255, 51, 51, 0.1);
+      box-shadow: 0 0 20px rgba(255, 51, 51, 0.3);
+    }
+
+    .btn-accept-penalty.primary {
+      background: var(--warning-red);
+      color: #000;
+    }
+
+    .btn-accept-penalty.primary:hover {
+      background: #ff4444;
+    }
+
+    /* Glitch overlay effect */
+    .glitch-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.1) 0px,
+        rgba(0, 0, 0, 0.1) 1px,
+        transparent 1px,
+        transparent 2px
+      );
+      animation: scanlines 0.5s linear infinite;
+      opacity: 0.3;
+      z-index: 100;
+    }
+
+    @keyframes scanlines {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(2px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-void"></div>
+  <div class="bg-grid"></div>
+  <div class="red-pulse"></div>
+  <div class="glitch-overlay"></div>
+
+  <div class="penalty-container">
+    <div class="warning-banner">[WARNING]</div>
+
+    <div class="penalty-panel system-panel">
+      <div class="penalty-header">
+        <div class="penalty-tag">[QUEST FAILED]</div>
+        <h1 class="penalty-title">FAILURE</h1>
+        <p class="penalty-message">
+          You have failed to complete your Daily Quest.<br><br>
+          The System is... <span class="emphasis">disappointed</span>.
+        </p>
+      </div>
+
+      <div class="penalty-divider"></div>
+
+      <!-- Penalty Details -->
+      <div class="penalty-details">
+        <div class="detail-row">
+          <span class="detail-label">Experience Lost</span>
+          <span class="detail-value">-50 XP</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Quest Streak</span>
+          <span class="detail-value severe">RESET TO 0</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Penalty Points</span>
+          <span class="detail-value">+1</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Status</span>
+          <span class="detail-value severe">PENALTY QUEST ISSUED</span>
+        </div>
+      </div>
+
+      <!-- Penalty Quest -->
+      <div class="penalty-quest">
+        <div class="pq-header">[PENALTY QUEST]</div>
+
+        <div class="pq-timer">
+          <div class="pq-timer-label">Time Limit</div>
+          <div class="pq-timer-value">04:00:00</div>
+        </div>
+
+        <div class="pq-exercises">
+          <div class="pq-exercise">
+            <span class="pq-exercise-name">Dragon's Breath <span class="multiplier-badge">1.5x</span></span>
+            <span class="pq-exercise-target">15 reps</span>
+          </div>
+          <div class="pq-exercise">
+            <span class="pq-exercise-name">Stone Titan Hold <span class="multiplier-badge">1.5x</span></span>
+            <span class="pq-exercise-target">90 sec</span>
+          </div>
+          <div class="pq-exercise">
+            <span class="pq-exercise-name">Earth Shaker <span class="multiplier-badge">1.5x</span></span>
+            <span class="pq-exercise-target">15 reps</span>
+          </div>
+          <div class="pq-exercise">
+            <span class="pq-exercise-name">Shadow Sprint <span class="multiplier-badge">1.5x</span></span>
+            <span class="pq-exercise-target">1.5 km</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="penalty-footer">
+        <p class="footer-message">
+          "Failure to complete the Penalty Quest<br>
+          will result in additional consequences."
+        </p>
+      </div>
+
+      <div class="penalty-divider"></div>
+
+      <!-- Buttons -->
+      <div class="button-group">
+        <a href="04-quest.html" class="btn-accept-penalty primary">
+          ACCEPT PENALTY
+        </a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

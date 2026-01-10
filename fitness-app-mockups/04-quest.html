@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARISE - Weekly Quest</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .quest-container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 20px;
+      padding-bottom: 100px;
+    }
+
+    /* Quest Header */
+    .quest-header {
+      text-align: center;
+      padding: 24px 20px;
+      margin-bottom: 20px;
+    }
+
+    .quest-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .quest-rank {
+      font-family: var(--font-display);
+      font-size: 0.8rem;
+      padding: 4px 10px;
+      background: var(--rank-e);
+      color: #000;
+      border-radius: 2px;
+    }
+
+    .quest-type {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--system-primary);
+      letter-spacing: 0.1em;
+    }
+
+    .quest-title {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      color: var(--text-primary);
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+      text-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+    }
+
+    .quest-week {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .quest-description {
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      font-style: italic;
+    }
+
+    /* Week Progress Overview */
+    .week-overview {
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .overview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .overview-title {
+      font-family: var(--font-header);
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .days-remaining {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--gold);
+    }
+
+    /* Day Tracker */
+    .day-tracker {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .day-dot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .day-label {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .day-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid rgba(0, 212, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      transition: all 0.3s ease;
+    }
+
+    .day-circle.completed {
+      background: var(--success-green);
+      border-color: var(--success-green);
+      color: #000;
+    }
+
+    .day-circle.today {
+      border-color: var(--system-primary);
+      color: var(--system-primary);
+      box-shadow: 0 0 15px var(--system-primary-glow);
+    }
+
+    .day-circle.rest {
+      border-style: dashed;
+      border-color: rgba(0, 212, 255, 0.1);
+    }
+
+    .day-workouts {
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      color: var(--text-muted);
+    }
+
+    /* Overall Progress */
+    .overall-progress {
+      background: rgba(0, 212, 255, 0.05);
+      border: 1px solid rgba(0, 212, 255, 0.1);
+      border-radius: 4px;
+      padding: 16px;
+    }
+
+    .progress-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .progress-label {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .progress-value {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      color: var(--system-primary);
+    }
+
+    .main-progress-bar {
+      height: 12px;
+      background: var(--void-light);
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .main-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--system-primary-dim), var(--system-primary));
+      border-radius: 6px;
+      position: relative;
+      transition: width 0.5s ease;
+    }
+
+    .main-progress-fill::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      animation: shimmer 2s infinite;
+    }
+
+    /* Section Header */
+    .section-header {
+      font-family: var(--font-header);
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      padding: 0 4px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-header::before {
+      content: '◆';
+      color: var(--system-primary);
+      font-size: 0.6rem;
+    }
+
+    /* Big Three Section */
+    .big-three-section {
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .lift-objective {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 4px;
+      padding: 16px;
+      margin-bottom: 12px;
+      border-left: 3px solid;
+    }
+
+    .lift-objective.squat { border-color: #3b82f6; }
+    .lift-objective.bench { border-color: #ef4444; }
+    .lift-objective.deadlift { border-color: #8b5cf6; }
+
+    .lift-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .lift-info {
+      flex: 1;
+    }
+
+    .lift-name {
+      font-family: var(--font-header);
+      font-size: 1rem;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+
+    .lift-fantasy {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .lift-status {
+      text-align: right;
+    }
+
+    .lift-fraction {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      color: var(--system-primary);
+    }
+
+    .lift-target {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+    }
+
+    .lift-progress-bar {
+      height: 6px;
+      background: var(--void-light);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .lift-progress-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.5s ease;
+    }
+
+    .lift-progress-fill.squat { background: #3b82f6; }
+    .lift-progress-fill.bench { background: #ef4444; }
+    .lift-progress-fill.deadlift { background: #8b5cf6; }
+
+    .lift-sessions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .session-chip {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      padding: 4px 8px;
+      background: rgba(0, 212, 255, 0.1);
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      border-radius: 12px;
+      color: var(--text-secondary);
+    }
+
+    .session-chip.completed {
+      background: rgba(51, 255, 136, 0.1);
+      border-color: rgba(51, 255, 136, 0.3);
+      color: var(--success-green);
+    }
+
+    /* Time Objective */
+    .time-section {
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .time-objective {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 4px;
+      padding: 20px;
+      border-left: 3px solid var(--gold);
+    }
+
+    .time-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .time-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .time-icon {
+      font-size: 1.5rem;
+    }
+
+    .time-label {
+      font-family: var(--font-header);
+      font-size: 1rem;
+      color: var(--text-primary);
+    }
+
+    .time-values {
+      text-align: right;
+    }
+
+    .time-current {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      color: var(--gold);
+    }
+
+    .time-target {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .time-progress-bar {
+      height: 8px;
+      background: var(--void-light);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .time-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #b8860b, var(--gold));
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+
+    .time-breakdown {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    /* Accessories Section */
+    .accessories-section {
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .accessory-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .accessory-card {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(0, 212, 255, 0.1);
+      border-radius: 4px;
+      padding: 14px 10px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .accessory-card.completed {
+      border-color: var(--success-green);
+      background: rgba(51, 255, 136, 0.05);
+    }
+
+    .accessory-card.completed .accessory-check {
+      color: var(--success-green);
+    }
+
+    .accessory-name {
+      font-family: var(--font-header);
+      font-size: 0.8rem;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .accessory-fantasy {
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      color: var(--text-muted);
+      font-style: italic;
+      margin-bottom: 8px;
+    }
+
+    .accessory-progress {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--system-primary);
+      margin-bottom: 4px;
+    }
+
+    .accessory-check {
+      font-size: 1rem;
+      color: var(--text-muted);
+    }
+
+    /* Rewards Preview */
+    .rewards-section {
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .rewards-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .reward-item {
+      text-align: center;
+      padding: 12px 8px;
+      background: rgba(0, 212, 255, 0.03);
+      border: 1px solid rgba(0, 212, 255, 0.1);
+      border-radius: 4px;
+    }
+
+    .reward-icon {
+      font-size: 1.3rem;
+      margin-bottom: 4px;
+    }
+
+    .reward-value {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      color: var(--system-primary);
+    }
+
+    .reward-label {
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    /* Bonus Objectives */
+    .bonus-section {
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .bonus-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: rgba(255, 215, 0, 0.03);
+      border: 1px solid rgba(255, 215, 0, 0.15);
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+
+    .bonus-check {
+      width: 24px;
+      height: 24px;
+      border: 2px solid rgba(255, 215, 0, 0.3);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .bonus-check.completed {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: #000;
+    }
+
+    .bonus-info {
+      flex: 1;
+    }
+
+    .bonus-name {
+      font-family: var(--font-header);
+      font-size: 0.85rem;
+      color: var(--text-primary);
+    }
+
+    .bonus-desc {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+    }
+
+    .bonus-reward {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--gold);
+    }
+
+    /* Action Buttons */
+    .action-section {
+      padding: 20px;
+    }
+
+    .log-btn {
+      width: 100%;
+      margin-bottom: 12px;
+    }
+
+    /* Navigation */
+    .nav-bottom {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-around;
+      padding: 16px;
+      background: linear-gradient(180deg, transparent, var(--void-dark) 20%);
+      border-top: 1px solid rgba(0, 212, 255, 0.1);
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      transition: color 0.3s ease;
+      padding: 8px 16px;
+    }
+
+    .nav-item:hover, .nav-item.active {
+      color: var(--system-primary);
+    }
+
+    .nav-icon {
+      font-size: 1.3rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-void"></div>
+  <div class="bg-grid"></div>
+
+  <div class="quest-container">
+    <!-- Quest Header -->
+    <div class="quest-header system-panel system-panel-glow">
+      <div class="quest-badge">
+        <span class="quest-rank">E-RANK</span>
+        <span class="quest-type">[WEEKLY QUEST]</span>
+      </div>
+      <h1 class="quest-title">"The Shadow's Forge"</h1>
+      <p class="quest-week">Week of Dec 30 - Jan 5</p>
+      <p class="quest-description">
+        "Steel is forged through fire and repetition. This week, The System demands you build your foundation."
+      </p>
+    </div>
+
+    <!-- Week Overview -->
+    <div class="week-overview system-panel">
+      <div class="overview-header">
+        <span class="overview-title">Week Progress</span>
+        <span class="days-remaining">4 days remaining</span>
+      </div>
+
+      <!-- Day Tracker -->
+      <div class="day-tracker">
+        <div class="day-dot">
+          <span class="day-label">Mon</span>
+          <div class="day-circle completed">✓</div>
+          <span class="day-workouts">Push</span>
+        </div>
+        <div class="day-dot">
+          <span class="day-label">Tue</span>
+          <div class="day-circle completed">✓</div>
+          <span class="day-workouts">Pull</span>
+        </div>
+        <div class="day-dot">
+          <span class="day-label">Wed</span>
+          <div class="day-circle today">1</div>
+          <span class="day-workouts">-</span>
+        </div>
+        <div class="day-dot">
+          <span class="day-label">Thu</span>
+          <div class="day-circle">2</div>
+          <span class="day-workouts">-</span>
+        </div>
+        <div class="day-dot">
+          <span class="day-label">Fri</span>
+          <div class="day-circle">3</div>
+          <span class="day-workouts">-</span>
+        </div>
+        <div class="day-dot">
+          <span class="day-label">Sat</span>
+          <div class="day-circle">4</div>
+          <span class="day-workouts">-</span>
+        </div>
+        <div class="day-dot">
+          <span class="day-label">Sun</span>
+          <div class="day-circle rest">5</div>
+          <span class="day-workouts">-</span>
+        </div>
+      </div>
+
+      <!-- Overall Progress -->
+      <div class="overall-progress">
+        <div class="progress-row">
+          <span class="progress-label">Quest Completion</span>
+          <span class="progress-value">58%</span>
+        </div>
+        <div class="main-progress-bar">
+          <div class="main-progress-fill" style="width: 58%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Big Three Objectives -->
+    <div class="big-three-section system-panel">
+      <div class="section-header">The Big Three</div>
+
+      <!-- Squat -->
+      <div class="lift-objective squat">
+        <div class="lift-header">
+          <div class="lift-info">
+            <div class="lift-name">Squat</div>
+            <div class="lift-fantasy">"Earth Shaker"</div>
+          </div>
+          <div class="lift-status">
+            <div class="lift-fraction">8 / 12</div>
+            <div class="lift-target">working sets</div>
+          </div>
+        </div>
+        <div class="lift-progress-bar">
+          <div class="lift-progress-fill squat" style="width: 67%;"></div>
+        </div>
+        <div class="lift-sessions">
+          <span class="session-chip completed">Mon: 4 sets @ 235</span>
+          <span class="session-chip completed">Tue: 4 sets @ 225</span>
+          <span class="session-chip">+4 sets needed</span>
+        </div>
+      </div>
+
+      <!-- Bench -->
+      <div class="lift-objective bench">
+        <div class="lift-header">
+          <div class="lift-info">
+            <div class="lift-name">Bench Press</div>
+            <div class="lift-fantasy">"Titan's Press"</div>
+          </div>
+          <div class="lift-status">
+            <div class="lift-fraction">4 / 12</div>
+            <div class="lift-target">working sets</div>
+          </div>
+        </div>
+        <div class="lift-progress-bar">
+          <div class="lift-progress-fill bench" style="width: 33%;"></div>
+        </div>
+        <div class="lift-sessions">
+          <span class="session-chip completed">Mon: 4 sets @ 165</span>
+          <span class="session-chip">+8 sets needed</span>
+        </div>
+      </div>
+
+      <!-- Deadlift -->
+      <div class="lift-objective deadlift">
+        <div class="lift-header">
+          <div class="lift-info">
+            <div class="lift-name">Deadlift</div>
+            <div class="lift-fantasy">"Grave Riser"</div>
+          </div>
+          <div class="lift-status">
+            <div class="lift-fraction">6 / 9</div>
+            <div class="lift-target">working sets</div>
+          </div>
+        </div>
+        <div class="lift-progress-bar">
+          <div class="lift-progress-fill deadlift" style="width: 67%;"></div>
+        </div>
+        <div class="lift-sessions">
+          <span class="session-chip completed">Mon: 3 sets @ 225</span>
+          <span class="session-chip completed">Tue: 3 sets @ 205</span>
+          <span class="session-chip">+3 sets needed</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Time Objective -->
+    <div class="time-section system-panel">
+      <div class="section-header">Training Time</div>
+      <div class="time-objective">
+        <div class="time-header">
+          <div class="time-info">
+            <span class="time-icon">⏱️</span>
+            <span class="time-label">Weekly Volume</span>
+          </div>
+          <div class="time-values">
+            <div class="time-current">79 min</div>
+            <div class="time-target">of 150 min goal</div>
+          </div>
+        </div>
+        <div class="time-progress-bar">
+          <div class="time-progress-fill" style="width: 53%;"></div>
+        </div>
+        <div class="time-breakdown">
+          <span>Mon: 44 min</span>
+          <span>Tue: 35 min</span>
+          <span>Remaining: 71 min</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Accessories -->
+    <div class="accessories-section system-panel">
+      <div class="section-header">Accessory Work</div>
+      <div class="accessory-grid">
+        <div class="accessory-card completed">
+          <div class="accessory-name">Biceps</div>
+          <div class="accessory-fantasy">"Iron Coil"</div>
+          <div class="accessory-progress">4/4 sets</div>
+          <div class="accessory-check">✓</div>
+        </div>
+        <div class="accessory-card completed">
+          <div class="accessory-name">Triceps</div>
+          <div class="accessory-fantasy">"Shadow Strike"</div>
+          <div class="accessory-progress">3/3 sets</div>
+          <div class="accessory-check">✓</div>
+        </div>
+        <div class="accessory-card">
+          <div class="accessory-name">Shoulders</div>
+          <div class="accessory-fantasy">"Sky Piercer"</div>
+          <div class="accessory-progress">0/4 sets</div>
+          <div class="accessory-check">○</div>
+        </div>
+        <div class="accessory-card completed">
+          <div class="accessory-name">Back</div>
+          <div class="accessory-fantasy">"Serpent's Pull"</div>
+          <div class="accessory-progress">8/6 sets</div>
+          <div class="accessory-check">✓</div>
+        </div>
+        <div class="accessory-card">
+          <div class="accessory-name">Core</div>
+          <div class="accessory-fantasy">"Stone Titan"</div>
+          <div class="accessory-progress">0/2 sets</div>
+          <div class="accessory-check">○</div>
+        </div>
+        <div class="accessory-card">
+          <div class="accessory-name">Calves</div>
+          <div class="accessory-fantasy">"Swift Shadow"</div>
+          <div class="accessory-progress">0/3 sets</div>
+          <div class="accessory-check">○</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bonus Objectives -->
+    <div class="bonus-section system-panel">
+      <div class="section-header">Bonus Objectives</div>
+      <div class="bonus-item">
+        <div class="bonus-check completed">✓</div>
+        <div class="bonus-info">
+          <div class="bonus-name">Early Riser</div>
+          <div class="bonus-desc">Complete a workout before 9 AM</div>
+        </div>
+        <div class="bonus-reward">+25 XP</div>
+      </div>
+      <div class="bonus-item">
+        <div class="bonus-check">○</div>
+        <div class="bonus-info">
+          <div class="bonus-name">PR Hunter</div>
+          <div class="bonus-desc">Set a new E1RM on any big three lift</div>
+        </div>
+        <div class="bonus-reward">+50 XP</div>
+      </div>
+      <div class="bonus-item">
+        <div class="bonus-check">○</div>
+        <div class="bonus-info">
+          <div class="bonus-name">Iron Will</div>
+          <div class="bonus-desc">Train 4+ days this week</div>
+        </div>
+        <div class="bonus-reward">+30 XP</div>
+      </div>
+    </div>
+
+    <!-- Rewards Preview -->
+    <div class="rewards-section system-panel">
+      <div class="section-header">Completion Rewards</div>
+      <div class="rewards-grid">
+        <div class="reward-item">
+          <div class="reward-icon">⚡</div>
+          <div class="reward-value">+300</div>
+          <div class="reward-label">XP</div>
+        </div>
+        <div class="reward-item">
+          <div class="reward-icon">🪙</div>
+          <div class="reward-value">+150</div>
+          <div class="reward-label">Gold</div>
+        </div>
+        <div class="reward-item">
+          <div class="reward-icon">✦</div>
+          <div class="reward-value">+5</div>
+          <div class="reward-label">Stat Pts</div>
+        </div>
+        <div class="reward-item">
+          <div class="reward-icon">💪</div>
+          <div class="reward-value">+3</div>
+          <div class="reward-label">STR</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="action-section">
+      <a href="08-log-workout.html" class="btn-system btn-system-primary log-btn">
+        LOG TODAY'S WORKOUT
+      </a>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="nav-bottom">
+    <a href="03-dashboard.html" class="nav-item">
+      <span class="nav-icon">⚔️</span>
+      <span>Status</span>
+    </a>
+    <a href="04-quest.html" class="nav-item active">
+      <span class="nav-icon">📜</span>
+      <span>Quest</span>
+    </a>
+    <a href="08-log-workout.html" class="nav-item">
+      <span class="nav-icon">➕</span>
+      <span>Log</span>
+    </a>
+    <a href="05-history.html" class="nav-item">
+      <span class="nav-icon">📊</span>
+      <span>History</span>
+    </a>
+  </nav>
+</body>
+</html>

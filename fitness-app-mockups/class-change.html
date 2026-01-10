@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class Change - Reawakening</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --void-black: #0A0A0F;
+            --void-dark: #12121A;
+            --void-medium: #1A1A24;
+            --void-light: #252530;
+            --system-primary: #00D4FF;
+            --system-dim: #00A8CC;
+            --system-glow: rgba(0, 212, 255, 0.4);
+            --text-primary: #FFFFFF;
+            --text-secondary: #A0A0B0;
+            --text-muted: #606070;
+            --danger: #FF4444;
+            --warning: #FFD700;
+            
+            --rarity-common: #808080;
+            --rarity-uncommon: #4A9B4A;
+            --rarity-rare: #4A7BB5;
+            --rarity-legendary: #9B4A9B;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--void-black);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container { max-width: 900px; margin: 0 auto; }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--void-light);
+        }
+
+        .page-header h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: 0.2em;
+            color: var(--system-primary);
+            text-shadow: 0 0 20px var(--system-glow);
+        }
+
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 8px;
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: var(--system-primary);
+            text-decoration: none;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8rem;
+        }
+
+        .back-link:hover { text-decoration: underline; }
+
+        /* Screen Tabs */
+        .screen-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        .screen-tab {
+            padding: 10px 20px;
+            background: var(--void-dark);
+            border: 2px solid var(--void-light);
+            border-radius: 8px;
+            color: var(--text-muted);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .screen-tab:hover { border-color: var(--text-muted); }
+
+        .screen-tab.active {
+            border-color: var(--system-primary);
+            color: var(--system-primary);
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        .mockup-container { display: flex; justify-content: center; }
+
+        .phone-frame {
+            width: 375px;
+            min-height: 700px;
+            background: var(--void-black);
+            border-radius: 20px;
+            padding: 40px 16px 20px;
+            border: 2px solid var(--void-light);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .phone-frame::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 24px;
+            background: var(--void-dark);
+            border-radius: 0 0 16px 16px;
+        }
+
+        .screen { display: none; }
+        .screen.active { display: block; animation: fadeIn 0.4s ease; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Page Header */
+        .page-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+
+        .page-subtitle {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* Current Class Card */
+        .current-class-section {
+            margin-bottom: 20px;
+        }
+
+        .section-label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+        }
+
+        .current-class-card {
+            background: linear-gradient(135deg, var(--void-medium) 0%, var(--void-dark) 100%);
+            border: 2px solid var(--rarity-uncommon);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .current-class-emblem {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--void-light), var(--void-dark));
+            border: 2px solid var(--rarity-uncommon);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            flex-shrink: 0;
+        }
+
+        .current-class-info { flex: 1; }
+
+        .current-class-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--rarity-uncommon);
+            margin-bottom: 2px;
+        }
+
+        .current-class-rarity {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            letter-spacing: 0.02em;
+        }
+
+        .current-class-stats {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .current-stat {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+        }
+
+        .current-stat span {
+            color: var(--system-primary);
+            font-weight: 600;
+        }
+
+        /* Cost Info */
+        .cost-banner {
+            background: var(--void-dark);
+            border: 1px solid var(--void-light);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .cost-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .cost-icon {
+            font-size: 1.2rem;
+        }
+
+        .cost-text {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        .cost-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--warning);
+        }
+
+        .user-xp {
+            text-align: right;
+        }
+
+        .user-xp-label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.55rem;
+            color: var(--text-muted);
+        }
+
+        .user-xp-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--system-primary);
+        }
+
+        /* Available Classes */
+        .available-classes {
+            margin-bottom: 16px;
+        }
+
+        .class-option {
+            background: var(--void-dark);
+            border: 2px solid var(--void-light);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .class-option:hover {
+            border-color: var(--text-muted);
+        }
+
+        .class-option.selected {
+            border-color: var(--system-primary);
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        .class-option.current {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .class-option.locked {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .class-option-radio {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--void-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .class-option.selected .class-option-radio {
+            border-color: var(--system-primary);
+        }
+
+        .class-option.selected .class-option-radio::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--system-primary);
+            border-radius: 50%;
+        }
+
+        .class-option-emblem {
+            width: 40px;
+            height: 40px;
+            background: var(--void-medium);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+
+        .class-option-info { flex: 1; }
+
+        .class-option-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 2px;
+        }
+
+        .class-option-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .class-option-rarity {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.5rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .class-option-rarity.common { background: var(--rarity-common); color: var(--void-black); }
+        .class-option-rarity.uncommon { background: var(--rarity-uncommon); color: var(--void-black); }
+        .class-option-rarity.rare { background: var(--rarity-rare); color: var(--void-black); }
+        .class-option-rarity.legendary { background: var(--rarity-legendary); color: var(--void-black); }
+
+        .class-option-desc {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6rem;
+            color: var(--text-muted);
+        }
+
+        .class-option-tag {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            padding: 4px 8px;
+            background: var(--void-medium);
+            border-radius: 4px;
+        }
+
+        .class-option.current .class-option-tag {
+            background: var(--rarity-uncommon);
+            color: var(--void-black);
+        }
+
+        /* Cooldown Notice */
+        .cooldown-notice {
+            background: rgba(255, 68, 68, 0.1);
+            border: 1px solid var(--danger);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .cooldown-notice.available {
+            background: rgba(0, 212, 255, 0.05);
+            border-color: var(--system-dim);
+        }
+
+        .cooldown-icon { font-size: 1.2rem; }
+
+        .cooldown-text {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            flex: 1;
+        }
+
+        .cooldown-text strong {
+            color: var(--danger);
+        }
+
+        .cooldown-notice.available .cooldown-text strong {
+            color: var(--system-primary);
+        }
+
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, var(--system-dim), var(--system-primary));
+            color: var(--void-black);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 0 20px var(--system-glow);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary:disabled {
+            background: var(--void-light);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-danger {
+            background: linear-gradient(90deg, #CC3333, var(--danger));
+            color: white;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid var(--void-light);
+            color: var(--text-secondary);
+        }
+
+        /* Scroll area */
+        .scroll-area {
+            max-height: 280px;
+            overflow-y: auto;
+            padding-right: 4px;
+            margin-bottom: 16px;
+        }
+
+        .scroll-area::-webkit-scrollbar { width: 4px; }
+        .scroll-area::-webkit-scrollbar-track { background: var(--void-dark); }
+        .scroll-area::-webkit-scrollbar-thumb { background: var(--void-light); border-radius: 2px; }
+
+        /* Confirmation Modal */
+        .modal-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: var(--void-dark);
+            border: 2px solid var(--system-primary);
+            border-radius: 16px;
+            padding: 24px;
+            width: 100%;
+            max-width: 320px;
+            animation: modalIn 0.3s ease;
+        }
+
+        @keyframes modalIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-icon {
+            font-size: 3rem;
+            margin-bottom: 12px;
+        }
+
+        .modal-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .modal-subtitle {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+        }
+
+        .change-summary {
+            background: var(--void-medium);
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .change-from, .change-to {
+            text-align: center;
+        }
+
+        .change-label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .change-class-icon {
+            font-size: 1.5rem;
+            margin-bottom: 4px;
+        }
+
+        .change-class-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .change-arrow {
+            font-size: 1.5rem;
+            color: var(--system-primary);
+        }
+
+        .cost-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid var(--warning);
+            border-radius: 8px;
+        }
+
+        .cost-summary-label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        .cost-summary-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--warning);
+        }
+
+        .modal-warning {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 12px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-buttons .btn {
+            flex: 1;
+        }
+
+        /* Success Screen */
+        .success-content {
+            text-align: center;
+            padding-top: 40px;
+        }
+
+        .success-animation {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 24px;
+            position: relative;
+        }
+
+        .success-ring {
+            position: absolute;
+            inset: 0;
+            border: 3px solid var(--system-primary);
+            border-radius: 50%;
+            animation: successPulse 1s ease-out;
+        }
+
+        @keyframes successPulse {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        .success-check {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem;
+        }
+
+        .success-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--system-primary);
+            margin-bottom: 8px;
+        }
+
+        .success-subtitle {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 30px;
+        }
+
+        .new-class-card {
+            background: linear-gradient(135deg, var(--void-medium) 0%, var(--void-dark) 100%);
+            border: 3px solid var(--rarity-rare);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .new-class-emblem {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 16px;
+            background: linear-gradient(135deg, var(--void-light), var(--void-dark));
+            border: 3px solid var(--rarity-rare);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            box-shadow: 0 0 30px rgba(74, 123, 181, 0.4);
+        }
+
+        .new-class-rarity {
+            display: inline-block;
+            padding: 4px 12px;
+            background: var(--rarity-rare);
+            border-radius: 20px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.55rem;
+            font-weight: 700;
+            color: var(--void-black);
+            margin-bottom: 8px;
+        }
+
+        .new-class-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--rarity-rare);
+            text-shadow: 0 0 20px rgba(74, 123, 181, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">< Back to Status Mockups</a>
+
+        <header class="page-header">
+            <h1>Class change</h1>
+            <p>// Reawakening system</p>
+        </header>
+
+        <div class="screen-tabs">
+            <button class="screen-tab active" onclick="showScreen('main')">Main Screen</button>
+            <button class="screen-tab" onclick="showScreen('cooldown')">On Cooldown</button>
+            <button class="screen-tab" onclick="showScreen('success')">Success</button>
+        </div>
+
+        <div class="mockup-container">
+            <div class="phone-frame">
+
+                <!-- Main Class Change Screen -->
+                <div class="screen active" id="screen-main">
+                    <h1 class="page-title">Reawakening</h1>
+                    <p class="page-subtitle">Change your class path</p>
+
+                    <div class="current-class-section">
+                        <div class="section-label">Current Class</div>
+                        <div class="current-class-card">
+                            <div class="current-class-emblem">⚔️</div>
+                            <div class="current-class-info">
+                                <div class="current-class-name">Warrior</div>
+                                <div class="current-class-rarity">Uncommon Class</div>
+                                <div class="current-class-stats">
+                                    <div class="current-stat">Level <span>10</span></div>
+                                    <div class="current-stat">Since <span>Jan 10</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cost-banner">
+                        <div class="cost-info">
+                            <span class="cost-icon">⚡</span>
+                            <div>
+                                <div class="cost-text">Reawakening Cost</div>
+                                <div class="cost-value">500 XP</div>
+                            </div>
+                        </div>
+                        <div class="user-xp">
+                            <div class="user-xp-label">Your XP</div>
+                            <div class="user-xp-value">3,436</div>
+                        </div>
+                    </div>
+
+                    <div class="cooldown-notice available">
+                        <span class="cooldown-icon">✓</span>
+                        <div class="cooldown-text">
+                            <strong>Available now</strong> — You can change your class once every 30 days
+                        </div>
+                    </div>
+
+                    <div class="available-classes">
+                        <div class="section-label">Choose New Class</div>
+                        <div class="scroll-area">
+                            <div class="class-option current">
+                                <div class="class-option-radio"></div>
+                                <div class="class-option-emblem">⚔️</div>
+                                <div class="class-option-info">
+                                    <div class="class-option-header">
+                                        <span class="class-option-name">Warrior</span>
+                                        <span class="class-option-rarity uncommon">Uncommon</span>
+                                    </div>
+                                    <div class="class-option-desc">Raw power and compound lifts</div>
+                                </div>
+                                <span class="class-option-tag">Current</span>
+                            </div>
+
+                            <div class="class-option" onclick="selectClass(this)">
+                                <div class="class-option-radio"></div>
+                                <div class="class-option-emblem">🛡️</div>
+                                <div class="class-option-info">
+                                    <div class="class-option-header">
+                                        <span class="class-option-name">Guardian</span>
+                                        <span class="class-option-rarity common">Common</span>
+                                    </div>
+                                    <div class="class-option-desc">Balanced, sustainable progress</div>
+                                </div>
+                            </div>
+
+                            <div class="class-option" onclick="selectClass(this)">
+                                <div class="class-option-radio"></div>
+                                <div class="class-option-emblem">💎</div>
+                                <div class="class-option-info">
+                                    <div class="class-option-header">
+                                        <span class="class-option-name">Titan</span>
+                                        <span class="class-option-rarity uncommon">Uncommon</span>
+                                    </div>
+                                    <div class="class-option-desc">Volume, isolation, aesthetics</div>
+                                </div>
+                            </div>
+
+                            <div class="class-option" onclick="selectClass(this)">
+                                <div class="class-option-radio"></div>
+                                <div class="class-option-emblem">🏹</div>
+                                <div class="class-option-info">
+                                    <div class="class-option-header">
+                                        <span class="class-option-name">Ranger</span>
+                                        <span class="class-option-rarity uncommon">Uncommon</span>
+                                    </div>
+                                    <div class="class-option-desc">Endurance and cardio focused</div>
+                                </div>
+                            </div>
+
+                            <div class="class-option selected" onclick="selectClass(this)">
+                                <div class="class-option-radio"></div>
+                                <div class="class-option-emblem">☯️</div>
+                                <div class="class-option-info">
+                                    <div class="class-option-header">
+                                        <span class="class-option-name">Monk</span>
+                                        <span class="class-option-rarity rare">Rare</span>
+                                    </div>
+                                    <div class="class-option-desc">Calisthenics, mobility, control</div>
+                                </div>
+                            </div>
+
+                            <div class="class-option" onclick="selectClass(this)">
+                                <div class="class-option-radio"></div>
+                                <div class="class-option-emblem">🔥</div>
+                                <div class="class-option-info">
+                                    <div class="class-option-header">
+                                        <span class="class-option-name">Berserker</span>
+                                        <span class="class-option-rarity rare">Rare</span>
+                                    </div>
+                                    <div class="class-option-desc">High intensity, CrossFit, HIIT</div>
+                                </div>
+                            </div>
+
+                            <div class="class-option locked">
+                                <div class="class-option-radio"></div>
+                                <div class="class-option-emblem">👁️</div>
+                                <div class="class-option-info">
+                                    <div class="class-option-header">
+                                        <span class="class-option-name">Shadow</span>
+                                        <span class="class-option-rarity legendary">Legendary</span>
+                                    </div>
+                                    <div class="class-option-desc">Legendary classes cannot be chosen</div>
+                                </div>
+                                <span class="class-option-tag">🔒 Locked</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="showModal()">Confirm reawakening</button>
+
+                    <!-- Confirmation Modal -->
+                    <div class="modal-overlay" id="confirm-modal">
+                        <div class="modal">
+                            <div class="modal-header">
+                                <div class="modal-icon">⚡</div>
+                                <div class="modal-title">Confirm Reawakening</div>
+                                <div class="modal-subtitle">This action cannot be undone</div>
+                            </div>
+                            <div class="modal-body">
+                                <div class="change-summary">
+                                    <div class="change-from">
+                                        <div class="change-label">From</div>
+                                        <div class="change-class-icon">⚔️</div>
+                                        <div class="change-class-name">Warrior</div>
+                                    </div>
+                                    <div class="change-arrow">→</div>
+                                    <div class="change-to">
+                                        <div class="change-label">To</div>
+                                        <div class="change-class-icon">☯️</div>
+                                        <div class="change-class-name">Monk</div>
+                                    </div>
+                                </div>
+                                <div class="cost-summary">
+                                    <span class="cost-summary-label">XP Cost</span>
+                                    <span class="cost-summary-value">-500 XP</span>
+                                </div>
+                                <div class="modal-warning">
+                                    You won't be able to change again for 30 days
+                                </div>
+                            </div>
+                            <div class="modal-buttons">
+                                <button class="btn btn-secondary" onclick="hideModal()">Cancel</button>
+                                <button class="btn btn-danger" onclick="showScreen('success')">Confirm</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cooldown Screen -->
+                <div class="screen" id="screen-cooldown">
+                    <h1 class="page-title">Reawakening</h1>
+                    <p class="page-subtitle">Change your class path</p>
+
+                    <div class="current-class-section">
+                        <div class="section-label">Current Class</div>
+                        <div class="current-class-card">
+                            <div class="current-class-emblem">⚔️</div>
+                            <div class="current-class-info">
+                                <div class="current-class-name">Warrior</div>
+                                <div class="current-class-rarity">Uncommon Class</div>
+                                <div class="current-class-stats">
+                                    <div class="current-stat">Level <span>10</span></div>
+                                    <div class="current-stat">Since <span>Jan 10</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cost-banner">
+                        <div class="cost-info">
+                            <span class="cost-icon">⚡</span>
+                            <div>
+                                <div class="cost-text">Reawakening Cost</div>
+                                <div class="cost-value">500 XP</div>
+                            </div>
+                        </div>
+                        <div class="user-xp">
+                            <div class="user-xp-label">Your XP</div>
+                            <div class="user-xp-value">3,436</div>
+                        </div>
+                    </div>
+
+                    <div class="cooldown-notice">
+                        <span class="cooldown-icon">⏳</span>
+                        <div class="cooldown-text">
+                            <strong>18 days remaining</strong> — You can change your class once every 30 days
+                        </div>
+                    </div>
+
+                    <div class="available-classes">
+                        <div class="section-label">Available Classes</div>
+                        <div class="scroll-area">
+                            <div class="class-option current">
+                                <div class="class-option-radio"></div>
+                                <div class="class-option-emblem">⚔️</div>
+                                <div class="class-option-info">
+                                    <div class="class-option-header">
+                                        <span class="class-option-name">Warrior</span>
+                                        <span class="class-option-rarity uncommon">Uncommon</span>
+                                    </div>
+                                    <div class="class-option-desc">Raw power and compound lifts</div>
+                                </div>
+                                <span class="class-option-tag">Current</span>
+                            </div>
+
+                            <div class="class-option locked">
+                                <div class="class-option-radio"></div>
+                                <div class="class-option-emblem">🛡️</div>
+                                <div class="class-option-info">
+                                    <div class="class-option-header">
+                                        <span class="class-option-name">Guardian</span>
+                                        <span class="class-option-rarity common">Common</span>
+                                    </div>
+                                    <div class="class-option-desc">Balanced, sustainable progress</div>
+                                </div>
+                            </div>
+
+                            <div class="class-option locked">
+                                <div class="class-option-radio"></div>
+                                <div class="class-option-emblem">💎</div>
+                                <div class="class-option-info">
+                                    <div class="class-option-header">
+                                        <span class="class-option-name">Titan</span>
+                                        <span class="class-option-rarity uncommon">Uncommon</span>
+                                    </div>
+                                    <div class="class-option-desc">Volume, isolation, aesthetics</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" disabled>Cooldown active (18 days)</button>
+                </div>
+
+                <!-- Success Screen -->
+                <div class="screen" id="screen-success">
+                    <div class="success-content">
+                        <div class="success-animation">
+                            <div class="success-ring"></div>
+                            <div class="success-check">✓</div>
+                        </div>
+
+                        <div class="success-title">Reawakening Complete</div>
+                        <p class="success-subtitle">Your class has been changed</p>
+
+                        <div class="new-class-card">
+                            <div class="new-class-rarity">Rare</div>
+                            <div class="new-class-emblem">☯️</div>
+                            <div class="new-class-name">Monk</div>
+                        </div>
+
+                        <button class="btn btn-primary">Continue</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('screen-' + screenId).classList.add('active');
+            
+            document.querySelectorAll('.screen-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            hideModal();
+        }
+
+        function selectClass(el) {
+            if (el.classList.contains('current') || el.classList.contains('locked')) return;
+            
+            document.querySelectorAll('.class-option').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+
+        function showModal() {
+            document.getElementById('confirm-modal').classList.add('active');
+        }
+
+        function hideModal() {
+            document.getElementById('confirm-modal').classList.remove('active');
+        }
+    </script>
+</body>
+</html>

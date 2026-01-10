@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARISE - Awakening</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .awakening-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .awakening-panel {
+      max-width: 440px;
+      width: 100%;
+      opacity: 0;
+      animation: panelReveal 1s ease-out 0.5s forwards;
+    }
+
+    @keyframes panelReveal {
+      0% {
+        opacity: 0;
+        transform: scale(0.9);
+        filter: blur(5px);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
+      }
+    }
+
+    .panel-header {
+      text-align: center;
+      padding: 24px;
+      border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+    }
+
+    .panel-title {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      color: var(--system-primary);
+      letter-spacing: 0.2em;
+      margin-bottom: 8px;
+    }
+
+    .panel-subtitle {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .panel-content {
+      padding: 32px 24px;
+    }
+
+    .input-group {
+      margin-bottom: 24px;
+    }
+
+    .input-label {
+      display: block;
+      font-family: var(--font-header);
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 14px 16px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(0, 212, 255, 0.3);
+      border-radius: 4px;
+      font-family: var(--font-body);
+      font-size: 1rem;
+      color: var(--text-primary);
+      transition: all 0.3s ease;
+    }
+
+    .input-field:focus {
+      outline: none;
+      border-color: var(--system-primary);
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+    }
+
+    .input-field::placeholder {
+      color: var(--text-muted);
+    }
+
+    .stats-preview {
+      background: rgba(0, 212, 255, 0.05);
+      border: 1px solid rgba(0, 212, 255, 0.1);
+      border-radius: 4px;
+      padding: 20px;
+      margin-top: 24px;
+    }
+
+    .stats-title {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+    }
+
+    .stats-row:last-child {
+      border-bottom: none;
+    }
+
+    .stat-name {
+      font-family: var(--font-header);
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    .stat-value {
+      font-family: var(--font-mono);
+      color: var(--system-primary);
+      font-size: 1rem;
+    }
+
+    .rank-display {
+      text-align: center;
+      margin-top: 24px;
+      padding: 20px;
+      background: linear-gradient(180deg, rgba(128, 128, 128, 0.1) 0%, transparent 100%);
+      border: 1px solid rgba(128, 128, 128, 0.3);
+      border-radius: 4px;
+    }
+
+    .rank-label {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+
+    .rank-value {
+      font-family: var(--font-display);
+      font-size: 3rem;
+      color: var(--rank-e);
+      text-shadow: 0 0 20px rgba(128, 128, 128, 0.5);
+    }
+
+    .rank-title {
+      font-family: var(--font-header);
+      font-size: 1rem;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .awakening-message {
+      text-align: center;
+      margin-top: 24px;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+
+    .awakening-message .highlight {
+      color: var(--system-primary);
+    }
+
+    .button-container {
+      padding: 24px;
+      text-align: center;
+    }
+
+    .btn-begin {
+      width: 100%;
+      max-width: 280px;
+    }
+
+    /* Name input glow effect when typing */
+    .input-field.has-value {
+      border-color: var(--system-primary);
+      box-shadow: 0 0 10px rgba(0, 212, 255, 0.15);
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-void"></div>
+  <div class="bg-grid"></div>
+
+  <div class="awakening-container">
+    <div class="awakening-panel system-panel system-panel-glow">
+      <div class="panel-header">
+        <div class="panel-title text-glow-subtle">AWAKENING</div>
+        <div class="panel-subtitle">Hunter Registration Protocol</div>
+      </div>
+
+      <div class="panel-content">
+        <div class="input-group">
+          <label class="input-label">Hunter Name</label>
+          <input
+            type="text"
+            class="input-field"
+            placeholder="Enter your name..."
+            id="hunterName"
+            value="Nick"
+          >
+        </div>
+
+        <div class="stats-preview">
+          <div class="stats-title">Physical Assessment Detected</div>
+          <div class="stats-row">
+            <span class="stat-name">Age</span>
+            <span class="stat-value">29</span>
+          </div>
+          <div class="stats-row">
+            <span class="stat-name">Height</span>
+            <span class="stat-value">5'9"</span>
+          </div>
+          <div class="stats-row">
+            <span class="stat-name">Weight</span>
+            <span class="stat-value">166 lb</span>
+          </div>
+          <div class="stats-row">
+            <span class="stat-name">Training Frequency</span>
+            <span class="stat-value">3x/week</span>
+          </div>
+        </div>
+
+        <div class="rank-display">
+          <div class="rank-label">Initial Rank Assessment</div>
+          <div class="rank-value">E</div>
+          <div class="rank-title">"The Weakest Hunter"</div>
+        </div>
+
+        <p class="awakening-message">
+          "Every <span class="highlight">Shadow Monarch</span> began as the weakest.<br>
+          Your awakening starts now."
+        </p>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="button-container">
+        <a href="03-dashboard.html" class="btn-system btn-system-primary btn-begin">
+          BEGIN AWAKENING
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const input = document.getElementById('hunterName');
+    input.addEventListener('input', function() {
+      if (this.value.length > 0) {
+        this.classList.add('has-value');
+      } else {
+        this.classList.remove('has-value');
+      }
+    });
+    // Trigger for default value
+    if (input.value.length > 0) {
+      input.classList.add('has-value');
+    }
+  </script>
+</body>
+</html>

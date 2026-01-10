@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARISE - Fitness Quest System</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .login-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .system-boot {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      color: var(--system-primary);
+      margin-bottom: 60px;
+      opacity: 0;
+      animation: bootSequence 3s ease-out forwards;
+    }
+
+    @keyframes bootSequence {
+      0% { opacity: 0; }
+      20% { opacity: 1; content: "SYSTEM INITIALIZING..."; }
+      40% { opacity: 0.5; }
+      60% { opacity: 1; }
+      80% { opacity: 0.3; }
+      100% { opacity: 0; }
+    }
+
+    .arise-title {
+      font-family: var(--font-display);
+      font-size: 5rem;
+      font-weight: 900;
+      letter-spacing: 0.3em;
+      color: var(--system-primary);
+      text-shadow:
+        0 0 20px var(--system-primary-glow),
+        0 0 40px var(--system-primary-glow),
+        0 0 80px var(--system-primary-glow);
+      margin-bottom: 16px;
+      opacity: 0;
+      animation: ariseReveal 1.5s ease-out 0.5s forwards;
+    }
+
+    @keyframes ariseReveal {
+      0% {
+        opacity: 0;
+        transform: scale(0.8);
+        filter: blur(10px);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.05);
+        filter: blur(0);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
+      }
+    }
+
+    .tagline {
+      font-family: var(--font-header);
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 60px;
+      opacity: 0;
+      animation: fadeIn 1s ease-out 1.5s forwards;
+    }
+
+    .notification-panel {
+      max-width: 400px;
+      width: 100%;
+      opacity: 0;
+      animation: panelSlide 0.8s ease-out 2s forwards;
+    }
+
+    @keyframes panelSlide {
+      0% {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .panel-header {
+      text-align: center;
+      padding: 20px;
+      border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+    }
+
+    .panel-tag {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--system-primary);
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+
+    .panel-content {
+      padding: 32px 24px;
+      text-align: center;
+    }
+
+    .chosen-text {
+      font-family: var(--font-header);
+      font-size: 1.4rem;
+      color: var(--text-primary);
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+
+    .chosen-text .highlight {
+      color: var(--system-primary);
+      font-weight: 600;
+    }
+
+    .sub-text {
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      margin-top: 16px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 16px;
+      padding: 24px;
+      justify-content: center;
+    }
+
+    .btn-accept {
+      flex: 1;
+      max-width: 160px;
+    }
+
+    .btn-refuse {
+      flex: 1;
+      max-width: 160px;
+    }
+
+    .footer-text {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      opacity: 0;
+      animation: fadeIn 1s ease-out 3s forwards;
+    }
+
+    /* Particle positions */
+    .particle:nth-child(1) { left: 10%; animation-delay: 0s; }
+    .particle:nth-child(2) { left: 20%; animation-delay: 2s; }
+    .particle:nth-child(3) { left: 30%; animation-delay: 4s; }
+    .particle:nth-child(4) { left: 40%; animation-delay: 1s; }
+    .particle:nth-child(5) { left: 50%; animation-delay: 3s; }
+    .particle:nth-child(6) { left: 60%; animation-delay: 5s; }
+    .particle:nth-child(7) { left: 70%; animation-delay: 2.5s; }
+    .particle:nth-child(8) { left: 80%; animation-delay: 4.5s; }
+    .particle:nth-child(9) { left: 90%; animation-delay: 1.5s; }
+    .particle:nth-child(10) { left: 15%; animation-delay: 3.5s; }
+    .particle:nth-child(11) { left: 25%; animation-delay: 0.5s; }
+    .particle:nth-child(12) { left: 75%; animation-delay: 6s; }
+    .particle:nth-child(13) { left: 85%; animation-delay: 7s; }
+    .particle:nth-child(14) { left: 45%; animation-delay: 8s; }
+    .particle:nth-child(15) { left: 55%; animation-delay: 9s; }
+
+    /* Glow orb behind title */
+    .glow-orb {
+      position: absolute;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(0, 212, 255, 0.15) 0%, transparent 70%);
+      border-radius: 50%;
+      filter: blur(40px);
+      animation: orbPulse 4s ease-in-out infinite;
+      z-index: -1;
+    }
+
+    @keyframes orbPulse {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+      50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.8; }
+    }
+
+    /* Hover effects for buttons */
+    .btn-accept:hover {
+      animation: acceptPulse 0.5s ease-out;
+    }
+
+    @keyframes acceptPulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-void"></div>
+  <div class="bg-grid"></div>
+  <div class="bg-particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
+
+  <div class="glow-orb"></div>
+
+  <div class="login-container">
+    <div class="system-boot text-system">SYSTEM INITIALIZING...</div>
+
+    <h1 class="arise-title">ARISE</h1>
+    <p class="tagline">Daily Quest System</p>
+
+    <div class="notification-panel system-panel system-panel-glow">
+      <div class="panel-header">
+        <div class="panel-tag">[NOTIFICATION]</div>
+      </div>
+
+      <div class="panel-content">
+        <p class="chosen-text">
+          "You have been chosen as a <span class="highlight">Player</span>."
+        </p>
+        <p class="sub-text">
+          Will you accept this power?
+        </p>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="button-group">
+        <a href="02-awakening.html" class="btn-system btn-system-primary btn-accept">ACCEPT</a>
+        <button class="btn-system btn-decline btn-refuse">DECLINE</button>
+      </div>
+    </div>
+
+    <div class="footer-text">ARISE v1.0 // FITNESS QUEST SYSTEM</div>
+  </div>
+
+  <script>
+    // Add click effect to decline button
+    document.querySelector('.btn-refuse').addEventListener('click', function() {
+      this.classList.add('glitch');
+      setTimeout(() => {
+        this.classList.remove('glitch');
+        // Show warning message
+        this.textContent = 'DENIED';
+        this.style.borderColor = 'var(--warning-red)';
+        this.style.color = 'var(--warning-red)';
+        setTimeout(() => {
+          this.textContent = 'DECLINE';
+          this.style.borderColor = '';
+          this.style.color = '';
+        }, 1500);
+      }, 300);
+    });
+  </script>
+</body>
+</html>

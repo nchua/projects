@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARISE - Quest Complete</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .completion-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 40px 20px;
+      overflow: hidden;
+    }
+
+    /* Burst effect behind panel */
+    .burst-effect {
+      position: fixed;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(0, 212, 255, 0.15) 0%, transparent 60%);
+      border-radius: 50%;
+      animation: burstPulse 2s ease-out infinite;
+      z-index: -1;
+    }
+
+    @keyframes burstPulse {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+      50% { transform: translate(-50%, -50%) scale(1.3); opacity: 0.2; }
+    }
+
+    /* Particles */
+    .particle-gold {
+      position: fixed;
+      width: 8px;
+      height: 8px;
+      background: var(--gold);
+      border-radius: 50%;
+      opacity: 0.8;
+      animation: particleFall 3s linear infinite;
+      box-shadow: 0 0 10px var(--gold);
+    }
+
+    @keyframes particleFall {
+      0% { transform: translateY(-100vh) rotate(0deg); opacity: 0; }
+      10% { opacity: 0.8; }
+      90% { opacity: 0.8; }
+      100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+    }
+
+    .particle-gold:nth-child(1) { left: 10%; animation-delay: 0s; }
+    .particle-gold:nth-child(2) { left: 20%; animation-delay: 0.5s; }
+    .particle-gold:nth-child(3) { left: 30%; animation-delay: 1s; }
+    .particle-gold:nth-child(4) { left: 40%; animation-delay: 0.3s; }
+    .particle-gold:nth-child(5) { left: 50%; animation-delay: 0.8s; }
+    .particle-gold:nth-child(6) { left: 60%; animation-delay: 1.2s; }
+    .particle-gold:nth-child(7) { left: 70%; animation-delay: 0.2s; }
+    .particle-gold:nth-child(8) { left: 80%; animation-delay: 0.7s; }
+    .particle-gold:nth-child(9) { left: 90%; animation-delay: 1.5s; }
+    .particle-gold:nth-child(10) { left: 15%; animation-delay: 0.4s; }
+
+    /* Completion Panel */
+    .completion-panel {
+      max-width: 420px;
+      width: 100%;
+      opacity: 0;
+      animation: panelBurst 0.8s ease-out 0.3s forwards;
+    }
+
+    @keyframes panelBurst {
+      0% {
+        opacity: 0;
+        transform: scale(0.5);
+        filter: blur(10px);
+      }
+      60% {
+        transform: scale(1.05);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
+      }
+    }
+
+    .completion-header {
+      text-align: center;
+      padding: 32px 24px;
+      background: linear-gradient(180deg, rgba(0, 212, 255, 0.1), transparent);
+      border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+    }
+
+    .completion-badge {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--success-green);
+      letter-spacing: 0.15em;
+      margin-bottom: 16px;
+      animation: textPulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes textPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .completion-title {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      color: var(--system-primary);
+      letter-spacing: 0.2em;
+      text-shadow: 0 0 30px var(--system-primary-glow);
+      margin-bottom: 8px;
+    }
+
+    .quest-name {
+      font-family: var(--font-header);
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+    }
+
+    /* Rewards Section */
+    .rewards-section {
+      padding: 32px 24px;
+    }
+
+    .rewards-title {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .rewards-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .reward-card {
+      text-align: center;
+      padding: 20px 16px;
+      background: rgba(0, 212, 255, 0.03);
+      border: 1px solid rgba(0, 212, 255, 0.1);
+      border-radius: 4px;
+      opacity: 0;
+      animation: rewardPopIn 0.5s ease-out forwards;
+    }
+
+    .reward-card:nth-child(1) { animation-delay: 0.8s; }
+    .reward-card:nth-child(2) { animation-delay: 1s; }
+    .reward-card:nth-child(3) { animation-delay: 1.2s; }
+    .reward-card:nth-child(4) { animation-delay: 1.4s; }
+
+    @keyframes rewardPopIn {
+      0% {
+        opacity: 0;
+        transform: scale(0.5) translateY(20px);
+      }
+      70% {
+        transform: scale(1.1) translateY(0);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    .reward-icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+
+    .reward-value {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      color: var(--system-primary);
+      text-shadow: 0 0 10px var(--system-primary-glow);
+    }
+
+    .reward-value.gold-text {
+      color: var(--gold);
+      text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    }
+
+    .reward-value.green-text {
+      color: var(--success-green);
+      text-shadow: 0 0 10px rgba(51, 255, 136, 0.5);
+    }
+
+    .reward-label {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 4px;
+    }
+
+    /* Stat Gains */
+    .stat-gains {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 4px;
+      margin-bottom: 24px;
+      opacity: 0;
+      animation: fadeIn 0.5s ease-out 1.6s forwards;
+    }
+
+    .stat-gain {
+      text-align: center;
+    }
+
+    .stat-gain-value {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      color: var(--success-green);
+    }
+
+    .stat-gain-label {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    /* Streak Update */
+    .streak-update {
+      text-align: center;
+      padding: 20px;
+      background: linear-gradient(90deg, rgba(255, 215, 0, 0.05), transparent, rgba(255, 215, 0, 0.05));
+      border: 1px solid rgba(255, 215, 0, 0.2);
+      border-radius: 4px;
+      margin-bottom: 24px;
+      opacity: 0;
+      animation: fadeIn 0.5s ease-out 1.8s forwards;
+    }
+
+    .streak-label {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+
+    .streak-value {
+      font-family: var(--font-display);
+      font-size: 2.5rem;
+      color: var(--gold);
+      text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+    }
+
+    .streak-emoji {
+      font-size: 1.5rem;
+      margin-left: 8px;
+    }
+
+    /* Message */
+    .completion-message {
+      text-align: center;
+      padding: 24px;
+      border-top: 1px solid rgba(0, 212, 255, 0.1);
+      opacity: 0;
+      animation: fadeIn 0.5s ease-out 2s forwards;
+    }
+
+    .message-text {
+      font-family: var(--font-body);
+      font-size: 1rem;
+      color: var(--text-secondary);
+      font-style: italic;
+      line-height: 1.6;
+    }
+
+    .message-text .highlight {
+      color: var(--system-primary);
+    }
+
+    /* Continue Button */
+    .continue-section {
+      padding: 24px;
+      opacity: 0;
+      animation: fadeIn 0.5s ease-out 2.2s forwards;
+    }
+
+    .continue-btn {
+      width: 100%;
+    }
+
+    /* Level Up notification (if applicable) */
+    .level-up-banner {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(90deg, var(--void-medium), var(--void-dark));
+      border: 2px solid var(--gold);
+      border-radius: 4px;
+      padding: 16px 32px;
+      text-align: center;
+      opacity: 0;
+      animation: levelUpSlide 0.8s ease-out 2.5s forwards;
+      box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+      z-index: 100;
+    }
+
+    @keyframes levelUpSlide {
+      0% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-50px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+
+    .level-up-text {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      color: var(--gold);
+      letter-spacing: 0.15em;
+    }
+
+    .level-up-detail {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-void"></div>
+  <div class="bg-grid"></div>
+
+  <!-- Burst effect -->
+  <div class="burst-effect"></div>
+
+  <!-- Gold particles -->
+  <div class="particle-gold"></div>
+  <div class="particle-gold"></div>
+  <div class="particle-gold"></div>
+  <div class="particle-gold"></div>
+  <div class="particle-gold"></div>
+  <div class="particle-gold"></div>
+  <div class="particle-gold"></div>
+  <div class="particle-gold"></div>
+  <div class="particle-gold"></div>
+  <div class="particle-gold"></div>
+
+  <!-- Level Up Banner -->
+  <div class="level-up-banner">
+    <div class="level-up-text">LEVEL UP!</div>
+    <div class="level-up-detail">Level 7 → Level 8</div>
+  </div>
+
+  <div class="completion-container">
+    <div class="completion-panel system-panel system-panel-glow">
+      <div class="completion-header">
+        <div class="completion-badge">[QUEST COMPLETE]</div>
+        <h1 class="completion-title">VICTORY</h1>
+        <p class="quest-name">"The Shadow's Tribute"</p>
+      </div>
+
+      <div class="rewards-section">
+        <div class="rewards-title">Rewards Acquired</div>
+
+        <div class="rewards-grid">
+          <div class="reward-card">
+            <div class="reward-icon">⚡</div>
+            <div class="reward-value">+150</div>
+            <div class="reward-label">Experience</div>
+          </div>
+          <div class="reward-card">
+            <div class="reward-icon">🪙</div>
+            <div class="reward-value gold-text">+75</div>
+            <div class="reward-label">Gold</div>
+          </div>
+          <div class="reward-card">
+            <div class="reward-icon">✦</div>
+            <div class="reward-value">+3</div>
+            <div class="reward-label">Stat Points</div>
+          </div>
+          <div class="reward-card">
+            <div class="reward-icon">📦</div>
+            <div class="reward-value green-text">×1</div>
+            <div class="reward-label">Loot Box</div>
+          </div>
+        </div>
+
+        <!-- Stat Gains -->
+        <div class="stat-gains">
+          <div class="stat-gain">
+            <div class="stat-gain-value">+2</div>
+            <div class="stat-gain-label">Strength</div>
+          </div>
+          <div class="stat-gain">
+            <div class="stat-gain-value">+1</div>
+            <div class="stat-gain-label">Endurance</div>
+          </div>
+        </div>
+
+        <!-- Streak -->
+        <div class="streak-update">
+          <div class="streak-label">Quest Streak</div>
+          <div class="streak-value">13 <span class="streak-emoji">🔥</span></div>
+        </div>
+      </div>
+
+      <!-- Message -->
+      <div class="completion-message">
+        <p class="message-text">
+          "You have proven yourself, Hunter.<br>
+          Your <span class="highlight">shadow grows darker</span>.<br>
+          Your power, more absolute."
+        </p>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Continue -->
+      <div class="continue-section">
+        <a href="03-dashboard.html" class="btn-system btn-system-primary continue-btn">
+          CONTINUE
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Optional: Add sound effect or additional animations
+  </script>
+</body>
+</html>

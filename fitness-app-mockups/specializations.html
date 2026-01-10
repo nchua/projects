@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Specializations UI - Fitness App</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --void-black: #0A0A0F;
+            --void-dark: #12121A;
+            --void-medium: #1A1A24;
+            --void-light: #252530;
+            --system-primary: #00D4FF;
+            --system-dim: #00A8CC;
+            --system-glow: rgba(0, 212, 255, 0.4);
+            --system-faint: rgba(0, 212, 255, 0.1);
+            --text-primary: #FFFFFF;
+            --text-secondary: #A0A0B0;
+            --text-muted: #606070;
+            --rank-e: #808080;
+            --rank-d: #4A9B4A;
+            --rank-c: #4A7BB5;
+            --rank-b: #9B4A9B;
+            --rank-a: #FFD700;
+            --rank-s: #FF4444;
+            --success: #4ADE80;
+            --warning: #FBBF24;
+            --rarity-common: #808080;
+            --rarity-uncommon: #4A9B4A;
+            --rarity-rare: #4A7BB5;
+            --rarity-legendary: #9B4A9B;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--void-black);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container { max-width: 900px; margin: 0 auto; }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--void-light);
+        }
+
+        .page-header h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: 0.2em;
+            color: var(--system-primary);
+            text-shadow: 0 0 20px var(--system-glow);
+        }
+
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 8px;
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 12px;
+        }
+
+        .nav-links a {
+            color: var(--system-primary);
+            text-decoration: none;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8rem;
+            border: 1px solid var(--system-primary);
+            padding: 6px 12px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .nav-links a:hover {
+            background: var(--system-primary);
+            color: var(--void-black);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 30px;
+            background: var(--void-dark);
+            padding: 6px;
+            border-radius: 8px;
+            border: 1px solid var(--void-light);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 6px;
+            letter-spacing: 0.05em;
+        }
+
+        .tab:hover { color: var(--text-secondary); background: var(--void-medium); }
+
+        .tab.active {
+            background: var(--system-primary);
+            color: var(--void-black);
+            font-weight: 600;
+            box-shadow: 0 0 20px var(--system-glow);
+        }
+
+        .mockup-container { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+
+        .phone-frame {
+            width: 375px;
+            min-height: 700px;
+            background: var(--void-black);
+            border-radius: 20px;
+            padding: 20px 16px;
+            border: 2px solid var(--void-light);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .phone-frame::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 24px;
+            background: var(--void-dark);
+            border-radius: 0 0 16px 16px;
+        }
+
+        .mockup-panel { display: none; }
+        .mockup-panel.active { display: block; animation: fadeIn 0.4s ease; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Screen Header */
+        .screen-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-top: 20px;
+        }
+
+        .back-btn {
+            width: 36px;
+            height: 36px;
+            background: var(--void-medium);
+            border: 1px solid var(--void-light);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+        }
+
+        .screen-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: 0.1em;
+        }
+
+        /* Current Class Badge */
+        .current-class-badge {
+            background: linear-gradient(135deg, var(--void-medium) 0%, var(--void-dark) 100%);
+            border: 2px solid var(--rarity-uncommon);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .class-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--void-light) 0%, var(--void-dark) 100%);
+            border: 2px solid var(--rarity-uncommon);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+        }
+
+        .class-info { flex: 1; }
+
+        .class-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .class-rarity {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--rarity-uncommon);
+            letter-spacing: 0.05em;
+        }
+
+        .class-bonus {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Section Header */
+        .section-header {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--void-light);
+        }
+
+        /* Subclass Card */
+        .subclass-card {
+            background: var(--void-medium);
+            border: 1px solid var(--void-light);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .subclass-card.active {
+            border-color: var(--system-primary);
+            box-shadow: 0 0 20px var(--system-glow);
+        }
+
+        .subclass-card.active::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--system-primary), var(--system-dim));
+        }
+
+        .subclass-card.locked {
+            opacity: 0.5;
+        }
+
+        .subclass-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .subclass-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--void-dark);
+            border: 2px solid var(--void-light);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+        }
+
+        .subclass-card.active .subclass-icon {
+            border-color: var(--system-primary);
+            box-shadow: 0 0 10px var(--system-glow);
+        }
+
+        .subclass-title { flex: 1; }
+
+        .subclass-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .subclass-status {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.65rem;
+            letter-spacing: 0.05em;
+        }
+
+        .subclass-status.active-status { color: var(--system-primary); }
+        .subclass-status.unlocked-status { color: var(--success); }
+        .subclass-status.progress-status { color: var(--warning); }
+
+        .subclass-toggle {
+            width: 48px;
+            height: 28px;
+            background: var(--void-dark);
+            border: 2px solid var(--void-light);
+            border-radius: 14px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .subclass-toggle::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 18px;
+            height: 18px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .subclass-toggle.on {
+            border-color: var(--system-primary);
+            background: var(--system-faint);
+        }
+
+        .subclass-toggle.on::after {
+            left: 23px;
+            background: var(--system-primary);
+            box-shadow: 0 0 10px var(--system-glow);
+        }
+
+        .subclass-bonus {
+            background: var(--void-dark);
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+        }
+
+        .bonus-label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            letter-spacing: 0.02em;
+            margin-bottom: 4px;
+        }
+
+        .bonus-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--system-primary);
+        }
+
+        .subclass-perk {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        /* Progress Bar */
+        .progress-section {
+            margin-top: 12px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .progress-label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+        }
+
+        .progress-value {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--warning);
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: var(--void-dark);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--warning), #F59E0B);
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        .progress-requirement {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        /* Notification Banner */
+        .notification-banner {
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(251, 191, 36, 0.05) 100%);
+            border: 1px solid var(--warning);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: bannerPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes bannerPulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(251, 191, 36, 0.2); }
+            50% { box-shadow: 0 0 20px rgba(251, 191, 36, 0.4); }
+        }
+
+        .notification-icon {
+            font-size: 1.5rem;
+            animation: iconPulse 1s ease-in-out infinite;
+        }
+
+        @keyframes iconPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .notification-text {
+            flex: 1;
+        }
+
+        .notification-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--warning);
+            letter-spacing: 0.1em;
+        }
+
+        .notification-desc {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        /* Unlock Celebration */
+        .unlock-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(10, 10, 15, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            z-index: 100;
+        }
+
+        .unlock-particles {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--system-primary);
+            border-radius: 50%;
+            animation: particleFly 2s ease-out infinite;
+        }
+
+        .particle:nth-child(1) { left: 20%; animation-delay: 0s; }
+        .particle:nth-child(2) { left: 40%; animation-delay: 0.2s; }
+        .particle:nth-child(3) { left: 60%; animation-delay: 0.4s; }
+        .particle:nth-child(4) { left: 80%; animation-delay: 0.6s; }
+        .particle:nth-child(5) { left: 30%; animation-delay: 0.8s; }
+        .particle:nth-child(6) { left: 70%; animation-delay: 1s; }
+
+        @keyframes particleFly {
+            0% { bottom: -10px; opacity: 1; transform: scale(1); }
+            100% { bottom: 100%; opacity: 0; transform: scale(0); }
+        }
+
+        .unlock-badge {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, var(--void-light) 0%, var(--void-dark) 100%);
+            border: 4px solid var(--system-primary);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            margin-bottom: 24px;
+            box-shadow: 0 0 40px var(--system-glow), 0 0 80px var(--system-glow);
+            animation: badgeReveal 0.5s ease-out, badgeFloat 3s ease-in-out infinite 0.5s;
+            position: relative;
+            z-index: 1;
+        }
+
+        @keyframes badgeReveal {
+            0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        @keyframes badgeFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .unlock-system-text {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--system-primary);
+            letter-spacing: 0.1em;
+            margin-bottom: 8px;
+            animation: textFlicker 0.1s ease-in-out 3;
+        }
+
+        @keyframes textFlicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .unlock-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            text-align: center;
+            margin-bottom: 8px;
+            text-shadow: 0 0 20px var(--system-glow);
+        }
+
+        .unlock-subtitle {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .unlock-bonus-card {
+            background: var(--void-medium);
+            border: 2px solid var(--system-primary);
+            border-radius: 12px;
+            padding: 20px;
+            width: 100%;
+            max-width: 280px;
+            margin-bottom: 24px;
+            box-shadow: 0 0 30px var(--system-glow);
+        }
+
+        .unlock-bonus-title {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            letter-spacing: 0.02em;
+            margin-bottom: 8px;
+        }
+
+        .unlock-bonus-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--system-primary);
+            text-shadow: 0 0 10px var(--system-glow);
+            margin-bottom: 12px;
+        }
+
+        .unlock-perk {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            padding-top: 12px;
+            border-top: 1px solid var(--void-light);
+        }
+
+        .unlock-btn {
+            background: linear-gradient(135deg, var(--system-primary) 0%, var(--system-dim) 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 14px 40px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--void-black);
+            cursor: pointer;
+            box-shadow: 0 0 20px var(--system-glow);
+            transition: all 0.3s ease;
+            letter-spacing: 0.1em;
+        }
+
+        .unlock-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 30px var(--system-glow);
+        }
+
+        /* Activate Button */
+        .activate-btn {
+            background: transparent;
+            border: 1px solid var(--success);
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--success);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 0.02em;
+            margin-top: 10px;
+        }
+
+        .activate-btn:hover {
+            background: var(--success);
+            color: var(--void-black);
+        }
+
+        /* Hidden Subclass Teaser */
+        .hidden-teaser {
+            background: var(--void-medium);
+            border: 1px dashed var(--void-light);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .hidden-icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+            opacity: 0.5;
+        }
+
+        .hidden-text {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        /* XP Bonus Active Indicator */
+        .xp-bonus-active {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, var(--void-medium) 0%, var(--void-dark) 100%);
+            border: 1px solid var(--system-primary);
+            border-radius: 20px;
+            padding: 8px 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 0 20px var(--system-glow);
+            z-index: 50;
+        }
+
+        .xp-bonus-icon {
+            font-size: 1rem;
+        }
+
+        .xp-bonus-text {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--system-primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="page-header">
+            <h1>Specializations</h1>
+            <p>// Subclass progression system</p>
+            <div class="nav-links">
+                <a href="index.html">Status Header</a>
+                <a href="onboarding.html">Onboarding</a>
+                <a href="class-change.html">Class Change</a>
+            </div>
+        </header>
+
+        <div class="tabs">
+            <button class="tab active" data-tab="list">Profile view</button>
+            <button class="tab" data-tab="detected">Detection</button>
+            <button class="tab" data-tab="unlock">Unlock</button>
+        </div>
+
+        <div class="mockup-container">
+            <div class="phone-frame">
+
+                <!-- Profile View - Specializations List -->
+                <div class="mockup-panel active" id="panel-list">
+                    <div class="screen-header">
+                        <div class="back-btn">&larr;</div>
+                        <div class="screen-title">Specializations</div>
+                    </div>
+
+                    <!-- Current Class -->
+                    <div class="current-class-badge">
+                        <div class="class-icon">&#9876;</div>
+                        <div class="class-info">
+                            <div class="class-name">Warrior</div>
+                            <div class="class-rarity">Uncommon class</div>
+                            <div class="class-bonus">Base XP bonus: +0%</div>
+                        </div>
+                    </div>
+
+                    <!-- Active Specialization -->
+                    <div class="section-header">Active specialization</div>
+
+                    <div class="subclass-card active">
+                        <div class="subclass-header">
+                            <div class="subclass-icon">&#128170;</div>
+                            <div class="subclass-title">
+                                <div class="subclass-name">Powerlifter</div>
+                                <div class="subclass-status active-status">Active</div>
+                            </div>
+                            <div class="subclass-toggle on"></div>
+                        </div>
+                        <div class="subclass-bonus">
+                            <div class="bonus-label">XP multiplier</div>
+                            <div class="bonus-value">+20% Compound Lift XP</div>
+                        </div>
+                        <div class="subclass-perk">Unique Quest: "Max Out" weekly challenge</div>
+                    </div>
+
+                    <!-- Unlocked Specializations -->
+                    <div class="section-header">Unlocked</div>
+
+                    <div class="subclass-card">
+                        <div class="subclass-header">
+                            <div class="subclass-icon">&#127947;</div>
+                            <div class="subclass-title">
+                                <div class="subclass-name">Strongman</div>
+                                <div class="subclass-status unlocked-status">Unlocked</div>
+                            </div>
+                            <div class="subclass-toggle"></div>
+                        </div>
+                        <div class="subclass-bonus">
+                            <div class="bonus-label">XP multiplier</div>
+                            <div class="bonus-value">+15% Variety XP</div>
+                        </div>
+                        <div class="subclass-perk">Unique Perk: Equipment mastery badges</div>
+                        <button class="activate-btn">Tap to Activate</button>
+                    </div>
+
+                    <!-- In Progress Specialization -->
+                    <div class="section-header">Discovered</div>
+
+                    <div class="subclass-card">
+                        <div class="subclass-header">
+                            <div class="subclass-icon" style="opacity: 0.6;">&#9889;</div>
+                            <div class="subclass-title">
+                                <div class="subclass-name">Warlord</div>
+                                <div class="subclass-status progress-status">67% progress</div>
+                            </div>
+                        </div>
+                        <div class="progress-section">
+                            <div class="progress-header">
+                                <span class="progress-label">Progress</span>
+                                <span class="progress-value">17 / 25</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 68%;"></div>
+                            </div>
+                            <div class="progress-requirement">Complete 8 more workouts under 45 min</div>
+                        </div>
+                    </div>
+
+                    <!-- Hidden Teaser -->
+                    <div class="hidden-teaser">
+                        <div class="hidden-icon">?</div>
+                        <div class="hidden-text">More specializations waiting to be discovered...</div>
+                    </div>
+
+                    <!-- XP Bonus Indicator -->
+                    <div class="xp-bonus-active">
+                        <span class="xp-bonus-icon">&#9889;</span>
+                        <span class="xp-bonus-text">Powerlifter: +20% compound XP active</span>
+                    </div>
+                </div>
+
+                <!-- Detection Notification -->
+                <div class="mockup-panel" id="panel-detected">
+                    <div class="screen-header">
+                        <div class="back-btn">&larr;</div>
+                        <div class="screen-title">Specializations</div>
+                    </div>
+
+                    <!-- Notification Banner -->
+                    <div class="notification-banner">
+                        <span class="notification-icon">&#128161;</span>
+                        <div class="notification-text">
+                            <div class="notification-title">[Specialization detected]</div>
+                            <div class="notification-desc">New path discovered: Warlord</div>
+                        </div>
+                    </div>
+
+                    <!-- Current Class -->
+                    <div class="current-class-badge">
+                        <div class="class-icon">&#128293;</div>
+                        <div class="class-info">
+                            <div class="class-name">Berserker</div>
+                            <div class="class-rarity">Rare class</div>
+                            <div class="class-bonus">Base XP bonus: +25 XP</div>
+                        </div>
+                    </div>
+
+                    <!-- Active -->
+                    <div class="section-header">Active specialization</div>
+
+                    <div class="subclass-card active">
+                        <div class="subclass-header">
+                            <div class="subclass-icon">&#128163;</div>
+                            <div class="subclass-title">
+                                <div class="subclass-name">Destroyer</div>
+                                <div class="subclass-status active-status">Active</div>
+                            </div>
+                            <div class="subclass-toggle on"></div>
+                        </div>
+                        <div class="subclass-bonus">
+                            <div class="bonus-label">XP multiplier</div>
+                            <div class="bonus-value">+25% PR XP</div>
+                        </div>
+                        <div class="subclass-perk">Unique Quest: PR hunt weekly challenge</div>
+                    </div>
+
+                    <!-- Newly Detected -->
+                    <div class="section-header" style="color: var(--warning);">Newly detected</div>
+
+                    <div class="subclass-card" style="border-color: var(--warning); box-shadow: 0 0 15px rgba(251, 191, 36, 0.2);">
+                        <div class="subclass-header">
+                            <div class="subclass-icon" style="opacity: 0.8;">&#9889;</div>
+                            <div class="subclass-title">
+                                <div class="subclass-name">Warlord</div>
+                                <div class="subclass-status progress-status">52% progress</div>
+                            </div>
+                        </div>
+                        <div class="progress-section">
+                            <div class="progress-header">
+                                <span class="progress-label">Progress</span>
+                                <span class="progress-value">13 / 25</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 52%;"></div>
+                            </div>
+                            <div class="progress-requirement">Complete 12 more workouts under 45 min</div>
+                        </div>
+                        <div class="subclass-bonus" style="margin-top: 12px; border: 1px dashed var(--void-light);">
+                            <div class="bonus-label">Unlock reward</div>
+                            <div class="bonus-value" style="color: var(--warning);">+20% Efficiency XP</div>
+                        </div>
+                    </div>
+
+                    <!-- Hidden Teaser -->
+                    <div class="hidden-teaser">
+                        <div class="hidden-icon">?</div>
+                        <div class="hidden-text">Keep training to discover more paths...</div>
+                    </div>
+                </div>
+
+                <!-- Unlock Celebration -->
+                <div class="mockup-panel" id="panel-unlock">
+                    <div class="unlock-overlay">
+                        <div class="unlock-particles">
+                            <div class="particle"></div>
+                            <div class="particle"></div>
+                            <div class="particle"></div>
+                            <div class="particle"></div>
+                            <div class="particle"></div>
+                            <div class="particle"></div>
+                        </div>
+
+                        <div class="unlock-system-text">[System]</div>
+                        <div class="unlock-badge">&#128170;</div>
+                        <div class="unlock-title">Powerlifter</div>
+                        <div class="unlock-subtitle">Specialization Unlocked</div>
+
+                        <div class="unlock-bonus-card">
+                            <div class="unlock-bonus-title">XP bonus activated</div>
+                            <div class="unlock-bonus-value">+20% Compound Lift XP</div>
+                            <div class="unlock-perk">
+                                <strong>Unique Quest Unlocked:</strong><br>
+                                "Max Out" - Hit a new PR on any compound lift this week
+                            </div>
+                        </div>
+
+                        <button class="unlock-btn">Activate now</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.mockup-panel').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Toggle simulation
+        document.querySelectorAll('.subclass-toggle').forEach(toggle => {
+            toggle.addEventListener('click', () => {
+                if (!toggle.classList.contains('on')) {
+                    document.querySelectorAll('.subclass-toggle').forEach(t => t.classList.remove('on'));
+                    document.querySelectorAll('.subclass-card').forEach(c => c.classList.remove('active'));
+                    toggle.classList.add('on');
+                    toggle.closest('.subclass-card').classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

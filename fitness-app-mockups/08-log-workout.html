@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARISE - Log Workout</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .log-container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 20px;
+      padding-bottom: 100px;
+    }
+
+    /* Page Header */
+    .page-header {
+      text-align: center;
+      padding: 24px 20px;
+      margin-bottom: 20px;
+    }
+
+    .page-title {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      color: var(--system-primary);
+      letter-spacing: 0.2em;
+      margin-bottom: 8px;
+    }
+
+    .page-subtitle {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    /* Session Info */
+    .session-info {
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .info-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .info-field {
+      flex: 1;
+    }
+
+    .field-label {
+      display: block;
+      font-family: var(--font-header);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 6px;
+    }
+
+    .field-input {
+      width: 100%;
+      padding: 12px 14px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      border-radius: 4px;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      color: var(--text-primary);
+      transition: all 0.3s ease;
+    }
+
+    .field-input:focus {
+      outline: none;
+      border-color: var(--system-primary);
+      box-shadow: 0 0 15px rgba(0, 212, 255, 0.15);
+    }
+
+    .field-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .field-select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2300D4FF' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 36px;
+    }
+
+    /* Timer */
+    .timer-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      background: rgba(0, 212, 255, 0.05);
+      border: 1px solid rgba(0, 212, 255, 0.1);
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+
+    .timer-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .timer-icon {
+      font-size: 1.5rem;
+    }
+
+    .timer-value {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      color: var(--system-primary);
+    }
+
+    .timer-label {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .timer-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .timer-btn {
+      width: 36px;
+      height: 36px;
+      background: transparent;
+      border: 1px solid rgba(0, 212, 255, 0.3);
+      border-radius: 4px;
+      color: var(--system-primary);
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .timer-btn:hover {
+      background: rgba(0, 212, 255, 0.1);
+      border-color: var(--system-primary);
+    }
+
+    /* Section Header */
+    .section-header {
+      font-family: var(--font-header);
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      padding: 0 4px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-header::before {
+      content: '◆';
+      color: var(--system-primary);
+      font-size: 0.6rem;
+    }
+
+    /* Exercise Cards */
+    .exercises-section {
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .exercise-card {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(0, 212, 255, 0.1);
+      border-radius: 4px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    .exercise-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      background: rgba(0, 212, 255, 0.03);
+      border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+    }
+
+    .exercise-name-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      font-family: var(--font-header);
+      font-size: 1.1rem;
+      color: var(--text-primary);
+      padding: 0;
+    }
+
+    .exercise-name-input:focus {
+      outline: none;
+    }
+
+    .exercise-name-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .exercise-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .action-btn {
+      width: 32px;
+      height: 32px;
+      background: transparent;
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      border-radius: 4px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .action-btn:hover {
+      border-color: var(--system-primary);
+      color: var(--system-primary);
+    }
+
+    .action-btn.delete:hover {
+      border-color: var(--warning-red);
+      color: var(--warning-red);
+    }
+
+    /* Sets Table */
+    .sets-container {
+      padding: 16px;
+    }
+
+    .sets-header {
+      display: grid;
+      grid-template-columns: 50px 1fr 1fr 1fr 40px;
+      gap: 8px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+      margin-bottom: 8px;
+    }
+
+    .sets-header span {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    .set-row {
+      display: grid;
+      grid-template-columns: 50px 1fr 1fr 1fr 40px;
+      gap: 8px;
+      padding: 8px 0;
+      align-items: center;
+    }
+
+    .set-number {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .set-number.warmup {
+      color: var(--gold);
+      font-size: 0.7rem;
+    }
+
+    .set-input {
+      width: 100%;
+      padding: 10px 8px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(0, 212, 255, 0.15);
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      text-align: center;
+    }
+
+    .set-input:focus {
+      outline: none;
+      border-color: var(--system-primary);
+    }
+
+    .set-input.previous {
+      background: rgba(0, 212, 255, 0.05);
+      color: var(--text-muted);
+      border-style: dashed;
+    }
+
+    .set-complete {
+      width: 32px;
+      height: 32px;
+      background: transparent;
+      border: 2px solid rgba(0, 212, 255, 0.3);
+      border-radius: 50%;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto;
+    }
+
+    .set-complete:hover {
+      border-color: var(--success-green);
+      color: var(--success-green);
+    }
+
+    .set-complete.done {
+      background: var(--success-green);
+      border-color: var(--success-green);
+      color: #000;
+    }
+
+    .add-set-btn {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      background: transparent;
+      border: 1px dashed rgba(0, 212, 255, 0.3);
+      border-radius: 4px;
+      font-family: var(--font-header);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .add-set-btn:hover {
+      border-color: var(--system-primary);
+      color: var(--system-primary);
+      background: rgba(0, 212, 255, 0.05);
+    }
+
+    /* Notes Field */
+    .notes-field {
+      padding: 12px 16px;
+      background: rgba(0, 0, 0, 0.2);
+      border-top: 1px solid rgba(0, 212, 255, 0.05);
+    }
+
+    .notes-input {
+      width: 100%;
+      padding: 8px;
+      background: transparent;
+      border: none;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      resize: none;
+    }
+
+    .notes-input:focus {
+      outline: none;
+    }
+
+    .notes-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    /* Add Exercise Button */
+    .add-exercise-section {
+      padding: 0 20px 20px;
+    }
+
+    .add-exercise-btn {
+      width: 100%;
+      padding: 16px;
+      background: transparent;
+      border: 2px dashed rgba(0, 212, 255, 0.3);
+      border-radius: 4px;
+      font-family: var(--font-header);
+      font-size: 0.9rem;
+      color: var(--system-primary);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .add-exercise-btn:hover {
+      background: rgba(0, 212, 255, 0.05);
+      border-color: var(--system-primary);
+    }
+
+    /* Quick Add Templates */
+    .templates-section {
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .templates-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .template-btn {
+      padding: 12px 8px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(0, 212, 255, 0.1);
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: center;
+    }
+
+    .template-btn:hover {
+      border-color: var(--system-primary);
+      color: var(--system-primary);
+      background: rgba(0, 212, 255, 0.05);
+    }
+
+    .template-name {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .template-fantasy {
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    /* Summary Bar */
+    .summary-bar {
+      display: flex;
+      justify-content: space-around;
+      padding: 16px 20px;
+      background: rgba(0, 212, 255, 0.03);
+      border-top: 1px solid rgba(0, 212, 255, 0.1);
+      border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+      margin-bottom: 20px;
+    }
+
+    .summary-item {
+      text-align: center;
+    }
+
+    .summary-value {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      color: var(--system-primary);
+    }
+
+    .summary-label {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    /* Finish Button */
+    .finish-section {
+      padding: 20px;
+    }
+
+    .finish-btn {
+      width: 100%;
+      padding: 18px;
+      font-size: 1.1rem;
+    }
+
+    /* Navigation */
+    .nav-bottom {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-around;
+      padding: 16px;
+      background: linear-gradient(180deg, transparent, var(--void-dark) 20%);
+      border-top: 1px solid rgba(0, 212, 255, 0.1);
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      transition: color 0.3s ease;
+      padding: 8px 16px;
+    }
+
+    .nav-item:hover, .nav-item.active {
+      color: var(--system-primary);
+    }
+
+    .nav-icon {
+      font-size: 1.3rem;
+    }
+
+    /* Rest Timer Popup */
+    .rest-timer {
+      position: fixed;
+      bottom: 80px;
+      left: 20px;
+      right: 20px;
+      max-width: 440px;
+      margin: 0 auto;
+      background: var(--void-medium);
+      border: 1px solid rgba(0, 212, 255, 0.3);
+      border-radius: 4px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 0 30px rgba(0, 212, 255, 0.2);
+    }
+
+    .rest-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .rest-icon {
+      font-size: 1.5rem;
+    }
+
+    .rest-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .rest-label {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .rest-time {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      color: var(--system-primary);
+    }
+
+    .rest-skip {
+      padding: 8px 16px;
+      background: transparent;
+      border: 1px solid rgba(0, 212, 255, 0.3);
+      border-radius: 4px;
+      font-family: var(--font-header);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .rest-skip:hover {
+      border-color: var(--system-primary);
+      color: var(--system-primary);
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-void"></div>
+  <div class="bg-grid"></div>
+
+  <div class="log-container">
+    <!-- Page Header -->
+    <div class="page-header system-panel">
+      <h1 class="page-title text-glow-subtle">LOG WORKOUT</h1>
+      <p class="page-subtitle">Record Your Training Session</p>
+    </div>
+
+    <!-- Session Info -->
+    <div class="session-info system-panel">
+      <div class="info-row">
+        <div class="info-field">
+          <label class="field-label">Session Name</label>
+          <input type="text" class="field-input" placeholder="e.g., Push Day" value="Push Day">
+        </div>
+        <div class="info-field" style="max-width: 140px;">
+          <label class="field-label">Date</label>
+          <input type="date" class="field-input" value="2026-01-01">
+        </div>
+      </div>
+    </div>
+
+    <!-- Timer -->
+    <div class="timer-bar">
+      <div class="timer-left">
+        <span class="timer-icon">⏱️</span>
+        <div>
+          <div class="timer-value">24:35</div>
+          <div class="timer-label">Session Duration</div>
+        </div>
+      </div>
+      <div class="timer-controls">
+        <button class="timer-btn">⏸️</button>
+        <button class="timer-btn">🔄</button>
+      </div>
+    </div>
+
+    <!-- Quick Templates -->
+    <div class="templates-section system-panel">
+      <div class="section-header">Quick Add</div>
+      <div class="templates-grid">
+        <button class="template-btn">
+          <span class="template-name">Squat</span>
+          <span class="template-fantasy">"Earth Shaker"</span>
+        </button>
+        <button class="template-btn">
+          <span class="template-name">Bench</span>
+          <span class="template-fantasy">"Titan's Press"</span>
+        </button>
+        <button class="template-btn">
+          <span class="template-name">Deadlift</span>
+          <span class="template-fantasy">"Grave Riser"</span>
+        </button>
+        <button class="template-btn">
+          <span class="template-name">Row</span>
+          <span class="template-fantasy">"Serpent's Pull"</span>
+        </button>
+        <button class="template-btn">
+          <span class="template-name">OHP</span>
+          <span class="template-fantasy">"Sky Piercer"</span>
+        </button>
+        <button class="template-btn">
+          <span class="template-name">Curl</span>
+          <span class="template-fantasy">"Iron Coil"</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Exercise Cards -->
+    <div class="exercises-section system-panel">
+      <div class="section-header">Exercises</div>
+
+      <!-- Exercise 1: Deadlift -->
+      <div class="exercise-card">
+        <div class="exercise-header">
+          <input type="text" class="exercise-name-input" value="Deadlift" placeholder="Exercise name...">
+          <div class="exercise-actions">
+            <button class="action-btn">📝</button>
+            <button class="action-btn delete">×</button>
+          </div>
+        </div>
+        <div class="sets-container">
+          <div class="sets-header">
+            <span>Set</span>
+            <span>Previous</span>
+            <span>Weight</span>
+            <span>Reps</span>
+            <span></span>
+          </div>
+          <div class="set-row">
+            <div class="set-number warmup">W</div>
+            <input type="text" class="set-input previous" value="135×5" readonly>
+            <input type="text" class="set-input" value="135">
+            <input type="text" class="set-input" value="5">
+            <button class="set-complete done">✓</button>
+          </div>
+          <div class="set-row">
+            <div class="set-number warmup">W</div>
+            <input type="text" class="set-input previous" value="185×5" readonly>
+            <input type="text" class="set-input" value="185">
+            <input type="text" class="set-input" value="5">
+            <button class="set-complete done">✓</button>
+          </div>
+          <div class="set-row">
+            <div class="set-number">1</div>
+            <input type="text" class="set-input previous" value="205×5" readonly>
+            <input type="text" class="set-input" value="225">
+            <input type="text" class="set-input" value="4">
+            <button class="set-complete done">✓</button>
+          </div>
+          <div class="set-row">
+            <div class="set-number">2</div>
+            <input type="text" class="set-input previous" value="205×5" readonly>
+            <input type="text" class="set-input" value="225">
+            <input type="text" class="set-input" value="3">
+            <button class="set-complete done">✓</button>
+          </div>
+          <div class="set-row">
+            <div class="set-number">3</div>
+            <input type="text" class="set-input previous" value="205×5" readonly>
+            <input type="text" class="set-input" value="225">
+            <input type="text" class="set-input" value="">
+            <button class="set-complete">✓</button>
+          </div>
+          <button class="add-set-btn">+ Add Set</button>
+        </div>
+        <div class="notes-field">
+          <textarea class="notes-input" placeholder="Add notes..." rows="1">Grip limiting - tried DOH, switched to mixed at 205</textarea>
+        </div>
+      </div>
+
+      <!-- Exercise 2: Bench -->
+      <div class="exercise-card">
+        <div class="exercise-header">
+          <input type="text" class="exercise-name-input" value="Bench Press" placeholder="Exercise name...">
+          <div class="exercise-actions">
+            <button class="action-btn">📝</button>
+            <button class="action-btn delete">×</button>
+          </div>
+        </div>
+        <div class="sets-container">
+          <div class="sets-header">
+            <span>Set</span>
+            <span>Previous</span>
+            <span>Weight</span>
+            <span>Reps</span>
+            <span></span>
+          </div>
+          <div class="set-row">
+            <div class="set-number warmup">W</div>
+            <input type="text" class="set-input previous" value="135×5" readonly>
+            <input type="text" class="set-input" value="135">
+            <input type="text" class="set-input" value="5">
+            <button class="set-complete done">✓</button>
+          </div>
+          <div class="set-row">
+            <div class="set-number">1</div>
+            <input type="text" class="set-input previous" value="155×5" readonly>
+            <input type="text" class="set-input" value="165">
+            <input type="text" class="set-input" value="4">
+            <button class="set-complete done">✓</button>
+          </div>
+          <div class="set-row">
+            <div class="set-number">2</div>
+            <input type="text" class="set-input previous" value="155×5" readonly>
+            <input type="text" class="set-input" value="165">
+            <input type="text" class="set-input" value="">
+            <button class="set-complete">✓</button>
+          </div>
+          <button class="add-set-btn">+ Add Set</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Exercise -->
+    <div class="add-exercise-section">
+      <button class="add-exercise-btn">+ Add Exercise</button>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary-bar">
+      <div class="summary-item">
+        <div class="summary-value">2</div>
+        <div class="summary-label">Exercises</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value">7</div>
+        <div class="summary-label">Sets Done</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value">5,650</div>
+        <div class="summary-label">Volume (lb)</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value">32</div>
+        <div class="summary-label">Total Reps</div>
+      </div>
+    </div>
+
+    <!-- Finish -->
+    <div class="finish-section">
+      <a href="06-completion.html" class="btn-system btn-system-primary finish-btn">
+        FINISH WORKOUT
+      </a>
+    </div>
+  </div>
+
+  <!-- Rest Timer Popup -->
+  <div class="rest-timer">
+    <div class="rest-left">
+      <span class="rest-icon">💤</span>
+      <div class="rest-info">
+        <span class="rest-label">Rest Timer</span>
+        <span class="rest-time">1:45</span>
+      </div>
+    </div>
+    <button class="rest-skip">Skip</button>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="nav-bottom">
+    <a href="03-dashboard.html" class="nav-item">
+      <span class="nav-icon">⚔️</span>
+      <span>Status</span>
+    </a>
+    <a href="04-quest.html" class="nav-item">
+      <span class="nav-icon">📜</span>
+      <span>Quest</span>
+    </a>
+    <a href="08-log-workout.html" class="nav-item active">
+      <span class="nav-icon">➕</span>
+      <span>Log</span>
+    </a>
+    <a href="05-history.html" class="nav-item">
+      <span class="nav-icon">📊</span>
+      <span>History</span>
+    </a>
+  </nav>
+</body>
+</html>

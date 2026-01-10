@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARISE - Hunter Status</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .dashboard-container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 20px;
+      padding-bottom: 100px;
+    }
+
+    /* Hunter Header */
+    .hunter-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .hunter-avatar {
+      width: 70px;
+      height: 70px;
+      border-radius: 4px;
+      background: linear-gradient(135deg, var(--void-medium), var(--void-dark));
+      border: 2px solid var(--rank-e);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      color: var(--rank-e);
+      position: relative;
+    }
+
+    .hunter-avatar::after {
+      content: 'E';
+      position: absolute;
+      bottom: -8px;
+      right: -8px;
+      background: var(--rank-e);
+      color: #000;
+      font-size: 0.7rem;
+      padding: 2px 6px;
+      border-radius: 2px;
+      font-weight: 700;
+    }
+
+    .hunter-info {
+      flex: 1;
+    }
+
+    .hunter-name {
+      font-family: var(--font-header);
+      font-size: 1.5rem;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .hunter-title {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .hunter-level {
+      text-align: right;
+    }
+
+    .level-number {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      color: var(--system-primary);
+      text-shadow: 0 0 10px var(--system-primary-glow);
+    }
+
+    .level-label {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    /* XP Bar Section */
+    .xp-section {
+      padding: 0 20px;
+      margin-bottom: 24px;
+    }
+
+    .xp-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .xp-label {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .xp-numbers {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--system-primary);
+    }
+
+    /* Stats Grid */
+    .stats-section {
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .section-header {
+      font-family: var(--font-header);
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-header::before {
+      content: '◆';
+      color: var(--system-primary);
+      font-size: 0.7rem;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .stat-card {
+      background: rgba(0, 212, 255, 0.03);
+      border: 1px solid rgba(0, 212, 255, 0.1);
+      border-radius: 4px;
+      padding: 16px 12px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+      border-color: rgba(0, 212, 255, 0.3);
+      background: rgba(0, 212, 255, 0.05);
+    }
+
+    .stat-icon {
+      font-size: 1.2rem;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      color: var(--system-primary);
+      text-shadow: 0 0 8px var(--system-primary-glow);
+    }
+
+    .stat-name {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 4px;
+    }
+
+    /* Streak Section */
+    .streak-section {
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .streak-display {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(90deg, rgba(255, 215, 0, 0.05), transparent);
+      border: 1px solid rgba(255, 215, 0, 0.2);
+      border-radius: 4px;
+      padding: 20px;
+    }
+
+    .streak-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .streak-flame {
+      font-size: 2.5rem;
+    }
+
+    .streak-count {
+      font-family: var(--font-display);
+      font-size: 2.5rem;
+      color: var(--gold);
+      text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+    }
+
+    .streak-label {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .streak-best {
+      text-align: right;
+    }
+
+    .best-value {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+    }
+
+    .best-label {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+    }
+
+    /* Lift Cards */
+    .lifts-section {
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .lift-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0, 0, 0, 0.3);
+      border-left: 3px solid;
+      padding: 16px;
+      margin-bottom: 12px;
+      transition: all 0.3s ease;
+    }
+
+    .lift-card:hover {
+      background: rgba(0, 0, 0, 0.4);
+      transform: translateX(4px);
+    }
+
+    .lift-card.squat { border-color: #3b82f6; }
+    .lift-card.bench { border-color: #ef4444; }
+    .lift-card.deadlift { border-color: #8b5cf6; }
+    .lift-card.row { border-color: #22c55e; }
+
+    .lift-info {
+      flex: 1;
+    }
+
+    .lift-name {
+      font-family: var(--font-header);
+      font-size: 1rem;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .lift-fantasy {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .lift-stats {
+      text-align: right;
+    }
+
+    .lift-e1rm {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      color: var(--text-primary);
+    }
+
+    .lift-e1rm span {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .lift-relative {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--system-primary);
+    }
+
+    /* Quick Actions */
+    .actions-section {
+      padding: 20px;
+    }
+
+    .action-btn {
+      width: 100%;
+      margin-bottom: 12px;
+    }
+
+    .quest-notification {
+      background: linear-gradient(90deg, rgba(0, 212, 255, 0.1), rgba(0, 212, 255, 0.02));
+      border: 1px solid rgba(0, 212, 255, 0.3);
+      border-radius: 4px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 20px;
+      animation: pulseGlow 2s infinite;
+    }
+
+    .quest-tag {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--system-primary);
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+
+    .quest-title {
+      font-family: var(--font-header);
+      font-size: 1.1rem;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .quest-progress-mini {
+      margin-top: 12px;
+    }
+
+    .quest-progress-bar {
+      height: 6px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .quest-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--system-primary-dim), var(--system-primary));
+      border-radius: 3px;
+    }
+
+    .quest-progress-text {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    /* Navigation */
+    .nav-bottom {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-around;
+      padding: 16px;
+      background: linear-gradient(180deg, transparent, var(--void-dark) 20%);
+      border-top: 1px solid rgba(0, 212, 255, 0.1);
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      transition: color 0.3s ease;
+      padding: 8px 16px;
+    }
+
+    .nav-item:hover, .nav-item.active {
+      color: var(--system-primary);
+    }
+
+    .nav-icon {
+      font-size: 1.3rem;
+    }
+
+    /* Currency display */
+    .currency-row {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      padding: 12px 20px;
+      margin-bottom: 20px;
+    }
+
+    .currency-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .currency-icon {
+      font-size: 1.2rem;
+    }
+
+    .currency-value {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      color: var(--text-primary);
+    }
+
+    .currency-value.gold {
+      color: var(--gold);
+    }
+
+    .currency-value.points {
+      color: var(--system-primary);
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-void"></div>
+  <div class="bg-grid"></div>
+
+  <div class="dashboard-container">
+    <!-- Hunter Header -->
+    <div class="hunter-header system-panel">
+      <div class="hunter-avatar">N</div>
+      <div class="hunter-info">
+        <div class="hunter-name">Nick</div>
+        <div class="hunter-title">"The Awakened"</div>
+      </div>
+      <div class="hunter-level">
+        <div class="level-number">7</div>
+        <div class="level-label">Level</div>
+      </div>
+    </div>
+
+    <!-- XP Bar -->
+    <div class="xp-section">
+      <div class="xp-header">
+        <span class="xp-label">Experience</span>
+        <span class="xp-numbers">1,250 / 2,000 XP</span>
+      </div>
+      <div class="xp-bar">
+        <div class="xp-fill" style="width: 62.5%;"></div>
+      </div>
+    </div>
+
+    <!-- Currency Row -->
+    <div class="currency-row">
+      <div class="currency-item">
+        <span class="currency-icon">🪙</span>
+        <span class="currency-value gold">2,450</span>
+      </div>
+      <div class="currency-item">
+        <span class="currency-icon">✦</span>
+        <span class="currency-value points">12 SP</span>
+      </div>
+    </div>
+
+    <!-- Weekly Quest Progress -->
+    <a href="04-quest.html" class="quest-notification" style="text-decoration: none; display: block;">
+      <div class="quest-tag">[WEEKLY QUEST ACTIVE]</div>
+      <div class="quest-title">"The Shadow's Forge"</div>
+      <div class="quest-progress-mini">
+        <div class="quest-progress-bar">
+          <div class="quest-progress-fill" style="width: 58%;"></div>
+        </div>
+        <div class="quest-progress-text">58% Complete • 4 days left</div>
+      </div>
+    </a>
+
+    <!-- Hunter Stats -->
+    <div class="stats-section system-panel">
+      <div class="section-header">Hunter Stats</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">💪</div>
+          <div class="stat-value">24</div>
+          <div class="stat-name">Strength</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">❤️</div>
+          <div class="stat-value">18</div>
+          <div class="stat-name">Vitality</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⚡</div>
+          <div class="stat-value">15</div>
+          <div class="stat-name">Agility</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🛡️</div>
+          <div class="stat-value">22</div>
+          <div class="stat-name">Endurance</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🧠</div>
+          <div class="stat-value">16</div>
+          <div class="stat-name">Intelligence</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">👁️</div>
+          <div class="stat-value">14</div>
+          <div class="stat-name">Perception</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Streak -->
+    <div class="streak-section system-panel">
+      <div class="section-header">Quest Streak</div>
+      <div class="streak-display">
+        <div class="streak-info">
+          <div class="streak-flame">🔥</div>
+          <div>
+            <div class="streak-count">12</div>
+            <div class="streak-label">Day Streak</div>
+          </div>
+        </div>
+        <div class="streak-best">
+          <div class="best-value">12</div>
+          <div class="best-label">Best</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Current Lifts -->
+    <div class="lifts-section system-panel">
+      <div class="section-header">Current Power Levels</div>
+
+      <div class="lift-card squat">
+        <div class="lift-info">
+          <div class="lift-name">Back Squat</div>
+          <div class="lift-fantasy">"Earth Shaker"</div>
+        </div>
+        <div class="lift-stats">
+          <div class="lift-e1rm">270 <span>lb</span></div>
+          <div class="lift-relative">1.63x BW</div>
+        </div>
+      </div>
+
+      <div class="lift-card bench">
+        <div class="lift-info">
+          <div class="lift-name">Bench Press</div>
+          <div class="lift-fantasy">"Titan's Press"</div>
+        </div>
+        <div class="lift-stats">
+          <div class="lift-e1rm">185 <span>lb</span></div>
+          <div class="lift-relative">1.11x BW</div>
+        </div>
+      </div>
+
+      <div class="lift-card deadlift">
+        <div class="lift-info">
+          <div class="lift-name">Deadlift</div>
+          <div class="lift-fantasy">"Grave Riser"</div>
+        </div>
+        <div class="lift-stats">
+          <div class="lift-e1rm">239 <span>lb</span></div>
+          <div class="lift-relative">1.44x BW</div>
+        </div>
+      </div>
+
+      <div class="lift-card row">
+        <div class="lift-info">
+          <div class="lift-name">Barbell Row</div>
+          <div class="lift-fantasy">"Serpent's Pull"</div>
+        </div>
+        <div class="lift-stats">
+          <div class="lift-e1rm">170 <span>lb</span></div>
+          <div class="lift-relative">1.02x BW</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions-section">
+      <a href="04-quest.html" class="btn-system btn-system-primary action-btn">
+        VIEW DAILY QUEST
+      </a>
+      <a href="05-history.html" class="btn-system action-btn">
+        QUEST HISTORY
+      </a>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="nav-bottom">
+    <a href="03-dashboard.html" class="nav-item active">
+      <span class="nav-icon">⚔️</span>
+      <span>Status</span>
+    </a>
+    <a href="04-quest.html" class="nav-item">
+      <span class="nav-icon">📜</span>
+      <span>Quest</span>
+    </a>
+    <a href="08-log-workout.html" class="nav-item">
+      <span class="nav-icon">➕</span>
+      <span>Log</span>
+    </a>
+    <a href="05-history.html" class="nav-item">
+      <span class="nav-icon">📊</span>
+      <span>History</span>
+    </a>
+  </nav>
+</body>
+</html>
