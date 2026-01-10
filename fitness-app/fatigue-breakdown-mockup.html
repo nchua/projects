@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fatigue Breakdown - iOS Mockup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #0a0a0f;
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .phone-frame {
+            max-width: 390px;
+            margin: 0 auto;
+            background: linear-gradient(180deg, #0d1117 0%, #0a0a0f 100%);
+            border-radius: 40px;
+            padding: 20px;
+            border: 1px solid rgba(0, 255, 255, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 14px;
+            color: rgba(255,255,255,0.5);
+            font-weight: 500;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Cooldown Card */
+        .cooldown-card {
+            background: linear-gradient(135deg, rgba(13, 17, 23, 0.95) 0%, rgba(10, 10, 15, 0.98) 100%);
+            border: 1px solid rgba(0, 255, 255, 0.15);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cooldown-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.5), transparent);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .lightning-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+        }
+
+        .card-title {
+            flex: 1;
+        }
+
+        .card-title h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #00d4d4;
+            letter-spacing: 1px;
+        }
+
+        .card-title p {
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            margin-top: 2px;
+        }
+
+        /* Muscle Row */
+        .muscle-row {
+            background: rgba(0, 20, 30, 0.5);
+            border: 1px solid rgba(0, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .muscle-row:hover {
+            border-color: rgba(0, 255, 255, 0.3);
+            background: rgba(0, 30, 40, 0.5);
+        }
+
+        .muscle-row.expanded {
+            border-color: rgba(0, 255, 255, 0.4);
+        }
+
+        .muscle-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .muscle-info h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .muscle-info .fantasy-name {
+            font-size: 11px;
+            color: rgba(0, 255, 255, 0.6);
+            font-style: italic;
+        }
+
+        .muscle-info .exercises {
+            font-size: 10px;
+            color: rgba(255,255,255,0.4);
+            margin-top: 4px;
+        }
+
+        .time-remaining {
+            text-align: right;
+        }
+
+        .time-remaining .hours {
+            font-size: 22px;
+            font-weight: 700;
+            color: #00d4d4;
+        }
+
+        .time-remaining .label {
+            font-size: 9px;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            height: 6px;
+            background: rgba(0, 50, 60, 0.5);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4d4, #00ffff);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        /* Fatigue Breakdown Panel */
+        .breakdown-panel {
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(0, 255, 255, 0.1);
+            display: none;
+        }
+
+        .breakdown-panel.show {
+            display: block;
+            animation: slideDown 0.2s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .breakdown-title {
+            font-size: 11px;
+            color: rgba(0, 255, 255, 0.7);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .breakdown-title::before {
+            content: '>';
+            font-family: monospace;
+        }
+
+        .breakdown-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .breakdown-item {
+            background: rgba(0, 40, 50, 0.4);
+            border: 1px solid rgba(0, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .breakdown-item .label {
+            font-size: 9px;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .breakdown-item .value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .breakdown-item .value .unit {
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+            font-weight: 400;
+        }
+
+        .breakdown-item.highlight {
+            background: rgba(0, 255, 255, 0.08);
+            border-color: rgba(0, 255, 255, 0.2);
+        }
+
+        .breakdown-item.highlight .value {
+            color: #00ffff;
+        }
+
+        /* Formula Display */
+        .formula-container {
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            border: 1px dashed rgba(0, 255, 255, 0.15);
+        }
+
+        .formula {
+            font-family: 'SF Mono', 'Menlo', monospace;
+            font-size: 11px;
+            color: rgba(255,255,255,0.7);
+            text-align: center;
+            line-height: 1.8;
+        }
+
+        .formula .num {
+            color: #00ffff;
+            font-weight: 600;
+        }
+
+        .formula .op {
+            color: rgba(255,255,255,0.4);
+            margin: 0 4px;
+        }
+
+        .formula .result {
+            color: #00ff88;
+            font-weight: 700;
+        }
+
+        /* Expand indicator */
+        .expand-indicator {
+            text-align: center;
+            margin-top: 14px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(0, 255, 255, 0.08);
+        }
+
+        .expand-indicator span {
+            font-size: 10px;
+            color: rgba(0, 255, 255, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .chevron {
+            transition: transform 0.2s ease;
+        }
+
+        .muscle-row.expanded .chevron {
+            transform: rotate(180deg);
+        }
+
+        /* PR Badge */
+        .pr-badge {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 165, 0, 0.1) 100%);
+            border: 1px solid rgba(255, 215, 0, 0.4);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .pr-icon {
+            color: #ffd700;
+            font-size: 16px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .pr-text {
+            font-size: 12px;
+            font-weight: 600;
+            color: #ffd700;
+        }
+
+        /* Stat Highlight (e1RM, etc) */
+        .stat-highlight {
+            background: rgba(0, 255, 255, 0.08);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-icon {
+            font-size: 14px;
+        }
+
+        .stat-text {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* Secondary Tag */
+        .secondary-tag {
+            background: rgba(100, 100, 120, 0.2);
+            border: 1px solid rgba(150, 150, 170, 0.2);
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tag-icon {
+            color: rgba(150, 150, 170, 0.6);
+            font-size: 12px;
+        }
+
+        .tag-text {
+            font-size: 11px;
+            color: rgba(150, 150, 170, 0.8);
+            font-style: italic;
+        }
+
+        /* Trend Colors */
+        .trend-up {
+            color: #00ff88 !important;
+        }
+
+        .trend-down {
+            color: #ff6b6b !important;
+        }
+
+        .trend-neutral {
+            color: rgba(255, 255, 255, 0.6) !important;
+        }
+
+        /* Intensity Bar */
+        .intensity-bar-container {
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0, 255, 255, 0.08);
+        }
+
+        .intensity-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .intensity-label span:first-child {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .intensity-value {
+            font-size: 11px;
+            font-weight: 600;
+            color: #00d4d4;
+        }
+
+        .intensity-bar {
+            position: relative;
+            height: 8px;
+            background: rgba(0, 50, 60, 0.5);
+            border-radius: 4px;
+            overflow: visible;
+        }
+
+        .intensity-fill {
+            height: 100%;
+            background: linear-gradient(90deg,
+                rgba(0, 212, 212, 0.4) 0%,
+                rgba(0, 212, 212, 0.7) 50%,
+                #00d4d4 75%,
+                #00ffff 100%
+            );
+            border-radius: 4px;
+            position: relative;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 12px rgba(0, 255, 255, 0.3);
+        }
+
+        .intensity-fill::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: -2px;
+            width: 4px;
+            height: 12px;
+            background: #00ffff;
+            border-radius: 2px;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+
+    </style>
+</head>
+<body>
+    <div class="phone-frame">
+        <div class="header">
+            <h1>Cooldowns</h1>
+        </div>
+
+        <div class="cooldown-card">
+            <div class="card-header">
+                <div class="lightning-icon">&#9889;</div>
+                <div class="card-title">
+                    <h2>COOLDOWNS</h2>
+                    <p>Muscle regeneration monitoring</p>
+                </div>
+            </div>
+
+            <!-- Hamstrings - Expanded -->
+            <div class="muscle-row expanded" onclick="toggleBreakdown(this)">
+                <div class="muscle-header">
+                    <div class="muscle-info">
+                        <h3>Hamstrings</h3>
+                        <div class="fantasy-name">"Shadow Tendons"</div>
+                        <div class="exercises">Barbell Back Squat, Romanian Deadlift</div>
+                    </div>
+                    <div class="time-remaining">
+                        <div class="hours">86h</div>
+                        <div class="label">Remaining</div>
+                    </div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar" style="width: 28%"></div>
+                </div>
+
+                <div class="breakdown-panel show">
+                    <div class="breakdown-title">Session Stats</div>
+
+                    <!-- PR Badge - Only shown when PR achieved -->
+                    <div class="pr-badge">
+                        <span class="pr-icon">&#9733;</span>
+                        <span class="pr-text">NEW PR: Romanian Deadlift 225 lb × 6</span>
+                    </div>
+
+                    <div class="breakdown-grid">
+                        <div class="breakdown-item">
+                            <div class="label">Volume</div>
+                            <div class="value">8,450<span class="unit">lb</span></div>
+                        </div>
+                        <div class="breakdown-item highlight">
+                            <div class="label">vs Last</div>
+                            <div class="value trend-up">+12<span class="unit">%</span></div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="label">Sets</div>
+                            <div class="value">12</div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="label">Top Set</div>
+                            <div class="value">275<span class="unit">lb</span></div>
+                        </div>
+                    </div>
+
+                    <div class="intensity-bar-container">
+                        <div class="intensity-label">
+                            <span>Workout Intensity</span>
+                            <span class="intensity-value">Heavy</span>
+                        </div>
+                        <div class="intensity-bar">
+                            <div class="intensity-fill" style="width: 78%"></div>
+                        </div>
+                    </div>
+
+                    <div class="expand-indicator">
+                        <span><span class="chevron">&#9650;</span> tap to collapse</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quads - Collapsed -->
+            <div class="muscle-row" onclick="toggleBreakdown(this)">
+                <div class="muscle-header">
+                    <div class="muscle-info">
+                        <h3>Quads</h3>
+                        <div class="fantasy-name">"Earth Pillars"</div>
+                        <div class="exercises">Barbell Back Squat</div>
+                    </div>
+                    <div class="time-remaining">
+                        <div class="hours">57h</div>
+                        <div class="label">Remaining</div>
+                    </div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar" style="width: 37%"></div>
+                </div>
+
+                <div class="breakdown-panel">
+                    <div class="breakdown-title">Session Stats</div>
+
+                    <!-- No PR for quads this session -->
+
+                    <div class="breakdown-grid">
+                        <div class="breakdown-item">
+                            <div class="label">Volume</div>
+                            <div class="value">6,120<span class="unit">lb</span></div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="label">vs Last</div>
+                            <div class="value trend-neutral">+2<span class="unit">%</span></div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="label">Sets</div>
+                            <div class="value">7</div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="label">Top Set</div>
+                            <div class="value">275<span class="unit">lb</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Best e1RM shown instead of PR -->
+                    <div class="stat-highlight">
+                        <span class="stat-icon">&#128170;</span>
+                        <span class="stat-text">Best e1RM: 320 lb (275 × 5)</span>
+                    </div>
+
+                    <div class="intensity-bar-container">
+                        <div class="intensity-label">
+                            <span>Workout Intensity</span>
+                            <span class="intensity-value">Heavy</span>
+                        </div>
+                        <div class="intensity-bar">
+                            <div class="intensity-fill" style="width: 75%"></div>
+                        </div>
+                    </div>
+
+                    <div class="expand-indicator">
+                        <span><span class="chevron">&#9660;</span> tap for details</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Biceps - Light secondary work -->
+            <div class="muscle-row" onclick="toggleBreakdown(this)">
+                <div class="muscle-header">
+                    <div class="muscle-info">
+                        <h3>Biceps</h3>
+                        <div class="fantasy-name">"Iron Coils"</div>
+                        <div class="exercises">Barbell Row (secondary)</div>
+                    </div>
+                    <div class="time-remaining">
+                        <div class="hours">2h</div>
+                        <div class="label">Remaining</div>
+                    </div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar" style="width: 93%"></div>
+                </div>
+
+                <div class="breakdown-panel">
+                    <div class="breakdown-title">Session Stats</div>
+
+                    <!-- Secondary muscle indicator -->
+                    <div class="secondary-tag">
+                        <span class="tag-icon">&#8594;</span>
+                        <span class="tag-text">Indirect work from compound lifts</span>
+                    </div>
+
+                    <div class="breakdown-grid">
+                        <div class="breakdown-item">
+                            <div class="label">Volume</div>
+                            <div class="value">1,280<span class="unit">lb</span></div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="label">vs Last</div>
+                            <div class="value trend-down">-8<span class="unit">%</span></div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="label">Sets</div>
+                            <div class="value">4</div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="label">Contribution</div>
+                            <div class="value">50<span class="unit">%</span></div>
+                        </div>
+                    </div>
+
+                    <div class="intensity-bar-container">
+                        <div class="intensity-label">
+                            <span>Workout Intensity</span>
+                            <span class="intensity-value">Moderate</span>
+                        </div>
+                        <div class="intensity-bar">
+                            <div class="intensity-fill" style="width: 50%"></div>
+                        </div>
+                    </div>
+
+                    <div class="expand-indicator">
+                        <span><span class="chevron">&#9660;</span> tap for details</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        function toggleBreakdown(element) {
+            const panel = element.querySelector('.breakdown-panel');
+            const indicator = element.querySelector('.expand-indicator span');
+
+            element.classList.toggle('expanded');
+            panel.classList.toggle('show');
+
+            if (indicator) {
+                if (panel.classList.contains('show')) {
+                    indicator.innerHTML = '<span class="chevron">&#9650;</span> tap to collapse';
+                } else {
+                    indicator.innerHTML = '<span class="chevron">&#9660;</span> tap for details';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
