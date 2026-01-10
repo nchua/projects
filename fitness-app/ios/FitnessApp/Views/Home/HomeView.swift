@@ -743,20 +743,7 @@ struct AchievementCard: View {
     }
 
     private func formatDate(_ dateString: String) -> String {
-        // Try with fractional seconds first (handles timestamps like 2026-01-02T06:36:56.105367)
-        let formatterWithFraction = ISO8601DateFormatter()
-        formatterWithFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatterWithFraction.date(from: dateString) {
-            return date.formattedMonthDay
-        }
-
-        // Fallback to standard ISO8601 (no fractional seconds)
-        let standardFormatter = ISO8601DateFormatter()
-        if let date = standardFormatter.date(from: dateString) {
-            return date.formattedMonthDay
-        }
-
-        return dateString
+        dateString.formattedMonthDayFromISO
     }
 }
 
@@ -1315,12 +1302,7 @@ struct WorkoutSheetHeader: View {
     }
 
     private func formatDate(_ dateString: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withFullDate]
-        if let date = formatter.date(from: dateString) {
-            return date.formattedMedium
-        }
-        return dateString
+        dateString.parseISO8601Date()?.formattedMedium ?? dateString
     }
 }
 

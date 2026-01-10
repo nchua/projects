@@ -792,17 +792,12 @@ struct AriseE1RMChart: View {
         }
     }
 
-    private func parseDate(_ dateString: String) -> Date {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withFullDate]
-        return formatter.date(from: dateString) ?? Date()
+    private func formatDateLabel(_ dateString: String) -> String {
+        dateString.parseISO8601Date()?.formattedMonthDay ?? dateString
     }
 
-    private func formatDateLabel(_ dateString: String) -> String {
-        let date = parseDate(dateString)
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d, yyyy"
-        return formatter.string(from: date)
+    private func parseDate(_ dateString: String) -> Date {
+        dateString.parseISO8601Date() ?? Date()
     }
 }
 
@@ -1231,9 +1226,7 @@ struct AriseBodyweightChart: View {
     }
 
     private func parseDate(_ dateString: String) -> Date {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withFullDate]
-        return formatter.date(from: dateString) ?? Date()
+        dateString.parseISO8601Date() ?? Date()
     }
 }
 
@@ -1415,20 +1408,7 @@ struct RecordCard: View {
     }
 
     private func formatDate(_ dateString: String) -> String {
-        // Try with fractional seconds first (handles timestamps like 2026-01-02T06:36:56.105367)
-        let formatterWithFraction = ISO8601DateFormatter()
-        formatterWithFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatterWithFraction.date(from: dateString) {
-            return date.formattedRelative
-        }
-
-        // Fallback to standard ISO8601 (no fractional seconds)
-        let standardFormatter = ISO8601DateFormatter()
-        if let date = standardFormatter.date(from: dateString) {
-            return date.formattedRelative
-        }
-
-        return dateString
+        dateString.parseISO8601Date()?.formattedRelative ?? dateString
     }
 }
 

@@ -139,8 +139,8 @@ class ScreenshotProcessingViewModel: ObservableObject {
                 for _ in 0..<count {
                     loggedSets.append(LoggedSet(
                         setNumber: setNumber,
-                        weight: extractedSet.weightLb,
-                        reps: extractedSet.reps,
+                        weightText: String(extractedSet.weightLb),
+                        repsText: String(extractedSet.reps),
                         rpe: nil
                     ))
                     setNumber += 1

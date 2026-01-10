@@ -177,18 +177,7 @@ struct AchievementRowView: View {
     }
 
     private func formatDate(_ dateString: String) -> String {
-        let formatterWithFraction = ISO8601DateFormatter()
-        formatterWithFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatterWithFraction.date(from: dateString) {
-            return date.formattedMonthDay
-        }
-
-        let standardFormatter = ISO8601DateFormatter()
-        if let date = standardFormatter.date(from: dateString) {
-            return date.formattedMonthDay
-        }
-
-        return dateString
+        dateString.formattedMonthDayFromISO
     }
 }
 

@@ -32,6 +32,19 @@ from app.services.quest_service import update_quest_progress
 from app.models.pr import PR
 
 
+DATE_FORMATS = ["%Y-%m-%d", "%B %d, %Y", "%b %d, %Y", "%m/%d/%Y", "%d/%m/%Y"]
+
+
+def parse_date_string(date_string: str) -> Optional[datetime]:
+    """Parse a date string using multiple common formats."""
+    for fmt in DATE_FORMATS:
+        try:
+            return datetime.strptime(date_string, fmt)
+        except ValueError:
+            continue
+    return None
+
+
 # Extraction prompt - handles both gym workout screenshots and WHOOP/activity screenshots
 EXTRACTION_PROMPT = """Analyze this fitness screenshot and extract the data.
 
@@ -702,26 +715,20 @@ async def save_whoop_activity(
     """
     from app.models.activity import DailyActivity
 
-    # Parse date from extraction or use provided/today
+    # Determine date from provided value, extraction, or default to now
     logger.info(f"save_whoop_activity: activity_date={activity_date}, session_date={extraction_result.get('session_date')}")
+
     if activity_date:
         date = activity_date.date() if hasattr(activity_date, 'date') else activity_date
         workout_datetime = activity_date if isinstance(activity_date, datetime) else datetime.combine(activity_date, datetime.min.time())
         logger.info(f"Using provided activity_date: {date}")
     elif extraction_result.get("session_date"):
         session_date_str = extraction_result["session_date"]
-        # Try multiple date formats
-        parsed_date = None
-        for fmt in ["%Y-%m-%d", "%B %d, %Y", "%b %d, %Y", "%m/%d/%Y", "%d/%m/%Y"]:
-            try:
-                parsed_date = datetime.strptime(session_date_str, fmt)
-                logger.info(f"Parsed session_date '{session_date_str}' with format '{fmt}' -> {parsed_date}")
-                break
-            except ValueError:
-                continue
+        parsed_date = parse_date_string(session_date_str)
         if parsed_date:
             date = parsed_date.date()
             workout_datetime = parsed_date
+            logger.info(f"Parsed session_date '{session_date_str}' -> {parsed_date}")
         else:
             logger.warning(f"Could not parse session_date: {session_date_str}, using today")
             date = datetime.now().date()
@@ -730,6 +737,7 @@ async def save_whoop_activity(
         logger.info("No session_date in extraction, using today's date")
         date = datetime.now().date()
         workout_datetime = datetime.now()
+
     logger.info(f"Final workout date: {date}, datetime: {workout_datetime}")
 
     # Save to DailyActivity for metrics tracking

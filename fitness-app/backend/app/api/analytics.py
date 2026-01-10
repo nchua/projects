@@ -49,70 +49,62 @@ STRENGTH_STANDARDS = {
 }
 
 
+TIME_RANGE_DAYS = {
+    "4w": 28,
+    "8w": 56,
+    "12w": 84,
+    "26w": 182,
+    "52w": 365,
+    "1y": 365,
+}
+
+
 def get_time_range_days(time_range: str) -> Optional[int]:
-    """Convert time range string to number of days"""
-    if time_range == "4w":
-        return 28
-    elif time_range == "8w":
-        return 56
-    elif time_range == "12w":
-        return 84
-    elif time_range == "26w":
-        return 182
-    elif time_range == "52w" or time_range == "1y":
-        return 365
-    return None  # all time
+    """Convert time range string to number of days. Returns None for all time."""
+    return TIME_RANGE_DAYS.get(time_range)
+
+
+CANONICAL_EXERCISE_KEYWORDS = [
+    ("overhead_press", ["press", "overhead"]),
+    ("squat", ["squat"]),
+    ("bench", ["bench"]),
+    ("deadlift", ["deadlift"]),
+    ("row", ["row"]),
+]
 
 
 def get_exercise_canonical_id(exercise_name: str) -> Optional[str]:
-    """Get canonical ID for exercise name matching"""
+    """Get canonical ID for exercise name matching."""
     name_lower = exercise_name.lower()
-    if "squat" in name_lower:
-        return "squat"
-    elif "bench" in name_lower:
-        return "bench"
-    elif "deadlift" in name_lower:
-        return "deadlift"
-    elif "press" in name_lower and "overhead" in name_lower:
-        return "overhead_press"
-    elif "row" in name_lower:
-        return "row"
+    for canonical_id, keywords in CANONICAL_EXERCISE_KEYWORDS:
+        if all(keyword in name_lower for keyword in keywords):
+            return canonical_id
     return None
 
 
+PERCENTILE_RANGES = [
+    ("beginner", "novice", 20, 20, StrengthClassification.BEGINNER),
+    ("novice", "intermediate", 40, 20, StrengthClassification.NOVICE),
+    ("intermediate", "advanced", 60, 20, StrengthClassification.INTERMEDIATE),
+    ("advanced", "elite", 80, 15, StrengthClassification.ADVANCED),
+]
+
+
 def calculate_percentile(bw_multiplier: float, standards: dict) -> tuple:
-    """Calculate percentile and classification from bodyweight multiplier"""
+    """Calculate percentile and classification from bodyweight multiplier."""
     if bw_multiplier < standards["beginner"]:
-        # Below beginner
         pct = int((bw_multiplier / standards["beginner"]) * 20)
         return max(1, pct), StrengthClassification.BEGINNER
-    elif bw_multiplier < standards["novice"]:
-        # Beginner range (20-40th percentile)
-        range_size = standards["novice"] - standards["beginner"]
-        position = (bw_multiplier - standards["beginner"]) / range_size
-        pct = 20 + int(position * 20)
-        return pct, StrengthClassification.BEGINNER
-    elif bw_multiplier < standards["intermediate"]:
-        # Novice range (40-60th percentile)
-        range_size = standards["intermediate"] - standards["novice"]
-        position = (bw_multiplier - standards["novice"]) / range_size
-        pct = 40 + int(position * 20)
-        return pct, StrengthClassification.NOVICE
-    elif bw_multiplier < standards["advanced"]:
-        # Intermediate range (60-80th percentile)
-        range_size = standards["advanced"] - standards["intermediate"]
-        position = (bw_multiplier - standards["intermediate"]) / range_size
-        pct = 60 + int(position * 20)
-        return pct, StrengthClassification.INTERMEDIATE
-    elif bw_multiplier < standards["elite"]:
-        # Advanced range (80-95th percentile)
-        range_size = standards["elite"] - standards["advanced"]
-        position = (bw_multiplier - standards["advanced"]) / range_size
-        pct = 80 + int(position * 15)
-        return pct, StrengthClassification.ADVANCED
-    else:
-        # Elite (95th+ percentile)
-        return min(99, 95 + int((bw_multiplier - standards["elite"]) * 5)), StrengthClassification.ELITE
+
+    for lower_key, upper_key, base_pct, range_pct, classification in PERCENTILE_RANGES:
+        if bw_multiplier < standards[upper_key]:
+            range_size = standards[upper_key] - standards[lower_key]
+            position = (bw_multiplier - standards[lower_key]) / range_size
+            pct = base_pct + int(position * range_pct)
+            return pct, classification
+
+    # Elite (95th+ percentile)
+    return min(99, 95 + int((bw_multiplier - standards["elite"]) * 5)), StrengthClassification.ELITE
 
 
 @router.get("/exercise/{exercise_id}/trend", response_model=TrendResponse)

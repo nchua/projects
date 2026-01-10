@@ -490,6 +490,23 @@ extension String {
         }
         return self
     }
+
+    /// Parse ISO8601 date string to Date (handles both with and without fractional seconds)
+    func parseISO8601Date() -> Date? {
+        let formatterWithFraction = ISO8601DateFormatter()
+        formatterWithFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatterWithFraction.date(from: self) {
+            return date
+        }
+
+        let standardFormatter = ISO8601DateFormatter()
+        return standardFormatter.date(from: self)
+    }
+
+    /// Formatted month-day from ISO8601 string
+    var formattedMonthDayFromISO: String {
+        parseISO8601Date()?.formattedMonthDay ?? self
+    }
 }
 
 // MARK: - Array Extensions

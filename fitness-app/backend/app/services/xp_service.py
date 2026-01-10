@@ -4,9 +4,14 @@ Handles XP awards, level progression, and rank advancement
 """
 from sqlalchemy.orm import Session
 from datetime import date, timedelta
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Union
 from app.models.progress import UserProgress, HunterRank
 from app.models.workout import WorkoutSession, WorkoutExercise, Set
+
+
+def to_date(value: Union[date, Any]) -> date:
+    """Convert a datetime or date object to a date object."""
+    return value.date() if hasattr(value, 'date') else value
 
 
 # XP Reward Constants
@@ -175,17 +180,10 @@ def award_xp(
     # Handle streak tracking
     streak_bonus = 0
     if workout_date:
-        # Always convert to date for consistent comparison
-        if hasattr(workout_date, 'date'):
-            today = workout_date.date()
-        else:
-            today = workout_date
+        today = to_date(workout_date)
 
         if progress.last_workout_date:
-            # Ensure last_workout_date is also a date object for comparison
-            last_date = progress.last_workout_date
-            if hasattr(last_date, 'date'):
-                last_date = last_date.date()
+            last_date = to_date(progress.last_workout_date)
             days_since = (today - last_date).days
 
             if days_since == 1:

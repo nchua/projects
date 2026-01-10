@@ -235,26 +235,26 @@ enum HunterRank: String, CaseIterable, Codable {
         }
     }
 
-    /// Minimum level required for this rank
+    /// Minimum level required for this rank (matches backend thresholds)
     var minLevel: Int {
         switch self {
         case .e: return 1
-        case .d: return 10
-        case .c: return 25
-        case .b: return 50
-        case .a: return 75
-        case .s: return 100
+        case .d: return 11
+        case .c: return 26
+        case .b: return 46
+        case .a: return 71
+        case .s: return 91
         }
     }
 
-    /// Get rank based on level
+    /// Get rank based on level (matches backend: xp_service.py RANK_THRESHOLDS)
     static func forLevel(_ level: Int) -> HunterRank {
         switch level {
-        case 100...: return .s
-        case 75..<100: return .a
-        case 50..<75: return .b
-        case 25..<50: return .c
-        case 10..<25: return .d
+        case 91...: return .s
+        case 71..<91: return .a
+        case 46..<71: return .b
+        case 26..<46: return .c
+        case 11..<26: return .d
         default: return .e
         }
     }

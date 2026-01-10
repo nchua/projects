@@ -101,6 +101,20 @@ MAX_COOLDOWN_HOURS = 120      # 5 days maximum
 MIN_COOLDOWN_HOURS = 12       # Minimum even for light work
 
 
+INTENSITY_LEVELS = [
+    ("light_max", "light"),
+    ("moderate_max", "moderate"),
+    ("heavy_max", "heavy"),
+]
+
+
+def estimate_intensity_from_reps(reps: int) -> float:
+    """Estimate intensity percentage from rep count using inverse Epley formula."""
+    if reps <= 1:
+        return 100
+    return 3000 / (30 + reps)
+
+
 def calculate_intensity_factor(
     weight: float,
     reps: int,
@@ -108,33 +122,32 @@ def calculate_intensity_factor(
 ) -> float:
     """
     Calculate intensity factor based on weight relative to estimated 1RM.
-
-    If no e1RM stored for the exercise, estimate intensity from rep count
-    using inverse Epley formula (higher reps = lower relative intensity).
+    Falls back to rep-based estimation when no e1RM is available.
     """
     if weight <= 0:
-        return INTENSITY_MULTIPLIERS["moderate"]  # Default for bodyweight
+        return INTENSITY_MULTIPLIERS["moderate"]
 
     if user_e1rm and user_e1rm > 0:
-        # Use actual e1RM from PR database
         intensity_pct = (weight / user_e1rm) * 100
     else:
-        # Fallback: estimate intensity from rep count
-        # Higher reps = likely lower intensity relative to max
-        # At RPE 10: intensity_pct ≈ 100 / (1 + reps/30)
-        if reps <= 1:
-            intensity_pct = 100
-        else:
-            intensity_pct = 3000 / (30 + reps)
+        intensity_pct = estimate_intensity_from_reps(reps)
 
-    if intensity_pct < INTENSITY_THRESHOLDS["light_max"]:
-        return INTENSITY_MULTIPLIERS["light"]
-    elif intensity_pct < INTENSITY_THRESHOLDS["moderate_max"]:
-        return INTENSITY_MULTIPLIERS["moderate"]
-    elif intensity_pct < INTENSITY_THRESHOLDS["heavy_max"]:
-        return INTENSITY_MULTIPLIERS["heavy"]
-    else:
-        return INTENSITY_MULTIPLIERS["max_effort"]
+    for threshold_key, multiplier_key in INTENSITY_LEVELS:
+        if intensity_pct < INTENSITY_THRESHOLDS[threshold_key]:
+            return INTENSITY_MULTIPLIERS[multiplier_key]
+    return INTENSITY_MULTIPLIERS["max_effort"]
+
+
+RIR_THRESHOLDS = [(0, 0), (1, 1), (2, 2), (3, 3)]
+REP_RANGE_TO_RIR = [(3, 1), (6, 2), (10, 2.5)]
+
+
+def estimate_rir_from_reps(reps: int) -> float:
+    """Estimate RIR based on rep count when RPE/RIR not logged."""
+    for max_reps, estimated_rir in REP_RANGE_TO_RIR:
+        if reps <= max_reps:
+            return estimated_rir
+    return 3  # High rep sets often have buffer
 
 
 def calculate_effort_factor(
@@ -144,37 +157,19 @@ def calculate_effort_factor(
 ) -> float:
     """
     Calculate effort factor based on RPE or RIR.
-
-    Fallback when neither logged: estimate based on rep range.
-    Low reps typically pushed harder, high reps leave more in reserve.
+    Falls back to rep-based estimation when neither is logged.
     """
-    # Normalize to effective RIR
     if rpe is not None:
         effective_rir = 10 - rpe
     elif rir is not None:
         effective_rir = rir
     else:
-        # Fallback estimation based on rep range
-        if reps <= 3:
-            effective_rir = 1  # Heavy singles/triples usually pushed hard
-        elif reps <= 6:
-            effective_rir = 2
-        elif reps <= 10:
-            effective_rir = 2.5
-        else:
-            effective_rir = 3  # High rep sets often have buffer
+        effective_rir = estimate_rir_from_reps(reps)
 
-    # Map RIR to effort factor
-    if effective_rir <= 0:
-        return EFFORT_MULTIPLIERS[0]
-    elif effective_rir <= 1:
-        return EFFORT_MULTIPLIERS[1]
-    elif effective_rir <= 2:
-        return EFFORT_MULTIPLIERS[2]
-    elif effective_rir <= 3:
-        return EFFORT_MULTIPLIERS[3]
-    else:
-        return EFFORT_MULTIPLIERS[4]
+    for threshold, multiplier_key in RIR_THRESHOLDS:
+        if effective_rir <= threshold:
+            return EFFORT_MULTIPLIERS[multiplier_key]
+    return EFFORT_MULTIPLIERS[4]
 
 
 def calculate_volume_multiplier(total_effective_sets: float) -> float:

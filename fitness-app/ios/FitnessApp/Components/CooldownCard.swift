@@ -546,7 +546,8 @@ struct CooldownInfoSheet: View {
                                 workoutDate: "2026-01-04T10:00:00",
                                 fatigueType: "primary"
                             )
-                        ]
+                        ],
+                        fatigueBreakdown: nil
                     ),
                     MuscleCooldownStatus(
                         muscleGroup: "triceps",
@@ -567,7 +568,8 @@ struct CooldownInfoSheet: View {
                                 workoutDate: "2026-01-04T10:00:00",
                                 fatigueType: "primary"
                             )
-                        ]
+                        ],
+                        fatigueBreakdown: nil
                     ),
                     MuscleCooldownStatus(
                         muscleGroup: "shoulders",
@@ -582,7 +584,8 @@ struct CooldownInfoSheet: View {
                                 workoutDate: "2026-01-04T10:00:00",
                                 fatigueType: "secondary"
                             )
-                        ]
+                        ],
+                        fatigueBreakdown: nil
                     )
                 ])
                 .padding(.horizontal)

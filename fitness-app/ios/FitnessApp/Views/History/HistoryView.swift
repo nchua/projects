@@ -418,12 +418,7 @@ struct CompletedQuestRow: View {
     }
 
     private func formatDate(_ dateString: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withFullDate]
-        if let date = formatter.date(from: dateString) {
-            return date.formattedMedium
-        }
-        return dateString
+        dateString.parseISO8601Date()?.formattedMedium ?? dateString
     }
 }
 
@@ -632,12 +627,7 @@ struct QuestSummaryCard: View {
     }
 
     private func formatDate(_ dateString: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withFullDate]
-        if let date = formatter.date(from: dateString) {
-            return date.formattedMedium
-        }
-        return dateString
+        dateString.parseISO8601Date()?.formattedMedium ?? dateString
     }
 }
 
