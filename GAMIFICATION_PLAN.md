@@ -1,0 +1,222 @@
+# Fitness App Gamification Enhancement Plan
+
+## Overview
+
+Comprehensive plan to enhance the Solo Leveling-inspired fitness app with a full RPG experience: meaningful stats, expanded HealthKit, celebrations, shop, challenges, and social features.
+
+**Created:** January 2026
+
+---
+
+## The Six Hunter Stats
+
+| Stat | Name | Calculation | Source |
+|------|------|-------------|--------|
+| **PWR** | Power | Weighted e1RM of Big Three (Squat 35%, Bench 30%, Deadlift 35%) | PR data |
+| **VOL** | Volume | 4-week rolling average weekly volume (lbs) | Workout sets |
+| **DEN** | Density | Work per minute (volume / duration) | Session data |
+| **VIT** | Vitality | Recovery composite: sleep + HRV + resting HR | HealthKit |
+| **END** | Endurance | Cardio minutes + step count vs goal | HealthKit |
+| **CON** | Consistency | Streak days + workout frequency | Progress data |
+
+Each stat: 0-100 scale, displayed in hexagon radar chart on profile.
+
+**Stats unlock:**
+- Cosmetics (titles, badge colors, avatar frames)
+- Challenges (stat-gated raids)
+- Skill tree features
+
+---
+
+## Implementation Phases
+
+### Phase 1: Visual Celebrations - QUICK WIN
+**Effort: Small | Impact: High**
+
+New iOS components:
+- `RankUpCelebrationView.swift` - Full-screen rank-up animation
+- `PRCelebrationView.swift` - Compact PR fanfare overlay
+- Enhanced XP bar level-up animation
+
+Trigger when `WorkoutCreateResponse.rankChanged == true` or new PR detected.
+
+**Files to modify:**
+- `ios/.../Views/Log/LogView.swift` - Add celebration coordinator
+- `ios/.../Components/` - New celebration views
+
+---
+
+### Phase 2: HealthKit Expansion
+**Effort: Medium | Impact: High**
+
+Add to `HealthKitManager.swift`:
+```swift
+// New data types
+HKCategoryType.sleepAnalysis
+HKQuantityType.heartRateVariabilitySDNN
+HKQuantityType.restingHeartRate
+HKQuantityType.bodyMass
+HKObjectType.workoutType() // Auto-detect workouts
+```
+
+Backend: Add fields to `DailyActivity` model:
+- `sleep_quality`, `sleep_deep_minutes`, `sleep_rem_minutes`
+- `detected_workouts` count
+
+**Files to modify:**
+- `ios/.../Services/HealthKitManager.swift` - Add new data types + fetch functions
+- `backend/app/models/activity.py` - Add sleep/recovery fields
+- `backend/app/schemas/activity.py` - Update response schemas
+
+---
+
+### Phase 3: Stats System
+**Effort: Large | Impact: High | Depends on: Phase 2**
+
+#### Backend
+New model: `backend/app/models/hunter_stats.py`
+```python
+class HunterStats(Base):
+    user_id = Column(String, ForeignKey("users.id"), unique=True)
+    power = Column(Integer, default=0)      # 0-100
+    volume = Column(Integer, default=0)
+    density = Column(Integer, default=0)
+    vitality = Column(Integer, default=0)
+    endurance = Column(Integer, default=0)
+    consistency = Column(Integer, default=0)
+    hunter_power_level = Column(Integer, default=0)  # Weighted avg
+    last_calculated = Column(DateTime)
+```
+
+New service: `backend/app/services/stats_service.py`
+- `calculate_power_stat()` - From PR/e1RM data
+- `calculate_vitality_stat()` - From HealthKit recovery data
+- `recalculate_all_stats()` - Full refresh
+
+New endpoints: `backend/app/api/stats.py`
+- `GET /api/stats` - Current stats
+- `GET /api/stats/unlocks` - Cosmetics/features unlocked by stats
+
+#### iOS
+New components:
+- `StatHexagonView.swift` - Radar chart visualization
+- `StatBreakdownView.swift` - Detailed stat explanation
+
+Modify:
+- `ProfileView.swift` - Add hexagon to profile header
+- `APITypes.swift` - Add stats response types
+
+---
+
+### Phase 4: Shop/Currency System
+**Effort: Large | Impact: Medium | Depends on: Phase 3**
+
+Currency: **Shadow Essence**
+- Workouts: 10-50 essence (based on volume)
+- PRs: 25 essence
+- Streaks: 50-200 essence
+- Achievements: 25-100 essence
+
+#### Backend Models
+```python
+# user_currency table
+UserCurrency: shadow_essence, total_earned, total_spent
+
+# shop_items table
+ShopItem: name, category, price, item_data (JSON), required_rank
+
+# user_purchases table
+UserPurchase: item_id, purchased_at, is_equipped
+```
+
+Shop categories:
+- **Cosmetics**: Badge colors, avatar frames, profile backgrounds
+- **Titles**: Custom titles ("The Iron", "Shadow Walker")
+- **Consumables**: XP Boost (2x 24h), Streak Freeze, Quest Reroll
+
+#### iOS Views
+- `ShopView.swift` - Main shop
+- `InventoryView.swift` - Equipped items
+- Currency display in header
+
+---
+
+### Phase 5: Challenge/Raid System
+**Effort: Large | Impact: High | Depends on: Phase 3**
+
+#### Gate Raids (Multi-Day Challenges)
+Example: "E-Rank Gate: Foundation"
+- Day 1: Complete workout with 3+ exercises
+- Day 2: Hit 100 total reps
+- Day 3: Set any PR
+- Reward: 500 XP + 100 Essence + "Gate Clearer" title
+
+#### Boss Fights (Monthly PR Events)
+"The Iron Golem" - Monthly bench challenge
+- Goal: Beat current bench e1RM by 5+ lbs
+- Bonus tier: 10+ lbs for extra rewards
+
+#### Stat-Gating
+- Power >= 60 for S-Rank gates
+- Vitality >= 40 for recovery challenges
+- Consistency >= 70 for endurance raids
+
+#### Backend Models
+```python
+ChallengeDefinition: name, type, duration_days, requirements (JSON), objectives (JSON), rewards (JSON)
+UserChallenge: challenge_id, started_at, progress (JSON), status
+```
+
+---
+
+### Phase 6: Social Features
+**Effort: Large | Impact: Medium**
+
+- Weekly leaderboards (XP, volume, PRs, streak)
+- Guild system (create/join, shared challenges)
+- Friend 1v1 challenges
+
+---
+
+## Implementation Order
+
+| Priority | Phase | Effort | Deliverable |
+|----------|-------|--------|-------------|
+| 1 | Celebrations | Small | Rank-up + PR animations |
+| 2 | HealthKit | Medium | Sleep, HRV, auto-workout detection |
+| 3 | Stats | Large | Hexagon display, stat calculation, unlocks |
+| 4 | Shop | Large | Currency, cosmetics, consumables |
+| 5 | Challenges | Large | Gate raids, boss fights |
+| 6 | Social | Large | Leaderboards, guilds |
+
+---
+
+## Key Files Reference
+
+**Backend:**
+- `backend/app/models/progress.py` - Extend with stats relationship
+- `backend/app/models/activity.py` - Add recovery fields
+- `backend/app/services/xp_service.py` - Add currency awards
+- New: `backend/app/models/hunter_stats.py`
+- New: `backend/app/models/shop.py`
+- New: `backend/app/models/challenge.py`
+- New: `backend/app/services/stats_service.py`
+
+**iOS:**
+- `ios/.../Services/HealthKitManager.swift` - Expand data types
+- `ios/.../Views/Profile/ProfileView.swift` - Add stat hexagon
+- `ios/.../Utils/Colors.swift` - Reference for theming
+- New: `ios/.../Components/StatHexagonView.swift`
+- New: `ios/.../Components/RankUpCelebrationView.swift`
+- New: `ios/.../Views/Shop/ShopView.swift`
+- New: `ios/.../Views/Challenges/ChallengesView.swift`
+
+---
+
+## Verification
+
+After each phase:
+1. Run backend tests: `cd backend && pytest`
+2. Regenerate Xcode project: `cd ios && xcodegen generate`
+3. Build iOS app in Xcode, test on simulator
+4. Manual testing of new features with real workout data
