@@ -303,3 +303,8 @@ Good luck! The foundation is solid. Focus on quality over speed. 🏋️
 - Weight info popover (dumbbell convention)
 - Tappable avatar opens ProfileView sheet
 - Added iOS rebuild reminder to CLAUDE.md
+
+**Known Issues to Fix Next Session:**
+- [ ] **Force Spawn button doesn't work** - POST `/dungeons/spawn/force` not spawning dungeons
+- [ ] "Seed Data" button works and spawned 3 gates, so dungeon display is working
+- [ ] Investigate `maybe_spawn_dungeon()` and `forceSpawnDungeon()` in dungeon_service.py
