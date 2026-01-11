@@ -1,6 +1,6 @@
 # ARISE Fitness App - Next Steps
 
-## Mockups Complete (8 screens)
+## Mockups Complete (12 screens)
 
 | File | Description |
 |------|-------------|
@@ -12,6 +12,44 @@
 | `06-completion.html` | Victory rewards screen |
 | `07-penalty.html` | Failed quest warning (glitch aesthetic) |
 | `08-log-workout.html` | Set-by-set workout logging |
+| `index.html` | Status header design options (A-D) with rank/class selectors |
+| `onboarding.html` | 7-step class assignment flow |
+| `class-change.html` | Reawakening system (class change with penalties) |
+| `specializations.html` | Subclass progression UI (profile, detection, unlock) |
+
+---
+
+## Session Log
+
+### January 10, 2026 - Subclass System & Typography Fixes
+
+**Design Changes:**
+- Redesigned class progression: instead of paying to change class, users now earn **subclasses** through training patterns
+- 14 subclasses (2 per base class) with unique unlock requirements and XP bonuses
+- Subclass mechanics: one active at a time, can switch between unlocked, hidden until 50% progress
+
+**Class Change Updates:**
+- Cost increased: 500 XP → 5,000 XP
+- New penalty: lose ALL unlocked subclasses
+- Cooldown increased: 30 days → 90 days
+
+**UI Work:**
+- Created `specializations.html` mockup with 3 views:
+  - Profile view (active/unlocked/in-progress subclasses)
+  - Detection notification ("[Specialization detected]")
+  - Unlock celebration screen with particle animations
+- Removed all-caps typography across all mockups (changed `text-transform: uppercase` to sentence case)
+
+**Files Modified:**
+- `specializations.html` (new)
+- `index.html` (typography)
+- `onboarding.html` (typography)
+- `class-change.html` (typography)
+- `docs/CLASS_SYSTEM.md` (subclass system documentation)
+
+**Commits:**
+- `d7fb823` - Add subclass system and specializations UI mockups
+- `06db185` - Add subclass system documentation to CLASS_SYSTEM.md
 
 ---
 
