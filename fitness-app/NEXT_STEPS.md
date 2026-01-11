@@ -23,6 +23,10 @@
 - **NEW (Session 4):** Achievement showcase on ProfileView
 - **NEW (Session 4):** Clickable chart data points
 - **NEW (Session 4):** Sheet presentation race condition fixed
+- **NEW (Session 5):** Bodyweight exercise support (BW toggle per set)
+- **NEW (Session 5):** Keyboard dismissal on scroll/tap
+- **NEW (Session 5):** Weight info popover (dumbbell convention)
+- **NEW (Session 5):** Fixed XP display bug after level-up
 
 ## Quick Start
 
@@ -85,6 +89,10 @@ open http://localhost:8000/docs
 - ✅ Home screen tile click fix
 - ✅ Clickable chart data points
 - ✅ Single Leg RDL exercise added
+- ✅ Bodyweight exercise support (BW toggle, 0-weight validation)
+- ✅ Keyboard dismissal improvements (scroll/tap)
+- ✅ Weight info popover for dumbbell convention
+- ✅ XP display bug fix (client-side XP calculation)
 
 ### Priority 1: Complete Gamification Loop
 - [ ] **Wire up XP Reward Popup** - Show XPRewardView after workout in LogView
@@ -249,3 +257,33 @@ cat feature_list.json | jq '.[] | select(.passes == false) | .description' | hea
 - **This File**: Instructions for next steps
 
 Good luck! The foundation is solid. Focus on quality over speed. 🏋️
+
+---
+
+## Session Log
+
+### Session 5 - January 10, 2026
+
+**Commits:**
+1. `c530e48` - Add bodyweight exercise support, keyboard dismissal, and weight info
+2. `65bb553` - Fix XP display bug showing negative values after level up
+
+**Changes:**
+
+**Bodyweight Exercise Support:**
+- Added BW toggle per set in LogView that hides weight field for bodyweight exercises
+- Updated set validation to allow 0 weight when bodyweight toggle is enabled
+- Backend: Changed weight validation from `gt=0` to `ge=0` for bodyweight sets
+- Files: `LogView.swift`, `LogViewModel.swift`, `backend/app/schemas/workout.py`
+
+**UX Improvements:**
+- Added interactive keyboard dismissal on scroll and tap outside input fields
+- Added weight info popover explaining dumbbell convention (shows combined weight of both dumbbells)
+- Files: `LogView.swift`
+
+**Bug Fix - XP Display After Level Up:**
+- Problem: Home screen showed "-305 XP to next level" after leveling up
+- Root cause: `HomeViewModel` used stale cached `xpToNextLevel` values from API responses
+- Solution: Created `XPCalculator.swift` utility to compute XP values client-side using the same formula as backend (`100 * level^1.5`)
+- Changed `xpToNextLevel` and `levelProgress` to computed properties that calculate dynamically
+- Files: `Utils/XPCalculator.swift` (new), `HomeViewModel.swift`

@@ -51,6 +51,32 @@ node test-workouts.js             # Test workout endpoints
 node test-exercises.js            # Test exercise endpoints
 ```
 
+---
+
+## iOS Development Guidelines
+
+### IMPORTANT: Rebuild After iOS Changes
+
+After modifying any iOS Swift files, the user must rebuild the app in Xcode for changes to take effect on their device.
+
+**After committing iOS changes, always remind the user:**
+> "iOS changes committed. To see them on your device, rebuild in Xcode (Cmd+R) or run:
+> ```bash
+> cd ios && xcodegen generate && open FitnessApp.xcodeproj
+> ```
+> Then build and run (Cmd+R)."
+
+**If adding new Swift files:**
+1. Run `xcodegen generate` to update the Xcode project
+2. Open in Xcode and build (Cmd+R)
+
+**Quick rebuild command:**
+```bash
+cd /Users/nickchua/Desktop/AI/Fitness\ App/fitness-app/fitness-app/ios && xcodegen generate && open FitnessApp.xcodeproj
+```
+
+---
+
 ## Deployment
 
 - **Backend**: Railway (https://backend-production-e316.up.railway.app)
