@@ -5,6 +5,7 @@ struct HomeView: View {
     @StateObject private var viewModel = HomeViewModel()
     @State private var selectedInsight: InsightResponse?
     @State private var selectedWorkout: WorkoutSummaryResponse?
+    @State private var showProfile = false
 
     var body: some View {
         NavigationStack {
@@ -23,7 +24,8 @@ struct HomeView: View {
                             currentXP: viewModel.currentXP,
                             xpToNextLevel: viewModel.xpToNextLevel,
                             levelProgress: viewModel.levelProgress,
-                            streakDays: viewModel.streakDays
+                            streakDays: viewModel.streakDays,
+                            onProfileTap: { showProfile = true }
                         )
                         .padding(.horizontal)
 
@@ -173,6 +175,9 @@ struct HomeView: View {
         .sheet(item: $selectedWorkout) { workout in
             WorkoutDetailSheet(workoutId: workout.id)
         }
+        .sheet(isPresented: $showProfile) {
+            ProfileView()
+        }
     }
 }
 
@@ -187,6 +192,7 @@ struct HunterStatusHeader: View {
     let xpToNextLevel: Int
     let levelProgress: Double
     let streakDays: Int
+    var onProfileTap: (() -> Void)? = nil
 
     var avatarInitials: String {
         initials.isEmpty ? String(name.prefix(1)) : initials
@@ -194,10 +200,15 @@ struct HunterStatusHeader: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            // Top row: Avatar + Name + Level
+            // Top row: Avatar + Name + Level + Actions
             HStack(spacing: 16) {
-                // Hunter Avatar with Rank Badge
-                HunterAvatarView(initial: avatarInitials, rank: rank, size: 60)
+                // Hunter Avatar with Rank Badge - Tappable for profile
+                Button {
+                    onProfileTap?()
+                } label: {
+                    HunterAvatarView(initial: avatarInitials, rank: rank, size: 60)
+                }
+                .buttonStyle(PlainButtonStyle())
 
                 // Name and Title
                 VStack(alignment: .leading, spacing: 4) {
@@ -215,17 +226,16 @@ struct HunterStatusHeader: View {
 
                 Spacer()
 
-                // Level Display
-                VStack(spacing: 2) {
-                    Text("\(level)")
-                        .font(.ariseDisplay(size: 28, weight: .bold))
-                        .foregroundColor(.systemPrimary)
-                        .shadow(color: .systemPrimaryGlow, radius: 10, x: 0, y: 0)
-
-                    Text("LEVEL")
-                        .font(.ariseMono(size: 9, weight: .medium))
-                        .foregroundColor(.textMuted)
-                        .tracking(1)
+                // Profile button
+                Button {
+                    onProfileTap?()
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(.textSecondary)
+                        .frame(width: 36, height: 36)
+                        .background(Color.voidLight)
+                        .cornerRadius(4)
                 }
 
                 // Streak

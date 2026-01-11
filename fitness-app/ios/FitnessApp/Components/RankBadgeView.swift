@@ -75,7 +75,8 @@ struct HunterAvatarView: View {
         }
         .overlay(alignment: .bottomTrailing) {
             RankBadgeView(rank: rank, size: .small)
-                .offset(x: 8, y: 8)
+                .scaleEffect(0.85)
+                .offset(x: 2, y: 2)
         }
     }
 }
