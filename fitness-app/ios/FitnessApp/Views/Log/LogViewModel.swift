@@ -38,7 +38,7 @@ class LogViewModel: ObservableObject {
     var canSave: Bool {
         !selectedExercises.isEmpty && selectedExercises.allSatisfy { exercise in
             !exercise.sets.isEmpty && exercise.sets.allSatisfy { set in
-                set.weight > 0 && set.reps > 0
+                (set.isBodyweight || set.weight > 0) && set.reps > 0
             }
         }
     }
@@ -89,7 +89,8 @@ class LogViewModel: ObservableObject {
             setNumber: lastSet.setNumber + 1,
             weightText: lastSet.weightText,
             repsText: lastSet.repsText,
-            rpe: lastSet.rpe
+            rpe: lastSet.rpe,
+            isBodyweight: lastSet.isBodyweight
         )
         selectedExercises[exerciseIndex].sets.append(newSet)
     }
@@ -168,8 +169,9 @@ struct LoggedSet: Identifiable {
     var weightText: String = ""   // String binding for TextField (allows empty)
     var repsText: String = ""     // String binding for TextField (allows empty)
     var rpe: Int?
+    var isBodyweight: Bool = false  // Toggle for bodyweight exercises (no added weight)
 
     // Computed properties for API/calculations
-    var weight: Double { Double(weightText) ?? 0 }
+    var weight: Double { isBodyweight ? 0 : (Double(weightText) ?? 0) }
     var reps: Int { Int(repsText) ?? 0 }
 }

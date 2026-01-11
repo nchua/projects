@@ -9,7 +9,7 @@ from app.models.workout import WeightUnit
 
 class SetCreate(BaseModel):
     """Schema for creating a set"""
-    weight: float = Field(..., gt=0, description="Weight lifted")
+    weight: float = Field(..., ge=0, description="Weight lifted (0 for bodyweight exercises)")
     weight_unit: WeightUnit = Field(default=WeightUnit.LB, description="Weight unit (lb or kg)")
     reps: int = Field(..., gt=0, le=100, description="Number of reps")
     rpe: Optional[int] = Field(None, ge=1, le=10, description="Rate of Perceived Exertion (1-10)")
@@ -116,6 +116,14 @@ class AchievementUnlocked(BaseModel):
     rarity: str
 
 
+class PRAchieved(BaseModel):
+    """PR achieved during workout"""
+    exercise_name: str
+    pr_type: str  # "e1rm" or "rep_pr"
+    value: str    # "225 lb" or "315 lb x 5"
+    xp_earned: int = 100  # XP bonus per PR
+
+
 class WorkoutCreateResponse(BaseModel):
     """Response for workout creation including XP info"""
     workout: WorkoutResponse
@@ -130,6 +138,7 @@ class WorkoutCreateResponse(BaseModel):
     new_rank: Optional[str] = None
     current_streak: int
     achievements_unlocked: List[AchievementUnlocked] = []
+    prs_achieved: List[PRAchieved] = []
 
     class Config:
         from_attributes = True

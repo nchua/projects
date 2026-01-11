@@ -15,6 +15,11 @@ struct LogView: View {
     @State private var rankUpData: (previousRank: HunterRank, newRank: HunterRank, newLevel: Int)?
     @State private var pendingXPResponse: WorkoutCreateResponse?
 
+    // PR celebration states
+    @State private var showPRCelebration = false
+    @State private var prQueue: [PRAchievedResponse] = []
+    @State private var currentPRIndex = 0
+
     // Debug mode for testing celebrations
     #if DEBUG
     @State private var showDebugCelebration = false
@@ -75,7 +80,23 @@ struct LogView: View {
             .sheet(isPresented: $viewModel.showExercisePicker) {
                 ExercisePickerView(viewModel: viewModel)
             }
-            // Rank-Up Celebration (shows first if rank changed)
+            // PR Celebration (shows first if PRs achieved)
+            .fullScreenCover(isPresented: $showPRCelebration) {
+                if currentPRIndex < prQueue.count {
+                    let pr = prQueue[currentPRIndex]
+                    PRCelebrationView(
+                        exerciseName: pr.exerciseName,
+                        prType: pr.prType == "e1rm" ? .e1rm : .repPR,
+                        value: pr.value,
+                        onDismiss: {
+                            handlePRDismiss()
+                        },
+                        currentIndex: currentPRIndex + 1,
+                        totalCount: prQueue.count
+                    )
+                }
+            }
+            // Rank-Up Celebration (shows after PRs if rank changed)
             .fullScreenCover(isPresented: $showRankUpCelebration) {
                 if let data = rankUpData {
                     RankUpCelebrationView(
@@ -124,10 +145,22 @@ struct LogView: View {
                 )
             }
             #endif
-            // Intercept workout response to check for rank change
+            // Intercept workout response to check for PRs and rank change
             .onChange(of: viewModel.xpRewardResponse?.id) { oldValue, newValue in
-                guard let response = viewModel.xpRewardResponse,
-                      response.rankChanged,
+                guard let response = viewModel.xpRewardResponse else { return }
+
+                // Check for PRs first (they show before rank-up)
+                if !response.prsAchieved.isEmpty {
+                    prQueue = response.prsAchieved
+                    currentPRIndex = 0
+                    pendingXPResponse = response
+                    viewModel.xpRewardResponse = nil  // Clear to prevent showing XP view yet
+                    showPRCelebration = true
+                    return
+                }
+
+                // No PRs, check for rank change
+                guard response.rankChanged,
                       let newRankStr = response.newRank else { return }
 
                 // Rank changed! Show celebration first
@@ -180,6 +213,41 @@ struct LogView: View {
         }
         .task {
             await viewModel.loadExercises()
+        }
+    }
+
+    /// Handle PR celebration dismissal - advance to next PR or proceed to rank-up/XP
+    private func handlePRDismiss() {
+        // Move to next PR or proceed to rank-up/XP view
+        if currentPRIndex + 1 < prQueue.count {
+            // More PRs to show
+            currentPRIndex += 1
+            // Brief delay before showing next PR
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                showPRCelebration = true
+            }
+        } else {
+            // All PRs shown, check for rank change
+            showPRCelebration = false
+            if let response = pendingXPResponse,
+               response.rankChanged,
+               let newRankStr = response.newRank {
+                // Show rank-up celebration
+                let newRank = HunterRank(rawValue: newRankStr) ?? .e
+                let previousRank = getPreviousRank(from: newRank)
+                let newLevel = response.newLevel ?? response.level
+                rankUpData = (previousRank, newRank, newLevel)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    showRankUpCelebration = true
+                }
+            } else if let response = pendingXPResponse {
+                // No rank change, show XP reward directly
+                viewModel.xpRewardResponse = response
+                pendingXPResponse = nil
+            }
+            // Reset PR queue
+            prQueue = []
+            currentPRIndex = 0
         }
     }
 
@@ -524,7 +592,12 @@ struct ActiveQuestView: View {
                 Spacer(minLength: 100)
             }
             .padding(.vertical)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
         }
+        .scrollDismissesKeyboard(.interactively)
     }
 }
 
@@ -722,6 +795,8 @@ struct ObjectiveCard: View {
     let onRemoveSet: (Int) -> Void
     let onRemove: () -> Void
 
+    @State private var showWeightInfo = false
+
     var exerciseColor: Color {
         Color.exerciseColor(for: exercise.exerciseName)
     }
@@ -731,7 +806,7 @@ struct ObjectiveCard: View {
     }
 
     var completedSets: Int {
-        exercise.sets.filter { ($0.weight ?? 0) > 0 && ($0.reps ?? 0) > 0 }.count
+        exercise.sets.filter { ($0.isBodyweight || ($0.weight ?? 0) > 0) && ($0.reps ?? 0) > 0 }.count
     }
 
     var body: some View {
@@ -805,8 +880,39 @@ struct ObjectiveCard: View {
             HStack {
                 Text("SET")
                     .frame(width: 36, alignment: .leading)
-                Text("WEIGHT")
-                    .frame(maxWidth: .infinity)
+                Text("BW")
+                    .frame(width: 28)
+                HStack(spacing: 4) {
+                    Text("WEIGHT")
+                    Button {
+                        showWeightInfo = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 10))
+                            .foregroundColor(.textMuted)
+                    }
+                    .popover(isPresented: $showWeightInfo, arrowEdge: .bottom) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("WEIGHT CONVENTION")
+                                .font(.ariseMono(size: 11, weight: .semibold))
+                                .foregroundColor(.textPrimary)
+
+                            Text("Enter the total weight lifted.")
+                                .font(.ariseMono(size: 12))
+                                .foregroundColor(.textSecondary)
+
+                            Text("For dumbbells, combine both sides:\n40lb each = 80lb total")
+                                .font(.ariseMono(size: 11))
+                                .foregroundColor(.textMuted)
+                                .italic()
+                        }
+                        .padding(12)
+                        .frame(width: 220)
+                        .background(Color.voidMedium)
+                        .presentationCompactAdaptation(.popover)
+                    }
+                }
+                .frame(maxWidth: .infinity)
                 Text("REPS")
                     .frame(width: 56)
                 Text("RPE")
@@ -826,7 +932,7 @@ struct ObjectiveCard: View {
                 AriseSetRow(
                     set: $exercise.sets[index],
                     exerciseColor: exerciseColor,
-                    isCompleted: (exercise.sets[index].weight ?? 0) > 0 && (exercise.sets[index].reps ?? 0) > 0,
+                    isCompleted: (exercise.sets[index].isBodyweight || (exercise.sets[index].weight ?? 0) > 0) && (exercise.sets[index].reps ?? 0) > 0,
                     onRemove: { onRemoveSet(index) }
                 )
 
@@ -889,27 +995,58 @@ struct AriseSetRow: View {
             }
             .frame(width: 36)
 
-            // Weight input
-            HStack(spacing: 4) {
-                TextField("", text: $set.weightText)
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.center)
-                    .font(.ariseMono(size: 15, weight: .medium))
-                    .foregroundColor(.textPrimary)
-                    .padding(.vertical, 10)
-                    .padding(.horizontal, 8)
-                    .background(Color.voidLight)
-                    .cornerRadius(4)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.ariseBorder, lineWidth: 1)
-                    )
+            // Bodyweight toggle button
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    set.isBodyweight.toggle()
+                    if set.isBodyweight {
+                        set.weightText = ""  // Clear weight when enabling BW
+                    }
+                }
+            } label: {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(set.isBodyweight ? Color.systemPrimary.opacity(0.2) : Color.voidLight)
+                        .frame(width: 28, height: 28)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(set.isBodyweight ? Color.systemPrimary : Color.ariseBorder, lineWidth: 1)
+                        )
 
-                Text("lb")
-                    .font(.ariseMono(size: 10))
-                    .foregroundColor(.textMuted)
+                    Text("BW")
+                        .font(.ariseMono(size: 9, weight: .semibold))
+                        .foregroundColor(set.isBodyweight ? .systemPrimary : .textMuted)
+                }
             }
-            .frame(maxWidth: .infinity)
+
+            // Weight input OR bodyweight label
+            if !set.isBodyweight {
+                HStack(spacing: 4) {
+                    TextField("", text: $set.weightText)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.center)
+                        .font(.ariseMono(size: 15, weight: .medium))
+                        .foregroundColor(.textPrimary)
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 8)
+                        .background(Color.voidLight)
+                        .cornerRadius(4)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color.ariseBorder, lineWidth: 1)
+                        )
+
+                    Text("lb")
+                        .font(.ariseMono(size: 10))
+                        .foregroundColor(.textMuted)
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                Text("BODYWEIGHT")
+                    .font(.ariseMono(size: 11, weight: .medium))
+                    .foregroundColor(.systemPrimary)
+                    .frame(maxWidth: .infinity)
+            }
 
             // Reps input
             TextField("", text: $set.repsText)
