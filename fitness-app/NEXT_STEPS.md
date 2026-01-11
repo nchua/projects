@@ -25,8 +25,10 @@
 - **NEW (Session 4):** Sheet presentation race condition fixed
 - **NEW (Session 5):** Bodyweight exercise support (BW toggle per set)
 - **NEW (Session 5):** Keyboard dismissal on scroll/tap
-- **NEW (Session 5):** Weight info popover (dumbbell convention)
 - **NEW (Session 5):** Fixed XP display bug after level-up
+- **NEW (Session 5):** Dungeon/Gate system (18 dungeons, multi-day challenges)
+- **NEW (Session 5):** Quest Center view (calendar + workout history)
+- **NEW (Session 5):** Tappable avatar opens profile
 
 ## Quick Start
 
@@ -93,6 +95,9 @@ open http://localhost:8000/docs
 - ✅ Keyboard dismissal improvements (scroll/tap)
 - ✅ Weight info popover for dumbbell convention
 - ✅ XP display bug fix (client-side XP calculation)
+- ✅ Dungeon/Gate system (18 dungeons, E-S++ ranks, 72hr challenges)
+- ✅ Quest Center view (calendar, workout history redesign)
+- ✅ Tappable avatar opens profile sheet
 
 ### Priority 1: Complete Gamification Loop
 - [ ] **Wire up XP Reward Popup** - Show XPRewardView after workout in LogView
@@ -262,28 +267,39 @@ Good luck! The foundation is solid. Focus on quality over speed. 🏋️
 
 ## Session Log
 
-### Session 5 - January 10, 2026
+### Session 5 - January 10-11, 2026
 
 **Commits:**
-1. `c530e48` - Add bodyweight exercise support, keyboard dismissal, and weight info
-2. `65bb553` - Fix XP display bug showing negative values after level up
+1. `560876b` - Add bodyweight exercise support, keyboard dismissal, and weight info
+2. `5ba2190` - Fix XP display bug showing negative values after level up
+3. `ca892d3` - Add iOS rebuild reminder to CLAUDE.md and update session notes
+4. `f43273c` - Add Dungeon/Gate system - Solo Leveling inspired multi-day challenges
+5. `6154125` - Add tappable avatar to open profile and adjust rank badge positioning
+6. `1e56930` - Add Quest Center view - redesigned workout logging entry point
 
-**Changes:**
+**Major Feature: Dungeon/Gate System**
+- Backend: Models, schemas, API endpoints, services, migration, seed data
+- Objective types: total_reps, total_volume, total_sets, compound_sets, workout_count, PR, streak
+- Ranks E through S++ with level-gated spawning
+- 72-hour time-limited dungeons with XP rewards
+- iOS: DungeonsView, DungeonCardView, DungeonDetailSheet, DungeonRewardSheet, DungeonSpawnOverlay
+- Themed dungeons: Goblin Cave, Wolf Den, Spider Nest, Orc Stronghold, etc.
+- **Seeded 18 dungeon definitions on production**
 
-**Bodyweight Exercise Support:**
-- Added BW toggle per set in LogView that hides weight field for bodyweight exercises
-- Updated set validation to allow 0 weight when bodyweight toggle is enabled
-- Backend: Changed weight validation from `gt=0` to `ge=0` for bodyweight sets
-- Files: `LogView.swift`, `LogViewModel.swift`, `backend/app/schemas/workout.py`
-
-**UX Improvements:**
-- Added interactive keyboard dismissal on scroll and tap outside input fields
-- Added weight info popover explaining dumbbell convention (shows combined weight of both dumbbells)
-- Files: `LogView.swift`
+**Feature: Quest Center View**
+- Redesigned workout logging entry point with calendar view
+- "Begin Quest" and "Scan Log" action buttons
+- Date-filtered workout history with swipe-to-delete
+- Files: `Views/Quests/QuestsView.swift`, `QuestsViewModel.swift`
 
 **Bug Fix - XP Display After Level Up:**
 - Problem: Home screen showed "-305 XP to next level" after leveling up
-- Root cause: `HomeViewModel` used stale cached `xpToNextLevel` values from API responses
-- Solution: Created `XPCalculator.swift` utility to compute XP values client-side using the same formula as backend (`100 * level^1.5`)
-- Changed `xpToNextLevel` and `levelProgress` to computed properties that calculate dynamically
+- Solution: Created `XPCalculator.swift` to compute XP client-side (`100 * level^1.5`)
 - Files: `Utils/XPCalculator.swift` (new), `HomeViewModel.swift`
+
+**Other Changes:**
+- Bodyweight exercise support (BW toggle per set)
+- Keyboard dismissal on scroll/tap
+- Weight info popover (dumbbell convention)
+- Tappable avatar opens ProfileView sheet
+- Added iOS rebuild reminder to CLAUDE.md
