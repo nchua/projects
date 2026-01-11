@@ -491,16 +491,26 @@ extension String {
         return self
     }
 
-    /// Parse ISO8601 date string to Date (handles both with and without fractional seconds)
+    /// Parse ISO8601 date string to Date (handles full ISO8601, without fractional seconds, and date-only formats)
     func parseISO8601Date() -> Date? {
+        // Try full ISO8601 with fractional seconds first
         let formatterWithFraction = ISO8601DateFormatter()
         formatterWithFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let date = formatterWithFraction.date(from: self) {
             return date
         }
 
+        // Try standard ISO8601 (without fractional seconds)
         let standardFormatter = ISO8601DateFormatter()
-        return standardFormatter.date(from: self)
+        if let date = standardFormatter.date(from: self) {
+            return date
+        }
+
+        // Fallback: date-only format "YYYY-MM-DD" (returned by backend analytics)
+        let dateOnlyFormatter = DateFormatter()
+        dateOnlyFormatter.dateFormat = "yyyy-MM-dd"
+        dateOnlyFormatter.timeZone = TimeZone(identifier: "UTC")
+        return dateOnlyFormatter.date(from: self)
     }
 
     /// Formatted month-day from ISO8601 string

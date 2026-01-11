@@ -1,8 +1,12 @@
 import Foundation
 import SwiftUI
 
-// The Big Three - always shown
-let bigThreeNames = ["Back Squat", "Bench Press", "Deadlift"]
+// The Big Three - all known variations for each lift (first name is display name)
+let bigThreeVariations: [[String]] = [
+    ["Back Squat", "Barbell Back Squat", "Squat", "BB Squat", "Barbell Squat"],
+    ["Bench Press", "Barbell Bench Press", "BB Bench", "Flat Bench Press", "Flat Barbell Bench Press"],
+    ["Deadlift", "Barbell Deadlift", "Conventional Deadlift", "BB Deadlift"]
+]
 
 @MainActor
 class ProgressViewModel: ObservableObject {
@@ -34,10 +38,16 @@ class ProgressViewModel: ObservableObject {
         }
     }
 
-    // Get Big Three exercises from loaded exercises
+    // Get Big Three exercises from loaded exercises (matches any known variation)
     var bigThreeExercises: [ExerciseResponse] {
-        bigThreeNames.compactMap { name in
-            exercises.first { $0.name.lowercased() == name.lowercased() }
+        bigThreeVariations.compactMap { variations in
+            // Find the first exercise that matches any of the variations
+            for variation in variations {
+                if let exercise = exercises.first(where: { $0.name.caseInsensitiveCompare(variation) == .orderedSame }) {
+                    return exercise
+                }
+            }
+            return nil
         }
     }
 
