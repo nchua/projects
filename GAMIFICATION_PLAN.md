@@ -40,6 +40,10 @@ Comprehensive plan to enhance the Solo Leveling-inspired fitness app with a full
   - iOS: Updated `PRCelebrationView` with optional counter badge ("1 of N PRs")
   - iOS: Added PR celebration chain to `LogView.swift` (shows before rank-up)
   - Full celebration sequence now: PRs (sequential) → Rank-up → XP Reward
+  - **Deployed to Railway**
+
+#### Commits
+- `7686ee7` - Add PR celebration to workout completion flow
 
 #### Files Modified
 | File | Action | Description |
@@ -51,6 +55,8 @@ Comprehensive plan to enhance the Solo Leveling-inspired fitness app with a full
 | `ios/.../Views/Log/LogView.swift` | Modified | Added PR celebration chain |
 
 ---
+
+### Session: January 10, 2026 (Earlier)
 
 #### Commits
 - `18878b8` - Fix numeric input deletion and add keyboard dismissal
