@@ -45,8 +45,15 @@ class HomeViewModel: ObservableObject {
     var hunterLevel: Int { userProgress?.level ?? 1 }
     var hunterRank: HunterRank { HunterRank(rawValue: userProgress?.rank ?? "E") ?? .e }
     var currentXP: Int { userProgress?.totalXp ?? 0 }
-    var xpToNextLevel: Int { userProgress?.xpToNextLevel ?? 100 }
-    var levelProgress: Double { userProgress?.levelProgress ?? 0.0 }
+    var xpToNextLevel: Int {
+        guard let progress = userProgress else { return 100 }
+        return XPCalculator.xpToNextLevel(currentLevel: progress.level, totalXp: progress.totalXp)
+    }
+
+    var levelProgress: Double {
+        guard let progress = userProgress else { return 0.0 }
+        return XPCalculator.levelProgress(currentLevel: progress.level, totalXp: progress.totalXp)
+    }
     var streakDays: Int { userProgress?.currentStreak ?? 0 }
 
     // Profile-based properties for avatar sync
