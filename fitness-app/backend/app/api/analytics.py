@@ -115,12 +115,20 @@ async def get_exercise_trend(
     db: Session = Depends(get_db)
 ):
     """
-    Get e1RM trend data for an exercise
+    Get e1RM trend data for an exercise.
+    Aggregates data across all exercises with the same canonical_id.
     """
     # Verify exercise exists
     exercise = db.query(Exercise).filter(Exercise.id == exercise_id).first()
     if not exercise:
         raise HTTPException(status_code=404, detail="Exercise not found")
+
+    # Find all exercise IDs with the same canonical_id (to aggregate variations)
+    canonical_id = exercise.canonical_id or exercise.id
+    related_exercises = db.query(Exercise.id).filter(
+        (Exercise.canonical_id == canonical_id) | (Exercise.id == canonical_id)
+    ).all()
+    exercise_ids = [ex.id for ex in related_exercises] if related_exercises else [exercise_id]
 
     # Build date filter
     days = get_time_range_days(time_range)
@@ -129,13 +137,13 @@ async def get_exercise_trend(
         start_date = date.today() - timedelta(days=days)
         date_filter.append(WorkoutSession.date >= start_date)
 
-    # Query all sets for this exercise
+    # Query all sets for this exercise and its canonical variations
     query = db.query(Set, WorkoutSession.date).join(
         WorkoutExercise, Set.workout_exercise_id == WorkoutExercise.id
     ).join(
         WorkoutSession, WorkoutExercise.session_id == WorkoutSession.id
     ).filter(
-        WorkoutExercise.exercise_id == exercise_id,
+        WorkoutExercise.exercise_id.in_(exercise_ids),
         WorkoutSession.user_id == current_user.id,
         WorkoutSession.deleted_at == None,
         *date_filter
