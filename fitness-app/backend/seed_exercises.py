@@ -91,6 +91,18 @@ exercises_data = [
     {"name": "Basketball", "aliases": ["Basketball Game", "Hoops"], "category": "Sport", "primary_muscle": "Full Body", "secondary_muscles": ["Cardio"]},
     {"name": "Soccer", "aliases": ["Football", "Soccer Match"], "category": "Sport", "primary_muscle": "Legs", "secondary_muscles": ["Cardio"]},
     {"name": "Golf", "aliases": ["Golf Round", "Golfing"], "category": "Sport", "primary_muscle": "Core", "secondary_muscles": ["Back"]},
+
+    # One-Arm Exercise Variants (separate PRs from 2-arm versions)
+    {"name": "One-Arm Preacher Curl", "aliases": ["Single Arm Preacher Curl", "1-Arm Preacher Curl"], "category": "Pull", "primary_muscle": "Biceps", "secondary_muscles": []},
+    {"name": "One-Arm Dumbbell Curl", "aliases": ["Single Arm Dumbbell Curl", "1-Arm Curl", "Single Arm Curl"], "category": "Pull", "primary_muscle": "Biceps", "secondary_muscles": []},
+    {"name": "One-Arm Hammer Curl", "aliases": ["Single Arm Hammer Curl", "1-Arm Hammer Curl"], "category": "Pull", "primary_muscle": "Biceps", "secondary_muscles": ["Forearms"]},
+    {"name": "One-Arm Cable Curl", "aliases": ["Single Arm Cable Curl", "1-Arm Cable Curl"], "category": "Pull", "primary_muscle": "Biceps", "secondary_muscles": []},
+    {"name": "One-Arm Lateral Raise", "aliases": ["Single Arm Lateral Raise", "1-Arm Lateral Raise"], "category": "Push", "primary_muscle": "Side Delts", "secondary_muscles": []},
+    {"name": "One-Arm Front Raise", "aliases": ["Single Arm Front Raise", "1-Arm Front Raise"], "category": "Push", "primary_muscle": "Front Delts", "secondary_muscles": []},
+    {"name": "One-Arm Rear Delt Fly", "aliases": ["Single Arm Rear Delt Fly", "1-Arm Reverse Fly"], "category": "Push", "primary_muscle": "Rear Delts", "secondary_muscles": []},
+    {"name": "One-Arm Dumbbell Press", "aliases": ["Single Arm Shoulder Press", "1-Arm Dumbbell Press", "Single Arm Dumbbell Press"], "category": "Push", "primary_muscle": "Shoulders", "secondary_muscles": ["Triceps"]},
+    {"name": "One-Arm Tricep Pushdown", "aliases": ["Single Arm Tricep Pushdown", "1-Arm Pushdown"], "category": "Push", "primary_muscle": "Triceps", "secondary_muscles": []},
+    {"name": "One-Arm Overhead Extension", "aliases": ["Single Arm Overhead Extension", "1-Arm Tricep Extension"], "category": "Push", "primary_muscle": "Triceps", "secondary_muscles": []},
 ]
 
 

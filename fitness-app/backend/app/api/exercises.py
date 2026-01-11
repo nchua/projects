@@ -83,6 +83,35 @@ EXERCISES_DATA = [
     {"name": "Shrugs", "aliases": ["Barbell Shrugs", "Dumbbell Shrugs"], "category": "Accessories", "primary_muscle": "Traps", "secondary_muscles": []},
     {"name": "Farmer's Walk", "aliases": ["Farmers Walk", "Farmer Carry"], "category": "Accessories", "primary_muscle": "Forearms", "secondary_muscles": ["Traps", "Core"]},
     {"name": "Wrist Curls", "aliases": ["Wrist Curl"], "category": "Accessories", "primary_muscle": "Forearms", "secondary_muscles": []},
+
+    # One-Arm Exercise Variants (separate PRs from 2-arm versions)
+    {"name": "One-Arm Preacher Curl", "aliases": ["Single Arm Preacher Curl", "1-Arm Preacher Curl"], "category": "Pull", "primary_muscle": "Biceps", "secondary_muscles": []},
+    {"name": "One-Arm Dumbbell Curl", "aliases": ["Single Arm Dumbbell Curl", "1-Arm Curl", "Single Arm Curl"], "category": "Pull", "primary_muscle": "Biceps", "secondary_muscles": []},
+    {"name": "One-Arm Hammer Curl", "aliases": ["Single Arm Hammer Curl", "1-Arm Hammer Curl"], "category": "Pull", "primary_muscle": "Biceps", "secondary_muscles": ["Forearms"]},
+    {"name": "One-Arm Cable Curl", "aliases": ["Single Arm Cable Curl", "1-Arm Cable Curl"], "category": "Pull", "primary_muscle": "Biceps", "secondary_muscles": []},
+    {"name": "One-Arm Lateral Raise", "aliases": ["Single Arm Lateral Raise", "1-Arm Lateral Raise"], "category": "Push", "primary_muscle": "Side Delts", "secondary_muscles": []},
+    {"name": "One-Arm Front Raise", "aliases": ["Single Arm Front Raise", "1-Arm Front Raise"], "category": "Push", "primary_muscle": "Front Delts", "secondary_muscles": []},
+    {"name": "One-Arm Rear Delt Fly", "aliases": ["Single Arm Rear Delt Fly", "1-Arm Reverse Fly"], "category": "Push", "primary_muscle": "Rear Delts", "secondary_muscles": []},
+    {"name": "One-Arm Dumbbell Press", "aliases": ["Single Arm Shoulder Press", "1-Arm Dumbbell Press", "Single Arm Dumbbell Press"], "category": "Push", "primary_muscle": "Shoulders", "secondary_muscles": ["Triceps"]},
+    {"name": "One-Arm Tricep Pushdown", "aliases": ["Single Arm Tricep Pushdown", "1-Arm Pushdown"], "category": "Push", "primary_muscle": "Triceps", "secondary_muscles": []},
+    {"name": "One-Arm Overhead Extension", "aliases": ["Single Arm Overhead Extension", "1-Arm Tricep Extension"], "category": "Push", "primary_muscle": "Triceps", "secondary_muscles": []},
+
+    # Sports & Cardio
+    {"name": "Tennis", "aliases": ["Tennis Match", "Tennis Practice"], "category": "Sport", "primary_muscle": "Full Body", "secondary_muscles": []},
+    {"name": "Pickleball", "aliases": ["Pickleball Match", "Pickleball Game"], "category": "Sport", "primary_muscle": "Full Body", "secondary_muscles": []},
+    {"name": "Padel", "aliases": ["Padel Match", "Padel Tennis"], "category": "Sport", "primary_muscle": "Full Body", "secondary_muscles": []},
+    {"name": "Running", "aliases": ["Run", "Jog", "Jogging"], "category": "Cardio", "primary_muscle": "Legs", "secondary_muscles": []},
+    {"name": "Cycling", "aliases": ["Biking", "Bike Ride", "Spinning"], "category": "Cardio", "primary_muscle": "Legs", "secondary_muscles": []},
+    {"name": "Swimming", "aliases": ["Swim", "Lap Swimming"], "category": "Cardio", "primary_muscle": "Full Body", "secondary_muscles": []},
+    {"name": "Rowing", "aliases": ["Row Machine", "Rowing Machine", "Erg"], "category": "Cardio", "primary_muscle": "Full Body", "secondary_muscles": ["Back", "Legs"]},
+    {"name": "Jump Rope", "aliases": ["Skipping", "Skip Rope"], "category": "Cardio", "primary_muscle": "Calves", "secondary_muscles": []},
+    {"name": "Stair Climber", "aliases": ["StairMaster", "Stair Machine"], "category": "Cardio", "primary_muscle": "Legs", "secondary_muscles": []},
+    {"name": "Elliptical", "aliases": ["Elliptical Machine", "Cross Trainer"], "category": "Cardio", "primary_muscle": "Full Body", "secondary_muscles": []},
+    {"name": "Walking", "aliases": ["Walk", "Treadmill Walk"], "category": "Cardio", "primary_muscle": "Legs", "secondary_muscles": []},
+    {"name": "HIIT", "aliases": ["High Intensity Interval Training", "Interval Training"], "category": "Cardio", "primary_muscle": "Full Body", "secondary_muscles": []},
+    {"name": "Basketball", "aliases": ["Basketball Game", "Hoops"], "category": "Sport", "primary_muscle": "Full Body", "secondary_muscles": []},
+    {"name": "Soccer", "aliases": ["Football", "Soccer Match"], "category": "Sport", "primary_muscle": "Legs", "secondary_muscles": []},
+    {"name": "Golf", "aliases": ["Golf Round", "Golfing"], "category": "Sport", "primary_muscle": "Core", "secondary_muscles": ["Back"]},
 ]
 
 
