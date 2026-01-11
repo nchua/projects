@@ -27,6 +27,31 @@ Comprehensive plan to enhance the Solo Leveling-inspired fitness app with a full
   - Added DEBUG mode: Long-press (2s) on idle quest view triggers test celebration
   - **Tested successfully in simulator** - C→B rank-up working with all animations
 
+---
+
+### Session: January 10, 2026 (Continued)
+
+#### Completed
+- [x] **Phase 1: PR Celebration Integration (COMPLETE)**
+  - Backend: Added `PRAchieved` model to `schemas/workout.py`
+  - Backend: Added `prs_achieved: List[PRAchieved]` to `WorkoutCreateResponse`
+  - Backend: Modified `workouts.py` to detect and return PR details with exercise names
+  - iOS: Added `PRAchievedResponse` struct to `APITypes.swift`
+  - iOS: Updated `PRCelebrationView` with optional counter badge ("1 of N PRs")
+  - iOS: Added PR celebration chain to `LogView.swift` (shows before rank-up)
+  - Full celebration sequence now: PRs (sequential) → Rank-up → XP Reward
+
+#### Files Modified
+| File | Action | Description |
+|------|--------|-------------|
+| `backend/app/schemas/workout.py` | Modified | Added `PRAchieved` model + field to response |
+| `backend/app/api/workouts.py` | Modified | Query PRs with exercise details, build response |
+| `ios/.../Services/APITypes.swift` | Modified | Added `PRAchievedResponse` struct |
+| `ios/.../Components/PRCelebrationView.swift` | Modified | Added counter badge params |
+| `ios/.../Views/Log/LogView.swift` | Modified | Added PR celebration chain |
+
+---
+
 #### Commits
 - `18878b8` - Fix numeric input deletion and add keyboard dismissal
 - `ae15f36` - Add gamification enhancement roadmap
@@ -47,11 +72,13 @@ Comprehensive plan to enhance the Solo Leveling-inspired fitness app with a full
 
 ### Next Steps
 
-#### Immediate (Phase 1 Completion)
-- [ ] **Integrate PR celebration** - Requires backend to return PR exercise details in `WorkoutCreateResponse`
-  - Add `prs_achieved: [{exercise_name, pr_type, value}]` to response
-  - Chain PR celebration before XP reward view
-- [ ] **Add level-up animation enhancement** - Animate XP bar fill + level number increment in `XPRewardView`
+#### Phase 1: COMPLETE
+- [x] **Integrate PR celebration** - Backend returns `prs_achieved` in `WorkoutCreateResponse`
+  - Added `PRAchieved` model to backend schemas
+  - Added `prs_achieved` field to workout creation response
+  - PRCelebrationView integrated with sequential display + "1 of N" counter
+  - Full chain: PRs → Rank-up → XP Reward
+- [x] **Level-up animation** - Already working in `XPRewardView` (counter animation, XP bar fill, level display)
 
 #### Phase 2: HealthKit Expansion
 - [ ] Add sleep data (hours, quality stages) to `HealthKitManager.swift`

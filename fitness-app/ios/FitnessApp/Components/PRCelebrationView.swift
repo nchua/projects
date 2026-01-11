@@ -8,6 +8,10 @@ struct PRCelebrationView: View {
     let value: String  // e.g., "225 lb" or "315 lb x 5"
     let onDismiss: () -> Void
 
+    // Optional counter for multiple PRs (e.g., "1 of 3")
+    var currentIndex: Int = 1
+    var totalCount: Int = 1
+
     enum PRType {
         case e1rm      // New estimated 1RM
         case repPR     // New rep PR at a weight
@@ -84,6 +88,15 @@ struct PRCelebrationView: View {
                 }
                 .foregroundColor(.systemPrimary)
                 .opacity(showContent ? 1 : 0)
+
+                // Counter badge for multiple PRs
+                if totalCount > 1 {
+                    Text("\(currentIndex) of \(totalCount) PRs")
+                        .font(.ariseMono(size: 12))
+                        .foregroundColor(.textSecondary)
+                        .padding(.top, 8)
+                        .opacity(showContent ? 1 : 0)
+                }
             }
             .padding(.vertical, 32)
             .padding(.horizontal, 48)
@@ -198,5 +211,16 @@ struct PRCelebrationView: View {
         prType: .repPR,
         value: "315 lb × 5",
         onDismiss: {}
+    )
+}
+
+#Preview("Multiple PRs - 2 of 3") {
+    PRCelebrationView(
+        exerciseName: "Deadlift",
+        prType: .e1rm,
+        value: "405 lb",
+        onDismiss: {},
+        currentIndex: 2,
+        totalCount: 3
     )
 }

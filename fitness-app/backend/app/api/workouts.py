@@ -13,13 +13,14 @@ from app.models.workout import WorkoutSession, WorkoutExercise, Set
 from app.models.exercise import Exercise
 from app.schemas.workout import (
     WorkoutCreate, WorkoutUpdate, WorkoutResponse, WorkoutSummary,
-    WorkoutExerciseResponse, SetResponse, WorkoutCreateResponse, AchievementUnlocked
+    WorkoutExerciseResponse, SetResponse, WorkoutCreateResponse, AchievementUnlocked,
+    PRAchieved
 )
 from app.services.pr_detection import detect_and_create_prs
 from app.services.xp_service import calculate_workout_xp, award_xp, get_or_create_user_progress
 from app.services.achievement_service import check_and_unlock_achievements
 from app.services.quest_service import update_quest_progress
-from app.models.pr import PR
+from app.models.pr import PR, PRType
 
 router = APIRouter()
 
@@ -148,11 +149,14 @@ async def _create_workout_impl(
     db.refresh(workout_session)
 
     # Calculate and award XP for this workout
-    # Count new PRs created for this workout
-    workout_prs = db.query(PR).filter(
+    # Get new PRs created for this workout (with exercise details)
+    workout_pr_records = db.query(PR).options(
+        joinedload(PR.exercise)
+    ).filter(
         PR.user_id == current_user.id,
         PR.set_id.in_([s.id for we in workout_session.workout_exercises for s in we.sets])
-    ).count()
+    ).all()
+    workout_prs = len(workout_pr_records)
 
     # Calculate XP
     xp_result = calculate_workout_xp(db, workout_session, prs_achieved=workout_prs)
@@ -221,6 +225,24 @@ async def _create_workout_impl(
         for ach in newly_unlocked
     ]
 
+    # Build PRs achieved list
+    prs_achieved_list = []
+    for pr in workout_pr_records:
+        exercise_name = pr.exercise.name if pr.exercise else "Unknown"
+        if pr.pr_type == PRType.E1RM:
+            pr_type = "e1rm"
+            value = f"{int(pr.value)} lb" if pr.value else "N/A"
+        else:
+            pr_type = "rep_pr"
+            value = f"{int(pr.weight)} lb x {pr.reps}" if pr.weight and pr.reps else "N/A"
+
+        prs_achieved_list.append(PRAchieved(
+            exercise_name=exercise_name,
+            pr_type=pr_type,
+            value=value,
+            xp_earned=100  # Fixed XP per PR
+        ))
+
     # Return full response with XP info
     return WorkoutCreateResponse(
         workout=workout_response,
@@ -234,7 +256,8 @@ async def _create_workout_impl(
         rank_changed=xp_award["rank_changed"],
         new_rank=xp_award["new_rank"] if xp_award["rank_changed"] else None,
         current_streak=xp_award["current_streak"],
-        achievements_unlocked=achievements_unlocked
+        achievements_unlocked=achievements_unlocked,
+        prs_achieved=prs_achieved_list
     )
 
 

@@ -553,6 +553,7 @@ struct WorkoutCreateResponse: Decodable, Identifiable {
     let newRank: String?
     let currentStreak: Int
     let achievementsUnlocked: [AchievementUnlockedResponse]
+    let prsAchieved: [PRAchievedResponse]
 
     var id: String { workout.id }
 
@@ -567,6 +568,7 @@ struct WorkoutCreateResponse: Decodable, Identifiable {
         case newRank = "new_rank"
         case currentStreak = "current_streak"
         case achievementsUnlocked = "achievements_unlocked"
+        case prsAchieved = "prs_achieved"
     }
 }
 
@@ -581,6 +583,22 @@ struct AchievementUnlockedResponse: Decodable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id, name, description, icon, rarity
         case xpReward = "xp_reward"
+    }
+}
+
+struct PRAchievedResponse: Decodable, Identifiable {
+    let exerciseName: String
+    let prType: String  // "e1rm" or "rep_pr"
+    let value: String   // "225 lb" or "315 lb x 5"
+    let xpEarned: Int
+
+    var id: String { "\(exerciseName)-\(prType)-\(value)" }
+
+    enum CodingKeys: String, CodingKey {
+        case prType = "pr_type"
+        case value
+        case exerciseName = "exercise_name"
+        case xpEarned = "xp_earned"
     }
 }
 
