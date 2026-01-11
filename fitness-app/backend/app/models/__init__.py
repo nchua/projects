@@ -9,6 +9,11 @@ from app.models.progress import UserProgress, HunterRank
 from app.models.achievement import AchievementDefinition, UserAchievement
 from app.models.quest import QuestDefinition, UserQuest, QuestType, QuestDifficulty
 from app.models.activity import DailyActivity
+from app.models.dungeon import (
+    DungeonDefinition, DungeonObjectiveDefinition,
+    UserDungeon, UserDungeonObjective,
+    DungeonRank, DungeonObjectiveType, DungeonStatus
+)
 
 __all__ = [
     "User",
@@ -33,4 +38,11 @@ __all__ = [
     "QuestType",
     "QuestDifficulty",
     "DailyActivity",
+    "DungeonDefinition",
+    "DungeonObjectiveDefinition",
+    "UserDungeon",
+    "UserDungeonObjective",
+    "DungeonRank",
+    "DungeonObjectiveType",
+    "DungeonStatus",
 ]

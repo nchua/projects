@@ -124,6 +124,26 @@ class PRAchieved(BaseModel):
     xp_earned: int = 100  # XP bonus per PR
 
 
+class DungeonSpawnedResponse(BaseModel):
+    """Dungeon that spawned after workout"""
+    id: str
+    dungeon_id: str
+    name: str
+    rank: str
+    base_xp_reward: int
+    is_stretch_dungeon: bool
+    stretch_bonus_percent: Optional[int] = None
+    time_remaining_seconds: int
+    message: str
+
+
+class DungeonProgressResponse(BaseModel):
+    """Dungeon progress made during workout"""
+    dungeons_progressed: List[str] = []  # Dungeon IDs
+    dungeons_completed: List[str] = []  # Dungeon IDs now ready to claim
+    objectives_completed: List[str] = []  # Objective names
+
+
 class WorkoutCreateResponse(BaseModel):
     """Response for workout creation including XP info"""
     workout: WorkoutResponse
@@ -139,6 +159,9 @@ class WorkoutCreateResponse(BaseModel):
     current_streak: int
     achievements_unlocked: List[AchievementUnlocked] = []
     prs_achieved: List[PRAchieved] = []
+    # Dungeon system
+    dungeon_spawned: Optional[DungeonSpawnedResponse] = None
+    dungeon_progress: Optional[DungeonProgressResponse] = None
 
     class Config:
         from_attributes = True

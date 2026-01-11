@@ -219,6 +219,55 @@ class APIClient {
         let _: SeedResponse = try await post("/quests/seed", body: EmptyBody())
     }
 
+    // MARK: - Dungeons
+
+    func getDungeons() async throws -> DungeonsResponse {
+        return try await get("/dungeons")
+    }
+
+    func getDungeon(id: String) async throws -> DungeonResponse {
+        return try await get("/dungeons/\(id)")
+    }
+
+    func acceptDungeon(id: String) async throws -> DungeonAcceptResponse {
+        return try await post("/dungeons/\(id)/accept", body: EmptyBody())
+    }
+
+    func abandonDungeon(id: String) async throws -> DungeonAbandonResponse {
+        return try await post("/dungeons/\(id)/abandon", body: EmptyBody())
+    }
+
+    func claimDungeonReward(id: String) async throws -> DungeonClaimResponse {
+        return try await post("/dungeons/\(id)/claim", body: EmptyBody())
+    }
+
+    func getDungeonHistory(skip: Int = 0, limit: Int = 20) async throws -> DungeonHistoryResponse {
+        return try await get("/dungeons/history?skip=\(skip)&limit=\(limit)")
+    }
+
+    func forceSpawnDungeon() async throws -> DungeonSpawnedResponse? {
+        struct SpawnResponse: Decodable {
+            let spawned: Bool
+            let dungeon: DungeonSpawnedResponse?
+            let message: String?
+        }
+        let response: SpawnResponse = try await post("/dungeons/spawn/force", body: EmptyBody())
+        return response.dungeon
+    }
+
+    func seedDungeons() async throws {
+        struct SeedResponse: Decodable {
+            let message: String
+            let dungeonsCreated: Int
+
+            enum CodingKeys: String, CodingKey {
+                case message
+                case dungeonsCreated = "dungeons_created"
+            }
+        }
+        let _: SeedResponse = try await post("/dungeons/seed", body: EmptyBody())
+    }
+
     // MARK: - Activity (HealthKit Sync)
 
     func syncActivity(_ activity: ActivityCreate) async throws -> ActivityResponse {

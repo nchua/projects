@@ -9,8 +9,10 @@
 /* Begin PBXBuildFile section */
 		01B20D78A6832D2DE5301BAD /* LogViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62A88700AA0D0FD700EF199F /* LogViewModel.swift */; };
 		05CC6AEBFD7BF822803F46FD /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED58B7E30BB84AE9A98C885 /* StatsView.swift */; };
+		077A12A6D80055A6EAC3D126 /* QuestsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4128710ABFA3560ADAB30574 /* QuestsViewModel.swift */; };
 		128C3BEF27F1FADEE9533255 /* Workout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30B6448810F2D9AE2EB9E6E7 /* Workout.swift */; };
 		19BEF26C39177C374BE4D396 /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08CCA5CC781543F5685156FC /* HomeViewModel.swift */; };
+		1F532B40ED407972379FEE02 /* DungeonSpawnOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = C39F3A4A40C528C138FC2D0A /* DungeonSpawnOverlay.swift */; };
 		2943518C9A7FAF40CC41308F /* JetBrainsMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D56976681220CBFB0C3BCDA6 /* JetBrainsMono-Medium.ttf */; };
 		2CB4AD01F621551C9C16B843 /* VoidBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = EED34A2D176E81C9F5DFCEED /* VoidBackground.swift */; };
 		2D5485AA0052928F9070FCF0 /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D0BA5EF12A720AECF7A1CF6 /* Exercise.swift */; };
@@ -19,6 +21,7 @@
 		34E3C5D5D33B3AEAE8192225 /* APITypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EABAB81740F48B4949E1E4 /* APITypes.swift */; };
 		37C277D7FC126549A9FDDCE5 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CD71D3A5B474EA3E0269665 /* HomeView.swift */; };
 		3A555F185433DA7D15E50DAD /* Orbitron-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0FCA59D77C62E3D316AC25A2 /* Orbitron-Variable.ttf */; };
+		459EBB59AA5F9BFD35819BA5 /* DungeonRewardSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EA22B0F491CFB938C0E3E9F /* DungeonRewardSheet.swift */; };
 		48113D49713CF47249D00B90 /* JetBrainsMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 7E490406F225338152AB77DD /* JetBrainsMono-Bold.ttf */; };
 		4DE2F4CEF8CDDCED4C17A591 /* ScreenshotPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDB048EAA3D732A16D8F1C87 /* ScreenshotPreviewView.swift */; };
 		4EF008506C359122170F5270 /* XPRewardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4C96A0FDFB19923AC061970 /* XPRewardView.swift */; };
@@ -32,13 +35,18 @@
 		84A70DCA96C94345EF14E741 /* BodyweightEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4782AB3331CF5A6119847AF2 /* BodyweightEntry.swift */; };
 		85E55E53839823091153F327 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F3A7D81E4F7B61A487F21DB /* Colors.swift */; };
 		8714FA87386C4B44FEF75DF2 /* ProfileViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF4984BB26D18D05ABEFA7B5 /* ProfileViewModel.swift */; };
+		88973C4E3134376147898266 /* DungeonsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E30061C59B3212F1422340B /* DungeonsView.swift */; };
+		88DD32D0DFEE883EBE5AB099 /* DungeonsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F5B7659899A4C8EB3D443E /* DungeonsViewModel.swift */; };
 		89134716A036BC7417B1CCD3 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30AB8A1A5C01773A5442AA89 /* Extensions.swift */; };
 		8C36406D3B4272678C3FAE7E /* ProgressViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9622F7E459A288822E8C353 /* ProgressViewModel.swift */; };
+		8CFFE6C90310AADAA44449D5 /* QuestsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51AAF9C49F54E5A0DDD7F095 /* QuestsView.swift */; };
 		931B3F4D629AFEE4345D7E5B /* DailyQuestsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A971480DB0D51347A4285BDF /* DailyQuestsCard.swift */; };
 		9395F9F7ED69CF87325B9E27 /* Rajdhani-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B52347D7796B45246CD491A4 /* Rajdhani-SemiBold.ttf */; };
 		9A0951CB5C36BA31CB4D2084 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9FBB50D8EDC8445125B9270 /* HistoryView.swift */; };
+		A2BF1E8C9BF3406C16312BAF /* DungeonDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E88205E68737513004C712AE /* DungeonDetailSheet.swift */; };
 		A51CF032536CBB2495847C34 /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7126810EA67EBBBD241CA71 /* ImagePicker.swift */; };
 		A5B39FB45B262E2854E6A080 /* Rajdhani-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 93180FC8B345CB004A5D390D /* Rajdhani-Regular.ttf */; };
+		A7D9F4EC79B40D9543A37396 /* DungeonCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEC744D52A256B0D73D5FF14 /* DungeonCardView.swift */; };
 		A841D39093B698697BE9DE32 /* Rajdhani-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8256903DF70674E4B428B2AF /* Rajdhani-Medium.ttf */; };
 		AA1968CFD12652D717FF76B6 /* ScreenshotProcessingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5883E1AC5182638DE97A19F /* ScreenshotProcessingViewModel.swift */; };
 		B0752A9EA3FE7F975305D208 /* PRCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A29BC50370EA3B75A5F1968 /* PRCelebrationView.swift */; };
@@ -91,9 +99,12 @@
 		30AB8A1A5C01773A5442AA89 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		30B6448810F2D9AE2EB9E6E7 /* Workout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Workout.swift; sourceTree = "<group>"; };
 		383EA1AD7F433E7FB9232B6C /* Fonts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fonts.swift; sourceTree = "<group>"; };
+		38F5B7659899A4C8EB3D443E /* DungeonsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DungeonsViewModel.swift; sourceTree = "<group>"; };
+		4128710ABFA3560ADAB30574 /* QuestsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestsViewModel.swift; sourceTree = "<group>"; };
 		4405B03A566EC3D65DA19B00 /* XPCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XPCalculator.swift; sourceTree = "<group>"; };
 		450195A9814F8AAE5DFCB41F /* JetBrainsMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Regular.ttf"; sourceTree = "<group>"; };
 		4782AB3331CF5A6119847AF2 /* BodyweightEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyweightEntry.swift; sourceTree = "<group>"; };
+		51AAF9C49F54E5A0DDD7F095 /* QuestsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestsView.swift; sourceTree = "<group>"; };
 		53655A6FCF7E8651BC8F9F23 /* Rajdhani-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Rajdhani-Light.ttf"; sourceTree = "<group>"; };
 		62A88700AA0D0FD700EF199F /* LogViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogViewModel.swift; sourceTree = "<group>"; };
 		635C543AEB3AA9B0229DE584 /* Rajdhani-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Rajdhani-Bold.ttf"; sourceTree = "<group>"; };
@@ -102,9 +113,11 @@
 		73EABAB81740F48B4949E1E4 /* APITypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APITypes.swift; sourceTree = "<group>"; };
 		79D6F3EF62252EE76DC35FC0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7E490406F225338152AB77DD /* JetBrainsMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Bold.ttf"; sourceTree = "<group>"; };
+		7EA22B0F491CFB938C0E3E9F /* DungeonRewardSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DungeonRewardSheet.swift; sourceTree = "<group>"; };
 		8256903DF70674E4B428B2AF /* Rajdhani-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Rajdhani-Medium.ttf"; sourceTree = "<group>"; };
 		93180FC8B345CB004A5D390D /* Rajdhani-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Rajdhani-Regular.ttf"; sourceTree = "<group>"; };
 		9A947B12F7FAFC3687A4ED86 /* CooldownCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CooldownCard.swift; sourceTree = "<group>"; };
+		9E30061C59B3212F1422340B /* DungeonsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DungeonsView.swift; sourceTree = "<group>"; };
 		9EF4A80D3AD89CA1BC4434F2 /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		9F3A7D81E4F7B61A487F21DB /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		A5883E1AC5182638DE97A19F /* ScreenshotProcessingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotProcessingViewModel.swift; sourceTree = "<group>"; };
@@ -116,6 +129,7 @@
 		BD1168F90C7EA3B9F66ADC03 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		BED1304102384B66EBFC6063 /* ScreenshotPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotPickerView.swift; sourceTree = "<group>"; };
 		BF4984BB26D18D05ABEFA7B5 /* ProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModel.swift; sourceTree = "<group>"; };
+		C39F3A4A40C528C138FC2D0A /* DungeonSpawnOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DungeonSpawnOverlay.swift; sourceTree = "<group>"; };
 		C5A97BBD2F0FF0461CBD9001 /* Inter-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Inter-Variable.ttf"; sourceTree = "<group>"; };
 		C68D331EA8FE8B1C6A105FE9 /* StatCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatCard.swift; sourceTree = "<group>"; };
 		C7126810EA67EBBBD241CA71 /* ImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePicker.swift; sourceTree = "<group>"; };
@@ -123,6 +137,8 @@
 		D56976681220CBFB0C3BCDA6 /* JetBrainsMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Medium.ttf"; sourceTree = "<group>"; };
 		D5D6F00D821F65A269678B30 /* FitnessAppTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = FitnessAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		DB83BF408BFC9A75EE16A3DD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		E88205E68737513004C712AE /* DungeonDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DungeonDetailSheet.swift; sourceTree = "<group>"; };
+		EEC744D52A256B0D73D5FF14 /* DungeonCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DungeonCardView.swift; sourceTree = "<group>"; };
 		EED34A2D176E81C9F5DFCEED /* VoidBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoidBackground.swift; sourceTree = "<group>"; };
 		F0A0F9BC78395829B3FD6E72 /* FitnessAppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitnessAppTests.swift; sourceTree = "<group>"; };
 		F4C96A0FDFB19923AC061970 /* XPRewardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XPRewardView.swift; sourceTree = "<group>"; };
@@ -173,11 +189,13 @@
 		490024E70D95093AB1951E48 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				F4087CE46D8D1C6237443682 /* Dungeons */,
 				C8975322AB46BEB5ED7C9B54 /* History */,
 				BFBC24330AADF179E3B622F9 /* Home */,
 				397E2C8F6FEA3FF6F533D1BD /* Log */,
 				058A7B27A59DC1DEDC92EAA3 /* Profile */,
 				EB3E3142FB1F16CD070C5266 /* Progress */,
+				9A578D1262321B94E9315A1A /* Quests */,
 				BD1168F90C7EA3B9F66ADC03 /* ContentView.swift */,
 			);
 			path = Views;
@@ -246,6 +264,15 @@
 			path = Services;
 			sourceTree = "<group>";
 		};
+		9A578D1262321B94E9315A1A /* Quests */ = {
+			isa = PBXGroup;
+			children = (
+				51AAF9C49F54E5A0DDD7F095 /* QuestsView.swift */,
+				4128710ABFA3560ADAB30574 /* QuestsViewModel.swift */,
+			);
+			path = Quests;
+			sourceTree = "<group>";
+		};
 		A85E5A571407F5076C5F37BF /* Utils */ = {
 			isa = PBXGroup;
 			children = (
@@ -303,6 +330,19 @@
 				0ED58B7E30BB84AE9A98C885 /* StatsView.swift */,
 			);
 			path = Progress;
+			sourceTree = "<group>";
+		};
+		F4087CE46D8D1C6237443682 /* Dungeons */ = {
+			isa = PBXGroup;
+			children = (
+				EEC744D52A256B0D73D5FF14 /* DungeonCardView.swift */,
+				E88205E68737513004C712AE /* DungeonDetailSheet.swift */,
+				7EA22B0F491CFB938C0E3E9F /* DungeonRewardSheet.swift */,
+				C39F3A4A40C528C138FC2D0A /* DungeonSpawnOverlay.swift */,
+				9E30061C59B3212F1422340B /* DungeonsView.swift */,
+				38F5B7659899A4C8EB3D443E /* DungeonsViewModel.swift */,
+			);
+			path = Dungeons;
 			sourceTree = "<group>";
 		};
 		F70B9A29860EDC6AB6D01B6A /* Resources */ = {
@@ -435,6 +475,12 @@
 				6383F52D2B2EDDB00366CDEC /* ContentView.swift in Sources */,
 				E78B5ED400336A0597014E6D /* CooldownCard.swift in Sources */,
 				931B3F4D629AFEE4345D7E5B /* DailyQuestsCard.swift in Sources */,
+				A7D9F4EC79B40D9543A37396 /* DungeonCardView.swift in Sources */,
+				A2BF1E8C9BF3406C16312BAF /* DungeonDetailSheet.swift in Sources */,
+				459EBB59AA5F9BFD35819BA5 /* DungeonRewardSheet.swift in Sources */,
+				1F532B40ED407972379FEE02 /* DungeonSpawnOverlay.swift in Sources */,
+				88973C4E3134376147898266 /* DungeonsView.swift in Sources */,
+				88DD32D0DFEE883EBE5AB099 /* DungeonsViewModel.swift in Sources */,
 				2D5485AA0052928F9070FCF0 /* Exercise.swift in Sources */,
 				89134716A036BC7417B1CCD3 /* Extensions.swift in Sources */,
 				C74790B0B116896A339C6481 /* FitnessApp.swift in Sources */,
@@ -452,6 +498,8 @@
 				6CD1E6CE02F492B300256D51 /* ProfileView.swift in Sources */,
 				8714FA87386C4B44FEF75DF2 /* ProfileViewModel.swift in Sources */,
 				8C36406D3B4272678C3FAE7E /* ProgressViewModel.swift in Sources */,
+				8CFFE6C90310AADAA44449D5 /* QuestsView.swift in Sources */,
+				077A12A6D80055A6EAC3D126 /* QuestsViewModel.swift in Sources */,
 				82A75718FCA9F00ED57AB446 /* RankBadgeView.swift in Sources */,
 				BBC0E7DB598EB22BA3C58C40 /* RankUpCelebrationView.swift in Sources */,
 				F286067EDCBE1B25D7055849 /* ScreenshotPickerView.swift in Sources */,

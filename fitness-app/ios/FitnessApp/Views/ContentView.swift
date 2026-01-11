@@ -56,15 +56,15 @@ struct MainTabView: View {
                 }
                 .tag(0)
 
-            LogView()
+            QuestsView()
                 .tabItem {
-                    Label("Quest", systemImage: "scroll.fill")
+                    Label("Quests", systemImage: "scroll.fill")
                 }
                 .tag(1)
 
-            HistoryView()
+            DungeonsView()
                 .tabItem {
-                    Label("Quests", systemImage: "book.closed.fill")
+                    Label("Dungeons", systemImage: "door.left.hand.open")
                 }
                 .tag(2)
 
@@ -73,12 +73,6 @@ struct MainTabView: View {
                     Label("Stats", systemImage: "chart.bar.fill")
                 }
                 .tag(3)
-
-            ProfileView()
-                .tabItem {
-                    Label("Hunter", systemImage: "person.fill")
-                }
-                .tag(4)
         }
         .tint(Color.systemPrimary)
     }

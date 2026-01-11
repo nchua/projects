@@ -14,12 +14,13 @@ from app.models.exercise import Exercise
 from app.schemas.workout import (
     WorkoutCreate, WorkoutUpdate, WorkoutResponse, WorkoutSummary,
     WorkoutExerciseResponse, SetResponse, WorkoutCreateResponse, AchievementUnlocked,
-    PRAchieved
+    PRAchieved, DungeonSpawnedResponse, DungeonProgressResponse
 )
 from app.services.pr_detection import detect_and_create_prs
 from app.services.xp_service import calculate_workout_xp, award_xp, get_or_create_user_progress
 from app.services.achievement_service import check_and_unlock_achievements
 from app.services.quest_service import update_quest_progress
+from app.services.dungeon_service import update_dungeon_progress, maybe_spawn_dungeon
 from app.models.pr import PR, PRType
 
 router = APIRouter()
@@ -199,6 +200,12 @@ async def _create_workout_impl(
     # Update quest progress based on this workout
     completed_quest_ids = update_quest_progress(db, current_user.id, workout_session)
 
+    # Update dungeon progress based on this workout
+    dungeon_progress_result = update_dungeon_progress(db, current_user.id, workout_session)
+
+    # Try to spawn a new dungeon
+    dungeon_spawn_result = maybe_spawn_dungeon(db, current_user.id)
+
     db.commit()
 
     # Fetch complete workout with relationships
@@ -243,6 +250,29 @@ async def _create_workout_impl(
             xp_earned=100  # Fixed XP per PR
         ))
 
+    # Build dungeon spawn response if spawned
+    dungeon_spawned = None
+    if dungeon_spawn_result and dungeon_spawn_result.get("spawned"):
+        d = dungeon_spawn_result["dungeon"]
+        dungeon_spawned = DungeonSpawnedResponse(
+            id=d["id"],
+            dungeon_id=d["dungeon_id"],
+            name=d["name"],
+            rank=d["rank"],
+            base_xp_reward=d["base_xp_reward"],
+            is_stretch_dungeon=d["is_stretch_dungeon"],
+            stretch_bonus_percent=d.get("stretch_bonus_percent"),
+            time_remaining_seconds=d["time_remaining_seconds"],
+            message=dungeon_spawn_result["message"]
+        )
+
+    # Build dungeon progress response
+    dungeon_progress = DungeonProgressResponse(
+        dungeons_progressed=dungeon_progress_result["dungeons_progressed"],
+        dungeons_completed=dungeon_progress_result["dungeons_completed"],
+        objectives_completed=dungeon_progress_result["objectives_completed"]
+    )
+
     # Return full response with XP info
     return WorkoutCreateResponse(
         workout=workout_response,
@@ -257,7 +287,9 @@ async def _create_workout_impl(
         new_rank=xp_award["new_rank"] if xp_award["rank_changed"] else None,
         current_streak=xp_award["current_streak"],
         achievements_unlocked=achievements_unlocked,
-        prs_achieved=prs_achieved_list
+        prs_achieved=prs_achieved_list,
+        dungeon_spawned=dungeon_spawned,
+        dungeon_progress=dungeon_progress
     )
 
 

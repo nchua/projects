@@ -554,6 +554,9 @@ struct WorkoutCreateResponse: Decodable, Identifiable {
     let currentStreak: Int
     let achievementsUnlocked: [AchievementUnlockedResponse]
     let prsAchieved: [PRAchievedResponse]
+    // Dungeon system
+    let dungeonSpawned: DungeonSpawnedResponse?
+    let dungeonProgress: DungeonProgressResponse?
 
     var id: String { workout.id }
 
@@ -569,6 +572,8 @@ struct WorkoutCreateResponse: Decodable, Identifiable {
         case currentStreak = "current_streak"
         case achievementsUnlocked = "achievements_unlocked"
         case prsAchieved = "prs_achieved"
+        case dungeonSpawned = "dungeon_spawned"
+        case dungeonProgress = "dungeon_progress"
     }
 }
 
@@ -1030,5 +1035,237 @@ struct CooldownResponse: Decodable {
         case musclesCooling = "muscles_cooling"
         case generatedAt = "generated_at"
         case ageModifier = "age_modifier"
+    }
+}
+
+// MARK: - Dungeons
+
+struct DungeonSpawnedResponse: Decodable {
+    let id: String
+    let dungeonId: String
+    let name: String
+    let rank: String
+    let baseXpReward: Int
+    let isStretchDungeon: Bool
+    let stretchBonusPercent: Int?
+    let timeRemainingSeconds: Int
+    let message: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, rank, message
+        case dungeonId = "dungeon_id"
+        case baseXpReward = "base_xp_reward"
+        case isStretchDungeon = "is_stretch_dungeon"
+        case stretchBonusPercent = "stretch_bonus_percent"
+        case timeRemainingSeconds = "time_remaining_seconds"
+    }
+}
+
+struct DungeonProgressResponse: Decodable {
+    let dungeonsProgressed: [String]
+    let dungeonsCompleted: [String]
+    let objectivesCompleted: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case dungeonsProgressed = "dungeons_progressed"
+        case dungeonsCompleted = "dungeons_completed"
+        case objectivesCompleted = "objectives_completed"
+    }
+}
+
+struct DungeonObjectiveResponse: Decodable, Identifiable {
+    let id: String
+    let objectiveId: String
+    let name: String
+    let description: String
+    let objectiveType: String
+    let targetValue: Int
+    let progress: Int
+    let isCompleted: Bool
+    let isRequired: Bool
+    let xpBonus: Int
+    let orderIndex: Int
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, description, progress
+        case objectiveId = "objective_id"
+        case objectiveType = "objective_type"
+        case targetValue = "target_value"
+        case isCompleted = "is_completed"
+        case isRequired = "is_required"
+        case xpBonus = "xp_bonus"
+        case orderIndex = "order_index"
+    }
+}
+
+struct DungeonResponse: Decodable, Identifiable {
+    let id: String
+    let dungeonId: String
+    let name: String
+    let description: String
+    let rank: String
+    let status: String
+    let baseXpReward: Int
+    let totalXpReward: Int
+    let isStretchDungeon: Bool
+    let stretchType: String?
+    let stretchBonusPercent: Int?
+    let spawnedAt: String
+    let expiresAt: String
+    let acceptedAt: String?
+    let completedAt: String?
+    let timeRemainingSeconds: Int
+    let durationHours: Int
+    let objectives: [DungeonObjectiveResponse]
+    let requiredObjectivesComplete: Int
+    let totalRequiredObjectives: Int
+    let bonusObjectivesComplete: Int
+    let totalBonusObjectives: Int
+    let isBossDungeon: Bool
+    let isEventDungeon: Bool
+
+    /// Check if dungeon is urgent (less than 24 hours remaining)
+    var isUrgent: Bool {
+        timeRemainingSeconds < 86400
+    }
+
+    /// Formatted time remaining
+    var timeRemainingFormatted: String {
+        let hours = timeRemainingSeconds / 3600
+        if hours >= 24 {
+            let days = hours / 24
+            return "\(days)d \(hours % 24)h"
+        }
+        return "\(hours)h"
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, description, rank, status, objectives
+        case dungeonId = "dungeon_id"
+        case baseXpReward = "base_xp_reward"
+        case totalXpReward = "total_xp_reward"
+        case isStretchDungeon = "is_stretch_dungeon"
+        case stretchType = "stretch_type"
+        case stretchBonusPercent = "stretch_bonus_percent"
+        case spawnedAt = "spawned_at"
+        case expiresAt = "expires_at"
+        case acceptedAt = "accepted_at"
+        case completedAt = "completed_at"
+        case timeRemainingSeconds = "time_remaining_seconds"
+        case durationHours = "duration_hours"
+        case requiredObjectivesComplete = "required_objectives_complete"
+        case totalRequiredObjectives = "total_required_objectives"
+        case bonusObjectivesComplete = "bonus_objectives_complete"
+        case totalBonusObjectives = "total_bonus_objectives"
+        case isBossDungeon = "is_boss_dungeon"
+        case isEventDungeon = "is_event_dungeon"
+    }
+}
+
+struct DungeonSummaryResponse: Decodable, Identifiable {
+    let id: String
+    let dungeonId: String
+    let name: String
+    let rank: String
+    let status: String
+    let baseXpReward: Int
+    let isStretchDungeon: Bool
+    let stretchBonusPercent: Int?
+    let timeRemainingSeconds: Int
+    let requiredObjectivesComplete: Int
+    let totalRequiredObjectives: Int
+    let isBossDungeon: Bool
+
+    /// Check if dungeon is urgent (less than 24 hours remaining)
+    var isUrgent: Bool {
+        timeRemainingSeconds < 86400
+    }
+
+    /// Formatted time remaining
+    var timeRemainingFormatted: String {
+        let hours = timeRemainingSeconds / 3600
+        if hours >= 24 {
+            let days = hours / 24
+            return "\(days)d \(hours % 24)h"
+        }
+        return "\(hours)h"
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, rank, status
+        case dungeonId = "dungeon_id"
+        case baseXpReward = "base_xp_reward"
+        case isStretchDungeon = "is_stretch_dungeon"
+        case stretchBonusPercent = "stretch_bonus_percent"
+        case timeRemainingSeconds = "time_remaining_seconds"
+        case requiredObjectivesComplete = "required_objectives_complete"
+        case totalRequiredObjectives = "total_required_objectives"
+        case isBossDungeon = "is_boss_dungeon"
+    }
+}
+
+struct DungeonsResponse: Decodable {
+    let available: [DungeonSummaryResponse]
+    let active: [DungeonSummaryResponse]
+    let completedUnclaimed: [DungeonSummaryResponse]
+    let userLevel: Int
+    let userRank: String
+
+    enum CodingKeys: String, CodingKey {
+        case available, active
+        case completedUnclaimed = "completed_unclaimed"
+        case userLevel = "user_level"
+        case userRank = "user_rank"
+    }
+}
+
+struct DungeonAcceptResponse: Decodable {
+    let success: Bool
+    let dungeon: DungeonResponse
+    let message: String
+}
+
+struct DungeonAbandonResponse: Decodable {
+    let success: Bool
+    let message: String
+}
+
+struct DungeonClaimResponse: Decodable {
+    let success: Bool
+    let xpEarned: Int
+    let stretchBonusXp: Int
+    let bonusObjectivesXp: Int
+    let totalXp: Int
+    let level: Int
+    let leveledUp: Bool
+    let newLevel: Int?
+    let rank: String
+    let rankChanged: Bool
+    let newRank: String?
+
+    enum CodingKeys: String, CodingKey {
+        case success, level, rank
+        case xpEarned = "xp_earned"
+        case stretchBonusXp = "stretch_bonus_xp"
+        case bonusObjectivesXp = "bonus_objectives_xp"
+        case totalXp = "total_xp"
+        case leveledUp = "leveled_up"
+        case newLevel = "new_level"
+        case rankChanged = "rank_changed"
+        case newRank = "new_rank"
+    }
+}
+
+struct DungeonHistoryResponse: Decodable {
+    let dungeons: [DungeonSummaryResponse]
+    let totalCompleted: Int
+    let totalAbandoned: Int
+    let totalExpired: Int
+
+    enum CodingKeys: String, CodingKey {
+        case dungeons
+        case totalCompleted = "total_completed"
+        case totalAbandoned = "total_abandoned"
+        case totalExpired = "total_expired"
     }
 }
