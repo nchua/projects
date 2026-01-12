@@ -502,21 +502,38 @@ async def get_insights(
         ))
         return InsightsResponse(insights=insights, generated_at=datetime.utcnow().isoformat())
 
-    # Analyze exercise trends
-    exercise_data = defaultdict(list)
+    # Analyze exercise trends - aggregate by date using max e1RM per workout
+    # This prevents false alerts from within-session fatigue (later sets have lower e1RM)
+    exercise_data = defaultdict(dict)  # {exercise_id: {date: {"e1rm": max_e1rm, "exercise_name": name}}}
     for workout in recent_workouts:
         for we in workout.workout_exercises:
-            for s in we.sets:
-                if s.e1rm:
-                    exercise_data[we.exercise_id].append({
-                        "date": workout.date,
-                        "e1rm": s.e1rm,
-                        "exercise_name": we.exercise.name if we.exercise else "Unknown"
-                    })
+            best_e1rm = max((s.e1rm for s in we.sets if s.e1rm), default=None)
+            if best_e1rm:
+                exercise_id = we.exercise_id
+                workout_date = workout.date
+                exercise_name = we.exercise.name if we.exercise else "Unknown"
+
+                # Keep only the best e1RM per exercise per date
+                if workout_date not in exercise_data[exercise_id] or \
+                   best_e1rm > exercise_data[exercise_id][workout_date]["e1rm"]:
+                    exercise_data[exercise_id][workout_date] = {
+                        "e1rm": best_e1rm,
+                        "exercise_name": exercise_name
+                    }
+
+    # Convert to list format for analysis
+    exercise_trends = {}
+    for exercise_id, date_data in exercise_data.items():
+        exercise_trends[exercise_id] = [
+            {"date": d, "e1rm": data["e1rm"], "exercise_name": data["exercise_name"]}
+            for d, data in date_data.items()
+        ]
 
     # Find improving and regressing exercises
-    for exercise_id, data in exercise_data.items():
-        if len(data) < 4:
+    # Require at least 4 distinct workout dates for meaningful trend analysis
+    MIN_WORKOUTS_FOR_TREND = 4
+    for exercise_id, data in exercise_trends.items():
+        if len(data) < MIN_WORKOUTS_FOR_TREND:
             continue
 
         sorted_data = sorted(data, key=lambda x: x["date"])
