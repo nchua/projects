@@ -638,9 +638,6 @@ struct AddSkillSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.voidDark, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
-            .onTapGesture {
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
@@ -1547,9 +1544,6 @@ struct SkillPickerSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.voidDark, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
-            .onTapGesture {
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
