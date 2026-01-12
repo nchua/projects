@@ -506,6 +506,14 @@ extension String {
             return date
         }
 
+        // Try ISO8601 WITHOUT timezone: "2025-12-12T12:00:00"
+        let noTimezoneFormatter = DateFormatter()
+        noTimezoneFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        noTimezoneFormatter.timeZone = TimeZone(identifier: "UTC")
+        if let date = noTimezoneFormatter.date(from: self) {
+            return date
+        }
+
         // Fallback: date-only format "YYYY-MM-DD" (returned by backend analytics)
         let dateOnlyFormatter = DateFormatter()
         dateOnlyFormatter.dateFormat = "yyyy-MM-dd"

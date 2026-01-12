@@ -220,6 +220,52 @@ After:  Show preview → User adjusts values → Process with user's values → 
 
 ---
 
+## Date Parsing: Backend ↔ iOS Format Compatibility
+
+### CRITICAL: iOS parseISO8601Date() Supported Formats
+
+The iOS date parser in `Extensions.swift` handles these formats:
+
+| Format | Example | Source |
+|--------|---------|--------|
+| ISO8601 with fractional seconds | `2025-12-12T12:00:00.123Z` | Rare |
+| ISO8601 with timezone | `2025-12-12T12:00:00Z` | Standard API responses |
+| ISO8601 WITHOUT timezone | `2025-12-12T12:00:00` | Python `datetime.isoformat()` |
+| Date only | `2025-12-12` | Python `date.isoformat()` |
+
+### Bug Pattern: Charts Not Rendering (Jan 2026)
+
+**Symptom**: Power chart (e1RM) showed Y-axis grid but NO line or data points. Debug showed valid data (4 points, dates spanning Dec-Jan).
+
+**Root Cause**: Backend returned dates as `2025-12-12T12:00:00` (ISO8601 without timezone). The iOS parser only handled formats WITH timezone (`Z` suffix) or date-only. The format without timezone returned `nil`, causing all data points to collapse to the same X coordinate (fallback `Date()`).
+
+**Fix**: Added handler for ISO8601 without timezone in `parseISO8601Date()`:
+```swift
+// Try ISO8601 WITHOUT timezone: "2025-12-12T12:00:00"
+let noTimezoneFormatter = DateFormatter()
+noTimezoneFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+noTimezoneFormatter.timeZone = TimeZone(identifier: "UTC")
+if let date = noTimezoneFormatter.date(from: self) {
+    return date
+}
+```
+
+### Prevention Checklist
+
+When backend returns date strings to iOS:
+- [ ] Check what format Python is returning (`datetime.isoformat()` vs `date.isoformat()`)
+- [ ] Verify iOS `parseISO8601Date()` handles that format
+- [ ] If chart/data doesn't render, add debug output to check if dates parse to `nil`
+
+**Debug pattern for date issues**:
+```swift
+// Add temporarily to chart view
+Text("DEBUG: \(dataPoints.count) pts, first: \(dataPoints.first?.date ?? "none")")
+    .background(Color.yellow)
+```
+
+---
+
 ## Recent Changes Summary (Jan 2026)
 
 ### Bug Fix: Exercise Names in Completed Quest Card
