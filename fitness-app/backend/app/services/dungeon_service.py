@@ -130,11 +130,11 @@ def maybe_spawn_dungeon(
         UserDungeon.status == DungeonStatus.AVAILABLE.value
     ).count()
 
-    # Check if at max available dungeons
-    if available_count >= MAX_AVAILABLE_DUNGEONS:
+    # Check if at max available dungeons (force bypasses this limit)
+    if not force and available_count >= MAX_AVAILABLE_DUNGEONS:
         return None
 
-    # Roll for spawn
+    # Roll for spawn (force bypasses the random roll)
     if not force:
         spawn_chance = calculate_spawn_chance(progress.level, available_count)
         if random.random() > spawn_chance:
