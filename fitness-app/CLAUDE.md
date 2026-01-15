@@ -101,6 +101,43 @@ git push origin main              # Deploy to Railway
 
 ---
 
+## Git Safety Guidelines
+
+### Before Destructive Operations
+
+**ALWAYS check the current branch before:**
+- Deleting files or large sections of code
+- Resetting or reverting commits
+- Force pushing
+- Major refactors that touch many files
+
+```bash
+git branch                    # Check current branch
+git status                    # Check for uncommitted changes
+git log --oneline -5          # Verify recent commit history
+```
+
+### Recovering Lost Work
+
+If code is missing or needs recovery:
+1. **Check GitHub first** - The remote repo may have commits not in local
+   ```bash
+   git fetch origin
+   git log origin/main --oneline -10    # See remote commits
+   git diff main origin/main            # Compare local vs remote
+   ```
+2. **Pull from remote** if behind:
+   ```bash
+   git pull origin main
+   ```
+3. **Check reflog** for recently deleted local commits:
+   ```bash
+   git reflog                           # Shows all recent HEAD positions
+   git checkout <commit-hash>           # Recover specific commit
+   ```
+
+---
+
 ## Security Guidelines
 
 ### NEVER Commit Credentials
