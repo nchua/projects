@@ -47,6 +47,7 @@ struct ProfileUpdate: Encodable {
     var age: Int?
     var sex: String?  // Must be "M" or "F"
     var bodyweightLb: Double?
+    var heightInches: Double?
     var trainingExperience: String?
     var preferredUnit: String?
     var e1rmFormula: String?
@@ -54,6 +55,7 @@ struct ProfileUpdate: Encodable {
     enum CodingKeys: String, CodingKey {
         case age, sex
         case bodyweightLb = "bodyweight_lb"
+        case heightInches = "height_inches"
         case trainingExperience = "training_experience"
         case preferredUnit = "preferred_unit"
         case e1rmFormula = "e1rm_formula"
@@ -293,9 +295,16 @@ struct TrendResponse: Decodable {
     }
 }
 
+struct SetDetail: Decodable {
+    let weight: Double
+    let reps: Int
+    let e1rm: Double
+}
+
 struct DataPoint: Decodable, Identifiable {
     let date: String
     let value: Double
+    let sets: [SetDetail]?  // Populated when include_sets=true
 
     var id: String { date }
 }

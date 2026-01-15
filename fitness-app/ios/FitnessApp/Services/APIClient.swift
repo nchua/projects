@@ -112,8 +112,12 @@ class APIClient {
 
     // MARK: - Analytics
 
-    func getExerciseTrend(exerciseId: String, timeRange: String = "12w") async throws -> TrendResponse {
-        return try await get("/analytics/exercise/\(exerciseId)/trend?time_range=\(timeRange)")
+    func getExerciseTrend(exerciseId: String, timeRange: String = "12w", includeSets: Bool = false) async throws -> TrendResponse {
+        var path = "/analytics/exercise/\(exerciseId)/trend?time_range=\(timeRange)"
+        if includeSets {
+            path += "&include_sets=true"
+        }
+        return try await get(path)
     }
 
     func getPercentiles() async throws -> PercentilesResponse {

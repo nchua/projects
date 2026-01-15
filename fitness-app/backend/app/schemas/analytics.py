@@ -23,10 +23,18 @@ class TimeRange(str, Enum):
     ALL_TIME = "all"
 
 
+class SetDetail(BaseModel):
+    """Set info for chart data point drill-down"""
+    weight: float
+    reps: int
+    e1rm: float
+
+
 class DataPoint(BaseModel):
     """A single data point for time series"""
     date: str
     value: float
+    sets: Optional[List["SetDetail"]] = None  # Populated when include_sets=True
 
 
 class TrendResponse(BaseModel):

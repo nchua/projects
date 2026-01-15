@@ -122,7 +122,8 @@ class ProgressViewModel: ObservableObject {
             do {
                 let trend = try await APIClient.shared.getExerciseTrend(
                     exerciseId: exercise.id,
-                    timeRange: selectedTimeRange
+                    timeRange: selectedTimeRange,
+                    includeSets: true
                 )
                 bigThreeTrends[exercise.id] = trend
                 print("DEBUG: Loaded trend for \(exercise.name)")
@@ -137,7 +138,8 @@ class ProgressViewModel: ObservableObject {
             do {
                 let trend = try await APIClient.shared.getExerciseTrend(
                     exerciseId: exerciseId,
-                    timeRange: selectedTimeRange
+                    timeRange: selectedTimeRange,
+                    includeSets: true
                 )
                 additionalTrends[exerciseId] = trend
             } catch {
@@ -157,7 +159,8 @@ class ProgressViewModel: ObservableObject {
         do {
             trend = try await APIClient.shared.getExerciseTrend(
                 exerciseId: exerciseId,
-                timeRange: selectedTimeRange
+                timeRange: selectedTimeRange,
+                includeSets: true
             )
             print("DEBUG: Got trend with \(trend?.dataPoints.count ?? 0) data points")
         } catch {
@@ -190,7 +193,8 @@ class ProgressViewModel: ObservableObject {
             do {
                 let trend = try await APIClient.shared.getExerciseTrend(
                     exerciseId: exercise.id,
-                    timeRange: selectedTimeRange
+                    timeRange: selectedTimeRange,
+                    includeSets: true
                 )
                 additionalTrends[exercise.id] = trend
             } catch {

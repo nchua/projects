@@ -15,7 +15,7 @@ from app.models.workout import WorkoutSession, WorkoutExercise, Set
 from app.models.exercise import Exercise
 from app.models.pr import PR, PRType as PRTypeModel
 from app.schemas.analytics import (
-    TrendResponse, TrendDirection, DataPoint, TimeRange,
+    TrendResponse, TrendDirection, DataPoint, SetDetail, TimeRange,
     ExerciseHistoryResponse, SetHistoryItem, SessionGroup,
     PercentilesResponse, ExercisePercentile, StrengthClassification,
     PRResponse, PRListResponse, PRType,
@@ -200,12 +200,14 @@ def calculate_percentile(bw_multiplier: float, standards: dict) -> tuple:
 async def get_exercise_trend(
     exercise_id: str,
     time_range: str = Query("12w", description="Time range: 4w, 12w, 1y, all"),
+    include_sets: bool = Query(False, description="Include set details for each data point"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Get e1RM trend data for an exercise.
     Aggregates data across all exercises with the same canonical_id.
+    When include_sets=True, includes all sets for each date point (for drill-down).
     """
     # Verify exercise exists
     exercise = db.query(Exercise).filter(Exercise.id == exercise_id).first()
@@ -249,15 +251,28 @@ async def get_exercise_trend(
             total_workouts=0
         )
 
-    # Group by date and get best e1RM per day
+    # Group by date and get best e1RM per day (and optionally collect all sets)
     daily_best = {}
+    daily_sets = defaultdict(list) if include_sets else None
     for set_obj, workout_date in query:
         date_str = workout_date.isoformat()
-        if date_str not in daily_best or set_obj.e1rm > daily_best[date_str]:
-            daily_best[date_str] = set_obj.e1rm
+        if set_obj.e1rm and set_obj.e1rm > 0:
+            if date_str not in daily_best or set_obj.e1rm > daily_best[date_str]:
+                daily_best[date_str] = set_obj.e1rm
+            if include_sets:
+                daily_sets[date_str].append(SetDetail(
+                    weight=set_obj.weight or 0,
+                    reps=set_obj.reps or 0,
+                    e1rm=round(set_obj.e1rm, 2)
+                ))
 
-    # Build data points
-    data_points = [DataPoint(date=d, value=round(v, 2)) for d, v in sorted(daily_best.items())]
+    # Build data points (with optional sets, sorted by e1rm descending)
+    data_points = []
+    for d, v in sorted(daily_best.items()):
+        sets_list = None
+        if include_sets and d in daily_sets:
+            sets_list = sorted(daily_sets[d], key=lambda s: s.e1rm, reverse=True)
+        data_points.append(DataPoint(date=d, value=round(v, 2), sets=sets_list))
 
     # Calculate weekly best
     weekly_best = {}

@@ -798,6 +798,8 @@ struct AriseTimeRangeButton: View {
 struct AriseE1RMChart: View {
     let dataPoints: [DataPoint]
     @State private var selectedDate: Date?
+    @State private var longPressedPoint: DataPoint?
+    @State private var isLongPressing = false
 
     private var selectedDataPoint: DataPoint? {
         guard let selectedDate = selectedDate else { return nil }
@@ -805,6 +807,15 @@ struct AriseE1RMChart: View {
         return dataPoints.min(by: { point1, point2 in
             abs(parseDate(point1.date).timeIntervalSince(selectedDate)) <
             abs(parseDate(point2.date).timeIntervalSince(selectedDate))
+        })
+    }
+
+    private func findNearestPoint(at location: CGPoint, in proxy: ChartProxy, geometry: GeometryProxy) -> DataPoint? {
+        let xPosition = location.x - geometry[proxy.plotAreaFrame].origin.x
+        guard let date: Date = proxy.value(atX: xPosition) else { return nil }
+        return dataPoints.min(by: { point1, point2 in
+            abs(parseDate(point1.date).timeIntervalSince(date)) <
+            abs(parseDate(point2.date).timeIntervalSince(date))
         })
     }
 
@@ -888,6 +899,89 @@ struct AriseE1RMChart: View {
                 }
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [4]))
                     .foregroundStyle(Color.ariseBorder)
+            }
+        }
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                Rectangle()
+                    .fill(.clear)
+                    .contentShape(Rectangle())
+                    .gesture(
+                        LongPressGesture(minimumDuration: 0.4)
+                            .sequenced(before: DragGesture(minimumDistance: 0))
+                            .onChanged { value in
+                                switch value {
+                                case .first(true):
+                                    // Long press started
+                                    break
+                                case .second(true, let drag):
+                                    if let drag = drag {
+                                        if let point = findNearestPoint(at: drag.location, in: proxy, geometry: geometry) {
+                                            if longPressedPoint?.id != point.id {
+                                                // New point selected - haptic feedback
+                                                let impact = UIImpactFeedbackGenerator(style: .light)
+                                                impact.impactOccurred()
+                                            }
+                                            longPressedPoint = point
+                                            isLongPressing = true
+                                        }
+                                    }
+                                default:
+                                    break
+                                }
+                            }
+                            .onEnded { _ in
+                                longPressedPoint = nil
+                                isLongPressing = false
+                            }
+                    )
+            }
+        }
+        .overlay(alignment: .top) {
+            // Long-press annotation with sets breakdown
+            if isLongPressing, let point = longPressedPoint, let sets = point.sets, !sets.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    // Header
+                    HStack {
+                        Text("\(Int(point.value)) lb")
+                            .font(.ariseMono(size: 14, weight: .bold))
+                            .foregroundColor(.systemPrimary)
+                        Text("•")
+                            .foregroundColor(.textMuted)
+                        Text(formatDateLabel(point.date))
+                            .font(.ariseMono(size: 12))
+                            .foregroundColor(.textSecondary)
+                    }
+
+                    Rectangle()
+                        .fill(Color.ariseBorder)
+                        .frame(height: 1)
+
+                    // Sets breakdown
+                    ForEach(Array(sets.prefix(5).enumerated()), id: \.offset) { index, set in
+                        HStack {
+                            Text("\(Int(set.weight)) × \(set.reps)")
+                                .font(.ariseMono(size: 11))
+                                .foregroundColor(.textPrimary)
+                            Spacer()
+                            Text("\(Int(set.e1rm))")
+                                .font(.ariseMono(size: 11))
+                                .foregroundColor(set.e1rm == point.value ? .gold : .textSecondary)
+                        }
+                    }
+                }
+                .padding(12)
+                .background(Color.voidBlack)
+                .cornerRadius(8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.gold.opacity(0.5), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                .animation(.easeOut(duration: 0.15), value: isLongPressing)
             }
         }
     }
