@@ -811,7 +811,8 @@ struct AriseE1RMChart: View {
     }
 
     private func findNearestPoint(at location: CGPoint, in proxy: ChartProxy, geometry: GeometryProxy) -> DataPoint? {
-        let xPosition = location.x - geometry[proxy.plotFrame].origin.x
+        guard let plotFrame = proxy.plotFrame else { return nil }
+        let xPosition = location.x - geometry[plotFrame].origin.x
         guard let date: Date = proxy.value(atX: xPosition) else { return nil }
         return dataPoints.min(by: { point1, point2 in
             abs(parseDate(point1.date).timeIntervalSince(date)) <
