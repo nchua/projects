@@ -318,7 +318,7 @@ struct ScreenshotPreviewView: View {
                             .foregroundColor(.textSecondary)
                     }
 
-                    if let summary = data.summary {
+                    if data.summary != nil {
                         Label("\(data.exercises.count) exercises", systemImage: "dumbbell")
                             .font(.ariseMono(size: 12))
                             .foregroundColor(.textSecondary)

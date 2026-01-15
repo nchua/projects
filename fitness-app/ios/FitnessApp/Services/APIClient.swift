@@ -396,7 +396,7 @@ class APIClient {
         var body = Data()
 
         // Add each file
-        for (index, image) in images.enumerated() {
+        for (_, image) in images.enumerated() {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"files\"; filename=\"\(image.filename)\"\r\n".data(using: .utf8)!)
 
@@ -534,14 +534,14 @@ class APIClient {
                 } catch {
                     // Refresh failed, user needs to log in again
                     // Notify app to redirect to login
-                    DispatchQueue.main.async {
+                    Task { @MainActor in
                         self.onSessionExpired?()
                     }
                     throw APIError.unauthorized
                 }
             }
             // No refresh token or already retried - session is expired
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.onSessionExpired?()
             }
             throw APIError.unauthorized

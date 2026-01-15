@@ -216,6 +216,7 @@ class HealthKitManager: ObservableObject {
         }
 
         let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        let unit = self.unit(for: identifier)  // Capture before closure to avoid actor isolation issues
 
         return await withCheckedContinuation { continuation in
             let query = HKStatisticsQuery(
@@ -228,7 +229,6 @@ class HealthKitManager: ObservableObject {
                     return
                 }
 
-                let unit = self.unit(for: identifier)
                 let value = result?.sumQuantity()?.doubleValue(for: unit) ?? 0
                 continuation.resume(returning: value)
             }

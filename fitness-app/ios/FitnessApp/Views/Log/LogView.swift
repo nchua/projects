@@ -806,7 +806,7 @@ struct ObjectiveCard: View {
     }
 
     var completedSets: Int {
-        exercise.sets.filter { ($0.isBodyweight || ($0.weight ?? 0) > 0) && ($0.reps ?? 0) > 0 }.count
+        exercise.sets.filter { ($0.isBodyweight || $0.weight > 0) && $0.reps > 0 }.count
     }
 
     var body: some View {
@@ -932,7 +932,7 @@ struct ObjectiveCard: View {
                 AriseSetRow(
                     set: $exercise.sets[index],
                     exerciseColor: exerciseColor,
-                    isCompleted: (exercise.sets[index].isBodyweight || (exercise.sets[index].weight ?? 0) > 0) && (exercise.sets[index].reps ?? 0) > 0,
+                    isCompleted: (exercise.sets[index].isBodyweight || exercise.sets[index].weight > 0) && exercise.sets[index].reps > 0,
                     onRemove: { onRemoveSet(index) }
                 )
 
