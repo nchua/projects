@@ -315,3 +315,37 @@ Text("DEBUG: \(dataPoints.count) pts, first: \(dataPoints.first?.date ?? "none")
 - `steps`, `calories`, `avg_hr`, `max_hr`
 - `heart_rate_zones` with BPM ranges, percentages, durations
 - `time_range` and `source` (e.g., "VIA APPLE WATCH")
+
+### Feature: Expanded Strength Standards (Jan 2026)
+
+**Problem**: Stats page only showed percentile rankings for Big Three exercises (squat, bench, deadlift). Additional skills like Barbell Curl showed rank badge but no percentile.
+
+**Solution**: Added strength standards (bodyweight multipliers) for 17 additional exercises.
+
+**Files Modified**:
+- `backend/app/api/analytics.py`:
+  - Expanded `STRENGTH_STANDARDS` dict with new exercises
+  - Updated `CANONICAL_EXERCISE_KEYWORDS` for exercise name matching
+
+**Exercises Now Supported**:
+| Category | Exercises |
+|----------|-----------|
+| Big Three | squat, bench, deadlift |
+| Pressing | overhead press, incline bench, dip |
+| Pulling | row, pullup/chinup, lat pulldown |
+| Arms | curl, tricep extension |
+| Legs | leg press, romanian deadlift, hip thrust, leg curl, leg extension, calf raise |
+| Shoulders | lateral raise, face pull |
+| Chest | fly/pec deck |
+
+**Keyword Matching Examples**:
+- "Barbell Curl" / "Bicep Curl" / "Hammer Curl" → `curl`
+- "Lat Pulldown" / "Pulldown" → `lat_pulldown`
+- "RDL" / "Romanian Deadlift" / "Stiff Leg Deadlift" → `romanian_deadlift`
+- "Skull Crusher" / "Tricep Pushdown" → `tricep_extension`
+- "Pull Up" / "Chin Up" → `pullup`
+
+**iOS Changes** (`StatsView.swift`):
+- `AdditionalExerciseCard` now shows trend percentage and rank badge (matches Big Three cards)
+- Rank badge only displays when real percentile data exists
+- Trend indicator hidden for "insufficient_data" (requires 4+ weeks of data)

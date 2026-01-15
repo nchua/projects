@@ -206,6 +206,7 @@ struct PowerProgressView: View {
                     AdditionalExerciseCard(
                         exercise: exercise,
                         trend: viewModel.trend(for: exercise.id),
+                        percentile: viewModel.percentile(for: exercise.id),
                         isExpanded: expandedExerciseId == exercise.id,
                         onTap: {
                             withAnimation(.quickSpring) {
@@ -456,12 +457,24 @@ struct BigThreeCard: View {
 struct AdditionalExerciseCard: View {
     let exercise: ExerciseResponse
     let trend: TrendResponse?
+    let percentile: ExercisePercentile?
     let isExpanded: Bool
     let onTap: () -> Void
     let onRemove: () -> Void
 
     var exerciseColor: Color {
         Color.exerciseColor(for: exercise.name)
+    }
+
+    var rank: HunterRank {
+        guard let classification = percentile?.classification.lowercased() else { return .e }
+        switch classification {
+        case "elite": return .s
+        case "advanced": return .a
+        case "intermediate": return .c
+        case "novice": return .d
+        default: return .e
+        }
     }
 
     var body: some View {
@@ -488,13 +501,28 @@ struct AdditionalExerciseCard: View {
                         Spacer()
 
                         if let current = trend?.currentE1rm {
-                            HStack(alignment: .lastTextBaseline, spacing: 4) {
-                                Text(current.formattedWeight)
-                                    .font(.ariseDisplay(size: 22, weight: .bold))
-                                    .foregroundColor(.systemPrimary)
-                                Text("lb")
-                                    .font(.ariseMono(size: 10))
-                                    .foregroundColor(.textMuted)
+                            VStack(alignment: .trailing, spacing: 2) {
+                                HStack(alignment: .lastTextBaseline, spacing: 4) {
+                                    Text(current.formattedWeight)
+                                        .font(.ariseDisplay(size: 22, weight: .bold))
+                                        .foregroundColor(.systemPrimary)
+                                    Text("lb")
+                                        .font(.ariseMono(size: 10))
+                                        .foregroundColor(.textMuted)
+                                }
+
+                                // Trend indicator
+                                if let direction = trend?.trendDirection, direction != "insufficient_data" {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: trendIcon(direction))
+                                            .font(.system(size: 9, weight: .bold))
+                                        if let percent = trend?.percentChange {
+                                            Text("\(abs(percent), specifier: "%.1f")%")
+                                                .font(.ariseMono(size: 9, weight: .semibold))
+                                        }
+                                    }
+                                    .foregroundColor(trendColor(direction))
+                                }
                             }
                         } else {
                             Text("No data")
@@ -519,12 +547,71 @@ struct AdditionalExerciseCard: View {
             }
             .buttonStyle(PlainButtonStyle())
 
-            // Expanded Chart
-            if isExpanded, let dataPoints = trend?.dataPoints, !dataPoints.isEmpty {
-                AriseE1RMChart(dataPoints: dataPoints)
-                    .frame(height: 120)
-                    .padding(12)
-                    .background(Color.voidDark)
+            // Expanded Content
+            if isExpanded {
+                VStack(spacing: 16) {
+                    // Chart
+                    if let dataPoints = trend?.dataPoints, !dataPoints.isEmpty {
+                        AriseE1RMChart(dataPoints: dataPoints)
+                            .frame(height: 120)
+                    }
+
+                    // Rank and Stats Row
+                    HStack(spacing: 12) {
+                        // Rank Badge - only show if we have a real percentile
+                        if let p = percentile?.percentile {
+                            HStack(spacing: 8) {
+                                RankBadgeView(rank: rank, size: .small)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(rank.title)
+                                        .font(.ariseMono(size: 11, weight: .semibold))
+                                        .foregroundColor(.textPrimary)
+                                    Text("Top \(100 - p)%")
+                                        .font(.ariseMono(size: 9))
+                                        .foregroundColor(.textMuted)
+                                }
+                            }
+                            .padding(10)
+                            .background(Color.voidLight)
+                            .cornerRadius(4)
+                        }
+
+                        Spacer()
+
+                        // Workouts count
+                        if let total = trend?.totalWorkouts {
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text("\(total)")
+                                    .font(.ariseDisplay(size: 20, weight: .bold))
+                                    .foregroundColor(.textPrimary)
+                                Text("QUESTS")
+                                    .font(.ariseMono(size: 9, weight: .medium))
+                                    .foregroundColor(.textMuted)
+                                    .tracking(0.5)
+                            }
+                        }
+
+                        // 4W Average
+                        if let avg = trend?.rollingAverage4w {
+                            VStack(alignment: .trailing, spacing: 2) {
+                                HStack(alignment: .lastTextBaseline, spacing: 2) {
+                                    Text(avg.formattedWeight)
+                                        .font(.ariseDisplay(size: 20, weight: .bold))
+                                        .foregroundColor(.textPrimary)
+                                    Text("lb")
+                                        .font(.ariseMono(size: 9))
+                                        .foregroundColor(.textMuted)
+                                }
+                                Text("4W AVG")
+                                    .font(.ariseMono(size: 9, weight: .medium))
+                                    .foregroundColor(.textMuted)
+                                    .tracking(0.5)
+                            }
+                        }
+                    }
+                }
+                .padding(12)
+                .background(Color.voidDark)
             }
         }
         .cornerRadius(4)
@@ -532,6 +619,22 @@ struct AdditionalExerciseCard: View {
             RoundedRectangle(cornerRadius: 4)
                 .stroke(Color.ariseBorder, lineWidth: 1)
         )
+    }
+
+    private func trendIcon(_ direction: String) -> String {
+        switch direction {
+        case "improving": return "arrow.up.right"
+        case "regressing": return "arrow.down.right"
+        default: return "arrow.right"
+        }
+    }
+
+    private func trendColor(_ direction: String) -> Color {
+        switch direction {
+        case "improving": return .successGreen
+        case "regressing": return .warningRed
+        default: return .textSecondary
+        }
     }
 }
 

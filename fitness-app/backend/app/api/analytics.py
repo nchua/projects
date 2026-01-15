@@ -33,18 +33,62 @@ router = APIRouter()
 # Format: {sex: {exercise_canonical: {classification: multiplier}}}
 STRENGTH_STANDARDS = {
     "male": {
+        # Big Three
         "squat": {"beginner": 0.75, "novice": 1.0, "intermediate": 1.5, "advanced": 2.0, "elite": 2.5},
         "bench": {"beginner": 0.5, "novice": 0.75, "intermediate": 1.25, "advanced": 1.5, "elite": 2.0},
         "deadlift": {"beginner": 1.0, "novice": 1.25, "intermediate": 1.75, "advanced": 2.5, "elite": 3.0},
+        # Pressing
         "overhead_press": {"beginner": 0.35, "novice": 0.55, "intermediate": 0.8, "advanced": 1.0, "elite": 1.35},
+        "incline_bench": {"beginner": 0.4, "novice": 0.6, "intermediate": 1.0, "advanced": 1.25, "elite": 1.6},
+        "dip": {"beginner": 0.5, "novice": 0.75, "intermediate": 1.0, "advanced": 1.5, "elite": 2.0},
+        # Pulling
         "row": {"beginner": 0.4, "novice": 0.6, "intermediate": 0.9, "advanced": 1.2, "elite": 1.5},
+        "pullup": {"beginner": 0.5, "novice": 0.75, "intermediate": 1.0, "advanced": 1.25, "elite": 1.5},
+        "lat_pulldown": {"beginner": 0.4, "novice": 0.55, "intermediate": 0.75, "advanced": 1.0, "elite": 1.25},
+        # Arms
+        "curl": {"beginner": 0.2, "novice": 0.3, "intermediate": 0.45, "advanced": 0.6, "elite": 0.8},
+        "tricep_extension": {"beginner": 0.15, "novice": 0.25, "intermediate": 0.4, "advanced": 0.55, "elite": 0.7},
+        # Legs
+        "leg_press": {"beginner": 1.5, "novice": 2.0, "intermediate": 3.0, "advanced": 4.0, "elite": 5.0},
+        "romanian_deadlift": {"beginner": 0.6, "novice": 0.8, "intermediate": 1.2, "advanced": 1.6, "elite": 2.0},
+        "hip_thrust": {"beginner": 0.75, "novice": 1.0, "intermediate": 1.5, "advanced": 2.0, "elite": 2.5},
+        "leg_curl": {"beginner": 0.2, "novice": 0.3, "intermediate": 0.45, "advanced": 0.6, "elite": 0.8},
+        "leg_extension": {"beginner": 0.3, "novice": 0.45, "intermediate": 0.6, "advanced": 0.8, "elite": 1.0},
+        "calf_raise": {"beginner": 0.75, "novice": 1.0, "intermediate": 1.5, "advanced": 2.0, "elite": 2.5},
+        # Shoulders
+        "lateral_raise": {"beginner": 0.08, "novice": 0.12, "intermediate": 0.18, "advanced": 0.25, "elite": 0.35},
+        "face_pull": {"beginner": 0.15, "novice": 0.2, "intermediate": 0.3, "advanced": 0.4, "elite": 0.5},
+        # Chest isolation
+        "fly": {"beginner": 0.15, "novice": 0.2, "intermediate": 0.3, "advanced": 0.4, "elite": 0.55},
     },
     "female": {
+        # Big Three
         "squat": {"beginner": 0.5, "novice": 0.75, "intermediate": 1.0, "advanced": 1.5, "elite": 2.0},
         "bench": {"beginner": 0.25, "novice": 0.5, "intermediate": 0.75, "advanced": 1.0, "elite": 1.25},
         "deadlift": {"beginner": 0.75, "novice": 1.0, "intermediate": 1.25, "advanced": 1.75, "elite": 2.25},
+        # Pressing
         "overhead_press": {"beginner": 0.2, "novice": 0.35, "intermediate": 0.5, "advanced": 0.65, "elite": 0.85},
+        "incline_bench": {"beginner": 0.2, "novice": 0.4, "intermediate": 0.6, "advanced": 0.85, "elite": 1.1},
+        "dip": {"beginner": 0.3, "novice": 0.5, "intermediate": 0.75, "advanced": 1.0, "elite": 1.35},
+        # Pulling
         "row": {"beginner": 0.25, "novice": 0.4, "intermediate": 0.6, "advanced": 0.8, "elite": 1.0},
+        "pullup": {"beginner": 0.3, "novice": 0.5, "intermediate": 0.75, "advanced": 1.0, "elite": 1.25},
+        "lat_pulldown": {"beginner": 0.3, "novice": 0.4, "intermediate": 0.55, "advanced": 0.75, "elite": 0.95},
+        # Arms
+        "curl": {"beginner": 0.1, "novice": 0.18, "intermediate": 0.28, "advanced": 0.4, "elite": 0.55},
+        "tricep_extension": {"beginner": 0.08, "novice": 0.15, "intermediate": 0.25, "advanced": 0.35, "elite": 0.5},
+        # Legs
+        "leg_press": {"beginner": 1.0, "novice": 1.5, "intermediate": 2.25, "advanced": 3.0, "elite": 4.0},
+        "romanian_deadlift": {"beginner": 0.4, "novice": 0.6, "intermediate": 0.9, "advanced": 1.2, "elite": 1.5},
+        "hip_thrust": {"beginner": 0.5, "novice": 0.75, "intermediate": 1.25, "advanced": 1.75, "elite": 2.25},
+        "leg_curl": {"beginner": 0.15, "novice": 0.22, "intermediate": 0.35, "advanced": 0.45, "elite": 0.6},
+        "leg_extension": {"beginner": 0.2, "novice": 0.35, "intermediate": 0.5, "advanced": 0.65, "elite": 0.8},
+        "calf_raise": {"beginner": 0.5, "novice": 0.75, "intermediate": 1.1, "advanced": 1.5, "elite": 2.0},
+        # Shoulders
+        "lateral_raise": {"beginner": 0.05, "novice": 0.08, "intermediate": 0.12, "advanced": 0.18, "elite": 0.25},
+        "face_pull": {"beginner": 0.1, "novice": 0.15, "intermediate": 0.22, "advanced": 0.3, "elite": 0.4},
+        # Chest isolation
+        "fly": {"beginner": 0.08, "novice": 0.12, "intermediate": 0.2, "advanced": 0.28, "elite": 0.4},
     }
 }
 
@@ -65,16 +109,61 @@ def get_time_range_days(time_range: str) -> Optional[int]:
 
 
 CANONICAL_EXERCISE_KEYWORDS = [
+    # Order matters - more specific patterns first to avoid false matches
+    # Pressing
     ("overhead_press", ["press", "overhead"]),
-    ("squat", ["squat"]),
+    ("overhead_press", ["ohp"]),
+    ("overhead_press", ["military", "press"]),
+    ("incline_bench", ["incline", "bench"]),
+    ("incline_bench", ["incline", "press"]),
     ("bench", ["bench"]),
+    ("dip", ["dip"]),
+    # Legs - specific patterns first
+    ("romanian_deadlift", ["romanian", "deadlift"]),
+    ("romanian_deadlift", ["rdl"]),
+    ("romanian_deadlift", ["stiff", "leg"]),
     ("deadlift", ["deadlift"]),
+    ("leg_press", ["leg", "press"]),
+    ("hip_thrust", ["hip", "thrust"]),
+    ("hip_thrust", ["glute", "bridge"]),
+    ("leg_curl", ["leg", "curl"]),
+    ("leg_curl", ["hamstring", "curl"]),
+    ("leg_extension", ["leg", "extension"]),
+    ("leg_extension", ["quad", "extension"]),
+    ("calf_raise", ["calf", "raise"]),
+    ("calf_raise", ["calf", "press"]),
+    ("squat", ["squat"]),
+    # Pulling
+    ("lat_pulldown", ["lat", "pulldown"]),
+    ("lat_pulldown", ["pulldown"]),
+    ("pullup", ["pull", "up"]),
+    ("pullup", ["pullup"]),
+    ("pullup", ["chin", "up"]),
+    ("pullup", ["chinup"]),
     ("row", ["row"]),
+    # Arms
+    ("tricep_extension", ["tricep", "extension"]),
+    ("tricep_extension", ["tricep", "pushdown"]),
+    ("tricep_extension", ["skull", "crusher"]),
+    ("tricep_extension", ["overhead", "tricep"]),
+    ("curl", ["curl"]),  # Matches barbell curl, bicep curl, hammer curl, etc.
+    # Shoulders
+    ("lateral_raise", ["lateral", "raise"]),
+    ("lateral_raise", ["side", "raise"]),
+    ("face_pull", ["face", "pull"]),
+    # Chest isolation
+    ("fly", ["fly"]),
+    ("fly", ["flye"]),
+    ("fly", ["pec", "deck"]),
 ]
 
 
 def get_exercise_canonical_id(exercise_name: str) -> Optional[str]:
-    """Get canonical ID for exercise name matching."""
+    """Get canonical ID for exercise name matching.
+
+    Matches exercise names to canonical IDs for strength standard lookups.
+    Order of keywords matters - more specific patterns are checked first.
+    """
     name_lower = exercise_name.lower()
     for canonical_id, keywords in CANONICAL_EXERCISE_KEYWORDS:
         if all(keyword in name_lower for keyword in keywords):
