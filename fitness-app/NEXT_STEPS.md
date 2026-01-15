@@ -308,3 +308,35 @@ Good luck! The foundation is solid. Focus on quality over speed. 🏋️
 - [ ] **Force Spawn button doesn't work** - POST `/dungeons/spawn/force` not spawning dungeons
 - [ ] "Seed Data" button works and spawned 3 gates, so dungeon display is working
 - [ ] Investigate `maybe_spawn_dungeon()` and `forceSpawnDungeon()` in dungeon_service.py
+
+---
+
+### Session 6 - January 15, 2026
+
+**Context:** Pulled code from GitHub to sync local repo, then fixed resulting Xcode warnings.
+
+**Commits:**
+1. `567e29c` - Fix Swift compiler warnings across iOS codebase
+2. `df61365` - Add Git Safety Guidelines to CLAUDE.md
+
+**Warning Fixes (10 warnings resolved):**
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `APIClient.swift:399` | Unused `index` in loop | Replace with `_` |
+| `APIClient.swift:537,544` | Sendable closure capture | Use `Task { @MainActor in }` |
+| `HealthKitManager.swift:231` | Actor isolation in callback | Capture `unit` before closure |
+| `LogView.swift:809,935` | Nil coalescing on non-optional | Remove `?? 0` from `weight`/`reps` |
+| `ScreenshotPreviewView.swift:321` | Unused `summary` binding | Use `!= nil` check |
+
+**Documentation Updates:**
+- Added "Git Safety Guidelines" section to `CLAUDE.md`:
+  - Checklist for verifying branch before destructive operations
+  - Recovery steps: check GitHub remote, pull missing commits, use reflog
+
+**Files Modified:**
+- `ios/FitnessApp/Services/APIClient.swift`
+- `ios/FitnessApp/Services/HealthKitManager.swift`
+- `ios/FitnessApp/Views/Log/LogView.swift`
+- `ios/FitnessApp/Views/Log/ScreenshotPreviewView.swift`
+- `CLAUDE.md`
