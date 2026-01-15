@@ -340,3 +340,44 @@ Good luck! The foundation is solid. Focus on quality over speed. 🏋️
 - `ios/FitnessApp/Views/Log/LogView.swift`
 - `ios/FitnessApp/Views/Log/ScreenshotPreviewView.swift`
 - `CLAUDE.md`
+
+---
+
+### Session 6 (continued) - January 15, 2026
+
+**Feature: Long-Press Chart Data Points to View Workout Sets**
+
+Added ability to long-press on e1RM chart data points in the Stats page to see the actual sets that generated that value.
+
+**Commits:**
+1. `8487b6a` - Add Session 6 log
+2. `3133fc1` - Add long-press chart interaction to view workout sets
+3. `a83f03f` - Fix deprecated plotAreaFrame warning (iOS 17+)
+4. `2316710` - Fix optional plotFrame unwrapping
+
+**Backend Changes:**
+- `backend/app/schemas/analytics.py`: Added `SetDetail` model (weight, reps, e1rm)
+- `backend/app/api/analytics.py`: Added `include_sets` query param to `/analytics/exercise/{id}/trend`
+  - When `include_sets=true`, returns all sets per date sorted by e1rm descending
+
+**iOS Changes:**
+- `APITypes.swift`: Added `SetDetail` struct, updated `DataPoint` with `sets: [SetDetail]?`
+- `APIClient.swift`: Added `includeSets` param to `getExerciseTrend()`
+- `ProgressViewModel.swift`: All trend loading calls now pass `includeSets: true`
+- `StatsView.swift` (`AriseE1RMChart`):
+  - Added `LongPressGesture` (0.4s) combined with `DragGesture`
+  - `findNearestPoint()` helper to locate data point at touch location
+  - Expanded annotation overlay showing sets breakdown
+  - Haptic feedback on point selection
+  - Best set highlighted in gold
+
+**UX Flow:**
+1. Long-press on any chart data point (hold ~0.4s)
+2. Annotation appears showing all sets from that workout date
+3. Each set shows `weight × reps` and calculated `e1RM`
+4. Best set (matching the chart value) is highlighted in gold
+5. Release finger to dismiss
+
+**iOS 17+ Fixes:**
+- `plotAreaFrame` renamed to `plotFrame`
+- `plotFrame` now returns optional `Anchor<CGRect>?`, requires safe unwrap
