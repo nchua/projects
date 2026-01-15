@@ -116,10 +116,19 @@ class ProfileViewModel: ObservableObject {
         isSaving = true
         error = nil
 
+        // Compute total height in inches from feet + inches
+        var totalHeightInches: Double? = nil
+        if let feet = Int(heightFeet), let inches = Int(heightInches) {
+            totalHeightInches = Double(feet * 12 + inches)
+        } else if let feet = Int(heightFeet) {
+            totalHeightInches = Double(feet * 12)
+        }
+
         let update = ProfileUpdate(
             age: Int(age),
             sex: sex.isEmpty ? nil : sex,
             bodyweightLb: Double(bodyweight),
+            heightInches: totalHeightInches,
             trainingExperience: trainingExperience.isEmpty ? nil : trainingExperience,
             preferredUnit: preferredUnit,
             e1rmFormula: e1rmFormula

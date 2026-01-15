@@ -4,6 +4,7 @@ import UIKit
 struct ProfileView: View {
     @StateObject private var viewModel = ProfileViewModel()
     @EnvironmentObject var authManager: AuthManager
+    @Environment(\.dismiss) private var dismiss
     @State private var showLogoutConfirmation = false
     @State private var showAllAchievements = false
     @State private var showImagePicker = false
@@ -13,6 +14,31 @@ struct ProfileView: View {
         NavigationStack {
             ZStack {
                 VoidBackground(showGrid: false, glowIntensity: 0.03)
+
+                // Close button overlay
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.textSecondary)
+                                .frame(width: 32, height: 32)
+                                .background(Color.voidMedium)
+                                .cornerRadius(4)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .stroke(Color.ariseBorder, lineWidth: 1)
+                                )
+                        }
+                        .padding(.trailing, 16)
+                        .padding(.top, 16)
+                    }
+                    Spacer()
+                }
+                .zIndex(100)
 
                 if viewModel.isLoading {
                     VStack(spacing: 16) {

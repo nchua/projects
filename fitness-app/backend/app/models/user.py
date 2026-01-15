@@ -60,6 +60,7 @@ class UserProfile(Base):
     age = Column(Integer, nullable=True)
     sex = Column(String, nullable=True)  # 'M' or 'F'
     bodyweight_lb = Column(Float, nullable=True)
+    height_inches = Column(Float, nullable=True)  # Height in inches
 
     # Training settings
     training_experience = Column(Enum(TrainingExperience), default=TrainingExperience.BEGINNER)
