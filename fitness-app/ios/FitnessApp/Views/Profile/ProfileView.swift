@@ -1077,7 +1077,7 @@ struct AriseSettingsRow<Trailing: View>: View {
     let icon: String
     let iconColor: Color
     let title: String
-    let trailing: () -> Trailing
+    @ViewBuilder let trailing: () -> Trailing
 
     var body: some View {
         HStack(spacing: 12) {
