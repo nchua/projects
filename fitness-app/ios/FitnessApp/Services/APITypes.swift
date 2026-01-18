@@ -156,9 +156,14 @@ struct WorkoutSummaryResponse: Decodable, Identifiable {
     let exerciseNames: [String]?
     let createdAt: String
     let updatedAt: String
+    // WHOOP activity fields
+    let isWhoopActivity: Bool?
+    let activityType: String?
+    let strain: Double?
+    let calories: Int?
 
     enum CodingKeys: String, CodingKey {
-        case id, date, notes
+        case id, date, notes, strain, calories
         case userId = "user_id"
         case durationMinutes = "duration_minutes"
         case sessionRpe = "session_rpe"
@@ -167,6 +172,8 @@ struct WorkoutSummaryResponse: Decodable, Identifiable {
         case exerciseNames = "exercise_names"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+        case isWhoopActivity = "is_whoop_activity"
+        case activityType = "activity_type"
     }
 }
 
@@ -323,9 +330,15 @@ struct SetDetail: Decodable {
 struct DataPoint: Decodable, Identifiable {
     let date: String
     let value: Double
+    let workoutId: String?  // ID of the workout with best e1RM on this date
     let sets: [SetDetail]?  // Populated when include_sets=true
 
     var id: String { date }
+
+    enum CodingKeys: String, CodingKey {
+        case date, value, sets
+        case workoutId = "workout_id"
+    }
 }
 
 struct PercentilesResponse: Decodable {

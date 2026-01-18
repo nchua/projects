@@ -348,11 +348,41 @@ struct AriseCalendarDayCell: View {
 struct CompletedQuestRow: View {
     let workout: WorkoutSummaryResponse
 
+    /// Whether this is a WHOOP activity (could be cardio or weightlifting)
+    private var isWhoopActivity: Bool {
+        workout.isWhoopActivity == true
+    }
+
+    /// Whether this WHOOP activity has exercises (weightlifting vs pure cardio)
+    private var hasExercises: Bool {
+        workout.exerciseCount > 0
+    }
+
+    /// Color for the left indicator - orange for pure cardio WHOOP, green for workouts with sets
+    private var indicatorColor: Color {
+        (isWhoopActivity && !hasExercises) ? .orange : .successGreen
+    }
+
+    /// Badge text and icon depend on activity type
+    private var badgeText: String {
+        if isWhoopActivity && !hasExercises {
+            return "ACTIVITY"
+        }
+        return "COMPLETE"
+    }
+
+    private var badgeIcon: String {
+        if isWhoopActivity && !hasExercises {
+            return "flame.fill"
+        }
+        return "checkmark"
+    }
+
     var body: some View {
         HStack(spacing: 0) {
             // Left completion indicator
             Rectangle()
-                .fill(Color.successGreen)
+                .fill(indicatorColor)
                 .frame(width: 4)
 
             HStack(spacing: 12) {
@@ -363,47 +393,115 @@ struct CompletedQuestRow: View {
                             .font(.ariseHeader(size: 15, weight: .semibold))
                             .foregroundColor(.textPrimary)
 
-                        // Completed badge
+                        // Completed/Activity badge
                         HStack(spacing: 4) {
-                            Image(systemName: "checkmark")
+                            Image(systemName: badgeIcon)
                                 .font(.system(size: 8, weight: .bold))
-                            Text("COMPLETE")
+                            Text(badgeText)
                                 .font(.ariseMono(size: 9, weight: .semibold))
                                 .tracking(0.5)
                         }
-                        .foregroundColor(.successGreen)
+                        .foregroundColor(indicatorColor)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Color.successGreen.opacity(0.1))
+                        .background(indicatorColor.opacity(0.1))
                         .cornerRadius(2)
-                    }
 
-                    HStack(spacing: 16) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "scroll.fill")
-                                .font(.system(size: 10))
-                                .foregroundColor(.textMuted)
-                            Text("\(workout.exerciseCount) objectives")
-                                .font(.ariseMono(size: 11))
-                                .foregroundColor(.textSecondary)
-                        }
-
-                        HStack(spacing: 4) {
-                            Image(systemName: "square.stack.fill")
-                                .font(.system(size: 10))
-                                .foregroundColor(.textMuted)
-                            Text("\(workout.totalSets) sets")
-                                .font(.ariseMono(size: 11))
-                                .foregroundColor(.textSecondary)
+                        // WHOOP indicator for activities with exercises
+                        if isWhoopActivity && hasExercises {
+                            HStack(spacing: 2) {
+                                Image(systemName: "applewatch")
+                                    .font(.system(size: 7, weight: .semibold))
+                                Text("WHOOP")
+                                    .font(.ariseMono(size: 8, weight: .semibold))
+                                    .tracking(0.5)
+                            }
+                            .foregroundColor(.orange)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                            .background(Color.orange.opacity(0.1))
+                            .cornerRadius(2)
                         }
                     }
 
-                    if let notes = workout.notes, !notes.isEmpty {
-                        Text(notes)
-                            .font(.ariseMono(size: 11))
-                            .foregroundColor(.textMuted)
-                            .lineLimit(1)
-                            .italic()
+                    if isWhoopActivity && !hasExercises {
+                        // Pure cardio WHOOP activity: show activity type, strain, calories
+                        HStack(spacing: 16) {
+                            if let activityType = workout.activityType {
+                                HStack(spacing: 4) {
+                                    Image(systemName: activityIconName(for: activityType))
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.orange)
+                                    Text(activityType)
+                                        .font(.ariseMono(size: 11, weight: .semibold))
+                                        .foregroundColor(.textPrimary)
+                                }
+                            }
+
+                            if let strain = workout.strain {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "bolt.fill")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.textMuted)
+                                    Text(String(format: "%.1f strain", strain))
+                                        .font(.ariseMono(size: 11))
+                                        .foregroundColor(.textSecondary)
+                                }
+                            }
+
+                            if let calories = workout.calories {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "flame")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.textMuted)
+                                    Text("\(calories) cal")
+                                        .font(.ariseMono(size: 11))
+                                        .foregroundColor(.textSecondary)
+                                }
+                            }
+                        }
+                    } else {
+                        // Gym workout or WHOOP weightlifting: show objectives and sets
+                        HStack(spacing: 16) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "scroll.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.textMuted)
+                                Text("\(workout.exerciseCount) objectives")
+                                    .font(.ariseMono(size: 11))
+                                    .foregroundColor(.textSecondary)
+                            }
+
+                            HStack(spacing: 4) {
+                                Image(systemName: "square.stack.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.textMuted)
+                                Text("\(workout.totalSets) sets")
+                                    .font(.ariseMono(size: 11))
+                                    .foregroundColor(.textSecondary)
+                            }
+
+                            // Show strain for WHOOP weightlifting activities
+                            if isWhoopActivity, let strain = workout.strain {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "bolt.fill")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.orange)
+                                    Text(String(format: "%.1f", strain))
+                                        .font(.ariseMono(size: 11))
+                                        .foregroundColor(.orange)
+                                }
+                            }
+                        }
+
+                        // Only show notes for non-WHOOP workouts (WHOOP notes contain metadata)
+                        if !isWhoopActivity, let notes = workout.notes, !notes.isEmpty {
+                            Text(notes)
+                                .font(.ariseMono(size: 11))
+                                .foregroundColor(.textMuted)
+                                .lineLimit(1)
+                                .italic()
+                        }
                     }
                 }
 
@@ -419,6 +517,23 @@ struct CompletedQuestRow: View {
 
     private func formatDate(_ dateString: String) -> String {
         dateString.parseISO8601Date()?.formattedMedium ?? dateString
+    }
+
+    /// Return an appropriate SF Symbol icon for the activity type
+    private func activityIconName(for activityType: String) -> String {
+        let type = activityType.lowercased()
+        if type.contains("tennis") { return "figure.tennis" }
+        if type.contains("run") { return "figure.run" }
+        if type.contains("walk") { return "figure.walk" }
+        if type.contains("cycle") || type.contains("bike") { return "figure.outdoor.cycle" }
+        if type.contains("swim") { return "figure.pool.swim" }
+        if type.contains("yoga") { return "figure.yoga" }
+        if type.contains("hik") { return "figure.hiking" }
+        if type.contains("basketball") { return "figure.basketball" }
+        if type.contains("soccer") || type.contains("football") { return "figure.soccer" }
+        if type.contains("golf") { return "figure.golf" }
+        if type.contains("functional") || type.contains("weight") || type.contains("strength") { return "figure.strengthtraining.functional" }
+        return "figure.mixed.cardio"
     }
 }
 

@@ -26,6 +26,40 @@ from app.models.pr import PR, PRType
 router = APIRouter()
 
 
+def parse_whoop_notes(notes: str) -> dict:
+    """Parse WHOOP activity data from notes field.
+
+    WHOOP activities are saved with notes in this format:
+    "{activity_type} - WHOOP Activity | Strain: X | Calories: Y | Time: Z"
+
+    Returns dict with WHOOP fields or None if not a WHOOP activity.
+    """
+    if not notes or "WHOOP Activity" not in notes:
+        return None
+
+    result = {"is_whoop_activity": True}
+    parts = notes.split(" | ")
+
+    # First part: "TENNIS - WHOOP Activity"
+    if parts and " - WHOOP Activity" in parts[0]:
+        result["activity_type"] = parts[0].replace(" - WHOOP Activity", "")
+
+    # Parse remaining parts
+    for part in parts[1:]:
+        if part.startswith("Strain: "):
+            try:
+                result["strain"] = float(part.replace("Strain: ", ""))
+            except ValueError:
+                pass
+        elif part.startswith("Calories: "):
+            try:
+                result["calories"] = int(part.replace("Calories: ", ""))
+            except ValueError:
+                pass
+
+    return result
+
+
 @router.post("/debug-error")
 async def debug_workout_error(
     workout_data: WorkoutCreate,
@@ -335,6 +369,9 @@ async def list_workouts(
         sorted_exercises = sorted(workout.workout_exercises, key=lambda we: we.order_index)
         exercise_names = [we.exercise.name for we in sorted_exercises if we.exercise]
 
+        # Parse WHOOP activity data from notes
+        whoop_data = parse_whoop_notes(workout.notes)
+
         summaries.append(WorkoutSummary(
             id=workout.id,
             user_id=workout.user_id,
@@ -346,7 +383,12 @@ async def list_workouts(
             total_sets=total_sets,
             exercise_names=exercise_names,
             created_at=workout.created_at.isoformat(),
-            updated_at=workout.updated_at.isoformat()
+            updated_at=workout.updated_at.isoformat(),
+            # WHOOP fields
+            is_whoop_activity=whoop_data.get("is_whoop_activity", False) if whoop_data else False,
+            activity_type=whoop_data.get("activity_type") if whoop_data else None,
+            strain=whoop_data.get("strain") if whoop_data else None,
+            calories=whoop_data.get("calories") if whoop_data else None
         ))
 
     return summaries

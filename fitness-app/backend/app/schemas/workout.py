@@ -208,6 +208,11 @@ class WorkoutSummary(BaseModel):
     exercise_names: List[str] = []
     created_at: str
     updated_at: str
+    # WHOOP activity fields (parsed from notes)
+    is_whoop_activity: bool = False
+    activity_type: Optional[str] = None
+    strain: Optional[float] = None
+    calories: Optional[int] = None
 
     class Config:
         from_attributes = True

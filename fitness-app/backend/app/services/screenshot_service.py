@@ -797,5 +797,110 @@ async def save_whoop_activity(
     db.flush()
     workout_id = str(workout_session.id)
 
+    # If WHOOP extracted exercises (e.g., weightlifting activity), save them too
+    # This ensures exercises get set credit and tie to recovery tracking
+    exercises = extraction_result.get("exercises") or []
+    if exercises:
+        # Get user's e1RM formula preference
+        user_profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+        e1rm_formula = E1RMFormula.EPLEY
+        if user_profile and user_profile.e1rm_formula:
+            e1rm_formula = user_profile.e1rm_formula
+
+        order_index = 0
+        for exercise_data in exercises:
+            exercise_id = exercise_data.get("matched_exercise_id")
+
+            # Skip exercises that weren't matched
+            if not exercise_id:
+                continue
+
+            # Verify exercise exists
+            exercise = db.query(Exercise).filter(Exercise.id == exercise_id).first()
+            if not exercise:
+                continue
+
+            # Create workout exercise
+            workout_exercise = WorkoutExercise(
+                session_id=workout_session.id,
+                exercise_id=exercise_id,
+                order_index=order_index
+            )
+            db.add(workout_exercise)
+            db.flush()
+            order_index += 1
+
+            # Create sets
+            set_number = 1
+            exercise_sets = []
+            for set_data in (exercise_data.get("sets") or []):
+                weight = set_data.get("weight_lb", 0)
+                reps = set_data.get("reps", 1)
+                num_sets = set_data.get("sets", 1)
+
+                # Create multiple sets if sets > 1
+                for _ in range(num_sets):
+                    if weight > 0 and reps > 0:
+                        e1rm = calculate_e1rm(weight, reps, e1rm_formula)
+
+                        set_obj = Set(
+                            workout_exercise_id=workout_exercise.id,
+                            weight=weight,
+                            weight_unit=WeightUnit.LB,
+                            reps=reps,
+                            set_number=set_number,
+                            e1rm=round(e1rm, 2)
+                        )
+                        db.add(set_obj)
+                        exercise_sets.append(set_obj)
+                        set_number += 1
+
+            # Detect PRs for this exercise
+            if exercise_sets:
+                db.flush()
+                detect_and_create_prs(db, user_id, workout_exercise, exercise_sets)
+
+        # If we saved exercises, award XP and update progress
+        if order_index > 0:
+            db.flush()
+            db.refresh(workout_session)
+
+            # Calculate and award XP
+            workout_prs = db.query(PR).filter(
+                PR.user_id == user_id,
+                PR.set_id.in_([s.id for we in workout_session.workout_exercises for s in we.sets])
+            ).count()
+
+            xp_result = calculate_workout_xp(db, workout_session, prs_achieved=workout_prs)
+            award_xp(db, user_id, xp_result["xp_earned"], workout_date=workout_session.date)
+
+            # Update progress stats
+            progress = get_or_create_user_progress(db, user_id)
+            progress.total_volume_lb += xp_result["total_volume"]
+            progress.total_prs += workout_prs
+
+            # Check achievements
+            all_prs = db.query(PR).filter(PR.user_id == user_id).all()
+            exercise_prs = {}
+            for pr in all_prs:
+                exercise_name = pr.exercise.name.lower() if pr.exercise else ""
+                pr_weight = pr.weight if pr.weight is not None else pr.value
+                if pr_weight is not None:
+                    if exercise_name not in exercise_prs or pr_weight > exercise_prs.get(exercise_name, 0):
+                        exercise_prs[exercise_name] = pr_weight
+
+            achievement_context = {
+                "workout_count": progress.total_workouts,
+                "level": progress.level,
+                "rank": progress.rank,
+                "prs_count": progress.total_prs,
+                "current_streak": progress.current_streak,
+                "exercise_prs": exercise_prs
+            }
+            check_and_unlock_achievements(db, user_id, achievement_context)
+
+            # Update quest progress
+            update_quest_progress(db, user_id, workout_session)
+
     db.commit()
     return activity_id, workout_id
