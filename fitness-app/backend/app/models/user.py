@@ -12,8 +12,10 @@ from app.core.database import Base
 class TrainingExperience(str, enum.Enum):
     """Training experience levels"""
     BEGINNER = "beginner"
+    NOVICE = "novice"
     INTERMEDIATE = "intermediate"
     ADVANCED = "advanced"
+    ELITE = "elite"
 
 
 class WeightUnit(str, enum.Enum):
