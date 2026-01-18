@@ -32,6 +32,7 @@
 		76FE00186583DC113F0998FE /* FitnessAppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0A0F9BC78395829B3FD6E72 /* FitnessAppTests.swift */; };
 		7F6C3F85FD8A35AE44727A0C /* PersonalRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8802BF7E793DDEE5AF204F7 /* PersonalRecord.swift */; };
 		82A75718FCA9F00ED57AB446 /* RankBadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9F64535FBE31A54DBE47FFF /* RankBadgeView.swift */; };
+		82DFE04B35A85EE155692D70 /* UsernameSetupSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFE7F6DB954159E6CB657F56 /* UsernameSetupSheet.swift */; };
 		84A70DCA96C94345EF14E741 /* BodyweightEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4782AB3331CF5A6119847AF2 /* BodyweightEntry.swift */; };
 		85E55E53839823091153F327 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F3A7D81E4F7B61A487F21DB /* Colors.swift */; };
 		8714FA87386C4B44FEF75DF2 /* ProfileViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF4984BB26D18D05ABEFA7B5 /* ProfileViewModel.swift */; };
@@ -129,6 +130,7 @@
 		BD1168F90C7EA3B9F66ADC03 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		BED1304102384B66EBFC6063 /* ScreenshotPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotPickerView.swift; sourceTree = "<group>"; };
 		BF4984BB26D18D05ABEFA7B5 /* ProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModel.swift; sourceTree = "<group>"; };
+		BFE7F6DB954159E6CB657F56 /* UsernameSetupSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsernameSetupSheet.swift; sourceTree = "<group>"; };
 		C39F3A4A40C528C138FC2D0A /* DungeonSpawnOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DungeonSpawnOverlay.swift; sourceTree = "<group>"; };
 		C5A97BBD2F0FF0461CBD9001 /* Inter-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Inter-Variable.ttf"; sourceTree = "<group>"; };
 		C68D331EA8FE8B1C6A105FE9 /* StatCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatCard.swift; sourceTree = "<group>"; };
@@ -153,6 +155,7 @@
 				05F458060FE9123EB707196B /* AchievementsListView.swift */,
 				2B00CB613804C42690DBF6B0 /* ProfileView.swift */,
 				BF4984BB26D18D05ABEFA7B5 /* ProfileViewModel.swift */,
+				BFE7F6DB954159E6CB657F56 /* UsernameSetupSheet.swift */,
 			);
 			path = Profile;
 			sourceTree = "<group>";
@@ -508,6 +511,7 @@
 				F3928D582CFFD13A67454E60 /* StatCard.swift in Sources */,
 				05CC6AEBFD7BF822803F46FD /* StatsView.swift in Sources */,
 				6FAE6B891124D5E183037AB0 /* User.swift in Sources */,
+				82DFE04B35A85EE155692D70 /* UsernameSetupSheet.swift in Sources */,
 				2CB4AD01F621551C9C16B843 /* VoidBackground.swift in Sources */,
 				128C3BEF27F1FADEE9533255 /* Workout.swift in Sources */,
 				E5F8C1E4DE3FEAD7EE283672 /* XPBarView.swift in Sources */,
@@ -644,6 +648,7 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -727,6 +732,7 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;

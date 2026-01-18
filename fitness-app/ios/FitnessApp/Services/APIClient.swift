@@ -67,6 +67,27 @@ class APIClient {
         return try await put("/profile", body: profile)
     }
 
+    // MARK: - Username
+
+    func checkUsernameAvailability(_ username: String) async throws -> UsernameCheckResponse {
+        let encodedUsername = username.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? username
+        return try await get("/users/username/check?username=\(encodedUsername)")
+    }
+
+    func setUsername(_ username: String) async throws {
+        struct SetUsernameResponse: Decodable {
+            let message: String
+            let username: String
+        }
+        let body = UsernameUpdate(username: username)
+        let _: SetUsernameResponse = try await put("/users/username", body: body)
+    }
+
+    func searchUsers(query: String, limit: Int = 20) async throws -> [UserPublicResponse] {
+        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        return try await get("/users/search?q=\(encodedQuery)&limit=\(limit)")
+    }
+
     // MARK: - Exercises
 
     func getExercises(category: String? = nil, search: String? = nil) async throws -> [ExerciseResponse] {

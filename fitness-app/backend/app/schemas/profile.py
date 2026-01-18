@@ -21,6 +21,8 @@ class ProfileResponse(BaseModel):
     """Schema for profile information in responses"""
     id: str
     user_id: str
+    email: Optional[str] = None
+    username: Optional[str] = None
     age: Optional[int]
     sex: Optional[str]
     bodyweight_lb: Optional[float]

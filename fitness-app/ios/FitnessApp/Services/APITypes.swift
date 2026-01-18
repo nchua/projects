@@ -20,6 +20,7 @@ struct ProfileResponse: Decodable {
     let id: String
     let userId: String?
     let email: String?
+    let username: String?
     let age: Int?
     let sex: String?
     let bodyweightLb: Double?
@@ -31,7 +32,7 @@ struct ProfileResponse: Decodable {
     let updatedAt: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, age, sex, email
+        case id, age, sex, email, username
         case userId = "user_id"
         case bodyweightLb = "bodyweight_lb"
         case heightInches = "height_inches"
@@ -60,6 +61,24 @@ struct ProfileUpdate: Encodable {
         case preferredUnit = "preferred_unit"
         case e1rmFormula = "e1rm_formula"
     }
+}
+
+// MARK: - Username
+
+struct UsernameUpdate: Encodable {
+    let username: String
+}
+
+struct UsernameCheckResponse: Decodable {
+    let username: String
+    let available: Bool
+}
+
+struct UserPublicResponse: Decodable, Identifiable {
+    let id: String
+    let username: String
+    let rank: String
+    let level: Int
 }
 
 // MARK: - Exercise

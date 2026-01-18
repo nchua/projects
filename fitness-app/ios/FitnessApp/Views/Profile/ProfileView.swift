@@ -8,6 +8,7 @@ struct ProfileView: View {
     @State private var showLogoutConfirmation = false
     @State private var showAllAchievements = false
     @State private var showImagePicker = false
+    @State private var showUsernameSetup = false
     @State private var profileImage: UIImage?
 
     var body: some View {
@@ -55,6 +56,7 @@ struct ProfileView: View {
                             // Hunter Profile Header
                             HunterProfileHeader(
                                 email: viewModel.profile?.email ?? "",
+                                username: viewModel.profile?.username,
                                 level: viewModel.hunterLevel,
                                 rank: viewModel.hunterRank,
                                 profileImage: profileImage,
@@ -76,6 +78,12 @@ struct ProfileView: View {
 
                             // Vessel Section (Bodyweight)
                             VesselSection(viewModel: viewModel)
+
+                            // Hunter Identity (Username)
+                            HunterIdentitySection(
+                                username: viewModel.profile?.username,
+                                onSetUsername: { showUsernameSetup = true }
+                            )
 
                             // Hunter Attributes
                             HunterAttributesSection(viewModel: viewModel)
@@ -184,6 +192,14 @@ struct ProfileView: View {
             .sheet(isPresented: $showImagePicker) {
                 ImagePicker(image: $profileImage)
             }
+            .sheet(isPresented: $showUsernameSetup) {
+                UsernameSetupSheet {
+                    // Refresh profile after username is set
+                    Task {
+                        await viewModel.loadProfile()
+                    }
+                }
+            }
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
@@ -205,6 +221,7 @@ struct ProfileView: View {
 
 struct HunterProfileHeader: View {
     let email: String
+    var username: String? = nil
     let level: Int
     let rank: HunterRank
     var profileImage: UIImage? = nil
@@ -212,11 +229,26 @@ struct HunterProfileHeader: View {
     @State private var showContent = false
 
     var hunterName: String {
-        // Extract name from email
-        email.components(separatedBy: "@").first?.capitalized ?? "Hunter"
+        // Prefer username, fallback to email prefix
+        if let username = username, !username.isEmpty {
+            return username
+        }
+        return email.components(separatedBy: "@").first?.capitalized ?? "Hunter"
+    }
+
+    var displayUsername: String? {
+        // Only show @username if username is set
+        if let username = username, !username.isEmpty {
+            return "@\(username)"
+        }
+        return nil
     }
 
     var initials: String {
+        // Prefer username initials if available
+        if let username = username, !username.isEmpty, username.count >= 2 {
+            return String(username.prefix(2)).uppercased()
+        }
         let components = email.components(separatedBy: "@").first?.components(separatedBy: ".") ?? []
         if components.count >= 2 {
             return String(components[0].prefix(1) + components[1].prefix(1)).uppercased()
@@ -300,11 +332,18 @@ struct HunterProfileHeader: View {
             }
             .padding(.horizontal, 24)
 
-            // Email
-            Text(email)
-                .font(.ariseMono(size: 12))
-                .foregroundColor(.textSecondary)
-                .opacity(showContent ? 1 : 0)
+            // Show @username if set, otherwise email
+            if let displayUsername = displayUsername {
+                Text(displayUsername)
+                    .font(.ariseMono(size: 14, weight: .medium))
+                    .foregroundColor(.systemPrimary)
+                    .opacity(showContent ? 1 : 0)
+            } else {
+                Text(email)
+                    .font(.ariseMono(size: 12))
+                    .foregroundColor(.textSecondary)
+                    .opacity(showContent ? 1 : 0)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
@@ -783,6 +822,65 @@ struct VesselStatBox: View {
             RoundedRectangle(cornerRadius: 4)
                 .stroke(Color.ariseBorder, lineWidth: 1)
         )
+    }
+}
+
+// MARK: - Hunter Identity (Username)
+
+struct HunterIdentitySection: View {
+    let username: String?
+    var onSetUsername: (() -> Void)? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            AriseSectionHeader(title: "Hunter Identity")
+                .padding(.horizontal)
+
+            VStack(spacing: 0) {
+                AriseSettingsRow(
+                    icon: "at",
+                    iconColor: .systemPrimary,
+                    title: "Username",
+                    trailing: {
+                        if let username = username, !username.isEmpty {
+                            Button {
+                                onSetUsername?()
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Text("@\(username)")
+                                        .font(.ariseMono(size: 14, weight: .medium))
+                                        .foregroundColor(.systemPrimary)
+
+                                    Image(systemName: "pencil")
+                                        .font(.system(size: 10, weight: .semibold))
+                                        .foregroundColor(.textMuted)
+                                }
+                            }
+                        } else {
+                            Button {
+                                onSetUsername?()
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.system(size: 12))
+                                    Text("SET USERNAME")
+                                        .font(.ariseMono(size: 11, weight: .semibold))
+                                        .tracking(0.5)
+                                }
+                                .foregroundColor(.systemPrimary)
+                            }
+                        }
+                    }
+                )
+            }
+            .background(Color.voidMedium)
+            .cornerRadius(4)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(Color.ariseBorder, lineWidth: 1)
+            )
+            .padding(.horizontal)
+        }
     }
 }
 

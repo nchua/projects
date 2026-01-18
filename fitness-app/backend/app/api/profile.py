@@ -42,6 +42,8 @@ async def get_profile(
     return ProfileResponse(
         id=profile.id,
         user_id=profile.user_id,
+        email=current_user.email,
+        username=current_user.username,
         age=profile.age,
         sex=profile.sex,
         bodyweight_lb=profile.bodyweight_lb,
@@ -95,6 +97,8 @@ async def update_profile(
     return ProfileResponse(
         id=profile.id,
         user_id=profile.user_id,
+        email=current_user.email,
+        username=current_user.username,
         age=profile.age,
         sex=profile.sex,
         bodyweight_lb=profile.bodyweight_lb,
