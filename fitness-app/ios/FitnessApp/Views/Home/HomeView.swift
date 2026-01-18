@@ -2,6 +2,7 @@ import SwiftUI
 import Charts
 
 struct HomeView: View {
+    @Binding var selectedTab: Int
     @StateObject private var viewModel = HomeViewModel()
     @State private var selectedInsight: InsightResponse?
     @State private var selectedWorkout: WorkoutSummaryResponse?
@@ -54,8 +55,8 @@ struct HomeView: View {
                             .padding(.horizontal)
                         }
 
-                        // 5. Power Levels (Big 3)
-                        PowerLevelsCard(lifts: viewModel.bigThreeLifts)
+                        // 5. Power Levels (Big 3) - Tap to go to Stats
+                        PowerLevelsCard(lifts: viewModel.bigThreeLifts, selectedTab: $selectedTab)
                             .padding(.horizontal)
 
                         // 6. Recovery Status (Tappable) - Always show, handles empty state
@@ -244,6 +245,7 @@ struct QuickActionsRow: View {
 
 struct PowerLevelsCard: View {
     let lifts: [BigThreeLift]
+    @Binding var selectedTab: Int  // To switch to Stats tab
 
     var totalE1RM: Double {
         lifts.reduce(0) { $0 + $1.e1rm }
@@ -255,41 +257,66 @@ struct PowerLevelsCard: View {
         return trends.reduce(0, +) / Double(trends.count)
     }
 
+    var hasData: Bool {
+        lifts.contains { $0.e1rm > 0 }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header
-            HStack {
-                Text("Power Levels")
-                    .font(.ariseHeader(size: 15, weight: .semibold))
-                    .foregroundColor(.textPrimary)
+        Button {
+            // Navigate to Stats tab (index 4)
+            selectedTab = 4
+        } label: {
+            VStack(alignment: .leading, spacing: 12) {
+                // Header
+                HStack {
+                    Text("Power Levels")
+                        .font(.ariseHeader(size: 15, weight: .semibold))
+                        .foregroundColor(.textPrimary)
 
-                Spacer()
+                    Spacer()
 
-                if overallTrend != 0 {
-                    HStack(spacing: 4) {
-                        Image(systemName: overallTrend >= 0 ? "arrow.up.right" : "arrow.down.right")
-                            .font(.system(size: 10, weight: .bold))
-                        Text(String(format: "%.1f%%", abs(overallTrend)))
-                            .font(.ariseMono(size: 12, weight: .semibold))
+                    if overallTrend != 0 {
+                        HStack(spacing: 4) {
+                            Image(systemName: overallTrend >= 0 ? "arrow.up.right" : "arrow.down.right")
+                                .font(.system(size: 10, weight: .bold))
+                            Text(String(format: "%.1f%%", abs(overallTrend)))
+                                .font(.ariseMono(size: 12, weight: .semibold))
+                        }
+                        .foregroundColor(overallTrend >= 0 ? .successGreen : .warningRed)
                     }
-                    .foregroundColor(overallTrend >= 0 ? .successGreen : .warningRed)
-                }
-            }
 
-            // Lifts
-            HStack(spacing: 10) {
-                ForEach(lifts) { lift in
-                    PowerLevelItem(lift: lift)
+                    // Chevron to indicate tappable
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.textMuted)
+                }
+
+                // Lifts
+                HStack(spacing: 10) {
+                    ForEach(lifts) { lift in
+                        PowerLevelItem(lift: lift)
+                    }
+                }
+
+                // Empty state message
+                if !hasData {
+                    Text("Log workouts with Squat, Bench, or Deadlift to see your power levels")
+                        .font(.ariseMono(size: 11))
+                        .foregroundColor(.textMuted)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 4)
                 }
             }
+            .padding(16)
+            .background(Color.voidMedium)
+            .cornerRadius(4)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(Color.ariseBorder, lineWidth: 1)
+            )
         }
-        .padding(16)
-        .background(Color.voidMedium)
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.ariseBorder, lineWidth: 1)
-        )
+        .buttonStyle(.plain)
     }
 }
 
@@ -1873,6 +1900,6 @@ struct HealthKitConnectCard: View {
 // MARK: - Preview
 
 #Preview {
-    HomeView()
+    HomeView(selectedTab: .constant(0))
         .environmentObject(AuthManager.shared)
 }
