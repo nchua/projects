@@ -14,6 +14,48 @@ from app.schemas.exercise import ExerciseCreate, ExerciseResponse
 
 router = APIRouter()
 
+# Abbreviation dictionary for search expansion
+ABBREVIATIONS = {
+    "bb": "barbell",
+    "db": "dumbbell",
+    "ohp": "overhead press",
+    "rdl": "romanian deadlift",
+    "dl": "deadlift",
+    "bp": "bench press",
+    "incl": "incline",
+    "decl": "decline",
+    "lat": "lateral",
+    "ext": "extension",
+    "tri": "tricep",
+    "bi": "bicep",
+    "sl": "single leg",
+    "cg": "close grip",
+    "1-arm": "one-arm",
+    "1 arm": "one arm",
+}
+
+
+def expand_search_query(search: str) -> List[str]:
+    """
+    Expand abbreviations in search query.
+
+    Examples:
+        'bb curl' -> ['bb curl', 'barbell curl']
+        'ohp' -> ['ohp', 'overhead press']
+        'db lat raise' -> ['db lat raise', 'dumbbell lateral raise']
+    """
+    terms = [search]
+    words = search.lower().split()
+
+    # Expand each word if it's an abbreviation
+    expanded_words = [ABBREVIATIONS.get(w, w) for w in words]
+    expanded = " ".join(expanded_words)
+
+    if expanded != search.lower():
+        terms.append(expanded)
+
+    return terms
+
 # Exercise seed data
 EXERCISES_DATA = [
     # Push Exercises
@@ -28,8 +70,8 @@ EXERCISES_DATA = [
     {"name": "Overhead Press", "aliases": ["OHP", "Military Press", "Shoulder Press"], "category": "Push", "primary_muscle": "Shoulders", "secondary_muscles": ["Triceps", "Upper Chest"]},
     {"name": "Seated Dumbbell Press", "aliases": ["Seated DB Press", "Seated Shoulder Press"], "category": "Push", "primary_muscle": "Shoulders", "secondary_muscles": ["Triceps"]},
     {"name": "Arnold Press", "aliases": ["Arnold Shoulder Press"], "category": "Push", "primary_muscle": "Shoulders", "secondary_muscles": []},
-    {"name": "Lateral Raises", "aliases": ["Side Raises", "DB Lateral Raises", "Lateral Shoulder Raise"], "category": "Push", "primary_muscle": "Side Delts", "secondary_muscles": []},
-    {"name": "Front Raises", "aliases": ["Front Delt Raises"], "category": "Push", "primary_muscle": "Front Delts", "secondary_muscles": []},
+    {"name": "Lateral Raises", "aliases": ["Side Raises", "DB Lateral Raises", "Lateral Shoulder Raise", "Lateral Raise", "Side Raise"], "category": "Push", "primary_muscle": "Side Delts", "secondary_muscles": []},
+    {"name": "Front Raises", "aliases": ["Front Delt Raises", "Front Raise", "Front Delt Raise"], "category": "Push", "primary_muscle": "Front Delts", "secondary_muscles": []},
     {"name": "Rear Delt Flyes", "aliases": ["Reverse Flyes", "Rear Delts"], "category": "Push", "primary_muscle": "Rear Delts", "secondary_muscles": []},
     {"name": "Close-Grip Bench Press", "aliases": ["CG Bench", "Close Grip Bench"], "category": "Push", "primary_muscle": "Triceps", "secondary_muscles": ["Chest"]},
     {"name": "Tricep Dips", "aliases": ["Dips", "Triceps Dips", "Chest Dip"], "category": "Push", "primary_muscle": "Triceps", "secondary_muscles": ["Chest"]},
@@ -49,7 +91,7 @@ EXERCISES_DATA = [
     {"name": "Dumbbell Row", "aliases": ["DB Row", "One-Arm Row"], "category": "Pull", "primary_muscle": "Back", "secondary_muscles": ["Biceps"]},
     {"name": "T-Bar Row", "aliases": ["T Bar Row"], "category": "Pull", "primary_muscle": "Back", "secondary_muscles": ["Biceps"]},
     {"name": "Seated Cable Row", "aliases": ["Cable Row", "Seated Row"], "category": "Pull", "primary_muscle": "Back", "secondary_muscles": ["Biceps"]},
-    {"name": "Face Pulls", "aliases": ["Cable Face Pulls"], "category": "Pull", "primary_muscle": "Rear Delts", "secondary_muscles": ["Upper Back"]},
+    {"name": "Face Pulls", "aliases": ["Cable Face Pulls", "Face Pull", "Cable Face Pull"], "category": "Pull", "primary_muscle": "Rear Delts", "secondary_muscles": ["Upper Back"]},
     {"name": "Barbell Curl", "aliases": ["BB Curl", "Bicep Curl"], "category": "Pull", "primary_muscle": "Biceps", "secondary_muscles": []},
     {"name": "Dumbbell Curl", "aliases": ["DB Curl"], "category": "Pull", "primary_muscle": "Biceps", "secondary_muscles": []},
     {"name": "Hammer Curl", "aliases": ["Hammer Curls"], "category": "Pull", "primary_muscle": "Biceps", "secondary_muscles": ["Forearms"]},
@@ -147,9 +189,11 @@ async def list_exercises(
     if category:
         query = query.filter(Exercise.category == category)
 
-    # Apply search filter (case-insensitive partial match)
+    # Apply search filter (case-insensitive partial match with abbreviation expansion)
     if search:
-        query = query.filter(Exercise.name.ilike(f"%{search}%"))
+        search_terms = expand_search_query(search)
+        search_filters = [Exercise.name.ilike(f"%{term}%") for term in search_terms]
+        query = query.filter(or_(*search_filters))
 
     # Order by name
     exercises = query.order_by(Exercise.name).all()
