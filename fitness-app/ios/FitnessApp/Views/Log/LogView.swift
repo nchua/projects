@@ -5,6 +5,7 @@ struct LogView: View {
     // Initial screenshots passed from QuestsView (or other callers)
     var initialScreenshots: [Data]?
 
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = LogViewModel()
     @StateObject private var screenshotViewModel = ScreenshotProcessingViewModel()
     @State private var showDatePicker = false
@@ -48,7 +49,9 @@ struct LogView: View {
                         },
                         onScanQuestLog: {
                             showScreenshotPicker = true
-                        }
+                        },
+                        showCloseButton: true,
+                        onClose: { dismiss() }
                     )
                     #if DEBUG
                     .onLongPressGesture(minimumDuration: 2.0) {
@@ -285,11 +288,32 @@ struct LogView: View {
 struct IdleQuestView: View {
     let onStartQuest: () -> Void
     var onScanQuestLog: (() -> Void)? = nil
+    var showCloseButton: Bool = false
+    var onClose: (() -> Void)? = nil
     @State private var showContent = false
     @State private var pulseAnimation = false
 
     var body: some View {
-        VStack(spacing: 32) {
+        ZStack(alignment: .topLeading) {
+            // Close button when navigated from another view
+            if showCloseButton {
+                Button {
+                    onClose?()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("Back")
+                            .font(.ariseMono(size: 14, weight: .medium))
+                    }
+                    .foregroundColor(.systemPrimary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                }
+                .zIndex(1)
+            }
+
+            VStack(spacing: 32) {
             Spacer()
 
             // System notification
@@ -395,7 +419,8 @@ struct IdleQuestView: View {
 
             Spacer()
                 .frame(height: 100)
-        }
+            } // end VStack
+        } // end ZStack
         .onAppear {
             withAnimation(.easeOut(duration: 0.6).delay(0.2)) {
                 showContent = true

@@ -14,8 +14,8 @@ struct HomeView: View {
                 VoidBackground(showGrid: true, glowIntensity: 0.03)
 
                 ScrollView {
-                    VStack(spacing: 24) {
-                        // ARISE Hunter Header - Now using real data from viewModel
+                    VStack(spacing: 16) {
+                        // 1. Hunter Header with XP
                         HunterStatusHeader(
                             name: viewModel.hunterName,
                             initials: viewModel.hunterInitials,
@@ -29,16 +29,20 @@ struct HomeView: View {
                         )
                         .padding(.horizontal)
 
-                        // Cooldown Status Card - Only show if there are muscles cooling down
-                        if !viewModel.cooldownStatus.isEmpty {
-                            CooldownCard(
-                                cooldownData: viewModel.cooldownStatus,
-                                ageModifier: viewModel.cooldownAgeModifier
-                            )
-                            .padding(.horizontal)
-                        }
+                        // 2. Weekly Quest Hero Card
+                        WeeklyQuestCard(
+                            workouts: viewModel.weeklyReview?.totalWorkouts ?? 0,
+                            workoutsGoal: viewModel.weeklyStats.workoutsGoal,
+                            volume: viewModel.weeklyStats.totalVolume,
+                            activeMinutes: viewModel.weeklyStats.activeMinutes
+                        )
+                        .padding(.horizontal)
 
-                        // Daily Quests Card
+                        // 3. Quick Actions
+                        QuickActionsRow()
+                            .padding(.horizontal)
+
+                        // 4. Daily Quests (Compact)
                         if let quests = viewModel.dailyQuests, !quests.quests.isEmpty {
                             DailyQuestsCard(
                                 quests: quests.quests,
@@ -50,103 +54,25 @@ struct HomeView: View {
                             .padding(.horizontal)
                         }
 
-                        // Weekly Quest Progress Card
-                        WeeklyQuestCard(
-                            workouts: viewModel.weeklyReview?.totalWorkouts ?? 0,
-                            workoutsGoal: viewModel.weeklyStats.workoutsGoal,
-                            volume: viewModel.weeklyStats.totalVolume,
-                            activeMinutes: viewModel.weeklyStats.activeMinutes
-                        )
-                        .padding(.horizontal)
-
-                        // Last Quest (Workout) Card
-                        if let recentWorkout = viewModel.recentWorkout {
-                            LastQuestCard(workout: recentWorkout) {
-                                selectedWorkout = recentWorkout
-                            }
-                            .padding(.horizontal)
-                        } else {
-                            EmptyQuestCard()
-                                .padding(.horizontal)
-                        }
-
-                        // Activity Rings (HealthKit)
-                        if viewModel.healthKitAuthorized {
-                            ActivityRingsCard(
-                                steps: viewModel.todaySteps,
-                                calories: viewModel.todayCalories,
-                                exerciseMinutes: viewModel.todayExerciseMinutes,
-                                standHours: viewModel.todayStandHours,
-                                weeklySteps: viewModel.weeklySteps,
-                                weeklyCalories: viewModel.weeklyCalories,
-                                weeklyExerciseMinutes: viewModel.weeklyExerciseMinutes,
-                                weeklyAvgSteps: viewModel.weeklyAvgSteps,
-                                isSyncing: viewModel.isHealthKitSyncing,
-                                onSync: {
-                                    Task { await viewModel.syncHealthKit() }
-                                }
-                            )
-                            .padding(.horizontal)
-                        } else if HealthKitManager.shared.isHealthDataAvailable {
-                            // Show connect button if HealthKit available but not authorized
-                            HealthKitConnectCard {
-                                Task { await viewModel.requestHealthKitAccess() }
-                            }
-                            .padding(.horizontal)
-                        }
-
-                        // Hunter Stats Section
-                        AriseSectionHeader(title: "Hunter Stats")
+                        // 5. Power Levels (Big 3)
+                        PowerLevelsCard(lifts: viewModel.bigThreeLifts)
                             .padding(.horizontal)
 
-                        HunterStatsGrid(
-                            workouts: viewModel.weeklyReview?.totalWorkouts ?? 0,
-                            volume: viewModel.weeklyStats.totalVolume,
-                            activeTime: viewModel.weeklyStats.activeMinutes,
-                            prs: viewModel.weeklyReview?.prsAchieved.count ?? 0
-                        )
-                        .padding(.horizontal)
-
-                        // Strength Trend Chart
-                        if let trend = viewModel.primaryLiftTrend, !trend.dataPoints.isEmpty {
-                            StrengthTrendCard(trend: trend)
-                                .padding(.horizontal)
-                        }
-
-                        // Recent Achievements (PRs)
-                        if !viewModel.recentPRs.isEmpty {
-                            AriseSectionHeader(
-                                title: "Achievements",
-                                trailing: AnyView(
-                                    Text("See All")
-                                        .font(.ariseMono(size: 12))
-                                        .foregroundColor(.systemPrimary)
-                                )
-                            )
+                        // 6. Recovery Status (Tappable) - Always show, handles empty state
+                        RecoveryStatusSection(cooldownData: viewModel.cooldownStatus)
                             .padding(.horizontal)
 
-                            ForEach(viewModel.recentPRs.prefix(3)) { pr in
-                                AchievementCard(pr: pr)
+                        // 7. Latest Achievement (Single PR)
+                        if let latestPR = viewModel.recentPRs.first {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("LATEST ACHIEVEMENT")
+                                    .font(.ariseMono(size: 10, weight: .semibold))
+                                    .foregroundColor(.textMuted)
+                                    .tracking(1.5)
                                     .padding(.horizontal)
-                            }
-                        }
 
-                        // System Insights
-                        if !viewModel.insights.isEmpty {
-                            AriseSectionHeader(title: "System Analysis")
-                                .padding(.horizontal)
-
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 12) {
-                                    ForEach(viewModel.insights, id: \.title) { insight in
-                                        SystemInsightCard(insight: insight, hasExercise: insight.exerciseId != nil) {
-                                            if insight.exerciseId != nil {
-                                                selectedInsight = insight
-                                            }
-                                        }
-                                    }
-                                }
-                                .padding(.horizontal)
+                                AchievementCard(pr: latestPR)
+                                    .padding(.horizontal)
                             }
                         }
 
@@ -264,6 +190,166 @@ struct HunterStatusHeader: View {
         }
         .padding(16)
         .systemPanelStyle(hasGlow: true)
+    }
+}
+
+// MARK: - Quick Actions Row
+
+struct QuickActionsRow: View {
+    var body: some View {
+        HStack(spacing: 12) {
+            // Start Workout Button - takes more space
+            NavigationLink(destination: LogView()) {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .bold))
+                    Text("START WORKOUT")
+                        .font(.ariseHeader(size: 12, weight: .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+                .foregroundColor(.voidBlack)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.systemPrimary)
+                .cornerRadius(4)
+                .shadow(color: Color.systemPrimaryGlow, radius: 10, x: 0, y: 0)
+            }
+            .frame(minWidth: 0, maxWidth: .infinity)
+
+            // Scan Screenshot Button - compact
+            NavigationLink(destination: LogView()) {
+                HStack(spacing: 6) {
+                    Image(systemName: "camera.viewfinder")
+                        .font(.system(size: 14, weight: .medium))
+                    Text("SCAN")
+                        .font(.ariseHeader(size: 12, weight: .semibold))
+                }
+                .foregroundColor(.textPrimary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.voidMedium)
+                .cornerRadius(4)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(Color.ariseBorder, lineWidth: 1)
+                )
+            }
+            .frame(minWidth: 0, maxWidth: .infinity)
+        }
+    }
+}
+
+// MARK: - Power Levels Card
+
+struct PowerLevelsCard: View {
+    let lifts: [BigThreeLift]
+
+    var totalE1RM: Double {
+        lifts.reduce(0) { $0 + $1.e1rm }
+    }
+
+    var overallTrend: Double {
+        let trends = lifts.compactMap { $0.trendPercent }
+        guard !trends.isEmpty else { return 0 }
+        return trends.reduce(0, +) / Double(trends.count)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header
+            HStack {
+                Text("Power Levels")
+                    .font(.ariseHeader(size: 15, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+
+                Spacer()
+
+                if overallTrend != 0 {
+                    HStack(spacing: 4) {
+                        Image(systemName: overallTrend >= 0 ? "arrow.up.right" : "arrow.down.right")
+                            .font(.system(size: 10, weight: .bold))
+                        Text(String(format: "%.1f%%", abs(overallTrend)))
+                            .font(.ariseMono(size: 12, weight: .semibold))
+                    }
+                    .foregroundColor(overallTrend >= 0 ? .successGreen : .warningRed)
+                }
+            }
+
+            // Lifts
+            HStack(spacing: 10) {
+                ForEach(lifts) { lift in
+                    PowerLevelItem(lift: lift)
+                }
+            }
+        }
+        .padding(16)
+        .background(Color.voidMedium)
+        .cornerRadius(4)
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(Color.ariseBorder, lineWidth: 1)
+        )
+    }
+}
+
+struct PowerLevelItem: View {
+    let lift: BigThreeLift
+
+    var liftColor: Color {
+        switch lift.name.lowercased() {
+        case "squat", "barbell back squat": return Color(red: 1.0, green: 0.42, blue: 0.42) // Red
+        case "bench", "bench press", "barbell bench press": return Color(red: 0.31, green: 0.80, blue: 0.77) // Teal
+        case "deadlift", "conventional deadlift": return Color(red: 1.0, green: 0.90, blue: 0.43) // Yellow
+        default: return .systemPrimary
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(lift.shortName.uppercased())
+                .font(.ariseMono(size: 10, weight: .semibold))
+                .foregroundColor(.textMuted)
+                .tracking(0.5)
+
+            HStack(alignment: .lastTextBaseline, spacing: 2) {
+                Text(lift.e1rm.formattedWeight)
+                    .font(.ariseDisplay(size: 20, weight: .bold))
+                    .foregroundColor(.textPrimary)
+
+                Text("lb")
+                    .font(.ariseMono(size: 10))
+                    .foregroundColor(.textMuted)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color.voidDark)
+        .cornerRadius(4)
+        .overlay(
+            Rectangle()
+                .fill(liftColor)
+                .frame(width: 3),
+            alignment: .leading
+        )
+    }
+}
+
+// MARK: - Big Three Lift Model
+
+struct BigThreeLift: Identifiable {
+    let id = UUID()
+    let name: String
+    let e1rm: Double
+    let trendPercent: Double?
+
+    var shortName: String {
+        switch name.lowercased() {
+        case "barbell back squat", "squat": return "Squat"
+        case "barbell bench press", "bench press", "bench": return "Bench"
+        case "conventional deadlift", "deadlift": return "Deadlift"
+        default: return name
+        }
     }
 }
 

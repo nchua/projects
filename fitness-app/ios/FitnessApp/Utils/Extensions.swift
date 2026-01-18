@@ -491,9 +491,9 @@ extension String {
         return self
     }
 
-    /// Parse ISO8601 date string to Date (handles full ISO8601, without fractional seconds, and date-only formats)
+    /// Parse ISO8601 date string to Date (handles full ISO8601, microseconds, without fractional seconds, and date-only formats)
     func parseISO8601Date() -> Date? {
-        // Try full ISO8601 with fractional seconds first
+        // Try full ISO8601 with fractional seconds first (milliseconds - 3 decimal places)
         let formatterWithFraction = ISO8601DateFormatter()
         formatterWithFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let date = formatterWithFraction.date(from: self) {
@@ -503,6 +503,14 @@ extension String {
         // Try standard ISO8601 (without fractional seconds)
         let standardFormatter = ISO8601DateFormatter()
         if let date = standardFormatter.date(from: self) {
+            return date
+        }
+
+        // Try ISO8601 with microseconds (6 decimal places): "2025-01-14T03:41:40.946139"
+        let microsecondsFormatter = DateFormatter()
+        microsecondsFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+        microsecondsFormatter.timeZone = TimeZone(identifier: "UTC")
+        if let date = microsecondsFormatter.date(from: self) {
             return date
         }
 

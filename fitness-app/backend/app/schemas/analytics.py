@@ -34,6 +34,7 @@ class DataPoint(BaseModel):
     """A single data point for time series"""
     date: str
     value: float
+    workout_id: Optional[str] = None  # ID of the workout with the best e1RM on this date
     sets: Optional[List["SetDetail"]] = None  # Populated when include_sets=True
 
 

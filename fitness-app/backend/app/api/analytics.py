@@ -229,7 +229,7 @@ async def get_exercise_trend(
         date_filter.append(WorkoutSession.date >= start_date)
 
     # Query all sets for this exercise and its canonical variations
-    query = db.query(Set, WorkoutSession.date).join(
+    query = db.query(Set, WorkoutSession.date, WorkoutSession.id).join(
         WorkoutExercise, Set.workout_exercise_id == WorkoutExercise.id
     ).join(
         WorkoutSession, WorkoutExercise.session_id == WorkoutSession.id
@@ -252,13 +252,13 @@ async def get_exercise_trend(
         )
 
     # Group by date and get best e1RM per day (and optionally collect all sets)
-    daily_best = {}
+    daily_best = {}  # date -> (e1rm, workout_id)
     daily_sets = defaultdict(list) if include_sets else None
-    for set_obj, workout_date in query:
+    for set_obj, workout_date, workout_id in query:
         date_str = workout_date.isoformat()
         if set_obj.e1rm and set_obj.e1rm > 0:
-            if date_str not in daily_best or set_obj.e1rm > daily_best[date_str]:
-                daily_best[date_str] = set_obj.e1rm
+            if date_str not in daily_best or set_obj.e1rm > daily_best[date_str][0]:
+                daily_best[date_str] = (set_obj.e1rm, workout_id)
             if include_sets:
                 daily_sets[date_str].append(SetDetail(
                     weight=set_obj.weight or 0,
@@ -268,15 +268,15 @@ async def get_exercise_trend(
 
     # Build data points (with optional sets, sorted by e1rm descending)
     data_points = []
-    for d, v in sorted(daily_best.items()):
+    for d, (e1rm_val, wid) in sorted(daily_best.items()):
         sets_list = None
         if include_sets and d in daily_sets:
             sets_list = sorted(daily_sets[d], key=lambda s: s.e1rm, reverse=True)
-        data_points.append(DataPoint(date=d, value=round(v, 2), sets=sets_list))
+        data_points.append(DataPoint(date=d, value=round(e1rm_val, 2), workout_id=wid, sets=sets_list))
 
     # Calculate weekly best
     weekly_best = {}
-    for date_str, e1rm in daily_best.items():
+    for date_str, (e1rm, _) in daily_best.items():
         week_start = datetime.fromisoformat(date_str).date()
         week_start = week_start - timedelta(days=week_start.weekday())
         week_key = week_start.isoformat()

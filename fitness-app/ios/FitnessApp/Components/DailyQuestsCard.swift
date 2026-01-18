@@ -1,175 +1,224 @@
 import SwiftUI
 
-/// Daily quests card showing 3 quests with progress
+/// Compact daily quests card - minimal space usage
 struct DailyQuestsCard: View {
     let quests: [QuestResponse]
     let refreshAt: String
     let onClaim: (String) -> Void
 
+    var completedCount: Int {
+        quests.filter { $0.isCompleted }.count
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 0) {
             // Header
             HStack {
-                HStack(spacing: 8) {
-                    Image(systemName: "scroll.fill")
-                        .font(.system(size: 14))
-                        .foregroundColor(.systemPrimary)
-
-                    Text("DAILY QUESTS")
-                        .font(.ariseMono(size: 11, weight: .semibold))
-                        .foregroundColor(.textSecondary)
-                        .tracking(1)
-                }
+                Text("[ DAILY QUESTS ]")
+                    .font(.ariseMono(size: 10, weight: .semibold))
+                    .foregroundColor(.textMuted)
+                    .tracking(1)
 
                 Spacer()
 
-                RefreshTimerView(refreshAt: refreshAt)
+                Text("\(completedCount)/\(quests.count) completed")
+                    .font(.ariseMono(size: 11))
+                    .foregroundColor(.textSecondary)
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 14)
+            .padding(.bottom, 12)
 
-            // Quest rows
-            VStack(spacing: 12) {
-                ForEach(quests) { quest in
-                    DailyQuestRow(quest: quest, onClaim: onClaim)
+            // Divider
+            Rectangle()
+                .fill(Color.ariseBorder)
+                .frame(height: 1)
+
+            // Quest rows - no spacing, dividers between
+            VStack(spacing: 0) {
+                ForEach(Array(quests.enumerated()), id: \.element.id) { index, quest in
+                    CompactQuestRow(quest: quest, onClaim: onClaim)
+
+                    if index < quests.count - 1 {
+                        Rectangle()
+                            .fill(Color.ariseBorder.opacity(0.5))
+                            .frame(height: 1)
+                            .padding(.leading, 44)
+                    }
                 }
             }
         }
-        .padding(16)
-        .systemPanelStyle()
+        .background(Color.voidMedium)
+        .cornerRadius(4)
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(Color.ariseBorder, lineWidth: 1)
+        )
     }
 }
 
-/// Individual quest row with progress bar and claim button
-struct DailyQuestRow: View {
+/// Compact quest row - tap to expand details
+struct CompactQuestRow: View {
     let quest: QuestResponse
     let onClaim: (String) -> Void
+
+    @State private var isExpanded = false
 
     var progressPercent: Double {
         guard quest.targetValue > 0 else { return 0 }
         return min(1.0, Double(quest.progress) / Double(quest.targetValue))
     }
 
-    var difficultyColor: Color {
-        switch quest.difficulty {
-        case "easy": return .successGreen
-        case "hard": return .warningRed
-        default: return .systemPrimary
-        }
-    }
-
-    var statusIcon: String {
-        if quest.isClaimed {
-            return "checkmark.seal.fill"
-        } else if quest.isCompleted {
-            return "gift.fill"
-        } else {
-            return "circle"
-        }
-    }
-
-    var statusColor: Color {
-        if quest.isClaimed {
-            return .textMuted
-        } else if quest.isCompleted {
-            return .gold
-        } else {
-            return .textMuted
-        }
+    /// Show progress bar only for incomplete quests with partial progress
+    var showProgressBar: Bool {
+        !quest.isCompleted && quest.progress > 0 && quest.progress < quest.targetValue
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Title row
-            HStack(spacing: 8) {
-                Image(systemName: statusIcon)
-                    .font(.system(size: 14))
-                    .foregroundColor(statusColor)
-
-                Text(quest.name)
-                    .font(.ariseHeader(size: 14, weight: .semibold))
-                    .foregroundColor(quest.isClaimed ? .textMuted : .textPrimary)
-
-                Spacer()
-
-                // XP Reward
-                HStack(spacing: 4) {
-                    Text("+\(quest.xpReward)")
-                        .font(.ariseMono(size: 12, weight: .bold))
-                        .foregroundColor(quest.isClaimed ? .textMuted : .systemPrimary)
-
-                    Text("XP")
-                        .font(.ariseMono(size: 10))
-                        .foregroundColor(.textMuted)
+        VStack(alignment: .leading, spacing: 0) {
+            // Main row - always visible
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isExpanded.toggle()
                 }
-            }
-
-            // Description
-            Text(quest.description)
-                .font(.ariseMono(size: 11))
-                .foregroundColor(.textMuted)
-                .lineLimit(1)
-
-            // Progress bar
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    // Background
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(Color.voidLight)
-                        .frame(height: 6)
-
-                    // Fill
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(quest.isCompleted ? Color.successGreen : difficultyColor)
-                        .frame(width: geometry.size.width * progressPercent, height: 6)
-                }
-            }
-            .frame(height: 6)
-
-            // Bottom row: Progress text + Claim button
-            HStack {
-                Text("\(quest.progress)/\(quest.targetValue)")
-                    .font(.ariseMono(size: 10))
-                    .foregroundColor(.textMuted)
-
-                Spacer()
-
-                if quest.isCompleted && !quest.isClaimed {
+            } label: {
+                HStack(spacing: 12) {
+                    // Status checkbox (tap to claim if ready)
                     Button {
-                        onClaim(quest.id)
+                        if quest.isCompleted && !quest.isClaimed {
+                            onClaim(quest.id)
+                        }
                     } label: {
-                        Text("CLAIM")
-                            .font(.ariseMono(size: 10, weight: .bold))
-                            .tracking(1)
-                            .foregroundColor(.voidBlack)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color.gold)
-                            .cornerRadius(2)
+                        QuestCheckbox(
+                            isCompleted: quest.isCompleted,
+                            isClaimed: quest.isClaimed,
+                            isClaimable: quest.isCompleted && !quest.isClaimed
+                        )
                     }
-                    .pulseGlow(color: .gold)
-                } else if quest.isClaimed {
-                    Text("CLAIMED")
-                        .font(.ariseMono(size: 10, weight: .medium))
+                    .buttonStyle(.plain)
+
+                    // Quest name and progress bar
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(quest.name)
+                            .font(.ariseBody(size: 14))
+                            .foregroundColor(quest.isClaimed ? .textMuted : .textPrimary)
+                            .lineLimit(1)
+
+                        // Progress bar - only show for partial progress
+                        if showProgressBar {
+                            GeometryReader { geometry in
+                                ZStack(alignment: .leading) {
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(Color.voidLight)
+                                        .frame(height: 4)
+
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(Color.systemPrimary)
+                                        .frame(width: geometry.size.width * progressPercent, height: 4)
+                                }
+                            }
+                            .frame(height: 4)
+                        }
+                    }
+
+                    Spacer()
+
+                    // XP Reward
+                    Text("+\(quest.xpReward) XP")
+                        .font(.ariseMono(size: 12, weight: .semibold))
+                        .foregroundColor(quest.isClaimed ? .textMuted : .gold)
+
+                    // Expand indicator
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
                         .foregroundColor(.textMuted)
-                        .tracking(1)
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            // Expanded details
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 8) {
+                    // Description
+                    Text(quest.description)
+                        .font(.ariseMono(size: 12))
+                        .foregroundColor(.textSecondary)
+
+                    // Progress detail
+                    HStack {
+                        Text("Progress:")
+                            .font(.ariseMono(size: 11))
+                            .foregroundColor(.textMuted)
+
+                        Text("\(quest.progress)/\(quest.targetValue)")
+                            .font(.ariseMono(size: 11, weight: .semibold))
+                            .foregroundColor(quest.isCompleted ? .successGreen : .textPrimary)
+
+                        Spacer()
+
+                        // Claim button if ready
+                        if quest.isCompleted && !quest.isClaimed {
+                            Button {
+                                onClaim(quest.id)
+                            } label: {
+                                Text("CLAIM")
+                                    .font(.ariseMono(size: 10, weight: .bold))
+                                    .tracking(1)
+                                    .foregroundColor(.voidBlack)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(Color.gold)
+                                    .cornerRadius(2)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.leading, 36) // Align with quest name
+                .padding(.bottom, 12)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding(12)
-        .background(
-            quest.isCompleted && !quest.isClaimed
-            ? Color.gold.opacity(0.05)
-            : Color.voidMedium
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(
-                    quest.isCompleted && !quest.isClaimed
-                    ? Color.gold.opacity(0.3)
-                    : Color.ariseBorder,
-                    lineWidth: 1
-                )
-        )
-        .cornerRadius(4)
+    }
+}
+
+/// Checkbox indicator for quest status
+struct QuestCheckbox: View {
+    let isCompleted: Bool
+    let isClaimed: Bool
+    let isClaimable: Bool
+
+    var body: some View {
+        ZStack {
+            if isClaimed {
+                // Claimed - filled green with checkmark
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.successGreen)
+                    .frame(width: 24, height: 24)
+
+                Image(systemName: "checkmark")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.voidBlack)
+            } else if isClaimable {
+                // Ready to claim - filled green with ellipsis (tap to claim)
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.successGreen)
+                    .frame(width: 24, height: 24)
+
+                Text("...")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.voidBlack)
+                    .offset(y: -2)
+            } else {
+                // Incomplete - empty box
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(Color.textMuted.opacity(0.5), lineWidth: 1.5)
+                    .frame(width: 24, height: 24)
+            }
+        }
     }
 }
 

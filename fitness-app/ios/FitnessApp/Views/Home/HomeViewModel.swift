@@ -10,6 +10,13 @@ struct WeeklyStats {
     var totalVolume: Double = 0
 }
 
+// Big Three exercise name variations (same as ProgressViewModel)
+private let homeBigThreeVariations: [[String]] = [
+    ["Back Squat", "Barbell Back Squat", "Squat", "BB Squat", "Barbell Squat", "Low Bar Squat", "High Bar Squat"],
+    ["Bench Press", "Barbell Bench Press", "BB Bench", "Flat Bench Press", "Flat Barbell Bench Press"],
+    ["Deadlift", "Barbell Deadlift", "Conventional Deadlift", "BB Deadlift"]
+]
+
 @MainActor
 class HomeViewModel: ObservableObject {
     @Published var recentWorkout: WorkoutSummaryResponse?
@@ -26,6 +33,10 @@ class HomeViewModel: ObservableObject {
     @Published var cooldownAgeModifier: Double = 1.0
     @Published var isLoading = false
     @Published var error: String?
+
+    // Big Three data (loaded from trends like Stats page)
+    @Published var exercises: [ExerciseResponse] = []
+    @Published var bigThreeTrends: [String: TrendResponse] = [:] // exerciseId -> trend
 
     // HealthKit integration
     @Published var healthKitAuthorized = false
@@ -73,6 +84,62 @@ class HomeViewModel: ObservableObject {
         return "NC"
     }
 
+    /// Find Big Three exercises from loaded exercises list
+    var bigThreeExercises: [ExerciseResponse] {
+        homeBigThreeVariations.compactMap { variations in
+            for variation in variations {
+                if let exercise = exercises.first(where: { $0.name.caseInsensitiveCompare(variation) == .orderedSame }) {
+                    return exercise
+                }
+            }
+            return nil
+        }
+    }
+
+    /// Big Three lifts with current e1RM from trend data
+    var bigThreeLifts: [BigThreeLift] {
+        let displayNames = ["Squat", "Bench Press", "Deadlift"]
+
+        return displayNames.enumerated().map { index, displayName in
+            // Check if we have the exercise and trend data
+            if index < bigThreeExercises.count {
+                let exercise = bigThreeExercises[index]
+                let trend = bigThreeTrends[exercise.id]
+                let e1rm = trend?.currentE1rm ?? 0
+                let trendPercent = trend?.percentChange
+
+                return BigThreeLift(
+                    name: displayName,
+                    e1rm: e1rm,
+                    trendPercent: trendPercent
+                )
+            } else {
+                // No exercise found - show placeholder
+                return BigThreeLift(
+                    name: displayName,
+                    e1rm: 0,
+                    trendPercent: nil
+                )
+            }
+        }
+    }
+
+    /// Load trend data for Big Three exercises
+    func loadBigThreeTrends() async {
+        for exercise in bigThreeExercises {
+            do {
+                let trend = try await APIClient.shared.getExerciseTrend(
+                    exerciseId: exercise.id,
+                    timeRange: "12w"
+                )
+                bigThreeTrends[exercise.id] = trend
+            } catch {
+                // Silently fail - not critical
+                print("DEBUG: Failed to load trend for \(exercise.name): \(error)")
+            }
+        }
+    }
+
     func loadData() async {
         isLoading = true
         error = nil
@@ -87,8 +154,9 @@ class HomeViewModel: ObservableObject {
             async let questsTask = APIClient.shared.getDailyQuests()
             async let profileTask = APIClient.shared.getProfile()
             async let cooldownTask = APIClient.shared.getCooldownStatus()
+            async let exercisesTask = APIClient.shared.getExercises()
 
-            let (workouts, weekly, prs, insightsResponse, progress, achievements, quests, profileResult, cooldowns) = try await (
+            let (workouts, weekly, prs, insightsResponse, progress, achievements, quests, profileResult, cooldowns, exercisesResult) = try await (
                 workoutsTask,
                 weeklyTask,
                 prsTask,
@@ -97,7 +165,8 @@ class HomeViewModel: ObservableObject {
                 achievementsTask,
                 questsTask,
                 profileTask,
-                cooldownTask
+                cooldownTask,
+                exercisesTask
             )
 
             userProgress = progress
@@ -106,6 +175,7 @@ class HomeViewModel: ObservableObject {
             profile = profileResult
             cooldownStatus = cooldowns.musclesCooling
             cooldownAgeModifier = cooldowns.ageModifier
+            exercises = exercisesResult
 
             recentWorkout = workouts.first
             weeklyReview = weekly
@@ -117,6 +187,9 @@ class HomeViewModel: ObservableObject {
             // Estimate calories and active time based on workouts
             weeklyStats.calories = weekly.totalWorkouts * 120 // ~120 cal per workout
             weeklyStats.activeMinutes = weekly.totalWorkouts * 45 // ~45 min per workout
+
+            // Load Big Three trends (for Power Levels card)
+            await loadBigThreeTrends()
 
             // Try to load trend for primary lift
             if let firstPR = prs.prs.first {

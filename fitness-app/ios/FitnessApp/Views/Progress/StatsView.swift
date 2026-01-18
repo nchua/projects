@@ -109,8 +109,10 @@ struct PowerAnalysisHeader: View {
 
 struct PowerProgressView: View {
     @ObservedObject var viewModel: ProgressViewModel
+    @StateObject private var historyViewModel = HistoryViewModel()
     @State private var showAddExercise = false
     @State private var expandedExerciseId: String?
+    @State private var selectedWorkoutId: String?
 
     var body: some View {
         VStack(spacing: 20) {
@@ -150,16 +152,20 @@ struct PowerProgressView: View {
                     exercise: exercise,
                     trend: viewModel.trend(for: exercise.id),
                     percentile: viewModel.percentile(for: exercise.id),
-                    isExpanded: expandedExerciseId == exercise.id
-                ) {
-                    withAnimation(.quickSpring) {
-                        if expandedExerciseId == exercise.id {
-                            expandedExerciseId = nil
-                        } else {
-                            expandedExerciseId = exercise.id
+                    isExpanded: expandedExerciseId == exercise.id,
+                    onTap: {
+                        withAnimation(.quickSpring) {
+                            if expandedExerciseId == exercise.id {
+                                expandedExerciseId = nil
+                            } else {
+                                expandedExerciseId = exercise.id
+                            }
                         }
+                    },
+                    onWorkoutSelected: { workoutId in
+                        selectedWorkoutId = workoutId
                     }
-                }
+                )
                 .padding(.horizontal)
             }
 
@@ -221,6 +227,9 @@ struct PowerProgressView: View {
                             withAnimation(.quickSpring) {
                                 viewModel.removeExercise(exercise.id)
                             }
+                        },
+                        onWorkoutSelected: { workoutId in
+                            selectedWorkoutId = workoutId
                         }
                     )
                     .padding(.horizontal)
@@ -258,6 +267,21 @@ struct PowerProgressView: View {
                 showAddExercise = false
             }
         }
+        .background(
+            NavigationLink(
+                destination: QuestDetailView(
+                    workoutId: selectedWorkoutId ?? "",
+                    viewModel: historyViewModel
+                ),
+                isActive: Binding(
+                    get: { selectedWorkoutId != nil },
+                    set: { if !$0 { selectedWorkoutId = nil } }
+                )
+            ) {
+                EmptyView()
+            }
+            .hidden()
+        )
     }
 }
 
@@ -269,6 +293,7 @@ struct BigThreeCard: View {
     let percentile: ExercisePercentile?
     let isExpanded: Bool
     let onTap: () -> Void
+    var onWorkoutSelected: ((String) -> Void)?
 
     var exerciseColor: Color {
         Color.exerciseColor(for: exercise.name)
@@ -358,7 +383,7 @@ struct BigThreeCard: View {
                 VStack(spacing: 16) {
                     // Chart
                     if let dataPoints = trend?.dataPoints, !dataPoints.isEmpty {
-                        AriseE1RMChart(dataPoints: dataPoints)
+                        AriseE1RMChart(dataPoints: dataPoints, onWorkoutSelected: onWorkoutSelected)
                             .frame(height: 140)
                     }
 
@@ -461,6 +486,7 @@ struct AdditionalExerciseCard: View {
     let isExpanded: Bool
     let onTap: () -> Void
     let onRemove: () -> Void
+    var onWorkoutSelected: ((String) -> Void)?
 
     var exerciseColor: Color {
         Color.exerciseColor(for: exercise.name)
@@ -552,7 +578,7 @@ struct AdditionalExerciseCard: View {
                 VStack(spacing: 16) {
                     // Chart
                     if let dataPoints = trend?.dataPoints, !dataPoints.isEmpty {
-                        AriseE1RMChart(dataPoints: dataPoints)
+                        AriseE1RMChart(dataPoints: dataPoints, onWorkoutSelected: onWorkoutSelected)
                             .frame(height: 120)
                     }
 
@@ -797,6 +823,7 @@ struct AriseTimeRangeButton: View {
 
 struct AriseE1RMChart: View {
     let dataPoints: [DataPoint]
+    var onWorkoutSelected: ((String) -> Void)?  // Callback when user taps to view workout
     @State private var selectedDate: Date?
     @State private var longPressedPoint: DataPoint?
     @State private var isLongPressing = false
@@ -968,6 +995,29 @@ struct AriseE1RMChart: View {
                             Text("\(Int(set.e1rm))")
                                 .font(.ariseMono(size: 11))
                                 .foregroundColor(set.e1rm == point.value ? .gold : .textSecondary)
+                        }
+                    }
+
+                    // View Workout button
+                    if let workoutId = point.workoutId, onWorkoutSelected != nil {
+                        Rectangle()
+                            .fill(Color.ariseBorder)
+                            .frame(height: 1)
+
+                        Button(action: {
+                            longPressedPoint = nil
+                            isLongPressing = false
+                            onWorkoutSelected?(workoutId)
+                        }) {
+                            HStack {
+                                Image(systemName: "arrow.right.circle.fill")
+                                    .font(.system(size: 12))
+                                Text("VIEW WORKOUT")
+                                    .font(.ariseMono(size: 10, weight: .semibold))
+                            }
+                            .foregroundColor(.gold)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
                         }
                     }
                 }
