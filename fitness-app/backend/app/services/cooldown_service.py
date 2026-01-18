@@ -19,10 +19,13 @@ from typing import Dict, List, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from collections import defaultdict
+import logging
 
 from app.models.workout import WorkoutSession, WorkoutExercise, Set
 from app.models.exercise import Exercise
 from app.models.pr import PR, PRType
+
+logger = logging.getLogger(__name__)
 
 
 def get_age_modifier(age: int | None) -> float:
@@ -343,6 +346,19 @@ EXERCISE_MUSCLE_MAP = {
     "incline curl": {"primary": ["biceps"], "secondary": []},
     "incline curls": {"primary": ["biceps"], "secondary": []},
     "ez bar curl": {"primary": ["biceps"], "secondary": []},
+    # Additional curl variations
+    "incline dumbbell curl": {"primary": ["biceps"], "secondary": []},
+    "incline dumbbell curls": {"primary": ["biceps"], "secondary": []},
+    "spider curl": {"primary": ["biceps"], "secondary": []},
+    "spider curls": {"primary": ["biceps"], "secondary": []},
+    "reverse curl": {"primary": ["biceps"], "secondary": []},
+    "reverse curls": {"primary": ["biceps"], "secondary": []},
+    "drag curl": {"primary": ["biceps"], "secondary": []},
+    "drag curls": {"primary": ["biceps"], "secondary": []},
+    "seated curl": {"primary": ["biceps"], "secondary": []},
+    "seated curls": {"primary": ["biceps"], "secondary": []},
+    "standing curl": {"primary": ["biceps"], "secondary": []},
+    "standing curls": {"primary": ["biceps"], "secondary": []},
 
     # Back Exercises (affect biceps as secondary)
     "barbell row": {"primary": [], "secondary": ["biceps"]},
@@ -392,7 +408,7 @@ def get_muscle_mapping(exercise_name: str) -> Tuple[List[str], List[str]]:
     """
     Get primary and secondary muscles for an exercise.
     Returns (primary_muscles, secondary_muscles).
-    Uses fuzzy matching for exercise names.
+    Uses multi-level fuzzy matching for exercise names.
     """
     name_lower = exercise_name.lower().strip()
 
@@ -401,12 +417,80 @@ def get_muscle_mapping(exercise_name: str) -> Tuple[List[str], List[str]]:
         mapping = EXERCISE_MUSCLE_MAP[name_lower]
         return mapping["primary"], mapping["secondary"]
 
-    # Fuzzy match - check if exercise name contains any key
+    # Fuzzy match - check if exercise name contains any key (or vice versa)
     for key, mapping in EXERCISE_MUSCLE_MAP.items():
         if key in name_lower or name_lower in key:
             return mapping["primary"], mapping["secondary"]
 
+    # Word-based matching - check if key words appear in the exercise name
+    # This catches cases like "Incline Dumbbell Curl" matching "curl" pattern
+    primary, secondary = _match_by_keywords(name_lower)
+    if primary or secondary:
+        return primary, secondary
+
+    # Log unmapped exercise for debugging
+    logger.debug(f"No muscle mapping found for exercise: '{exercise_name}'")
+
     # No match found
+    return [], []
+
+
+# Keyword patterns for word-based matching (ordered by specificity)
+# More specific patterns should come first
+KEYWORD_PATTERNS = [
+    # Compound leg movements
+    (["squat"], {"primary": ["quads"], "secondary": ["hamstrings"]}),
+    (["lunge"], {"primary": ["quads"], "secondary": ["hamstrings"]}),
+    (["leg press"], {"primary": ["quads"], "secondary": ["hamstrings"]}),
+    (["leg extension"], {"primary": ["quads"], "secondary": []}),
+    (["leg curl"], {"primary": ["hamstrings"], "secondary": []}),
+    (["deadlift"], {"primary": ["hamstrings"], "secondary": ["quads"]}),
+    (["rdl"], {"primary": ["hamstrings"], "secondary": []}),
+    (["hip thrust"], {"primary": ["hamstrings"], "secondary": []}),
+    (["good morning"], {"primary": ["hamstrings"], "secondary": []}),
+
+    # Chest
+    (["bench press"], {"primary": ["chest"], "secondary": ["triceps", "shoulders"]}),
+    (["bench"], {"primary": ["chest"], "secondary": ["triceps", "shoulders"]}),
+    (["fly", "flye", "pec deck"], {"primary": ["chest"], "secondary": []}),
+    (["push up", "push-up", "pushup"], {"primary": ["chest"], "secondary": ["triceps", "shoulders"]}),
+    (["dip"], {"primary": ["chest"], "secondary": ["triceps"]}),
+
+    # Shoulders
+    (["overhead press", "ohp", "shoulder press", "military press"], {"primary": ["shoulders"], "secondary": ["triceps"]}),
+    (["lateral raise", "side raise"], {"primary": ["shoulders"], "secondary": []}),
+    (["front raise"], {"primary": ["shoulders"], "secondary": []}),
+    (["rear delt"], {"primary": ["shoulders"], "secondary": []}),
+    (["face pull"], {"primary": ["shoulders"], "secondary": []}),
+    (["upright row"], {"primary": ["shoulders"], "secondary": ["biceps"]}),
+
+    # Triceps
+    (["tricep", "triceps"], {"primary": ["triceps"], "secondary": []}),
+    (["pushdown", "push down"], {"primary": ["triceps"], "secondary": []}),
+    (["skull crusher"], {"primary": ["triceps"], "secondary": []}),
+    (["close grip bench"], {"primary": ["triceps"], "secondary": ["chest"]}),
+
+    # Biceps - "curl" is the key word
+    (["curl"], {"primary": ["biceps"], "secondary": []}),
+
+    # Back exercises (secondary bicep)
+    (["row"], {"primary": [], "secondary": ["biceps"]}),
+    (["pulldown", "pull down"], {"primary": [], "secondary": ["biceps"]}),
+    (["pull up", "pull-up", "pullup", "chin up", "chin-up", "chinup"], {"primary": [], "secondary": ["biceps"]}),
+]
+
+
+def _match_by_keywords(name_lower: str) -> Tuple[List[str], List[str]]:
+    """
+    Match exercise by keyword patterns.
+    Returns first match found (more specific patterns checked first).
+    """
+    for keywords, mapping in KEYWORD_PATTERNS:
+        for keyword in keywords:
+            # Check if keyword appears as a word boundary match
+            # This prevents "curl" from matching "curling" incorrectly
+            if keyword in name_lower:
+                return mapping["primary"], mapping["secondary"]
     return [], []
 
 

@@ -6,11 +6,31 @@ struct QuestsView: View {
     @State private var navigateToLog = false
     @State private var showScreenshotPicker = false
     @State private var selectedPhotos: [PhotosPickerItem] = []
+    @State private var screenshotDataForLogView: [Data]? = nil
+    @State private var isLoadingPhotos = false
 
     var body: some View {
         NavigationStack {
             ZStack {
                 VoidBackground(showGrid: false, glowIntensity: 0.03)
+
+                // Loading overlay for photo conversion
+                if isLoadingPhotos {
+                    Color.black.opacity(0.5)
+                        .ignoresSafeArea()
+                        .overlay(
+                            VStack(spacing: 16) {
+                                ProgressView()
+                                    .tint(.systemPrimary)
+                                    .scaleEffect(1.5)
+                                Text("PREPARING SCREENSHOTS...")
+                                    .font(.ariseMono(size: 11, weight: .medium))
+                                    .foregroundColor(.textMuted)
+                                    .tracking(1)
+                            }
+                        )
+                        .zIndex(100)
+                }
 
                 ScrollView {
                     VStack(spacing: 0) {
@@ -178,7 +198,11 @@ struct QuestsView: View {
             }
             .navigationBarHidden(true)
             .navigationDestination(isPresented: $navigateToLog) {
-                LogView()
+                LogView(initialScreenshots: screenshotDataForLogView)
+                    .onDisappear {
+                        // Clear the screenshot data when coming back
+                        screenshotDataForLogView = nil
+                    }
             }
             .refreshable {
                 await viewModel.loadWorkouts(refresh: true)
@@ -191,9 +215,25 @@ struct QuestsView: View {
             )
             .onChange(of: selectedPhotos) { _, newValue in
                 if !newValue.isEmpty {
-                    // Navigate to screenshot processing
-                    // This will be handled by LogView's screenshot flow
-                    navigateToLog = true
+                    // Convert photos to Data and then navigate
+                    isLoadingPhotos = true
+                    Task {
+                        var imageDataArray: [Data] = []
+                        for item in newValue {
+                            if let data = try? await item.loadTransferable(type: Data.self) {
+                                imageDataArray.append(data)
+                            }
+                        }
+
+                        await MainActor.run {
+                            selectedPhotos = [] // Clear selection
+                            isLoadingPhotos = false
+                            if !imageDataArray.isEmpty {
+                                screenshotDataForLogView = imageDataArray
+                                navigateToLog = true
+                            }
+                        }
+                    }
                 }
             }
         }

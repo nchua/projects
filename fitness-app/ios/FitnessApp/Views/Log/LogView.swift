@@ -2,6 +2,9 @@ import SwiftUI
 import UIKit
 
 struct LogView: View {
+    // Initial screenshots passed from QuestsView (or other callers)
+    var initialScreenshots: [Data]?
+
     @StateObject private var viewModel = LogViewModel()
     @StateObject private var screenshotViewModel = ScreenshotProcessingViewModel()
     @State private var showDatePicker = false
@@ -9,6 +12,7 @@ struct LogView: View {
     @State private var showCancelConfirmation = false
     @State private var showScreenshotPicker = false
     @State private var showScreenshotPreview = false
+    @State private var hasLoadedInitialScreenshots = false
 
     // Celebration states
     @State private var showRankUpCelebration = false
@@ -24,6 +28,10 @@ struct LogView: View {
     #if DEBUG
     @State private var showDebugCelebration = false
     #endif
+
+    init(initialScreenshots: [Data]? = nil) {
+        self.initialScreenshots = initialScreenshots
+    }
 
     var body: some View {
         NavigationStack {
@@ -213,6 +221,14 @@ struct LogView: View {
         }
         .task {
             await viewModel.loadExercises()
+        }
+        .onAppear {
+            // Auto-trigger screenshot preview if initial screenshots were passed
+            if !hasLoadedInitialScreenshots, let screenshots = initialScreenshots, !screenshots.isEmpty {
+                hasLoadedInitialScreenshots = true
+                screenshotViewModel.selectedImagesData = screenshots
+                showScreenshotPreview = true
+            }
         }
     }
 
