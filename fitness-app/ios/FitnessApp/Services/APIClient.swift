@@ -293,6 +293,49 @@ class APIClient {
         let _: SeedResponse = try await post("/dungeons/seed", body: EmptyBody())
     }
 
+    // MARK: - Friends
+
+    func getFriends() async throws -> [FriendResponse] {
+        return try await get("/friends")
+    }
+
+    func getFriendRequests() async throws -> FriendRequestsResponse {
+        return try await get("/friends/requests")
+    }
+
+    func sendFriendRequest(userId: String) async throws -> FriendRequestResponse {
+        struct RequestBody: Encodable {
+            let receiverId: String
+            enum CodingKeys: String, CodingKey {
+                case receiverId = "receiver_id"
+            }
+        }
+        return try await post("/friends/request", body: RequestBody(receiverId: userId))
+    }
+
+    func acceptFriendRequest(id: String) async throws -> FriendResponse {
+        return try await post("/friends/accept/\(id)", body: EmptyBody())
+    }
+
+    func rejectFriendRequest(id: String) async throws {
+        struct RejectResponse: Decodable {
+            let message: String
+        }
+        let _: RejectResponse = try await post("/friends/reject/\(id)", body: EmptyBody())
+    }
+
+    func cancelFriendRequest(id: String) async throws {
+        try await delete("/friends/cancel/\(id)")
+    }
+
+    func removeFriend(userId: String) async throws {
+        try await delete("/friends/\(userId)")
+    }
+
+    func getFriendProfile(userId: String) async throws -> FriendProfileResponse {
+        return try await get("/friends/\(userId)/profile")
+    }
+
     // MARK: - Activity (HealthKit Sync)
 
     func syncActivity(_ activity: ActivityCreate) async throws -> ActivityResponse {

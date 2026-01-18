@@ -14,6 +14,7 @@ from app.models.dungeon import (
     UserDungeon, UserDungeonObjective,
     DungeonRank, DungeonObjectiveType, DungeonStatus
 )
+from app.models.friend import FriendRequest, Friendship, FriendRequestStatus
 
 __all__ = [
     "User",
@@ -45,4 +46,7 @@ __all__ = [
     "DungeonRank",
     "DungeonObjectiveType",
     "DungeonStatus",
+    "FriendRequest",
+    "Friendship",
+    "FriendRequestStatus",
 ]

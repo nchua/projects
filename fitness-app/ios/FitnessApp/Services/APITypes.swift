@@ -1297,3 +1297,154 @@ struct DungeonHistoryResponse: Decodable {
         case totalExpired = "total_expired"
     }
 }
+
+// MARK: - Friends
+
+struct FriendRequestResponse: Decodable, Identifiable {
+    let id: String
+    let senderId: String
+    let senderUsername: String?
+    let senderRank: String?
+    let senderLevel: Int?
+    let receiverId: String
+    let receiverUsername: String?
+    let receiverRank: String?
+    let receiverLevel: Int?
+    let status: String
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, status
+        case senderId = "sender_id"
+        case senderUsername = "sender_username"
+        case senderRank = "sender_rank"
+        case senderLevel = "sender_level"
+        case receiverId = "receiver_id"
+        case receiverUsername = "receiver_username"
+        case receiverRank = "receiver_rank"
+        case receiverLevel = "receiver_level"
+        case createdAt = "created_at"
+    }
+}
+
+struct FriendRequestsResponse: Decodable {
+    let incoming: [FriendRequestResponse]
+    let sent: [FriendRequestResponse]
+}
+
+struct FriendResponse: Decodable, Identifiable {
+    let id: String
+    let userId: String
+    let friendId: String
+    let friendUsername: String?
+    let friendRank: String?
+    let friendLevel: Int?
+    let createdAt: String
+    let lastWorkoutAt: String?
+
+    /// Get initials for avatar
+    var initials: String {
+        guard let username = friendUsername, !username.isEmpty else {
+            return "?"
+        }
+        let components = username.split(separator: " ")
+        if components.count >= 2 {
+            return String(components[0].prefix(1) + components[1].prefix(1)).uppercased()
+        }
+        return String(username.prefix(2)).uppercased()
+    }
+
+    /// Formatted last active time
+    var lastActiveFormatted: String {
+        guard let lastWorkout = lastWorkoutAt,
+              let date = lastWorkout.parseISO8601Date() else {
+            return "Never"
+        }
+
+        let now = Date()
+        let interval = now.timeIntervalSince(date)
+        let hours = Int(interval / 3600)
+        let days = hours / 24
+
+        if hours < 1 {
+            return "Active now"
+        } else if hours < 24 {
+            return "\(hours)h ago"
+        } else if days == 1 {
+            return "Yesterday"
+        } else if days < 7 {
+            return "\(days)d ago"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMM d"
+            return formatter.string(from: date)
+        }
+    }
+
+    /// Check if friend is recently active (within 1 hour)
+    var isRecentlyActive: Bool {
+        guard let lastWorkout = lastWorkoutAt,
+              let date = lastWorkout.parseISO8601Date() else {
+            return false
+        }
+        return Date().timeIntervalSince(date) < 3600
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case friendId = "friend_id"
+        case friendUsername = "friend_username"
+        case friendRank = "friend_rank"
+        case friendLevel = "friend_level"
+        case createdAt = "created_at"
+        case lastWorkoutAt = "last_workout_at"
+    }
+}
+
+struct RecentWorkoutSummary: Decodable, Identifiable {
+    let id: String
+    let date: String
+    let exerciseCount: Int
+    let exerciseNames: [String]
+    let xpEarned: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case id, date
+        case exerciseCount = "exercise_count"
+        case exerciseNames = "exercise_names"
+        case xpEarned = "xp_earned"
+    }
+}
+
+struct FriendProfileResponse: Decodable {
+    let userId: String
+    let username: String?
+    let rank: String?
+    let level: Int?
+    let totalWorkouts: Int
+    let currentStreak: Int
+    let totalPrs: Int
+    let recentWorkouts: [RecentWorkoutSummary]
+
+    /// Get initials for avatar
+    var initials: String {
+        guard let username = username, !username.isEmpty else {
+            return "?"
+        }
+        let components = username.split(separator: " ")
+        if components.count >= 2 {
+            return String(components[0].prefix(1) + components[1].prefix(1)).uppercased()
+        }
+        return String(username.prefix(2)).uppercased()
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case username, rank, level
+        case userId = "user_id"
+        case totalWorkouts = "total_workouts"
+        case currentStreak = "current_streak"
+        case totalPrs = "total_prs"
+        case recentWorkouts = "recent_workouts"
+    }
+}

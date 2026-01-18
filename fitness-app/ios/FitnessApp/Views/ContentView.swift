@@ -68,11 +68,17 @@ struct MainTabView: View {
                 }
                 .tag(2)
 
+            FriendsView()
+                .tabItem {
+                    Label("Friends", systemImage: "person.2.fill")
+                }
+                .tag(3)
+
             StatsView()
                 .tabItem {
                     Label("Stats", systemImage: "chart.bar.fill")
                 }
-                .tag(3)
+                .tag(4)
         }
         .tint(Color.systemPrimary)
     }

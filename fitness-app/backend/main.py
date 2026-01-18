@@ -145,7 +145,7 @@ async def add_sports_exercises_endpoint():
         db.close()
 
 # Import and include API routers
-from app.api import auth, profile, exercises, workouts, bodyweight, analytics, sync, progress, quests, screenshot, activity, dungeons, users
+from app.api import auth, profile, exercises, workouts, bodyweight, analytics, sync, progress, quests, screenshot, activity, dungeons, users, friends
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(profile.router, prefix="/profile", tags=["Profile"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
@@ -159,6 +159,7 @@ app.include_router(quests.router, prefix="/quests", tags=["Quests"])
 app.include_router(screenshot.router, prefix="/screenshot", tags=["Screenshot"])
 app.include_router(activity.router, prefix="/activity", tags=["Activity"])
 app.include_router(dungeons.router, prefix="/dungeons", tags=["Dungeons"])
+app.include_router(friends.router, prefix="/friends", tags=["Friends"])
 
 if __name__ == "__main__":
     import uvicorn
