@@ -112,10 +112,10 @@ struct UsernameSetupSheet: View {
                                     .foregroundColor(.textMuted)
                             } else if let message = validationMessage {
                                 Image(systemName: "exclamationmark.circle")
-                                    .foregroundColor(.warningYellow)
+                                    .foregroundColor(.gold)
                                 Text(message)
                                     .font(.ariseMono(size: 11))
-                                    .foregroundColor(.warningYellow)
+                                    .foregroundColor(.gold)
                             } else if isValidFormat {
                                 if isAvailable == true {
                                     Image(systemName: "checkmark.circle.fill")
@@ -216,7 +216,7 @@ struct UsernameSetupSheet: View {
         if isChecking {
             return .textMuted
         } else if validationMessage != nil {
-            return .warningYellow
+            return .gold
         } else if isAvailable == true {
             return .successGreen
         } else if isAvailable == false {
