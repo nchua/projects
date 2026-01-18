@@ -10,6 +10,7 @@ struct ProfileView: View {
     @State private var showImagePicker = false
     @State private var showUsernameSetup = false
     @State private var profileImage: UIImage?
+    @State private var selectedAchievement: AchievementResponse?
 
     var body: some View {
         NavigationStack {
@@ -73,7 +74,10 @@ struct ProfileView: View {
                             // Achievements
                             HunterAchievementsSection(
                                 achievements: viewModel.featuredAchievements,
-                                onViewAll: { showAllAchievements = true }
+                                onViewAll: { showAllAchievements = true },
+                                onTapAchievement: { achievement in
+                                    selectedAchievement = achievement
+                                }
                             )
 
                             // Vessel Section (Bodyweight)
@@ -199,6 +203,9 @@ struct ProfileView: View {
                         await viewModel.loadProfile()
                     }
                 }
+            }
+            .sheet(item: $selectedAchievement) { achievement in
+                AchievementDetailSheet(achievement: achievement)
             }
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
@@ -431,6 +438,7 @@ struct HunterStatItem: View {
 struct HunterAchievementsSection: View {
     let achievements: [AchievementResponse]
     var onViewAll: (() -> Void)? = nil
+    var onTapAchievement: ((AchievementResponse) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -469,8 +477,13 @@ struct HunterAchievementsSection: View {
             } else {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 12) {
                     ForEach(Array(achievements.enumerated()), id: \.element.id) { index, achievement in
-                        HunterAchievementBadge(achievement: achievement)
-                            .fadeIn(delay: Double(index) * 0.05)
+                        Button {
+                            onTapAchievement?(achievement)
+                        } label: {
+                            HunterAchievementBadge(achievement: achievement)
+                        }
+                        .buttonStyle(.plain)
+                        .fadeIn(delay: Double(index) * 0.05)
                     }
                 }
                 .padding(.horizontal)

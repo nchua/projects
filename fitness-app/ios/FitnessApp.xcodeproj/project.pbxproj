@@ -23,6 +23,7 @@
 		37C277D7FC126549A9FDDCE5 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CD71D3A5B474EA3E0269665 /* HomeView.swift */; };
 		3A555F185433DA7D15E50DAD /* Orbitron-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0FCA59D77C62E3D316AC25A2 /* Orbitron-Variable.ttf */; };
 		3AC048A5649880119E187296 /* FriendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C29BFFA99C53012296D98020 /* FriendsView.swift */; };
+		4243BB754ED9750C15429B09 /* AchievementDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D60C9B9D1A9A908C95E6852 /* AchievementDetailSheet.swift */; };
 		459EBB59AA5F9BFD35819BA5 /* DungeonRewardSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EA22B0F491CFB938C0E3E9F /* DungeonRewardSheet.swift */; };
 		48113D49713CF47249D00B90 /* JetBrainsMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 7E490406F225338152AB77DD /* JetBrainsMono-Bold.ttf */; };
 		4DE2F4CEF8CDDCED4C17A591 /* ScreenshotPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDB048EAA3D732A16D8F1C87 /* ScreenshotPreviewView.swift */; };
@@ -113,6 +114,7 @@
 		385C8910AF9C3E93350FA72B /* AddFriendSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFriendSheet.swift; sourceTree = "<group>"; };
 		38F5B7659899A4C8EB3D443E /* DungeonsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DungeonsViewModel.swift; sourceTree = "<group>"; };
 		3B12B72D900466D47835C287 /* FriendRequestCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendRequestCard.swift; sourceTree = "<group>"; };
+		3D60C9B9D1A9A908C95E6852 /* AchievementDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementDetailSheet.swift; sourceTree = "<group>"; };
 		4128710ABFA3560ADAB30574 /* QuestsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestsViewModel.swift; sourceTree = "<group>"; };
 		4405B03A566EC3D65DA19B00 /* XPCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XPCalculator.swift; sourceTree = "<group>"; };
 		450195A9814F8AAE5DFCB41F /* JetBrainsMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Regular.ttf"; sourceTree = "<group>"; };
@@ -168,6 +170,7 @@
 		058A7B27A59DC1DEDC92EAA3 /* Profile */ = {
 			isa = PBXGroup;
 			children = (
+				3D60C9B9D1A9A908C95E6852 /* AchievementDetailSheet.swift */,
 				05F458060FE9123EB707196B /* AchievementsListView.swift */,
 				2B00CB613804C42690DBF6B0 /* ProfileView.swift */,
 				BF4984BB26D18D05ABEFA7B5 /* ProfileViewModel.swift */,
@@ -503,6 +506,7 @@
 			files = (
 				D505BF0C1E363D977EF5801A /* APIClient.swift in Sources */,
 				34E3C5D5D33B3AEAE8192225 /* APITypes.swift in Sources */,
+				4243BB754ED9750C15429B09 /* AchievementDetailSheet.swift in Sources */,
 				B5E2629AEE3CA34101DB3E84 /* AchievementsListView.swift in Sources */,
 				A873FF2CA0203D03443195AC /* AddFriendSheet.swift in Sources */,
 				2DC77293AFBCC85EAC069B7B /* AuthManager.swift in Sources */,

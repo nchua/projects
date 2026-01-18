@@ -3,6 +3,7 @@ import SwiftUI
 struct AchievementsListView: View {
     let achievements: [AchievementResponse]
     @Environment(\.dismiss) private var dismiss
+    @State private var selectedAchievement: AchievementResponse?
 
     var unlockedCount: Int {
         achievements.filter { $0.unlocked }.count
@@ -63,7 +64,12 @@ struct AchievementsListView: View {
                             // Achievement list
                             LazyVStack(spacing: 12) {
                                 ForEach(achievements) { achievement in
-                                    AchievementRowView(achievement: achievement)
+                                    Button {
+                                        selectedAchievement = achievement
+                                    } label: {
+                                        AchievementRowView(achievement: achievement)
+                                    }
+                                    .buttonStyle(.plain)
                                 }
                             }
                             .padding(.horizontal)
@@ -86,6 +92,9 @@ struct AchievementsListView: View {
                     .font(.ariseMono(size: 14, weight: .medium))
                     .foregroundColor(.systemPrimary)
                 }
+            }
+            .sheet(item: $selectedAchievement) { achievement in
+                AchievementDetailSheet(achievement: achievement)
             }
         }
     }

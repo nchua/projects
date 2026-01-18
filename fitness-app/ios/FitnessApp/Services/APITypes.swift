@@ -562,6 +562,70 @@ struct AchievementsListResponse: Decodable {
     }
 }
 
+// MARK: - Achievement Extensions
+
+extension AchievementResponse {
+    /// Human-readable description of unlock requirements based on achievement ID
+    var requirementDescription: String {
+        // Parse achievement ID to generate requirements
+        let id = self.id.lowercased()
+
+        // Workout count achievements
+        if id.contains("first_workout") { return "Complete your first workout" }
+        if id.contains("workouts_10") { return "Complete 10 workouts" }
+        if id.contains("workouts_25") { return "Complete 25 workouts" }
+        if id.contains("workouts_50") { return "Complete 50 workouts" }
+        if id.contains("workouts_100") { return "Complete 100 workouts" }
+        if id.contains("workouts_250") { return "Complete 250 workouts" }
+        if id.contains("workouts_500") { return "Complete 500 workouts" }
+
+        // Streak achievements
+        if id.contains("streak_3") { return "Maintain a 3-day workout streak" }
+        if id.contains("streak_7") { return "Maintain a 7-day workout streak" }
+        if id.contains("streak_14") { return "Maintain a 14-day workout streak" }
+        if id.contains("streak_30") { return "Maintain a 30-day workout streak" }
+        if id.contains("streak_60") { return "Maintain a 60-day workout streak" }
+        if id.contains("streak_90") { return "Maintain a 90-day workout streak" }
+        if id.contains("streak_180") { return "Maintain a 180-day workout streak" }
+        if id.contains("streak_365") { return "Maintain a 365-day workout streak" }
+
+        // PR achievements
+        if id.contains("first_pr") { return "Set your first personal record" }
+        if id.contains("prs_10") { return "Set 10 personal records" }
+        if id.contains("prs_25") { return "Set 25 personal records" }
+        if id.contains("prs_50") { return "Set 50 personal records" }
+        if id.contains("prs_100") { return "Set 100 personal records" }
+
+        // Volume achievements
+        if id.contains("volume_10k") { return "Lift 10,000 total lbs" }
+        if id.contains("volume_50k") { return "Lift 50,000 total lbs" }
+        if id.contains("volume_100k") { return "Lift 100,000 total lbs" }
+        if id.contains("volume_500k") { return "Lift 500,000 total lbs" }
+        if id.contains("volume_1m") { return "Lift 1,000,000 total lbs" }
+
+        // Level achievements
+        if id.contains("level_5") { return "Reach Level 5" }
+        if id.contains("level_10") { return "Reach Level 10" }
+        if id.contains("level_25") { return "Reach Level 25" }
+        if id.contains("level_50") { return "Reach Level 50" }
+        if id.contains("level_100") { return "Reach Level 100" }
+
+        // Rank achievements
+        if id.contains("rank_d") { return "Achieve D-Rank Hunter status" }
+        if id.contains("rank_c") { return "Achieve C-Rank Hunter status" }
+        if id.contains("rank_b") { return "Achieve B-Rank Hunter status" }
+        if id.contains("rank_a") { return "Achieve A-Rank Hunter status" }
+        if id.contains("rank_s") { return "Achieve S-Rank Hunter status" }
+
+        // Quest achievements
+        if id.contains("quests_complete") { return "Complete daily quests" }
+        if id.contains("dungeon") { return "Complete dungeon challenges" }
+
+        // Default fallback using the description
+        return description
+    }
+}
+
 struct RecentAchievementsResponse: Decodable {
     let achievements: [AchievementResponse]
 }

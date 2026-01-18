@@ -43,15 +43,9 @@ class ProfileViewModel: ObservableObject {
         achievements.filter { $0.unlocked }
     }
 
-    // Featured achievements (4 most recent unlocked, or first 4 available)
+    // Featured achievements (up to 4 most recent unlocked)
     var featuredAchievements: [AchievementResponse] {
-        let unlocked = achievements.filter { $0.unlocked }.prefix(4)
-        if unlocked.count >= 4 {
-            return Array(unlocked)
-        }
-        // Fill with locked achievements
-        let locked = achievements.filter { !$0.unlocked }.prefix(4 - unlocked.count)
-        return Array(unlocked) + Array(locked)
+        Array(achievements.filter { $0.unlocked }.prefix(4))
     }
 
     // All achievements for the full list view
