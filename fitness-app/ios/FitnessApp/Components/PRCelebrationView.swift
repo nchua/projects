@@ -35,6 +35,7 @@ struct PRCelebrationView: View {
     @State private var showContent = false
     @State private var iconScale: CGFloat = 0.5
     @State private var shimmerOffset: CGFloat = -200
+    @State private var isDismissed = false
 
     var body: some View {
         VStack {
@@ -187,6 +188,10 @@ struct PRCelebrationView: View {
     }
 
     private func dismissWithAnimation() {
+        // Prevent double dismissal from auto-dismiss timer firing after manual tap
+        guard !isDismissed else { return }
+        isDismissed = true
+
         withAnimation(.easeOut(duration: 0.2)) {
             showCard = false
         }

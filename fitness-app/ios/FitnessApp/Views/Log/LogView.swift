@@ -105,6 +105,12 @@ struct LogView: View {
                         currentIndex: currentPRIndex + 1,
                         totalCount: prQueue.count
                     )
+                } else {
+                    // Safety fallback: immediately dismiss if no PR to show (prevents black screen)
+                    Color.clear
+                        .onAppear {
+                            showPRCelebration = false
+                        }
                 }
             }
             // Rank-Up Celebration (shows after PRs if rank changed)

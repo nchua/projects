@@ -386,3 +386,18 @@ Text("DEBUG: \(dataPoints.count) pts, first: \(dataPoints.first?.date ?? "none")
 - `AdditionalExerciseCard` now shows trend percentage and rank badge (matches Big Three cards)
 - Rank badge only displays when real percentile data exists
 - Trend indicator hidden for "insufficient_data" (requires 4+ weeks of data)
+
+### Bug Fix: Black Screen After PR Celebration (Jan 2026)
+
+**Problem**: After PR celebration from screenshot-logged workout, app shows black screen requiring restart.
+
+**Root Cause**:
+1. `fullScreenCover` for PR celebration had no fallback when `prQueue` was empty
+2. Auto-dismiss timer in `PRCelebrationView` could fire after manual dismissal, calling `onDismiss()` twice
+3. Race condition between dismiss animation and state reset
+
+**Files Modified**:
+- `ios/.../Views/Log/LogView.swift` - Added EmptyView fallback with auto-dismiss in PR celebration fullScreenCover
+- `ios/.../Components/PRCelebrationView.swift` - Added `isDismissed` guard to prevent double dismissal
+
+**Fix Pattern**: When using `fullScreenCover(isPresented:)` with conditional content, ALWAYS include an else branch that either shows content or immediately dismisses to prevent black screens.
