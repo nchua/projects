@@ -589,21 +589,35 @@ async def save_extracted_workout(
         notes=notes
     )
     db.add(workout_session)
-    db.flush()
+    logger.info(f"[SAVE] Creating workout session for user {user_id}, date {workout_date}")
+    try:
+        db.flush()
+        logger.info(f"[SAVE] Workout session created: id={workout_session.id}")
+    except Exception as e:
+        logger.error(f"[SAVE] Failed to flush workout session: {e}")
+        raise
 
     # Create exercises and sets
     order_index = 0
-    for exercise_data in (extraction_result.get("exercises") or []):
+    exercises_list = extraction_result.get("exercises") or []
+    logger.info(f"[SAVE] Processing {len(exercises_list)} exercises")
+
+    for exercise_data in exercises_list:
         exercise_id = exercise_data.get("matched_exercise_id")
+        exercise_name = exercise_data.get("name", "Unknown")
 
         # Skip exercises that weren't matched
         if not exercise_id:
+            logger.warning(f"[SAVE] Skipping unmatched exercise: {exercise_name}")
             continue
 
         # Verify exercise exists
         exercise = db.query(Exercise).filter(Exercise.id == exercise_id).first()
         if not exercise:
+            logger.warning(f"[SAVE] Exercise ID {exercise_id} not found in database, skipping")
             continue
+
+        logger.info(f"[SAVE] Adding exercise: {exercise_name} (id={exercise_id})")
 
         # Create workout exercise
         workout_exercise = WorkoutExercise(
@@ -612,7 +626,12 @@ async def save_extracted_workout(
             order_index=order_index
         )
         db.add(workout_exercise)
-        db.flush()
+        try:
+            db.flush()
+            logger.info(f"[SAVE] Workout exercise created: id={workout_exercise.id}")
+        except Exception as e:
+            logger.error(f"[SAVE] Failed to flush workout exercise: {e}")
+            raise
         order_index += 1
 
         # Create sets
@@ -647,9 +666,16 @@ async def save_extracted_workout(
         # Detect PRs for this exercise
         if exercise_sets:
             db.flush()
+            logger.info(f"[SAVE] Detecting PRs for exercise {exercise_name} with {len(exercise_sets)} sets")
             detect_and_create_prs(db, user_id, workout_exercise, exercise_sets)
 
-    db.commit()
+    logger.info(f"[SAVE] Committing workout session {workout_session.id}")
+    try:
+        db.commit()
+        logger.info(f"[SAVE] Workout session committed successfully")
+    except Exception as e:
+        logger.error(f"[SAVE] Failed to commit workout session: {e}")
+        raise
     db.refresh(workout_session)
 
     # Calculate and award XP
@@ -689,7 +715,13 @@ async def save_extracted_workout(
     # Update quest progress
     update_quest_progress(db, user_id, workout_session)
 
-    db.commit()
+    logger.info(f"[SAVE] Final commit for workout {workout_session.id}")
+    try:
+        db.commit()
+        logger.info(f"[SAVE] Workout {workout_session.id} saved successfully")
+    except Exception as e:
+        logger.error(f"[SAVE] Failed final commit: {e}")
+        raise
 
     return workout_session.id
 

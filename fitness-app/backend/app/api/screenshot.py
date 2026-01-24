@@ -3,6 +3,7 @@ Screenshot Processing API endpoints
 Handles workout screenshot uploads and Claude Vision extraction
 """
 import logging
+import traceback
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -175,9 +176,10 @@ async def process_screenshot(
             )
             workout_saved = True
         except Exception as e:
-            # Don't fail the whole request if save fails
-            # Just return without workout_id
-            pass
+            # Log full error details for debugging
+            logger.error(f"[SINGLE SAVE ERROR] Failed to save workout: {str(e)}")
+            logger.error(f"[SINGLE SAVE ERROR] Traceback:\n{traceback.format_exc()}")
+            # Don't fail the whole request - still return extraction data
 
     # Auto-save WHOOP activity data (also creates a WorkoutSession for calendar)
     activity_id = None
@@ -200,9 +202,9 @@ async def process_screenshot(
             workout_id = whoop_workout_id
             workout_saved = True
         except Exception as e:
-            # Don't fail if activity save fails
-            logger.error(f"Failed to save WHOOP activity: {e}")
-            pass
+            # Log full error details for debugging
+            logger.error(f"[WHOOP SAVE ERROR] Failed to save activity: {str(e)}")
+            logger.error(f"[WHOOP SAVE ERROR] Traceback:\n{traceback.format_exc()}")
 
     return ScreenshotProcessResponse(
         screenshot_type=screenshot_type,
@@ -364,9 +366,15 @@ async def process_screenshots_batch(
             )
             workout_saved = True
         except Exception as e:
-            # Don't fail if save fails
-            logger.error(f"Failed to save batch workout: {e}")
-            pass
+            # Log full error details for debugging
+            logger.error(f"[BATCH SAVE ERROR] Failed to save workout: {str(e)}")
+            logger.error(f"[BATCH SAVE ERROR] Traceback:\n{traceback.format_exc()}")
+            logger.error(f"[BATCH SAVE ERROR] Merged data keys: {list(merged.keys())}")
+            logger.error(f"[BATCH SAVE ERROR] Exercise count: {len(merged.get('exercises', []))}")
+            # Log each exercise for debugging
+            for i, ex in enumerate(merged.get("exercises", [])):
+                logger.error(f"[BATCH SAVE ERROR] Exercise {i}: name={ex.get('name')}, matched_id={ex.get('matched_exercise_id')}, sets={len(ex.get('sets', []))}")
+            # Don't fail the whole request - still return extraction data
 
     # Auto-save WHOOP activity data (also creates a WorkoutSession for calendar)
     activity_id = None
@@ -389,9 +397,9 @@ async def process_screenshots_batch(
             workout_id = whoop_workout_id
             workout_saved = True
         except Exception as e:
-            # Don't fail if activity save fails
-            logger.error(f"Failed to save batch WHOOP activity: {e}")
-            pass
+            # Log full error details for debugging
+            logger.error(f"[BATCH WHOOP SAVE ERROR] Failed to save activity: {str(e)}")
+            logger.error(f"[BATCH WHOOP SAVE ERROR] Traceback:\n{traceback.format_exc()}")
 
     return ScreenshotBatchResponse(
         screenshots_processed=len(files),
