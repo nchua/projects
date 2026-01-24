@@ -27,8 +27,10 @@ from app.schemas.dungeon import (
 # Spawn configuration
 BASE_SPAWN_CHANCE = 0.20  # 20% base chance
 SPAWN_PENALTY_PER_AVAILABLE = 0.05  # -5% per available dungeon
-MAX_AVAILABLE_DUNGEONS = 3  # Maximum dungeons on mission board
+MAX_AVAILABLE_DUNGEONS = 5  # Maximum dungeons on mission board
+MIN_AVAILABLE_DUNGEONS = 3  # Minimum dungeons to always have available
 STRETCH_LEVEL_THRESHOLD = 10  # Can't attempt more than 10 levels above
+RARE_GATE_CHANCE = 0.05  # 5% chance for a rare gate (higher rank)
 
 # Compound exercises for quest checking
 COMPOUND_EXERCISES = [
@@ -108,7 +110,8 @@ def get_eligible_dungeons(db: Session, user_level: int) -> List[DungeonDefinitio
 def maybe_spawn_dungeon(
     db: Session,
     user_id: str,
-    force: bool = False
+    force: bool = False,
+    force_rare: bool = False
 ) -> Optional[Dict[str, Any]]:
     """
     Possibly spawn a new dungeon after a workout.
@@ -117,6 +120,7 @@ def maybe_spawn_dungeon(
         db: Database session
         user_id: User ID
         force: Force spawn (for testing)
+        force_rare: Force a rare gate spawn (for testing)
 
     Returns:
         Dungeon spawn data if spawned, None otherwise
@@ -145,17 +149,24 @@ def maybe_spawn_dungeon(
     if not eligible:
         return None
 
-    # Weighted random selection based on spawn_weight
-    total_weight = sum(d.spawn_weight for d in eligible)
-    roll = random.uniform(0, total_weight)
-    cumulative = 0
-    selected = eligible[0]
+    # Check for rare gate (5% chance or forced)
+    is_rare_gate = force_rare or random.random() < RARE_GATE_CHANCE
 
-    for dungeon in eligible:
-        cumulative += dungeon.spawn_weight
-        if roll <= cumulative:
-            selected = dungeon
-            break
+    if is_rare_gate:
+        # For rare gates, try to find a higher-rank dungeon
+        selected = _select_rare_dungeon(eligible, progress.level)
+    else:
+        # Weighted random selection based on spawn_weight
+        total_weight = sum(d.spawn_weight for d in eligible)
+        roll = random.uniform(0, total_weight)
+        cumulative = 0
+        selected = eligible[0]
+
+        for dungeon in eligible:
+            cumulative += dungeon.spawn_weight
+            if roll <= cumulative:
+                selected = dungeon
+                break
 
     # Calculate stretch info
     is_accessible, stretch_type, bonus_percent = get_stretch_info(
@@ -174,7 +185,8 @@ def maybe_spawn_dungeon(
         spawned_at=now,
         expires_at=expires_at,
         is_stretch_dungeon=stretch_type is not None,
-        stretch_type=stretch_type
+        stretch_type=stretch_type,
+        is_rare_gate=is_rare_gate
     )
     db.add(user_dungeon)
 
@@ -195,6 +207,12 @@ def maybe_spawn_dungeon(
     base_xp = selected.base_xp_reward
     stretch_bonus = int(base_xp * bonus_percent / 100) if bonus_percent else 0
 
+    # Rare gates message
+    if is_rare_gate:
+        message = f"⚡ A RARE {selected.rank}-Rank Gate has materialized!"
+    else:
+        message = f"A {selected.rank}-Rank Gate has appeared!"
+
     return {
         "spawned": True,
         "dungeon": {
@@ -209,21 +227,83 @@ def maybe_spawn_dungeon(
             "time_remaining_seconds": int((expires_at - now).total_seconds()),
             "required_objectives_complete": 0,
             "total_required_objectives": sum(1 for o in selected.objectives if o.is_required),
-            "is_boss_dungeon": selected.is_boss_dungeon
+            "is_boss_dungeon": selected.is_boss_dungeon,
+            "is_rare_gate": is_rare_gate
         },
-        "message": f"A {selected.rank}-Rank Gate has appeared!"
+        "message": message
     }
+
+
+def _select_rare_dungeon(eligible: List[DungeonDefinition], user_level: int) -> DungeonDefinition:
+    """
+    Select a dungeon for a rare gate spawn.
+
+    Prioritizes higher-rank dungeons that are still accessible to the user.
+    """
+    # Rank order for prioritization
+    rank_order = ["S++", "S+", "S", "A", "B", "C", "D", "E"]
+
+    # Sort eligible dungeons by rank (highest first)
+    sorted_dungeons = sorted(
+        eligible,
+        key=lambda d: rank_order.index(d.rank) if d.rank in rank_order else 99
+    )
+
+    # Try to find a dungeon at least one rank higher than typical for user level
+    # Pick from the top 30% of eligible dungeons by rank
+    high_rank_count = max(1, len(sorted_dungeons) // 3)
+    high_rank_dungeons = sorted_dungeons[:high_rank_count]
+
+    # Return a random one from the high-rank pool
+    return random.choice(high_rank_dungeons)
+
+
+def ensure_minimum_dungeons(db: Session, user_id: str) -> List[Dict[str, Any]]:
+    """
+    Ensure the user has at least MIN_AVAILABLE_DUNGEONS available.
+
+    Called when loading the dungeon board to auto-replenish gates.
+
+    Args:
+        db: Database session
+        user_id: User ID
+
+    Returns:
+        List of newly spawned dungeons
+    """
+    # Count current available dungeons
+    available_count = db.query(UserDungeon).filter(
+        UserDungeon.user_id == user_id,
+        UserDungeon.status == DungeonStatus.AVAILABLE.value,
+        UserDungeon.expires_at > datetime.utcnow()  # Not expired
+    ).count()
+
+    spawned = []
+    dungeons_needed = MIN_AVAILABLE_DUNGEONS - available_count
+
+    for _ in range(dungeons_needed):
+        # Force spawn but still allow rare gate chance
+        result = maybe_spawn_dungeon(db, user_id, force=True)
+        if result:
+            spawned.append(result)
+
+    return spawned
 
 
 def get_user_dungeons(db: Session, user_id: str) -> Dict[str, Any]:
     """
     Get all user dungeons organized by status.
 
+    Automatically ensures minimum dungeons are available.
+
     Returns:
         Dict with available, active, and completed_unclaimed lists
     """
     progress = get_or_create_user_progress(db, user_id)
     now = datetime.utcnow()
+
+    # Auto-replenish dungeons if below minimum
+    ensure_minimum_dungeons(db, user_id)
 
     # Get all non-terminal dungeons
     user_dungeons = db.query(UserDungeon).filter(
@@ -301,7 +381,8 @@ def build_dungeon_summary(user_dungeon: UserDungeon, now: datetime) -> Dict[str,
         "time_remaining_seconds": max(0, int((user_dungeon.expires_at - now).total_seconds())),
         "required_objectives_complete": required_complete,
         "total_required_objectives": total_required,
-        "is_boss_dungeon": definition.is_boss_dungeon
+        "is_boss_dungeon": definition.is_boss_dungeon,
+        "is_rare_gate": user_dungeon.is_rare_gate
     }
 
 
@@ -385,7 +466,8 @@ def get_dungeon_detail(db: Session, user_id: str, user_dungeon_id: str) -> Optio
         "bonus_objectives_complete": bonus_complete,
         "total_bonus_objectives": total_bonus,
         "is_boss_dungeon": definition.is_boss_dungeon,
-        "is_event_dungeon": definition.is_event_dungeon
+        "is_event_dungeon": definition.is_event_dungeon,
+        "is_rare_gate": user_dungeon.is_rare_gate
     }
 
 

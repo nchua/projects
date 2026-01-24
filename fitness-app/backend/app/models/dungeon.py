@@ -123,6 +123,7 @@ class UserDungeon(Base):
     # Metadata
     is_stretch_dungeon = Column(Boolean, default=False)  # Above user's level
     stretch_type = Column(String, nullable=True)  # "stretch" or "very_stretch"
+    is_rare_gate = Column(Boolean, default=False)  # Special rare spawn with bonus XP
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

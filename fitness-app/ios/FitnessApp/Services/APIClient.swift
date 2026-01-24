@@ -280,6 +280,16 @@ class APIClient {
         return response.dungeon
     }
 
+    func forceSpawnRareDungeon() async throws -> DungeonSpawnedResponse? {
+        struct SpawnResponse: Decodable {
+            let spawned: Bool
+            let dungeon: DungeonSpawnedResponse?
+            let message: String?
+        }
+        let response: SpawnResponse = try await post("/dungeons/spawn/force-rare", body: EmptyBody())
+        return response.dungeon
+    }
+
     func seedDungeons() async throws {
         struct SeedResponse: Decodable {
             let message: String

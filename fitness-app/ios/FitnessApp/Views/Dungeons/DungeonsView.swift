@@ -258,17 +258,16 @@ struct EmptyDungeonsCard: View {
                     .fill(Color.voidLight)
                     .frame(width: 80, height: 80)
 
-                Image(systemName: "door.left.hand.closed")
-                    .font(.system(size: 36))
-                    .foregroundColor(.textMuted)
+                ProgressView()
+                    .tint(.systemPrimary)
             }
 
             VStack(spacing: 8) {
-                Text("No Active Gates")
+                Text("Scanning for Gates...")
                     .font(.ariseHeader(size: 18, weight: .semibold))
                     .foregroundColor(.textPrimary)
 
-                Text("Complete workouts to spawn dungeon gates.\nHigher intensity workouts spawn rarer dungeons.")
+                Text("New dungeon gates are spawning.\nPull to refresh.")
                     .font(.ariseMono(size: 12))
                     .foregroundColor(.textSecondary)
                     .multilineTextAlignment(.center)
@@ -309,13 +308,28 @@ struct DebugDungeonControls: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "wand.and.stars")
-                        Text("FORCE SPAWN")
+                        Text("SPAWN")
                     }
-                    .font(.ariseMono(size: 11, weight: .semibold))
+                    .font(.ariseMono(size: 10, weight: .semibold))
                     .foregroundColor(.systemPrimary)
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, 10)
                     .padding(.vertical, 8)
                     .background(Color.systemPrimary.opacity(0.1))
+                    .cornerRadius(4)
+                }
+
+                Button {
+                    Task { await viewModel.forceSpawnRare() }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "sparkles")
+                        Text("RARE")
+                    }
+                    .font(.ariseMono(size: 10, weight: .semibold))
+                    .foregroundColor(.gold)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(Color.gold.opacity(0.1))
                     .cornerRadius(4)
                 }
 
@@ -324,13 +338,13 @@ struct DebugDungeonControls: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "square.and.arrow.down")
-                        Text("SEED DATA")
+                        Text("SEED")
                     }
-                    .font(.ariseMono(size: 11, weight: .semibold))
-                    .foregroundColor(.gold)
-                    .padding(.horizontal, 12)
+                    .font(.ariseMono(size: 10, weight: .semibold))
+                    .foregroundColor(.textSecondary)
+                    .padding(.horizontal, 10)
                     .padding(.vertical, 8)
-                    .background(Color.gold.opacity(0.1))
+                    .background(Color.voidLight)
                     .cornerRadius(4)
                 }
 

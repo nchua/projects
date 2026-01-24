@@ -1155,6 +1155,7 @@ struct DungeonSpawnedResponse: Decodable {
     let stretchBonusPercent: Int?
     let timeRemainingSeconds: Int
     let message: String
+    let isRareGate: Bool
 
     enum CodingKeys: String, CodingKey {
         case id, name, rank, message
@@ -1163,6 +1164,7 @@ struct DungeonSpawnedResponse: Decodable {
         case isStretchDungeon = "is_stretch_dungeon"
         case stretchBonusPercent = "stretch_bonus_percent"
         case timeRemainingSeconds = "time_remaining_seconds"
+        case isRareGate = "is_rare_gate"
     }
 }
 
@@ -1228,6 +1230,7 @@ struct DungeonResponse: Decodable, Identifiable {
     let totalBonusObjectives: Int
     let isBossDungeon: Bool
     let isEventDungeon: Bool
+    let isRareGate: Bool
 
     /// Check if dungeon is urgent (less than 24 hours remaining)
     var isUrgent: Bool {
@@ -1264,6 +1267,7 @@ struct DungeonResponse: Decodable, Identifiable {
         case totalBonusObjectives = "total_bonus_objectives"
         case isBossDungeon = "is_boss_dungeon"
         case isEventDungeon = "is_event_dungeon"
+        case isRareGate = "is_rare_gate"
     }
 }
 
@@ -1280,6 +1284,7 @@ struct DungeonSummaryResponse: Decodable, Identifiable {
     let requiredObjectivesComplete: Int
     let totalRequiredObjectives: Int
     let isBossDungeon: Bool
+    let isRareGate: Bool
 
     /// Check if dungeon is urgent (less than 24 hours remaining)
     var isUrgent: Bool {
@@ -1306,6 +1311,7 @@ struct DungeonSummaryResponse: Decodable, Identifiable {
         case requiredObjectivesComplete = "required_objectives_complete"
         case totalRequiredObjectives = "total_required_objectives"
         case isBossDungeon = "is_boss_dungeon"
+        case isRareGate = "is_rare_gate"
     }
 }
 

@@ -129,6 +129,19 @@ class DungeonsViewModel: ObservableObject {
         isLoading = false
     }
 
+    func forceSpawnRare() async {
+        isLoading = true
+
+        do {
+            _ = try await APIClient.shared.forceSpawnRareDungeon()
+            await loadDungeons()
+        } catch {
+            self.error = error.localizedDescription
+        }
+
+        isLoading = false
+    }
+
     func seedDungeons() async {
         isLoading = true
 

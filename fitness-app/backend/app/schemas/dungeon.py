@@ -60,6 +60,7 @@ class DungeonResponse(BaseModel):
     # Flags
     is_boss_dungeon: bool
     is_event_dungeon: bool
+    is_rare_gate: bool = False  # Special rare spawn with bonus XP
 
     class Config:
         from_attributes = True
@@ -79,6 +80,7 @@ class DungeonSummaryResponse(BaseModel):
     required_objectives_complete: int
     total_required_objectives: int
     is_boss_dungeon: bool
+    is_rare_gate: bool = False  # Special rare spawn with bonus XP
 
     class Config:
         from_attributes = True

@@ -5,19 +5,34 @@ struct DungeonCardView: View {
     let dungeon: DungeonSummaryResponse
     var onTap: (() -> Void)? = nil
 
+    /// Border color based on dungeon state
+    private var borderColor: Color {
+        if dungeon.isRareGate {
+            return .gold
+        } else if dungeon.isUrgent {
+            return .warningRed.opacity(0.5)
+        }
+        return .ariseBorder
+    }
+
+    /// Border width - thicker for rare gates
+    private var borderWidth: CGFloat {
+        dungeon.isRareGate ? 2 : 1
+    }
+
     var body: some View {
         Button {
             onTap?()
         } label: {
             HStack(spacing: 0) {
-                // Rank indicator bar
+                // Rank indicator bar - golden for rare gates
                 Rectangle()
-                    .fill(dungeon.rankColor)
-                    .frame(width: 4)
+                    .fill(dungeon.isRareGate ? Color.gold : dungeon.rankColor)
+                    .frame(width: dungeon.isRareGate ? 6 : 4)
 
                 HStack(spacing: 12) {
                     // Rank badge
-                    DungeonRankBadge(rank: dungeon.rank)
+                    DungeonRankBadge(rank: dungeon.rank, isRareGate: dungeon.isRareGate)
 
                     // Dungeon info
                     VStack(alignment: .leading, spacing: 4) {
@@ -26,6 +41,10 @@ struct DungeonCardView: View {
                                 .font(.ariseHeader(size: 15, weight: .semibold))
                                 .foregroundColor(.textPrimary)
                                 .lineLimit(1)
+
+                            if dungeon.isRareGate {
+                                RareGateTag()
+                            }
 
                             if dungeon.isBossDungeon {
                                 BossTag()
@@ -75,12 +94,13 @@ struct DungeonCardView: View {
                 }
                 .padding(14)
             }
-            .background(Color.voidMedium)
+            .background(dungeon.isRareGate ? Color.gold.opacity(0.05) : Color.voidMedium)
             .cornerRadius(4)
             .overlay(
                 RoundedRectangle(cornerRadius: 4)
-                    .stroke(dungeon.isUrgent ? Color.warningRed.opacity(0.5) : Color.ariseBorder, lineWidth: 1)
+                    .stroke(borderColor, lineWidth: borderWidth)
             )
+            .shadow(color: dungeon.isRareGate ? Color.gold.opacity(0.3) : .clear, radius: 8, x: 0, y: 0)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -90,6 +110,7 @@ struct DungeonCardView: View {
 
 struct DungeonRankBadge: View {
     let rank: String
+    var isRareGate: Bool = false
 
     var rankColor: Color {
         switch rank {
@@ -118,6 +139,31 @@ struct DungeonRankBadge: View {
             .frame(width: 36, height: 36)
             .background(rankColor)
             .cornerRadius(4)
+            .overlay(
+                // Golden glow for rare gates
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(Color.gold, lineWidth: isRareGate ? 2 : 0)
+            )
+            .shadow(color: isRareGate ? Color.gold.opacity(0.5) : .clear, radius: 6, x: 0, y: 0)
+    }
+}
+
+// MARK: - Rare Gate Tag
+
+struct RareGateTag: View {
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 8))
+            Text("RARE")
+                .font(.ariseMono(size: 8, weight: .bold))
+                .tracking(0.5)
+        }
+        .foregroundColor(.gold)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(Color.gold.opacity(0.2))
+        .cornerRadius(2)
     }
 }
 

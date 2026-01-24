@@ -12,6 +12,10 @@ struct DungeonSpawnOverlay: View {
     @State private var pulseScale: CGFloat = 1.0
 
     var rankColor: Color {
+        // Rare gates use gold color
+        if dungeon.isRareGate {
+            return .gold
+        }
         switch dungeon.rank {
         case "E": return .rankE
         case "D": return .rankD
@@ -48,11 +52,12 @@ struct DungeonSpawnOverlay: View {
                 Spacer()
 
                 // GATE DETECTED text
-                Text("[ GATE DETECTED ]")
+                Text(dungeon.isRareGate ? "[ RARE GATE DETECTED ]" : "[ GATE DETECTED ]")
                     .font(.ariseMono(size: 14, weight: .semibold))
                     .foregroundColor(rankColor)
                     .tracking(3)
                     .opacity(showGate ? 1 : 0)
+                    .shadow(color: dungeon.isRareGate ? Color.gold.opacity(0.5) : .clear, radius: 10, x: 0, y: 0)
 
                 // Gate visual
                 ZStack {
@@ -113,6 +118,17 @@ struct DungeonSpawnOverlay: View {
                         .font(.ariseHeader(size: 24, weight: .bold))
                         .foregroundColor(.textPrimary)
                         .multilineTextAlignment(.center)
+
+                    if dungeon.isRareGate {
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 12, weight: .bold))
+                            Text("RARE GATE - HIGHER RANK")
+                                .font(.ariseMono(size: 11, weight: .semibold))
+                                .tracking(1)
+                        }
+                        .foregroundColor(.gold)
+                    }
 
                     if dungeon.isStretchDungeon, let percent = dungeon.stretchBonusPercent {
                         HStack(spacing: 6) {
@@ -273,7 +289,8 @@ struct GateShape: Shape {
             isStretchDungeon: true,
             stretchBonusPercent: 50,
             timeRemainingSeconds: 172800,
-            message: "A gate has materialized. Enter within 48 hours or it will close forever."
+            message: "A gate has materialized. Enter within 48 hours or it will close forever.",
+            isRareGate: true
         ),
         isPresented: .constant(true)
     )

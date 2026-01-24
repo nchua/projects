@@ -206,6 +206,34 @@ async def force_spawn_dungeon(
         )
 
 
+@router.post("/spawn/force-rare", response_model=DungeonSpawnResponse)
+async def force_spawn_rare_dungeon(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Force spawn a rare gate (admin/testing endpoint).
+
+    Bypasses the random chance and spawns a rare gate immediately.
+    Rare gates are higher-rank dungeons with special styling.
+    """
+    result = maybe_spawn_dungeon(db, current_user.id, force=True, force_rare=True)
+    db.commit()
+
+    if result:
+        return DungeonSpawnResponse(
+            spawned=result["spawned"],
+            dungeon=DungeonSummaryResponse(**result["dungeon"]),
+            message=result["message"]
+        )
+    else:
+        return DungeonSpawnResponse(
+            spawned=False,
+            dungeon=None,
+            message="Cannot spawn dungeon - at max available dungeons or no eligible dungeons"
+        )
+
+
 @router.post("/seed")
 async def seed_dungeons(db: Session = Depends(get_db)):
     """
