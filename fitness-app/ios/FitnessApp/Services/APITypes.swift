@@ -121,11 +121,13 @@ struct WorkoutExerciseCreate: Encodable {
     let exerciseId: String
     let orderIndex: Int
     let sets: [SetCreate]
+    let supersetGroupId: String?
 
     enum CodingKeys: String, CodingKey {
         case sets
         case exerciseId = "exercise_id"
         case orderIndex = "order_index"
+        case supersetGroupId = "superset_group_id"
     }
 }
 
@@ -204,6 +206,7 @@ struct WorkoutExerciseResponse: Decodable, Identifiable {
     let exerciseName: String
     let orderIndex: Int
     let sets: [SetResponse]
+    let supersetGroupId: String?
     let createdAt: String
 
     enum CodingKeys: String, CodingKey {
@@ -211,6 +214,7 @@ struct WorkoutExerciseResponse: Decodable, Identifiable {
         case exerciseId = "exercise_id"
         case exerciseName = "exercise_name"
         case orderIndex = "order_index"
+        case supersetGroupId = "superset_group_id"
         case createdAt = "created_at"
     }
 }

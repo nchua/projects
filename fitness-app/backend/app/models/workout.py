@@ -50,6 +50,7 @@ class WorkoutExercise(Base):
     exercise_id = Column(String, ForeignKey("exercises.id"), nullable=False, index=True)
 
     order_index = Column(Integer, nullable=False)  # Order of exercises in the workout
+    superset_group_id = Column(String, nullable=True, index=True)  # Groups exercises performed as superset
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

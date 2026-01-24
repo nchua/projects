@@ -142,7 +142,8 @@ async def _create_workout_impl(
         workout_exercise = WorkoutExercise(
             session_id=workout_session.id,
             exercise_id=exercise_data.exercise_id,
-            order_index=exercise_data.order_index
+            order_index=exercise_data.order_index,
+            superset_group_id=exercise_data.superset_group_id
         )
         db.add(workout_exercise)
         db.flush()  # Get workout_exercise.id
@@ -515,7 +516,8 @@ async def update_workout(
             workout_exercise = WorkoutExercise(
                 session_id=workout_id,
                 exercise_id=exercise_data.exercise_id,
-                order_index=exercise_data.order_index
+                order_index=exercise_data.order_index,
+                superset_group_id=exercise_data.superset_group_id
             )
             db.add(workout_exercise)
             db.flush()  # Get workout_exercise.id
@@ -631,6 +633,7 @@ def _build_workout_response(workout: WorkoutSession) -> WorkoutResponse:
             exercise_name=we.exercise.name,
             order_index=we.order_index,
             sets=sets,
+            superset_group_id=we.superset_group_id,
             created_at=we.created_at.isoformat()
         ))
 

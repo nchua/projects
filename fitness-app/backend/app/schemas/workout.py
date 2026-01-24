@@ -38,6 +38,7 @@ class WorkoutExerciseCreate(BaseModel):
     exercise_id: str = Field(..., description="Exercise ID from library")
     order_index: int = Field(..., ge=0, description="Order of exercise in workout")
     sets: List[SetCreate] = Field(..., min_length=1, description="Sets for this exercise")
+    superset_group_id: Optional[str] = Field(None, description="Group ID for superset exercises")
 
 
 class WorkoutExerciseResponse(BaseModel):
@@ -47,6 +48,7 @@ class WorkoutExerciseResponse(BaseModel):
     exercise_name: str
     order_index: int
     sets: List[SetResponse]
+    superset_group_id: Optional[str] = None
     created_at: str
 
     class Config:

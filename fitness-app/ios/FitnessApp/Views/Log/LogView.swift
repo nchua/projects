@@ -445,6 +445,7 @@ struct ActiveQuestView: View {
     @Binding var showDatePicker: Bool
     let onCancel: () -> Void
     let onQuestComplete: () -> Void
+    @State private var showSupersetPicker = false
 
     var body: some View {
         ScrollView {
@@ -530,8 +531,18 @@ struct ActiveQuestView: View {
 
                         Spacer()
 
-                        Button {
-                            viewModel.showExercisePicker = true
+                        Menu {
+                            Button {
+                                viewModel.showExercisePicker = true
+                            } label: {
+                                Label("Add Exercise", systemImage: "dumbbell")
+                            }
+
+                            Button {
+                                showSupersetPicker = true
+                            } label: {
+                                Label("Add Superset", systemImage: "link")
+                            }
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: "plus")
@@ -553,18 +564,37 @@ struct ActiveQuestView: View {
                         EmptyObjectiveCard()
                             .padding(.horizontal)
                     } else {
-                        ForEach(Array(viewModel.selectedExercises.enumerated()), id: \.element.id) { index, exercise in
-                            ObjectiveCard(
-                                exercise: $viewModel.selectedExercises[index],
-                                onAddSet: { viewModel.addSet(to: index) },
-                                onCopySet: { viewModel.copyLastSet(for: index) },
-                                onRemoveSet: { setIndex in
-                                    viewModel.removeSet(from: index, at: setIndex)
-                                },
-                                onRemove: { viewModel.removeExercise(at: index) }
-                            )
-                            .padding(.horizontal)
-                            .fadeIn(delay: 0.2 + Double(index) * 0.05)
+                        ForEach(viewModel.exercisesGroupedForDisplay) { item in
+                            switch item {
+                            case .single(let exercise, let index):
+                                ObjectiveCard(
+                                    exercise: $viewModel.selectedExercises[index],
+                                    onAddSet: { viewModel.addSet(to: index) },
+                                    onCopySet: { viewModel.copyLastSet(for: index) },
+                                    onRemoveSet: { setIndex in
+                                        viewModel.removeSet(from: index, at: setIndex)
+                                    },
+                                    onRemove: { viewModel.removeExercise(at: index) }
+                                )
+                                .padding(.horizontal)
+                                .fadeIn(delay: 0.2 + Double(index) * 0.05)
+
+                            case .superset(let groupId, let exercises, let indices):
+                                SupersetCard(
+                                    groupId: groupId,
+                                    exercises: exercises,
+                                    indices: indices,
+                                    allExercises: $viewModel.selectedExercises,
+                                    onAddRound: { id in
+                                        viewModel.addRoundToSuperset(groupId: id)
+                                    },
+                                    onRemoveSuperset: { id in
+                                        viewModel.removeSuperset(groupId: id)
+                                    }
+                                )
+                                .padding(.horizontal)
+                                .fadeIn(delay: 0.2)
+                            }
                         }
                     }
                 }
@@ -645,6 +675,11 @@ struct ActiveQuestView: View {
             }
         }
         .scrollDismissesKeyboard(.interactively)
+        .sheet(isPresented: $showSupersetPicker) {
+            SupersetPickerView(viewModel: viewModel) { exercises in
+                viewModel.createSuperset(with: exercises)
+            }
+        }
     }
 }
 
