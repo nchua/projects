@@ -401,3 +401,21 @@ Text("DEBUG: \(dataPoints.count) pts, first: \(dataPoints.first?.date ?? "none")
 - `ios/.../Components/PRCelebrationView.swift` - Added `isDismissed` guard to prevent double dismissal
 
 **Fix Pattern**: When using `fullScreenCover(isPresented:)` with conditional content, ALWAYS include an else branch that either shows content or immediately dismisses to prevent black screens.
+
+### Build Error: Duplicate Swift Struct Names (Jan 2026)
+
+**Problem**: iOS build failed with "Invalid redeclaration of 'EdgeFlowQuestRow'"
+
+**Root Cause**: Two different structs with the same name existed in different files:
+- `DailyQuestsCard.swift:36` - `EdgeFlowQuestRow` taking `QuestResponse`
+- `QuestsView.swift:467` - `EdgeFlowQuestRow` taking `WorkoutSummaryResponse`
+
+Swift doesn't allow duplicate type names at the same scope level, even across different files.
+
+**Fix**: Renamed the workout-focused struct to `EdgeFlowWorkoutRow` to reflect its actual purpose.
+
+**Prevention Rules**:
+1. **Use descriptive, unique struct names** - Include the data type in the name (e.g., `QuestRow` vs `WorkoutRow`)
+2. **Before creating new View structs**, search the codebase: `grep -r "struct YourStructName" ios/`
+3. **When copying/adapting UI components**, always rename them to avoid collisions
+4. **Naming convention**: `{DesignSystem}{DataType}{ComponentType}` (e.g., `EdgeFlowWorkoutRow`, `EdgeFlowQuestCard`)

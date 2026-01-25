@@ -23,10 +23,9 @@ struct QuestsView: View {
                                 ProgressView()
                                     .tint(.systemPrimary)
                                     .scaleEffect(1.5)
-                                Text("PREPARING SCREENSHOTS...")
-                                    .font(.ariseMono(size: 11, weight: .medium))
+                                Text("Preparing screenshots...")
+                                    .font(.system(size: 13))
                                     .foregroundColor(.textMuted)
-                                    .tracking(1)
                             }
                         )
                         .zIndex(100)
@@ -34,30 +33,31 @@ struct QuestsView: View {
 
                 ScrollView {
                     VStack(spacing: 0) {
-                        // Header
+                        // Header (Edge Flow)
                         QuestCenterHeader()
-                            .padding(.horizontal)
-                            .padding(.top)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 20)
 
-                        // Action Buttons
+                        // Action Buttons (Edge Flow)
                         QuestActionButtons(
                             onBeginQuest: { navigateToLog = true },
                             onScanLog: { showScreenshotPicker = true }
                         )
-                        .padding()
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                        .padding(.bottom, 24)
 
-                        // Archive Header
+                        // Archive Header (Edge Flow)
                         HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("[ QUEST ARCHIVE ]")
-                                    .font(.ariseMono(size: 10, weight: .medium))
-                                    .foregroundColor(.textMuted)
-                                    .tracking(1)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Quest Archive")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(.textPrimary)
 
                                 if let date = viewModel.selectedDate {
                                     Text(date.formattedMedium)
-                                        .font(.ariseHeader(size: 14, weight: .semibold))
-                                        .foregroundColor(.textPrimary)
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.textMuted)
                                 }
                             }
 
@@ -70,10 +70,9 @@ struct QuestsView: View {
                                         viewModel.clearSelection()
                                     }
                                 } label: {
-                                    Text("CLEAR")
-                                        .font(.ariseMono(size: 10, weight: .semibold))
+                                    Text("Clear")
+                                        .font(.system(size: 13))
                                         .foregroundColor(.systemPrimary)
-                                        .tracking(1)
                                 }
                             }
 
@@ -84,24 +83,20 @@ struct QuestsView: View {
                                 }
                             } label: {
                                 ZStack {
-                                    RoundedRectangle(cornerRadius: 4)
-                                        .fill(viewModel.showCalendar ? Color.systemPrimary.opacity(0.1) : Color.voidLight)
-                                        .frame(width: 40, height: 40)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 4)
-                                                .stroke(viewModel.showCalendar ? Color.systemPrimary.opacity(0.3) : Color.ariseBorder, lineWidth: 1)
-                                        )
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(viewModel.showCalendar ? Color.systemPrimary.opacity(0.15) : Color.voidMedium)
+                                        .frame(width: 36, height: 36)
 
                                     Image(systemName: viewModel.showCalendar ? "list.bullet" : "calendar")
-                                        .font(.system(size: 14, weight: .semibold))
+                                        .font(.system(size: 14, weight: .medium))
                                         .foregroundColor(viewModel.showCalendar ? .systemPrimary : .textSecondary)
                                 }
                             }
                         }
-                        .padding(.horizontal)
-                        .padding(.bottom, 12)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 14)
 
-                        // Calendar (full month)
+                        // Calendar (Edge Flow style)
                         if viewModel.showCalendar {
                             QuestsCalendarView(
                                 selectedDate: Binding(
@@ -111,39 +106,27 @@ struct QuestsView: View {
                                 datesWithWorkouts: viewModel.datesWithWorkouts,
                                 hasSelection: viewModel.selectedDate != nil
                             )
-                            .padding()
-                            .background(Color.voidMedium)
-                            .cornerRadius(4)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .stroke(Color.ariseBorder, lineWidth: 1)
-                            )
-                            .overlay(
-                                Rectangle()
-                                    .fill(Color.systemPrimary.opacity(0.2))
-                                    .frame(height: 1),
-                                alignment: .top
-                            )
-                            .padding(.horizontal)
+                            .padding(16)
+                            .edgeFlowCard(accent: .systemPrimary)
+                            .padding(.horizontal, 20)
                             .padding(.bottom, 16)
                         }
 
-                        // Workout List
+                        // Workout List (Edge Flow)
                         if viewModel.isLoading && viewModel.workouts.isEmpty {
                             VStack(spacing: 16) {
                                 ProgressView()
                                     .tint(.systemPrimary)
-                                Text("LOADING QUESTS...")
-                                    .font(.ariseMono(size: 11, weight: .medium))
+                                Text("Loading quests...")
+                                    .font(.system(size: 13))
                                     .foregroundColor(.textMuted)
-                                    .tracking(1)
                             }
                             .padding(.vertical, 40)
                         } else if viewModel.displayedWorkouts.isEmpty {
                             EmptyQuestsCard(hasDateFilter: viewModel.selectedDate != nil)
-                                .padding(.horizontal)
+                                .padding(.horizontal, 20)
                         } else {
-                            VStack(spacing: 8) {
+                            VStack(spacing: 10) {
                                 ForEach(Array(viewModel.displayedWorkouts.enumerated()), id: \.element.id) { index, workout in
                                     NavigationLink {
                                         QuestsDetailView(
@@ -151,7 +134,7 @@ struct QuestsView: View {
                                             viewModel: viewModel
                                         )
                                     } label: {
-                                        CompletedQuestRow(workout: workout)
+                                        EdgeFlowWorkoutRow(workout: workout)
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                     .contextMenu {
@@ -164,7 +147,7 @@ struct QuestsView: View {
                                     .fadeIn(delay: Double(index) * 0.03)
                                 }
 
-                                // Load more button
+                                // Load more button (Edge Flow pill style)
                                 if viewModel.hasMoreWorkouts && !viewModel.showCalendar {
                                     Button {
                                         Task { await viewModel.loadWorkouts() }
@@ -175,21 +158,20 @@ struct QuestsView: View {
                                                     .tint(.systemPrimary)
                                             } else {
                                                 HStack(spacing: 8) {
-                                                    Text("LOAD MORE")
-                                                        .font(.ariseMono(size: 12, weight: .semibold))
-                                                        .tracking(1)
+                                                    Text("Load More")
+                                                        .font(.system(size: 13, weight: .semibold))
                                                     Image(systemName: "chevron.down")
-                                                        .font(.system(size: 10, weight: .bold))
+                                                        .font(.system(size: 10, weight: .semibold))
                                                 }
                                                 .foregroundColor(.systemPrimary)
                                             }
                                         }
                                         .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 16)
+                                        .padding(.vertical, 14)
                                     }
                                 }
                             }
-                            .padding(.horizontal)
+                            .padding(.horizontal, 20)
                         }
 
                         Spacer().frame(height: 100)
@@ -243,50 +225,22 @@ struct QuestsView: View {
     }
 }
 
-// MARK: - Quest Center Header
+// MARK: - Quest Center Header (Edge Flow)
 
 struct QuestCenterHeader: View {
     @State private var showContent = false
 
     var body: some View {
-        VStack(spacing: 12) {
-            Text("[ QUEST CENTER ]")
-                .font(.ariseMono(size: 11, weight: .medium))
-                .foregroundColor(.systemPrimary)
-                .tracking(2)
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Quest Center")
+                .font(.system(size: 28, weight: .bold))
+                .foregroundColor(.textPrimary)
 
-            HStack(spacing: 12) {
-                Image(systemName: "scroll.fill")
-                    .font(.system(size: 24))
-                    .foregroundColor(.systemPrimary)
-                    .shadow(color: .systemPrimaryGlow, radius: 10, x: 0, y: 0)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Training Quests")
-                        .font(.ariseHeader(size: 22, weight: .bold))
-                        .foregroundColor(.textPrimary)
-
-                    Text("Log workouts and track your progress")
-                        .font(.ariseMono(size: 11))
-                        .foregroundColor(.textMuted)
-                }
-
-                Spacer()
-            }
+            Text("Log workouts and track your progress")
+                .font(.system(size: 13))
+                .foregroundColor(.textMuted)
         }
-        .padding(16)
-        .background(Color.voidMedium)
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.ariseBorder, lineWidth: 1)
-        )
-        .overlay(
-            Rectangle()
-                .fill(Color.systemPrimary.opacity(0.2))
-                .frame(height: 1),
-            alignment: .top
-        )
+        .frame(maxWidth: .infinity, alignment: .leading)
         .opacity(showContent ? 1 : 0)
         .offset(y: showContent ? 0 : 10)
         .onAppear {
@@ -297,56 +251,40 @@ struct QuestCenterHeader: View {
     }
 }
 
-// MARK: - Quest Action Buttons
+// MARK: - Quest Action Buttons (Edge Flow)
 
 struct QuestActionButtons: View {
     let onBeginQuest: () -> Void
     let onScanLog: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Begin Quest Button
+        HStack(spacing: 10) {
+            // Begin Quest Button - Primary Pill
             Button(action: onBeginQuest) {
-                VStack(spacing: 10) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 28))
-
-                    Text("BEGIN QUEST")
-                        .font(.ariseMono(size: 11, weight: .semibold))
-                        .tracking(1)
+                HStack(spacing: 8) {
+                    Text("\u{26A1}")  // Lightning bolt
+                        .font(.system(size: 14))
+                    Text("Begin Quest")
+                        .font(.system(size: 14, weight: .semibold))
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 90)
-                .background(Color.systemPrimary)
-                .foregroundColor(.voidBlack)
-                .cornerRadius(4)
+                .edgeFlowPillButton(isPrimary: true)
             }
 
-            // Scan Log Button
+            // Scan Log Button - Secondary Pill
             Button(action: onScanLog) {
-                VStack(spacing: 10) {
-                    Image(systemName: "camera.fill")
-                        .font(.system(size: 28))
-
-                    Text("SCAN LOG")
-                        .font(.ariseMono(size: 11, weight: .semibold))
-                        .tracking(1)
+                HStack(spacing: 8) {
+                    Image(systemName: "camera.viewfinder")
+                        .font(.system(size: 14, weight: .medium))
+                    Text("Scan")
+                        .font(.system(size: 14, weight: .semibold))
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 90)
-                .background(Color.voidMedium)
-                .foregroundColor(.systemPrimary)
-                .cornerRadius(4)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(Color.systemPrimary.opacity(0.3), lineWidth: 1)
-                )
+                .edgeFlowPillButton(isPrimary: false)
             }
         }
     }
 }
 
-// MARK: - Full Month Calendar
+// MARK: - Full Month Calendar (Edge Flow)
 
 struct QuestsCalendarView: View {
     @Binding var selectedDate: Date
@@ -372,12 +310,12 @@ struct QuestsCalendarView: View {
                     }
                 } label: {
                     ZStack {
-                        RoundedRectangle(cornerRadius: 4)
+                        RoundedRectangle(cornerRadius: 8)
                             .fill(Color.voidLight)
-                            .frame(width: 32, height: 32)
+                            .frame(width: 28, height: 28)
 
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(.textSecondary)
                     }
                 }
@@ -385,7 +323,7 @@ struct QuestsCalendarView: View {
                 Spacer()
 
                 Text(dateFormatter.string(from: displayedMonth).uppercased())
-                    .font(.ariseHeader(size: 14, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.textPrimary)
                     .tracking(1)
 
@@ -397,12 +335,12 @@ struct QuestsCalendarView: View {
                     }
                 } label: {
                     ZStack {
-                        RoundedRectangle(cornerRadius: 4)
+                        RoundedRectangle(cornerRadius: 8)
                             .fill(Color.voidLight)
-                            .frame(width: 32, height: 32)
+                            .frame(width: 28, height: 28)
 
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(.textSecondary)
                     }
                 }
@@ -412,9 +350,8 @@ struct QuestsCalendarView: View {
             HStack(spacing: 0) {
                 ForEach(["S", "M", "T", "W", "T", "F", "S"], id: \.self) { day in
                     Text(day)
-                        .font(.ariseMono(size: 10, weight: .semibold))
+                        .font(.system(size: 10, weight: .semibold))
                         .foregroundColor(.textMuted)
-                        .tracking(1)
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -425,7 +362,7 @@ struct QuestsCalendarView: View {
                 ForEach(days, id: \.self) { date in
                     if let date = date {
                         let isSelected = hasSelection && calendar.isDate(date, inSameDayAs: selectedDate)
-                        AriseCalendarDayCell(
+                        EdgeFlowCalendarDayCell(
                             date: date,
                             isSelected: isSelected,
                             hasWorkout: hasWorkout(on: date),
@@ -468,7 +405,207 @@ struct QuestsCalendarView: View {
     }
 }
 
-// MARK: - Empty State
+// MARK: - Edge Flow Calendar Day Cell
+
+struct EdgeFlowCalendarDayCell: View {
+    let date: Date
+    let isSelected: Bool
+    let hasWorkout: Bool
+    let isToday: Bool
+    let onTap: () -> Void
+
+    private let calendar = Calendar.current
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(spacing: 4) {
+                Text("\(calendar.component(.day, from: date))")
+                    .font(.system(size: 13, weight: isSelected || isToday ? .semibold : .regular))
+                    .foregroundColor(textColor)
+
+                // Quest completion indicator
+                if hasWorkout {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color.successGreen)
+                        .frame(width: 10, height: 3)
+                } else {
+                    Rectangle()
+                        .fill(Color.clear)
+                        .frame(width: 10, height: 3)
+                }
+            }
+            .frame(height: 44)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isSelected ? Color.systemPrimary.opacity(0.15) : Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(
+                        isToday ? Color.systemPrimary : Color.clear,
+                        lineWidth: isToday ? 2 : 0
+                    )
+            )
+            .shadow(color: isSelected ? Color.systemPrimaryGlow.opacity(0.2) : .clear, radius: 4, x: 0, y: 0)
+        }
+    }
+
+    private var textColor: Color {
+        if isSelected {
+            return .systemPrimary
+        } else if hasWorkout {
+            return .textPrimary
+        } else {
+            return .textMuted
+        }
+    }
+}
+
+// MARK: - Edge Flow Workout Row
+
+struct EdgeFlowWorkoutRow: View {
+    let workout: WorkoutSummaryResponse
+
+    private var isWhoopActivity: Bool {
+        workout.isWhoopActivity == true
+    }
+
+    private var hasExercises: Bool {
+        workout.exerciseCount > 0
+    }
+
+    private var indicatorColor: Color {
+        (isWhoopActivity && !hasExercises) ? .orange : .successGreen
+    }
+
+    private var badgeText: String {
+        if isWhoopActivity && !hasExercises {
+            return "ACTIVITY"
+        }
+        return "COMPLETE"
+    }
+
+    private var badgeIcon: String {
+        if isWhoopActivity && !hasExercises {
+            return "flame.fill"
+        }
+        return "checkmark"
+    }
+
+    var body: some View {
+        HStack(spacing: 14) {
+            // Quest info
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 10) {
+                    Text(formatDate(workout.date))
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.textPrimary)
+
+                    // Badge
+                    HStack(spacing: 4) {
+                        Image(systemName: badgeIcon)
+                            .font(.system(size: 8, weight: .bold))
+                        Text(badgeText)
+                            .font(.system(size: 9, weight: .semibold))
+                            .tracking(0.5)
+                    }
+                    .foregroundColor(indicatorColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(indicatorColor.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                    // WHOOP indicator for activities with exercises
+                    if isWhoopActivity && hasExercises {
+                        HStack(spacing: 2) {
+                            Image(systemName: "applewatch")
+                                .font(.system(size: 7, weight: .semibold))
+                            Text("WHOOP")
+                                .font(.system(size: 8, weight: .semibold))
+                                .tracking(0.5)
+                        }
+                        .foregroundColor(.orange)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 4)
+                        .background(Color.orange.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                }
+
+                // Stats row
+                if isWhoopActivity && !hasExercises {
+                    HStack(spacing: 16) {
+                        if let activityType = workout.activityType {
+                            HStack(spacing: 4) {
+                                Text(activityType)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.orange)
+                            }
+                        }
+
+                        if let strain = workout.strain {
+                            Text(String(format: "%.1f strain", strain))
+                                .font(.system(size: 12))
+                                .foregroundColor(.textSecondary)
+                        }
+
+                        if let calories = workout.calories {
+                            Text("\(calories) cal")
+                                .font(.system(size: 12))
+                                .foregroundColor(.textSecondary)
+                        }
+                    }
+                } else {
+                    HStack(spacing: 16) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "scroll.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(.textMuted)
+                            Text("\(workout.exerciseCount) objectives")
+                                .font(.system(size: 12))
+                                .foregroundColor(.textSecondary)
+                        }
+
+                        HStack(spacing: 4) {
+                            Image(systemName: "square.stack.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(.textMuted)
+                            Text("\(workout.totalSets) sets")
+                                .font(.system(size: 12))
+                                .foregroundColor(.textSecondary)
+                        }
+
+                        if isWhoopActivity, let strain = workout.strain {
+                            HStack(spacing: 4) {
+                                Image(systemName: "bolt.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.orange)
+                                Text(String(format: "%.1f", strain))
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.textMuted)
+        }
+        .padding(16)
+        .edgeFlowCard(accent: indicatorColor)
+    }
+
+    private func formatDate(_ dateString: String) -> String {
+        dateString.parseISO8601Date()?.formattedMedium ?? dateString
+    }
+}
+
+// MARK: - Empty State (Edge Flow)
 
 struct EmptyQuestsCard: View {
     var hasDateFilter: Bool = false
@@ -476,7 +613,7 @@ struct EmptyQuestsCard: View {
     var body: some View {
         VStack(spacing: 20) {
             ZStack {
-                RoundedRectangle(cornerRadius: 4)
+                RoundedRectangle(cornerRadius: 14)
                     .fill(Color.voidLight)
                     .frame(width: 64, height: 64)
 
@@ -487,23 +624,18 @@ struct EmptyQuestsCard: View {
 
             VStack(spacing: 8) {
                 Text(hasDateFilter ? "No Quests on This Day" : "No Quests Yet")
-                    .font(.ariseHeader(size: 16, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.textPrimary)
 
                 Text(hasDateFilter ? "Select another date or clear the filter" : "Begin a quest to start tracking\nyour training progress")
-                    .font(.ariseMono(size: 12))
+                    .font(.system(size: 13))
                     .foregroundColor(.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)
-        .background(Color.voidMedium)
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.ariseBorder, lineWidth: 1)
-        )
+        .edgeFlowCard(accent: .systemPrimary)
     }
 }
 
