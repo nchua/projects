@@ -65,11 +65,14 @@
 		B9AFAA1D369343F733813253 /* RecoveryStatusSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 386B58A648DA7731B4C2FA83 /* RecoveryStatusSection.swift */; };
 		BBC0E7DB598EB22BA3C58C40 /* RankUpCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EE3DE6119CAF129687F65FF /* RankUpCelebrationView.swift */; };
 		C74790B0B116896A339C6481 /* FitnessApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7192790992313FDD5201B37 /* FitnessApp.swift */; };
+		C7DEB4654551E73010919AF3 /* SupersetCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEC002A279F1E0A4CFFB244A /* SupersetCard.swift */; };
 		CD752F70C89E9DE3FBC74FC4 /* LogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68373213BB5CB33B69A8F37E /* LogView.swift */; };
 		D25039AC80123A252F608D2D /* Inter-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C5A97BBD2F0FF0461CBD9001 /* Inter-Variable.ttf */; };
 		D505BF0C1E363D977EF5801A /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E86F962F47309074191381A /* APIClient.swift */; };
 		D68FCD8F3B6A23E4F509613A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DB83BF408BFC9A75EE16A3DD /* Assets.xcassets */; };
+		D88FB846E88AE9441286F854 /* SupersetPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C547F0EDFB1DA616CA28A09 /* SupersetPickerView.swift */; };
 		DCB303E3963C669D78283DF2 /* Rajdhani-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 635C543AEB3AA9B0229DE584 /* Rajdhani-Bold.ttf */; };
+		DCC041843FFDACBD6ACCE722 /* EdgeFlowStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB0EDBCC1A132F7B5B8386E7 /* EdgeFlowStyles.swift */; };
 		DDB186D30D008EBB548C39BB /* XPCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4405B03A566EC3D65DA19B00 /* XPCalculator.swift */; };
 		E5F8C1E4DE3FEAD7EE283672 /* XPBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21C560832A36E3F4D5FF5735 /* XPBarView.swift */; };
 		E78B5ED400336A0597014E6D /* CooldownCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A947B12F7FAFC3687A4ED86 /* CooldownCard.swift */; };
@@ -97,6 +100,7 @@
 		07EB6749EA7B0814EC2A2E6A /* FriendsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsViewModel.swift; sourceTree = "<group>"; };
 		07FD53171492644B246B925C /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
 		08CCA5CC781543F5685156FC /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
+		0C547F0EDFB1DA616CA28A09 /* SupersetPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupersetPickerView.swift; sourceTree = "<group>"; };
 		0ED58B7E30BB84AE9A98C885 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
 		0EE3DE6119CAF129687F65FF /* RankUpCelebrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RankUpCelebrationView.swift; sourceTree = "<group>"; };
 		0FCA59D77C62E3D316AC25A2 /* Orbitron-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Orbitron-Variable.ttf"; sourceTree = "<group>"; };
@@ -147,6 +151,7 @@
 		B52347D7796B45246CD491A4 /* Rajdhani-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Rajdhani-SemiBold.ttf"; sourceTree = "<group>"; };
 		B9622F7E459A288822E8C353 /* ProgressViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressViewModel.swift; sourceTree = "<group>"; };
 		BD1168F90C7EA3B9F66ADC03 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		BEC002A279F1E0A4CFFB244A /* SupersetCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupersetCard.swift; sourceTree = "<group>"; };
 		BED1304102384B66EBFC6063 /* ScreenshotPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotPickerView.swift; sourceTree = "<group>"; };
 		BF4984BB26D18D05ABEFA7B5 /* ProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModel.swift; sourceTree = "<group>"; };
 		BFE7F6DB954159E6CB657F56 /* UsernameSetupSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsernameSetupSheet.swift; sourceTree = "<group>"; };
@@ -160,6 +165,7 @@
 		CE2A62A1E050193695378BF7 /* RecoveryDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryDetailSheet.swift; sourceTree = "<group>"; };
 		D56976681220CBFB0C3BCDA6 /* JetBrainsMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Medium.ttf"; sourceTree = "<group>"; };
 		D5D6F00D821F65A269678B30 /* FitnessAppTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = FitnessAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		DB0EDBCC1A132F7B5B8386E7 /* EdgeFlowStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeFlowStyles.swift; sourceTree = "<group>"; };
 		DB83BF408BFC9A75EE16A3DD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		E88205E68737513004C712AE /* DungeonDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DungeonDetailSheet.swift; sourceTree = "<group>"; };
 		EEC744D52A256B0D73D5FF14 /* DungeonCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DungeonCardView.swift; sourceTree = "<group>"; };
@@ -188,11 +194,13 @@
 			children = (
 				9A947B12F7FAFC3687A4ED86 /* CooldownCard.swift */,
 				A971480DB0D51347A4285BDF /* DailyQuestsCard.swift */,
+				DB0EDBCC1A132F7B5B8386E7 /* EdgeFlowStyles.swift */,
 				C7126810EA67EBBBD241CA71 /* ImagePicker.swift */,
 				2A29BC50370EA3B75A5F1968 /* PRCelebrationView.swift */,
 				C9F64535FBE31A54DBE47FFF /* RankBadgeView.swift */,
 				0EE3DE6119CAF129687F65FF /* RankUpCelebrationView.swift */,
 				C68D331EA8FE8B1C6A105FE9 /* StatCard.swift */,
+				BEC002A279F1E0A4CFFB244A /* SupersetCard.swift */,
 				EED34A2D176E81C9F5DFCEED /* VoidBackground.swift */,
 				21C560832A36E3F4D5FF5735 /* XPBarView.swift */,
 				F4C96A0FDFB19923AC061970 /* XPRewardView.swift */,
@@ -208,6 +216,7 @@
 				BED1304102384B66EBFC6063 /* ScreenshotPickerView.swift */,
 				FDB048EAA3D732A16D8F1C87 /* ScreenshotPreviewView.swift */,
 				A5883E1AC5182638DE97A19F /* ScreenshotProcessingViewModel.swift */,
+				0C547F0EDFB1DA616CA28A09 /* SupersetPickerView.swift */,
 			);
 			path = Log;
 			sourceTree = "<group>";
@@ -527,6 +536,7 @@
 				1F532B40ED407972379FEE02 /* DungeonSpawnOverlay.swift in Sources */,
 				88973C4E3134376147898266 /* DungeonsView.swift in Sources */,
 				88DD32D0DFEE883EBE5AB099 /* DungeonsViewModel.swift in Sources */,
+				DCC041843FFDACBD6ACCE722 /* EdgeFlowStyles.swift in Sources */,
 				2D5485AA0052928F9070FCF0 /* Exercise.swift in Sources */,
 				89134716A036BC7417B1CCD3 /* Extensions.swift in Sources */,
 				C74790B0B116896A339C6481 /* FitnessApp.swift in Sources */,
@@ -562,6 +572,8 @@
 				AA1968CFD12652D717FF76B6 /* ScreenshotProcessingViewModel.swift in Sources */,
 				F3928D582CFFD13A67454E60 /* StatCard.swift in Sources */,
 				05CC6AEBFD7BF822803F46FD /* StatsView.swift in Sources */,
+				C7DEB4654551E73010919AF3 /* SupersetCard.swift in Sources */,
+				D88FB846E88AE9441286F854 /* SupersetPickerView.swift in Sources */,
 				6FAE6B891124D5E183037AB0 /* User.swift in Sources */,
 				82DFE04B35A85EE155692D70 /* UsernameSetupSheet.swift in Sources */,
 				2CB4AD01F621551C9C16B843 /* VoidBackground.swift in Sources */,

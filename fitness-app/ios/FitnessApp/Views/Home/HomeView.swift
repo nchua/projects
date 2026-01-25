@@ -16,7 +16,7 @@ struct HomeView: View {
 
                 ScrollView {
                     VStack(spacing: 16) {
-                        // 1. Hunter Header with XP
+                        // 1. Hunter Header with XP (Edge Flow - gradient header)
                         HunterStatusHeader(
                             name: viewModel.hunterName,
                             initials: viewModel.hunterInitials,
@@ -28,52 +28,51 @@ struct HomeView: View {
                             streakDays: viewModel.streakDays,
                             onProfileTap: { showProfile = true }
                         )
-                        .padding(.horizontal)
+                        // No .padding(.horizontal) - full-width gradient header
 
-                        // 2. Weekly Quest Hero Card
-                        WeeklyQuestCard(
+                        // 2. Stats Scroll (Edge Flow - replaces Weekly Quest Card)
+                        StatsScrollSection(
                             workouts: viewModel.weeklyReview?.totalWorkouts ?? 0,
                             workoutsGoal: viewModel.weeklyStats.workoutsGoal,
                             volume: viewModel.weeklyStats.totalVolume,
                             activeMinutes: viewModel.weeklyStats.activeMinutes
                         )
-                        .padding(.horizontal)
+                        // No .padding(.horizontal) - built into scroll view
 
                         // 3. Quick Actions
                         QuickActionsRow()
                             .padding(.horizontal)
 
-                        // 4. Daily Quests (Compact)
+                        // 4. Daily Quests (Edge Flow - left accent style)
                         if let quests = viewModel.dailyQuests, !quests.quests.isEmpty {
-                            DailyQuestsCard(
+                            DailyQuestsSection(
                                 quests: quests.quests,
                                 refreshAt: quests.refreshAt,
                                 onClaim: { questId in
                                     Task { await viewModel.claimQuest(questId) }
                                 }
                             )
-                            .padding(.horizontal)
+                            // No .padding(.horizontal) - built into section
                         }
 
-                        // 5. Power Levels (Big 3) - Tap to go to Stats
-                        PowerLevelsCard(lifts: viewModel.bigThreeLifts, selectedTab: $selectedTab)
-                            .padding(.horizontal)
+                        // 5. Power Levels (Edge Flow - horizontal scroll)
+                        PowerLevelsSection(lifts: viewModel.bigThreeLifts, selectedTab: $selectedTab)
+                        // No .padding(.horizontal) - built into section
 
-                        // 6. Recovery Status (Tappable) - Always show, handles empty state
+                        // 6. Recovery Status (Edge Flow - horizontal pills)
                         RecoveryStatusSection(cooldownData: viewModel.cooldownStatus)
-                            .padding(.horizontal)
+                        // No .padding(.horizontal) - built into section
 
-                        // 7. Latest Achievement (Single PR)
+                        // 7. Latest Achievement (Single PR) - Edge Flow styled
                         if let latestPR = viewModel.recentPRs.first {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("LATEST ACHIEVEMENT")
-                                    .font(.ariseMono(size: 10, weight: .semibold))
-                                    .foregroundColor(.textMuted)
-                                    .tracking(1.5)
-                                    .padding(.horizontal)
+                            VStack(alignment: .leading, spacing: 14) {
+                                Text("Latest Achievement")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(.textPrimary)
+                                    .padding(.horizontal, 20)
 
-                                AchievementCard(pr: latestPR)
-                                    .padding(.horizontal)
+                                EdgeFlowAchievementCard(pr: latestPR)
+                                    .padding(.horizontal, 20)
                             }
                         }
 
@@ -108,7 +107,7 @@ struct HomeView: View {
     }
 }
 
-// MARK: - ARISE Hunter Status Header
+// MARK: - Hunter Status Header (Edge Flow)
 
 struct HunterStatusHeader: View {
     let name: String
@@ -127,121 +126,295 @@ struct HunterStatusHeader: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            // Top row: Avatar + Name + Level + Actions
-            HStack(spacing: 16) {
-                // Hunter Avatar with Rank Badge - Tappable for profile
+            // Top row: Avatar + Name + Level + Streak
+            HStack(spacing: 14) {
+                // Hunter Avatar with glow - Tappable for profile
                 Button {
                     onProfileTap?()
                 } label: {
-                    HunterAvatarView(initial: avatarInitials, rank: rank, size: 60)
+                    EdgeFlowAvatar(initial: avatarInitials, rank: rank, size: 50)
                 }
                 .buttonStyle(PlainButtonStyle())
 
-                // Name and Title
+                // Name and Meta
                 VStack(alignment: .leading, spacing: 4) {
                     Text(name)
-                        .font(.ariseHeader(size: 20, weight: .bold))
-                        .foregroundColor(.textPrimary)
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(Color(hex: "88DDFF"))
+                        .shadow(color: Color.systemPrimary.opacity(0.3), radius: 10, x: 0, y: 0)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
 
-                    Text("\"\(rank.title)\"")
-                        .font(.ariseMono(size: 12))
-                        .foregroundColor(.textMuted)
-                        .italic()
+                    HStack(spacing: 12) {
+                        Text("\(rank.rawValue)-Rank")
+                            .foregroundColor(.systemPrimary)
+                            .fontWeight(.semibold)
+
+                        Text("Level \(level)")
+                            .foregroundColor(.textSecondary)
+
+                        if streakDays > 0 {
+                            HStack(spacing: 4) {
+                                Text("\u{1F525}")
+                                Text("\(streakDays)")
+                            }
+                            .foregroundColor(Color(hex: "FF9500"))
+                        }
+                    }
+                    .font(.system(size: 13))
                 }
 
                 Spacer()
-
-                // Profile button
-                Button {
-                    onProfileTap?()
-                } label: {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 18))
-                        .foregroundColor(.textSecondary)
-                        .frame(width: 36, height: 36)
-                        .background(Color.voidLight)
-                        .cornerRadius(4)
-                }
-
-                // Streak
-                if streakDays > 0 {
-                    StreakDisplayView(days: streakDays)
-                }
             }
 
-            // XP Bar - Now showing progress to next level
-            XPBarView(current: currentXP, toNextLevel: xpToNextLevel, progress: levelProgress)
-
-            // Date display with total XP
-            HStack {
-                Text("[ \(Date().formattedDayMonth.uppercased()) ]")
-                    .font(.ariseMono(size: 11))
-                    .foregroundColor(.textMuted)
-                    .tracking(1)
-
-                Spacer()
-
-                Text("\(currentXP.formatted()) XP TOTAL")
-                    .font(.ariseMono(size: 10))
-                    .foregroundColor(.systemPrimary.opacity(0.7))
-                    .tracking(0.5)
-            }
+            // Slim XP Bar
+            EdgeFlowXPBar(
+                currentXP: currentXP,
+                xpToNextLevel: xpToNextLevel,
+                progress: levelProgress,
+                level: level
+            )
         }
-        .padding(16)
-        .systemPanelStyle(hasGlow: true)
+        .padding(20)
+        .padding(.top, 40)  // Extra top padding for notch
+        .background(
+            LinearGradient(
+                colors: [Color(hex: "141520"), Color(hex: "050508")],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+        .overlay(
+            // Subtle glow effect at top
+            RadialGradient(
+                colors: [Color.systemPrimary.opacity(0.05), Color.clear],
+                center: .top,
+                startRadius: 0,
+                endRadius: 200
+            )
+        )
     }
 }
 
-// MARK: - Quick Actions Row
+// MARK: - Edge Flow Avatar
+
+struct EdgeFlowAvatar: View {
+    let initial: String
+    let rank: HunterRank
+    let size: CGFloat
+
+    var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            // Avatar background
+            ZStack {
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color(hex: "141520"), Color(hex: "0f1018")],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                Text("\u{1F3CB}")  // Weight lifter
+                    .font(.system(size: size * 0.44))
+            }
+            .frame(width: size, height: size)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.systemPrimary.opacity(0.2), lineWidth: 1)
+            )
+            .shadow(color: Color.systemPrimary.opacity(0.3), radius: 10, x: 0, y: 0)
+
+            // Rank badge
+            Text(rank.rawValue)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(.black)
+                .frame(width: 18, height: 18)
+                .background(rank.color)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .offset(x: 4, y: 4)
+        }
+    }
+}
+
+// MARK: - Edge Flow XP Bar
+
+struct EdgeFlowXPBar: View {
+    let currentXP: Int
+    let xpToNextLevel: Int
+    let progress: Double
+    let level: Int
+
+    var body: some View {
+        VStack(spacing: 6) {
+            // Labels
+            HStack {
+                Text("Level \(level)")
+                    .font(.system(size: 11))
+                    .foregroundColor(.textMuted)
+
+                Spacer()
+
+                Text("\(currentXP.formatted()) / \(xpToNextLevel.formatted()) XP")
+                    .font(.system(size: 11))
+                    .foregroundColor(.textMuted)
+            }
+
+            // Track - 4px slim bar
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    // Background track
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color.white.opacity(0.1))
+
+                    // Fill with gradient
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.systemPrimary, Color(hex: "7B61FF")],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: geometry.size.width * CGFloat(progress))
+                        .shadow(color: Color.systemPrimary.opacity(0.4), radius: 5, x: 0, y: 0)
+                }
+            }
+            .frame(height: 4)
+        }
+    }
+}
+
+// MARK: - Quick Actions Row (Edge Flow)
 
 struct QuickActionsRow: View {
     var body: some View {
-        HStack(spacing: 12) {
-            // Start Workout Button - takes more space
+        HStack(spacing: 10) {
+            // Start Workout Button - primary pill
             NavigationLink(destination: LogView()) {
-                HStack(spacing: 6) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .bold))
-                    Text("START WORKOUT")
-                        .font(.ariseHeader(size: 12, weight: .semibold))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                HStack(spacing: 8) {
+                    Text("\u{26A1}")  // Lightning bolt
+                        .font(.system(size: 14))
+                    Text("Start Workout")
+                        .font(.system(size: 14, weight: .semibold))
                 }
-                .foregroundColor(.voidBlack)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Color.systemPrimary)
-                .cornerRadius(4)
-                .shadow(color: Color.systemPrimaryGlow, radius: 10, x: 0, y: 0)
+                .edgeFlowPillButton(isPrimary: true)
             }
-            .frame(minWidth: 0, maxWidth: .infinity)
 
-            // Scan Screenshot Button - compact
+            // Scan Screenshot Button - secondary pill
             NavigationLink(destination: LogView()) {
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     Image(systemName: "camera.viewfinder")
                         .font(.system(size: 14, weight: .medium))
-                    Text("SCAN")
-                        .font(.ariseHeader(size: 12, weight: .semibold))
+                    Text("Scan")
+                        .font(.system(size: 14, weight: .semibold))
                 }
-                .foregroundColor(.textPrimary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Color.voidMedium)
-                .cornerRadius(4)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(Color.ariseBorder, lineWidth: 1)
-                )
+                .edgeFlowPillButton(isPrimary: false)
             }
-            .frame(minWidth: 0, maxWidth: .infinity)
         }
     }
 }
 
-// MARK: - Power Levels Card
+// MARK: - Power Levels Section (Edge Flow)
+
+struct PowerLevelsSection: View {
+    let lifts: [BigThreeLift]
+    @Binding var selectedTab: Int
+
+    var hasData: Bool {
+        lifts.contains { $0.e1rm > 0 }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            // Section Header
+            HStack {
+                Text("Power Levels")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+
+                Spacer()
+
+                Button {
+                    selectedTab = 4
+                } label: {
+                    Text("Details")
+                        .font(.system(size: 13))
+                        .foregroundColor(.systemPrimary)
+                }
+            }
+            .padding(.horizontal, 20)
+
+            // Lift Cards Scroll
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(lifts) { lift in
+                        PowerLevelCard(lift: lift)
+                    }
+                }
+                .padding(.horizontal, 20)
+            }
+
+            // Empty state message
+            if !hasData {
+                Text("Log workouts with Squat, Bench, or Deadlift to see your power levels")
+                    .font(.system(size: 11))
+                    .foregroundColor(.textMuted)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 20)
+            }
+        }
+    }
+}
+
+struct PowerLevelCard: View {
+    let lift: BigThreeLift
+
+    var liftEmoji: String {
+        switch lift.shortName.lowercased() {
+        case "squat": return "\u{1F9B5}"  // Leg
+        case "bench": return "\u{1F3CB}"  // Weight lifter
+        case "deadlift": return "\u{1F531}"  // Trident
+        default: return "\u{1F4AA}"  // Flexed bicep
+        }
+    }
+
+    var liftColor: Color {
+        switch lift.shortName.lowercased() {
+        case "squat": return Color(hex: "FF6B6B")      // Red
+        case "bench": return Color.systemPrimary       // Cyan
+        case "deadlift": return Color(hex: "7B61FF")   // Purple
+        default: return .systemPrimary
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .center, spacing: 6) {
+            // Label with emoji
+            Text("\(liftEmoji) \(lift.shortName)")
+                .font(.system(size: 11))
+                .foregroundColor(.textSecondary)
+
+            // Value
+            HStack(alignment: .lastTextBaseline, spacing: 2) {
+                Text(lift.e1rm.formattedWeight)
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(liftColor)
+
+                Text("lbs")
+                    .font(.system(size: 12))
+                    .foregroundColor(.textMuted)
+            }
+        }
+        .frame(minWidth: 110)
+        .padding(16)
+        .edgeFlowCard(accent: liftColor)
+    }
+}
+
+// MARK: - Legacy Power Levels Card (kept for compatibility)
 
 struct PowerLevelsCard: View {
     let lifts: [BigThreeLift]
@@ -380,7 +553,49 @@ struct BigThreeLift: Identifiable {
     }
 }
 
-// MARK: - Weekly Quest Card
+// MARK: - Stats Scroll Section (Edge Flow)
+
+struct StatsScrollSection: View {
+    let workouts: Int
+    let workoutsGoal: Int
+    let volume: Double
+    let activeMinutes: Int
+
+    var weeklyProgress: Int {
+        guard workoutsGoal > 0 else { return 0 }
+        return min(100, Int(Double(workouts) / Double(workoutsGoal) * 100))
+    }
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                EdgeFlowStatCard(
+                    value: "\(workouts)",
+                    label: "Workouts",
+                    accentColor: .systemPrimary
+                )
+
+                EdgeFlowStatCard(
+                    value: volume.formattedVolume,
+                    label: "Volume"
+                )
+
+                EdgeFlowStatCard(
+                    value: "\(activeMinutes)",
+                    label: "Minutes"
+                )
+
+                EdgeFlowStatCard(
+                    value: "\(weeklyProgress)%",
+                    label: "Weekly"
+                )
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+}
+
+// MARK: - Legacy Weekly Quest Card (kept for reference)
 
 struct WeeklyQuestCard: View {
     let workouts: Int
@@ -788,7 +1003,70 @@ struct StrengthTrendCard: View {
     }
 }
 
-// MARK: - Achievement Card (PR)
+// MARK: - Edge Flow Achievement Card
+
+struct EdgeFlowAchievementCard: View {
+    let pr: PRResponse
+
+    var exerciseColor: Color {
+        Color.exerciseColor(for: pr.displayName)
+    }
+
+    var body: some View {
+        HStack(spacing: 14) {
+            // Trophy icon
+            Text("\u{1F3C6}")
+                .font(.system(size: 28))
+
+            // Info
+            VStack(alignment: .leading, spacing: 2) {
+                Text("NEW PR")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color.gold.opacity(0.6))
+                    .tracking(0.5)
+
+                Text(pr.displayName)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.textPrimary)
+            }
+
+            Spacer()
+
+            // Value
+            if pr.prType == "e1rm", let value = pr.value {
+                HStack(alignment: .lastTextBaseline, spacing: 4) {
+                    Text(value.formattedWeight)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.gold)
+
+                    Text("lb")
+                        .font(.system(size: 12))
+                        .foregroundColor(.textMuted)
+                }
+            } else if let reps = pr.reps, let weight = pr.weight {
+                Text("\(reps)\u{00D7}\(weight.formattedWeight)")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.gold)
+            }
+        }
+        .padding(16)
+        .padding(.horizontal, 2)
+        .background(Color.voidMedium)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            // Left accent bar (gold)
+            HStack {
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color.gold)
+                    .frame(width: 3)
+                Spacer()
+            }
+        )
+        .shadow(color: Color.gold.opacity(0.05), radius: 15, x: 0, y: 0)
+    }
+}
+
+// MARK: - Legacy Achievement Card (kept for compatibility)
 
 struct AchievementCard: View {
     let pr: PRResponse

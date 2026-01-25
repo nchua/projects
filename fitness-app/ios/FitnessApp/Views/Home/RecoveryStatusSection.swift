@@ -1,6 +1,22 @@
 import SwiftUI
 
-/// Compact recovery status section for home page with tappable muscle tags
+// MARK: - Edge Flow Recovery Status
+
+enum RecoveryLevel {
+    case fresh
+    case moderate
+    case fatigued
+
+    var color: Color {
+        switch self {
+        case .fresh: return Color(hex: "00FF88")      // Success green
+        case .moderate: return Color(hex: "FF9500")   // Warning orange
+        case .fatigued: return Color(hex: "FF4757")   // Danger red
+        }
+    }
+}
+
+/// Edge Flow recovery section with horizontal pill row
 struct RecoveryStatusSection: View {
     let cooldownData: [MuscleCooldownStatus]
     @State private var selectedMuscle: MuscleCooldownStatus?
@@ -15,19 +31,26 @@ struct RecoveryStatusSection: View {
         cooldownData.filter { $0.cooldownPercent >= 100 }
     }
 
+    /// Get recovery level for a muscle
+    func recoveryLevel(for muscle: MuscleCooldownStatus) -> RecoveryLevel {
+        if muscle.cooldownPercent >= 100 {
+            return .fresh
+        } else if muscle.cooldownPercent >= 50 {
+            return .moderate
+        } else {
+            return .fatigued
+        }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header
-            HStack {
-                Text("RECOVERY STATUS")
-                    .font(.ariseMono(size: 10, weight: .semibold))
-                    .foregroundColor(.textMuted)
-                    .tracking(1.5)
+        VStack(alignment: .leading, spacing: 14) {
+            // Section Header
+            Text("Recovery")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.textPrimary)
+                .padding(.horizontal, 20)
 
-                Spacer()
-            }
-
-            // Muscle tags or empty state
+            // Pills or empty state
             if cooldownData.isEmpty {
                 // Empty state
                 HStack(spacing: 8) {
@@ -36,42 +59,77 @@ struct RecoveryStatusSection: View {
                         .foregroundColor(.textMuted)
 
                     Text("No recent muscle activity tracked")
-                        .font(.ariseMono(size: 12))
+                        .font(.system(size: 12))
                         .foregroundColor(.textMuted)
                 }
+                .padding(.horizontal, 20)
                 .padding(.vertical, 8)
             } else {
-                FlowLayout(spacing: 8) {
-                    // Show recovering muscles first
-                    ForEach(recoveringMuscles) { muscle in
-                        RecoveryMuscleTag(muscle: muscle, isRecovering: true) {
-                            selectedMuscle = muscle
+                // Horizontal pill scroll
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        // Show fatigued muscles first, then moderate, then fresh
+                        ForEach(recoveringMuscles.sorted { $0.cooldownPercent < $1.cooldownPercent }) { muscle in
+                            RecoveryPill(
+                                name: muscle.displayName,
+                                level: recoveryLevel(for: muscle)
+                            ) {
+                                selectedMuscle = muscle
+                            }
                         }
-                    }
 
-                    // Then ready muscles
-                    ForEach(readyMuscles) { muscle in
-                        RecoveryMuscleTag(muscle: muscle, isRecovering: false) {
-                            selectedMuscle = muscle
+                        ForEach(readyMuscles) { muscle in
+                            RecoveryPill(
+                                name: muscle.displayName,
+                                level: .fresh
+                            ) {
+                                selectedMuscle = muscle
+                            }
                         }
                     }
+                    .padding(.horizontal, 20)
                 }
             }
         }
-        .padding(16)
-        .background(Color.voidMedium)
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.ariseBorder, lineWidth: 1)
-        )
         .sheet(item: $selectedMuscle) { muscle in
             RecoveryDetailSheet(muscle: muscle)
         }
     }
 }
 
-// MARK: - Recovery Muscle Tag
+// MARK: - Recovery Pill (Edge Flow)
+
+struct RecoveryPill: View {
+    let name: String
+    let level: RecoveryLevel
+    var onTap: (() -> Void)? = nil
+
+    var body: some View {
+        Button {
+            onTap?()
+        } label: {
+            HStack(spacing: 6) {
+                // Status dot with glow
+                Circle()
+                    .fill(level.color)
+                    .frame(width: 6, height: 6)
+                    .shadow(color: level.color.opacity(0.5), radius: 3, x: 0, y: 0)
+
+                // Muscle group name
+                Text(name)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(Color.voidMedium)
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Legacy Recovery Muscle Tag (kept for compatibility)
 
 struct RecoveryMuscleTag: View {
     let muscle: MuscleCooldownStatus

@@ -20,6 +20,22 @@ extension Color {
     static let voidLight = Color(hex: "252530")                  // Elevated surfaces
 
     // ============================================
+    // EDGE FLOW BACKGROUNDS - Softer dark palette
+    // ============================================
+    static let bgVoid = Color(hex: "050508")                     // Deepest background
+    static let bgCard = Color(hex: "0f1018")                     // Card background
+    static let bgElevated = Color(hex: "141520")                 // Elevated/header
+    static let bgInput = Color(hex: "1a1b28")                    // Input fields
+
+    // ============================================
+    // GLOW COLORS - For Edge Flow shadows
+    // ============================================
+    static let glowPrimary = Color(hex: "00D4FF").opacity(0.4)   // Cyan glow
+    static let glowSuccess = Color(hex: "00FF88").opacity(0.3)   // Green glow
+    static let glowGold = Color(hex: "FFD700").opacity(0.3)      // Gold glow
+    static let glowDanger = Color(hex: "FF4757").opacity(0.3)    // Red glow
+
+    // ============================================
     // RANK COLORS - Hunter Classification
     // ============================================
     static let rankE = Color(hex: "808080")                      // Gray - E rank
@@ -109,6 +125,31 @@ extension Color {
         colors: [Color(hex: "8B0000"), Color(hex: "FF4444")],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
+    )
+
+    // ============================================
+    // EDGE FLOW GRADIENTS
+    // ============================================
+
+    // Primary action button gradient
+    static let gradientActionPrimary = LinearGradient(
+        colors: [Color(hex: "00D4FF"), Color(hex: "0099CC")],
+        startPoint: .leading,
+        endPoint: .trailing
+    )
+
+    // Success/claim button gradient
+    static let gradientActionSuccess = LinearGradient(
+        colors: [Color(hex: "00FF88"), Color(hex: "00CC6A")],
+        startPoint: .leading,
+        endPoint: .trailing
+    )
+
+    // Header fade gradient (elevated to void)
+    static let gradientHeaderFade = LinearGradient(
+        colors: [bgElevated, bgVoid],
+        startPoint: .top,
+        endPoint: .bottom
     )
 
     // ============================================

@@ -1,5 +1,122 @@
 import SwiftUI
 
+// MARK: - Edge Flow Daily Quests Section
+
+struct DailyQuestsSection: View {
+    let quests: [QuestResponse]
+    let refreshAt: String?
+    let onClaim: (String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            // Header
+            HStack {
+                Text("Daily Quests")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+
+                Spacer()
+
+                Text("View All")
+                    .font(.system(size: 13))
+                    .foregroundColor(.systemPrimary)
+            }
+
+            // Quest List
+            VStack(spacing: 10) {
+                ForEach(quests) { quest in
+                    EdgeFlowQuestRow(quest: quest, onClaim: onClaim)
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+}
+
+struct EdgeFlowQuestRow: View {
+    let quest: QuestResponse
+    let onClaim: (String) -> Void
+
+    var isClaimable: Bool {
+        quest.isCompleted && !quest.isClaimed
+    }
+
+    var accentColor: Color {
+        isClaimable ? Color(hex: "00FF88") : Color.white.opacity(0.1)
+    }
+
+    var questIcon: String {
+        switch quest.questType {
+        case "total_reps": return "\u{1F4AA}"      // Flexed bicep
+        case "compound_sets": return "\u{1F3AF}"  // Target
+        case "total_volume": return "\u{1F4C8}"   // Chart
+        case "training_time": return "\u{23F1}"   // Stopwatch
+        default: return "\u{1F4AA}"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Quest Icon
+            Text(questIcon)
+                .font(.system(size: 18))
+
+            // Quest Info
+            VStack(alignment: .leading, spacing: 2) {
+                Text(quest.name)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.textPrimary)
+
+                Text(isClaimable ? "Ready!" : "\(quest.progress)/\(quest.targetValue)")
+                    .font(.system(size: 12))
+                    .foregroundColor(.textMuted)
+            }
+
+            Spacer()
+
+            // XP or Claim Button
+            if isClaimable {
+                Button {
+                    onClaim(quest.id)
+                } label: {
+                    Text("Claim")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(Color(hex: "00FF88"))
+                        .clipShape(Capsule())
+                        .shadow(color: Color(hex: "00FF88").opacity(0.3), radius: 10, x: 0, y: 0)
+                }
+            } else {
+                Text("+\(quest.xpReward) XP")
+                    .font(.system(size: 12))
+                    .foregroundColor(.textMuted)
+            }
+        }
+        .padding(14)
+        .background(Color.voidMedium)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            // Left accent bar
+            HStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(accentColor)
+                    .frame(width: 3)
+                Spacer()
+            }
+        )
+        .shadow(
+            color: isClaimable ? Color(hex: "00FF88").opacity(0.1) : .clear,
+            radius: 15,
+            x: 0,
+            y: 0
+        )
+    }
+}
+
+// MARK: - Legacy Daily Quests Card (kept for compatibility)
+
 /// Compact daily quests card - minimal space usage
 struct DailyQuestsCard: View {
     let quests: [QuestResponse]
