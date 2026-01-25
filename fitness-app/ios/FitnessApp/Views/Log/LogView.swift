@@ -130,6 +130,17 @@ struct LogView: View {
                             }
                         }
                     )
+                } else {
+                    // Safety fallback: immediately dismiss if rankUpData is nil (prevents black screen)
+                    Color.clear
+                        .onAppear {
+                            showRankUpCelebration = false
+                            // Proceed to XP view if available
+                            if let response = pendingXPResponse {
+                                viewModel.xpRewardResponse = response
+                                pendingXPResponse = nil
+                            }
+                        }
                 }
             }
             // XP Reward View (shows after rank-up celebration, or directly if no rank change)
@@ -270,6 +281,12 @@ struct LogView: View {
                 // No rank change, show XP reward directly
                 viewModel.xpRewardResponse = response
                 pendingXPResponse = nil
+            } else {
+                // FALLBACK: No pendingXPResponse - return to idle state to prevent black screen
+                withAnimation(.smoothSpring) {
+                    isSessionActive = false
+                }
+                viewModel.resetWorkout()
             }
             // Reset PR queue
             prQueue = []
