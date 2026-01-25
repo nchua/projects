@@ -53,6 +53,7 @@ struct LogView: View {
                         showCloseButton: true,
                         onClose: { dismiss() }
                     )
+                    .swipeBackGesture()
                     #if DEBUG
                     .onLongPressGesture(minimumDuration: 2.0) {
                         // Debug: Trigger rank-up celebration for testing

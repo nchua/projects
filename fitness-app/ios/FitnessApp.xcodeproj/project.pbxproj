@@ -20,6 +20,7 @@
 		2DC77293AFBCC85EAC069B7B /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C8BACBC256288400263DD74 /* AuthManager.swift */; };
 		3304D607C43F982D311C87C8 /* Fonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 383EA1AD7F433E7FB9232B6C /* Fonts.swift */; };
 		34E3C5D5D33B3AEAE8192225 /* APITypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EABAB81740F48B4949E1E4 /* APITypes.swift */; };
+		35B56EBCA29E2E4DE83A63A8 /* SwipeBackGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB776AC6E5732ADD25171C9B /* SwipeBackGesture.swift */; };
 		37C277D7FC126549A9FDDCE5 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CD71D3A5B474EA3E0269665 /* HomeView.swift */; };
 		3A555F185433DA7D15E50DAD /* Orbitron-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0FCA59D77C62E3D316AC25A2 /* Orbitron-Variable.ttf */; };
 		3AC048A5649880119E187296 /* FriendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C29BFFA99C53012296D98020 /* FriendsView.swift */; };
@@ -168,6 +169,7 @@
 		DB0EDBCC1A132F7B5B8386E7 /* EdgeFlowStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeFlowStyles.swift; sourceTree = "<group>"; };
 		DB83BF408BFC9A75EE16A3DD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		E88205E68737513004C712AE /* DungeonDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DungeonDetailSheet.swift; sourceTree = "<group>"; };
+		EB776AC6E5732ADD25171C9B /* SwipeBackGesture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeBackGesture.swift; sourceTree = "<group>"; };
 		EEC744D52A256B0D73D5FF14 /* DungeonCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DungeonCardView.swift; sourceTree = "<group>"; };
 		EED34A2D176E81C9F5DFCEED /* VoidBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoidBackground.swift; sourceTree = "<group>"; };
 		F0A0F9BC78395829B3FD6E72 /* FitnessAppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitnessAppTests.swift; sourceTree = "<group>"; };
@@ -330,6 +332,7 @@
 				9F3A7D81E4F7B61A487F21DB /* Colors.swift */,
 				30AB8A1A5C01773A5442AA89 /* Extensions.swift */,
 				383EA1AD7F433E7FB9232B6C /* Fonts.swift */,
+				EB776AC6E5732ADD25171C9B /* SwipeBackGesture.swift */,
 				4405B03A566EC3D65DA19B00 /* XPCalculator.swift */,
 			);
 			path = Utils;
@@ -574,6 +577,7 @@
 				05CC6AEBFD7BF822803F46FD /* StatsView.swift in Sources */,
 				C7DEB4654551E73010919AF3 /* SupersetCard.swift in Sources */,
 				D88FB846E88AE9441286F854 /* SupersetPickerView.swift in Sources */,
+				35B56EBCA29E2E4DE83A63A8 /* SwipeBackGesture.swift in Sources */,
 				6FAE6B891124D5E183037AB0 /* User.swift in Sources */,
 				82DFE04B35A85EE155692D70 /* UsernameSetupSheet.swift in Sources */,
 				2CB4AD01F621551C9C16B843 /* VoidBackground.swift in Sources */,

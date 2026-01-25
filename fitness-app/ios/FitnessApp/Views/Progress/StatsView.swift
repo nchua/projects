@@ -109,10 +109,7 @@ struct PowerAnalysisHeader: View {
 
 struct PowerProgressView: View {
     @ObservedObject var viewModel: ProgressViewModel
-    @StateObject private var historyViewModel = HistoryViewModel()
     @State private var showAddExercise = false
-    @State private var expandedExerciseId: String?
-    @State private var selectedWorkoutId: String?
 
     var body: some View {
         VStack(spacing: 20) {
@@ -146,26 +143,22 @@ struct PowerProgressView: View {
             }
             .padding(.horizontal)
 
-            // Big Three Cards
+            // Big Three Cards - Now with NavigationLink
             ForEach(viewModel.bigThreeExercises) { exercise in
-                BigThreeCard(
-                    exercise: exercise,
-                    trend: viewModel.trend(for: exercise.id),
-                    percentile: viewModel.percentile(for: exercise.id),
-                    isExpanded: expandedExerciseId == exercise.id,
-                    onTap: {
-                        withAnimation(.quickSpring) {
-                            if expandedExerciseId == exercise.id {
-                                expandedExerciseId = nil
-                            } else {
-                                expandedExerciseId = exercise.id
-                            }
-                        }
-                    },
-                    onWorkoutSelected: { workoutId in
-                        selectedWorkoutId = workoutId
-                    }
-                )
+                NavigationLink {
+                    ExerciseDetailView(
+                        exercise: exercise,
+                        viewModel: viewModel
+                    )
+                } label: {
+                    MinimalExerciseCard(
+                        exercise: exercise,
+                        trend: viewModel.trend(for: exercise.id),
+                        percentile: viewModel.percentile(for: exercise.id),
+                        isCompact: false
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
                 .padding(.horizontal)
             }
 
@@ -183,9 +176,9 @@ struct PowerProgressView: View {
                 .padding(20)
                 .frame(maxWidth: .infinity)
                 .background(Color.voidMedium)
-                .cornerRadius(4)
+                .cornerRadius(16)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 4)
+                    RoundedRectangle(cornerRadius: 16)
                         .stroke(Color.ariseBorder, lineWidth: 1)
                 )
                 .padding(.horizontal)
@@ -193,45 +186,42 @@ struct PowerProgressView: View {
 
             // Additional Exercises Section
             if !viewModel.additionalExercises.isEmpty {
-                HStack {
-                    HStack(spacing: 8) {
-                        Image(systemName: "diamond.fill")
-                            .font(.system(size: 8))
-                            .foregroundColor(.systemPrimary)
-                        Text("ADDITIONAL SKILLS")
-                            .font(.ariseMono(size: 11, weight: .semibold))
-                            .foregroundColor(.textMuted)
-                            .tracking(2)
-                    }
-                    Spacer()
+                // Section divider
+                HStack(spacing: 12) {
+                    Rectangle()
+                        .fill(Color.ariseBorder)
+                        .frame(height: 1)
+                    Text("ADDITIONAL SKILLS")
+                        .font(.ariseMono(size: 10, weight: .semibold))
+                        .foregroundColor(.textMuted)
+                        .tracking(1.5)
+                    Rectangle()
+                        .fill(Color.ariseBorder)
+                        .frame(height: 1)
                 }
                 .padding(.horizontal)
                 .padding(.top, 8)
 
                 ForEach(viewModel.additionalExercises) { exercise in
-                    AdditionalExerciseCard(
-                        exercise: exercise,
-                        trend: viewModel.trend(for: exercise.id),
-                        percentile: viewModel.percentile(for: exercise.id),
-                        isExpanded: expandedExerciseId == exercise.id,
-                        onTap: {
-                            withAnimation(.quickSpring) {
-                                if expandedExerciseId == exercise.id {
-                                    expandedExerciseId = nil
-                                } else {
-                                    expandedExerciseId = exercise.id
+                    NavigationLink {
+                        ExerciseDetailView(
+                            exercise: exercise,
+                            viewModel: viewModel
+                        )
+                    } label: {
+                        MinimalExerciseCard(
+                            exercise: exercise,
+                            trend: viewModel.trend(for: exercise.id),
+                            percentile: viewModel.percentile(for: exercise.id),
+                            isCompact: true,
+                            onRemove: {
+                                withAnimation(.quickSpring) {
+                                    viewModel.removeExercise(exercise.id)
                                 }
                             }
-                        },
-                        onRemove: {
-                            withAnimation(.quickSpring) {
-                                viewModel.removeExercise(exercise.id)
-                            }
-                        },
-                        onWorkoutSelected: { workoutId in
-                            selectedWorkoutId = workoutId
-                        }
-                    )
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
                     .padding(.horizontal)
                 }
             }
@@ -250,10 +240,10 @@ struct PowerProgressView: View {
                 .foregroundColor(.systemPrimary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(Color.voidMedium)
-                .cornerRadius(4)
+                .background(Color.clear)
+                .cornerRadius(12)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 4)
+                    RoundedRectangle(cornerRadius: 12)
                         .stroke(Color.systemPrimary.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
                 )
             }
@@ -266,400 +256,6 @@ struct PowerProgressView: View {
                 viewModel.addExercise(exercise)
                 showAddExercise = false
             }
-        }
-        .background(
-            NavigationLink(
-                destination: QuestDetailView(
-                    workoutId: selectedWorkoutId ?? "",
-                    viewModel: historyViewModel
-                ),
-                isActive: Binding(
-                    get: { selectedWorkoutId != nil },
-                    set: { if !$0 { selectedWorkoutId = nil } }
-                )
-            ) {
-                EmptyView()
-            }
-            .hidden()
-        )
-    }
-}
-
-// MARK: - Big Three Card
-
-struct BigThreeCard: View {
-    let exercise: ExerciseResponse
-    let trend: TrendResponse?
-    let percentile: ExercisePercentile?
-    let isExpanded: Bool
-    let onTap: () -> Void
-    var onWorkoutSelected: ((String) -> Void)?
-
-    var exerciseColor: Color {
-        Color.exerciseColor(for: exercise.name)
-    }
-
-    var rank: HunterRank {
-        guard let classification = percentile?.classification.lowercased() else { return .e }
-        switch classification {
-        case "elite": return .s
-        case "advanced": return .a
-        case "intermediate": return .c
-        case "novice": return .d
-        default: return .e
-        }
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            // Main Card - Always Visible
-            Button(action: onTap) {
-                HStack(spacing: 0) {
-                    // Left color bar
-                    Rectangle()
-                        .fill(exerciseColor)
-                        .frame(width: 4)
-
-                    HStack(spacing: 16) {
-                        // Exercise Info
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(exercise.name)
-                                .font(.ariseHeader(size: 16, weight: .semibold))
-                                .foregroundColor(.textPrimary)
-
-                            Text("\"\(ExerciseFantasyNames.fantasyName(for: exercise.name))\"")
-                                .font(.ariseMono(size: 10))
-                                .foregroundColor(.textMuted)
-                                .italic()
-                        }
-
-                        Spacer()
-
-                        // E1RM Value
-                        if let current = trend?.currentE1rm {
-                            VStack(alignment: .trailing, spacing: 2) {
-                                HStack(alignment: .lastTextBaseline, spacing: 4) {
-                                    Text(current.formattedWeight)
-                                        .font(.ariseDisplay(size: 28, weight: .bold))
-                                        .foregroundColor(.systemPrimary)
-
-                                    Text("lb")
-                                        .font(.ariseMono(size: 11))
-                                        .foregroundColor(.textMuted)
-                                }
-
-                                // Trend indicator
-                                if let direction = trend?.trendDirection {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: trendIcon(direction))
-                                            .font(.system(size: 10, weight: .bold))
-                                        if let percent = trend?.percentChange {
-                                            Text("\(abs(percent), specifier: "%.1f")%")
-                                                .font(.ariseMono(size: 10, weight: .semibold))
-                                        }
-                                    }
-                                    .foregroundColor(trendColor(direction))
-                                }
-                            }
-                        } else {
-                            Text("No data")
-                                .font(.ariseMono(size: 12))
-                                .foregroundColor(.textMuted)
-                        }
-
-                        // Expand indicator
-                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.textMuted)
-                    }
-                    .padding(16)
-                }
-                .background(Color.voidMedium)
-            }
-            .buttonStyle(PlainButtonStyle())
-
-            // Expanded Content
-            if isExpanded {
-                VStack(spacing: 16) {
-                    // Chart
-                    if let dataPoints = trend?.dataPoints, !dataPoints.isEmpty {
-                        AriseE1RMChart(dataPoints: dataPoints, onWorkoutSelected: onWorkoutSelected)
-                            .frame(height: 140)
-                    }
-
-                    // Rank and Stats Row
-                    HStack(spacing: 12) {
-                        // Rank Badge
-                        if percentile != nil {
-                            HStack(spacing: 8) {
-                                RankBadgeView(rank: rank, size: .small)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(rank.title)
-                                        .font(.ariseMono(size: 11, weight: .semibold))
-                                        .foregroundColor(.textPrimary)
-                                    if let p = percentile?.percentile {
-                                        Text("Top \(100 - p)%")
-                                            .font(.ariseMono(size: 9))
-                                            .foregroundColor(.textMuted)
-                                    }
-                                }
-                            }
-                            .padding(10)
-                            .background(Color.voidLight)
-                            .cornerRadius(4)
-                        }
-
-                        Spacer()
-
-                        // Workouts count
-                        if let total = trend?.totalWorkouts {
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text("\(total)")
-                                    .font(.ariseDisplay(size: 20, weight: .bold))
-                                    .foregroundColor(.textPrimary)
-                                Text("QUESTS")
-                                    .font(.ariseMono(size: 9, weight: .medium))
-                                    .foregroundColor(.textMuted)
-                                    .tracking(0.5)
-                            }
-                        }
-
-                        // 4W Average
-                        if let avg = trend?.rollingAverage4w {
-                            VStack(alignment: .trailing, spacing: 2) {
-                                HStack(alignment: .lastTextBaseline, spacing: 2) {
-                                    Text(avg.formattedWeight)
-                                        .font(.ariseDisplay(size: 20, weight: .bold))
-                                        .foregroundColor(.textPrimary)
-                                    Text("lb")
-                                        .font(.ariseMono(size: 9))
-                                        .foregroundColor(.textMuted)
-                                }
-                                Text("4W AVG")
-                                    .font(.ariseMono(size: 9, weight: .medium))
-                                    .foregroundColor(.textMuted)
-                                    .tracking(0.5)
-                            }
-                        }
-                    }
-                }
-                .padding(16)
-                .background(Color.voidDark)
-            }
-        }
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.ariseBorder, lineWidth: 1)
-        )
-        .overlay(
-            Rectangle()
-                .fill(exerciseColor.opacity(0.3))
-                .frame(height: 1),
-            alignment: .top
-        )
-    }
-
-    private func trendIcon(_ direction: String) -> String {
-        switch direction {
-        case "improving": return "arrow.up.right"
-        case "regressing": return "arrow.down.right"
-        default: return "arrow.right"
-        }
-    }
-
-    private func trendColor(_ direction: String) -> Color {
-        switch direction {
-        case "improving": return .successGreen
-        case "regressing": return .warningRed
-        default: return .textSecondary
-        }
-    }
-}
-
-// MARK: - Additional Exercise Card
-
-struct AdditionalExerciseCard: View {
-    let exercise: ExerciseResponse
-    let trend: TrendResponse?
-    let percentile: ExercisePercentile?
-    let isExpanded: Bool
-    let onTap: () -> Void
-    let onRemove: () -> Void
-    var onWorkoutSelected: ((String) -> Void)?
-
-    var exerciseColor: Color {
-        Color.exerciseColor(for: exercise.name)
-    }
-
-    var rank: HunterRank {
-        guard let classification = percentile?.classification.lowercased() else { return .e }
-        switch classification {
-        case "elite": return .s
-        case "advanced": return .a
-        case "intermediate": return .c
-        case "novice": return .d
-        default: return .e
-        }
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            // Main Card
-            Button(action: onTap) {
-                HStack(spacing: 0) {
-                    Rectangle()
-                        .fill(exerciseColor)
-                        .frame(width: 4)
-
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(exercise.name)
-                                .font(.ariseHeader(size: 14, weight: .medium))
-                                .foregroundColor(.textPrimary)
-
-                            Text("\"\(ExerciseFantasyNames.fantasyName(for: exercise.name))\"")
-                                .font(.ariseMono(size: 9))
-                                .foregroundColor(.textMuted)
-                                .italic()
-                        }
-
-                        Spacer()
-
-                        if let current = trend?.currentE1rm {
-                            VStack(alignment: .trailing, spacing: 2) {
-                                HStack(alignment: .lastTextBaseline, spacing: 4) {
-                                    Text(current.formattedWeight)
-                                        .font(.ariseDisplay(size: 22, weight: .bold))
-                                        .foregroundColor(.systemPrimary)
-                                    Text("lb")
-                                        .font(.ariseMono(size: 10))
-                                        .foregroundColor(.textMuted)
-                                }
-
-                                // Trend indicator
-                                if let direction = trend?.trendDirection, direction != "insufficient_data" {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: trendIcon(direction))
-                                            .font(.system(size: 9, weight: .bold))
-                                        if let percent = trend?.percentChange {
-                                            Text("\(abs(percent), specifier: "%.1f")%")
-                                                .font(.ariseMono(size: 9, weight: .semibold))
-                                        }
-                                    }
-                                    .foregroundColor(trendColor(direction))
-                                }
-                            }
-                        } else {
-                            Text("No data")
-                                .font(.ariseMono(size: 11))
-                                .foregroundColor(.textMuted)
-                        }
-
-                        // Remove button
-                        Button(action: onRemove) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 18))
-                                .foregroundColor(.textMuted)
-                        }
-
-                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(.textMuted)
-                    }
-                    .padding(12)
-                }
-                .background(Color.voidMedium)
-            }
-            .buttonStyle(PlainButtonStyle())
-
-            // Expanded Content
-            if isExpanded {
-                VStack(spacing: 16) {
-                    // Chart
-                    if let dataPoints = trend?.dataPoints, !dataPoints.isEmpty {
-                        AriseE1RMChart(dataPoints: dataPoints, onWorkoutSelected: onWorkoutSelected)
-                            .frame(height: 120)
-                    }
-
-                    // Rank and Stats Row
-                    HStack(spacing: 12) {
-                        // Rank Badge - only show if we have a real percentile
-                        if let p = percentile?.percentile {
-                            HStack(spacing: 8) {
-                                RankBadgeView(rank: rank, size: .small)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(rank.title)
-                                        .font(.ariseMono(size: 11, weight: .semibold))
-                                        .foregroundColor(.textPrimary)
-                                    Text("Top \(100 - p)%")
-                                        .font(.ariseMono(size: 9))
-                                        .foregroundColor(.textMuted)
-                                }
-                            }
-                            .padding(10)
-                            .background(Color.voidLight)
-                            .cornerRadius(4)
-                        }
-
-                        Spacer()
-
-                        // Workouts count
-                        if let total = trend?.totalWorkouts {
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text("\(total)")
-                                    .font(.ariseDisplay(size: 20, weight: .bold))
-                                    .foregroundColor(.textPrimary)
-                                Text("QUESTS")
-                                    .font(.ariseMono(size: 9, weight: .medium))
-                                    .foregroundColor(.textMuted)
-                                    .tracking(0.5)
-                            }
-                        }
-
-                        // 4W Average
-                        if let avg = trend?.rollingAverage4w {
-                            VStack(alignment: .trailing, spacing: 2) {
-                                HStack(alignment: .lastTextBaseline, spacing: 2) {
-                                    Text(avg.formattedWeight)
-                                        .font(.ariseDisplay(size: 20, weight: .bold))
-                                        .foregroundColor(.textPrimary)
-                                    Text("lb")
-                                        .font(.ariseMono(size: 9))
-                                        .foregroundColor(.textMuted)
-                                }
-                                Text("4W AVG")
-                                    .font(.ariseMono(size: 9, weight: .medium))
-                                    .foregroundColor(.textMuted)
-                                    .tracking(0.5)
-                            }
-                        }
-                    }
-                }
-                .padding(12)
-                .background(Color.voidDark)
-            }
-        }
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.ariseBorder, lineWidth: 1)
-        )
-    }
-
-    private func trendIcon(_ direction: String) -> String {
-        switch direction {
-        case "improving": return "arrow.up.right"
-        case "regressing": return "arrow.down.right"
-        default: return "arrow.right"
-        }
-    }
-
-    private func trendColor(_ direction: String) -> Color {
-        switch direction {
-        case "improving": return .successGreen
-        case "regressing": return .warningRed
-        default: return .textSecondary
         }
     }
 }
@@ -818,6 +414,881 @@ struct AriseTimeRangeButton: View {
                         .stroke(isSelected ? Color.systemPrimary : Color.ariseBorder, lineWidth: 1)
                 )
         }
+    }
+}
+
+// MARK: - Mini Sparkline
+
+struct MiniSparkline: View {
+    let dataPoints: [DataPoint]
+    let color: Color
+    var width: CGFloat = 100
+    var height: CGFloat = 32
+
+    var body: some View {
+        GeometryReader { geometry in
+            if dataPoints.count >= 2 {
+                let values = dataPoints.map { $0.value }
+                let minValue = values.min() ?? 0
+                let maxValue = values.max() ?? 1
+                let valueRange = max(maxValue - minValue, 1)
+
+                ZStack {
+                    // Area fill
+                    Path { path in
+                        let stepX = geometry.size.width / CGFloat(dataPoints.count - 1)
+
+                        path.move(to: CGPoint(x: 0, y: geometry.size.height))
+
+                        for (index, point) in dataPoints.enumerated() {
+                            let x = CGFloat(index) * stepX
+                            let normalizedY = (point.value - minValue) / valueRange
+                            let y = geometry.size.height - (normalizedY * geometry.size.height * 0.8) - geometry.size.height * 0.1
+                            path.addLine(to: CGPoint(x: x, y: y))
+                        }
+
+                        path.addLine(to: CGPoint(x: geometry.size.width, y: geometry.size.height))
+                        path.closeSubpath()
+                    }
+                    .fill(
+                        LinearGradient(
+                            colors: [color.opacity(0.3), color.opacity(0)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+
+                    // Line
+                    Path { path in
+                        let stepX = geometry.size.width / CGFloat(dataPoints.count - 1)
+
+                        for (index, point) in dataPoints.enumerated() {
+                            let x = CGFloat(index) * stepX
+                            let normalizedY = (point.value - minValue) / valueRange
+                            let y = geometry.size.height - (normalizedY * geometry.size.height * 0.8) - geometry.size.height * 0.1
+
+                            if index == 0 {
+                                path.move(to: CGPoint(x: x, y: y))
+                            } else {
+                                path.addLine(to: CGPoint(x: x, y: y))
+                            }
+                        }
+                    }
+                    .stroke(color, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+                }
+            } else {
+                // Not enough data - show flat line
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: geometry.size.height / 2))
+                    path.addLine(to: CGPoint(x: geometry.size.width, y: geometry.size.height / 2))
+                }
+                .stroke(color.opacity(0.3), lineWidth: 1)
+            }
+        }
+        .frame(width: width, height: height)
+    }
+}
+
+// MARK: - Minimal Exercise Card
+
+struct MinimalExerciseCard: View {
+    let exercise: ExerciseResponse
+    let trend: TrendResponse?
+    let percentile: ExercisePercentile?
+    var isCompact: Bool = false
+    var onRemove: (() -> Void)? = nil
+
+    var exerciseColor: Color {
+        Color.exerciseColor(for: exercise.name)
+    }
+
+    var rank: HunterRank {
+        guard let classification = percentile?.classification.lowercased() else { return .e }
+        switch classification {
+        case "elite": return .s
+        case "advanced": return .a
+        case "intermediate": return .c
+        case "novice": return .d
+        default: return .e
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Top color bar
+            Rectangle()
+                .fill(exerciseColor)
+                .frame(height: 3)
+
+            VStack(spacing: isCompact ? 12 : 16) {
+                // Main row
+                HStack(spacing: isCompact ? 12 : 16) {
+                    // Left: Name + Sparkline
+                    VStack(alignment: .leading, spacing: isCompact ? 8 : 12) {
+                        // Name group
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(exercise.name)
+                                .font(.ariseHeader(size: isCompact ? 14 : 18, weight: .semibold))
+                                .foregroundColor(.textPrimary)
+
+                            Text("\"\(ExerciseFantasyNames.fantasyName(for: exercise.name))\"")
+                                .font(.ariseMono(size: isCompact ? 9 : 11))
+                                .foregroundColor(.textMuted)
+                                .italic()
+                        }
+
+                        // Sparkline
+                        if let dataPoints = trend?.dataPoints, !dataPoints.isEmpty {
+                            MiniSparkline(
+                                dataPoints: dataPoints,
+                                color: exerciseColor,
+                                width: isCompact ? 60 : 100,
+                                height: isCompact ? 24 : 32
+                            )
+                        }
+                    }
+
+                    Spacer()
+
+                    // Right: e1RM + Trend
+                    VStack(alignment: .trailing, spacing: 8) {
+                        if let current = trend?.currentE1rm {
+                            HStack(alignment: .lastTextBaseline, spacing: 4) {
+                                Text(current.formattedWeight)
+                                    .font(.ariseDisplay(size: isCompact ? 24 : 36, weight: .bold))
+                                    .foregroundColor(exerciseColor)
+
+                                Text("lb")
+                                    .font(.ariseMono(size: isCompact ? 10 : 12))
+                                    .foregroundColor(.textMuted)
+                            }
+
+                            // Trend badge
+                            if let direction = trend?.trendDirection, direction != "insufficient_data" {
+                                HStack(spacing: 4) {
+                                    Image(systemName: trendIcon(direction))
+                                        .font(.system(size: isCompact ? 9 : 10, weight: .bold))
+                                    if let percent = trend?.percentChange {
+                                        Text("\(abs(percent), specifier: "%.1f")%")
+                                            .font(.ariseMono(size: isCompact ? 10 : 11, weight: .semibold))
+                                    }
+                                }
+                                .foregroundColor(trendColor(direction))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(trendColor(direction).opacity(0.1))
+                                .cornerRadius(12)
+                            }
+                        } else {
+                            Text("No data")
+                                .font(.ariseMono(size: 12))
+                                .foregroundColor(.textMuted)
+                        }
+                    }
+                }
+
+                // Bottom row
+                HStack(spacing: 8) {
+                    // Rank pill
+                    if let p = percentile?.percentile {
+                        HStack(spacing: 8) {
+                            Text(rank.rawValue)
+                                .font(.ariseMono(size: 12, weight: .bold))
+                                .foregroundColor(.voidBlack)
+                                .frame(width: 24, height: 24)
+                                .background(rank.color)
+                                .cornerRadius(4)
+
+                            Text("Top \(100 - p)%")
+                                .font(.ariseMono(size: 11))
+                                .foregroundColor(.textSecondary)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.voidLight)
+                        .cornerRadius(8)
+                    }
+
+                    Spacer()
+
+                    // Stat pills (only on non-compact)
+                    if !isCompact {
+                        if let total = trend?.totalWorkouts {
+                            StatPill(value: "\(total)", label: "QUESTS")
+                        }
+
+                        if let multiplier = percentile?.bodyweightMultiplier {
+                            StatPill(value: String(format: "%.1fx", multiplier), label: "BW")
+                        }
+                    }
+
+                    // Remove button for additional skills
+                    if let onRemove = onRemove {
+                        Button(action: onRemove) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.textMuted)
+                        }
+                    }
+
+                    // Navigation arrow
+                    Circle()
+                        .fill(Color.voidLight)
+                        .frame(width: 28, height: 28)
+                        .overlay(
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.textSecondary)
+                        )
+                }
+            }
+            .padding(isCompact ? 14 : 20)
+        }
+        .background(Color.voidMedium)
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.ariseBorder, lineWidth: 1)
+        )
+    }
+
+    private func trendIcon(_ direction: String) -> String {
+        switch direction {
+        case "improving": return "arrow.up.right"
+        case "regressing": return "arrow.down.right"
+        default: return "arrow.right"
+        }
+    }
+
+    private func trendColor(_ direction: String) -> Color {
+        switch direction {
+        case "improving": return .successGreen
+        case "regressing": return .warningRed
+        default: return .textSecondary
+        }
+    }
+}
+
+// MARK: - Stat Pill
+
+struct StatPill: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(.ariseMono(size: 12, weight: .semibold))
+                .foregroundColor(.textPrimary)
+            Text(label)
+                .font(.ariseMono(size: 8))
+                .foregroundColor(.textMuted)
+                .tracking(0.5)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Color.voidLight)
+        .cornerRadius(8)
+    }
+}
+
+// MARK: - Exercise Detail View
+
+struct ExerciseDetailView: View {
+    let exercise: ExerciseResponse
+    @ObservedObject var viewModel: ProgressViewModel
+    @StateObject private var historyViewModel = HistoryViewModel()
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedWorkoutId: String?
+
+    var exerciseColor: Color {
+        Color.exerciseColor(for: exercise.name)
+    }
+
+    var trend: TrendResponse? {
+        viewModel.trend(for: exercise.id)
+    }
+
+    var percentile: ExercisePercentile? {
+        viewModel.percentile(for: exercise.id)
+    }
+
+    var rank: HunterRank {
+        guard let classification = percentile?.classification.lowercased() else { return .e }
+        switch classification {
+        case "elite": return .s
+        case "advanced": return .a
+        case "intermediate": return .c
+        case "novice": return .d
+        default: return .e
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            VoidBackground(showGrid: false, glowIntensity: 0.03)
+
+            ScrollView {
+                VStack(spacing: 0) {
+                    headerSection
+                    timeRangeSection
+                    chartSection
+                    rankSection
+                    sessionsSection
+                }
+            }
+        }
+        .navigationBarHidden(true)
+        .swipeBackGesture()
+        .background(navigationLinkBackground)
+    }
+
+    // MARK: - Header Section
+
+    @ViewBuilder
+    private var headerSection: some View {
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(exerciseColor)
+                .frame(height: 3)
+
+            VStack(alignment: .leading, spacing: 16) {
+                backButton
+                titleRow
+            }
+            .padding(20)
+            .background(headerGradient)
+        }
+    }
+
+    @ViewBuilder
+    private var backButton: some View {
+        Button {
+            dismiss()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "arrow.left")
+                    .font(.system(size: 14, weight: .semibold))
+                Text("Power Analysis")
+                    .font(.ariseMono(size: 12))
+            }
+            .foregroundColor(.systemPrimary)
+        }
+    }
+
+    @ViewBuilder
+    private var titleRow: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(exercise.name)
+                    .font(.ariseHeader(size: 24, weight: .bold))
+                    .foregroundColor(.textPrimary)
+
+                Text("\"\(ExerciseFantasyNames.fantasyName(for: exercise.name))\"")
+                    .font(.ariseMono(size: 12))
+                    .foregroundColor(.textMuted)
+                    .italic()
+            }
+
+            Spacer()
+
+            heroE1RMView
+        }
+    }
+
+    @ViewBuilder
+    private var heroE1RMView: some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            if let current = trend?.currentE1rm {
+                Text(current.formattedWeight)
+                    .font(.ariseDisplay(size: 48, weight: .bold))
+                    .foregroundColor(exerciseColor)
+
+                Text("CURRENT E1RM (LB)")
+                    .font(.ariseMono(size: 10))
+                    .foregroundColor(.textMuted)
+                    .tracking(1)
+
+                trendBadge
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var trendBadge: some View {
+        if let direction = trend?.trendDirection, direction != "insufficient_data" {
+            HStack(spacing: 4) {
+                Image(systemName: trendIcon(direction))
+                    .font(.system(size: 10, weight: .bold))
+                if let percent = trend?.percentChange {
+                    Text("\(abs(percent), specifier: "%.1f")% vs \(viewModel.timeRangeLabel)")
+                        .font(.ariseMono(size: 11, weight: .semibold))
+                }
+            }
+            .foregroundColor(trendColor(direction))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(trendColor(direction).opacity(0.1))
+            .cornerRadius(12)
+        }
+    }
+
+    private var headerGradient: some View {
+        LinearGradient(
+            colors: [Color.voidLight, Color.voidBlack.opacity(0)],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    // MARK: - Time Range Section
+
+    @ViewBuilder
+    private var timeRangeSection: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(viewModel.timeRanges, id: \.self) { range in
+                    AriseTimeRangeButton(
+                        range: range,
+                        isSelected: viewModel.selectedTimeRange == range
+                    ) {
+                        viewModel.selectTimeRange(range)
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+        .padding(.vertical, 16)
+    }
+
+    // MARK: - Chart Section
+
+    @ViewBuilder
+    private var chartSection: some View {
+        VStack(spacing: 0) {
+            chartContent
+            statsGrid
+        }
+        .background(Color.voidMedium)
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.ariseBorder, lineWidth: 1)
+        )
+        .padding(.horizontal, 20)
+    }
+
+    @ViewBuilder
+    private var chartContent: some View {
+        if let dataPoints = trend?.dataPoints, !dataPoints.isEmpty {
+            AriseE1RMChart(dataPoints: dataPoints, onWorkoutSelected: { workoutId in
+                selectedWorkoutId = workoutId
+            })
+            .frame(height: 200)
+            .padding(20)
+        } else {
+            Text("Not enough data to show chart")
+                .font(.ariseMono(size: 12))
+                .foregroundColor(.textMuted)
+                .frame(height: 200)
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private var statsGrid: some View {
+        let columns = [GridItem(.flexible()), GridItem(.flexible())]
+        LazyVGrid(columns: columns, spacing: 1) {
+            DetailStatCell(
+                value: trend?.totalWorkouts.description ?? "-",
+                unit: nil,
+                label: "TOTAL QUESTS"
+            )
+            DetailStatCell(
+                value: trend?.rollingAverage4w?.formattedWeight ?? "-",
+                unit: "lb",
+                label: "4W AVERAGE"
+            )
+            DetailStatCell(
+                value: vsLastPeriodValue,
+                unit: "lb",
+                label: "VS LAST PERIOD"
+            )
+            DetailStatCell(
+                value: percentile?.currentE1rm?.formattedWeight ?? trend?.currentE1rm?.formattedWeight ?? "-",
+                unit: "lb",
+                label: "ALL-TIME BEST"
+            )
+        }
+        .background(Color.ariseBorder)
+    }
+
+    private var vsLastPeriodValue: String {
+        guard let percentChange = trend?.percentChange, let currentE1rm = trend?.currentE1rm else { return "-" }
+        return String(format: "%+.0f", percentChange / 100 * currentE1rm)
+    }
+
+    // MARK: - Rank Section
+
+    @ViewBuilder
+    private var rankSection: some View {
+        if let p = percentile?.percentile {
+            ExerciseRankCard(
+                rank: rank,
+                percentile: p,
+                bodyweight: viewModel.bodyweightHistory?.entries.first?.weightDisplay,
+                bodyweightMultiplier: percentile?.bodyweightMultiplier,
+                exerciseColor: exerciseColor
+            )
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+        }
+    }
+
+    // MARK: - Sessions Section
+
+    @ViewBuilder
+    private var sessionsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sessionsSectionHeader
+            sessionsContent
+        }
+        .padding(20)
+    }
+
+    @ViewBuilder
+    private var sessionsSectionHeader: some View {
+        HStack {
+            HStack(spacing: 8) {
+                Rectangle()
+                    .fill(Color.systemPrimary)
+                    .frame(width: 6, height: 6)
+                    .rotationEffect(.degrees(45))
+                Text("RECENT SESSIONS")
+                    .font(.ariseMono(size: 10, weight: .semibold))
+                    .foregroundColor(.textMuted)
+                    .tracking(1.5)
+            }
+            Spacer()
+        }
+    }
+
+    @ViewBuilder
+    private var sessionsContent: some View {
+        if let dataPoints = trend?.dataPoints {
+            let recentPoints = Array(dataPoints.suffix(5).reversed())
+            let maxValue = dataPoints.map { $0.value }.max() ?? 0
+            ForEach(Array(recentPoints.enumerated()), id: \.element.id) { index, point in
+                SessionCard(
+                    dataPoint: point,
+                    color: exerciseColor,
+                    isPR: index == 0 && point.value == maxValue
+                ) {
+                    if let workoutId = point.workoutId {
+                        selectedWorkoutId = workoutId
+                    }
+                }
+            }
+        } else {
+            Text("No recent sessions")
+                .font(.ariseMono(size: 12))
+                .foregroundColor(.textMuted)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+        }
+    }
+
+    @ViewBuilder
+    private var navigationLinkBackground: some View {
+        NavigationLink(
+            destination: QuestDetailView(
+                workoutId: selectedWorkoutId ?? "",
+                viewModel: historyViewModel
+            ),
+            isActive: Binding(
+                get: { selectedWorkoutId != nil },
+                set: { if !$0 { selectedWorkoutId = nil } }
+            )
+        ) {
+            EmptyView()
+        }
+        .hidden()
+    }
+
+    private func trendIcon(_ direction: String) -> String {
+        switch direction {
+        case "improving": return "arrow.up.right"
+        case "regressing": return "arrow.down.right"
+        default: return "arrow.right"
+        }
+    }
+
+    private func trendColor(_ direction: String) -> Color {
+        switch direction {
+        case "improving": return .successGreen
+        case "regressing": return .warningRed
+        default: return .textSecondary
+        }
+    }
+}
+
+// MARK: - Exercise Rank Card
+
+struct ExerciseRankCard: View {
+    let rank: HunterRank
+    let percentile: Int
+    let bodyweight: Double?
+    let bodyweightMultiplier: Double?
+    let exerciseColor: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            rankHeader
+            rankProgressBar
+        }
+        .padding(20)
+        .background(cardGradient)
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(exerciseColor.opacity(0.2), lineWidth: 1)
+        )
+    }
+
+    @ViewBuilder
+    private var rankHeader: some View {
+        HStack(spacing: 16) {
+            Text(rank.rawValue)
+                .font(.ariseDisplay(size: 24, weight: .bold))
+                .foregroundColor(.voidBlack)
+                .frame(width: 56, height: 56)
+                .background(rank.color)
+                .cornerRadius(12)
+                .shadow(color: rank.color.opacity(0.4), radius: 8, x: 0, y: 4)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(rank.rawValue)-Rank Hunter")
+                    .font(.ariseHeader(size: 18, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+
+                rankSubtitle
+            }
+
+            Spacer()
+
+            bwRatioView
+        }
+    }
+
+    @ViewBuilder
+    private var rankSubtitle: some View {
+        if let bw = bodyweight {
+            Text("Top \(100 - percentile)% of lifters at \(bw.formattedWeight) lb bodyweight")
+                .font(.ariseMono(size: 12))
+                .foregroundColor(.textSecondary)
+        } else {
+            Text("Top \(100 - percentile)% of lifters")
+                .font(.ariseMono(size: 12))
+                .foregroundColor(.textSecondary)
+        }
+    }
+
+    @ViewBuilder
+    private var bwRatioView: some View {
+        if let multiplier = bodyweightMultiplier {
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(String(format: "%.2fx", multiplier))
+                    .font(.ariseDisplay(size: 24, weight: .bold))
+                    .foregroundColor(.gold)
+                Text("BW RATIO")
+                    .font(.ariseMono(size: 10))
+                    .foregroundColor(.textMuted)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var rankProgressBar: some View {
+        VStack(spacing: 8) {
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.voidLight.opacity(0.5))
+                        .frame(height: 8)
+
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(progressGradient)
+                        .frame(width: geometry.size.width * CGFloat(percentile) / 100, height: 8)
+                        .shadow(color: .systemPrimary.opacity(0.5), radius: 4, x: 0, y: 0)
+                }
+            }
+            .frame(height: 8)
+
+            rankLabels
+        }
+    }
+
+    private var progressGradient: LinearGradient {
+        LinearGradient(
+            colors: [.systemPrimary, .liftDeadlift],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+
+    @ViewBuilder
+    private var rankLabels: some View {
+        HStack {
+            ForEach(["E", "D", "C", "B", "A", "S"], id: \.self) { r in
+                Text(r)
+                    .font(.ariseMono(size: 9, weight: .medium))
+                    .foregroundColor(r == rank.rawValue ? .systemPrimary : .textMuted)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(r == rank.rawValue ? Color.systemPrimary.opacity(0.15) : Color.clear)
+                    .cornerRadius(4)
+                if r != "S" { Spacer() }
+            }
+        }
+    }
+
+    private var cardGradient: some View {
+        LinearGradient(
+            colors: [exerciseColor.opacity(0.1), Color.voidMedium],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+}
+
+// MARK: - Detail Stat Cell
+
+struct DetailStatCell: View {
+    let value: String
+    let unit: String?
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 4) {
+            HStack(alignment: .lastTextBaseline, spacing: 4) {
+                Text(value)
+                    .font(.ariseDisplay(size: 22, weight: .bold))
+                    .foregroundColor(.textPrimary)
+                if let unit = unit {
+                    Text(unit)
+                        .font(.ariseMono(size: 11))
+                        .foregroundColor(.textMuted)
+                }
+            }
+            Text(label)
+                .font(.ariseMono(size: 9))
+                .foregroundColor(.textMuted)
+                .tracking(0.5)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(Color.voidMedium)
+    }
+}
+
+// MARK: - Session Card
+
+struct SessionCard: View {
+    let dataPoint: DataPoint
+    let color: Color
+    var isPR: Bool = false
+    let onTap: () -> Void
+
+    var formattedDate: (day: String, month: String)? {
+        guard let date = dataPoint.date.parseISO8601Date() else { return nil }
+        let dayFormatter = DateFormatter()
+        dayFormatter.dateFormat = "d"
+        let monthFormatter = DateFormatter()
+        monthFormatter.dateFormat = "MMM"
+        return (dayFormatter.string(from: date), monthFormatter.string(from: date).uppercased())
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                // Date
+                if let formatted = formattedDate {
+                    VStack(spacing: 0) {
+                        Text(formatted.day)
+                            .font(.ariseDisplay(size: 20, weight: .bold))
+                            .foregroundColor(.textPrimary)
+                        Text(formatted.month)
+                            .font(.ariseMono(size: 10))
+                            .foregroundColor(.textMuted)
+                    }
+                    .frame(width: 48)
+
+                    Rectangle()
+                        .fill(Color.ariseBorder)
+                        .frame(width: 1, height: 36)
+                }
+
+                // Info
+                VStack(alignment: .leading, spacing: 2) {
+                    if let sets = dataPoint.sets {
+                        Text("\(sets.count) sets")
+                            .font(.ariseHeader(size: 14, weight: .medium))
+                            .foregroundColor(.textPrimary)
+                        let totalVolume = sets.reduce(0) { $0 + ($1.weight * Double($1.reps)) }
+                        Text("\(totalVolume.formattedWeight) lb volume")
+                            .font(.ariseMono(size: 11))
+                            .foregroundColor(.textMuted)
+                    } else {
+                        Text("Workout")
+                            .font(.ariseHeader(size: 14, weight: .medium))
+                            .foregroundColor(.textPrimary)
+                    }
+                }
+
+                Spacer()
+
+                // e1RM
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(dataPoint.value.formattedWeight)
+                        .font(.ariseDisplay(size: 18, weight: .bold))
+                        .foregroundColor(color)
+                    Text("E1RM")
+                        .font(.ariseMono(size: 9))
+                        .foregroundColor(.textMuted)
+
+                    if isPR {
+                        HStack(spacing: 4) {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 8))
+                            Text("PR")
+                                .font(.ariseMono(size: 9, weight: .semibold))
+                        }
+                        .foregroundColor(.gold)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color.gold.opacity(0.15))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color.gold.opacity(0.3), lineWidth: 1)
+                        )
+                        .cornerRadius(4)
+                    }
+                }
+
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 14))
+                    .foregroundColor(.textMuted)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(Color.voidMedium)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.ariseBorder, lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
