@@ -8,6 +8,7 @@ from datetime import datetime
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.e1rm import calculate_e1rm, calculate_e1rm_from_rpe, calculate_e1rm_from_rir
+from app.core.utils import to_iso8601_utc
 from app.models.user import User, E1RMFormula
 from app.models.workout import WorkoutSession, WorkoutExercise, Set
 from app.models.exercise import Exercise
@@ -376,15 +377,15 @@ async def list_workouts(
         summaries.append(WorkoutSummary(
             id=workout.id,
             user_id=workout.user_id,
-            date=workout.date.isoformat(),
+            date=to_iso8601_utc(workout.date),
             duration_minutes=workout.duration_minutes,
             session_rpe=workout.session_rpe,
             notes=workout.notes,
             exercise_count=exercise_count,
             total_sets=total_sets,
             exercise_names=exercise_names,
-            created_at=workout.created_at.isoformat(),
-            updated_at=workout.updated_at.isoformat(),
+            created_at=to_iso8601_utc(workout.created_at),
+            updated_at=to_iso8601_utc(workout.updated_at),
             # WHOOP fields
             is_whoop_activity=whoop_data.get("is_whoop_activity", False) if whoop_data else False,
             activity_type=whoop_data.get("activity_type") if whoop_data else None,
@@ -622,7 +623,7 @@ def _build_workout_response(workout: WorkoutSession) -> WorkoutResponse:
                 rir=s.rir,
                 set_number=s.set_number,
                 e1rm=s.e1rm,
-                created_at=s.created_at.isoformat()
+                created_at=to_iso8601_utc(s.created_at)
             )
             for s in we.sets
         ]
@@ -634,17 +635,17 @@ def _build_workout_response(workout: WorkoutSession) -> WorkoutResponse:
             order_index=we.order_index,
             sets=sets,
             superset_group_id=we.superset_group_id,
-            created_at=we.created_at.isoformat()
+            created_at=to_iso8601_utc(we.created_at)
         ))
 
     return WorkoutResponse(
         id=workout.id,
         user_id=workout.user_id,
-        date=workout.date.isoformat(),
+        date=to_iso8601_utc(workout.date),
         duration_minutes=workout.duration_minutes,
         session_rpe=workout.session_rpe,
         notes=workout.notes,
         exercises=exercises,
-        created_at=workout.created_at.isoformat(),
-        updated_at=workout.updated_at.isoformat()
+        created_at=to_iso8601_utc(workout.created_at),
+        updated_at=to_iso8601_utc(workout.updated_at)
     )

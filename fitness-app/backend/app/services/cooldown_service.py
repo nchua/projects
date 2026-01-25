@@ -24,6 +24,7 @@ import logging
 from app.models.workout import WorkoutSession, WorkoutExercise, Set
 from app.models.exercise import Exercise
 from app.models.pr import PR, PRType
+from app.core.utils import to_iso8601_utc
 
 logger = logging.getLogger(__name__)
 
@@ -626,7 +627,7 @@ def calculate_cooldowns(
                     exercise_entry = {
                         "exercise_id": exercise_id,
                         "exercise_name": exercise_name,
-                        "workout_date": workout_date.isoformat(),
+                        "workout_date": to_iso8601_utc(workout_date),
                         "fatigue_type": "primary"
                     }
                     if exercise_entry not in muscle_fatigue[muscle]["exercises"]:
@@ -637,7 +638,7 @@ def calculate_cooldowns(
                     exercise_entry = {
                         "exercise_id": exercise_id,
                         "exercise_name": exercise_name,
-                        "workout_date": workout_date.isoformat(),
+                        "workout_date": to_iso8601_utc(workout_date),
                         "fatigue_type": "secondary"
                     }
                     if exercise_entry not in muscle_fatigue[muscle]["exercises"]:
@@ -682,7 +683,7 @@ def calculate_cooldowns(
             "status": "cooling",
             "cooldown_percent": round(cooldown_percent, 1),
             "hours_remaining": max(0, hours_remaining),
-            "last_trained": data["last_trained"].isoformat(),
+            "last_trained": to_iso8601_utc(data["last_trained"]),
             "affected_exercises": data["exercises"],
             # Enhanced fatigue breakdown for transparency
             "fatigue_breakdown": {
@@ -701,6 +702,6 @@ def calculate_cooldowns(
 
     return {
         "muscles_cooling": muscles_cooling,
-        "generated_at": now.isoformat(),
+        "generated_at": to_iso8601_utc(now),
         "age_modifier": age_modifier
     }

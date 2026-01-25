@@ -10,6 +10,7 @@ from collections import defaultdict
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.utils import to_iso8601_utc
 from app.models.user import User, UserProfile
 from app.models.workout import WorkoutSession, WorkoutExercise, Set
 from app.models.exercise import Exercise
@@ -255,7 +256,7 @@ async def get_exercise_trend(
     daily_best = {}  # date -> (e1rm, workout_id)
     daily_sets = defaultdict(list) if include_sets else None
     for set_obj, workout_date, workout_id in query:
-        date_str = workout_date.isoformat()
+        date_str = to_iso8601_utc(workout_date)
         if set_obj.e1rm and set_obj.e1rm > 0:
             if date_str not in daily_best or set_obj.e1rm > daily_best[date_str][0]:
                 daily_best[date_str] = (set_obj.e1rm, workout_id)
@@ -369,7 +370,7 @@ async def get_exercise_history(
 
         for s in sorted(we.sets, key=lambda x: x.set_number):
             session_sets.append(SetHistoryItem(
-                date=we.session.date.isoformat(),
+                date=to_iso8601_utc(we.session.date),
                 workout_id=we.session_id,
                 weight=s.weight,
                 reps=s.reps,
@@ -386,7 +387,7 @@ async def get_exercise_history(
         if session_sets:
             sessions.append(SessionGroup(
                 workout_id=we.session_id,
-                date=we.session.date.isoformat(),
+                date=to_iso8601_utc(we.session.date),
                 sets=session_sets
             ))
             if session_volume > best_volume:
@@ -572,8 +573,8 @@ async def get_prs(
             value=round(pr.value, 2) if pr.value else None,
             reps=pr.reps,
             weight=round(pr.weight, 2) if pr.weight else None,
-            achieved_at=pr.achieved_at.isoformat(),
-            created_at=pr.created_at.isoformat()
+            achieved_at=to_iso8601_utc(pr.achieved_at),
+            created_at=to_iso8601_utc(pr.created_at)
         ))
 
     return PRListResponse(prs=pr_responses, total_count=total_count)
@@ -604,7 +605,7 @@ async def get_insights(
             title="No recent workouts",
             description="You haven't logged any workouts in the last 4 weeks. Time to get back to training!"
         ))
-        return InsightsResponse(insights=insights, generated_at=datetime.utcnow().isoformat())
+        return InsightsResponse(insights=insights, generated_at=to_iso8601_utc(datetime.utcnow()))
 
     # Analyze exercise trends - aggregate by date using max e1RM per workout
     # This prevents false alerts from within-session fatigue (later sets have lower e1RM)
@@ -701,7 +702,7 @@ async def get_insights(
     priority_order = {InsightPriority.HIGH: 0, InsightPriority.MEDIUM: 1, InsightPriority.LOW: 2}
     insights.sort(key=lambda x: priority_order[x.priority])
 
-    return InsightsResponse(insights=insights, generated_at=datetime.utcnow().isoformat())
+    return InsightsResponse(insights=insights, generated_at=to_iso8601_utc(datetime.utcnow()))
 
 
 @router.get("/weekly-review", response_model=WeeklyReviewResponse)
@@ -802,8 +803,8 @@ async def get_weekly_review(
             value=round(pr.value, 2) if pr.value else None,
             reps=pr.reps,
             weight=round(pr.weight, 2) if pr.weight else None,
-            achieved_at=pr.achieved_at.isoformat(),
-            created_at=pr.created_at.isoformat()
+            achieved_at=to_iso8601_utc(pr.achieved_at),
+            created_at=to_iso8601_utc(pr.created_at)
         )
         for pr in week_prs
     ]
