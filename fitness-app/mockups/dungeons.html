@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dungeons - Fitness App Mockup</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #111;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .phone-bezel {
+    width: 430px;
+    background: #1a1a1a;
+    border-radius: 50px;
+    padding: 20px;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.05);
+  }
+
+  .screen {
+    width: 390px;
+    height: 844px;
+    background: #050508;
+    border-radius: 38px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+    scrollbar-width: none;
+  }
+
+  .screen::-webkit-scrollbar { display: none; }
+
+  .dynamic-island {
+    width: 126px;
+    height: 37px;
+    background: #000;
+    border-radius: 20px;
+    position: sticky;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+  }
+
+  .home-indicator {
+    width: 134px;
+    height: 5px;
+    background: #606070;
+    border-radius: 3px;
+    position: sticky;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+  }
+
+  .mono { font-family: 'SF Mono', 'Menlo', 'Courier New', monospace; }
+
+  /* Top Bar */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px 12px;
+    position: relative;
+  }
+
+  .back-arrow {
+    color: #00D4FF;
+    font-size: 22px;
+    font-weight: 500;
+    cursor: pointer;
+    width: 30px;
+  }
+
+  .top-bar-title {
+    flex: 1;
+    text-align: center;
+    color: #FFF;
+    font-size: 17px;
+    font-weight: 700;
+    margin-right: 30px;
+  }
+
+  /* Header */
+  .header {
+    padding: 8px 16px 16px;
+  }
+
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .header-tag {
+    font-size: 11px;
+    color: #00D4FF;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+  .header-level {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .header-level .lv {
+    font-size: 12px;
+    color: #A0A0B0;
+  }
+
+  .rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .rank-badge.gold {
+    background: rgba(255, 215, 0, 0.15);
+    color: #FFD700;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+  }
+
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #FFF;
+    margin-bottom: 4px;
+  }
+
+  .header .subtitle {
+    font-size: 14px;
+    color: #A0A0B0;
+  }
+
+  /* Section Labels */
+  .section-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    padding: 16px 16px 10px;
+  }
+
+  .section-label.gold { color: #FFD700; }
+  .section-label.orange { color: #FF9500; }
+  .section-label.cyan { color: #00D4FF; }
+
+  /* Cards */
+  .card {
+    background: #0f1018;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    margin: 0 16px 10px;
+    padding: 16px;
+    border-left: 3px solid transparent;
+    position: relative;
+  }
+
+  .card.border-gold { border-left-color: #FFD700; }
+  .card.border-cyan { border-left-color: #00D4FF; }
+  .card.border-green { border-left-color: #4A9B4A; }
+
+  /* Card Row */
+  .card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .card-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #FFF;
+  }
+
+  .rank-tag {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 10px;
+    letter-spacing: 0.5px;
+  }
+
+  .rank-tag.purple {
+    background: rgba(155, 74, 155, 0.2);
+    color: #C77DFF;
+  }
+
+  .rank-tag.green {
+    background: rgba(74, 155, 74, 0.2);
+    color: #00FF88;
+  }
+
+  .rank-tag.gold-tag {
+    background: rgba(255, 215, 0, 0.2);
+    color: #FFD700;
+  }
+
+  /* Completed badge */
+  .completed-badge {
+    font-size: 12px;
+    color: #00FF88;
+    margin-bottom: 6px;
+  }
+
+  .reward-text {
+    font-size: 12px;
+    color: #FFD700;
+    margin-bottom: 12px;
+  }
+
+  .reward-text.cyan-reward {
+    color: #00D4FF;
+  }
+
+  /* Buttons */
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 25px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-align: center;
+    cursor: pointer;
+    text-transform: uppercase;
+  }
+
+  .btn-gold {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #1a1000;
+  }
+
+  .btn-cyan {
+    background: linear-gradient(135deg, #00D4FF, #0099CC);
+    color: #001a22;
+  }
+
+  /* Progress bar */
+  .progress-bar-wrap {
+    height: 4px;
+    background: #1a1b28;
+    border-radius: 2px;
+    margin: 8px 0 6px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: #00D4FF;
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  .progress-label {
+    font-size: 12px;
+    color: #A0A0B0;
+    margin-bottom: 4px;
+  }
+
+  .time-remaining {
+    font-size: 12px;
+    color: #FF9500;
+    margin-bottom: 10px;
+  }
+
+  /* Objectives */
+  .objectives {
+    margin-top: 10px;
+    list-style: none;
+  }
+
+  .objectives li {
+    font-size: 12px;
+    padding: 3px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .objectives li.done {
+    color: #00FF88;
+    text-decoration: line-through;
+    text-decoration-color: rgba(0, 255, 136, 0.4);
+  }
+
+  .objectives li.pending {
+    color: #FFF;
+  }
+
+  .objectives li.muted {
+    color: #A0A0B0;
+  }
+
+  .obj-icon {
+    flex-shrink: 0;
+    width: 14px;
+    text-align: center;
+  }
+
+  .meta-text {
+    font-size: 12px;
+    color: #A0A0B0;
+    margin-bottom: 4px;
+  }
+
+  /* Tab Bar */
+  .tab-bar {
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    padding: 10px 0 6px;
+    background: #0a0a10;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    position: sticky;
+    bottom: 0;
+  }
+
+  .tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    color: #606070;
+    cursor: pointer;
+  }
+
+  .tab-item.active { color: #00D4FF; }
+
+  .tab-icon {
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  .content-area {
+    padding-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+
+<div class="phone-bezel">
+  <div class="screen">
+
+    <!-- Dynamic Island -->
+    <div class="dynamic-island"></div>
+
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <span class="back-arrow">&lsaquo;</span>
+      <span class="top-bar-title">Dungeons</span>
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-top">
+        <span class="mono header-tag">[ DUNGEON GATE BOARD ]</span>
+        <div class="header-level">
+          <span class="mono lv">LV 47</span>
+          <span class="rank-badge gold">A</span>
+        </div>
+      </div>
+      <h1>Dungeon Gates</h1>
+      <p class="subtitle">Complete objectives within the time limit</p>
+    </div>
+
+    <div class="content-area">
+
+      <!-- Rewards Ready -->
+      <div class="section-label gold mono">&#127942; REWARDS READY</div>
+
+      <div class="card border-gold">
+        <div class="card-row">
+          <span class="card-title">Training Grounds</span>
+        </div>
+        <div class="completed-badge">Completed &#10003;</div>
+        <div class="reward-text">+500 XP, +1 Achievement</div>
+        <button class="btn btn-gold">CLAIM REWARD</button>
+      </div>
+
+      <!-- Active Dungeons -->
+      <div class="section-label orange mono">&#128293; ACTIVE</div>
+
+      <div class="card border-cyan">
+        <div class="card-row">
+          <span class="card-title">Iron Forge</span>
+          <span class="rank-tag purple mono">B-RANK</span>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" style="width: 50%;"></div>
+        </div>
+        <div class="progress-label">2/4 objectives</div>
+        <div class="time-remaining">&#9200; 3d 14h remaining</div>
+        <ul class="objectives">
+          <li class="done">
+            <span class="obj-icon">&#10003;</span>
+            <span>Complete 3 workouts</span>
+          </li>
+          <li class="done">
+            <span class="obj-icon">&#10003;</span>
+            <span>Log 10+ sets in one session</span>
+          </li>
+          <li class="pending">
+            <span class="obj-icon">&#9675;</span>
+            <span>Hit a new PR</span>
+          </li>
+          <li class="muted">
+            <span class="obj-icon">&#9675;</span>
+            <span>Log bodyweight 3 times</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Available Gates -->
+      <div class="section-label cyan mono">&#128682; AVAILABLE GATES</div>
+
+      <div class="card border-green">
+        <div class="card-row">
+          <span class="card-title">The Gauntlet</span>
+          <span class="rank-tag green mono">D-RANK</span>
+        </div>
+        <div class="meta-text">5 days &middot; 3 objectives</div>
+        <div class="reward-text cyan-reward">Rewards: +200 XP</div>
+        <button class="btn btn-cyan">ENTER GATE</button>
+      </div>
+
+      <div class="card border-gold">
+        <div class="card-row">
+          <span class="card-title">Shadow Realm</span>
+          <span class="rank-tag gold-tag mono">A-RANK</span>
+        </div>
+        <div class="meta-text">7 days &middot; 6 objectives</div>
+        <div class="reward-text cyan-reward">Rewards: +1000 XP, Rare Achievement</div>
+        <button class="btn btn-cyan">ENTER GATE</button>
+      </div>
+
+    </div>
+
+    <!-- Tab Bar -->
+    <div class="tab-bar">
+      <div class="tab-item active">
+        <span class="tab-icon">&#9750;</span>
+        <span>Home</span>
+      </div>
+      <div class="tab-item">
+        <span class="tab-icon">&#128221;</span>
+        <span>Log</span>
+      </div>
+      <div class="tab-item">
+        <span class="tab-icon">&#128202;</span>
+        <span>Stats</span>
+      </div>
+      <div class="tab-item">
+        <span class="tab-icon">&#128100;</span>
+        <span>Profile</span>
+      </div>
+    </div>
+
+    <!-- Home Indicator -->
+    <div class="home-indicator"></div>
+
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,283 +1,166 @@
-# Fitness Tracker iOS App
+# Solo Leveling Fitness
 
-A native iOS fitness tracking app for logging weight training workouts with comprehensive analytics.
+A gamified iOS fitness tracking app inspired by *Solo Leveling*, with a FastAPI backend and Claude Vision AI integration for screenshot-based workout logging.
 
-## Overview
+## Features
 
-This app helps users track their strength training progress by:
-- Logging workouts with weight, reps, RPE (Rate of Perceived Exertion), and RIR (Reps in Reserve)
-- Calculating estimated 1RM (one-rep max) using multiple formulas
-- Tracking progress trends over time with beautiful charts
-- Comparing strength to population percentiles
-- Providing personalized insights and recommendations
-- Working fully offline with background sync
+### Workout Tracking
+- Manual workout logging with weight, reps, RPE, and RIR
+- AI screenshot processing — snap a photo of your gym app and Claude Vision extracts the workout data
+- WHOOP activity screenshot support (strain, HR zones, calories)
+- 50+ pre-populated exercises with custom exercise creation
+- Estimated 1RM calculation using the Epley formula
+- Superset support for paired exercises
 
-## Technology Stack
+### Gamification
+- XP system with level progression (100 x level^1.5 per level)
+- Hunter rank badges from E-rank to S-rank
+- Daily quests — 5 quest types generated each day based on training history
+- Dungeon gates — multi-day challenges with objectives, time limits, and difficulty ranks
+- Streak tracking, achievements, and PR celebration animations
 
-### Frontend
-- **Framework**: SwiftUI (iOS 17+)
-- **Local Storage**: SQLite via GRDB or SwiftData
-- **Charts**: Swift Charts framework
-- **Architecture**: MVVM with Combine/async-await
+### Analytics
+- e1RM progression charts (Swift Charts)
+- Strength percentile comparisons for 20+ exercises against population standards
+- Trend analysis — improving, stable, or regressing per lift
+- Automatic personal record detection across rep ranges
+- Weekly review summaries with volume and exercise variety stats
+- AI-generated training insights
 
-### Backend
-- **Runtime**: Python 3.11+ with FastAPI
-- **Database**: PostgreSQL (production), SQLite (development)
-- **ORM**: SQLAlchemy 2.0
-- **Auth**: JWT tokens
-- **Analytics**: Custom analytics engine
+### Social
+- Friend system with requests and hunter profiles
+- Competitive stats (XP, level, rank, recent workouts)
+
+### Architecture
+- Offline-first with local SwiftData storage and background sync
+- JWT authentication with token refresh
+- Deployed on Railway with auto-deploy from `main`
+
+## Screenshots
+
+See [`mockups/`](mockups/) for interactive HTML mockups of each screen.
+
+| Home | Quests | Workout Log |
+|------|--------|-------------|
+| Hunter status, daily quests, power levels | Quest center with calendar and archive | Active session with exercise tracking |
+
+| Stats | Dungeons | Friends |
+|-------|----------|---------|
+| e1RM charts, percentiles, trends | Gate board with objectives and rewards | Hunter network with rank and streaks |
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| iOS | SwiftUI (iOS 17+), SwiftData, Swift Charts, MVVM |
+| Backend | Python 3.11+, FastAPI, SQLAlchemy 2.0, Alembic |
+| Database | PostgreSQL (production), SQLite (development) |
+| AI | Anthropic Claude Vision API |
+| Auth | JWT (python-jose, bcrypt) |
+| Deployment | Railway (auto-deploy from `main`) |
 
 ## Project Structure
 
 ```
 fitness-app/
-├── ios/                    # iOS SwiftUI app
-│   └── FitnessApp/
-│       ├── Views/          # SwiftUI views
-│       ├── ViewModels/     # MVVM view models
-│       ├── Models/         # Data models
-│       ├── Services/       # API and database services
-│       └── Utils/          # Helpers and extensions
-├── backend/                # FastAPI backend
+├── backend/                    # FastAPI backend
 │   ├── app/
-│   │   ├── api/           # API endpoints
-│   │   ├── models/        # SQLAlchemy models
-│   │   ├── schemas/       # Pydantic schemas
-│   │   ├── core/          # Config and security
-│   │   └── services/      # Business logic
-│   ├── main.py            # FastAPI app entry point
-│   └── requirements.txt   # Python dependencies
-├── feature_list.json      # Complete feature test suite (56 tests)
-├── init.sh               # Setup and initialization script
-└── README.md             # This file
+│   │   ├── api/               # Endpoints (auth, workouts, exercises,
+│   │   │                      #   analytics, quests, dungeons, friends,
+│   │   │                      #   screenshot, sync, profile, bodyweight)
+│   │   ├── core/              # Config, security, database, e1RM engine
+│   │   ├── models/            # SQLAlchemy models
+│   │   ├── schemas/           # Pydantic request/response schemas
+│   │   └── services/          # Screenshot processing, quest generation
+│   ├── alembic/               # Database migrations
+│   └── main.py
+├── ios/                        # iOS SwiftUI app
+│   └── FitnessApp/
+│       ├── Views/             # SwiftUI views (Home, Log, Quests,
+│       │                      #   History, Stats, Profile, Dungeons, Friends)
+│       ├── Services/          # APIClient, AuthManager, HealthKitManager
+│       ├── Models/            # Data models and SwiftData schemas
+│       ├── Components/        # Reusable UI (XPBar, RankBadge, PRCelebration)
+│       └── Utils/             # Colors, Fonts, Extensions
+├── mockups/                    # Interactive HTML screen mockups
+├── docs/                       # Technical documentation
+│   ├── screenshot-processing.md
+│   ├── healthkit-integration.md
+│   └── development/           # Session notes and progress logs
+└── init.sh                     # Setup script
 ```
+
+## API Overview
+
+| Group | Endpoints | Description |
+|-------|-----------|-------------|
+| Auth | `/auth/register`, `/auth/login`, `/auth/refresh` | Account creation and JWT tokens |
+| Workouts | CRUD on `/workouts` | Workout sessions with exercises and sets |
+| Exercises | `/exercises`, `/exercises/search` | Exercise library with search and filtering |
+| Analytics | `/analytics/*` | e1RM trends, strength percentiles, PRs, weekly reviews, insights |
+| Screenshots | `/screenshot/process`, `/screenshot/batch` | Claude Vision workout extraction |
+| Quests | `/quests`, `/quests/{id}/claim` | Daily quest generation and claiming |
+| Dungeons | `/dungeons/*` | Gate system — accept, progress, claim rewards |
+| Friends | `/friends/*` | Friend requests, profiles, competitive data |
+| Profile | `/profile` | User settings, bodyweight, XP and rank |
+| Sync | `/sync` | Offline-first bulk sync |
+| Bodyweight | `/bodyweight` | Bodyweight logging and history |
+
+## Database Schema
+
+### Core
+`users`, `user_profiles`, `exercises`, `workout_sessions`, `workout_exercises`, `sets`, `bodyweight_entries`, `prs`
+
+### Gamification
+`quest_definitions`, `user_quests`, `dungeon_definitions`, `user_dungeons`, `user_dungeon_objectives`, `achievements`, `user_achievements`
+
+### Social
+`friends`, `friend_requests`
 
 ## Quick Start
 
 ### Prerequisites
-
-- **macOS**: Required for iOS development
-- **Xcode 15+**: For SwiftUI and iOS 17+ support
-- **Python 3.11+**: For backend development
-- **PostgreSQL** (optional): SQLite used by default for development
+- macOS with Xcode 15+
+- Python 3.11+
+- PostgreSQL (optional — SQLite used for development)
 
 ### Setup
-
-Run the initialization script to set up both frontend and backend:
 
 ```bash
 ./init.sh
 ```
 
-This script will:
-1. Check all prerequisites
-2. Create Python virtual environment
-3. Install backend dependencies
-4. Create FastAPI project structure
-5. Set up environment variables
-6. Provide instructions for iOS project creation
-
-### Running the Backend
+### Backend
 
 ```bash
-# Option 1: Use the helper script
-./start-backend.sh
-
-# Option 2: Manual start
 cd backend
 source venv/bin/activate
 python main.py
 ```
 
-The API will be available at:
-- API: http://localhost:8000
-- Interactive docs: http://localhost:8000/docs
-- Alternative docs: http://localhost:8000/redoc
+API available at `http://localhost:8000/docs`
 
-### Running the iOS App
-
-1. Open Xcode project:
-   ```bash
-   cd ios
-   open FitnessApp.xcodeproj
-   ```
-
-2. Select a simulator or connected device
-
-3. Press `Cmd+R` to build and run
-
-## Core Features
-
-### Workout Logging
-- Create workout sessions with date and notes
-- Search and add exercises from library
-- Log sets with weight, reps, RPE, and RIR
-- Quick-add buttons for common weight increments
-- Copy previous workouts as templates
-- Rest timer with notifications
-- Auto-save progress locally
-
-### Exercise Library
-- 50+ pre-populated common exercises
-- Exercise categories (Push, Pull, Legs, Core, Accessories)
-- Muscle group tagging
-- Custom exercise creation
-- Favorite exercises for quick access
-
-### Analytics & Charts
-- e1RM progression line charts
-- Weekly volume bar charts by muscle group
-- Trend analysis (improving/stable/regressing)
-- Automatic PR (personal record) detection
-- Strength percentile comparisons
-- Personalized insights and recommendations
-
-### Offline & Sync
-- Full offline functionality
-- Local SQLite database
-- Background sync when online
-- Conflict resolution with device priority
-
-## Development Progress
-
-This project uses a test-driven development approach with comprehensive feature tracking.
-
-### Feature Testing
-
-The `feature_list.json` file contains 56 detailed end-to-end test cases covering:
-- Backend API endpoints (auth, workouts, analytics, sync)
-- iOS UI components (all 5 tab screens)
-- Analytics calculations (e1RM, trends, percentiles)
-- Offline functionality and sync
-- Design system and UI polish
-- Performance requirements
-
-Each feature includes:
-- Category (functional or style)
-- Detailed description
-- Step-by-step testing instructions
-- Pass/fail status
-
-### Checking Progress
+### iOS
 
 ```bash
-# View all features
-cat feature_list.json | jq '.[] | {description: .description, passes: .passes}'
-
-# Count passing features
-cat feature_list.json | jq '[.[] | select(.passes == true)] | length'
-
-# View failing features
-cat feature_list.json | jq '.[] | select(.passes == false) | .description'
+cd ios
+xcodegen generate
+open FitnessApp.xcodeproj
+# Build and run with Cmd+R
 ```
-
-## API Documentation
-
-### Authentication
-- `POST /auth/register` - Create new user account
-- `POST /auth/login` - Login and get JWT token
-- `POST /auth/refresh` - Refresh access token
-
-### Profile
-- `GET /profile` - Get user profile
-- `PUT /profile` - Update profile (age, weight, preferences)
-
-### Exercises
-- `GET /exercises` - List all exercises (with search/filter)
-- `POST /exercises` - Create custom exercise
-- `GET /exercises/{id}` - Get exercise details
-
-### Workouts
-- `GET /workouts` - List workouts (paginated)
-- `POST /workouts` - Create/sync workout
-- `GET /workouts/{id}` - Get workout details
-- `PUT /workouts/{id}` - Update workout
-- `DELETE /workouts/{id}` - Delete workout
-
-### Analytics
-- `GET /analytics/exercise/{id}/trend` - Exercise trend data
-- `GET /analytics/exercise/{id}/history` - Set history
-- `GET /analytics/percentiles` - Strength percentiles
-- `GET /analytics/prs` - Personal records
-- `GET /analytics/weekly-review` - Weekly summary
-- `GET /analytics/insights` - Personalized insights
-
-### Bodyweight
-- `GET /bodyweight` - Get bodyweight history
-- `POST /bodyweight` - Log bodyweight entry
-
-### Sync
-- `POST /sync` - Bulk sync local changes
-- `GET /sync/status` - Get sync status
 
 ## Design System
 
-### Color Palette
-- **Background**: `#0D0D0D` (near black)
-- **Surface**: `#1A1A1A` (dark gray)
-- **Card**: `#242424` (elevated surface)
-- **Primary**: `#FF6B35` (vibrant orange - PRs, CTAs)
-- **Secondary**: `#4ECDC4` (teal - secondary actions)
-- **Success**: `#2ECC71` (green - improvements)
-- **Warning**: `#F39C12` (amber - plateaus)
-- **Danger**: `#E74C3C` (red - regressions)
+The app uses the **Edge Flow** design language — a dark, high-contrast aesthetic built for readability during workouts.
 
-### Typography
-- **Headers**: SF Pro Display
-- **Body**: SF Pro Text
-- **Numbers**: SF Mono
+| Token | Hex | Usage |
+|-------|-----|-------|
+| Void | `#050508` | Deepest background |
+| Card | `#0f1018` | Card surfaces |
+| Elevated | `#141520` | Headers, elevated content |
+| Primary | `#00D4FF` | Main accent (cyan) |
+| Success | `#00FF88` | Completed states |
+| Gold | `#FFD700` | Achievements, A-rank |
+| Danger | `#FF4757` | Warnings, S-rank |
 
-### Components
-- Rounded cards with subtle shadows
-- Haptic feedback on interactions
-- Smooth chart animations
-- Pull-to-refresh with sync indicator
-
-## Database Schema
-
-### Core Tables
-- `users` - User accounts
-- `user_profiles` - User settings and body metrics
-- `exercises` - Exercise library (seeded + custom)
-- `workout_sessions` - Workout metadata
-- `workout_exercises` - Exercises in a workout
-- `sets` - Individual sets with weight, reps, RPE, RIR, e1RM
-- `bodyweight_entries` - Body weight tracking
-- `prs` - Personal records (e1RM and rep PRs)
-
-See `app_spec.txt` for complete schema details.
-
-## Contributing
-
-This is an autonomous coding project. All development is tracked through:
-1. `feature_list.json` - The single source of truth for features
-2. `claude-progress.txt` - Session-by-session progress notes
-3. Git commits - All changes committed with descriptive messages
-
-### Development Workflow
-1. Pick highest priority feature from `feature_list.json` with `"passes": false`
-2. Implement feature following spec in `app_spec.txt`
-3. Test thoroughly following steps in feature definition
-4. Update feature to `"passes": true` only when fully complete
-5. Commit changes with clear message
-6. Move to next feature
-
-## Future Enhancements
-
-- Apple Health integration (export workouts, import body weight)
-- Whoop integration (recovery scores, training readiness)
-- Training program templates
-- AI coaching recommendations
-- Social features (share PRs)
-- Apple Watch companion app
-
-## License
-
-This project is part of the Claude autonomous coding demonstration.
-
-## Support
-
-For questions or issues, refer to:
-- `app_spec.txt` - Complete project specification
-- `feature_list.json` - Feature testing checklist
-- API docs at http://localhost:8000/docs
+Typography uses four font families: **Orbitron** (display), **Rajdhani** (headers), **Inter** (body), and **JetBrains Mono** (system/metrics).

@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Home Screen - Solo Leveling Fitness App</title>
+<style>
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  :root {
+    --void: #050508;
+    --card: #0f1018;
+    --elevated: #141520;
+    --cyan: #00D4FF;
+    --cyan-dark: #0099CC;
+    --success: #00FF88;
+    --gold: #FFD700;
+    --danger: #FF4757;
+    --blue: #3B82F6;
+    --red: #EF4444;
+    --purple: #8B5CF6;
+    --orange: #FF9500;
+    --text-primary: #FFFFFF;
+    --text-secondary: #A0A0B0;
+    --text-muted: #606070;
+    --border: rgba(255, 255, 255, 0.06);
+    --font-sans: -apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    --font-mono: 'SF Mono', 'Menlo', monospace;
+  }
+
+  body {
+    background: #111;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* iPhone 15 Pro Frame */
+  .phone-frame {
+    width: 430px;
+    background: #1a1a1a;
+    border-radius: 50px;
+    padding: 20px;
+    position: relative;
+    box-shadow:
+      0 0 0 2px #333,
+      0 20px 60px rgba(0, 0, 0, 0.6),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+
+  .phone-screen {
+    width: 390px;
+    height: 844px;
+    background: var(--void);
+    border-radius: 36px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Dynamic Island */
+  .dynamic-island {
+    width: 126px;
+    height: 37px;
+    background: #000;
+    border-radius: 20px;
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+  }
+
+  /* Home Indicator */
+  .home-indicator {
+    width: 134px;
+    height: 5px;
+    background: #606070;
+    border-radius: 3px;
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+  }
+
+  /* Scrollable Content */
+  .screen-content {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 90px;
+    scrollbar-width: none;
+  }
+  .screen-content::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Header */
+  .header {
+    padding: 60px 20px 16px;
+    background: var(--elevated);
+  }
+
+  .header-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--card);
+    border: 2px solid var(--cyan);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--cyan);
+    flex-shrink: 0;
+    font-family: var(--font-sans);
+  }
+
+  .header-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .rank-pill {
+    background: rgba(255, 215, 0, 0.2);
+    color: var(--gold);
+    font-size: 10px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  .level-text {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-left: auto;
+  }
+
+  /* XP Bar */
+  .xp-bar-container {
+    margin-top: 14px;
+  }
+
+  .xp-bar-track {
+    width: 100%;
+    height: 6px;
+    background: #1a1b28;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .xp-bar-fill {
+    width: 68%;
+    height: 100%;
+    background: linear-gradient(90deg, #1A4A5E, var(--cyan));
+    border-radius: 3px;
+  }
+
+  .xp-bar-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+  }
+
+  .xp-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* Stats Scroll */
+  .stats-scroll {
+    display: flex;
+    gap: 10px;
+    padding: 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .stats-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .stat-card {
+    min-width: 90px;
+    background: var(--card);
+    border-radius: 12px;
+    padding: 12px;
+    flex-shrink: 0;
+  }
+
+  .stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.1;
+  }
+
+  .stat-value.cyan {
+    color: var(--cyan);
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    line-height: 1.2;
+  }
+
+  .stat-sublabel {
+    font-size: 10px;
+    color: var(--text-muted);
+    opacity: 0.6;
+    margin-top: 2px;
+  }
+
+  /* Quick Actions */
+  .quick-actions {
+    display: flex;
+    padding: 0 16px 16px;
+    gap: 12px;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--cyan), var(--cyan-dark));
+    color: #fff;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 12px 24px;
+    border-radius: 50px;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    white-space: nowrap;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+  }
+
+  .btn-secondary {
+    background: var(--card);
+    color: var(--cyan);
+    font-weight: 600;
+    font-size: 15px;
+    padding: 12px 24px;
+    border-radius: 50px;
+    border: 1px solid var(--cyan);
+    cursor: pointer;
+    font-family: var(--font-sans);
+    white-space: nowrap;
+  }
+
+  /* Daily Quests Card */
+  .quests-card {
+    margin: 0 16px 16px;
+    background: var(--card);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    padding: 16px;
+  }
+
+  .quests-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .quests-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .quests-timer {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .quests-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 12px 0;
+  }
+
+  .quest-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+  }
+
+  .quest-check {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+
+  .quest-check.done {
+    background: var(--success);
+    color: #050508;
+    font-weight: 700;
+  }
+
+  .quest-check.active {
+    border: 2px solid var(--cyan);
+    background: transparent;
+  }
+
+  .quest-check.locked {
+    border: 2px solid var(--text-muted);
+    background: transparent;
+  }
+
+  .quest-text {
+    flex: 1;
+    font-size: 14px;
+    color: var(--text-primary);
+  }
+
+  .quest-text.locked {
+    color: var(--text-muted);
+  }
+
+  .quest-xp {
+    font-size: 13px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .quest-xp.green { color: var(--success); }
+  .quest-xp.cyan { color: var(--cyan); }
+  .quest-xp.muted { color: var(--text-muted); }
+
+  /* Power Levels */
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px 10px;
+  }
+
+  .section-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .section-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .power-scroll {
+    display: flex;
+    gap: 10px;
+    padding: 0 16px 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .power-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .power-card {
+    min-width: 150px;
+    background: var(--card);
+    border-radius: 14px;
+    padding: 14px;
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .power-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    border-radius: 14px 0 0 14px;
+  }
+
+  .power-card.squat::before { background: var(--blue); }
+  .power-card.bench::before { background: var(--red); }
+  .power-card.deadlift::before { background: var(--purple); }
+
+  .power-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
+  }
+
+  .power-label.blue { color: var(--blue); }
+  .power-label.red { color: var(--red); }
+  .power-label.purple { color: var(--purple); }
+
+  .power-value {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+
+  .power-number {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+  }
+
+  .power-unit {
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+
+  .power-trend {
+    font-size: 11px;
+    color: var(--success);
+    margin-top: 6px;
+    font-weight: 600;
+  }
+
+  /* Recovery Status */
+  .recovery-row {
+    display: flex;
+    gap: 8px;
+    padding: 0 16px 16px;
+    flex-wrap: wrap;
+  }
+
+  .recovery-pill {
+    background: var(--card);
+    border-radius: 20px;
+    padding: 6px 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .recovery-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .recovery-dot.green { background: var(--success); }
+  .recovery-dot.yellow { background: var(--gold); }
+  .recovery-dot.orange { background: var(--orange); }
+
+  /* Latest Achievement */
+  .achievement-card {
+    margin: 0 16px 16px;
+    background: var(--card);
+    border-radius: 14px;
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .achievement-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .achievement-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .achievement-text {
+    font-size: 14px;
+    color: var(--text-primary);
+    margin-top: 2px;
+  }
+
+  .achievement-time {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  /* Bottom Tab Bar */
+  .tab-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 0 24px;
+    z-index: 50;
+  }
+
+  .tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    cursor: pointer;
+    min-width: 50px;
+  }
+
+  .tab-icon {
+    font-size: 22px;
+    line-height: 1.2;
+  }
+
+  .tab-icon.large {
+    font-size: 28px;
+  }
+
+  .tab-label {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .tab-item.active .tab-label {
+    color: var(--cyan);
+  }
+
+  .tab-item.active .tab-icon {
+    filter: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="phone-frame">
+  <div class="phone-screen">
+    <div class="dynamic-island"></div>
+
+    <div class="screen-content">
+
+      <!-- Header -->
+      <div class="header">
+        <div class="header-row">
+          <div class="avatar">NC</div>
+          <span class="header-name">Nick</span>
+          <span class="rank-pill">A-RANK</span>
+          <span class="level-text">LV 47</span>
+        </div>
+        <div class="xp-bar-container">
+          <div class="xp-bar-track">
+            <div class="xp-bar-fill"></div>
+          </div>
+          <div class="xp-bar-labels">
+            <span class="xp-label">12,450 / 18,200 XP</span>
+            <span class="xp-label">&#x1F525; 12 Day Streak</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats Scroll -->
+      <div class="stats-scroll">
+        <div class="stat-card">
+          <div class="stat-value">4</div>
+          <div class="stat-label">Workouts</div>
+          <div class="stat-sublabel">This Week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">24.8K</div>
+          <div class="stat-label">Volume (lbs)</div>
+          <div class="stat-sublabel">This Week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">312</div>
+          <div class="stat-label">Active Min</div>
+          <div class="stat-sublabel">This Week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value cyan">80%</div>
+          <div class="stat-label">Weekly %</div>
+          <div class="stat-sublabel">Goal</div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="quick-actions">
+        <button class="btn-primary">&#x26A1; Start Workout</button>
+        <button class="btn-secondary">&#x1F4F7; Scan</button>
+      </div>
+
+      <!-- Daily Quests -->
+      <div class="quests-card">
+        <div class="quests-header">
+          <span class="quests-title">Daily Quests</span>
+          <span class="quests-timer">Refreshes in 4h 23m</span>
+        </div>
+        <div class="quests-divider"></div>
+        <div class="quest-item">
+          <div class="quest-check done">&#x2713;</div>
+          <span class="quest-text">Complete a workout</span>
+          <span class="quest-xp green">50 XP</span>
+        </div>
+        <div class="quest-item">
+          <div class="quest-check active"></div>
+          <span class="quest-text">Log 3+ exercises</span>
+          <span class="quest-xp cyan">30 XP</span>
+        </div>
+        <div class="quest-item">
+          <div class="quest-check locked"></div>
+          <span class="quest-text locked">Hit a new PR</span>
+          <span class="quest-xp muted">100 XP</span>
+        </div>
+      </div>
+
+      <!-- Power Levels -->
+      <div class="section-header">
+        <span class="section-title">Power Levels</span>
+        <span class="section-subtitle">e1RM</span>
+      </div>
+      <div class="power-scroll">
+        <div class="power-card squat">
+          <div class="power-label blue">SQUAT</div>
+          <div class="power-value">
+            <span class="power-number">285</span>
+            <span class="power-unit">lbs</span>
+          </div>
+          <div class="power-trend">&#8593; 5%</div>
+        </div>
+        <div class="power-card bench">
+          <div class="power-label red">BENCH</div>
+          <div class="power-value">
+            <span class="power-number">215</span>
+            <span class="power-unit">lbs</span>
+          </div>
+          <div class="power-trend">&#8593; 3%</div>
+        </div>
+        <div class="power-card deadlift">
+          <div class="power-label purple">DEADLIFT</div>
+          <div class="power-value">
+            <span class="power-number">365</span>
+            <span class="power-unit">lbs</span>
+          </div>
+          <div class="power-trend">&#8593; 2%</div>
+        </div>
+      </div>
+
+      <!-- Recovery Status -->
+      <div class="recovery-row">
+        <div class="recovery-pill">
+          <div class="recovery-dot green"></div>
+          Sleep: 7.5h
+        </div>
+        <div class="recovery-pill">
+          <div class="recovery-dot yellow"></div>
+          HRV: 68ms
+        </div>
+        <div class="recovery-pill">
+          <div class="recovery-dot orange"></div>
+          Strain: 12.4
+        </div>
+      </div>
+
+      <!-- Latest Achievement -->
+      <div class="achievement-card">
+        <span class="achievement-icon">&#x1F3C6;</span>
+        <div>
+          <div class="achievement-label">NEW PR</div>
+          <div class="achievement-text">Squat 275 lbs x 3</div>
+        </div>
+        <span class="achievement-time">3 days ago</span>
+      </div>
+
+    </div>
+
+    <!-- Tab Bar -->
+    <div class="tab-bar">
+      <div class="tab-item active">
+        <span class="tab-icon">&#x1F3E0;</span>
+        <span class="tab-label">Home</span>
+      </div>
+      <div class="tab-item">
+        <span class="tab-icon">&#x1F4DC;</span>
+        <span class="tab-label">Quests</span>
+      </div>
+      <div class="tab-item">
+        <span class="tab-icon large">&#x2295;</span>
+        <span class="tab-label">Log</span>
+      </div>
+      <div class="tab-item">
+        <span class="tab-icon">&#x1F4CA;</span>
+        <span class="tab-label">Stats</span>
+      </div>
+      <div class="tab-item">
+        <span class="tab-icon">&#x1F464;</span>
+        <span class="tab-label">Profile</span>
+      </div>
+    </div>
+
+    <div class="home-indicator"></div>
+  </div>
+</div>
+
+</body>
+</html>
