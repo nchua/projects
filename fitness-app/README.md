@@ -1,4 +1,4 @@
-# Solo Leveling Fitness
+# Solo Leveling Themed Fitness App
 
 A gamified iOS fitness tracking app inspired by *Solo Leveling*, with a FastAPI backend and Claude Vision AI integration for screenshot-based workout logging.
 
