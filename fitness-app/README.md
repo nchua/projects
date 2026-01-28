@@ -38,15 +38,17 @@ A gamified iOS fitness tracking app inspired by *Solo Leveling*, with a FastAPI 
 
 ## Screenshots
 
-See [`mockups/`](mockups/) for interactive HTML mockups of each screen.
+Interactive HTML mockups of each screen (hosted via GitHub Pages):
 
-| Home | Quests | Workout Log |
-|------|--------|-------------|
-| Hunter status, daily quests, power levels | Quest center with calendar and archive | Active session with exercise tracking |
-
-| Stats | Dungeons | Friends |
-|-------|----------|---------|
-| e1RM charts, percentiles, trends | Gate board with objectives and rewards | Hunter network with rank and streaks |
+| Screen | Description |
+|--------|-------------|
+| [Home](https://nchua.github.io/projects/fitness-app/mockups/home.html) | Hunter status, daily quests, power levels |
+| [Quests](https://nchua.github.io/projects/fitness-app/mockups/quests.html) | Quest center with calendar and archive |
+| [Workout Log](https://nchua.github.io/projects/fitness-app/mockups/log.html) | Active session with exercise tracking |
+| [Stats](https://nchua.github.io/projects/fitness-app/mockups/stats.html) | e1RM charts, percentiles, trends |
+| [History](https://nchua.github.io/projects/fitness-app/mockups/history.html) | Calendar view with workout details |
+| [Dungeons](https://nchua.github.io/projects/fitness-app/mockups/dungeons.html) | Gate board with objectives and rewards |
+| [Friends](https://nchua.github.io/projects/fitness-app/mockups/friends.html) | Hunter network with rank and streaks |
 
 ## Tech Stack
 
