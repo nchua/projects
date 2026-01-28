@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stats / Power Analysis</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #111;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 40px 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .phone-bezel {
+    width: 430px;
+    background: #1a1a1a;
+    border-radius: 50px;
+    padding: 14px 20px 14px 20px;
+    position: relative;
+    box-shadow: 0 20px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  .screen {
+    width: 390px;
+    height: 844px;
+    background: #050508;
+    border-radius: 40px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+    scrollbar-width: none;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  .dynamic-island {
+    width: 126px;
+    height: 37px;
+    background: #000;
+    border-radius: 20px;
+    position: sticky;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+  }
+
+  .home-indicator {
+    width: 134px;
+    height: 5px;
+    background: #606070;
+    border-radius: 3px;
+    position: sticky;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+  }
+
+  .content {
+    padding-bottom: 90px;
+  }
+
+  /* Mono font */
+  .mono {
+    font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+  }
+
+  /* Header */
+  .header {
+    padding: 20px 16px 12px;
+  }
+  .header-label {
+    font-size: 11px;
+    color: #00D4FF;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+  }
+  .header-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #FFF;
+    margin-bottom: 4px;
+  }
+  .header-subtitle {
+    font-size: 14px;
+    color: #A0A0B0;
+  }
+
+  /* Tab Selector */
+  .tab-selector {
+    display: flex;
+    margin: 0 16px;
+    background: #0a0a10;
+    border-radius: 10px;
+    padding: 3px;
+    gap: 3px;
+  }
+  .tab-selector button {
+    flex: 1;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 8px 0;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+  }
+  .tab-selector button.active {
+    background: #00D4FF;
+    color: #050508;
+  }
+  .tab-selector button.inactive {
+    background: transparent;
+    color: #606070;
+  }
+
+  /* Time Range */
+  .time-range {
+    display: flex;
+    padding: 14px 16px;
+    gap: 8px;
+  }
+  .time-pill {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    border: none;
+    outline: none;
+    transition: all 0.2s;
+  }
+  .time-pill.active {
+    background: #00D4FF;
+    color: #050508;
+  }
+  .time-pill.inactive {
+    background: #0f1018;
+    color: #606070;
+  }
+
+  /* Big Three Cards */
+  .big-three {
+    padding: 0 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .lift-card {
+    background: #0f1018;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.06);
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .lift-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+  }
+  .lift-card.squat::before { background: #3B82F6; }
+  .lift-card.bench::before { background: #EF4444; }
+  .lift-card.deadlift::before { background: #8B5CF6; }
+
+  .lift-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .lift-name {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+  }
+  .lift-name.squat { color: #3B82F6; }
+  .lift-name.bench { color: #EF4444; }
+  .lift-name.deadlift { color: #8B5CF6; }
+
+  .percentile-pill {
+    background: rgba(0,212,255,0.1);
+    color: #00D4FF;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+    letter-spacing: 0.5px;
+  }
+
+  .lift-value-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-bottom: 2px;
+  }
+  .lift-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #FFF;
+    line-height: 1.1;
+  }
+  .lift-unit {
+    font-size: 12px;
+    color: #606070;
+  }
+
+  .lift-trend {
+    font-size: 13px;
+    color: #00FF88;
+    margin-bottom: 12px;
+  }
+
+  .chart-labels {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0 0;
+  }
+  .chart-label {
+    font-size: 9px;
+    color: #606070;
+  }
+
+  /* Additional Exercises */
+  .additional-section {
+    padding: 20px 16px 0;
+  }
+  .additional-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #FFF;
+    margin-bottom: 12px;
+  }
+  .additional-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .additional-card {
+    background: #0f1018;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+    padding: 14px;
+  }
+  .add-card-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #FFF;
+    margin-bottom: 6px;
+  }
+  .add-card-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #FFF;
+    margin-bottom: 4px;
+  }
+  .add-card-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .add-card-trend {
+    font-size: 11px;
+    color: #00FF88;
+  }
+  .add-card-trend.stable {
+    color: #606070;
+  }
+  .rank-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+  }
+  .rank-b {
+    background: rgba(155,74,155,0.15);
+    color: #C77DFF;
+  }
+  .rank-c {
+    background: rgba(74,123,181,0.15);
+    color: #7EB3E0;
+  }
+
+  /* Bottom Tab Bar */
+  .tab-bar {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(10,10,16,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 0 28px;
+    z-index: 50;
+  }
+  .tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+  }
+  .tab-icon {
+    font-size: 20px;
+    opacity: 0.4;
+  }
+  .tab-icon.active {
+    opacity: 1;
+  }
+  .tab-label {
+    font-size: 10px;
+    color: #606070;
+  }
+  .tab-label.active {
+    color: #00D4FF;
+  }
+</style>
+</head>
+<body>
+
+<div class="phone-bezel">
+  <div class="screen">
+    <div class="dynamic-island"></div>
+
+    <div class="content">
+      <!-- Header -->
+      <div class="header">
+        <div class="header-label mono">[ POWER ANALYSIS ]</div>
+        <div class="header-title">Power Analysis</div>
+        <div class="header-subtitle">Total Estimated 1RM: 865 lbs</div>
+      </div>
+
+      <!-- Tab Selector -->
+      <div class="tab-selector">
+        <button class="active mono">POWER</button>
+        <button class="inactive mono">VESSEL</button>
+        <button class="inactive mono">RECORDS</button>
+      </div>
+
+      <!-- Time Range -->
+      <div class="time-range">
+        <button class="time-pill inactive mono">1M</button>
+        <button class="time-pill active mono">3M</button>
+        <button class="time-pill inactive mono">6M</button>
+        <button class="time-pill inactive mono">1Y</button>
+        <button class="time-pill inactive mono">ALL</button>
+      </div>
+
+      <!-- Big Three Cards -->
+      <div class="big-three">
+
+        <!-- Squat -->
+        <div class="lift-card squat">
+          <div class="lift-card-header">
+            <span class="lift-name squat mono">&#x1F9B5; SQUAT</span>
+            <span class="percentile-pill mono">Top 15%</span>
+          </div>
+          <div class="lift-value-row">
+            <span class="lift-value">285</span>
+            <span class="lift-value" style="font-size:20px;"> lbs</span>
+            <span class="lift-unit">e1RM</span>
+          </div>
+          <div class="lift-trend">&#8593; 5.2%</div>
+          <svg width="100%" height="80" viewBox="0 0 320 80" preserveAspectRatio="none" style="display:block;">
+            <!-- Grid lines -->
+            <line x1="0" y1="20" x2="320" y2="20" stroke="#1a1b28" stroke-width="1"/>
+            <line x1="0" y1="40" x2="320" y2="40" stroke="#1a1b28" stroke-width="1"/>
+            <line x1="0" y1="60" x2="320" y2="60" stroke="#1a1b28" stroke-width="1"/>
+            <!-- Fill -->
+            <defs>
+              <linearGradient id="sqFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.15"/>
+                <stop offset="100%" stop-color="#3B82F6" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="M0,62 Q40,58 64,54 Q100,48 128,44 Q170,38 200,32 Q240,26 270,18 Q290,14 320,10 L320,80 L0,80 Z" fill="url(#sqFill)"/>
+            <!-- Line -->
+            <path d="M0,62 Q40,58 64,54 Q100,48 128,44 Q170,38 200,32 Q240,26 270,18 Q290,14 320,10" fill="none" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- Dot at end -->
+            <circle cx="320" cy="10" r="3" fill="#3B82F6"/>
+          </svg>
+          <div class="chart-labels">
+            <span class="chart-label mono">Oct</span>
+            <span class="chart-label mono">Nov</span>
+            <span class="chart-label mono">Dec</span>
+            <span class="chart-label mono">Jan</span>
+          </div>
+        </div>
+
+        <!-- Bench -->
+        <div class="lift-card bench">
+          <div class="lift-card-header">
+            <span class="lift-name bench mono">&#x1F3CB;&#xFE0F; BENCH</span>
+            <span class="percentile-pill mono">Top 22%</span>
+          </div>
+          <div class="lift-value-row">
+            <span class="lift-value">215</span>
+            <span class="lift-value" style="font-size:20px;"> lbs</span>
+            <span class="lift-unit">e1RM</span>
+          </div>
+          <div class="lift-trend">&#8593; 3.1%</div>
+          <svg width="100%" height="80" viewBox="0 0 320 80" preserveAspectRatio="none" style="display:block;">
+            <line x1="0" y1="20" x2="320" y2="20" stroke="#1a1b28" stroke-width="1"/>
+            <line x1="0" y1="40" x2="320" y2="40" stroke="#1a1b28" stroke-width="1"/>
+            <line x1="0" y1="60" x2="320" y2="60" stroke="#1a1b28" stroke-width="1"/>
+            <defs>
+              <linearGradient id="bnFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#EF4444" stop-opacity="0.15"/>
+                <stop offset="100%" stop-color="#EF4444" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="M0,58 Q50,56 96,50 Q140,46 180,42 Q220,38 260,30 Q290,26 320,22 L320,80 L0,80 Z" fill="url(#bnFill)"/>
+            <path d="M0,58 Q50,56 96,50 Q140,46 180,42 Q220,38 260,30 Q290,26 320,22" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="320" cy="22" r="3" fill="#EF4444"/>
+          </svg>
+          <div class="chart-labels">
+            <span class="chart-label mono">Oct</span>
+            <span class="chart-label mono">Nov</span>
+            <span class="chart-label mono">Dec</span>
+            <span class="chart-label mono">Jan</span>
+          </div>
+        </div>
+
+        <!-- Deadlift -->
+        <div class="lift-card deadlift">
+          <div class="lift-card-header">
+            <span class="lift-name deadlift mono">&#x1F531; DEADLIFT</span>
+            <span class="percentile-pill mono">Top 12%</span>
+          </div>
+          <div class="lift-value-row">
+            <span class="lift-value">365</span>
+            <span class="lift-value" style="font-size:20px;"> lbs</span>
+            <span class="lift-unit">e1RM</span>
+          </div>
+          <div class="lift-trend">&#8593; 2.8%</div>
+          <svg width="100%" height="80" viewBox="0 0 320 80" preserveAspectRatio="none" style="display:block;">
+            <line x1="0" y1="20" x2="320" y2="20" stroke="#1a1b28" stroke-width="1"/>
+            <line x1="0" y1="40" x2="320" y2="40" stroke="#1a1b28" stroke-width="1"/>
+            <line x1="0" y1="60" x2="320" y2="60" stroke="#1a1b28" stroke-width="1"/>
+            <defs>
+              <linearGradient id="dlFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.15"/>
+                <stop offset="100%" stop-color="#8B5CF6" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="M0,56 Q45,54 90,48 Q135,44 180,38 Q220,34 260,26 Q290,22 320,16 L320,80 L0,80 Z" fill="url(#dlFill)"/>
+            <path d="M0,56 Q45,54 90,48 Q135,44 180,38 Q220,34 260,26 Q290,22 320,16" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="320" cy="16" r="3" fill="#8B5CF6"/>
+          </svg>
+          <div class="chart-labels">
+            <span class="chart-label mono">Oct</span>
+            <span class="chart-label mono">Nov</span>
+            <span class="chart-label mono">Dec</span>
+            <span class="chart-label mono">Jan</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Additional Exercises -->
+      <div class="additional-section">
+        <div class="additional-title">Additional Exercises</div>
+        <div class="additional-grid">
+          <div class="additional-card">
+            <div class="add-card-name">Barbell Row</div>
+            <div class="add-card-value">175 lbs</div>
+            <div class="add-card-bottom">
+              <span class="add-card-trend">&#8593; 4.1%</span>
+              <span class="rank-badge rank-b mono">B</span>
+            </div>
+          </div>
+          <div class="additional-card">
+            <div class="add-card-name">Overhead Press</div>
+            <div class="add-card-value">135 lbs</div>
+            <div class="add-card-bottom">
+              <span class="add-card-trend">&#8593; 1.5%</span>
+              <span class="rank-badge rank-c mono">C</span>
+            </div>
+          </div>
+          <div class="additional-card">
+            <div class="add-card-name">Barbell Curl</div>
+            <div class="add-card-value">95 lbs</div>
+            <div class="add-card-bottom">
+              <span class="add-card-trend">&#8593; 6.2%</span>
+              <span class="rank-badge rank-b mono">B</span>
+            </div>
+          </div>
+          <div class="additional-card">
+            <div class="add-card-name">Lat Pulldown</div>
+            <div class="add-card-value">165 lbs</div>
+            <div class="add-card-bottom">
+              <span class="add-card-trend stable">&mdash; Stable</span>
+              <span class="rank-badge rank-c mono">C</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Tab Bar -->
+    <div class="tab-bar">
+      <div class="tab-item">
+        <span class="tab-icon">&#x1F3E0;</span>
+        <span class="tab-label">Home</span>
+      </div>
+      <div class="tab-item">
+        <span class="tab-icon">&#x2694;&#xFE0F;</span>
+        <span class="tab-label">Quests</span>
+      </div>
+      <div class="tab-item">
+        <span class="tab-icon">&#x1F4DD;</span>
+        <span class="tab-label">Log</span>
+      </div>
+      <div class="tab-item">
+        <span class="tab-icon active">&#x1F4CA;</span>
+        <span class="tab-label active">Stats</span>
+      </div>
+      <div class="tab-item">
+        <span class="tab-icon">&#x1F464;</span>
+        <span class="tab-label">Profile</span>
+      </div>
+    </div>
+
+    <div class="home-indicator"></div>
+  </div>
+</div>
+
+</body>
+</html>

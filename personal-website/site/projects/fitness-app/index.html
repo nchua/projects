@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arise Fitness Tracker — Screen Mockups</title>
+    <meta name="description" content="Interactive HTML mockups of the Arise fitness tracking app, a Solo Leveling-inspired iOS app with gamification, analytics, and AI workout logging.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Covered+By+Your+Grace&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cream: #faf7f2;
+            --paper: #f3efe7;
+            --warm-white: #fffdf9;
+            --brown: #2c2416;
+            --brown-mid: #5c4d3a;
+            --brown-light: #9a8b78;
+            --amber: #d4a853;
+            --amber-light: #e8c882;
+            --rust: #bf4a2d;
+            --sage: #5d7a5e;
+            --display: 'Sora', sans-serif;
+            --body: 'Newsreader', Georgia, serif;
+            --handwritten: 'Covered By Your Grace', cursive;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        ::selection { background: var(--amber); color: var(--brown); }
+        html { font-size: 16px; scroll-behavior: smooth; }
+
+        body {
+            background: var(--cream);
+            color: var(--brown);
+            font-family: var(--body);
+            min-height: 100vh;
+            line-height: 1.65;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.02;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        header {
+            padding: 2.5rem 0 1.5rem;
+            text-align: center;
+        }
+
+        .back-link {
+            font-family: var(--display);
+            font-size: 0.85rem;
+            color: var(--brown-light);
+            text-decoration: none;
+            letter-spacing: 0.03em;
+            transition: color 0.2s;
+        }
+        .back-link:hover { color: var(--rust); }
+
+        .page-title {
+            font-family: var(--display);
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--brown);
+            margin-top: 1rem;
+            letter-spacing: -0.02em;
+        }
+
+        .page-subtitle {
+            font-family: var(--body);
+            font-size: 1.1rem;
+            font-style: italic;
+            color: var(--brown-mid);
+            margin-top: 0.4rem;
+        }
+
+        .tech-tags {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        .tech-tag {
+            font-family: var(--display);
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            background: var(--paper);
+            color: var(--brown-mid);
+            padding: 0.3rem 0.75rem;
+            border-radius: 20px;
+            border: 1px solid rgba(44, 36, 22, 0.08);
+        }
+
+        /* Divider */
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        .divider-line {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--brown-light), transparent);
+            opacity: 0.25;
+        }
+        .divider-icon {
+            color: var(--amber);
+            font-size: 0.75rem;
+        }
+
+        /* Description */
+        .description {
+            font-size: 1.05rem;
+            color: var(--brown-mid);
+            text-align: center;
+            max-width: 640px;
+            margin: 0 auto 2rem;
+            line-height: 1.7;
+        }
+        .description a {
+            color: var(--rust);
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        .description a:hover {
+            color: var(--brown);
+        }
+
+        /* Mockup Grid */
+        .mockup-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .mockup-card {
+            background: var(--warm-white);
+            border: 1px solid rgba(44, 36, 22, 0.08);
+            border-radius: 12px;
+            overflow: hidden;
+            text-decoration: none;
+            color: var(--brown);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .mockup-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(44, 36, 22, 0.1);
+        }
+
+        .mockup-preview {
+            height: 180px;
+            background: #050508;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mockup-preview .screen-hint {
+            width: 80px;
+            height: 160px;
+            border-radius: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+            gap: 6px;
+        }
+
+        .screen-hint .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+        .screen-hint .bar {
+            height: 4px;
+            border-radius: 2px;
+        }
+        .screen-hint .card-block {
+            width: 56px;
+            height: 14px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.06);
+            margin-top: 2px;
+        }
+
+        .mockup-info {
+            padding: 1rem 1.25rem;
+        }
+        .mockup-name {
+            font-family: var(--display);
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        .mockup-desc {
+            font-size: 0.9rem;
+            color: var(--brown-mid);
+            line-height: 1.5;
+        }
+        .mockup-cta {
+            font-family: var(--display);
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--rust);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-top: 0.5rem;
+            display: inline-block;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem 0 3rem;
+            font-family: var(--display);
+            font-size: 0.8rem;
+            color: var(--brown-light);
+        }
+        footer a {
+            color: var(--rust);
+            text-decoration: none;
+        }
+        footer a:hover { text-decoration: underline; }
+
+        @media (max-width: 600px) {
+            .page-title { font-size: 1.6rem; }
+            .mockup-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <a href="/" class="back-link">&larr; Back to Nick's Records</a>
+            <h1 class="page-title">Arise Fitness Tracker</h1>
+            <p class="page-subtitle">A Solo Leveling-inspired iOS fitness app</p>
+            <div class="tech-tags">
+                <span class="tech-tag">SwiftUI</span>
+                <span class="tech-tag">FastAPI</span>
+                <span class="tech-tag">Claude Vision AI</span>
+                <span class="tech-tag">PostgreSQL</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="divider">
+                <span class="divider-line"></span>
+                <span class="divider-icon">&#9670;</span>
+                <span class="divider-line"></span>
+            </div>
+
+            <p class="description">
+                Interactive mockups of each screen in the app, rendered as static HTML with the
+                Edge Flow design system. Tap any card to view the full mockup in an iPhone 15 Pro frame.
+                <br><br>
+                <a href="https://github.com/nchua/projects/tree/main/fitness-app">View source on GitHub &rarr;</a>
+            </p>
+
+            <div class="mockup-grid">
+                <a href="home.html" class="mockup-card">
+                    <div class="mockup-preview">
+                        <div class="screen-hint">
+                            <div class="dot" style="background: #00D4FF;"></div>
+                            <div class="bar" style="width: 48px; background: linear-gradient(90deg, #1A4A5E, #00D4FF);"></div>
+                            <div class="card-block"></div>
+                            <div class="card-block"></div>
+                            <div class="card-block"></div>
+                        </div>
+                    </div>
+                    <div class="mockup-info">
+                        <div class="mockup-name">Home</div>
+                        <div class="mockup-desc">Hunter status, XP bar, daily quests, power levels, recovery</div>
+                        <span class="mockup-cta">View Mockup &rarr;</span>
+                    </div>
+                </a>
+
+                <a href="quests.html" class="mockup-card">
+                    <div class="mockup-preview">
+                        <div class="screen-hint">
+                            <div class="dot" style="background: #00D4FF;"></div>
+                            <div class="bar" style="width: 48px; background: #00FF88;"></div>
+                            <div class="card-block"></div>
+                            <div class="card-block"></div>
+                            <div class="card-block"></div>
+                        </div>
+                    </div>
+                    <div class="mockup-info">
+                        <div class="mockup-name">Quests</div>
+                        <div class="mockup-desc">Quest center with calendar, workout archive, and activity log</div>
+                        <span class="mockup-cta">View Mockup &rarr;</span>
+                    </div>
+                </a>
+
+                <a href="log.html" class="mockup-card">
+                    <div class="mockup-preview">
+                        <div class="screen-hint">
+                            <div class="dot" style="background: #00FF88;"></div>
+                            <div class="bar" style="width: 48px; background: #00D4FF;"></div>
+                            <div class="card-block"></div>
+                            <div class="card-block"></div>
+                            <div class="card-block"></div>
+                        </div>
+                    </div>
+                    <div class="mockup-info">
+                        <div class="mockup-name">Workout Log</div>
+                        <div class="mockup-desc">Active session with timer, exercise sets, RPE tracking, notes</div>
+                        <span class="mockup-cta">View Mockup &rarr;</span>
+                    </div>
+                </a>
+
+                <a href="stats.html" class="mockup-card">
+                    <div class="mockup-preview">
+                        <div class="screen-hint">
+                            <div class="dot" style="background: #3B82F6;"></div>
+                            <div class="bar" style="width: 48px; background: linear-gradient(90deg, #3B82F6, #8B5CF6);"></div>
+                            <div class="card-block"></div>
+                            <div class="card-block"></div>
+                            <div class="card-block"></div>
+                        </div>
+                    </div>
+                    <div class="mockup-info">
+                        <div class="mockup-name">Stats</div>
+                        <div class="mockup-desc">e1RM charts, strength percentiles, trend analysis for 20+ exercises</div>
+                        <span class="mockup-cta">View Mockup &rarr;</span>
+                    </div>
+                </a>
+
+                <a href="history.html" class="mockup-card">
+                    <div class="mockup-preview">
+                        <div class="screen-hint">
+                            <div class="dot" style="background: #00D4FF;"></div>
+                            <div class="bar" style="width: 48px; background: #00FF88;"></div>
+                            <div class="card-block"></div>
+                            <div class="card-block"></div>
+                            <div class="card-block"></div>
+                        </div>
+                    </div>
+                    <div class="mockup-info">
+                        <div class="mockup-name">History</div>
+                        <div class="mockup-desc">Calendar view with workout dots, exercise breakdowns, WHOOP activities</div>
+                        <span class="mockup-cta">View Mockup &rarr;</span>
+                    </div>
+                </a>
+
+                <a href="dungeons.html" class="mockup-card">
+                    <div class="mockup-preview">
+                        <div class="screen-hint">
+                            <div class="dot" style="background: #FFD700;"></div>
+                            <div class="bar" style="width: 48px; background: linear-gradient(90deg, #FFD700, #FFA500);"></div>
+                            <div class="card-block"></div>
+                            <div class="card-block"></div>
+                            <div class="card-block"></div>
+                        </div>
+                    </div>
+                    <div class="mockup-info">
+                        <div class="mockup-name">Dungeons</div>
+                        <div class="mockup-desc">Gate board with multi-day challenges, objectives, and ranked rewards</div>
+                        <span class="mockup-cta">View Mockup &rarr;</span>
+                    </div>
+                </a>
+
+                <a href="friends.html" class="mockup-card">
+                    <div class="mockup-preview">
+                        <div class="screen-hint">
+                            <div class="dot" style="background: #00D4FF;"></div>
+                            <div class="bar" style="width: 48px; background: #9B4A9B;"></div>
+                            <div class="card-block"></div>
+                            <div class="card-block"></div>
+                            <div class="card-block"></div>
+                        </div>
+                    </div>
+                    <div class="mockup-info">
+                        <div class="mockup-name">Friends</div>
+                        <div class="mockup-desc">Hunter network with rank badges, streaks, and friend requests</div>
+                        <span class="mockup-cta">View Mockup &rarr;</span>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            Built by <a href="/">Nick Chua</a> &middot; <a href="https://github.com/nchua/projects/tree/main/fitness-app">GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>

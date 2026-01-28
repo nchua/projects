@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workout Log - Active Quest</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #111;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .phone-bezel {
+    width: 430px;
+    background: #1a1a1a;
+    border-radius: 50px;
+    padding: 14px;
+    position: relative;
+    box-shadow: 0 0 0 2px #333, 0 20px 60px rgba(0,0,0,0.6);
+  }
+
+  .screen {
+    width: 390px;
+    height: 844px;
+    background: #050508;
+    border-radius: 42px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+    scrollbar-width: none;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  .dynamic-island {
+    width: 126px;
+    height: 37px;
+    background: #000;
+    border-radius: 20px;
+    position: sticky;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+  }
+
+  .home-indicator {
+    width: 134px;
+    height: 5px;
+    background: #606070;
+    border-radius: 3px;
+    position: sticky;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+  }
+
+  .content-wrap {
+    padding-bottom: 90px;
+  }
+
+  /* Mono font helper */
+  .mono { font-family: 'SF Mono', 'Menlo', 'Courier New', monospace; }
+
+  /* Top Bar */
+  .top-bar {
+    background: #141520;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: -8px;
+  }
+  .top-bar .close-btn {
+    font-size: 20px;
+    color: #606070;
+    cursor: pointer;
+    width: 32px;
+    text-align: center;
+    line-height: 1;
+  }
+  .top-bar .status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .top-bar .status .dot {
+    width: 8px;
+    height: 8px;
+    background: #00FF88;
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(0,255,136,0.6);
+  }
+  .top-bar .status span {
+    font-size: 12px;
+    color: #00FF88;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-family: 'SF Mono', 'Menlo', monospace;
+    font-weight: 600;
+  }
+  .top-bar .menu-btn {
+    font-size: 20px;
+    color: #606070;
+    cursor: pointer;
+    width: 32px;
+    text-align: center;
+    letter-spacing: 2px;
+  }
+
+  /* Timer Card */
+  .timer-card {
+    margin: 16px;
+    background: #0f1018;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.06);
+    padding: 20px;
+    text-align: center;
+  }
+  .timer-card .time {
+    font-size: 36px;
+    font-family: 'SF Mono', 'Menlo', monospace;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 3px;
+  }
+  .timer-card .elapsed {
+    font-size: 10px;
+    font-family: 'SF Mono', 'Menlo', monospace;
+    color: #606070;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-top: 4px;
+  }
+  .timer-card .pause-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid #00D4FF;
+    background: transparent;
+    color: #00D4FF;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+  }
+  .timer-card .pause-btn:hover {
+    background: rgba(0,212,255,0.1);
+  }
+
+  /* Date Row */
+  .date-row {
+    padding: 8px 16px;
+    font-size: 13px;
+    color: #A0A0B0;
+  }
+
+  /* Exercise Card */
+  .exercise-card {
+    margin: 0 16px 12px;
+    background: #0f1018;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.06);
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .exercise-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+  }
+  .exercise-card.accent-blue::before { background: #3B82F6; }
+  .exercise-card.accent-green::before { background: #22C55E; }
+  .exercise-card.accent-purple::before { background: #A855F7; }
+
+  .exercise-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .exercise-header .name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .exercise-header .set-count {
+    font-size: 12px;
+    font-family: 'SF Mono', 'Menlo', monospace;
+    color: #00D4FF;
+  }
+  .exercise-header .set-count.muted {
+    color: #606070;
+  }
+  .exercise-header .menu {
+    font-size: 16px;
+    color: #606070;
+    cursor: pointer;
+    padding: 0 4px;
+    letter-spacing: 1px;
+  }
+  .exercise-subtitle {
+    font-size: 11px;
+    font-style: italic;
+    color: #606070;
+    margin-top: 2px;
+  }
+
+  /* Set Table */
+  .set-table {
+    margin-top: 12px;
+    width: 100%;
+  }
+  .set-table .table-header {
+    display: grid;
+    grid-template-columns: 40px 1fr 1fr 1fr;
+    gap: 8px;
+    padding-bottom: 8px;
+  }
+  .set-table .table-header span {
+    font-size: 10px;
+    font-family: 'SF Mono', 'Menlo', monospace;
+    color: #606070;
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+  .set-row {
+    display: grid;
+    grid-template-columns: 40px 1fr 1fr 1fr;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .set-row:last-child { border-bottom: none; }
+
+  .set-row .set-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .set-row .check {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(0,212,255,0.15);
+    border: 1.5px solid #00D4FF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: #00D4FF;
+  }
+  .set-row .num-muted {
+    font-size: 13px;
+    color: #606070;
+    font-family: 'SF Mono', 'Menlo', monospace;
+  }
+
+  .set-row .val {
+    font-size: 13px;
+    color: #fff;
+    text-align: center;
+  }
+  .set-row .val.muted {
+    color: #606070;
+  }
+  .set-row .input-field {
+    background: #1a1b28;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 8px;
+    text-align: center;
+    font-size: 13px;
+    color: #A0A0B0;
+    font-family: inherit;
+    width: 100%;
+    outline: none;
+  }
+
+  .completed-row .val {
+    opacity: 0.85;
+  }
+
+  /* Add Exercise Button */
+  .add-exercise-btn {
+    margin: 16px auto;
+    display: block;
+    background: transparent;
+    border: 1px dashed #00D4FF;
+    border-radius: 999px;
+    color: #00D4FF;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px 24px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .add-exercise-btn:hover {
+    background: rgba(0,212,255,0.08);
+  }
+
+  /* Session RPE */
+  .session-rpe {
+    margin: 16px;
+  }
+  .session-rpe .label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .rpe-row {
+    display: flex;
+    gap: 8px;
+  }
+  .rpe-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    border: none;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'SF Mono', 'Menlo', monospace;
+  }
+  .rpe-btn.inactive {
+    background: #0f1018;
+    color: #606070;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .rpe-btn.active {
+    background: #00D4FF;
+    color: #050508;
+    box-shadow: 0 0 12px rgba(0,212,255,0.3);
+  }
+
+  /* Notes */
+  .notes-section {
+    margin: 16px;
+  }
+  .notes-section .label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .notes-section textarea {
+    width: 100%;
+    background: #1a1b28;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 13px;
+    color: #A0A0B0;
+    font-family: inherit;
+    height: 60px;
+    resize: none;
+    outline: none;
+  }
+
+  /* Complete Button */
+  .complete-btn {
+    margin: 16px;
+    width: calc(100% - 32px);
+    background: linear-gradient(135deg, #00D4FF, #0099CC);
+    border: none;
+    border-radius: 999px;
+    padding: 16px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 20px rgba(0,212,255,0.35);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .complete-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 28px rgba(0,212,255,0.45);
+  }
+  .complete-btn:active {
+    transform: translateY(0);
+  }
+
+  /* Bottom Tab Bar */
+  .tab-bar {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #0f1018;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    padding: 8px 0 24px;
+    z-index: 50;
+  }
+  .tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    padding-top: 4px;
+  }
+  .tab-item .tab-icon {
+    font-size: 20px;
+    color: #606070;
+  }
+  .tab-item .tab-label {
+    font-size: 10px;
+    color: #606070;
+  }
+  .tab-item.active .tab-icon {
+    color: #00D4FF;
+    font-size: 26px;
+  }
+  .tab-item.active .tab-label {
+    color: #00D4FF;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<div class="phone-bezel">
+  <div class="screen">
+    <div class="dynamic-island"></div>
+
+    <div class="content-wrap">
+
+      <!-- Top Bar -->
+      <div class="top-bar">
+        <div class="close-btn">&times;</div>
+        <div class="status">
+          <div class="dot"></div>
+          <span>Quest Active</span>
+        </div>
+        <div class="menu-btn">&#8942;</div>
+      </div>
+
+      <!-- Timer Card -->
+      <div class="timer-card">
+        <div class="time mono">00:47:23</div>
+        <div class="elapsed">Elapsed</div>
+        <button class="pause-btn">&#9208;</button>
+      </div>
+
+      <!-- Date Row -->
+      <div class="date-row">&#128197; Mon, Jan 27, 2026</div>
+
+      <!-- Exercise 1: Bench Press -->
+      <div class="exercise-card accent-blue">
+        <div class="exercise-header">
+          <span class="name">Bench Press</span>
+          <span class="set-count mono">3/4</span>
+          <span class="menu">&ctdot;</span>
+        </div>
+        <div class="exercise-subtitle">The Crushing Force</div>
+        <div class="set-table">
+          <div class="table-header">
+            <span>Set</span>
+            <span>Weight</span>
+            <span>Reps</span>
+            <span>RPE</span>
+          </div>
+          <div class="set-row completed-row">
+            <div class="set-num"><div class="check">&#10003;</div></div>
+            <div class="val">185 lb</div>
+            <div class="val">8</div>
+            <div class="val">7</div>
+          </div>
+          <div class="set-row completed-row">
+            <div class="set-num"><div class="check">&#10003;</div></div>
+            <div class="val">195 lb</div>
+            <div class="val">6</div>
+            <div class="val">8</div>
+          </div>
+          <div class="set-row completed-row">
+            <div class="set-num"><div class="check">&#10003;</div></div>
+            <div class="val">195 lb</div>
+            <div class="val">5</div>
+            <div class="val">9</div>
+          </div>
+          <div class="set-row">
+            <div class="set-num"><span class="num-muted">4</span></div>
+            <div class="val"><input class="input-field" type="text" placeholder="___"></div>
+            <div class="val"><input class="input-field" type="text" placeholder="___"></div>
+            <div class="val muted">&mdash;</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Exercise 2: Incline Dumbbell Press -->
+      <div class="exercise-card accent-green">
+        <div class="exercise-header">
+          <span class="name">Incline Dumbbell Press</span>
+          <span class="set-count mono">2/3</span>
+          <span class="menu">&ctdot;</span>
+        </div>
+        <div class="exercise-subtitle">Ascending Strike</div>
+        <div class="set-table">
+          <div class="table-header">
+            <span>Set</span>
+            <span>Weight</span>
+            <span>Reps</span>
+            <span>RPE</span>
+          </div>
+          <div class="set-row completed-row">
+            <div class="set-num"><div class="check">&#10003;</div></div>
+            <div class="val">65 lb</div>
+            <div class="val">10</div>
+            <div class="val">7</div>
+          </div>
+          <div class="set-row completed-row">
+            <div class="set-num"><div class="check">&#10003;</div></div>
+            <div class="val">70 lb</div>
+            <div class="val">8</div>
+            <div class="val">8</div>
+          </div>
+          <div class="set-row">
+            <div class="set-num"><span class="num-muted">3</span></div>
+            <div class="val"><input class="input-field" type="text" placeholder="___"></div>
+            <div class="val"><input class="input-field" type="text" placeholder="___"></div>
+            <div class="val muted">&mdash;</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Exercise 3: Cable Fly -->
+      <div class="exercise-card accent-purple">
+        <div class="exercise-header">
+          <span class="name">Cable Fly</span>
+          <span class="set-count muted mono">0/3</span>
+          <span class="menu">&ctdot;</span>
+        </div>
+        <div class="exercise-subtitle">Thread of Power</div>
+        <div class="set-table">
+          <div class="table-header">
+            <span>Set</span>
+            <span>Weight</span>
+            <span>Reps</span>
+            <span>RPE</span>
+          </div>
+          <div class="set-row">
+            <div class="set-num"><span class="num-muted">1</span></div>
+            <div class="val"><input class="input-field" type="text" placeholder="___"></div>
+            <div class="val"><input class="input-field" type="text" placeholder="___"></div>
+            <div class="val muted">&mdash;</div>
+          </div>
+          <div class="set-row">
+            <div class="set-num"><span class="num-muted">2</span></div>
+            <div class="val"><input class="input-field" type="text" placeholder="___"></div>
+            <div class="val"><input class="input-field" type="text" placeholder="___"></div>
+            <div class="val muted">&mdash;</div>
+          </div>
+          <div class="set-row">
+            <div class="set-num"><span class="num-muted">3</span></div>
+            <div class="val"><input class="input-field" type="text" placeholder="___"></div>
+            <div class="val"><input class="input-field" type="text" placeholder="___"></div>
+            <div class="val muted">&mdash;</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add Exercise Button -->
+      <button class="add-exercise-btn">+ Add Exercise</button>
+
+      <!-- Session RPE -->
+      <div class="session-rpe">
+        <div class="label">Session RPE</div>
+        <div class="rpe-row">
+          <button class="rpe-btn inactive mono">6</button>
+          <button class="rpe-btn inactive mono">7</button>
+          <button class="rpe-btn active mono">8</button>
+          <button class="rpe-btn inactive mono">9</button>
+          <button class="rpe-btn inactive mono">10</button>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="notes-section">
+        <div class="label">Hunter Notes</div>
+        <textarea readonly>Felt strong on bench today. Going for PR next week.</textarea>
+      </div>
+
+      <!-- Complete Button -->
+      <button class="complete-btn">COMPLETE QUEST</button>
+
+    </div><!-- /content-wrap -->
+
+    <!-- Bottom Tab Bar -->
+    <div class="tab-bar">
+      <div class="tab-item">
+        <div class="tab-icon">&#9750;</div>
+        <div class="tab-label">Home</div>
+      </div>
+      <div class="tab-item">
+        <div class="tab-icon">&#9776;</div>
+        <div class="tab-label">History</div>
+      </div>
+      <div class="tab-item active">
+        <div class="tab-icon">&#8853;</div>
+        <div class="tab-label">Log</div>
+      </div>
+      <div class="tab-item">
+        <div class="tab-icon">&#9733;</div>
+        <div class="tab-label">Quests</div>
+      </div>
+      <div class="tab-item">
+        <div class="tab-icon">&#9881;</div>
+        <div class="tab-label">Profile</div>
+      </div>
+    </div>
+
+    <div class="home-indicator"></div>
+  </div>
+</div>
+
+</body>
+</html>
