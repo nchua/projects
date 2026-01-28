@@ -38,17 +38,17 @@ A gamified iOS fitness tracking app inspired by *Solo Leveling*, with a FastAPI 
 
 ## Screenshots
 
-Interactive HTML mockups of each screen (hosted via GitHub Pages):
+Interactive HTML mockups of each screen: **[View all mockups](https://nickchua.me/projects/fitness-app/)**
 
 | Screen | Description |
 |--------|-------------|
-| [Home](https://nchua.github.io/projects/fitness-app/mockups/home.html) | Hunter status, daily quests, power levels |
-| [Quests](https://nchua.github.io/projects/fitness-app/mockups/quests.html) | Quest center with calendar and archive |
-| [Workout Log](https://nchua.github.io/projects/fitness-app/mockups/log.html) | Active session with exercise tracking |
-| [Stats](https://nchua.github.io/projects/fitness-app/mockups/stats.html) | e1RM charts, percentiles, trends |
-| [History](https://nchua.github.io/projects/fitness-app/mockups/history.html) | Calendar view with workout details |
-| [Dungeons](https://nchua.github.io/projects/fitness-app/mockups/dungeons.html) | Gate board with objectives and rewards |
-| [Friends](https://nchua.github.io/projects/fitness-app/mockups/friends.html) | Hunter network with rank and streaks |
+| [Home](https://nickchua.me/projects/fitness-app/home.html) | Hunter status, daily quests, power levels |
+| [Quests](https://nickchua.me/projects/fitness-app/quests.html) | Quest center with calendar and archive |
+| [Workout Log](https://nickchua.me/projects/fitness-app/log.html) | Active session with exercise tracking |
+| [Stats](https://nickchua.me/projects/fitness-app/stats.html) | e1RM charts, percentiles, trends |
+| [History](https://nickchua.me/projects/fitness-app/history.html) | Calendar view with workout details |
+| [Dungeons](https://nickchua.me/projects/fitness-app/dungeons.html) | Gate board with objectives and rewards |
+| [Friends](https://nickchua.me/projects/fitness-app/friends.html) | Hunter network with rank and streaks |
 
 ## Tech Stack
 
