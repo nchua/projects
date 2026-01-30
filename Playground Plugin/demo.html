@@ -1198,8 +1198,14 @@ or
 ACTION: {"action": "setState", "key": "biometric", "value": true}
 
 Available actions:
-- applyPreset: preset can be "recommended", "maximum", or "convenience"
+- applyPreset: preset can be "recommended", "maximum", or "convenience" (or any custom preset that was added)
 - setState: key can be "accessibility" (values: "afterFirstUnlock", "whenUnlocked", "always"), "biometric" (true/false), "sync" (true/false), "migration" (true/false)
+- addPreset: Creates a NEW preset button in the UI. Requires "name" (display name), "id" (lowercase, no spaces), and "config" object with accessibility, biometric, sync, migration values
+
+Example of adding a custom preset:
+ACTION: {"action": "addPreset", "name": "Balanced", "id": "balanced", "config": {"accessibility": "afterFirstUnlock", "biometric": true, "sync": false, "migration": true}}
+
+Use addPreset when the user asks for a middle-ground option or custom configuration that doesn't match existing presets. After adding, you can also include an applyPreset action to apply it immediately.
 
 Only suggest actions when they make sense for the user's question. Keep responses focused and helpful.`;
 
@@ -1264,6 +1270,8 @@ Only suggest actions when they make sense for the user's question. Keep response
                             if (command.key === 'accessibility') {
                                 label = `→ Set accessibility to ${command.value}`;
                             }
+                        } else if (command.action === 'addPreset') {
+                            label = `+ Add "${command.name}" preset`;
                         }
                         actions.push({ label, command, primary: actions.length === 0 });
                     }
@@ -1344,6 +1352,9 @@ Only suggest actions when they make sense for the user's question. Keep response
                 case 'setState':
                     updateState(command.key, command.value, true);
                     break;
+                case 'addPreset':
+                    addNewPreset(command.id, command.name, command.config);
+                    break;
             }
 
             // Mark button as applied
@@ -1351,7 +1362,46 @@ Only suggest actions when they make sense for the user's question. Keep response
             button.textContent = '✓ Applied';
 
             // Add confirmation message
-            addMessage('claude', `<strong>Done!</strong> I've updated your configuration. The changes are reflected in the controls and code preview.`);
+            if (command.action === 'addPreset') {
+                addMessage('claude', `<strong>Done!</strong> Added the "${command.name}" preset. You can now click it anytime to apply these settings.`);
+            } else {
+                addMessage('claude', `<strong>Done!</strong> I've updated your configuration. The changes are reflected in the controls and code preview.`);
+            }
+        }
+
+        function addNewPreset(id, name, config) {
+            // Add to PRESETS object
+            PRESETS[id] = {
+                accessibility: config.accessibility || 'afterFirstUnlock',
+                biometric: config.biometric || false,
+                sync: config.sync || false,
+                migration: config.migration !== undefined ? config.migration : true
+            };
+
+            // Check if button already exists
+            if (document.querySelector(`.preset-btn[data-preset="${id}"]`)) {
+                // Just apply it if it exists
+                applyPreset(id, true);
+                return;
+            }
+
+            // Create new button element
+            const btn = document.createElement('button');
+            btn.className = 'preset-btn';
+            btn.dataset.preset = id;
+            btn.textContent = name;
+            btn.onclick = () => applyPreset(id);
+
+            // Add visual indicator that this is new
+            btn.style.borderColor = 'var(--claude-orange)';
+            btn.style.animation = 'stateFlash 1s ease';
+
+            // Add to the preset buttons container
+            const container = document.querySelector('.preset-buttons');
+            container.appendChild(btn);
+
+            // Apply the new preset
+            applyPreset(id, true);
         }
 
         function copyPrompt() {
