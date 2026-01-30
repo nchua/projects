@@ -419,3 +419,97 @@ Swift doesn't allow duplicate type names at the same scope level, even across di
 2. **Before creating new View structs**, search the codebase: `grep -r "struct YourStructName" ios/`
 3. **When copying/adapting UI components**, always rename them to avoid collisions
 4. **Naming convention**: `{DesignSystem}{DataType}{ComponentType}` (e.g., `EdgeFlowWorkoutRow`, `EdgeFlowQuestCard`)
+
+---
+
+## SwiftUI fullScreenCover State Management (CRITICAL)
+
+### Problem: Black Screen from Stale @State in fullScreenCover
+
+**Symptom**: After dismissing a fullScreenCover, the app shows an indefinite black screen requiring restart.
+
+**Root Cause**: SwiftUI view reuse with stale `@State` variables. When using `fullScreenCover(isPresented:)` with:
+1. Conditional content (`if index < array.count`)
+2. Views that have internal `@State` (e.g., `@State private var isDismissed = false`)
+
+SwiftUI may **reuse** the existing view instance instead of creating a new one when the condition changes but `isPresented` stays true. This causes:
+- `@State` variables retain their old values (e.g., `isDismissed = true` from previous dismissal)
+- The view appears but doesn't function correctly
+- Dismiss callbacks never fire, leaving the cover stuck
+
+### The Pattern That Causes Black Screens
+
+```swift
+// DANGEROUS: No .id() modifier when iterating through items
+.fullScreenCover(isPresented: $showCelebration) {
+    if currentIndex < items.count {
+        CelebrationView(item: items[currentIndex], onDismiss: { handleDismiss() })
+        // ❌ When currentIndex changes, SwiftUI may reuse this view with stale @State
+    } else {
+        Color.clear.onAppear { showCelebration = false }  // ❌ May not dismiss properly
+    }
+}
+```
+
+### The Fix: Force View Recreation with .id()
+
+```swift
+// SAFE: .id() forces new view instance when index changes
+.fullScreenCover(isPresented: $showCelebration) {
+    if currentIndex < items.count {
+        CelebrationView(item: items[currentIndex], onDismiss: { handleDismiss() })
+            .id(currentIndex)  // ✅ Forces fresh view with reset @State
+    } else {
+        Color.clear
+            .onAppear {
+                // ✅ Full cleanup in fallback
+                items = []
+                currentIndex = 0
+                showCelebration = false
+            }
+    }
+}
+```
+
+### Rules for fullScreenCover Usage
+
+1. **Always use `.id()` when iterating through items** in a fullScreenCover
+   - Add `.id(currentIndex)` or `.id(item.id)` to force view recreation
+
+2. **Prepare next state BEFORE dismissing**
+   - Set up the next view's data before setting `isPresented = false`
+   - Prevents intermediate states where cover shows empty content
+
+3. **Fallback branches must clean up completely**
+   - Don't just set `isPresented = false`
+   - Reset all related state variables
+   - Transition to a valid app state (e.g., return to idle)
+
+4. **Guard against double dismissal in views with auto-dismiss**
+   - If a view has a timer that calls `onDismiss()`, add a guard:
+   ```swift
+   @State private var isDismissed = false
+
+   private func dismissWithAnimation() {
+       guard !isDismissed else { return }  // Prevent double-fire
+       isDismissed = true
+       onDismiss()
+   }
+   ```
+
+### Lint Script
+
+Run `ios/scripts/lint-fullscreen-cover.sh` to detect potential issues:
+```bash
+./ios/scripts/lint-fullscreen-cover.sh
+```
+
+This checks for:
+- `fullScreenCover(isPresented:` with conditional content but no `.id()` modifier
+- Views with `@State` that might become stale
+
+### Files Most at Risk
+
+- `LogView.swift` - Multiple celebration fullScreenCovers (PR, rank-up, XP)
+- Any view that cycles through multiple items in a fullScreenCover
+- Views with auto-dismiss timers
