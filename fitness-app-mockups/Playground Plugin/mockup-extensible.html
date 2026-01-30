@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Option D4: Extensible Framework - Claude Integration Pattern</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-deepest: #030306;
+            --bg-deep: #07070c;
+            --bg-surface: #0c0c14;
+            --bg-elevated: #14141e;
+            --bg-hover: #1c1c28;
+            --border: #1e1e2e;
+            --border-bright: #2e2e42;
+            --text-primary: #f4f4f9;
+            --text-secondary: #9898ad;
+            --text-muted: #505068;
+            --indigo: #6366f1;
+            --indigo-bright: #818cf8;
+            --claude-orange: #da7756;
+            --claude-orange-dim: #c4684a;
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --rose: #f43f5e;
+        }
+
+        body {
+            font-family: 'Sora', -apple-system, sans-serif;
+            background: var(--bg-deepest);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        /* Demo Mode Selector - Shows extensibility */
+        .demo-bar {
+            background: linear-gradient(90deg, var(--bg-surface) 0%, var(--bg-elevated) 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .demo-bar-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .demo-tabs {
+            display: flex;
+            gap: 4px;
+        }
+
+        .demo-tab {
+            padding: 6px 14px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-family: inherit;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .demo-tab:hover {
+            border-color: var(--border-bright);
+            color: var(--text-secondary);
+        }
+
+        .demo-tab.active {
+            background: var(--indigo);
+            border-color: var(--indigo);
+            color: white;
+        }
+
+        .demo-tab .icon {
+            font-size: 12px;
+        }
+
+        .demo-note {
+            margin-left: auto;
+            font-size: 10px;
+            color: var(--text-muted);
+            background: var(--bg-elevated);
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+
+        /* Main Layout */
+        .app-container {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            grid-template-rows: 1fr;
+            height: calc(100vh - 45px);
+        }
+
+        /* Main Content Area */
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-deep);
+            overflow: hidden;
+        }
+
+        .content-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .content-header h1 {
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .content-header p {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .content-body {
+            flex: 1;
+            padding: 20px 24px;
+            overflow-y: auto;
+        }
+
+        /* Prompt Footer */
+        .prompt-footer {
+            padding: 14px 24px;
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border);
+        }
+
+        .prompt-row {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .prompt-text {
+            flex: 1;
+            padding: 10px 14px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            max-height: 60px;
+            overflow-y: auto;
+        }
+
+        .copy-btn {
+            padding: 10px 16px;
+            background: var(--indigo);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        /* ================================================
+           CLAUDE ASSISTANT - Right Panel (Extensible)
+           ================================================ */
+
+        .claude-panel {
+            background: #0a0908;
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .claude-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .claude-avatar {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, var(--claude-orange) 0%, var(--claude-orange-dim) 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .claude-header-text h2 {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .claude-header-text p {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .claude-status {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            color: var(--emerald);
+        }
+
+        .claude-status::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: var(--emerald);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Context Awareness Section */
+        .claude-context {
+            padding: 12px 20px;
+            background: rgba(218, 119, 86, 0.05);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .context-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .context-header span {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--claude-orange);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .context-refresh {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .context-refresh:hover {
+            color: var(--claude-orange);
+        }
+
+        .context-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .context-item {
+            padding: 4px 10px;
+            background: rgba(218, 119, 86, 0.1);
+            border: 1px solid rgba(218, 119, 86, 0.2);
+            border-radius: 4px;
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        .context-item.primary {
+            background: rgba(218, 119, 86, 0.2);
+            color: var(--claude-orange);
+        }
+
+        /* Messages Area */
+        .claude-messages {
+            flex: 1;
+            padding: 16px 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message {
+            display: flex;
+            gap: 10px;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .message.assistant .message-avatar {
+            background: linear-gradient(135deg, var(--claude-orange) 0%, var(--claude-orange-dim) 100%);
+        }
+
+        .message.user .message-avatar {
+            background: var(--bg-hover);
+        }
+
+        .message-bubble {
+            max-width: 280px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .message.assistant .message-bubble {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            border-top-left-radius: 4px;
+        }
+
+        .message.user .message-bubble {
+            background: var(--indigo);
+            color: white;
+            border-top-right-radius: 4px;
+        }
+
+        .message-bubble strong {
+            color: var(--text-primary);
+        }
+
+        .message-bubble code {
+            padding: 2px 6px;
+            background: rgba(99, 102, 241, 0.15);
+            border-radius: 3px;
+            font-family: 'Source Code Pro', monospace;
+            font-size: 10px;
+            color: var(--indigo-bright);
+        }
+
+        /* Action Buttons in Messages */
+        .message-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            padding: 6px 10px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .action-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .action-btn.primary {
+            background: var(--indigo);
+            border-color: var(--indigo);
+            color: white;
+        }
+
+        /* Suggested Questions */
+        .suggestions {
+            padding: 12px 20px;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-surface);
+        }
+
+        .suggestions-label {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .suggestion-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .suggestion-chip {
+            padding: 6px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            color: var(--text-muted);
+            font-family: inherit;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .suggestion-chip:hover {
+            border-color: var(--claude-orange);
+            color: var(--claude-orange);
+        }
+
+        /* Input Area */
+        .claude-input {
+            padding: 16px 20px;
+            background: var(--bg-surface);
+        }
+
+        .input-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .claude-textarea {
+            flex: 1;
+            padding: 10px 14px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 12px;
+            resize: none;
+            min-height: 42px;
+        }
+
+        .claude-textarea:focus {
+            outline: none;
+            border-color: var(--claude-orange);
+        }
+
+        .claude-textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        .send-btn {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--claude-orange) 0%, var(--claude-orange-dim) 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover {
+            filter: brightness(1.1);
+        }
+
+        .input-hint {
+            margin-top: 8px;
+            font-size: 9px;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .input-hint kbd {
+            padding: 1px 5px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            font-family: 'Source Code Pro', monospace;
+        }
+
+        /* ================================================
+           PLAYGROUND CONTENT (Keychain Example)
+           ================================================ */
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .option-card {
+            background: var(--bg-surface);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .option-card:hover {
+            border-color: var(--border-bright);
+        }
+
+        .option-card.selected {
+            border-color: var(--indigo);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .option-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .option-card-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--bg-elevated);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .option-card.selected .option-card-icon {
+            background: var(--indigo);
+        }
+
+        .option-card-title h3 {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .option-card-title .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: rgba(16, 185, 129, 0.15);
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--emerald);
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .option-card-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            line-height: 1.6;
+        }
+
+        .option-card-features {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .feature-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+        }
+
+        .feature-row.positive { color: var(--emerald); }
+        .feature-row.negative { color: var(--rose); }
+        .feature-row.neutral { color: var(--text-muted); }
+
+        .feature-row::before {
+            font-size: 10px;
+        }
+
+        .feature-row.positive::before { content: '✓'; }
+        .feature-row.negative::before { content: '✗'; }
+        .feature-row.neutral::before { content: '○'; }
+
+        /* Code Preview */
+        .code-section {
+            margin-top: 24px;
+        }
+
+        .code-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .code-section-header h2 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .code-block {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .code-block-header {
+            padding: 10px 14px;
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border);
+            font-size: 10px;
+            font-family: 'Source Code Pro', monospace;
+            color: var(--text-muted);
+        }
+
+        .code-block-content {
+            padding: 14px;
+            font-family: 'Source Code Pro', monospace;
+            font-size: 11px;
+            line-height: 1.6;
+            white-space: pre;
+            color: var(--text-secondary);
+            overflow-x: auto;
+        }
+
+        .code-block-content .kw { color: #f472b6; }
+        .code-block-content .ty { color: #a78bfa; }
+        .code-block-content .st { color: #34d399; }
+        .code-block-content .cm { color: #404055; }
+    </style>
+</head>
+<body>
+    <!-- Demo Mode Bar - Shows extensibility -->
+    <div class="demo-bar">
+        <span class="demo-bar-label">Playground Type:</span>
+        <div class="demo-tabs">
+            <button class="demo-tab active" onclick="switchPlayground('keychain')">
+                <span class="icon">🔐</span> iOS Keychain
+            </button>
+            <button class="demo-tab" onclick="switchPlayground('api')">
+                <span class="icon">🔌</span> API Design
+            </button>
+            <button class="demo-tab" onclick="switchPlayground('sql')">
+                <span class="icon">🗄️</span> SQL Builder
+            </button>
+            <button class="demo-tab" onclick="switchPlayground('component')">
+                <span class="icon">🎨</span> Component
+            </button>
+        </div>
+        <span class="demo-note">Claude adapts its context to any playground type</span>
+    </div>
+
+    <div class="app-container">
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="content-header">
+                <div>
+                    <h1>🔐 iOS Keychain Configuration</h1>
+                    <p>Compare security configurations for your app</p>
+                </div>
+            </div>
+
+            <div class="content-body">
+                <div class="comparison-grid">
+                    <!-- Recommended -->
+                    <div class="option-card selected" onclick="selectOption('recommended')">
+                        <div class="option-card-header">
+                            <div class="option-card-icon">⚖️</div>
+                            <div class="option-card-title">
+                                <h3>Recommended</h3>
+                                <span class="badge">Best for most apps</span>
+                            </div>
+                        </div>
+                        <p class="option-card-desc">Balanced security and usability. Hardware encryption with background access support.</p>
+                        <div class="option-card-features">
+                            <div class="feature-row positive">Background sync works</div>
+                            <div class="feature-row positive">Hardware encrypted</div>
+                            <div class="feature-row neutral">No biometric prompt</div>
+                        </div>
+                    </div>
+
+                    <!-- Maximum Security -->
+                    <div class="option-card" onclick="selectOption('maximum')">
+                        <div class="option-card-header">
+                            <div class="option-card-icon">🛡️</div>
+                            <div class="option-card-title">
+                                <h3>Maximum Security</h3>
+                            </div>
+                        </div>
+                        <p class="option-card-desc">Biometric protection on every access. For banking or healthcare apps.</p>
+                        <div class="option-card-features">
+                            <div class="feature-row positive">Biometric required</div>
+                            <div class="feature-row positive">Device-only storage</div>
+                            <div class="feature-row negative">No background sync</div>
+                        </div>
+                    </div>
+
+                    <!-- Convenience -->
+                    <div class="option-card" onclick="selectOption('convenience')">
+                        <div class="option-card-header">
+                            <div class="option-card-icon">☁️</div>
+                            <div class="option-card-title">
+                                <h3>Convenience</h3>
+                            </div>
+                        </div>
+                        <p class="option-card-desc">iCloud sync enabled for seamless multi-device experience.</p>
+                        <div class="option-card-features">
+                            <div class="feature-row positive">Cross-device sync</div>
+                            <div class="feature-row positive">Background works</div>
+                            <div class="feature-row negative">Larger attack surface</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="code-section">
+                    <div class="code-section-header">
+                        <h2>Generated Code</h2>
+                    </div>
+                    <div class="code-block">
+                        <div class="code-block-header">KeychainService.swift</div>
+                        <div class="code-block-content"><span class="kw">import</span> <span class="ty">Foundation</span>
+<span class="kw">import</span> <span class="ty">Security</span>
+
+<span class="kw">final class</span> <span class="ty">KeychainService</span> {
+    <span class="kw">static let</span> shared = <span class="ty">KeychainService</span>()
+    <span class="cm">// Configuration: Recommended</span>
+    <span class="cm">// Accessibility: After First Unlock</span>
+}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="prompt-footer">
+                <div class="prompt-row">
+                    <div class="prompt-text">Create a KeychainService.swift for secure token storage with After First Unlock accessibility and migration from UserDefaults.</div>
+                    <button class="copy-btn">Copy to Clipboard</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Claude Assistant Panel -->
+        <div class="claude-panel">
+            <div class="claude-header">
+                <div class="claude-avatar">✨</div>
+                <div class="claude-header-text">
+                    <h2>Claude</h2>
+                    <p>Configuration assistant</p>
+                </div>
+                <div class="claude-status">Connected</div>
+            </div>
+
+            <!-- Dynamic Context -->
+            <div class="claude-context">
+                <div class="context-header">
+                    <span>Current Context</span>
+                    <button class="context-refresh" title="Refresh context">↻</button>
+                </div>
+                <div class="context-items" id="contextItems">
+                    <span class="context-item primary">iOS Keychain</span>
+                    <span class="context-item">Recommended preset</span>
+                    <span class="context-item">After First Unlock</span>
+                </div>
+            </div>
+
+            <div class="claude-messages" id="messages">
+                <div class="message assistant">
+                    <div class="message-avatar">✨</div>
+                    <div class="message-bubble">
+                        <strong>I'm watching your configuration.</strong>
+                        <br><br>
+                        You've selected <strong>Recommended</strong> - a great choice for fitness apps. This gives you:
+                        <br><br>
+                        • Hardware encryption via Secure Enclave
+                        <br>• Background refresh support
+                        <br>• No intrusive biometric prompts
+                        <br><br>
+                        Ask me anything about the trade-offs or alternatives.
+                        <div class="message-actions">
+                            <button class="action-btn" onclick="askQuestion('Why not Maximum Security?')">Why not Maximum?</button>
+                            <button class="action-btn" onclick="askQuestion('Is this App Store compliant?')">App Store safe?</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="suggestions">
+                <div class="suggestions-label">Suggested Questions</div>
+                <div class="suggestion-chips" id="suggestionChips">
+                    <button class="suggestion-chip" onclick="askQuestion('Security implications?')">Security implications?</button>
+                    <button class="suggestion-chip" onclick="askQuestion('Compare to UserDefaults')">vs UserDefaults</button>
+                    <button class="suggestion-chip" onclick="askQuestion('Migration strategy')">Migration help</button>
+                </div>
+            </div>
+
+            <div class="claude-input">
+                <div class="input-row">
+                    <textarea class="claude-textarea" id="inputField" placeholder="Ask about your configuration..."></textarea>
+                    <button class="send-btn" onclick="sendMessage()">→</button>
+                </div>
+                <div class="input-hint">
+                    Press <kbd>⌘</kbd><kbd>Enter</kbd> to send
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPlayground = 'keychain';
+        let selectedOption = 'recommended';
+
+        // Playground-specific context and suggestions
+        const playgroundConfigs = {
+            keychain: {
+                title: '🔐 iOS Keychain Configuration',
+                subtitle: 'Compare security configurations for your app',
+                context: ['iOS Keychain', 'Recommended preset', 'After First Unlock'],
+                suggestions: ['Security implications?', 'vs UserDefaults', 'Migration help'],
+                welcomeMessage: `<strong>I'm watching your configuration.</strong><br><br>You've selected <strong>Recommended</strong> - a great choice for fitness apps.`
+            },
+            api: {
+                title: '🔌 API Endpoint Design',
+                subtitle: 'Design RESTful endpoints for your service',
+                context: ['REST API', 'GET /users', 'JSON response'],
+                suggestions: ['Best practices?', 'Error handling', 'Authentication'],
+                welcomeMessage: `<strong>I can help you design your API.</strong><br><br>I see you're building a REST endpoint. Let me know about your use case!`
+            },
+            sql: {
+                title: '🗄️ SQL Query Builder',
+                subtitle: 'Build and optimize database queries',
+                context: ['PostgreSQL', 'SELECT query', '2 JOINs'],
+                suggestions: ['Optimize this?', 'Add index?', 'Explain plan'],
+                welcomeMessage: `<strong>I can analyze your SQL query.</strong><br><br>Paste your query or build one using the controls. I'll help optimize it.`
+            },
+            component: {
+                title: '🎨 Component Designer',
+                subtitle: 'Configure UI component properties',
+                context: ['React', 'Button component', 'Primary variant'],
+                suggestions: ['Accessibility?', 'Animation ideas', 'Responsive?'],
+                welcomeMessage: `<strong>Let's design your component!</strong><br><br>I can help with styling, accessibility, and best practices for your UI.`
+            }
+        };
+
+        function switchPlayground(type) {
+            currentPlayground = type;
+
+            // Update demo tabs
+            document.querySelectorAll('.demo-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.textContent.toLowerCase().includes(type) ||
+                    (type === 'keychain' && tab.textContent.includes('Keychain')) ||
+                    (type === 'api' && tab.textContent.includes('API')) ||
+                    (type === 'sql' && tab.textContent.includes('SQL')) ||
+                    (type === 'component' && tab.textContent.includes('Component')));
+            });
+
+            const config = playgroundConfigs[type];
+
+            // Update context
+            document.getElementById('contextItems').innerHTML = config.context
+                .map((item, i) => `<span class="context-item ${i === 0 ? 'primary' : ''}">${item}</span>`)
+                .join('');
+
+            // Update suggestions
+            document.getElementById('suggestionChips').innerHTML = config.suggestions
+                .map(s => `<button class="suggestion-chip" onclick="askQuestion('${s}')">${s}</button>`)
+                .join('');
+
+            // Add transition message
+            addMessage('assistant', `<strong>Switched to ${config.title.split(' ').slice(1).join(' ')}.</strong><br><br>${config.welcomeMessage}`);
+        }
+
+        function selectOption(option) {
+            selectedOption = option;
+            document.querySelectorAll('.option-card').forEach(card => {
+                card.classList.toggle('selected', card.textContent.toLowerCase().includes(option));
+            });
+
+            // Claude responds to selection
+            const responses = {
+                recommended: `Good choice! <strong>Recommended</strong> is ideal for your fitness app. It balances security with usability.`,
+                maximum: `<strong>Maximum Security</strong> selected. Note: This adds friction (Face ID on every read) and breaks background sync. Best for banking apps.
+                    <div class="message-actions">
+                        <button class="action-btn primary" onclick="selectOption('recommended')">Switch to Recommended</button>
+                    </div>`,
+                convenience: `<strong>Convenience</strong> enables iCloud sync. Tokens will be available across all user devices. This is secure (E2E encrypted) but increases attack surface.`
+            };
+
+            addMessage('assistant', responses[option]);
+        }
+
+        function addMessage(type, content) {
+            const container = document.getElementById('messages');
+            const msg = document.createElement('div');
+            msg.className = `message ${type}`;
+            msg.innerHTML = `
+                <div class="message-avatar">${type === 'assistant' ? '✨' : '👤'}</div>
+                <div class="message-bubble">${content}</div>
+            `;
+            container.appendChild(msg);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function askQuestion(q) {
+            addMessage('user', q);
+            setTimeout(() => {
+                addMessage('assistant', generateResponse(q));
+            }, 800);
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('inputField');
+            const text = input.value.trim();
+            if (!text) return;
+            addMessage('user', text);
+            input.value = '';
+            setTimeout(() => {
+                addMessage('assistant', generateResponse(text));
+            }, 800);
+        }
+
+        function generateResponse(q) {
+            const lq = q.toLowerCase();
+
+            if (lq.includes('security')) {
+                return `Your current <strong>${selectedOption}</strong> config provides:
+                    <br><br>• Hardware encryption (Secure Enclave)
+                    <br>• Protection against backup extraction
+                    <br>• Encrypted at rest
+                    <br><br>This is far more secure than <code>UserDefaults</code>.`;
+            }
+            if (lq.includes('userdefaults')) {
+                return `<strong>UserDefaults vs Keychain:</strong>
+                    <br><br><code>UserDefaults</code>: Plaintext plist, readable in backups
+                    <br><code>Keychain</code>: Hardware encrypted, Secure Enclave protected
+                    <br><br>The migration will move tokens without logging users out.`;
+            }
+            if (lq.includes('migration')) {
+                return `Your generated code includes automatic migration:
+                    <br><br>1. Check UserDefaults for existing tokens
+                    <br>2. Copy to Keychain (encrypted)
+                    <br>3. Delete plaintext copies
+                    <br><br>Existing users won't need to log in again.`;
+            }
+            if (lq.includes('maximum') || lq.includes('why not')) {
+                return `<strong>Maximum Security</strong> requires Face ID on every token read. For a fitness app:
+                    <br><br>• Users don't expect biometric prompts for workout data
+                    <br>• Background sync would break (notifications, widgets)
+                    <br>• The data isn't sensitive enough to warrant this friction
+                    <br><br>Reserve Maximum Security for banking or healthcare apps.`;
+            }
+            if (lq.includes('app store') || lq.includes('compliant')) {
+                return `Yes, this configuration is <strong>App Store compliant</strong>.
+                    <br><br>Apple encourages Keychain for sensitive data. Your current setup:
+                    <br>• Uses approved Security framework APIs
+                    <br>• Follows Apple's token storage guidelines
+                    <br>• Migrates from the insecure UserDefaults approach`;
+            }
+
+            return `I can help with that! Could you be more specific about what aspect of <strong>${selectedOption}</strong> configuration you'd like to understand?`;
+        }
+
+        // Enter to send
+        document.getElementById('inputField').addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

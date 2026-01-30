@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Option D2: Claude Modal - Ask Questions In Context</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-deepest: #030306;
+            --bg-deep: #07070c;
+            --bg-surface: #0c0c14;
+            --bg-elevated: #14141e;
+            --bg-hover: #1c1c28;
+            --border: #1e1e2e;
+            --border-bright: #2e2e42;
+            --text-primary: #f4f4f9;
+            --text-secondary: #9898ad;
+            --text-muted: #505068;
+            --indigo: #6366f1;
+            --indigo-bright: #818cf8;
+            --indigo-dim: #4f46e5;
+            --claude-orange: #da7756;
+            --claude-orange-dim: #c4684a;
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --rose: #f43f5e;
+        }
+
+        body {
+            font-family: 'Sora', -apple-system, sans-serif;
+            background: var(--bg-deepest);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 480px 1fr;
+            grid-template-rows: 1fr auto;
+            min-height: 100vh;
+        }
+
+        /* Comparison Panel - Same as Option D */
+        .comparison-panel {
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            padding: 24px;
+            overflow-y: auto;
+            grid-row: span 2;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 24px;
+        }
+
+        .panel-header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .panel-header p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* ASK CLAUDE BUTTON - Key new feature */
+        .ask-claude-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: linear-gradient(135deg, var(--claude-orange) 0%, var(--claude-orange-dim) 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 12px rgba(218, 119, 86, 0.3);
+        }
+
+        .ask-claude-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(218, 119, 86, 0.4);
+        }
+
+        .ask-claude-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Comparison Cards */
+        .comparison-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .comparison-card {
+            background: var(--bg-elevated);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .comparison-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--border);
+            border-radius: 12px 12px 0 0;
+        }
+
+        .comparison-card:hover {
+            border-color: var(--border-bright);
+        }
+
+        .comparison-card.selected {
+            border-color: var(--indigo);
+        }
+
+        .comparison-card.selected::before {
+            background: linear-gradient(90deg, var(--indigo) 0%, #8b5cf6 100%);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .card-title-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--bg-surface);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .card-title h3 {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .card-title .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: rgba(16, 185, 129, 0.15);
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--emerald);
+            text-transform: uppercase;
+        }
+
+        .card-check {
+            width: 22px;
+            height: 22px;
+            background: var(--bg-surface);
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: transparent;
+        }
+
+        .comparison-card.selected .card-check {
+            background: var(--indigo);
+            border-color: var(--indigo);
+            color: white;
+        }
+
+        .card-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 14px;
+        }
+
+        .card-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .feature-tag {
+            padding: 4px 10px;
+            background: var(--bg-surface);
+            border-radius: 5px;
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        .feature-tag.positive::before { content: '✓ '; color: var(--emerald); }
+        .feature-tag.negative::before { content: '✗ '; color: var(--rose); }
+
+        /* Card Ask Button - contextual */
+        .card-ask-btn {
+            margin-top: 12px;
+            padding: 8px 12px;
+            background: transparent;
+            border: 1px dashed var(--border);
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-family: inherit;
+            font-size: 11px;
+            cursor: pointer;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.15s ease;
+        }
+
+        .card-ask-btn:hover {
+            border-color: var(--claude-orange);
+            color: var(--claude-orange);
+            background: rgba(218, 119, 86, 0.05);
+        }
+
+        /* Preview Panel */
+        .preview {
+            background: var(--bg-deep);
+            padding: 24px;
+            overflow: auto;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .preview-header h2 {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .code-preview {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .code-header {
+            padding: 10px 14px;
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .code-filename {
+            font-size: 10px;
+            font-family: 'Source Code Pro', monospace;
+            color: var(--text-muted);
+        }
+
+        .code-content {
+            padding: 16px;
+            font-family: 'Source Code Pro', monospace;
+            font-size: 11px;
+            line-height: 1.7;
+            white-space: pre;
+            color: var(--text-secondary);
+            max-height: 300px;
+            overflow: auto;
+        }
+
+        .code-content .keyword { color: #f472b6; }
+        .code-content .type { color: #a78bfa; }
+        .code-content .string { color: #34d399; }
+        .code-content .comment { color: #3a3a50; }
+
+        /* Prompt Output */
+        .prompt-output {
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border);
+            padding: 16px 24px;
+        }
+
+        .prompt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .prompt-header h3 {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .copy-btn {
+            padding: 7px 14px;
+            background: var(--indigo);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .prompt-text {
+            padding: 12px 14px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* ================================================
+           CLAUDE MODAL - The key new component
+           ================================================ */
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(3, 3, 6, 0.9);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.visible {
+            display: flex;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .claude-modal {
+            width: 560px;
+            max-height: 80vh;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: modalSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes modalSlide {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            background: linear-gradient(135deg, rgba(218, 119, 86, 0.15) 0%, rgba(218, 119, 86, 0.05) 100%);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .modal-header-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--claude-orange) 0%, var(--claude-orange-dim) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-header-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
+        .modal-header-text h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .modal-header-text p {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .modal-close {
+            margin-left: auto;
+            width: 32px;
+            height: 32px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-muted);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        /* Context Section */
+        .modal-context {
+            padding: 16px 24px;
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .context-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .context-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .context-tag {
+            padding: 5px 10px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        .context-tag.active {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: rgba(99, 102, 241, 0.3);
+            color: var(--indigo-bright);
+        }
+
+        /* Quick Questions */
+        .modal-suggestions {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .suggestions-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .suggestion-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .suggestion-chip {
+            padding: 8px 14px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .suggestion-chip:hover {
+            border-color: var(--claude-orange);
+            color: var(--claude-orange);
+        }
+
+        /* Input Area */
+        .modal-input-area {
+            padding: 20px 24px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-textarea {
+            flex: 1;
+            min-height: 100px;
+            padding: 14px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 13px;
+            line-height: 1.6;
+            resize: none;
+        }
+
+        .modal-textarea:focus {
+            outline: none;
+            border-color: var(--claude-orange);
+        }
+
+        .modal-textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Modal Footer */
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-hint {
+            font-size: 11px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .modal-hint kbd {
+            padding: 2px 6px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-family: 'Source Code Pro', monospace;
+            font-size: 10px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .modal-btn-secondary {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .modal-btn-secondary:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .modal-btn-primary {
+            background: linear-gradient(135deg, var(--claude-orange) 0%, var(--claude-orange-dim) 100%);
+            border: none;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .modal-btn-primary:hover {
+            filter: brightness(1.1);
+        }
+
+        /* Response State */
+        .modal-response {
+            display: none;
+            padding: 20px 24px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .modal-response.visible {
+            display: block;
+        }
+
+        .response-content {
+            padding: 16px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 13px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+        }
+
+        .response-content strong {
+            color: var(--text-primary);
+        }
+
+        .response-content code {
+            padding: 2px 6px;
+            background: rgba(99, 102, 241, 0.15);
+            border-radius: 4px;
+            font-family: 'Source Code Pro', monospace;
+            font-size: 11px;
+            color: var(--indigo-bright);
+        }
+
+        .response-actions {
+            margin-top: 16px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .response-action-btn {
+            padding: 8px 14px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 11px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .response-action-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .response-action-btn.primary {
+            background: var(--indigo);
+            border-color: var(--indigo);
+            color: white;
+        }
+
+        /* Loading State */
+        .loading-dots {
+            display: inline-flex;
+            gap: 4px;
+        }
+
+        .loading-dots span {
+            width: 6px;
+            height: 6px;
+            background: var(--claude-orange);
+            border-radius: 50%;
+            animation: loadingDot 1.4s infinite ease-in-out both;
+        }
+
+        .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes loadingDot {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="comparison-panel">
+            <div class="panel-header">
+                <div>
+                    <h1>🔐 Keychain Service</h1>
+                    <p>Compare configurations</p>
+                </div>
+                <!-- ASK CLAUDE BUTTON -->
+                <button class="ask-claude-btn" onclick="openModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    Ask Claude
+                </button>
+            </div>
+
+            <div class="comparison-cards">
+                <!-- Recommended -->
+                <div class="comparison-card selected" data-preset="recommended" onclick="selectPreset('recommended')">
+                    <div class="card-header">
+                        <div class="card-title-row">
+                            <div class="card-icon">⚖️</div>
+                            <div class="card-title">
+                                <h3>Recommended</h3>
+                                <span class="badge">Best for most apps</span>
+                            </div>
+                        </div>
+                        <div class="card-check">✓</div>
+                    </div>
+                    <p class="card-desc">Balanced security and usability. Hardware encryption with background access.</p>
+                    <div class="card-features">
+                        <span class="feature-tag positive">Background sync</span>
+                        <span class="feature-tag positive">Hardware encryption</span>
+                        <span class="feature-tag positive">Migration</span>
+                    </div>
+                    <button class="card-ask-btn" onclick="askAboutPreset(event, 'recommended')">
+                        💬 Ask: "Why is this recommended for my app?"
+                    </button>
+                </div>
+
+                <!-- Maximum Security -->
+                <div class="comparison-card" data-preset="maximum" onclick="selectPreset('maximum')">
+                    <div class="card-header">
+                        <div class="card-title-row">
+                            <div class="card-icon">🛡️</div>
+                            <div class="card-title">
+                                <h3>Maximum Security</h3>
+                            </div>
+                        </div>
+                        <div class="card-check">✓</div>
+                    </div>
+                    <p class="card-desc">Biometric protection for every token access. For banking or healthcare apps.</p>
+                    <div class="card-features">
+                        <span class="feature-tag positive">Biometric required</span>
+                        <span class="feature-tag positive">Device-only</span>
+                        <span class="feature-tag negative">No background</span>
+                    </div>
+                    <button class="card-ask-btn" onclick="askAboutPreset(event, 'maximum')">
+                        💬 Ask: "When would I need this level of security?"
+                    </button>
+                </div>
+
+                <!-- Convenience -->
+                <div class="comparison-card" data-preset="convenience" onclick="selectPreset('convenience')">
+                    <div class="card-header">
+                        <div class="card-title-row">
+                            <div class="card-icon">☁️</div>
+                            <div class="card-title">
+                                <h3>Convenience</h3>
+                            </div>
+                        </div>
+                        <div class="card-check">✓</div>
+                    </div>
+                    <p class="card-desc">iCloud sync for seamless multi-device experience.</p>
+                    <div class="card-features">
+                        <span class="feature-tag positive">Cross-device</span>
+                        <span class="feature-tag negative">Larger attack surface</span>
+                    </div>
+                    <button class="card-ask-btn" onclick="askAboutPreset(event, 'convenience')">
+                        💬 Ask: "What are the security trade-offs?"
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview">
+            <div class="preview-header">
+                <h2>Generated Code</h2>
+            </div>
+            <div class="code-preview">
+                <div class="code-header">
+                    <span class="code-filename">KeychainService.swift</span>
+                </div>
+                <div class="code-content" id="codeOutput"><span class="keyword">import</span> <span class="type">Foundation</span>
+<span class="keyword">import</span> <span class="type">Security</span>
+
+<span class="keyword">final class</span> <span class="type">KeychainService</span> {
+    <span class="keyword">static let</span> shared = <span class="type">KeychainService</span>()
+
+    <span class="comment">// Recommended configuration</span>
+    <span class="comment">// - After First Unlock accessibility</span>
+    <span class="comment">// - No biometrics required</span>
+    <span class="comment">// - Migration from UserDefaults</span>
+}</div>
+            </div>
+        </div>
+
+        <div class="prompt-output">
+            <div class="prompt-header">
+                <h3>Generated Prompt</h3>
+                <button class="copy-btn">Copy to Clipboard</button>
+            </div>
+            <div class="prompt-text" id="promptOutput">Create a KeychainService.swift for secure token storage. Include UserDefaults migration.</div>
+        </div>
+    </div>
+
+    <!-- CLAUDE MODAL -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+        <div class="claude-modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-header-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                    </svg>
+                </div>
+                <div class="modal-header-text">
+                    <h2>Ask Claude</h2>
+                    <p>Get help understanding your configuration</p>
+                </div>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+
+            <!-- Context Awareness -->
+            <div class="modal-context">
+                <div class="context-label">Claude sees your current context</div>
+                <div class="context-tags">
+                    <span class="context-tag active">iOS Keychain</span>
+                    <span class="context-tag active">Recommended preset</span>
+                    <span class="context-tag">After First Unlock</span>
+                    <span class="context-tag">Migration enabled</span>
+                </div>
+            </div>
+
+            <!-- Quick Questions -->
+            <div class="modal-suggestions">
+                <div class="suggestions-label">Suggested Questions</div>
+                <div class="suggestion-chips">
+                    <button class="suggestion-chip" onclick="fillQuestion('What are the security implications of my current config?')">Security implications?</button>
+                    <button class="suggestion-chip" onclick="fillQuestion('Is this configuration right for a fitness app?')">Right for fitness app?</button>
+                    <button class="suggestion-chip" onclick="fillQuestion('How does this compare to UserDefaults?')">Compare to UserDefaults</button>
+                    <button class="suggestion-chip" onclick="fillQuestion('Will this work with background refresh?')">Background refresh?</button>
+                </div>
+            </div>
+
+            <!-- Input -->
+            <div class="modal-input-area" id="inputArea">
+                <textarea class="modal-textarea" id="questionInput" placeholder="Ask anything about your Keychain configuration..."></textarea>
+            </div>
+
+            <!-- Response (hidden initially) -->
+            <div class="modal-response" id="responseArea">
+                <div class="response-content" id="responseContent">
+                    <!-- Response will be inserted here -->
+                </div>
+                <div class="response-actions">
+                    <button class="response-action-btn" onclick="askFollowUp()">
+                        💬 Ask follow-up
+                    </button>
+                    <button class="response-action-btn" onclick="copyResponse()">
+                        📋 Copy response
+                    </button>
+                    <button class="response-action-btn primary" onclick="closeModal()">
+                        ✓ Done
+                    </button>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <div class="modal-hint">
+                    Press <kbd>⌘</kbd> + <kbd>Enter</kbd> to send
+                </div>
+                <div class="modal-actions">
+                    <button class="modal-btn modal-btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="modal-btn modal-btn-primary" onclick="sendQuestion()">
+                        Send to Claude
+                        <span>→</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedPreset = 'recommended';
+
+        function selectPreset(preset) {
+            selectedPreset = preset;
+            document.querySelectorAll('.comparison-card').forEach(card => {
+                card.classList.toggle('selected', card.dataset.preset === preset);
+            });
+        }
+
+        function openModal(question = '') {
+            document.getElementById('modalOverlay').classList.add('visible');
+            document.getElementById('questionInput').value = question;
+            document.getElementById('inputArea').style.display = 'flex';
+            document.getElementById('responseArea').classList.remove('visible');
+            document.getElementById('questionInput').focus();
+        }
+
+        function closeModal(e) {
+            if (e && e.target !== document.getElementById('modalOverlay')) return;
+            document.getElementById('modalOverlay').classList.remove('visible');
+        }
+
+        function fillQuestion(question) {
+            document.getElementById('questionInput').value = question;
+            document.getElementById('questionInput').focus();
+        }
+
+        function askAboutPreset(e, preset) {
+            e.stopPropagation();
+            const questions = {
+                recommended: "Why is the 'Recommended' preset best for my fitness app? What are the specific trade-offs?",
+                maximum: "When would I need 'Maximum Security'? My app handles workout data - is that sensitive enough?",
+                convenience: "What are the real-world risks of enabling iCloud sync for auth tokens?"
+            };
+            openModal(questions[preset]);
+        }
+
+        function sendQuestion() {
+            const question = document.getElementById('questionInput').value;
+            if (!question.trim()) return;
+
+            // Simulate response (in real implementation, this would call Claude)
+            document.getElementById('inputArea').style.display = 'none';
+
+            // Show loading state briefly
+            document.getElementById('responseArea').classList.add('visible');
+            document.getElementById('responseContent').innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <div class="loading-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <p style="margin-top: 12px; color: var(--text-muted); font-size: 12px;">Claude is thinking...</p>
+                </div>
+            `;
+
+            // Simulate response after delay
+            setTimeout(() => {
+                document.getElementById('responseContent').innerHTML = `
+                    <strong>Great question about the Recommended preset!</strong>
+                    <br><br>
+                    For a <strong>fitness app</strong>, the Recommended configuration is ideal because:
+                    <br><br>
+                    <strong>1. Background Access Works</strong><br>
+                    Your app can sync workout data in the background. With "When Unlocked" options, background refresh would fail.
+                    <br><br>
+                    <strong>2. No Unnecessary Friction</strong><br>
+                    Biometric auth on every API call would be overkill for workout logs. Users don't expect Face ID just to see their exercises.
+                    <br><br>
+                    <strong>3. Still Secure</strong><br>
+                    Tokens are encrypted by the Secure Enclave. An attacker would need physical device access AND to bypass iOS security.
+                    <br><br>
+                    <strong>When would you need Maximum Security?</strong><br>
+                    Only if your app handles: payment info, medical records, or enterprise data with compliance requirements.
+                    <br><br>
+                    <code>kSecAttrAccessibleAfterFirstUnlock</code> is the sweet spot for consumer apps.
+                `;
+            }, 1500);
+        }
+
+        function askFollowUp() {
+            document.getElementById('inputArea').style.display = 'flex';
+            document.getElementById('responseArea').classList.remove('visible');
+            document.getElementById('questionInput').value = '';
+            document.getElementById('questionInput').focus();
+        }
+
+        function copyResponse() {
+            const text = document.getElementById('responseContent').innerText;
+            navigator.clipboard.writeText(text);
+        }
+
+        // Keyboard shortcut
+        document.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                if (document.getElementById('modalOverlay').classList.contains('visible')) {
+                    sendQuestion();
+                }
+            }
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
