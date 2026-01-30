@@ -1261,42 +1261,78 @@ Only suggest actions when they make sense for the user's question. Keep response
         function parseClaudeResponse(text) {
             const actions = [];
 
-            // Extract ACTION: {...} lines
-            const actionRegex = /ACTION:\s*(\{[^}]+\})/g;
-            let match;
+            // Extract ACTION: {...} - handle nested JSON objects
+            const lines = text.split('\n');
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const actionIndex = line.indexOf('ACTION:');
+                if (actionIndex !== -1) {
+                    // Find the JSON starting after ACTION:
+                    const jsonStart = line.indexOf('{', actionIndex);
+                    if (jsonStart !== -1) {
+                        // Extract JSON by counting braces
+                        let jsonStr = '';
+                        let braceCount = 0;
+                        let inString = false;
+                        let escaped = false;
 
-            while ((match = actionRegex.exec(text)) !== null) {
-                try {
-                    const command = JSON.parse(match[1]);
-                    if (command.action) {
-                        let label = '';
-                        if (command.action === 'applyPreset') {
-                            label = `→ Apply ${command.preset} preset`;
-                        } else if (command.action === 'setState') {
-                            const displayValue = typeof command.value === 'boolean'
-                                ? (command.value ? 'enable' : 'disable')
-                                : command.value;
-                            label = `→ ${command.value ? 'Enable' : 'Disable'} ${command.key}`;
-                            if (command.key === 'accessibility') {
-                                label = `→ Set accessibility to ${command.value}`;
+                        // Start from jsonStart and continue through lines if needed
+                        let fullText = lines.slice(i).join('\n');
+                        let startPos = fullText.indexOf('{');
+
+                        for (let j = startPos; j < fullText.length; j++) {
+                            const char = fullText[j];
+                            jsonStr += char;
+
+                            if (escaped) {
+                                escaped = false;
+                                continue;
                             }
-                        } else if (command.action === 'addPreset') {
-                            label = `+ Add "${command.name}" preset`;
-                        } else if (command.action === 'removePreset') {
-                            label = `− Remove "${command.id}" preset`;
+                            if (char === '\\') {
+                                escaped = true;
+                                continue;
+                            }
+                            if (char === '"') {
+                                inString = !inString;
+                                continue;
+                            }
+                            if (!inString) {
+                                if (char === '{') braceCount++;
+                                if (char === '}') braceCount--;
+                                if (braceCount === 0) break;
+                            }
                         }
-                        actions.push({ label, command, primary: actions.length === 0 });
+
+                        try {
+                            const command = JSON.parse(jsonStr);
+                            if (command.action) {
+                                let label = '';
+                                if (command.action === 'applyPreset') {
+                                    label = `→ Apply ${command.preset} preset`;
+                                } else if (command.action === 'setState') {
+                                    label = `→ ${command.value ? 'Enable' : 'Disable'} ${command.key}`;
+                                    if (command.key === 'accessibility') {
+                                        label = `→ Set accessibility to ${command.value}`;
+                                    }
+                                } else if (command.action === 'addPreset') {
+                                    label = `+ Add "${command.name}" preset`;
+                                } else if (command.action === 'removePreset') {
+                                    label = `− Remove "${command.id}" preset`;
+                                }
+                                actions.push({ label, command, primary: actions.length === 0 });
+                            }
+                        } catch (e) {
+                            console.log('Failed to parse action JSON:', jsonStr, e);
+                        }
                     }
-                } catch (e) {
-                    // Invalid JSON, skip
                 }
             }
 
-            // Clean up the response text
-            let cleanText = text
-                .replace(/ACTION:\s*\{[^}]+\}/g, '')
-                .replace(/\n{3,}/g, '\n\n')
-                .trim();
+            // Clean up the response text - remove ACTION blocks (including nested JSON)
+            let cleanText = text;
+            // Remove ACTION: followed by any JSON object (handles nesting)
+            cleanText = cleanText.replace(/ACTION:\s*\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\}/g, '');
+            cleanText = cleanText.replace(/\n{3,}/g, '\n\n').trim();
 
             // Convert markdown to HTML
             cleanText = cleanText
