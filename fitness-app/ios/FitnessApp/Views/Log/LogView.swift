@@ -106,11 +106,18 @@ struct LogView: View {
                         currentIndex: currentPRIndex + 1,
                         totalCount: prQueue.count
                     )
+                    .id(currentPRIndex)  // Force new view instance when index changes to reset @State
                 } else {
-                    // Safety fallback: immediately dismiss if no PR to show (prevents black screen)
+                    // Safety fallback: return to idle instead of showing Color.clear
                     Color.clear
                         .onAppear {
+                            // Emergency cleanup - shouldn't normally reach here
+                            prQueue = []
+                            currentPRIndex = 0
                             showPRCelebration = false
+                            withAnimation(.smoothSpring) {
+                                isSessionActive = false
+                            }
                         }
                 }
             }
@@ -257,40 +264,47 @@ struct LogView: View {
     private func handlePRDismiss() {
         // Move to next PR or proceed to rank-up/XP view
         if currentPRIndex + 1 < prQueue.count {
-            // More PRs to show
+            // More PRs to show - increment index and let fullScreenCover re-render
+            // Keep showPRCelebration = true; the view will update with next PR
             currentPRIndex += 1
-            // Brief delay before showing next PR
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                showPRCelebration = true
-            }
         } else {
             // All PRs shown, check for rank change
-            showPRCelebration = false
             if let response = pendingXPResponse,
                response.rankChanged,
                let newRankStr = response.newRank {
-                // Show rank-up celebration
+                // PREPARE next celebration BEFORE dismissing PR
                 let newRank = HunterRank(rawValue: newRankStr) ?? .e
                 let previousRank = getPreviousRank(from: newRank)
                 let newLevel = response.newLevel ?? response.level
                 rankUpData = (previousRank, newRank, newLevel)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    showRankUpCelebration = true
-                }
+
+                // Reset PR queue
+                prQueue = []
+                currentPRIndex = 0
+
+                // THEN transition: dismiss PR and show rank-up simultaneously
+                showPRCelebration = false
+                showRankUpCelebration = true
             } else if let response = pendingXPResponse {
-                // No rank change, show XP reward directly
+                // PREPARE XP view BEFORE dismissing PR
+                // Reset PR queue
+                prQueue = []
+                currentPRIndex = 0
+
+                // THEN transition: dismiss PR and show XP simultaneously
+                showPRCelebration = false
                 viewModel.xpRewardResponse = response
                 pendingXPResponse = nil
             } else {
-                // FALLBACK: No pendingXPResponse - return to idle state to prevent black screen
+                // No pending response - clean up and return to idle
+                prQueue = []
+                currentPRIndex = 0
+                showPRCelebration = false
                 withAnimation(.smoothSpring) {
                     isSessionActive = false
                 }
                 viewModel.resetWorkout()
             }
-            // Reset PR queue
-            prQueue = []
-            currentPRIndex = 0
         }
     }
 
@@ -584,7 +598,7 @@ struct ActiveQuestView: View {
                     } else {
                         ForEach(viewModel.exercisesGroupedForDisplay) { item in
                             switch item {
-                            case .single(let exercise, let index):
+                            case .single(_, let index):
                                 ObjectiveCard(
                                     exercise: $viewModel.selectedExercises[index],
                                     onAddSet: { viewModel.addSet(to: index) },
