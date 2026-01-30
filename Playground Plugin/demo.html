@@ -89,9 +89,13 @@
 
         .app-container {
             display: grid;
-            grid-template-columns: 400px 1fr 380px;
+            grid-template-columns: 400px 1fr auto;
             grid-template-rows: 1fr auto;
             height: calc(100vh - 49px);
+        }
+
+        .app-container:has(.claude-panel:not(.collapsed)) {
+            grid-template-columns: 400px 1fr 380px;
         }
 
         /* Controls Panel */
@@ -303,6 +307,32 @@
             display: flex;
             flex-direction: column;
             grid-row: span 2;
+            transition: width 0.3s ease, min-width 0.3s ease;
+        }
+
+        .claude-panel.collapsed {
+            width: 48px;
+            min-width: 48px;
+            overflow: hidden;
+        }
+
+        .claude-panel.collapsed .claude-header {
+            flex-direction: column;
+            padding: 12px 8px;
+            gap: 8px;
+        }
+
+        .claude-panel.collapsed .claude-header-text,
+        .claude-panel.collapsed .connection-status,
+        .claude-panel.collapsed .api-key-section,
+        .claude-panel.collapsed .claude-context,
+        .claude-panel.collapsed .claude-messages,
+        .claude-panel.collapsed .claude-input {
+            display: none;
+        }
+
+        .claude-panel.collapsed .collapse-btn {
+            transform: rotate(180deg);
         }
 
         .claude-header {
@@ -312,6 +342,32 @@
             display: flex;
             align-items: center;
             gap: 12px;
+        }
+
+        .collapse-btn {
+            width: 28px;
+            height: 28px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .collapse-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .collapse-btn svg {
+            width: 14px;
+            height: 14px;
+            transition: transform 0.3s ease;
         }
 
         .claude-icon {
@@ -808,8 +864,13 @@
         </div>
 
         <!-- Claude Panel -->
-        <div class="claude-panel">
+        <div class="claude-panel" id="claudePanel">
             <div class="claude-header">
+                <button class="collapse-btn" onclick="toggleClaudePanel()" title="Collapse panel">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </button>
                 <div class="claude-icon">🤖</div>
                 <div class="claude-header-text">
                     <h3>Claude Assistant</h3>
@@ -1481,6 +1542,11 @@ Only suggest actions when they make sense for the user's question. Keep response
                 btn.style.animation = 'fadeOut 0.3s ease';
                 setTimeout(() => btn.remove(), 300);
             }
+        }
+
+        function toggleClaudePanel() {
+            const panel = document.getElementById('claudePanel');
+            panel.classList.toggle('collapsed');
         }
 
         function copyPrompt() {
