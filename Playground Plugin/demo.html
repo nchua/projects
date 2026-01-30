@@ -701,6 +701,11 @@
         .flash {
             animation: stateFlash 0.5s ease;
         }
+
+        @keyframes fadeOut {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(0.8); }
+        }
     </style>
 </head>
 <body>
@@ -1205,7 +1210,12 @@ Available actions:
 Example of adding a custom preset:
 ACTION: {"action": "addPreset", "name": "Balanced", "id": "balanced", "config": {"accessibility": "afterFirstUnlock", "biometric": true, "sync": false, "migration": true}}
 
-Use addPreset when the user asks for a middle-ground option or custom configuration that doesn't match existing presets. After adding, you can also include an applyPreset action to apply it immediately.
+- removePreset: Removes a preset button from the UI. Requires "id" of the preset to remove.
+
+Example of removing a preset:
+ACTION: {"action": "removePreset", "id": "balanced"}
+
+Use addPreset when the user asks for a middle-ground option or custom configuration. Use removePreset when the user wants to get rid of a preset they don't need. You can remove any preset including the default ones (recommended, maximum, convenience).
 
 Only suggest actions when they make sense for the user's question. Keep responses focused and helpful.`;
 
@@ -1272,6 +1282,8 @@ Only suggest actions when they make sense for the user's question. Keep response
                             }
                         } else if (command.action === 'addPreset') {
                             label = `+ Add "${command.name}" preset`;
+                        } else if (command.action === 'removePreset') {
+                            label = `− Remove "${command.id}" preset`;
                         }
                         actions.push({ label, command, primary: actions.length === 0 });
                     }
@@ -1355,6 +1367,9 @@ Only suggest actions when they make sense for the user's question. Keep response
                 case 'addPreset':
                     addNewPreset(command.id, command.name, command.config);
                     break;
+                case 'removePreset':
+                    removePreset(command.id);
+                    break;
             }
 
             // Mark button as applied
@@ -1364,6 +1379,8 @@ Only suggest actions when they make sense for the user's question. Keep response
             // Add confirmation message
             if (command.action === 'addPreset') {
                 addMessage('claude', `<strong>Done!</strong> Added the "${command.name}" preset. You can now click it anytime to apply these settings.`);
+            } else if (command.action === 'removePreset') {
+                addMessage('claude', `<strong>Done!</strong> Removed the "${command.id}" preset from your options.`);
             } else {
                 addMessage('claude', `<strong>Done!</strong> I've updated your configuration. The changes are reflected in the controls and code preview.`);
             }
@@ -1379,7 +1396,8 @@ Only suggest actions when they make sense for the user's question. Keep response
             };
 
             // Check if button already exists
-            if (document.querySelector(`.preset-btn[data-preset="${id}"]`)) {
+            const existingBtn = document.querySelector(`.preset-btn[data-preset="${id}"]`);
+            if (existingBtn) {
                 // Just apply it if it exists
                 applyPreset(id, true);
                 return;
@@ -1388,20 +1406,45 @@ Only suggest actions when they make sense for the user's question. Keep response
             // Create new button element
             const btn = document.createElement('button');
             btn.className = 'preset-btn';
-            btn.dataset.preset = id;
+            btn.setAttribute('data-preset', id);
             btn.textContent = name;
-            btn.onclick = () => applyPreset(id);
+            btn.addEventListener('click', function() {
+                applyPreset(id);
+            });
 
-            // Add visual indicator that this is new
-            btn.style.borderColor = 'var(--claude-orange)';
-            btn.style.animation = 'stateFlash 1s ease';
+            // Add visual indicator that this is new (orange border)
+            btn.style.borderColor = '#da7756';
+            btn.style.boxShadow = '0 0 10px rgba(218, 119, 86, 0.3)';
 
             // Add to the preset buttons container
             const container = document.querySelector('.preset-buttons');
-            container.appendChild(btn);
+            if (container) {
+                container.appendChild(btn);
+                // Trigger reflow and flash animation
+                btn.offsetHeight;
+                btn.classList.add('flash');
+            }
 
             // Apply the new preset
             applyPreset(id, true);
+        }
+
+        function removePreset(id) {
+            // Don't allow removing if it's the currently active preset
+            if (state.preset === id) {
+                // Switch to recommended first
+                applyPreset('recommended', true);
+            }
+
+            // Remove from PRESETS object
+            delete PRESETS[id];
+
+            // Remove the button from UI
+            const btn = document.querySelector(`.preset-btn[data-preset="${id}"]`);
+            if (btn) {
+                btn.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => btn.remove(), 300);
+            }
         }
 
         function copyPrompt() {
