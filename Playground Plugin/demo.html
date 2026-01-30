@@ -352,9 +352,82 @@
             animation: pulse 2s infinite;
         }
 
+        .status-dot.disconnected {
+            background: var(--rose);
+            animation: none;
+        }
+
+        .status-dot.connecting {
+            background: var(--amber);
+        }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
+        }
+
+        /* API Key Input */
+        .api-key-section {
+            padding: 12px 20px;
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .api-key-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .api-key-input {
+            flex: 1;
+            padding: 8px 12px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: 'Source Code Pro', monospace;
+            font-size: 11px;
+        }
+
+        .api-key-input:focus {
+            outline: none;
+            border-color: var(--claude-orange);
+        }
+
+        .api-key-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .api-key-btn {
+            padding: 8px 14px;
+            background: var(--claude-orange);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .api-key-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .api-key-status {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        .api-key-status.connected {
+            color: var(--emerald);
+        }
+
+        .api-key-status.error {
+            color: var(--rose);
         }
 
         /* Context Section */
@@ -552,6 +625,7 @@
             filter: brightness(1.1);
         }
 
+
         /* Prompt Output */
         .prompt-output {
             background: var(--bg-surface);
@@ -638,7 +712,7 @@
             </h1>
             <p>Demonstrating bidirectional communication: Claude can read state AND modify the playground</p>
         </div>
-        <a href="https://github.com/nickchua/playground-claude-demo" class="github-link" target="_blank">
+        <a href="https://github.com/nchua/projects/tree/main/Playground%20Plugin" class="github-link" target="_blank">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
             View on GitHub
         </a>
@@ -737,9 +811,18 @@
                     <p>Ask questions, get actionable responses</p>
                 </div>
                 <div class="connection-status">
-                    <div class="status-dot"></div>
-                    <span>Watching state</span>
+                    <div class="status-dot disconnected"></div>
+                    <span id="connectionText">Not connected</span>
                 </div>
+            </div>
+
+            <!-- API Key Section -->
+            <div class="api-key-section">
+                <div class="api-key-row">
+                    <input type="password" class="api-key-input" id="apiKeyInput" placeholder="sk-ant-... (your Anthropic API key)">
+                    <button class="api-key-btn" id="apiKeyBtn" onclick="connectApi()">Connect</button>
+                </div>
+                <div class="api-key-status" id="apiKeyStatus">Enter your API key to enable live Claude responses</div>
             </div>
 
             <div class="claude-context">
@@ -752,9 +835,11 @@
             <div class="claude-messages" id="messagesContainer">
                 <!-- Welcome message -->
                 <div class="message message-claude">
-                    <strong>Welcome!</strong> I can see your Keychain configuration in real-time. Ask me anything about security trade-offs, or I can suggest changes directly.
+                    <strong>Welcome!</strong> Enter your Anthropic API key above to enable live Claude responses.
                     <br><br>
-                    Try clicking a quick question below, or ask your own.
+                    Once connected, I'll be able to see your Keychain configuration and answer questions about security trade-offs, recommend changes, and even modify the playground directly.
+                    <br><br>
+                    <em style="color: var(--text-muted);">Get an API key at <a href="https://console.anthropic.com" target="_blank" style="color: var(--claude-orange);">console.anthropic.com</a></em>
                 </div>
             </div>
 
@@ -765,8 +850,8 @@
                     <button class="quick-q" onclick="askQuestion('Should I enable biometrics?')">Enable biometrics?</button>
                 </div>
                 <div class="input-row">
-                    <input type="text" class="message-input" id="messageInput" placeholder="Ask about your configuration..." onkeydown="if(event.key==='Enter')sendMessage()">
-                    <button class="send-btn" onclick="sendMessage()">Send</button>
+                    <input type="text" class="message-input" id="messageInput" placeholder="Ask anything about your Keychain configuration..." onkeydown="if(event.key==='Enter')sendMessage()">
+                    <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send</button>
                 </div>
             </div>
         </div>
@@ -993,62 +1078,71 @@
         }
 
         // ============================================
-        // CLAUDE INTEGRATION (Simulated)
+        // CLAUDE API INTEGRATION
         // ============================================
 
-        const CLAUDE_RESPONSES = {
-            'Is this secure enough for a fitness app?': {
-                text: `<strong>Yes, the Recommended preset is ideal for a fitness app.</strong>
-                <br><br>
-                Your workout data isn't regulated like healthcare (HIPAA) or financial data. The current config gives you:
-                <br><br>
-                • <strong>Hardware encryption</strong> via Secure Enclave<br>
-                • <strong>Background sync</strong> works (important for workout uploads)<br>
-                • <strong>No annoying prompts</strong> – Face ID on every API call would frustrate users
-                <br><br>
-                You'd only need Maximum Security if you added payment processing or handled PHI.`,
-                actions: []
-            },
-            'What are the trade-offs of my current config?': {
-                text: `<strong>Current trade-offs for "${state.preset}" preset:</strong>
-                <br><br>
-                ${state.preset === 'recommended' ?
-                    `✅ <strong>Pros:</strong> Background refresh works, no friction for users, hardware-encrypted
-                    <br>⚠️ <strong>Cons:</strong> If device is unlocked and compromised, token is accessible
-                    <br><br>
-                    This is the right balance for consumer apps. The "When Unlocked" option would break background sync.` :
-                state.preset === 'maximum' ?
-                    `✅ <strong>Pros:</strong> Token requires Face ID every access, maximum protection
-                    <br>⚠️ <strong>Cons:</strong> Background refresh won't work, users prompted constantly
-                    <br><br>
-                    Only use this for banking, healthcare, or enterprise compliance.` :
-                    `✅ <strong>Pros:</strong> Seamless cross-device experience, tokens sync automatically
-                    <br>⚠️ <strong>Cons:</strong> Larger attack surface (iCloud account compromise = token compromise)
-                    <br><br>
-                    Good for low-sensitivity apps where convenience matters most.`
-                }`,
-                actions: state.preset !== 'recommended' ? [
-                    { label: '→ Switch to Recommended', primary: true, command: { action: 'applyPreset', preset: 'recommended' } }
-                ] : []
-            },
-            'Should I enable biometrics?': {
-                text: `<strong>For a fitness app? Probably not.</strong>
-                <br><br>
-                Biometrics add friction without proportional security benefit for workout data. Your users would need Face ID to:
-                <br>• Log a workout<br>• Sync in the background<br>• View their history
-                <br><br>
-                That's annoying for "I did 3 sets of squats" data.
-                <br><br>
-                <strong>When biometrics make sense:</strong><br>
-                • Banking apps<br>
-                • Password managers<br>
-                • Healthcare with PHI<br>
-                • Enterprise apps with compliance requirements`,
-                actions: state.biometric ? [
-                    { label: '→ Disable biometrics', primary: true, command: { action: 'setState', key: 'biometric', value: false } }
-                ] : []
+        let apiKey = null;
+        let isConnected = false;
+
+        function connectApi() {
+            const input = document.getElementById('apiKeyInput');
+            const btn = document.getElementById('apiKeyBtn');
+            const status = document.getElementById('apiKeyStatus');
+            const statusDot = document.querySelector('.status-dot');
+
+            const key = input.value.trim();
+            if (!key) {
+                status.textContent = 'Please enter an API key';
+                status.className = 'api-key-status error';
+                return;
             }
-        };
+
+            // Test the API key with a simple request
+            btn.disabled = true;
+            btn.textContent = 'Testing...';
+            status.textContent = 'Verifying API key...';
+            statusDot.className = 'status-dot connecting';
+
+            fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': key,
+                    'anthropic-version': '2023-06-01',
+                    'anthropic-dangerous-direct-browser-access': 'true'
+                },
+                body: JSON.stringify({
+                    model: 'claude-sonnet-4-20250514',
+                    max_tokens: 50,
+                    messages: [{ role: 'user', content: 'Say "connected" and nothing else.' }]
+                })
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('Invalid API key');
+                return res.json();
+            })
+            .then(data => {
+                apiKey = key;
+                isConnected = true;
+                btn.textContent = 'Connected';
+                btn.disabled = true;
+                input.disabled = true;
+                status.textContent = 'Connected to Claude API';
+                status.className = 'api-key-status connected';
+                statusDot.className = 'status-dot';
+                document.getElementById('connectionText').textContent = 'Live';
+
+                // Update welcome message
+                addMessage('claude', `<strong>Connected to Claude!</strong> I can now see your Keychain configuration in real-time and answer any questions. Try asking something or click a quick question above.`);
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.textContent = 'Connect';
+                status.textContent = 'Invalid API key. Get one at console.anthropic.com';
+                status.className = 'api-key-status error';
+                statusDot.className = 'status-dot disconnected';
+            });
+        }
 
         function askQuestion(question) {
             document.getElementById('messageInput').value = question;
@@ -1064,29 +1158,136 @@
             addMessage('user', question);
             input.value = '';
 
-            // Show typing indicator
+            if (!isConnected) {
+                addMessage('claude', `<strong>Not connected.</strong> Please enter your Anthropic API key above to enable live responses.
+                <br><br>
+                Get an API key at <a href="https://console.anthropic.com" target="_blank" style="color: var(--claude-orange);">console.anthropic.com</a>`);
+                return;
+            }
+
+            // Call Claude API
+            callClaudeApi(question);
+        }
+
+        async function callClaudeApi(question) {
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = true;
+            sendBtn.textContent = '...';
+
             const typingId = addTypingIndicator();
 
-            // Simulate response delay
-            setTimeout(() => {
-                removeTypingIndicator(typingId);
+            const systemPrompt = `You are an expert iOS security consultant helping configure Keychain storage for a mobile app. The user is using an interactive playground to configure their KeychainService.
 
-                // Find matching response or use generic
-                let response = CLAUDE_RESPONSES[question];
-                if (!response) {
-                    response = {
-                        text: `I can see you're using the <strong>${state.preset}</strong> preset with ${state.biometric ? 'biometric protection' : 'no biometrics'} and ${state.sync ? 'iCloud sync' : 'local storage only'}.
-                        <br><br>
-                        Based on your current configuration, here's what I'd suggest considering for a typical consumer app.`,
-                        actions: [
-                            { label: '→ Apply recommended settings', primary: true, command: { action: 'applyPreset', preset: 'recommended' } },
-                            { label: 'Enable migration', command: { action: 'setState', key: 'migration', value: true } }
-                        ]
-                    };
+Current configuration state:
+${JSON.stringify(state, null, 2)}
+
+Available presets:
+- "recommended": Balanced security/usability (afterFirstUnlock, no biometrics, no sync, with migration)
+- "maximum": Highest security (whenUnlocked, biometrics required, no sync)
+- "convenience": Cross-device sync (afterFirstUnlock, no biometrics, iCloud sync enabled)
+
+When answering:
+1. Be concise and practical
+2. Reference their specific current settings
+3. If you recommend changes, include ACTION COMMANDS in this exact format on their own line:
+
+ACTION: {"action": "applyPreset", "preset": "recommended"}
+
+or
+
+ACTION: {"action": "setState", "key": "biometric", "value": true}
+
+Available actions:
+- applyPreset: preset can be "recommended", "maximum", or "convenience"
+- setState: key can be "accessibility" (values: "afterFirstUnlock", "whenUnlocked", "always"), "biometric" (true/false), "sync" (true/false), "migration" (true/false)
+
+Only suggest actions when they make sense for the user's question. Keep responses focused and helpful.`;
+
+            try {
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey,
+                        'anthropic-version': '2023-06-01',
+                        'anthropic-dangerous-direct-browser-access': 'true'
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-sonnet-4-20250514',
+                        max_tokens: 1024,
+                        system: systemPrompt,
+                        messages: [{ role: 'user', content: question }]
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('API request failed');
                 }
 
-                addMessage('claude', response.text, response.actions);
-            }, 1200);
+                const data = await response.json();
+                const responseText = data.content[0].text;
+
+                removeTypingIndicator(typingId);
+
+                // Parse response for actions
+                const { cleanText, actions } = parseClaudeResponse(responseText);
+                addMessage('claude', cleanText, actions);
+
+            } catch (error) {
+                removeTypingIndicator(typingId);
+                addMessage('claude', `<strong>Error:</strong> ${error.message}. Please check your API key and try again.`);
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Send';
+            }
+        }
+
+        function parseClaudeResponse(text) {
+            const actions = [];
+
+            // Extract ACTION: {...} lines
+            const actionRegex = /ACTION:\s*(\{[^}]+\})/g;
+            let match;
+
+            while ((match = actionRegex.exec(text)) !== null) {
+                try {
+                    const command = JSON.parse(match[1]);
+                    if (command.action) {
+                        let label = '';
+                        if (command.action === 'applyPreset') {
+                            label = `→ Apply ${command.preset} preset`;
+                        } else if (command.action === 'setState') {
+                            const displayValue = typeof command.value === 'boolean'
+                                ? (command.value ? 'enable' : 'disable')
+                                : command.value;
+                            label = `→ ${command.value ? 'Enable' : 'Disable'} ${command.key}`;
+                            if (command.key === 'accessibility') {
+                                label = `→ Set accessibility to ${command.value}`;
+                            }
+                        }
+                        actions.push({ label, command, primary: actions.length === 0 });
+                    }
+                } catch (e) {
+                    // Invalid JSON, skip
+                }
+            }
+
+            // Clean up the response text
+            let cleanText = text
+                .replace(/ACTION:\s*\{[^}]+\}/g, '')
+                .replace(/\n{3,}/g, '\n\n')
+                .trim();
+
+            // Convert markdown to HTML
+            cleanText = cleanText
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                .replace(/`([^`]+)`/g, '<code>$1</code>')
+                .replace(/^- (.+)$/gm, '• $1')
+                .replace(/^(\d+)\. (.+)$/gm, '$1. $2')
+                .replace(/\n/g, '<br>');
+
+            return { cleanText, actions };
         }
 
         function addMessage(type, content, actions = []) {
