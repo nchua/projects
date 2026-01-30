@@ -6,77 +6,114 @@
 
 ## Live Demo
 
-**[demo.html](demo.html)** - Full working demo with simulated Claude responses
+**[demo.html](demo.html)** - Full working demo with real Claude API integration
 
 Try it:
 1. Open `demo.html` in your browser
-2. Click "What are the trade-offs of my current config?"
-3. Click the "Switch to Recommended" button in Claude's response
-4. Watch the playground controls update automatically
+2. Enter your Anthropic API key (from console.anthropic.com)
+3. Ask any question - Claude sees your config and can modify it
+4. Click action buttons in responses to apply changes
+
+## Key Features
+
+- **Real Claude API integration** - Not simulated, actual Claude responses
+- **Bidirectional communication** - Claude reads state AND modifies it
+- **Dynamic UI modification** - Claude can add/remove preset buttons
+- **Collapsible panel** - Minimize Claude assistant when you need more space
+- **Extensible architecture** - Easy to adapt for any playground type
 
 ## How It Works
 
 ```
 ┌─────────────────┐                    ┌─────────────────────┐
-│   Claude Code   │ ←── WebSocket ───→ │   Browser (HTML)    │
-│   (CLI)         │     Bridge         │   playground.html   │
-│                 │                    │                     │
-│  Receives:      │                    │  Sends: state JSON  │
-│  - Questions    │                    │  Receives: commands │
-│  - State JSON   │                    │                     │
-│                 │                    │  Has:               │
-│  Sends:         │                    │  - state object     │
-│  - Answers      │                    │  - updateAll()      │
-│  - Commands     │                    │  - command handler  │
+│  Claude API     │ ←── HTTP ────────→ │   Browser (HTML)    │
+│                 │                    │   playground.html   │
+│  Receives:      │                    │                     │
+│  - State JSON   │                    │  Sends: state JSON  │
+│  - Questions    │                    │  Receives: answers  │
+│                 │                    │           + actions │
+│  Sends:         │                    │                     │
+│  - Answers      │                    │  Executes:          │
+│  - ACTION cmds  │                    │  - applyPreset      │
+│                 │                    │  - setState         │
+│                 │                    │  - addPreset        │
+│                 │                    │  - removePreset     │
 └─────────────────┘                    └─────────────────────┘
 ```
 
-### Key Insight
+## Extensibility: Adapting for Other Playgrounds
 
-The playground already has the right architecture:
+The demo uses a `PLAYGROUND_CONFIG` object that makes it easy to adapt for **any** playground type:
+
+- Game Settings
+- API Design
+- Database Schema
+- UI Components
+- Technical Architecture
+- Color Palettes
+- And more...
+
+### Configuration Structure
 
 ```javascript
-const state = { /* all configurable values */ };
+const PLAYGROUND_CONFIG = {
+    // Basic info
+    name: 'Game Settings',
+    description: 'Configure gameplay parameters',
 
-function updateAll() {
-  renderPreview();
-  renderPrompt();
-}
-```
+    // What Claude should know about this domain
+    domain: 'game design and balancing',
+    expertRole: 'game designer helping balance gameplay mechanics',
 
-Adding a command handler is straightforward:
+    // Quick question suggestions
+    quickQuestions: [
+        { label: 'Too hard?', question: 'Is this too difficult for casual players?' },
+        { label: 'Balanced?', question: 'Are these settings balanced?' }
+    ],
 
-```javascript
-function handleClaudeCommand(cmd) {
-  switch(cmd.action) {
-    case 'setState':
-      state[cmd.key] = cmd.value;
-      updateAll();
-      break;
-    case 'applyPreset':
-      applyPreset(cmd.preset);
-      break;
-  }
-}
-```
+    // Describe state keys so Claude knows what it can modify
+    stateSchema: {
+        difficulty: { type: 'enum', values: ['easy', 'medium', 'hard'] },
+        enemySpeed: { type: 'number', min: 0.5, max: 3.0 },
+        enablePowerups: { type: 'boolean' }
+    },
 
-### Claude Response Format
+    // How to generate context chips from current state
+    getContextChips: (state) => [
+        { label: 'Game Config', active: true },
+        { label: state.difficulty + ' mode', active: true }
+    ],
 
-Responses include both text AND actionable commands:
-
-```json
-{
-  "text": "For a fitness app, biometric auth is overkill...",
-  "actions": [
-    {
-      "label": "Apply recommended settings",
-      "command": { "action": "applyPreset", "preset": "recommended" }
+    // Describe presets for Claude
+    presetDescriptions: {
+        casual: 'Relaxed gameplay for new players',
+        hardcore: 'For experienced players'
     }
-  ]
-}
+};
 ```
 
-## Design Explorations
+### To Create a New Playground Type
+
+1. Copy `demo.html`
+2. Modify `PLAYGROUND_CONFIG` for your domain
+3. Update `DEFAULTS` and `PRESETS` objects
+4. Customize the control panel HTML
+5. Update `renderPreview()` for your visualization
+
+The Claude integration, action handling, and UI framework work automatically.
+
+## Available Actions
+
+Claude can include these action commands in responses:
+
+| Action | Description | Example |
+|--------|-------------|---------|
+| `applyPreset` | Apply an existing preset | `{"action": "applyPreset", "preset": "recommended"}` |
+| `setState` | Change a single setting | `{"action": "setState", "key": "difficulty", "value": "hard"}` |
+| `addPreset` | Create a new preset button | `{"action": "addPreset", "name": "Custom", "id": "custom", "config": {...}}` |
+| `removePreset` | Remove a preset button | `{"action": "removePreset", "id": "custom"}` |
+
+## Design Mockups
 
 | File | Approach | Description |
 |------|----------|-------------|
@@ -84,31 +121,15 @@ Responses include both text AND actionable commands:
 | [mockup-split-panel.html](mockup-split-panel.html) | Persistent Panel | Always-visible collapsible assistant on right side |
 | [mockup-extensible.html](mockup-extensible.html) | Framework Demo | Shows how Claude adapts to different playground types |
 
-## Implementation Path
+## For Claude Code Native Integration
 
-### Phase 1: Clipboard (Works Now)
-- "Copy context to Claude" button
-- User pastes response back
-- Manual but functional
+This demo calls the Anthropic API directly from the browser. For native Claude Code integration, the approach would be:
 
-### Phase 2: WebSocket Bridge
-- Claude Code spawns bridge process on `open playground.html`
-- Real-time bidirectional communication
-- Bridge terminates when playground closes
+1. **Local endpoint** - Claude Code exposes a local HTTP server the HTML can POST to
+2. **Or WebSocket bridge** - Spawned when opening the playground for real-time communication
+3. **Or URL scheme** - `claude-code://` protocol for message passing
 
-### Phase 3: Native Integration
-- `claude-code://` URL scheme for message passing
-- Or embedded Claude web mode
-
-## Technical Constraints
-
-| Aspect | Difficulty | Notes |
-|--------|------------|-------|
-| Playground receiving commands | Easy | Just add message handler |
-| Playground sending state | Easy | State is already JSON |
-| Communication channel | Hard | Core unsolved problem |
-| Claude understanding context | Easy | Structured data |
-| Claude generating commands | Medium | Needs schema |
+The HTML-side implementation is ready - it just needs a different endpoint URL.
 
 ---
 

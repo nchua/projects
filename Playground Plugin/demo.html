@@ -937,6 +937,101 @@
         // STATE MANAGEMENT
         // ============================================
 
+        // ============================================
+        // PLAYGROUND CONFIGURATION
+        // ============================================
+        // To adapt this for a different playground type, modify the PLAYGROUND_CONFIG object.
+        // Examples: API Design, Game Settings, Database Schema, UI Components, etc.
+
+        const PLAYGROUND_CONFIG = {
+            // Basic info
+            name: 'iOS Keychain',
+            description: 'Configure secure token storage',
+
+            // What Claude should know about this domain
+            domain: 'iOS security and Keychain storage',
+            expertRole: 'iOS security consultant helping configure Keychain storage for a mobile app',
+
+            // Quick question suggestions (shown as chips)
+            quickQuestions: [
+                { label: 'Secure for fitness app?', question: 'Is this secure enough for a fitness app?' },
+                { label: 'Current trade-offs?', question: 'What are the trade-offs of my current config?' },
+                { label: 'Enable biometrics?', question: 'Should I enable biometrics?' }
+            ],
+
+            // Input placeholder
+            inputPlaceholder: 'Ask anything about your Keychain configuration...',
+
+            // Describe available state keys for Claude (so it knows what it can modify)
+            stateSchema: {
+                accessibility: {
+                    type: 'enum',
+                    values: ['afterFirstUnlock', 'whenUnlocked', 'always'],
+                    description: 'When the keychain item is accessible'
+                },
+                biometric: { type: 'boolean', description: 'Require Face ID/Touch ID' },
+                sync: { type: 'boolean', description: 'Enable iCloud sync' },
+                migration: { type: 'boolean', description: 'Migrate from UserDefaults' }
+            },
+
+            // How to generate context chips from state
+            getContextChips: (state) => {
+                const chips = [
+                    { label: 'iOS Keychain', active: true },
+                    { label: state.preset.charAt(0).toUpperCase() + state.preset.slice(1) + ' preset', active: true }
+                ];
+                if (state.biometric) chips.push({ label: 'Biometric' });
+                if (state.sync) chips.push({ label: 'iCloud Sync' });
+                if (state.migration) chips.push({ label: 'Migration' });
+                return chips;
+            },
+
+            // Describe presets for Claude
+            presetDescriptions: {
+                recommended: 'Balanced security/usability (afterFirstUnlock, no biometrics, no sync, with migration)',
+                maximum: 'Highest security (whenUnlocked, biometrics required, no sync)',
+                convenience: 'Cross-device sync (afterFirstUnlock, no biometrics, iCloud sync enabled)'
+            }
+        };
+
+        /*
+        // ============================================
+        // EXAMPLE: Game Settings Playground Config
+        // ============================================
+        const GAME_SETTINGS_CONFIG = {
+            name: 'Game Settings',
+            description: 'Configure gameplay parameters',
+            domain: 'game design and balancing',
+            expertRole: 'game designer helping balance gameplay mechanics',
+            quickQuestions: [
+                { label: 'Too difficult?', question: 'Is this configuration too difficult for casual players?' },
+                { label: 'Balance check', question: 'Are these settings balanced for competitive play?' },
+                { label: 'Mobile friendly?', question: 'Will these settings work well on mobile?' }
+            ],
+            inputPlaceholder: 'Ask about game balance, difficulty, or mechanics...',
+            stateSchema: {
+                difficulty: { type: 'enum', values: ['easy', 'medium', 'hard', 'extreme'] },
+                enemySpeed: { type: 'number', min: 0.5, max: 3.0 },
+                playerHealth: { type: 'number', min: 50, max: 200 },
+                enablePowerups: { type: 'boolean' }
+            },
+            getContextChips: (state) => [
+                { label: 'Game Config', active: true },
+                { label: state.difficulty + ' mode', active: true },
+                { label: 'Speed: ' + state.enemySpeed + 'x' }
+            ],
+            presetDescriptions: {
+                casual: 'Relaxed gameplay for new players',
+                balanced: 'Standard difficulty for most players',
+                hardcore: 'Challenging settings for experienced players'
+            }
+        };
+        */
+
+        // ============================================
+        // STATE DEFAULTS AND PRESETS
+        // ============================================
+
         const DEFAULTS = {
             preset: 'recommended',
             accessibility: 'afterFirstUnlock',
@@ -1126,13 +1221,10 @@
         }
 
         function renderContext() {
-            const chips = [];
-            chips.push({ label: 'iOS Keychain', active: true });
-            chips.push({ label: state.preset.charAt(0).toUpperCase() + state.preset.slice(1) + ' preset', active: true });
-
-            if (state.biometric) chips.push({ label: 'Biometric' });
-            if (state.sync) chips.push({ label: 'iCloud Sync' });
-            if (state.migration) chips.push({ label: 'Migration' });
+            // Use config's getContextChips if available, otherwise use default
+            const chips = PLAYGROUND_CONFIG.getContextChips
+                ? PLAYGROUND_CONFIG.getContextChips(state)
+                : [{ label: state.preset, active: true }];
 
             document.getElementById('contextChips').innerHTML = chips
                 .map(c => `<span class="context-chip ${c.active ? 'active' : ''}">${c.label}</span>`)
@@ -1149,6 +1241,74 @@
 
         let apiKey = null;
         let isConnected = false;
+
+        // Generate system prompt from config (makes it easy to adapt for different playgrounds)
+        function buildSystemPrompt() {
+            const config = PLAYGROUND_CONFIG;
+
+            // Build state schema description
+            const stateSchemaDesc = Object.entries(config.stateSchema || {})
+                .map(([key, schema]) => {
+                    if (schema.type === 'enum') {
+                        return `"${key}": ${schema.values.map(v => `"${v}"`).join(' | ')}`;
+                    } else if (schema.type === 'boolean') {
+                        return `"${key}": true | false`;
+                    } else if (schema.type === 'number') {
+                        return `"${key}": number (${schema.min}-${schema.max})`;
+                    }
+                    return `"${key}": ${schema.type}`;
+                })
+                .join('\n    ');
+
+            // Build preset descriptions
+            const presetDescs = Object.entries(config.presetDescriptions || PRESETS)
+                .map(([id, desc]) => `- "${id}": ${typeof desc === 'string' ? desc : JSON.stringify(desc)}`)
+                .join('\n');
+
+            // Build example config for addPreset
+            const exampleConfig = Object.keys(config.stateSchema || {})
+                .reduce((acc, key) => {
+                    const schema = config.stateSchema[key];
+                    acc[key] = schema.type === 'boolean' ? false : (schema.values ? schema.values[0] : '');
+                    return acc;
+                }, {});
+
+            return `You are an expert ${config.expertRole || 'assistant helping configure ' + config.name}. The user is using an interactive playground to configure their ${config.name}.
+
+Current configuration state:
+${JSON.stringify(state, null, 2)}
+
+Available presets:
+${presetDescs}
+
+When answering:
+1. Be concise and practical
+2. Reference their specific current settings
+3. If you recommend changes, include ACTION COMMANDS in this exact format on their own line:
+
+ACTION: {"action": "applyPreset", "preset": "recommended"}
+
+or
+
+ACTION: {"action": "setState", "key": "keyName", "value": newValue}
+
+Available actions:
+- applyPreset: Apply an existing preset (${Object.keys(PRESETS).join(', ')}, or any custom preset)
+- setState: Modify a single setting. Available keys:
+    ${stateSchemaDesc}
+- addPreset: Creates a NEW preset button. Requires "name", "id", and "config" object
+- removePreset: Removes a preset button. Requires "id"
+
+Example of adding a custom preset:
+ACTION: {"action": "addPreset", "name": "Custom", "id": "custom", "config": ${JSON.stringify(exampleConfig)}}
+
+Example of removing a preset:
+ACTION: {"action": "removePreset", "id": "custom"}
+
+Use addPreset for custom configurations. Use removePreset to clean up unused presets.
+
+Only suggest actions when they make sense for the user's question. Keep responses focused and helpful.`;
+        }
 
         function connectApi() {
             const input = document.getElementById('apiKeyInput');
@@ -1199,7 +1359,7 @@
                 document.getElementById('connectionText').textContent = 'Live';
 
                 // Update welcome message
-                addMessage('claude', `<strong>Connected to Claude!</strong> I can now see your Keychain configuration in real-time and answer any questions. Try asking something or click a quick question above.`);
+                addMessage('claude', `<strong>Connected to Claude!</strong> I can now see your ${PLAYGROUND_CONFIG.name} configuration in real-time and answer any questions. Try asking something or click a quick question above.`);
             })
             .catch(err => {
                 btn.disabled = false;
@@ -1242,43 +1402,7 @@
 
             const typingId = addTypingIndicator();
 
-            const systemPrompt = `You are an expert iOS security consultant helping configure Keychain storage for a mobile app. The user is using an interactive playground to configure their KeychainService.
-
-Current configuration state:
-${JSON.stringify(state, null, 2)}
-
-Available presets:
-- "recommended": Balanced security/usability (afterFirstUnlock, no biometrics, no sync, with migration)
-- "maximum": Highest security (whenUnlocked, biometrics required, no sync)
-- "convenience": Cross-device sync (afterFirstUnlock, no biometrics, iCloud sync enabled)
-
-When answering:
-1. Be concise and practical
-2. Reference their specific current settings
-3. If you recommend changes, include ACTION COMMANDS in this exact format on their own line:
-
-ACTION: {"action": "applyPreset", "preset": "recommended"}
-
-or
-
-ACTION: {"action": "setState", "key": "biometric", "value": true}
-
-Available actions:
-- applyPreset: preset can be "recommended", "maximum", or "convenience" (or any custom preset that was added)
-- setState: key can be "accessibility" (values: "afterFirstUnlock", "whenUnlocked", "always"), "biometric" (true/false), "sync" (true/false), "migration" (true/false)
-- addPreset: Creates a NEW preset button in the UI. Requires "name" (display name), "id" (lowercase, no spaces), and "config" object with accessibility, biometric, sync, migration values
-
-Example of adding a custom preset:
-ACTION: {"action": "addPreset", "name": "Balanced", "id": "balanced", "config": {"accessibility": "afterFirstUnlock", "biometric": true, "sync": false, "migration": true}}
-
-- removePreset: Removes a preset button from the UI. Requires "id" of the preset to remove.
-
-Example of removing a preset:
-ACTION: {"action": "removePreset", "id": "balanced"}
-
-Use addPreset when the user asks for a middle-ground option or custom configuration. Use removePreset when the user wants to get rid of a preset they don't need. You can remove any preset including the default ones (recommended, maximum, convenience).
-
-Only suggest actions when they make sense for the user's question. Keep responses focused and helpful.`;
+            const systemPrompt = buildSystemPrompt();
 
             try {
                 const response = await fetch('https://api.anthropic.com/v1/messages', {
