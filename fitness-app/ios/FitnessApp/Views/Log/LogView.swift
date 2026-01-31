@@ -131,9 +131,10 @@ struct LogView: View {
                         onContinue: {
                             showRankUpCelebration = false
                             // Now show the XP reward
+                            // NOTE: Don't clear pendingXPResponse here - the .onChange handler will clear it
+                            // when it detects this is an already-processed response
                             if let response = pendingXPResponse {
                                 viewModel.xpRewardResponse = response
-                                pendingXPResponse = nil
                             }
                         }
                     )
@@ -143,9 +144,9 @@ struct LogView: View {
                         .onAppear {
                             showRankUpCelebration = false
                             // Proceed to XP view if available
+                            // NOTE: Don't clear pendingXPResponse here - the .onChange handler will clear it
                             if let response = pendingXPResponse {
                                 viewModel.xpRewardResponse = response
-                                pendingXPResponse = nil
                             }
                         }
                 }
@@ -300,9 +301,9 @@ struct LogView: View {
                 currentPRIndex = 0
 
                 // THEN transition: dismiss PR and show XP simultaneously
+                // NOTE: Don't clear pendingXPResponse here - the .onChange handler will clear it
                 showPRCelebration = false
                 viewModel.xpRewardResponse = response
-                pendingXPResponse = nil
             } else {
                 // No pending response - clean up and return to idle
                 prQueue = []

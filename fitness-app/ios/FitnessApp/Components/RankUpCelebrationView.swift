@@ -17,6 +17,7 @@ struct RankUpCelebrationView: View {
     @State private var showContinue = false
     @State private var pulseScale: CGFloat = 1.0
     @State private var glowOpacity: Double = 0.3
+    @State private var isDismissed = false
 
     var body: some View {
         ZStack {
@@ -122,6 +123,8 @@ struct RankUpCelebrationView: View {
 
                 // Continue button
                 Button {
+                    guard !isDismissed else { return }
+                    isDismissed = true
                     onContinue()
                 } label: {
                     HStack(spacing: 8) {
