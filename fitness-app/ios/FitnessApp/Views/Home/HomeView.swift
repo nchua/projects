@@ -136,33 +136,38 @@ struct HunterStatusHeader: View {
                 }
                 .buttonStyle(PlainButtonStyle())
 
-                // Name and Meta
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(name)
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundColor(Color(hex: "88DDFF"))
-                        .shadow(color: Color.systemPrimary.opacity(0.3), radius: 10, x: 0, y: 0)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                // Name and Meta - Tappable for profile
+                Button {
+                    onProfileTap?()
+                } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(name)
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(Color(hex: "88DDFF"))
+                            .shadow(color: Color.systemPrimary.opacity(0.3), radius: 10, x: 0, y: 0)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
 
-                    HStack(spacing: 12) {
-                        Text("\(rank.rawValue)-Rank")
-                            .foregroundColor(.systemPrimary)
-                            .fontWeight(.semibold)
+                        HStack(spacing: 12) {
+                            Text("\(rank.rawValue)-Rank")
+                                .foregroundColor(.systemPrimary)
+                                .fontWeight(.semibold)
 
-                        Text("Level \(level)")
-                            .foregroundColor(.textSecondary)
+                            Text("Level \(level)")
+                                .foregroundColor(.textSecondary)
 
-                        if streakDays > 0 {
-                            HStack(spacing: 4) {
-                                Text("\u{1F525}")
-                                Text("\(streakDays)")
+                            if streakDays > 0 {
+                                HStack(spacing: 4) {
+                                    Text("\u{1F525}")
+                                    Text("\(streakDays)")
+                                }
+                                .foregroundColor(Color(hex: "FF9500"))
                             }
-                            .foregroundColor(Color(hex: "FF9500"))
                         }
+                        .font(.system(size: 13))
                     }
-                    .font(.system(size: 13))
                 }
+                .buttonStyle(PlainButtonStyle())
 
                 Spacer()
             }
