@@ -513,3 +513,61 @@ This checks for:
 - `LogView.swift` - Multiple celebration fullScreenCovers (PR, rank-up, XP)
 - Any view that cycles through multiple items in a fullScreenCover
 - Views with auto-dismiss timers
+
+---
+
+## SwiftUI .onChange Infinite Loop Prevention (CRITICAL)
+
+### Problem: Re-triggering .onChange with Same Data
+
+**Symptom**: App freezes or shows black screen after completing a multi-step celebration flow.
+
+**Root Cause**: When using `.onChange(of:)` to intercept and redirect state, setting the observed value back to a previously-seen value re-triggers the handler, causing infinite loops.
+
+### The Pattern That Causes Loops
+
+```swift
+// LogView.swift - Celebration flow
+.onChange(of: viewModel.xpRewardResponse?.id) { oldValue, newValue in
+    guard let response = viewModel.xpRewardResponse else { return }
+
+    // BUG: After PR celebration completes, we set xpRewardResponse = pendingResponse
+    // This triggers onChange again, which sees prsAchieved is NOT empty
+    // and restarts the PR celebration flow!
+    if !response.prsAchieved.isEmpty {
+        prQueue = response.prsAchieved  // Sets up PR flow
+        pendingXPResponse = response     // Saves response for later
+        viewModel.xpRewardResponse = nil // Clears to show PRs first
+        showPRCelebration = true
+        return
+    }
+    // ...
+}
+
+// Later, in handlePRDismiss:
+viewModel.xpRewardResponse = pendingXPResponse  // RE-TRIGGERS onChange!
+```
+
+### The Fix: Track Processed Responses
+
+```swift
+.onChange(of: viewModel.xpRewardResponse?.id) { oldValue, newValue in
+    guard let response = viewModel.xpRewardResponse else { return }
+
+    // CRITICAL: Skip if this response was already processed
+    if let pending = pendingXPResponse, pending.id == response.id {
+        pendingXPResponse = nil  // Clear the flag
+        return  // Let XP view show directly without re-processing
+    }
+
+    // Now safe to check for PRs/rank-up
+    // ...
+}
+```
+
+### Rules for .onChange with State Redirection
+
+1. **Track processed items** - Use a flag or ID comparison to detect re-entry
+2. **Clear the tracking flag** in the skip branch to allow future legitimate triggers
+3. **Never assume .onChange won't re-trigger** - Always guard against loops
+4. **Test the full flow** - Especially when chaining multiple celebrations/states

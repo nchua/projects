@@ -185,6 +185,14 @@ struct LogView: View {
             .onChange(of: viewModel.xpRewardResponse?.id) { oldValue, newValue in
                 guard let response = viewModel.xpRewardResponse else { return }
 
+                // IMPORTANT: Skip if this response was already processed (coming back from PR/rank-up flow)
+                // This prevents infinite loops where setting xpRewardResponse triggers onChange again
+                if let pending = pendingXPResponse, pending.id == response.id {
+                    // Already processed this response - let the XP view show directly
+                    pendingXPResponse = nil
+                    return
+                }
+
                 // Check for PRs first (they show before rank-up)
                 if !response.prsAchieved.isEmpty {
                     prQueue = response.prsAchieved

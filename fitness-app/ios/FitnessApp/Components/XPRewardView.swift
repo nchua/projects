@@ -15,6 +15,7 @@ struct XPRewardView: View {
     @State private var xpCounterValue = 0
     @State private var showLevelUp = false
     @State private var showAchievements = false
+    @State private var isDismissed = false
 
     var body: some View {
         ZStack {
@@ -22,7 +23,7 @@ struct XPRewardView: View {
             Color.black.opacity(0.85)
                 .ignoresSafeArea()
                 .onTapGesture {
-                    onDismiss()
+                    dismissSafely()
                 }
 
             VStack(spacing: 24) {
@@ -146,7 +147,7 @@ struct XPRewardView: View {
 
                 // Continue Button
                 Button {
-                    onDismiss()
+                    dismissSafely()
                 } label: {
                     Text("CONTINUE")
                         .font(.ariseHeader(size: 16, weight: .bold))
@@ -203,6 +204,13 @@ struct XPRewardView: View {
                 showAchievements = true
             }
         }
+    }
+
+    private func dismissSafely() {
+        // Prevent double dismissal from rapid taps
+        guard !isDismissed else { return }
+        isDismissed = true
+        onDismiss()
     }
 
     private func formatBreakdownKey(_ key: String) -> String {
