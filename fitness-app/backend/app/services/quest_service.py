@@ -7,8 +7,9 @@ from typing import Optional, List, Dict, Any
 import random
 import uuid
 
+from sqlalchemy.orm import joinedload
 from app.models.quest import QuestDefinition, UserQuest
-from app.models.workout import WorkoutSession
+from app.models.workout import WorkoutSession, WorkoutExercise
 from app.services.xp_service import award_xp, get_or_create_user_progress
 
 
@@ -29,6 +30,65 @@ def get_midnight_utc_tomorrow() -> datetime:
     return datetime(tomorrow.year, tomorrow.month, tomorrow.day, 0, 0, 0, tzinfo=timezone.utc)
 
 
+def calculate_todays_workout_stats(db: Session, user_id: str, today: date) -> Dict[str, Any]:
+    """
+    Calculate aggregate stats from all workouts logged today.
+
+    Returns:
+        Dict with total_reps, compound_sets, total_volume, shortest_duration,
+        and completing_workout_id (the workout that would complete duration quests)
+    """
+    # Get all of today's workouts with their exercises and sets
+    workouts = db.query(WorkoutSession).options(
+        joinedload(WorkoutSession.workout_exercises)
+        .joinedload(WorkoutExercise.sets),
+        joinedload(WorkoutSession.workout_exercises)
+        .joinedload(WorkoutExercise.exercise)
+    ).filter(
+        WorkoutSession.user_id == user_id,
+        WorkoutSession.deleted_at == None
+    ).all()
+
+    # Filter to only today's workouts (comparing date part)
+    todays_workouts = []
+    for w in workouts:
+        workout_date = w.date.date() if hasattr(w.date, 'date') else w.date
+        if workout_date == today:
+            todays_workouts.append(w)
+
+    total_reps = 0
+    compound_sets = 0
+    total_volume = 0
+    shortest_duration = None
+    shortest_duration_workout_id = None
+
+    for workout in todays_workouts:
+        for workout_exercise in workout.workout_exercises:
+            exercise_name = workout_exercise.exercise.name.lower() if workout_exercise.exercise else ""
+
+            for set_obj in workout_exercise.sets:
+                total_reps += set_obj.reps
+                total_volume += set_obj.weight * set_obj.reps
+
+                if any(compound in exercise_name for compound in COMPOUND_EXERCISES):
+                    compound_sets += 1
+
+        # Track shortest workout duration for duration quests
+        if workout.duration_minutes is not None:
+            if shortest_duration is None or workout.duration_minutes < shortest_duration:
+                shortest_duration = workout.duration_minutes
+                shortest_duration_workout_id = workout.id
+
+    return {
+        "total_reps": total_reps,
+        "compound_sets": compound_sets,
+        "total_volume": int(total_volume),
+        "shortest_duration": shortest_duration,
+        "shortest_duration_workout_id": shortest_duration_workout_id,
+        "workout_count": len(todays_workouts)
+    }
+
+
 def get_today_utc() -> date:
     """Get today's date in UTC"""
     return datetime.now(timezone.utc).date()
@@ -37,6 +97,7 @@ def get_today_utc() -> date:
 def get_daily_quests(db: Session, user_id: str) -> Dict[str, Any]:
     """
     Get today's daily quests for a user. Generate new ones if needed.
+    Recalculates progress from all workouts logged today.
 
     Returns:
         Dict with quests list, refresh timestamp, and counts
@@ -52,6 +113,12 @@ def get_daily_quests(db: Session, user_id: str) -> Dict[str, Any]:
     # If no quests for today, generate new ones
     if not user_quests:
         user_quests = generate_daily_quests(db, user_id)
+
+    # Recalculate progress from all today's workouts for unclaimed quests
+    # This ensures progress is accurate even if workouts were logged before quests existed
+    unclaimed_quests = [uq for uq in user_quests if not uq.is_claimed]
+    if unclaimed_quests:
+        recalculate_quest_progress(db, user_id, unclaimed_quests, today)
 
     # Build response
     quests = []
@@ -71,7 +138,7 @@ def get_daily_quests(db: Session, user_id: str) -> Dict[str, Any]:
             "is_completed": uq.is_completed,
             "is_claimed": uq.is_claimed,
             "difficulty": quest_def.difficulty,
-            "completed_by_workout_id": None  # TODO: Re-enable after migration
+            "completed_by_workout_id": uq.completed_by_workout_id if hasattr(uq, 'completed_by_workout_id') else None
         })
         if uq.is_completed:
             completed_count += 1
@@ -137,6 +204,65 @@ def generate_daily_quests(db: Session, user_id: str, count: int = 3) -> List[Use
 
     db.flush()
     return user_quests
+
+
+def recalculate_quest_progress(db: Session, user_id: str, user_quests: List[UserQuest], today: date) -> List[str]:
+    """
+    Recalculate quest progress based on ALL workouts logged today.
+    This ensures progress is accurate even if workouts were logged before quests existed.
+
+    Args:
+        db: Database session
+        user_id: User ID
+        user_quests: List of UserQuest objects to update
+        today: Today's date
+
+    Returns:
+        List of quest IDs that are now completed
+    """
+    # Get aggregate stats from all today's workouts
+    stats = calculate_todays_workout_stats(db, user_id, today)
+
+    if stats["workout_count"] == 0:
+        return []
+
+    completed_quest_ids = []
+
+    for uq in user_quests:
+        if uq.is_claimed:
+            continue  # Don't update claimed quests
+
+        quest_def = uq.quest
+        progress = 0
+
+        if quest_def.quest_type == "total_reps":
+            progress = stats["total_reps"]
+        elif quest_def.quest_type == "compound_sets":
+            progress = stats["compound_sets"]
+        elif quest_def.quest_type == "total_volume":
+            progress = stats["total_volume"]
+        elif quest_def.quest_type == "workout_duration":
+            # Duration quest: complete if ANY workout is under target time
+            if stats["shortest_duration"] is not None and stats["shortest_duration"] <= quest_def.target_value:
+                progress = quest_def.target_value  # Full completion
+
+        # Update progress (don't exceed target)
+        uq.progress = min(progress, quest_def.target_value)
+
+        # Check if quest is now completed
+        if uq.progress >= quest_def.target_value and not uq.is_completed:
+            uq.is_completed = True
+            uq.completed_at = datetime.utcnow()
+            # Track which workout completed this quest (for duration quests, use shortest)
+            if quest_def.quest_type == "workout_duration" and stats["shortest_duration_workout_id"]:
+                try:
+                    uq.completed_by_workout_id = stats["shortest_duration_workout_id"]
+                except AttributeError:
+                    pass  # Column may not exist yet
+            completed_quest_ids.append(uq.id)
+
+    db.flush()
+    return completed_quest_ids
 
 
 def update_quest_progress(db: Session, user_id: str, workout: WorkoutSession) -> List[str]:
