@@ -6,6 +6,7 @@ struct DailyQuestsSection: View {
     let quests: [QuestResponse]
     let refreshAt: String?
     let onClaim: (String) -> Void
+    var onViewWorkout: ((String) -> Void)? = nil  // Callback when tapping completed quest
 
     var completedCount: Int {
         quests.filter { $0.isClaimed }.count
@@ -36,7 +37,7 @@ struct DailyQuestsSection: View {
             // Quest List
             VStack(spacing: 10) {
                 ForEach(quests) { quest in
-                    EdgeFlowQuestRow(quest: quest, onClaim: onClaim)
+                    EdgeFlowQuestRow(quest: quest, onClaim: onClaim, onViewWorkout: onViewWorkout)
                 }
             }
 
@@ -59,9 +60,15 @@ struct DailyQuestsSection: View {
 struct EdgeFlowQuestRow: View {
     let quest: QuestResponse
     let onClaim: (String) -> Void
+    var onViewWorkout: ((String) -> Void)? = nil  // Callback when tapping completed quest
 
     var isClaimable: Bool {
         quest.isCompleted && !quest.isClaimed
+    }
+
+    /// Can navigate to workout if quest is claimed and has a workout ID
+    var canNavigateToWorkout: Bool {
+        quest.isClaimed && quest.completedByWorkoutId != nil
     }
 
     var accentColor: Color {
@@ -88,73 +95,96 @@ struct EdgeFlowQuestRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Quest Icon
-            Text(questIcon)
-                .font(.system(size: 18))
-
-            // Quest Info
-            VStack(alignment: .leading, spacing: 2) {
-                Text(quest.name)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(quest.isClaimed ? .textMuted : .textPrimary)
-                    .strikethrough(quest.isClaimed, color: .textMuted)
-
-                if quest.isClaimed {
-                    Text("Completed!")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(Color(hex: "00FF88").opacity(0.7))
-                } else {
-                    Text(isClaimable ? "Ready to claim!" : "\(quest.progress)/\(quest.targetValue)")
-                        .font(.system(size: 12))
-                        .foregroundColor(isClaimable ? Color(hex: "00FF88") : .textMuted)
-                }
+        Button {
+            // Navigate to workout if claimed and has workout ID
+            if let workoutId = quest.completedByWorkoutId, canNavigateToWorkout {
+                onViewWorkout?(workoutId)
             }
+        } label: {
+            HStack(spacing: 12) {
+                // Quest Icon
+                Text(questIcon)
+                    .font(.system(size: 18))
 
-            Spacer()
+                // Quest Info
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(quest.name)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(quest.isClaimed ? .textMuted : .textPrimary)
+                        .strikethrough(quest.isClaimed, color: .textMuted)
 
-            // XP or Claim Button
-            if isClaimable {
-                Button {
-                    onClaim(quest.id)
-                } label: {
-                    Text("Claim")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.black)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
-                        .background(Color(hex: "00FF88"))
-                        .clipShape(Capsule())
-                        .shadow(color: Color(hex: "00FF88").opacity(0.3), radius: 10, x: 0, y: 0)
+                    if quest.isClaimed {
+                        HStack(spacing: 4) {
+                            Text("Completed!")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(Color(hex: "00FF88").opacity(0.7))
+                            if canNavigateToWorkout {
+                                Text("• View workout")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.textMuted)
+                            }
+                        }
+                    } else {
+                        Text(isClaimable ? "Ready to claim!" : "\(quest.progress)/\(quest.targetValue)")
+                            .font(.system(size: 12))
+                            .foregroundColor(isClaimable ? Color(hex: "00FF88") : .textMuted)
+                    }
                 }
-            } else if quest.isClaimed {
-                // Show earned XP with checkmark for claimed quests
-                HStack(spacing: 4) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 12))
-                        .foregroundColor(Color(hex: "00FF88").opacity(0.6))
-                    Text("+\(quest.xpReward)")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(Color(hex: "00FF88").opacity(0.6))
-                }
-            } else {
-                Text("+\(quest.xpReward) XP")
-                    .font(.system(size: 12))
-                    .foregroundColor(.textMuted)
-            }
-        }
-        .padding(14)
-        .background(quest.isClaimed ? Color.voidMedium.opacity(0.6) : Color.voidMedium)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            // Left accent bar
-            HStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(accentColor)
-                    .frame(width: 3)
+
                 Spacer()
+
+                // XP or Claim Button
+                if isClaimable {
+                    Button {
+                        onClaim(quest.id)
+                    } label: {
+                        Text("Claim")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.black)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 6)
+                            .background(Color(hex: "00FF88"))
+                            .clipShape(Capsule())
+                            .shadow(color: Color(hex: "00FF88").opacity(0.3), radius: 10, x: 0, y: 0)
+                    }
+                } else if quest.isClaimed {
+                    // Show earned XP with chevron for navigation
+                    HStack(spacing: 6) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 12))
+                            Text("+\(quest.xpReward)")
+                                .font(.system(size: 12, weight: .medium))
+                        }
+                        .foregroundColor(Color(hex: "00FF88").opacity(0.6))
+
+                        if canNavigateToWorkout {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.textMuted)
+                        }
+                    }
+                } else {
+                    Text("+\(quest.xpReward) XP")
+                        .font(.system(size: 12))
+                        .foregroundColor(.textMuted)
+                }
             }
-        )
+            .padding(14)
+            .background(quest.isClaimed ? Color.voidMedium.opacity(0.6) : Color.voidMedium)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                // Left accent bar
+                HStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(accentColor)
+                        .frame(width: 3)
+                    Spacer()
+                }
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(!canNavigateToWorkout && !isClaimable)
         .shadow(
             color: isClaimable ? Color(hex: "00FF88").opacity(0.1) : .clear,
             radius: 15,
@@ -465,7 +495,8 @@ struct RefreshTimerView: View {
                         progress: 75,
                         isCompleted: false,
                         isClaimed: false,
-                        difficulty: "normal"
+                        difficulty: "normal",
+                        completedByWorkoutId: nil
                     ),
                     QuestResponse(
                         id: "2",
@@ -478,7 +509,8 @@ struct RefreshTimerView: View {
                         progress: 5,
                         isCompleted: true,
                         isClaimed: false,
-                        difficulty: "normal"
+                        difficulty: "normal",
+                        completedByWorkoutId: nil
                     ),
                     QuestResponse(
                         id: "3",
@@ -491,7 +523,8 @@ struct RefreshTimerView: View {
                         progress: 5000,
                         isCompleted: true,
                         isClaimed: true,
-                        difficulty: "easy"
+                        difficulty: "easy",
+                        completedByWorkoutId: "workout-123"  // Has workout ID for navigation
                     )
                 ],
                 refreshAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(3600 * 8)),

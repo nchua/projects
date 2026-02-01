@@ -730,6 +730,7 @@ struct QuestResponse: Decodable, Identifiable {
     let isCompleted: Bool
     let isClaimed: Bool
     let difficulty: String
+    let completedByWorkoutId: String?  // ID of workout that completed this quest
 
     enum CodingKeys: String, CodingKey {
         case id, name, description, progress, difficulty
@@ -739,6 +740,7 @@ struct QuestResponse: Decodable, Identifiable {
         case xpReward = "xp_reward"
         case isCompleted = "is_completed"
         case isClaimed = "is_claimed"
+        case completedByWorkoutId = "completed_by_workout_id"
     }
 }
 

@@ -4,9 +4,11 @@ import Charts
 struct HomeView: View {
     @Binding var selectedTab: Int
     @StateObject private var viewModel = HomeViewModel()
+    @StateObject private var historyViewModel = HistoryViewModel()  // For workout detail navigation
     @State private var selectedInsight: InsightResponse?
     @State private var selectedWorkout: WorkoutSummaryResponse?
     @State private var showProfile = false
+    @State private var questWorkoutId: String?  // For navigating from completed quest
 
     var body: some View {
         NavigationStack {
@@ -50,6 +52,9 @@ struct HomeView: View {
                                 refreshAt: quests.refreshAt,
                                 onClaim: { questId in
                                     Task { await viewModel.claimQuest(questId) }
+                                },
+                                onViewWorkout: { workoutId in
+                                    questWorkoutId = workoutId
                                 }
                             )
                             // No .padding(.horizontal) - built into section
@@ -104,7 +109,15 @@ struct HomeView: View {
         .sheet(isPresented: $showProfile) {
             ProfileView()
         }
+        .sheet(item: $questWorkoutId) { workoutId in
+            WorkoutDetailSheet(workoutId: workoutId)
+        }
     }
+}
+
+// Make String conform to Identifiable for sheet binding
+extension String: @retroactive Identifiable {
+    public var id: String { self }
 }
 
 // MARK: - Hunter Status Header (Edge Flow)
