@@ -280,7 +280,7 @@ async def get_exercise_trend(
     for date_str, (e1rm, _) in daily_best.items():
         week_start = datetime.fromisoformat(date_str).date()
         week_start = week_start - timedelta(days=week_start.weekday())
-        week_key = week_start.isoformat()
+        week_key = to_iso8601_utc(week_start)
         if week_key not in weekly_best or e1rm > weekly_best[week_key]:
             weekly_best[week_key] = e1rm
 
@@ -831,8 +831,8 @@ async def get_weekly_review(
         ))
 
     return WeeklyReviewResponse(
-        week_start=week_start.isoformat(),
-        week_end=week_end.isoformat(),
+        week_start=to_iso8601_utc(week_start),
+        week_end=to_iso8601_utc(week_end),
         total_workouts=total_workouts,
         total_sets=total_sets,
         total_volume=round(total_volume, 2),

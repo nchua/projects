@@ -8,6 +8,7 @@ from typing import Optional, List
 import uuid
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.utils import to_iso8601_utc
 from app.models.user import User
 from app.models.exercise import Exercise
 from app.schemas.exercise import ExerciseCreate, ExerciseResponse
@@ -209,8 +210,8 @@ async def list_exercises(
             secondary_muscles=ex.secondary_muscles,
             is_custom=ex.is_custom,
             user_id=ex.user_id,
-            created_at=ex.created_at.isoformat(),
-            updated_at=ex.updated_at.isoformat()
+            created_at=to_iso8601_utc(ex.created_at),
+            updated_at=to_iso8601_utc(ex.updated_at)
         )
         for ex in exercises
     ]
@@ -273,8 +274,8 @@ async def create_custom_exercise(
         secondary_muscles=new_exercise.secondary_muscles,
         is_custom=new_exercise.is_custom,
         user_id=new_exercise.user_id,
-        created_at=new_exercise.created_at.isoformat(),
-        updated_at=new_exercise.updated_at.isoformat()
+        created_at=to_iso8601_utc(new_exercise.created_at),
+        updated_at=to_iso8601_utc(new_exercise.updated_at)
     )
 
 
@@ -322,8 +323,8 @@ async def get_exercise(
         secondary_muscles=exercise.secondary_muscles,
         is_custom=exercise.is_custom,
         user_id=exercise.user_id,
-        created_at=exercise.created_at.isoformat(),
-        updated_at=exercise.updated_at.isoformat()
+        created_at=to_iso8601_utc(exercise.created_at),
+        updated_at=to_iso8601_utc(exercise.updated_at)
     )
 
 

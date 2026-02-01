@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token, verify_token
+from app.core.utils import to_iso8601_utc
 from app.models.user import User, UserProfile
 from app.schemas.auth import UserRegister, UserLogin, Token, TokenRefresh, RegisterResponse, UserResponse
 
@@ -56,7 +57,7 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     user_response = UserResponse(
         id=new_user.id,
         email=new_user.email,
-        created_at=new_user.created_at.isoformat()
+        created_at=to_iso8601_utc(new_user.created_at)
     )
 
     return RegisterResponse(

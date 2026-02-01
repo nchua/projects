@@ -8,6 +8,7 @@ from typing import List
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.utils import to_iso8601_utc
 from app.core.e1rm import calculate_e1rm, calculate_e1rm_from_rpe, calculate_e1rm_from_rir
 from app.models.user import User, UserProfile, E1RMFormula
 from app.models.workout import WorkoutSession, WorkoutExercise, Set
@@ -231,7 +232,7 @@ async def sync_data(
 
     return SyncResponse(
         success=True,
-        synced_at=datetime.utcnow().isoformat(),
+        synced_at=to_iso8601_utc(datetime.utcnow()),
         results=results,
         conflicts=conflicts,
         workouts_synced=workouts_synced,
@@ -263,7 +264,7 @@ async def get_sync_status(
 
     last_sync_at = None
     if last_synced and last_synced[0]:
-        last_sync_at = last_synced[0].isoformat()
+        last_sync_at = to_iso8601_utc(last_synced[0])
 
     # Count pending (unsynced) workouts
     pending_workouts = db.query(WorkoutSession).filter(

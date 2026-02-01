@@ -279,9 +279,9 @@ class HealthKitManager: ObservableObject {
     }
 
     private func dateFromISO(_ string: String) -> Date? {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withFullDate]
-        return formatter.date(from: string)
+        // Use the robust parseISO8601Date() from Extensions.swift
+        // which handles full ISO8601, date-only, and various other formats
+        return string.parseISO8601Date()
     }
 }
 

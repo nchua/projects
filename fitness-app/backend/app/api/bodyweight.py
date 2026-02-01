@@ -8,6 +8,7 @@ from typing import List, Optional
 from datetime import date, timedelta
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.utils import to_iso8601_utc
 from app.models.user import User, UserProfile, WeightUnit as ModelWeightUnit
 from app.models.bodyweight import BodyweightEntry
 from app.schemas.bodyweight import (
@@ -96,13 +97,13 @@ async def log_bodyweight(
     return BodyweightResponse(
         id=entry.id,
         user_id=entry.user_id,
-        date=entry.date.isoformat(),
+        date=to_iso8601_utc(entry.date),
         weight_lb=round(entry.weight_lb, 2),
         weight_display=round(convert_from_lb(entry.weight_lb, display_unit), 2),
         weight_unit=display_unit,
         source=entry.source,
-        created_at=entry.created_at.isoformat(),
-        updated_at=entry.updated_at.isoformat()
+        created_at=to_iso8601_utc(entry.created_at),
+        updated_at=to_iso8601_utc(entry.updated_at)
     )
 
 
@@ -154,13 +155,13 @@ async def get_bodyweight_history(
         BodyweightResponse(
             id=e.id,
             user_id=e.user_id,
-            date=e.date.isoformat(),
+            date=to_iso8601_utc(e.date),
             weight_lb=round(e.weight_lb, 2),
             weight_display=round(convert_from_lb(e.weight_lb, display_unit), 2),
             weight_unit=display_unit,
             source=e.source,
-            created_at=e.created_at.isoformat(),
-            updated_at=e.updated_at.isoformat()
+            created_at=to_iso8601_utc(e.created_at),
+            updated_at=to_iso8601_utc(e.updated_at)
         )
         for e in entries
     ]
@@ -289,13 +290,13 @@ async def get_bodyweight_entry(
     return BodyweightResponse(
         id=entry.id,
         user_id=entry.user_id,
-        date=entry.date.isoformat(),
+        date=to_iso8601_utc(entry.date),
         weight_lb=round(entry.weight_lb, 2),
         weight_display=round(convert_from_lb(entry.weight_lb, display_unit), 2),
         weight_unit=display_unit,
         source=entry.source,
-        created_at=entry.created_at.isoformat(),
-        updated_at=entry.updated_at.isoformat()
+        created_at=to_iso8601_utc(entry.created_at),
+        updated_at=to_iso8601_utc(entry.updated_at)
     )
 
 

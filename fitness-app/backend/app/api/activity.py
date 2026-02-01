@@ -9,6 +9,7 @@ from datetime import date
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.utils import to_iso8601_utc
 from app.models.user import User
 from app.models.activity import DailyActivity
 from app.schemas.activity import (
@@ -27,7 +28,7 @@ def activity_to_response(entry: DailyActivity) -> ActivityResponse:
     return ActivityResponse(
         id=entry.id,
         user_id=entry.user_id,
-        date=entry.date.isoformat(),
+        date=to_iso8601_utc(entry.date),
         source=entry.source,
         steps=entry.steps,
         active_calories=entry.active_calories,
@@ -41,8 +42,8 @@ def activity_to_response(entry: DailyActivity) -> ActivityResponse:
         hrv=entry.hrv,
         resting_heart_rate=entry.resting_heart_rate,
         sleep_hours=entry.sleep_hours,
-        created_at=entry.created_at.isoformat(),
-        updated_at=entry.updated_at.isoformat()
+        created_at=to_iso8601_utc(entry.created_at),
+        updated_at=to_iso8601_utc(entry.updated_at)
     )
 
 
@@ -268,7 +269,7 @@ async def get_last_sync(
     ).order_by(DailyActivity.date.desc()).first()
 
     return LastSyncResponse(
-        last_synced_date=latest.date.isoformat() if latest else None,
+        last_synced_date=to_iso8601_utc(latest.date) if latest else None,
         source=source
     )
 

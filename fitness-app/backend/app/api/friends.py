@@ -7,6 +7,7 @@ from sqlalchemy import or_, and_, func
 from typing import List
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.utils import to_iso8601_utc
 from app.models.user import User
 from app.models.friend import FriendRequest, Friendship, FriendRequestStatus
 from app.models.workout import WorkoutSession
@@ -48,7 +49,7 @@ def build_friend_request_response(request: FriendRequest, db: Session) -> Friend
         receiver_rank=receiver_info["rank"],
         receiver_level=receiver_info["level"],
         status=request.status.value,
-        created_at=request.created_at.isoformat()
+        created_at=to_iso8601_utc(request.created_at)
     )
 
 
@@ -69,8 +70,8 @@ def build_friend_response(friendship: Friendship, db: Session) -> FriendResponse
         friend_username=friendship.friend.username if friendship.friend else None,
         friend_rank=friend_info["rank"],
         friend_level=friend_info["level"],
-        created_at=friendship.created_at.isoformat(),
-        last_workout_at=last_workout.date.isoformat() if last_workout else None
+        created_at=to_iso8601_utc(friendship.created_at),
+        last_workout_at=to_iso8601_utc(last_workout.date) if last_workout else None
     )
 
 
@@ -412,7 +413,7 @@ async def get_friend_profile(
 
         recent_workouts.append(RecentWorkoutResponse(
             id=workout.id,
-            date=workout.date.isoformat(),
+            date=to_iso8601_utc(workout.date),
             exercise_count=len(workout.exercises),
             exercise_names=exercise_names,
             xp_earned=None  # Could track this if needed
