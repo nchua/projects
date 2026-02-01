@@ -522,10 +522,11 @@ extension String {
             return date
         }
 
-        // Fallback: date-only format "YYYY-MM-DD" (returned by backend analytics)
+        // Fallback: date-only format "YYYY-MM-DD" (workout dates stored as local dates)
+        // Use local timezone since these represent the user's local date, not UTC
         let dateOnlyFormatter = DateFormatter()
         dateOnlyFormatter.dateFormat = "yyyy-MM-dd"
-        dateOnlyFormatter.timeZone = TimeZone(identifier: "UTC")
+        dateOnlyFormatter.timeZone = TimeZone.current
         return dateOnlyFormatter.date(from: self)
     }
 
