@@ -7,6 +7,7 @@ struct DailyQuestsSection: View {
     let refreshAt: String?
     let onClaim: (String) -> Void
     var onViewWorkout: ((String) -> Void)? = nil  // Callback when tapping completed quest
+    var onQuestTap: ((QuestResponse) -> Void)? = nil  // Callback when tapping any quest
 
     var completedCount: Int {
         quests.filter { $0.isCompleted }.count
@@ -37,7 +38,12 @@ struct DailyQuestsSection: View {
             // Quest List
             VStack(spacing: 10) {
                 ForEach(quests) { quest in
-                    EdgeFlowQuestRow(quest: quest, onClaim: onClaim, onViewWorkout: onViewWorkout)
+                    EdgeFlowQuestRow(
+                        quest: quest,
+                        onClaim: onClaim,
+                        onViewWorkout: onViewWorkout,
+                        onTap: onQuestTap
+                    )
                 }
             }
 
@@ -58,6 +64,7 @@ struct EdgeFlowQuestRow: View {
     let quest: QuestResponse
     let onClaim: (String) -> Void
     var onViewWorkout: ((String) -> Void)? = nil  // Callback when tapping completed quest
+    var onTap: ((QuestResponse) -> Void)? = nil   // Callback when tapping any quest (for detail sheet)
 
     var isClaimable: Bool {
         quest.isCompleted && !quest.isClaimed
@@ -93,10 +100,8 @@ struct EdgeFlowQuestRow: View {
 
     var body: some View {
         Button {
-            // Navigate to workout if claimed and has workout ID
-            if let workoutId = quest.completedByWorkoutId, canNavigateToWorkout {
-                onViewWorkout?(workoutId)
-            }
+            // Call onTap to show detail sheet for any quest
+            onTap?(quest)
         } label: {
             HStack(spacing: 12) {
                 // Quest Icon
@@ -181,7 +186,7 @@ struct EdgeFlowQuestRow: View {
             )
         }
         .buttonStyle(.plain)
-        .disabled(!canNavigateToWorkout && !isClaimable)
+        // All quests are tappable to show detail sheet
         .shadow(
             color: isClaimable ? Color(hex: "00FF88").opacity(0.1) : .clear,
             radius: 15,

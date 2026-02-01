@@ -29,6 +29,7 @@
 		48113D49713CF47249D00B90 /* JetBrainsMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 7E490406F225338152AB77DD /* JetBrainsMono-Bold.ttf */; };
 		4DE2F4CEF8CDDCED4C17A591 /* ScreenshotPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDB048EAA3D732A16D8F1C87 /* ScreenshotPreviewView.swift */; };
 		4EF008506C359122170F5270 /* XPRewardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4C96A0FDFB19923AC061970 /* XPRewardView.swift */; };
+		5476D15C26CCBE18B07448AA /* QuestDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89C549636A7046A5CC140B85 /* QuestDetailSheet.swift */; };
 		5676B5494CB708F2A9CFA399 /* FriendRowCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC8A2F491AC9087E07B63540 /* FriendRowCard.swift */; };
 		6383F52D2B2EDDB00366CDEC /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD1168F90C7EA3B9F66ADC03 /* ContentView.swift */; };
 		6CD1E6CE02F492B300256D51 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B00CB613804C42690DBF6B0 /* ProfileView.swift */; };
@@ -138,6 +139,7 @@
 		7E490406F225338152AB77DD /* JetBrainsMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Bold.ttf"; sourceTree = "<group>"; };
 		7EA22B0F491CFB938C0E3E9F /* DungeonRewardSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DungeonRewardSheet.swift; sourceTree = "<group>"; };
 		8256903DF70674E4B428B2AF /* Rajdhani-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Rajdhani-Medium.ttf"; sourceTree = "<group>"; };
+		89C549636A7046A5CC140B85 /* QuestDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestDetailSheet.swift; sourceTree = "<group>"; };
 		93180FC8B345CB004A5D390D /* Rajdhani-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Rajdhani-Regular.ttf"; sourceTree = "<group>"; };
 		9A947B12F7FAFC3687A4ED86 /* CooldownCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CooldownCard.swift; sourceTree = "<group>"; };
 		9E30061C59B3212F1422340B /* DungeonsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DungeonsView.swift; sourceTree = "<group>"; };
@@ -199,6 +201,7 @@
 				DB0EDBCC1A132F7B5B8386E7 /* EdgeFlowStyles.swift */,
 				C7126810EA67EBBBD241CA71 /* ImagePicker.swift */,
 				2A29BC50370EA3B75A5F1968 /* PRCelebrationView.swift */,
+				89C549636A7046A5CC140B85 /* QuestDetailSheet.swift */,
 				C9F64535FBE31A54DBE47FFF /* RankBadgeView.swift */,
 				0EE3DE6119CAF129687F65FF /* RankUpCelebrationView.swift */,
 				C68D331EA8FE8B1C6A105FE9 /* StatCard.swift */,
@@ -564,6 +567,7 @@
 				6CD1E6CE02F492B300256D51 /* ProfileView.swift in Sources */,
 				8714FA87386C4B44FEF75DF2 /* ProfileViewModel.swift in Sources */,
 				8C36406D3B4272678C3FAE7E /* ProgressViewModel.swift in Sources */,
+				5476D15C26CCBE18B07448AA /* QuestDetailSheet.swift in Sources */,
 				8CFFE6C90310AADAA44449D5 /* QuestsView.swift in Sources */,
 				077A12A6D80055A6EAC3D126 /* QuestsViewModel.swift in Sources */,
 				82A75718FCA9F00ED57AB446 /* RankBadgeView.swift in Sources */,
