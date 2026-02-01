@@ -11,6 +11,7 @@ from sqlalchemy.orm import joinedload
 from app.models.quest import QuestDefinition, UserQuest
 from app.models.workout import WorkoutSession, WorkoutExercise
 from app.services.xp_service import award_xp, get_or_create_user_progress
+from app.core.utils import to_iso8601_utc
 
 
 # Compound exercises for quest checking (lowercase for matching)
@@ -145,7 +146,7 @@ def get_daily_quests(db: Session, user_id: str) -> Dict[str, Any]:
 
     return {
         "quests": quests,
-        "refresh_at": get_midnight_utc_tomorrow().isoformat(),
+        "refresh_at": to_iso8601_utc(get_midnight_utc_tomorrow()),
         "completed_count": completed_count,
         "total_count": len(quests)
     }
@@ -269,6 +270,10 @@ def update_quest_progress(db: Session, user_id: str, workout: WorkoutSession) ->
     """
     Update quest progress based on a completed workout.
 
+    The workout's LOCAL date determines which quests are affected. This ensures
+    a workout logged for "Jan 31" affects "Jan 31" quests, even if the current
+    UTC date is "Feb 1".
+
     Args:
         db: Database session
         user_id: User ID
@@ -277,21 +282,25 @@ def update_quest_progress(db: Session, user_id: str, workout: WorkoutSession) ->
     Returns:
         List of quest IDs that were completed by this workout
     """
-    today = get_today_utc()
+    # Use the workout's date to find matching quests
+    # Workout dates are LOCAL dates (the day the user worked out in their timezone)
+    workout_date = workout.date.date() if hasattr(workout.date, 'date') else workout.date
+    today_utc = get_today_utc()
 
-    # Get today's unclaimed quests
+    # Get quests for the workout's date
     user_quests = db.query(UserQuest).filter(
         UserQuest.user_id == user_id,
-        UserQuest.assigned_date == today,
+        UserQuest.assigned_date == workout_date,
         UserQuest.is_claimed == False
     ).all()
 
-    # If no quests exist for today, generate them first
-    if not user_quests:
+    # If no quests exist for the workout's date and it matches today (UTC),
+    # generate new quests. Only generate for today, not past dates.
+    if not user_quests and workout_date == today_utc:
         # Check if any quests exist at all for today (including claimed ones)
         any_quests_today = db.query(UserQuest).filter(
             UserQuest.user_id == user_id,
-            UserQuest.assigned_date == today
+            UserQuest.assigned_date == workout_date
         ).first()
 
         # Only generate if no quests exist for today (not if all were claimed)

@@ -7,6 +7,7 @@ from datetime import date, timedelta
 from typing import Optional, Dict, List, Any, Union
 from app.models.progress import UserProgress, HunterRank
 from app.models.workout import WorkoutSession, WorkoutExercise, Set
+from app.core.utils import to_iso8601_utc
 
 
 def to_date(value: Union[date, Any]) -> date:
@@ -258,5 +259,5 @@ def get_user_progress_summary(db: Session, user_id: str) -> Dict[str, Any]:
         "total_prs": progress.total_prs,
         "xp_to_next_level": xp_to_next_level(progress.level, progress.total_xp),
         "level_progress": level_progress(progress.level, progress.total_xp),
-        "last_workout_date": progress.last_workout_date.isoformat() if progress.last_workout_date else None
+        "last_workout_date": to_iso8601_utc(progress.last_workout_date)
     }

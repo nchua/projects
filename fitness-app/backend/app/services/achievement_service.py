@@ -9,6 +9,7 @@ from app.models.progress import UserProgress
 from app.models.achievement import AchievementDefinition, UserAchievement
 from app.models.workout import WorkoutSession
 from app.models.pr import PR
+from app.core.utils import to_iso8601_utc
 
 
 def get_or_create_user_progress(db: Session, user_id: str) -> UserProgress:
@@ -48,7 +49,7 @@ def get_user_achievements(db: Session, user_id: str) -> List[Dict[str, Any]]:
             "xp_reward": definition.xp_reward,
             "rarity": definition.rarity,
             "unlocked": unlocked_at is not None,
-            "unlocked_at": unlocked_at.isoformat() if unlocked_at else None
+            "unlocked_at": to_iso8601_utc(unlocked_at)
         })
 
     return achievements
@@ -70,7 +71,7 @@ def get_recently_unlocked(db: Session, user_id: str, limit: int = 5) -> List[Dic
             "icon": ua.achievement.icon,
             "xp_reward": ua.achievement.xp_reward,
             "rarity": ua.achievement.rarity,
-            "unlocked_at": ua.unlocked_at.isoformat()
+            "unlocked_at": to_iso8601_utc(ua.unlocked_at)
         })
 
     return achievements
@@ -127,7 +128,7 @@ def unlock_achievement(
         "icon": definition.icon,
         "xp_reward": definition.xp_reward,
         "rarity": definition.rarity,
-        "unlocked_at": user_achievement.unlocked_at.isoformat()
+        "unlocked_at": to_iso8601_utc(user_achievement.unlocked_at)
     }
 
 

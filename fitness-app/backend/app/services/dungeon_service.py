@@ -17,6 +17,7 @@ from app.models.progress import UserProgress
 from app.services.xp_service import (
     get_or_create_user_progress, xp_for_level, get_rank_for_level
 )
+from app.core.utils import to_iso8601_utc
 from app.schemas.dungeon import (
     DUNGEON_LEVEL_REQUIREMENTS,
     DUNGEON_BASE_XP_BY_RANK,
@@ -454,10 +455,10 @@ def get_dungeon_detail(db: Session, user_id: str, user_dungeon_id: str) -> Optio
         "is_stretch_dungeon": user_dungeon.is_stretch_dungeon,
         "stretch_type": user_dungeon.stretch_type,
         "stretch_bonus_percent": stretch_bonus_percent,
-        "spawned_at": user_dungeon.spawned_at.isoformat(),
-        "expires_at": user_dungeon.expires_at.isoformat(),
-        "accepted_at": user_dungeon.accepted_at.isoformat() if user_dungeon.accepted_at else None,
-        "completed_at": user_dungeon.completed_at.isoformat() if user_dungeon.completed_at else None,
+        "spawned_at": to_iso8601_utc(user_dungeon.spawned_at),
+        "expires_at": to_iso8601_utc(user_dungeon.expires_at),
+        "accepted_at": to_iso8601_utc(user_dungeon.accepted_at),
+        "completed_at": to_iso8601_utc(user_dungeon.completed_at),
         "time_remaining_seconds": max(0, int((user_dungeon.expires_at - now).total_seconds())),
         "duration_hours": definition.duration_hours,
         "objectives": objectives,
