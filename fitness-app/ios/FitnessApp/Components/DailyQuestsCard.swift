@@ -12,6 +12,10 @@ struct DailyQuestsSection: View {
         quests.filter { $0.isClaimed }.count
     }
 
+    var completedCount: Int {
+        quests.filter { $0.isCompleted }.count
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             // Header with completion counter
@@ -41,16 +45,13 @@ struct DailyQuestsSection: View {
                 }
             }
 
-            // All complete message
-            if completedCount == quests.count {
-                HStack {
-                    Spacer()
-                    Text("All quests completed! 🎉")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(Color(hex: "00FF88"))
-                    Spacer()
-                }
-                .padding(.top, 4)
+            // All complete message - only show when there are quests and all are completed
+            if !quests.isEmpty && completedCount == quests.count {
+                Text("All quests completed! 🎉")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.successGreen)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 8)
             }
         }
         .padding(.horizontal, 20)

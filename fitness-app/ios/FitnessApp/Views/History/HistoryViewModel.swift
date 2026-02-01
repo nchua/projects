@@ -6,6 +6,7 @@ class HistoryViewModel: ObservableObject {
     @Published var workouts: [WorkoutSummaryResponse] = []
     @Published var selectedWorkout: WorkoutResponse?
     @Published var selectedDate = Date()
+    @Published var displayedMonth = Date()  // Persists across view recreations
     @Published var isLoading = false
     @Published var isLoadingDetail = false
     @Published var error: String?
