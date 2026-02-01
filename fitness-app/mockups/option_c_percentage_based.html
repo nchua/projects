@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Option C: Percentage-Based Scale</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0a0f14;
+            font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .phone-frame {
+            max-width: 390px;
+            margin: 0 auto;
+            background: #0d1117;
+            border-radius: 40px;
+            padding: 20px;
+            border: 3px solid #1a2332;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #00d4ff;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .header::before {
+            content: "←";
+        }
+        .title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+        .subtitle {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 20px;
+        }
+        .current-value {
+            text-align: right;
+            margin-bottom: 8px;
+        }
+        .current-value .number {
+            font-size: 48px;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+        .current-value .label {
+            font-size: 12px;
+            color: #6b7280;
+            letter-spacing: 1px;
+        }
+        .percentage {
+            display: inline-block;
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            float: right;
+        }
+        .percentage::before {
+            content: "↗ ";
+        }
+        .clear {
+            clear: both;
+        }
+        .time-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            clear: both;
+            padding-top: 10px;
+        }
+        .time-btn {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: none;
+            font-family: inherit;
+            font-size: 14px;
+            cursor: pointer;
+            background: #1a2332;
+            color: #6b7280;
+        }
+        .time-btn.active {
+            background: #00d4ff;
+            color: #000;
+        }
+        .chart-container {
+            background: rgba(26, 35, 50, 0.5);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            border: 1px solid #1a2332;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1px;
+            background: #1a2332;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .stat-box {
+            background: #0d1117;
+            padding: 16px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+        .stat-value.highlight {
+            color: #00d4ff;
+        }
+        .stat-value .unit {
+            font-size: 16px;
+            color: #6b7280;
+        }
+        .stat-label {
+            font-size: 10px;
+            color: #6b7280;
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+        .option-label {
+            text-align: center;
+            padding: 12px;
+            background: rgba(255, 165, 0, 0.1);
+            border: 1px solid #ffa500;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            color: #ffa500;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="phone-frame">
+        <div class="option-label">
+            <strong>OPTION C:</strong> Percentage-Based (15% padding)<br>
+            <span style="color: #6b7280;">Y-Axis: 217 - 293 (dynamic based on data)</span>
+        </div>
+
+        <div class="header">Power Analysis</div>
+
+        <div class="title">Back Squat</div>
+        <div class="subtitle">"Earth Shaker"</div>
+
+        <div class="current-value">
+            <div class="number">277.7</div>
+            <div class="label">CURRENT E1RM (LB)</div>
+        </div>
+
+        <div class="percentage">2.5% vs 8 Weeks</div>
+
+        <div class="time-selector clear">
+            <button class="time-btn">4W</button>
+            <button class="time-btn active">8W</button>
+            <button class="time-btn">12W</button>
+            <button class="time-btn">6M</button>
+            <button class="time-btn">1Y</button>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="chart"></canvas>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-value">6</div>
+                <div class="stat-label">TOTAL QUESTS</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">269.2 <span class="unit">lb</span></div>
+                <div class="stat-label">4W AVERAGE</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value highlight">+7 <span class="unit">lb</span></div>
+                <div class="stat-label">VS LAST PERIOD</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">274.2 <span class="unit">lb</span></div>
+                <div class="stat-label">ALL-TIME BEST</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('chart').getContext('2d');
+
+        // Sample data matching the screenshot
+        const dataValues = [255, 270, 275, 272, 275, 273, 275, 277.7];
+        const minVal = Math.min(...dataValues);
+        const maxVal = Math.max(...dataValues);
+        const range = maxVal - minVal;
+        const padding = range * 0.15; // 15% padding
+
+        // Calculate dynamic bounds
+        const yMin = Math.floor((minVal - padding - range * 0.5) / 5) * 5; // Extra room below
+        const yMax = Math.ceil((maxVal + padding) / 5) * 5;
+
+        const data = {
+            labels: ['Dec 7', 'Dec 14', 'Dec 21', 'Dec 28', 'Jan 4', 'Jan 11', 'Jan 18', 'Jan 25'],
+            datasets: [{
+                data: dataValues,
+                borderColor: '#00d4ff',
+                backgroundColor: (context) => {
+                    const gradient = context.chart.ctx.createLinearGradient(0, 0, 0, 300);
+                    gradient.addColorStop(0, 'rgba(0, 212, 255, 0.3)');
+                    gradient.addColorStop(1, 'rgba(0, 212, 255, 0)');
+                    return gradient;
+                },
+                fill: true,
+                tension: 0.4,
+                pointRadius: 5,
+                pointBackgroundColor: '#00d4ff',
+                pointBorderColor: '#00d4ff',
+                borderWidth: 2
+            }]
+        };
+
+        new Chart(ctx, {
+            type: 'line',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 1.6,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: '#6b7280',
+                            font: { family: 'SF Mono, monospace', size: 10 }
+                        }
+                    },
+                    y: {
+                        min: yMin,   // ~217 (dynamic: 15% below min with extra room)
+                        max: yMax,   // ~293 (dynamic: 15% above max)
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: '#6b7280',
+                            font: { family: 'SF Mono, monospace', size: 10 }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Y-Axis Scale Comparison</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0a0f14;
+            font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #00d4ff;
+        }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .option-card {
+            background: #0d1117;
+            border-radius: 20px;
+            padding: 20px;
+            border: 2px solid #1a2332;
+        }
+        .option-card.current {
+            border-color: #6b7280;
+        }
+        .option-card.option-b {
+            border-color: #00d4ff;
+        }
+        .option-card.option-c {
+            border-color: #ffa500;
+        }
+        .option-header {
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+        .option-card.current .option-header {
+            background: rgba(107, 114, 128, 0.2);
+            border: 1px solid #6b7280;
+            color: #6b7280;
+        }
+        .option-card.option-b .option-header {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid #00d4ff;
+            color: #00d4ff;
+        }
+        .option-card.option-c .option-header {
+            background: rgba(255, 165, 0, 0.1);
+            border: 1px solid #ffa500;
+            color: #ffa500;
+        }
+        .lift-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        .lift-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #00d4ff;
+            text-align: right;
+            margin-bottom: 16px;
+        }
+        .chart-container {
+            background: rgba(26, 35, 50, 0.5);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+        .pros-cons {
+            font-size: 11px;
+            color: #9ca3af;
+            line-height: 1.6;
+        }
+        .pros-cons strong {
+            color: #ffffff;
+        }
+        .pro { color: #22c55e; }
+        .con { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <h1>Y-Axis Scale Options Comparison</h1>
+
+    <div class="comparison-grid">
+        <!-- Current (0-based) -->
+        <div class="option-card current">
+            <div class="option-header">
+                <strong>CURRENT</strong><br>
+                Y-Axis: 0 - 300 (auto from zero)
+            </div>
+            <div class="lift-title">Back Squat</div>
+            <div class="lift-value">277.7 lb</div>
+            <div class="chart-container">
+                <canvas id="chartCurrent"></canvas>
+            </div>
+            <div class="pros-cons">
+                <span class="con">✗</span> Progress looks flat<br>
+                <span class="con">✗</span> Wasted space below data<br>
+                <span class="pro">✓</span> Shows absolute scale
+            </div>
+        </div>
+
+        <!-- Option B -->
+        <div class="option-card option-b">
+            <div class="option-header">
+                <strong>OPTION B: Comfortable Scale</strong><br>
+                Y-Axis: 225 - 300 (round to 25)
+            </div>
+            <div class="lift-title">Back Squat</div>
+            <div class="lift-value">277.7 lb</div>
+            <div class="chart-container">
+                <canvas id="chartB"></canvas>
+            </div>
+            <div class="pros-cons">
+                <span class="pro">✓</span> Clean axis labels (225, 250, 275, 300)<br>
+                <span class="pro">✓</span> Progress clearly visible<br>
+                <span class="pro">✓</span> Balanced detail vs context<br>
+                <span class="con">✗</span> Slightly less dramatic than C
+            </div>
+        </div>
+
+        <!-- Option C -->
+        <div class="option-card option-c">
+            <div class="option-header">
+                <strong>OPTION C: Percentage-Based</strong><br>
+                Y-Axis: 220 - 290 (15% padding)
+            </div>
+            <div class="lift-title">Back Squat</div>
+            <div class="lift-value">277.7 lb</div>
+            <div class="chart-container">
+                <canvas id="chartC"></canvas>
+            </div>
+            <div class="pros-cons">
+                <span class="pro">✓</span> Maximum detail visibility<br>
+                <span class="pro">✓</span> Adapts to any lift's range<br>
+                <span class="con">✗</span> Axis labels may be odd numbers<br>
+                <span class="con">✗</span> Small dips look more dramatic
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dataValues = [255, 270, 275, 272, 275, 273, 275, 277.7];
+        const labels = ['Dec 7', 'Dec 14', 'Dec 21', 'Dec 28', 'Jan 4', 'Jan 11', 'Jan 18', 'Jan 25'];
+
+        function createChart(canvasId, yMin, yMax, stepSize = null) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+
+            const ticksConfig = {
+                color: '#6b7280',
+                font: { family: 'SF Mono, monospace', size: 9 }
+            };
+            if (stepSize) ticksConfig.stepSize = stepSize;
+
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: dataValues,
+                        borderColor: '#00d4ff',
+                        backgroundColor: (context) => {
+                            const gradient = context.chart.ctx.createLinearGradient(0, 0, 0, 200);
+                            gradient.addColorStop(0, 'rgba(0, 212, 255, 0.3)');
+                            gradient.addColorStop(1, 'rgba(0, 212, 255, 0)');
+                            return gradient;
+                        },
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#00d4ff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 1.8,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: {
+                                color: '#6b7280',
+                                font: { size: 8 },
+                                maxRotation: 45
+                            }
+                        },
+                        y: {
+                            min: yMin,
+                            max: yMax,
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: ticksConfig
+                        }
+                    }
+                }
+            });
+        }
+
+        // Current: 0-based scale
+        createChart('chartCurrent', 0, 300, 100);
+
+        // Option B: Round to nearest 25
+        createChart('chartB', 225, 300, 25);
+
+        // Option C: Percentage-based (15% padding)
+        createChart('chartC', 220, 290, null);
+    </script>
+</body>
+</html>
