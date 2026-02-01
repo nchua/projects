@@ -7,6 +7,10 @@ struct DailyQuestsSection: View {
     let refreshAt: String?
     let onClaim: (String) -> Void
 
+    var completedCount: Int {
+        quests.filter { $0.isCompleted }.count
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             // Header
@@ -27,6 +31,15 @@ struct DailyQuestsSection: View {
                 ForEach(quests) { quest in
                     EdgeFlowQuestRow(quest: quest, onClaim: onClaim)
                 }
+            }
+
+            // All complete message - only show when there are quests and all are completed
+            if !quests.isEmpty && completedCount == quests.count {
+                Text("All quests completed!")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.successGreen)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 8)
             }
         }
         .padding(.horizontal, 20)
