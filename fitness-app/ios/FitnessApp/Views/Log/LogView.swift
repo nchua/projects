@@ -775,15 +775,25 @@ struct ActiveQuestHeader: View {
 // MARK: - Quest Timer Card
 
 struct QuestTimerCard: View {
-    @State private var elapsedTime: TimeInterval = 0
-    @State private var timer: Timer?
+    // Track actual start time - timer continues even when app is backgrounded
+    @State private var workoutStartTime: Date = Date()
+    @State private var pausedDuration: TimeInterval = 0  // Total time spent paused
+    @State private var pauseStartTime: Date?  // When current pause began (nil if running)
     @State private var isRunning = true
-    @State private var startTime: Date = Date()
+    @State private var displayTimer: Timer?  // Only for UI updates, not time tracking
+    @State private var currentTime = Date()  // Triggers UI refresh
+
+    var elapsedTime: TimeInterval {
+        let totalElapsed = currentTime.timeIntervalSince(workoutStartTime)
+        let currentPauseDuration = pauseStartTime.map { currentTime.timeIntervalSince($0) } ?? 0
+        return max(0, totalElapsed - pausedDuration - currentPauseDuration)
+    }
 
     var timeString: String {
-        let hours = Int(elapsedTime) / 3600
-        let minutes = (Int(elapsedTime) % 3600) / 60
-        let seconds = Int(elapsedTime) % 60
+        let total = Int(elapsedTime)
+        let hours = total / 3600
+        let minutes = (total % 3600) / 60
+        let seconds = total % 60
         if hours > 0 {
             return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
         }
@@ -854,28 +864,35 @@ struct QuestTimerCard: View {
         )
         .cornerRadius(4)
         .onAppear {
-            startTimer()
+            startDisplayTimer()
         }
         .onDisappear {
-            timer?.invalidate()
+            displayTimer?.invalidate()
         }
     }
 
-    private func startTimer() {
-        isRunning = true
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            elapsedTime += 1
+    private func startDisplayTimer() {
+        // Timer just updates the display - actual time is calculated from startTime
+        displayTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+            currentTime = Date()
         }
     }
 
     private func toggleTimer() {
         if isRunning {
-            timer?.invalidate()
-            timer = nil
+            // Pausing - record when pause started
+            pauseStartTime = Date()
             isRunning = false
         } else {
-            startTimer()
+            // Resuming - add pause duration to total paused time
+            if let pauseStart = pauseStartTime {
+                pausedDuration += Date().timeIntervalSince(pauseStart)
+            }
+            pauseStartTime = nil
+            isRunning = true
         }
+        // Update display immediately
+        currentTime = Date()
     }
 }
 

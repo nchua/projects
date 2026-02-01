@@ -19,6 +19,8 @@ struct HistoryView: View {
                             selectedDate: $viewModel.selectedDate,
                             datesWithWorkouts: viewModel.datesWithWorkouts
                         )
+                        // Force calendar to re-render when workout dates change
+                        .id(viewModel.datesWithWorkouts.hashValue)
                         .padding()
                         .background(Color.voidMedium)
                         .cornerRadius(4)
@@ -282,8 +284,10 @@ struct AriseCalendarView: View {
     }
 
     private func hasWorkout(on date: Date) -> Bool {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withFullDate]
+        // Use local timezone DateFormatter to match how workout dates are stored
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = TimeZone.current
         return datesWithWorkouts.contains(formatter.string(from: date))
     }
 }

@@ -106,6 +106,8 @@ struct QuestsView: View {
                                 datesWithWorkouts: viewModel.datesWithWorkouts,
                                 hasSelection: viewModel.selectedDate != nil
                             )
+                            // Force calendar to re-render when workout dates change
+                            .id(viewModel.datesWithWorkouts.hashValue)
                             .padding(16)
                             .edgeFlowCard(accent: .systemPrimary)
                             .padding(.horizontal, 20)
@@ -399,9 +401,19 @@ struct QuestsCalendarView: View {
     }
 
     private func hasWorkout(on date: Date) -> Bool {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withFullDate]
-        return datesWithWorkouts.contains(formatter.string(from: date))
+        // Use local timezone DateFormatter to match how workout dates are stored
+        // (stored as local date strings like "2024-01-15", not UTC)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = TimeZone.current
+        let dateString = formatter.string(from: date)
+        let hasIt = datesWithWorkouts.contains(dateString)
+        // Debug for end of month dates
+        let day = Calendar.current.component(.day, from: date)
+        if day >= 29 {
+            print("DEBUG hasWorkout check: '\(dateString)' in \(datesWithWorkouts) = \(hasIt)")
+        }
+        return hasIt
     }
 }
 

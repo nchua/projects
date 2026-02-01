@@ -18,6 +18,7 @@ class QuestResponse(BaseModel):
     is_completed: bool
     is_claimed: bool
     difficulty: str
+    completed_by_workout_id: Optional[str] = None  # ID of workout that completed this quest
 
     class Config:
         from_attributes = True

@@ -1,12 +1,13 @@
 import SwiftUI
 
-/// Two-step exercise selection modal for creating supersets
+/// Exercise selection modal for creating supersets (2+ exercises)
 struct SupersetPickerView: View {
     @ObservedObject var viewModel: LogViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var selectedExercises: [ExerciseResponse] = []
-    @State private var currentStep = 1
-    let totalSteps = 2
+
+    /// Minimum exercises required for a superset
+    private let minExercises = 2
 
     let onComplete: ([ExerciseResponse]) -> Void
 
@@ -16,16 +17,14 @@ struct SupersetPickerView: View {
                 VoidBackground(showGrid: false, glowIntensity: 0.03)
 
                 VStack(spacing: 0) {
-                    // Step indicator
-                    StepIndicator(currentStep: currentStep, totalSteps: totalSteps)
+                    // Exercise count indicator
+                    ExerciseCountIndicator(count: selectedExercises.count, minimum: minExercises)
                         .padding(.vertical, 16)
 
                     // Selected exercises preview
                     if !selectedExercises.isEmpty {
                         SelectedExercisesPreview(exercises: selectedExercises) { index in
-                            // Remove exercise and go back to that step
                             selectedExercises.remove(at: index)
-                            currentStep = index + 1
                         }
                         .padding(.horizontal)
                         .padding(.bottom, 16)
@@ -82,7 +81,9 @@ struct SupersetPickerView: View {
                     .padding(.vertical, 16)
 
                     // Instruction text
-                    Text("Select exercise \(currentStep) of \(totalSteps)")
+                    Text(selectedExercises.count < minExercises
+                        ? "Select at least \(minExercises) exercises"
+                        : "Add more exercises or tap Done")
                         .font(.ariseMono(size: 12, weight: .medium))
                         .foregroundColor(.textSecondary)
                         .padding(.bottom, 8)
@@ -128,66 +129,69 @@ struct SupersetPickerView: View {
                         dismiss()
                     }
                     .font(.ariseMono(size: 14, weight: .medium))
-                    .foregroundColor(.systemPrimary)
+                    .foregroundColor(.textSecondary)
+                }
+
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        viewModel.searchText = ""
+                        viewModel.selectedCategory = nil
+                        onComplete(selectedExercises)
+                        dismiss()
+                    }
+                    .font(.ariseMono(size: 14, weight: .semibold))
+                    .foregroundColor(selectedExercises.count >= minExercises ? .supersetPurple : .textMuted)
+                    .disabled(selectedExercises.count < minExercises)
                 }
             }
         }
     }
 
     private func selectExercise(_ exercise: ExerciseResponse) {
-        selectedExercises.append(exercise)
-
-        if selectedExercises.count >= totalSteps {
-            // Complete - create superset
-            viewModel.searchText = ""
-            viewModel.selectedCategory = nil
-            onComplete(selectedExercises)
-            dismiss()
-        } else {
-            // Move to next step
-            currentStep = selectedExercises.count + 1
+        withAnimation(.quickSpring) {
+            selectedExercises.append(exercise)
         }
     }
 }
 
-// MARK: - Step Indicator
+// MARK: - Exercise Count Indicator
 
-struct StepIndicator: View {
-    let currentStep: Int
-    let totalSteps: Int
+struct ExerciseCountIndicator: View {
+    let count: Int
+    let minimum: Int
 
     var body: some View {
         HStack(spacing: 12) {
-            ForEach(1...totalSteps, id: \.self) { step in
-                HStack(spacing: 8) {
-                    // Step circle
-                    ZStack {
-                        Circle()
-                            .fill(step <= currentStep ? Color.supersetPurple : Color.voidLight)
-                            .frame(width: 28, height: 28)
+            // Count circle
+            ZStack {
+                Circle()
+                    .fill(count >= minimum ? Color.supersetPurple : Color.voidLight)
+                    .frame(width: 36, height: 36)
 
-                        if step < currentStep {
-                            // Completed step
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(.white)
-                        } else {
-                            // Current or future step
-                            Text("\(step)")
-                                .font(.ariseMono(size: 12, weight: .semibold))
-                                .foregroundColor(step == currentStep ? .white : .textMuted)
-                        }
-                    }
+                Text("\(count)")
+                    .font(.ariseMono(size: 16, weight: .bold))
+                    .foregroundColor(count >= minimum ? .white : .textMuted)
+            }
 
-                    // Connector line (except for last step)
-                    if step < totalSteps {
-                        Rectangle()
-                            .fill(step < currentStep ? Color.supersetPurple : Color.voidLight)
-                            .frame(width: 40, height: 2)
-                    }
-                }
+            VStack(alignment: .leading, spacing: 2) {
+                Text("EXERCISES SELECTED")
+                    .font(.ariseMono(size: 10, weight: .semibold))
+                    .foregroundColor(.textMuted)
+                    .tracking(1)
+
+                Text(count >= minimum ? "Ready to create superset" : "Need \(minimum - count) more")
+                    .font(.ariseMono(size: 12, weight: .medium))
+                    .foregroundColor(count >= minimum ? .supersetPurple : .textSecondary)
             }
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color.supersetPurple.opacity(count >= minimum ? 0.1 : 0.05))
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.supersetPurple.opacity(count >= minimum ? 0.3 : 0.1), lineWidth: 1)
+        )
     }
 }
 
@@ -204,45 +208,52 @@ struct SelectedExercisesPreview: View {
                     .font(.system(size: 12))
                     .foregroundColor(.supersetPurple)
 
-                Text("SUPERSET")
+                Text("SUPERSET • \(exercises.count) EXERCISES")
                     .font(.ariseMono(size: 10, weight: .semibold))
                     .foregroundColor(.supersetPurple)
                     .tracking(1)
+
+                Spacer()
             }
 
-            HStack(spacing: 8) {
-                ForEach(Array(exercises.enumerated()), id: \.element.id) { index, exercise in
-                    HStack(spacing: 8) {
-                        Rectangle()
-                            .fill(Color.exerciseColor(for: exercise.name))
-                            .frame(width: 3, height: 32)
+            // Scrollable for 3+ exercises
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(Array(exercises.enumerated()), id: \.element.id) { index, exercise in
+                        HStack(spacing: 8) {
+                            Rectangle()
+                                .fill(Color.exerciseColor(for: exercise.name))
+                                .frame(width: 3, height: 32)
 
-                        Text(exercise.name)
-                            .font(.ariseMono(size: 12, weight: .medium))
-                            .foregroundColor(.textPrimary)
-                            .lineLimit(1)
+                            Text(exercise.name)
+                                .font(.ariseMono(size: 12, weight: .medium))
+                                .foregroundColor(.textPrimary)
+                                .lineLimit(1)
 
-                        Button {
-                            onRemove(index)
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 14))
-                                .foregroundColor(.textMuted)
+                            Button {
+                                withAnimation(.quickSpring) {
+                                    onRemove(index)
+                                }
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.textMuted)
+                            }
                         }
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .background(Color.voidMedium)
-                    .cornerRadius(4)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.supersetPurple.opacity(0.3), lineWidth: 1)
-                    )
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Color.voidMedium)
+                        .cornerRadius(4)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color.supersetPurple.opacity(0.3), lineWidth: 1)
+                        )
 
-                    if index < exercises.count - 1 {
-                        Image(systemName: "plus")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.supersetPurple)
+                        if index < exercises.count - 1 {
+                            Image(systemName: "plus")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.supersetPurple)
+                        }
                     }
                 }
             }

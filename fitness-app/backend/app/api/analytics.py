@@ -296,9 +296,13 @@ async def get_exercise_trend(
     current_e1rm = data_points[-1].value if data_points else None
 
     # Calculate trend
+    # For shorter time ranges (4w), require fewer weeks to show percentage
+    # This ensures 4W shows percentage like 8W and 12W do
+    min_weeks_for_trend = 2 if time_range == "4w" else 4
+
     trend = TrendDirection.INSUFFICIENT_DATA
     percent_change = None
-    if len(weekly_best_points) >= 4:
+    if len(weekly_best_points) >= min_weeks_for_trend:
         first_half = [p.value for p in weekly_best_points[:len(weekly_best_points)//2]]
         second_half = [p.value for p in weekly_best_points[len(weekly_best_points)//2:]]
         first_avg = sum(first_half) / len(first_half)
