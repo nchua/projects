@@ -59,8 +59,6 @@ def get_daily_quests(db: Session, user_id: str) -> Dict[str, Any]:
 
     for uq in user_quests:
         quest_def = uq.quest
-        # Handle missing column gracefully (migration may not have run yet)
-        completed_by_workout_id = getattr(uq, 'completed_by_workout_id', None)
         quests.append({
             "id": uq.id,
             "quest_id": quest_def.id,
@@ -73,7 +71,7 @@ def get_daily_quests(db: Session, user_id: str) -> Dict[str, Any]:
             "is_completed": uq.is_completed,
             "is_claimed": uq.is_claimed,
             "difficulty": quest_def.difficulty,
-            "completed_by_workout_id": completed_by_workout_id
+            "completed_by_workout_id": None  # TODO: Re-enable after migration
         })
         if uq.is_completed:
             completed_count += 1
@@ -214,9 +212,8 @@ def update_quest_progress(db: Session, user_id: str, workout: WorkoutSession) ->
         if uq.progress >= quest_def.target_value and not uq.is_completed:
             uq.is_completed = True
             uq.completed_at = datetime.utcnow()
-            # Track which workout completed this quest (handle missing column gracefully)
-            if hasattr(uq, 'completed_by_workout_id'):
-                uq.completed_by_workout_id = workout.id
+            # TODO: Re-enable after migration runs
+            # uq.completed_by_workout_id = workout.id
             completed_quest_ids.append(uq.id)
 
     db.flush()
