@@ -10,17 +10,9 @@ struct DailyQuestsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             // Header
-            HStack {
-                Text("Daily Quests")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.textPrimary)
-
-                Spacer()
-
-                Text("View All")
-                    .font(.system(size: 13))
-                    .foregroundColor(.systemPrimary)
-            }
+            Text("Daily Quests")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.textPrimary)
 
             // Quest List
             VStack(spacing: 10) {
