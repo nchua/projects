@@ -404,7 +404,14 @@ struct QuestsCalendarView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         formatter.timeZone = TimeZone.current
-        return datesWithWorkouts.contains(formatter.string(from: date))
+        let dateString = formatter.string(from: date)
+        let hasIt = datesWithWorkouts.contains(dateString)
+        // Debug for end of month dates
+        let day = Calendar.current.component(.day, from: date)
+        if day >= 29 {
+            print("DEBUG hasWorkout check: '\(dateString)' in \(datesWithWorkouts) = \(hasIt)")
+        }
+        return hasIt
     }
 }
 

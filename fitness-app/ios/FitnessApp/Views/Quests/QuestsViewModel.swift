@@ -29,7 +29,14 @@ class QuestsViewModel: ObservableObject {
     }
 
     var datesWithWorkouts: Set<String> {
-        Set(workouts.map { String($0.date.prefix(10)) })
+        let dates = Set(workouts.map { String($0.date.prefix(10)) })
+        // Debug: print what dates we're extracting
+        print("DEBUG datesWithWorkouts: \(dates.sorted())")
+        if let firstWorkout = workouts.first {
+            print("DEBUG first workout raw date: '\(firstWorkout.date)'")
+            print("DEBUG first workout prefix(10): '\(String(firstWorkout.date.prefix(10)))'")
+        }
+        return dates
     }
 
     var displayedWorkouts: [WorkoutSummaryResponse] {
