@@ -106,6 +106,8 @@ struct QuestsView: View {
                                 datesWithWorkouts: viewModel.datesWithWorkouts,
                                 hasSelection: viewModel.selectedDate != nil
                             )
+                            // Force calendar to re-render when workout dates change
+                            .id(viewModel.datesWithWorkouts.hashValue)
                             .padding(16)
                             .edgeFlowCard(accent: .systemPrimary)
                             .padding(.horizontal, 20)
