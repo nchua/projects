@@ -17,6 +17,7 @@ struct HistoryView: View {
                     if showCalendar {
                         AriseCalendarView(
                             selectedDate: $viewModel.selectedDate,
+                            displayedMonth: $viewModel.displayedMonth,
                             datesWithWorkouts: viewModel.datesWithWorkouts
                         )
                         .padding()
@@ -172,9 +173,8 @@ struct QuestArchiveHeader: View {
 
 struct AriseCalendarView: View {
     @Binding var selectedDate: Date
+    @Binding var displayedMonth: Date
     let datesWithWorkouts: Set<String>
-
-    @State private var displayedMonth = Date()
 
     private let calendar = Calendar.current
     private let dateFormatter: DateFormatter = {
