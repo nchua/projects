@@ -160,8 +160,21 @@ def update_quest_progress(db: Session, user_id: str, workout: WorkoutSession) ->
         UserQuest.is_claimed == False
     ).all()
 
+    # If no quests exist for today, generate them first
     if not user_quests:
-        return []
+        # Check if any quests exist at all for today (including claimed ones)
+        any_quests_today = db.query(UserQuest).filter(
+            UserQuest.user_id == user_id,
+            UserQuest.assigned_date == today
+        ).first()
+
+        # Only generate if no quests exist for today (not if all were claimed)
+        if not any_quests_today:
+            user_quests = generate_daily_quests(db, user_id)
+
+        # If still no unclaimed quests, return early
+        if not user_quests:
+            return []
 
     # Calculate workout stats for quest checking
     total_reps = 0
@@ -200,8 +213,9 @@ def update_quest_progress(db: Session, user_id: str, workout: WorkoutSession) ->
             progress = int(total_volume)
         elif quest_def.quest_type == "workout_duration":
             # Duration quest: complete if workout is under target time
+            # Set progress to target_value when complete so completion check works
             if workout_duration is not None and workout_duration <= quest_def.target_value:
-                progress = 1  # Binary completion
+                progress = quest_def.target_value  # Full completion
             else:
                 progress = 0
 
