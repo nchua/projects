@@ -399,8 +399,11 @@ struct QuestsCalendarView: View {
     }
 
     private func hasWorkout(on date: Date) -> Bool {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withFullDate]
+        // Use local timezone DateFormatter to match how workout dates are stored
+        // (stored as local date strings like "2024-01-15", not UTC)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = TimeZone.current
         return datesWithWorkouts.contains(formatter.string(from: date))
     }
 }

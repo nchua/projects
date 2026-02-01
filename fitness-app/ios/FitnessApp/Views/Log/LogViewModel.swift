@@ -161,8 +161,11 @@ class LogViewModel: ObservableObject {
         isSaving = true
         error = nil
 
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withFullDate]
+        // Use local timezone DateFormatter to ensure the date matches user's local date
+        // ISO8601DateFormatter converts to UTC which can shift the date for users in timezones ahead of UTC
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = TimeZone.current
 
         let workoutExercises = selectedExercises.enumerated().map { index, exercise in
             WorkoutExerciseCreate(

@@ -297,8 +297,10 @@ struct DailyHealthData {
     let moveCalories: Int
 
     func toActivityCreate() -> ActivityCreate {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withFullDate]
+        // Use local timezone DateFormatter so the date reflects user's local date
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = TimeZone.current
         let dateString = formatter.string(from: date)
 
         return ActivityCreate(
