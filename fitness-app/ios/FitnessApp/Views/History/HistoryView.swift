@@ -19,6 +19,8 @@ struct HistoryView: View {
                             selectedDate: $viewModel.selectedDate,
                             datesWithWorkouts: viewModel.datesWithWorkouts
                         )
+                        // Force calendar to re-render when workout dates change
+                        .id(viewModel.datesWithWorkouts.hashValue)
                         .padding()
                         .background(Color.voidMedium)
                         .cornerRadius(4)
