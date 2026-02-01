@@ -9,10 +9,6 @@ struct DailyQuestsSection: View {
     var onViewWorkout: ((String) -> Void)? = nil  // Callback when tapping completed quest
 
     var completedCount: Int {
-        quests.filter { $0.isClaimed }.count
-    }
-
-    var completedCount: Int {
         quests.filter { $0.isCompleted }.count
     }
 

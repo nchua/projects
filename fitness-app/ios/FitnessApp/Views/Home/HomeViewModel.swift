@@ -144,80 +144,128 @@ class HomeViewModel: ObservableObject {
         isLoading = true
         error = nil
 
-        do {
-            async let workoutsTask = APIClient.shared.getWorkouts(limit: 1, offset: 0)
-            async let weeklyTask = APIClient.shared.getWeeklyReview()
-            async let prsTask = APIClient.shared.getPRs()
-            async let insightsTask = APIClient.shared.getInsights()
-            async let progressTask = APIClient.shared.getUserProgress()
-            async let achievementsTask = APIClient.shared.getRecentAchievements(limit: 3)
-            async let questsTask = APIClient.shared.getDailyQuests()
-            async let profileTask = APIClient.shared.getProfile()
-            async let cooldownTask = APIClient.shared.getCooldownStatus()
-            async let exercisesTask = APIClient.shared.getExercises()
-
-            let (workouts, weekly, prs, insightsResponse, progress, achievements, quests, profileResult, cooldowns, exercisesResult) = try await (
-                workoutsTask,
-                weeklyTask,
-                prsTask,
-                insightsTask,
-                progressTask,
-                achievementsTask,
-                questsTask,
-                profileTask,
-                cooldownTask,
-                exercisesTask
-            )
-
-            userProgress = progress
-            recentAchievements = achievements.achievements
-            dailyQuests = quests
-            profile = profileResult
-            cooldownStatus = cooldowns.musclesCooling
-            cooldownAgeModifier = cooldowns.ageModifier
-            exercises = exercisesResult
-
-            recentWorkout = workouts.first
-            weeklyReview = weekly
-            recentPRs = prs.prs
-            insights = insightsResponse.insights
-
-            // Calculate weekly stats from available data
-            weeklyStats.totalVolume = weekly.totalVolume
-            // Estimate calories and active time based on workouts
-            weeklyStats.calories = weekly.totalWorkouts * 120 // ~120 cal per workout
-            weeklyStats.activeMinutes = weekly.totalWorkouts * 45 // ~45 min per workout
-
-            // Load Big Three trends (for Power Levels card)
-            await loadBigThreeTrends()
-
-            // Try to load trend for primary lift
-            if let firstPR = prs.prs.first {
+        // Load each data source independently so one failure doesn't break everything
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { @MainActor in
                 do {
-                    let trendResponse = try await APIClient.shared.getExerciseTrend(
-                        exerciseId: firstPR.exerciseId,
-                        timeRange: "12w"
-                    )
-                    // Convert TrendResponse to LiftTrendResponse
-                    primaryLiftTrend = LiftTrendResponse(
-                        exerciseId: firstPR.exerciseId,
-                        exerciseName: firstPR.exerciseName,
-                        trendDirection: trendResponse.trendDirection,
-                        percentChange: trendResponse.percentChange,
-                        dataPoints: trendResponse.dataPoints
-                    )
+                    let workouts = try await APIClient.shared.getWorkouts(limit: 1, offset: 0)
+                    self.recentWorkout = workouts.first
                 } catch {
-                    // Silently fail for trend - not critical
+                    print("DEBUG: Failed to load workouts: \(error)")
                 }
             }
-        } catch let apiError as APIError {
-            // Don't set error for unauthorized - user will be redirected to login
-            if case .unauthorized = apiError {
-                return
+
+            group.addTask { @MainActor in
+                do {
+                    let weekly = try await APIClient.shared.getWeeklyReview()
+                    self.weeklyReview = weekly
+                    self.weeklyStats.totalVolume = weekly.totalVolume
+                    self.weeklyStats.calories = weekly.totalWorkouts * 120
+                    self.weeklyStats.activeMinutes = weekly.totalWorkouts * 45
+                } catch {
+                    print("DEBUG: Failed to load weekly review: \(error)")
+                }
             }
-            self.error = apiError.localizedDescription
-        } catch {
-            self.error = error.localizedDescription
+
+            group.addTask { @MainActor in
+                do {
+                    let prs = try await APIClient.shared.getPRs()
+                    self.recentPRs = prs.prs
+                } catch {
+                    print("DEBUG: Failed to load PRs: \(error)")
+                }
+            }
+
+            group.addTask { @MainActor in
+                do {
+                    let insightsResponse = try await APIClient.shared.getInsights()
+                    self.insights = insightsResponse.insights
+                } catch {
+                    print("DEBUG: Failed to load insights: \(error)")
+                }
+            }
+
+            group.addTask { @MainActor in
+                do {
+                    let progress = try await APIClient.shared.getUserProgress()
+                    self.userProgress = progress
+                } catch let apiError as APIError {
+                    if case .unauthorized = apiError {
+                        // Will be handled by auth manager
+                    }
+                    print("DEBUG: Failed to load user progress: \(apiError)")
+                } catch {
+                    print("DEBUG: Failed to load user progress: \(error)")
+                }
+            }
+
+            group.addTask { @MainActor in
+                do {
+                    let achievements = try await APIClient.shared.getRecentAchievements(limit: 3)
+                    self.recentAchievements = achievements.achievements
+                } catch {
+                    print("DEBUG: Failed to load achievements: \(error)")
+                }
+            }
+
+            group.addTask { @MainActor in
+                do {
+                    let quests = try await APIClient.shared.getDailyQuests()
+                    self.dailyQuests = quests
+                } catch {
+                    print("DEBUG: Failed to load quests: \(error)")
+                }
+            }
+
+            group.addTask { @MainActor in
+                do {
+                    let profileResult = try await APIClient.shared.getProfile()
+                    self.profile = profileResult
+                } catch {
+                    print("DEBUG: Failed to load profile: \(error)")
+                }
+            }
+
+            group.addTask { @MainActor in
+                do {
+                    let cooldowns = try await APIClient.shared.getCooldownStatus()
+                    self.cooldownStatus = cooldowns.musclesCooling
+                    self.cooldownAgeModifier = cooldowns.ageModifier
+                } catch {
+                    print("DEBUG: Failed to load cooldown status: \(error)")
+                }
+            }
+
+            group.addTask { @MainActor in
+                do {
+                    let exercisesResult = try await APIClient.shared.getExercises()
+                    self.exercises = exercisesResult
+                } catch {
+                    print("DEBUG: Failed to load exercises: \(error)")
+                }
+            }
+        }
+
+        // Load Big Three trends after exercises are loaded
+        await loadBigThreeTrends()
+
+        // Try to load trend for primary lift
+        if let firstPR = recentPRs.first {
+            do {
+                let trendResponse = try await APIClient.shared.getExerciseTrend(
+                    exerciseId: firstPR.exerciseId,
+                    timeRange: "12w"
+                )
+                primaryLiftTrend = LiftTrendResponse(
+                    exerciseId: firstPR.exerciseId,
+                    exerciseName: firstPR.exerciseName,
+                    trendDirection: trendResponse.trendDirection,
+                    percentChange: trendResponse.percentChange,
+                    dataPoints: trendResponse.dataPoints
+                )
+            } catch {
+                // Silently fail for trend - not critical
+            }
         }
 
         isLoading = false
@@ -298,7 +346,8 @@ class HomeViewModel: ObservableObject {
                         progress: oldQuest.progress,
                         isCompleted: oldQuest.isCompleted,
                         isClaimed: true,
-                        difficulty: oldQuest.difficulty
+                        difficulty: oldQuest.difficulty,
+                        completedByWorkoutId: oldQuest.completedByWorkoutId
                     )
                     quests[index] = updatedQuest
 
