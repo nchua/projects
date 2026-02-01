@@ -9,6 +9,7 @@ struct HomeView: View {
     @State private var selectedWorkout: WorkoutSummaryResponse?
     @State private var showProfile = false
     @State private var questWorkoutId: String?  // For navigating from completed quest
+    @State private var selectedQuest: QuestResponse?  // For showing quest detail sheet
 
     var body: some View {
         NavigationStack {
@@ -55,6 +56,9 @@ struct HomeView: View {
                                 },
                                 onViewWorkout: { workoutId in
                                     questWorkoutId = workoutId
+                                },
+                                onQuestTap: { quest in
+                                    selectedQuest = quest
                                 }
                             )
                             // No .padding(.horizontal) - built into section
@@ -111,6 +115,17 @@ struct HomeView: View {
         }
         .sheet(item: $questWorkoutId) { workoutId in
             WorkoutDetailSheet(workoutId: workoutId)
+        }
+        .sheet(item: $selectedQuest) { quest in
+            QuestDetailSheet(
+                quest: quest,
+                onClaim: { questId in
+                    Task { await viewModel.claimQuest(questId) }
+                },
+                onViewWorkout: { workoutId in
+                    questWorkoutId = workoutId
+                }
+            )
         }
     }
 }
@@ -210,6 +225,7 @@ struct HunterStatusHeader: View {
                 startRadius: 0,
                 endRadius: 200
             )
+            .allowsHitTesting(false)
         )
     }
 }
