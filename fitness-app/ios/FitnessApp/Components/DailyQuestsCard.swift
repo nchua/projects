@@ -7,18 +7,49 @@ struct DailyQuestsSection: View {
     let refreshAt: String?
     let onClaim: (String) -> Void
 
+    var completedCount: Int {
+        quests.filter { $0.isClaimed }.count
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            // Header
-            Text("Daily Quests")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.textPrimary)
+            // Header with completion counter
+            HStack {
+                Text("Daily Quests")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+
+                Spacer()
+
+                // Completion badge
+                if completedCount > 0 {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 12))
+                        Text("\(completedCount)/\(quests.count)")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundColor(completedCount == quests.count ? Color(hex: "00FF88") : .textMuted)
+                }
+            }
 
             // Quest List
             VStack(spacing: 10) {
                 ForEach(quests) { quest in
                     EdgeFlowQuestRow(quest: quest, onClaim: onClaim)
                 }
+            }
+
+            // All complete message
+            if completedCount == quests.count {
+                HStack {
+                    Spacer()
+                    Text("All quests completed! 🎉")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(Color(hex: "00FF88"))
+                    Spacer()
+                }
+                .padding(.top, 4)
             }
         }
         .padding(.horizontal, 20)
@@ -34,10 +65,19 @@ struct EdgeFlowQuestRow: View {
     }
 
     var accentColor: Color {
-        isClaimable ? Color(hex: "00FF88") : Color.white.opacity(0.1)
+        if quest.isClaimed {
+            return Color(hex: "00FF88").opacity(0.5)  // Dimmed green for claimed
+        } else if isClaimable {
+            return Color(hex: "00FF88")  // Bright green for claimable
+        } else {
+            return Color.white.opacity(0.1)  // Default for in-progress
+        }
     }
 
     var questIcon: String {
+        if quest.isClaimed {
+            return "\u{2705}"  // White checkmark in green box
+        }
         switch quest.questType {
         case "total_reps": return "\u{1F4AA}"      // Flexed bicep
         case "compound_sets": return "\u{1F3AF}"  // Target
@@ -57,11 +97,18 @@ struct EdgeFlowQuestRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(quest.name)
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.textPrimary)
+                    .foregroundColor(quest.isClaimed ? .textMuted : .textPrimary)
+                    .strikethrough(quest.isClaimed, color: .textMuted)
 
-                Text(isClaimable ? "Ready!" : "\(quest.progress)/\(quest.targetValue)")
-                    .font(.system(size: 12))
-                    .foregroundColor(.textMuted)
+                if quest.isClaimed {
+                    Text("Completed!")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(Color(hex: "00FF88").opacity(0.7))
+                } else {
+                    Text(isClaimable ? "Ready to claim!" : "\(quest.progress)/\(quest.targetValue)")
+                        .font(.system(size: 12))
+                        .foregroundColor(isClaimable ? Color(hex: "00FF88") : .textMuted)
+                }
             }
 
             Spacer()
@@ -80,6 +127,16 @@ struct EdgeFlowQuestRow: View {
                         .clipShape(Capsule())
                         .shadow(color: Color(hex: "00FF88").opacity(0.3), radius: 10, x: 0, y: 0)
                 }
+            } else if quest.isClaimed {
+                // Show earned XP with checkmark for claimed quests
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(Color(hex: "00FF88").opacity(0.6))
+                    Text("+\(quest.xpReward)")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(Color(hex: "00FF88").opacity(0.6))
+                }
             } else {
                 Text("+\(quest.xpReward) XP")
                     .font(.system(size: 12))
@@ -87,7 +144,7 @@ struct EdgeFlowQuestRow: View {
             }
         }
         .padding(14)
-        .background(Color.voidMedium)
+        .background(quest.isClaimed ? Color.voidMedium.opacity(0.6) : Color.voidMedium)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
             // Left accent bar
