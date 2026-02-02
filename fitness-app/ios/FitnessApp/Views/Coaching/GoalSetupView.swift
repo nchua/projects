@@ -11,7 +11,7 @@ struct GoalSetupView: View {
 
                 VStack(spacing: 0) {
                     // Progress Steps
-                    ProgressStepsIndicator(currentStep: viewModel.currentStep, totalSteps: 4)
+                    ProgressStepsIndicator(currentStep: viewModel.currentStep, totalSteps: 5)
                         .padding(.top, 20)
                         .padding(.horizontal, 20)
 
@@ -20,16 +20,19 @@ struct GoalSetupView: View {
                         Step1ExerciseSelection(viewModel: viewModel)
                             .tag(1)
 
-                        Step2TargetWeight(viewModel: viewModel)
+                        Step2CurrentAbility(viewModel: viewModel)
                             .tag(2)
 
-                        Step3Deadline(viewModel: viewModel)
+                        Step3TargetWeight(viewModel: viewModel)
                             .tag(3)
 
-                        Step4Confirmation(viewModel: viewModel, onComplete: {
+                        Step4Deadline(viewModel: viewModel)
+                            .tag(4)
+
+                        Step5Confirmation(viewModel: viewModel, onComplete: {
                             dismiss()
                         })
-                            .tag(4)
+                            .tag(5)
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))
                     .animation(.easeInOut, value: viewModel.currentStep)
@@ -279,9 +282,147 @@ struct ExerciseSelectionRow: View {
     }
 }
 
-// MARK: - Step 2: Target Weight
+// MARK: - Step 2: Current Ability
 
-struct Step2TargetWeight: View {
+struct Step2CurrentAbility: View {
+    @ObservedObject var viewModel: GoalSetupViewModel
+    @FocusState private var focusedField: Field?
+
+    enum Field {
+        case weight, reps
+    }
+
+    var body: some View {
+        VStack(spacing: 24) {
+            // Title
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Your Current Ability")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(.white)
+
+                Text("What can you \(viewModel.selectedExercise?.name ?? "lift") today?")
+                    .font(.system(size: 15))
+                    .foregroundColor(.textSecondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20)
+
+            Spacer()
+
+            // Weight Input
+            VStack(spacing: 8) {
+                Text("Weight")
+                    .font(.system(size: 14))
+                    .foregroundColor(.textSecondary)
+
+                HStack(alignment: .lastTextBaseline, spacing: 4) {
+                    TextField("0", text: $viewModel.currentWeightInput)
+                        .font(.system(size: 56, weight: .bold))
+                        .foregroundColor(.white)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.center)
+                        .frame(width: 150)
+                        .focused($focusedField, equals: .weight)
+
+                    Text(viewModel.weightUnit)
+                        .font(.system(size: 24))
+                        .foregroundColor(.textSecondary)
+                }
+            }
+
+            // Reps Input
+            VStack(spacing: 8) {
+                Text("Reps")
+                    .font(.system(size: 14))
+                    .foregroundColor(.textSecondary)
+
+                HStack(alignment: .lastTextBaseline, spacing: 4) {
+                    TextField("0", text: $viewModel.currentRepsInput)
+                        .font(.system(size: 56, weight: .bold))
+                        .foregroundColor(.white)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.center)
+                        .frame(width: 100)
+                        .focused($focusedField, equals: .reps)
+
+                    Text("reps")
+                        .font(.system(size: 24))
+                        .foregroundColor(.textSecondary)
+                }
+            }
+
+            // Estimated 1RM Display
+            if viewModel.calculatedE1RM > 0 {
+                VStack(spacing: 4) {
+                    Text("Estimated 1RM")
+                        .font(.system(size: 12))
+                        .foregroundColor(.textSecondary)
+
+                    HStack(alignment: .lastTextBaseline, spacing: 4) {
+                        Text("\(Int(viewModel.calculatedE1RM))")
+                            .font(.system(size: 32, weight: .bold))
+                            .foregroundColor(.systemPrimary)
+
+                        Text(viewModel.weightUnit)
+                            .font(.system(size: 16))
+                            .foregroundColor(.textSecondary)
+                    }
+                }
+                .padding(16)
+                .background(Color.systemPrimary.opacity(0.1))
+                .cornerRadius(14)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.systemPrimary.opacity(0.3), lineWidth: 1)
+                )
+            }
+
+            // Unit Toggle
+            HStack(spacing: 0) {
+                UnitToggleOption(text: "lbs", isSelected: viewModel.weightUnit == "lb") {
+                    viewModel.weightUnit = "lb"
+                }
+                UnitToggleOption(text: "kg", isSelected: viewModel.weightUnit == "kg") {
+                    viewModel.weightUnit = "kg"
+                }
+            }
+            .background(Color.bgInput)
+            .cornerRadius(50)
+
+            Spacer()
+
+            // Continue Button
+            Button {
+                focusedField = nil
+                viewModel.updateCurrentMax()
+                viewModel.currentStep = 3
+            } label: {
+                Text("Continue")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(
+                        viewModel.hasValidCurrentAbility
+                            ? Color.systemPrimary
+                            : Color.white.opacity(0.1)
+                    )
+                    .cornerRadius(50)
+            }
+            .disabled(!viewModel.hasValidCurrentAbility)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20)
+        }
+        .padding(.top, 24)
+        .onTapGesture {
+            focusedField = nil
+        }
+    }
+}
+
+// MARK: - Step 3: Target Weight
+
+struct Step3TargetWeight: View {
     @ObservedObject var viewModel: GoalSetupViewModel
 
     var body: some View {
@@ -388,7 +529,7 @@ struct Step2TargetWeight: View {
 
             // Continue Button
             Button {
-                viewModel.currentStep = 3
+                viewModel.currentStep = 4
             } label: {
                 Text("Continue")
                     .font(.system(size: 16, weight: .semibold))
@@ -440,9 +581,9 @@ struct UnitToggleOption: View {
     }
 }
 
-// MARK: - Step 3: Deadline
+// MARK: - Step 4: Deadline
 
-struct Step3Deadline: View {
+struct Step4Deadline: View {
     @ObservedObject var viewModel: GoalSetupViewModel
 
     var weeksRemaining: Int {
@@ -517,7 +658,7 @@ struct Step3Deadline: View {
 
             // Continue Button
             Button {
-                viewModel.currentStep = 4
+                viewModel.currentStep = 5
             } label: {
                 Text("Continue")
                     .font(.system(size: 16, weight: .semibold))
@@ -534,9 +675,9 @@ struct Step3Deadline: View {
     }
 }
 
-// MARK: - Step 4: Confirmation
+// MARK: - Step 5: Confirmation
 
-struct Step4Confirmation: View {
+struct Step5Confirmation: View {
     @ObservedObject var viewModel: GoalSetupViewModel
     let onComplete: () -> Void
 
@@ -750,6 +891,39 @@ class GoalSetupViewModel: ObservableObject {
     @Published var isCreating = false
     @Published var goalCreated = false
     @Published var error: String?
+
+    // Current ability inputs
+    @Published var currentWeightInput: String = ""
+    @Published var currentRepsInput: String = ""
+
+    // Calculated e1RM using Epley formula: weight * (1 + reps/30)
+    var calculatedE1RM: Double {
+        guard let weight = Double(currentWeightInput),
+              let reps = Int(currentRepsInput),
+              weight > 0, reps > 0 else {
+            return 0
+        }
+        // For 1 rep, e1RM = weight
+        if reps == 1 {
+            return weight
+        }
+        // Epley formula
+        return weight * (1 + Double(reps) / 30)
+    }
+
+    var hasValidCurrentAbility: Bool {
+        guard let weight = Double(currentWeightInput),
+              let reps = Int(currentRepsInput) else {
+            return false
+        }
+        return weight > 0 && reps > 0
+    }
+
+    func updateCurrentMax() {
+        if calculatedE1RM > 0 {
+            currentMax = calculatedE1RM
+        }
+    }
 
     private let apiClient = APIClient.shared
 
