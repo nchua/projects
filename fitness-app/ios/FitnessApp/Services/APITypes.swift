@@ -14,6 +14,27 @@ struct AuthResponse: Decodable {
     }
 }
 
+// MARK: - Password Reset
+
+struct PasswordResetRequest: Encodable {
+    let email: String
+}
+
+struct PasswordResetVerify: Encodable {
+    let email: String
+    let code: String
+    let newPassword: String
+
+    enum CodingKeys: String, CodingKey {
+        case email, code
+        case newPassword = "new_password"
+    }
+}
+
+struct PasswordResetResponse: Decodable {
+    let message: String
+}
+
 // MARK: - Profile
 
 struct ProfileResponse: Decodable {

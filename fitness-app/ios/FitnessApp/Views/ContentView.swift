@@ -94,6 +94,7 @@ struct AuthView: View {
     @State private var showConfirmPassword = false
     @State private var showTitle = false
     @State private var showSubtitle = false
+    @State private var showForgotPassword = false
 
     var body: some View {
         NavigationStack {
@@ -292,6 +293,17 @@ struct AuthView: View {
                     .disabled(authManager.isLoading)
                     .animation(.easeInOut(duration: 0.2), value: authManager.isLoading)
 
+                    // Forgot Password link (only show on login)
+                    if isLogin {
+                        Button {
+                            showForgotPassword = true
+                        } label: {
+                            Text("Forgot Password?")
+                                .font(.ariseMono(size: 14))
+                                .foregroundColor(.systemPrimary)
+                        }
+                    }
+
                     // Toggle login/register - ARISE style
                     Button {
                         withAnimation(.smoothSpring) {
@@ -312,6 +324,9 @@ struct AuthView: View {
                     Spacer()
                     Spacer()
                 }
+            }
+            .sheet(isPresented: $showForgotPassword) {
+                ForgotPasswordView()
             }
             .background {
                 // Tap background to dismiss keyboard (won't interfere with buttons)

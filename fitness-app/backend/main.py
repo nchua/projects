@@ -145,8 +145,9 @@ async def add_sports_exercises_endpoint():
         db.close()
 
 # Import and include API routers
-from app.api import auth, profile, exercises, workouts, bodyweight, analytics, sync, progress, quests, screenshot, activity, dungeons, users, friends
+from app.api import auth, profile, exercises, workouts, bodyweight, analytics, sync, progress, quests, screenshot, activity, dungeons, users, friends, password_reset
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+app.include_router(password_reset.router, prefix="/auth/password-reset", tags=["Password Reset"])
 app.include_router(profile.router, prefix="/profile", tags=["Profile"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
 app.include_router(exercises.router, prefix="/exercises", tags=["Exercises"])

@@ -57,6 +57,18 @@ class APIClient {
         refreshToken = nil
     }
 
+    // MARK: - Password Reset
+
+    func requestPasswordReset(email: String) async throws -> PasswordResetResponse {
+        let body = PasswordResetRequest(email: email)
+        return try await postUnauthenticated("/auth/password-reset/request", body: body)
+    }
+
+    func verifyPasswordReset(email: String, code: String, newPassword: String) async throws -> PasswordResetResponse {
+        let body = PasswordResetVerify(email: email, code: code, newPassword: newPassword)
+        return try await postUnauthenticated("/auth/password-reset/verify", body: body)
+    }
+
     // MARK: - Profile
 
     func getProfile() async throws -> ProfileResponse {
@@ -547,6 +559,10 @@ class APIClient {
         return try await request(method: "POST", path: path, body: body)
     }
 
+    private func postUnauthenticated<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
+        return try await requestUnauthenticated(method: "POST", path: path, body: body)
+    }
+
     private func put<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
         return try await request(method: "PUT", path: path, body: body)
     }
@@ -631,6 +647,62 @@ class APIClient {
             throw APIError.serverError(httpResponse.statusCode)
         }
     }
+
+    /// Make a request without authentication (for password reset, etc.)
+    private func requestUnauthenticated<T: Decodable, B: Encodable>(method: String, path: String, body: B?) async throws -> T {
+        guard let url = URL(string: baseURL + path) else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 10
+
+        if let body = body {
+            request.httpBody = try JSONEncoder().encode(body)
+        }
+
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch let error as URLError {
+            switch error.code {
+            case .notConnectedToInternet:
+                throw APIError.networkError("No internet connection")
+            case .timedOut:
+                throw APIError.networkError("Request timed out. Check your connection.")
+            case .cannotConnectToHost, .cannotFindHost:
+                throw APIError.networkError("Cannot connect to server")
+            default:
+                throw APIError.networkError("Network error: \(error.localizedDescription)")
+            }
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 200...299:
+            return try JSONDecoder().decode(T.self, from: data)
+        case 400:
+            // Try to decode error message from response
+            if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                throw APIError.networkError(errorResponse.detail)
+            }
+            throw APIError.validationError
+        case 422:
+            throw APIError.validationError
+        default:
+            throw APIError.serverError(httpResponse.statusCode)
+        }
+    }
+}
+
+// Helper struct for decoding error responses
+private struct ErrorResponse: Decodable {
+    let detail: String
 }
 
 // MARK: - API Types

@@ -15,6 +15,7 @@ from app.models.dungeon import (
     DungeonRank, DungeonObjectiveType, DungeonStatus
 )
 from app.models.friend import FriendRequest, Friendship, FriendRequestStatus
+from app.models.password_reset import PasswordResetToken
 
 __all__ = [
     "User",
@@ -49,4 +50,5 @@ __all__ = [
     "FriendRequest",
     "Friendship",
     "FriendRequestStatus",
+    "PasswordResetToken",
 ]
