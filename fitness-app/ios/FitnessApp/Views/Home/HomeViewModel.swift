@@ -31,6 +31,7 @@ class HomeViewModel: ObservableObject {
     @Published var profile: ProfileResponse?
     @Published var cooldownStatus: [MuscleCooldownStatus] = []
     @Published var cooldownAgeModifier: Double = 1.0
+    @Published var currentMission: CurrentMissionResponse?
     @Published var isLoading = false
     @Published var error: String?
 
@@ -244,6 +245,15 @@ class HomeViewModel: ObservableObject {
                     print("DEBUG: Failed to load exercises: \(error)")
                 }
             }
+
+            group.addTask { @MainActor in
+                do {
+                    let mission: CurrentMissionResponse = try await APIClient.shared.get(endpoint: "missions/current")
+                    self.currentMission = mission
+                } catch {
+                    print("DEBUG: Failed to load current mission: \(error)")
+                }
+            }
         }
 
         // Load Big Three trends after exercises are loaded
@@ -325,6 +335,43 @@ class HomeViewModel: ObservableObject {
         await loadHealthKitData()
         isHealthKitSyncing = false
     }
+
+    // MARK: - Mission Actions
+
+    func acceptMission(missionId: String) async {
+        do {
+            let _: MissionAcceptResponse = try await APIClient.shared.post(
+                endpoint: "missions/\(missionId)/accept",
+                body: EmptyBody()
+            )
+            // Reload mission data
+            let mission: CurrentMissionResponse = try await APIClient.shared.get(endpoint: "missions/current")
+            self.currentMission = mission
+            // Reload quests (they'll now show mission objectives)
+            let quests = try await APIClient.shared.getDailyQuests()
+            self.dailyQuests = quests
+        } catch {
+            print("DEBUG: Failed to accept mission: \(error)")
+            self.error = error.localizedDescription
+        }
+    }
+
+    func declineMission(missionId: String) async {
+        do {
+            let _: MissionDeclineResponse = try await APIClient.shared.post(
+                endpoint: "missions/\(missionId)/decline",
+                body: EmptyBody()
+            )
+            // Reload mission data
+            let mission: CurrentMissionResponse = try await APIClient.shared.get(endpoint: "missions/current")
+            self.currentMission = mission
+        } catch {
+            print("DEBUG: Failed to decline mission: \(error)")
+            self.error = error.localizedDescription
+        }
+    }
+
+    // MARK: - Quest Actions
 
     func claimQuest(_ questId: String) async {
         do {

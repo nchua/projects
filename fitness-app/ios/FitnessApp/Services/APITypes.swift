@@ -1558,3 +1558,238 @@ struct FriendProfileResponse: Decodable {
         case recentWorkouts = "recent_workouts"
     }
 }
+
+// MARK: - Goals
+
+struct GoalCreate: Encodable {
+    let exerciseId: String
+    let targetWeight: Double
+    let weightUnit: String
+    let deadline: String  // ISO date string
+    let notes: String?
+
+    enum CodingKeys: String, CodingKey {
+        case notes, deadline
+        case exerciseId = "exercise_id"
+        case targetWeight = "target_weight"
+        case weightUnit = "weight_unit"
+    }
+}
+
+struct GoalResponse: Decodable, Identifiable {
+    let id: String
+    let exerciseId: String
+    let exerciseName: String
+    let targetWeight: Double
+    let weightUnit: String
+    let deadline: String
+    let startingE1rm: Double?
+    let currentE1rm: Double?
+    let status: String
+    let notes: String?
+    let createdAt: String
+    let progressPercent: Double
+    let weightToGo: Double
+    let weeksRemaining: Int
+
+    enum CodingKeys: String, CodingKey {
+        case id, deadline, status, notes
+        case exerciseId = "exercise_id"
+        case exerciseName = "exercise_name"
+        case targetWeight = "target_weight"
+        case weightUnit = "weight_unit"
+        case startingE1rm = "starting_e1rm"
+        case currentE1rm = "current_e1rm"
+        case createdAt = "created_at"
+        case progressPercent = "progress_percent"
+        case weightToGo = "weight_to_go"
+        case weeksRemaining = "weeks_remaining"
+    }
+}
+
+struct GoalSummaryResponse: Decodable, Identifiable {
+    let id: String
+    let exerciseName: String
+    let targetWeight: Double
+    let weightUnit: String
+    let deadline: String
+    let progressPercent: Double
+    let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, deadline, status
+        case exerciseName = "exercise_name"
+        case targetWeight = "target_weight"
+        case weightUnit = "weight_unit"
+        case progressPercent = "progress_percent"
+    }
+}
+
+struct GoalsListResponse: Decodable {
+    let goals: [GoalSummaryResponse]
+    let activeCount: Int
+    let completedCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case goals
+        case activeCount = "active_count"
+        case completedCount = "completed_count"
+    }
+}
+
+// MARK: - Missions
+
+struct ExercisePrescriptionResponse: Decodable, Identifiable {
+    let id: String
+    let exerciseId: String
+    let exerciseName: String
+    let orderIndex: Int
+    let sets: Int
+    let reps: Int
+    let weight: Double?
+    let weightUnit: String
+    let rpeTarget: Int?
+    let notes: String?
+    let isCompleted: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case id, sets, reps, weight, notes
+        case exerciseId = "exercise_id"
+        case exerciseName = "exercise_name"
+        case orderIndex = "order_index"
+        case weightUnit = "weight_unit"
+        case rpeTarget = "rpe_target"
+        case isCompleted = "is_completed"
+    }
+}
+
+struct MissionWorkoutResponse: Decodable, Identifiable {
+    let id: String
+    let dayNumber: Int
+    let focus: String
+    let primaryLift: String?
+    let status: String
+    let completedWorkoutId: String?
+    let completedAt: String?
+    let prescriptions: [ExercisePrescriptionResponse]
+
+    enum CodingKeys: String, CodingKey {
+        case id, focus, status, prescriptions
+        case dayNumber = "day_number"
+        case primaryLift = "primary_lift"
+        case completedWorkoutId = "completed_workout_id"
+        case completedAt = "completed_at"
+    }
+}
+
+struct MissionWorkoutSummary: Decodable, Identifiable {
+    let id: String
+    let dayNumber: Int
+    let focus: String
+    let status: String
+    let exerciseCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case id, focus, status
+        case dayNumber = "day_number"
+        case exerciseCount = "exercise_count"
+    }
+}
+
+struct WeeklyMissionResponse: Decodable, Identifiable {
+    let id: String
+    let goalId: String
+    let goalExerciseName: String
+    let goalTargetWeight: Double
+    let goalWeightUnit: String
+    let weekStart: String
+    let weekEnd: String
+    let status: String
+    let xpReward: Int
+    let weeklyTarget: String?
+    let coachingMessage: String?
+    let workouts: [MissionWorkoutResponse]
+    let workoutsCompleted: Int
+    let workoutsTotal: Int
+    let daysRemaining: Int
+
+    enum CodingKeys: String, CodingKey {
+        case id, status, workouts
+        case goalId = "goal_id"
+        case goalExerciseName = "goal_exercise_name"
+        case goalTargetWeight = "goal_target_weight"
+        case goalWeightUnit = "goal_weight_unit"
+        case weekStart = "week_start"
+        case weekEnd = "week_end"
+        case xpReward = "xp_reward"
+        case weeklyTarget = "weekly_target"
+        case coachingMessage = "coaching_message"
+        case workoutsCompleted = "workouts_completed"
+        case workoutsTotal = "workouts_total"
+        case daysRemaining = "days_remaining"
+    }
+}
+
+struct WeeklyMissionSummary: Decodable, Identifiable {
+    let id: String
+    let goalExerciseName: String
+    let goalTargetWeight: Double
+    let goalWeightUnit: String
+    let status: String
+    let weekStart: String
+    let weekEnd: String
+    let xpReward: Int
+    let workoutsCompleted: Int
+    let workoutsTotal: Int
+    let daysRemaining: Int
+    let workouts: [MissionWorkoutSummary]
+
+    enum CodingKeys: String, CodingKey {
+        case id, status, workouts
+        case goalExerciseName = "goal_exercise_name"
+        case goalTargetWeight = "goal_target_weight"
+        case goalWeightUnit = "goal_weight_unit"
+        case weekStart = "week_start"
+        case weekEnd = "week_end"
+        case xpReward = "xp_reward"
+        case workoutsCompleted = "workouts_completed"
+        case workoutsTotal = "workouts_total"
+        case daysRemaining = "days_remaining"
+    }
+}
+
+struct CurrentMissionResponse: Decodable {
+    let hasActiveGoal: Bool
+    let goal: GoalSummaryResponse?
+    let mission: WeeklyMissionSummary?
+    let needsGoalSetup: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case goal, mission
+        case hasActiveGoal = "has_active_goal"
+        case needsGoalSetup = "needs_goal_setup"
+    }
+}
+
+struct MissionAcceptResponse: Decodable {
+    let success: Bool
+    let mission: WeeklyMissionResponse
+    let message: String
+}
+
+struct MissionDeclineResponse: Decodable {
+    let success: Bool
+    let message: String
+}
+
+struct MissionHistoryResponse: Decodable {
+    let missions: [WeeklyMissionSummary]
+    let totalCompleted: Int
+    let totalXpEarned: Int
+
+    enum CodingKeys: String, CodingKey {
+        case missions
+        case totalCompleted = "total_completed"
+        case totalXpEarned = "total_xp_earned"
+    }
+}

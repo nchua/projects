@@ -10,6 +10,9 @@ struct HomeView: View {
     @State private var showProfile = false
     @State private var questWorkoutId: String?  // For navigating from completed quest
     @State private var selectedQuest: QuestResponse?  // For showing quest detail sheet
+    @State private var showGoalSetup = false
+    @State private var selectedMissionId: String?
+    @State private var missionToAccept: WeeklyMissionSummary?
 
     var body: some View {
         NavigationStack {
@@ -46,8 +49,24 @@ struct HomeView: View {
                         QuickActionsRow()
                             .padding(.horizontal)
 
-                        // 4. Daily Quests (Edge Flow - left accent style)
-                        if let quests = viewModel.dailyQuests, !quests.quests.isEmpty {
+                        // 4. Weekly Mission Card (if coaching feature enabled)
+                        MissionCard(
+                            missionData: viewModel.currentMission,
+                            onCreateGoal: { showGoalSetup = true },
+                            onAcceptMission: { missionId in
+                                if let mission = viewModel.currentMission?.mission {
+                                    missionToAccept = mission
+                                }
+                            },
+                            onViewMission: { missionId in
+                                selectedMissionId = missionId
+                            }
+                        )
+
+                        // 5. Daily Quests (Edge Flow - left accent style)
+                        // Hidden when mission is active (mission replaces quests)
+                        if viewModel.currentMission?.mission?.status != "accepted",
+                           let quests = viewModel.dailyQuests, !quests.quests.isEmpty {
                             DailyQuestsSection(
                                 quests: quests.quests,
                                 refreshAt: quests.refreshAt,
@@ -64,15 +83,15 @@ struct HomeView: View {
                             // No .padding(.horizontal) - built into section
                         }
 
-                        // 5. Power Levels (Edge Flow - horizontal scroll)
+                        // 7. Power Levels (Edge Flow - horizontal scroll)
                         PowerLevelsSection(lifts: viewModel.bigThreeLifts, selectedTab: $selectedTab)
                         // No .padding(.horizontal) - built into section
 
-                        // 6. Recovery Status (Edge Flow - horizontal pills)
+                        // 8. Recovery Status (Edge Flow - horizontal pills)
                         RecoveryStatusSection(cooldownData: viewModel.cooldownStatus)
                         // No .padding(.horizontal) - built into section
 
-                        // 7. Latest Achievement (Single PR) - Edge Flow styled
+                        // 9. Latest Achievement (Single PR) - Edge Flow styled
                         if let latestPR = viewModel.recentPRs.first {
                             VStack(alignment: .leading, spacing: 14) {
                                 Text("Latest Achievement")
@@ -126,6 +145,28 @@ struct HomeView: View {
                     questWorkoutId = workoutId
                 }
             )
+        }
+        .sheet(isPresented: $showGoalSetup) {
+            GoalSetupView()
+        }
+        .sheet(item: $selectedMissionId) { missionId in
+            MissionDetailView(missionId: missionId)
+        }
+        .sheet(item: $missionToAccept) { mission in
+            AcceptMissionSheet(
+                mission: mission,
+                onAccept: {
+                    Task {
+                        await viewModel.acceptMission(missionId: mission.id)
+                    }
+                },
+                onDecline: {
+                    Task {
+                        await viewModel.declineMission(missionId: mission.id)
+                    }
+                }
+            )
+            .presentationDetents([.medium])
         }
     }
 }
