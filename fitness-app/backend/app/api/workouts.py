@@ -233,24 +233,24 @@ async def _create_workout_impl(
     }
     newly_unlocked = check_and_unlock_achievements(db, current_user.id, achievement_context)
 
-    # Update quest progress based on this workout
-    completed_quest_ids = update_quest_progress(db, current_user.id, workout_session)
-
-    # Update dungeon progress based on this workout
-    dungeon_progress_result = update_dungeon_progress(db, current_user.id, workout_session)
-
-    # Try to spawn a new dungeon
-    dungeon_spawn_result = maybe_spawn_dungeon(db, current_user.id)
-
-    db.commit()
-
-    # Fetch complete workout with relationships
+    # Fetch complete workout with relationships (needed for quest/dungeon progress)
     workout = db.query(WorkoutSession).options(
         joinedload(WorkoutSession.workout_exercises)
         .joinedload(WorkoutExercise.sets),
         joinedload(WorkoutSession.workout_exercises)
         .joinedload(WorkoutExercise.exercise)
     ).filter(WorkoutSession.id == workout_session.id).first()
+
+    # Update quest progress based on this workout (requires loaded relationships)
+    completed_quest_ids = update_quest_progress(db, current_user.id, workout)
+
+    # Update dungeon progress based on this workout
+    dungeon_progress_result = update_dungeon_progress(db, current_user.id, workout)
+
+    # Try to spawn a new dungeon
+    dungeon_spawn_result = maybe_spawn_dungeon(db, current_user.id)
+
+    db.commit()
 
     # Build workout response
     workout_response = _build_workout_response(workout)

@@ -10,7 +10,7 @@ import logging
 import io
 from typing import Optional, Tuple, List, Dict, Any
 from datetime import datetime
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 
 import anthropic
@@ -712,8 +712,16 @@ async def save_extracted_workout(
     }
     check_and_unlock_achievements(db, user_id, achievement_context)
 
+    # Fetch complete workout with relationships (needed for quest progress)
+    workout_with_relationships = db.query(WorkoutSession).options(
+        joinedload(WorkoutSession.workout_exercises)
+        .joinedload(WorkoutExercise.sets),
+        joinedload(WorkoutSession.workout_exercises)
+        .joinedload(WorkoutExercise.exercise)
+    ).filter(WorkoutSession.id == workout_session.id).first()
+
     # Update quest progress
-    update_quest_progress(db, user_id, workout_session)
+    update_quest_progress(db, user_id, workout_with_relationships)
 
     logger.info(f"[SAVE] Final commit for workout {workout_session.id}")
     try:
@@ -931,8 +939,16 @@ async def save_whoop_activity(
             }
             check_and_unlock_achievements(db, user_id, achievement_context)
 
+            # Fetch complete workout with relationships (needed for quest progress)
+            workout_with_relationships = db.query(WorkoutSession).options(
+                joinedload(WorkoutSession.workout_exercises)
+                .joinedload(WorkoutExercise.sets),
+                joinedload(WorkoutSession.workout_exercises)
+                .joinedload(WorkoutExercise.exercise)
+            ).filter(WorkoutSession.id == workout_session.id).first()
+
             # Update quest progress
-            update_quest_progress(db, user_id, workout_session)
+            update_quest_progress(db, user_id, workout_with_relationships)
 
     db.commit()
     return activity_id, workout_id

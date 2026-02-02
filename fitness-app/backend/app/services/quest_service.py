@@ -33,13 +33,19 @@ def get_midnight_utc_tomorrow() -> datetime:
 
 def calculate_todays_workout_stats(db: Session, user_id: str, today: date) -> Dict[str, Any]:
     """
-    Calculate aggregate stats from all workouts logged today.
+    Calculate aggregate stats from workouts for quest progress.
+
+    To handle timezone differences (e.g., PST user at 5PM on Jan 31 = Feb 1 UTC),
+    we include workouts from both today AND yesterday. This ensures a workout
+    logged for the user's local "today" counts toward their active quests.
 
     Returns:
         Dict with total_reps, compound_sets, total_volume, shortest_duration,
         and completing_workout_id (the workout that would complete duration quests)
     """
-    # Get all of today's workouts with their exercises and sets
+    yesterday = today - timedelta(days=1)
+
+    # Get workouts from today and yesterday with their exercises and sets
     workouts = db.query(WorkoutSession).options(
         joinedload(WorkoutSession.workout_exercises)
         .joinedload(WorkoutExercise.sets),
@@ -50,12 +56,13 @@ def calculate_todays_workout_stats(db: Session, user_id: str, today: date) -> Di
         WorkoutSession.deleted_at == None
     ).all()
 
-    # Filter to only today's workouts (comparing date part)
-    todays_workouts = []
+    # Filter to workouts from today or yesterday (to handle timezone edge cases)
+    # A PST user at 5 PM on Jan 31 has UTC date Feb 1, but their workout is dated Jan 31
+    relevant_workouts = []
     for w in workouts:
         workout_date = w.date.date() if hasattr(w.date, 'date') else w.date
-        if workout_date == today:
-            todays_workouts.append(w)
+        if workout_date == today or workout_date == yesterday:
+            relevant_workouts.append(w)
 
     total_reps = 0
     compound_sets = 0
@@ -63,7 +70,7 @@ def calculate_todays_workout_stats(db: Session, user_id: str, today: date) -> Di
     shortest_duration = None
     shortest_duration_workout_id = None
 
-    for workout in todays_workouts:
+    for workout in relevant_workouts:
         for workout_exercise in workout.workout_exercises:
             exercise_name = workout_exercise.exercise.name.lower() if workout_exercise.exercise else ""
 
@@ -86,7 +93,7 @@ def calculate_todays_workout_stats(db: Session, user_id: str, today: date) -> Di
         "total_volume": int(total_volume),
         "shortest_duration": shortest_duration,
         "shortest_duration_workout_id": shortest_duration_workout_id,
-        "workout_count": len(todays_workouts)
+        "workout_count": len(relevant_workouts)
     }
 
 
@@ -159,10 +166,11 @@ def generate_daily_quests(db: Session, user_id: str, count: int = 3) -> List[Use
     """
     today = get_today_utc()
 
-    # Get all active daily quest definitions
+    # Get all active daily quest definitions (excluding duration-based quests)
     quest_defs = db.query(QuestDefinition).filter(
         QuestDefinition.is_daily == True,
-        QuestDefinition.is_active == True
+        QuestDefinition.is_active == True,
+        QuestDefinition.quest_type != "workout_duration"  # Exclude speed-based quests
     ).all()
 
     if not quest_defs:
@@ -479,14 +487,6 @@ def seed_quest_definitions(db: Session) -> int:
          "quest_type": "total_volume", "target_value": 15000, "xp_reward": 55, "difficulty": "normal"},
         {"id": "volume_20k", "name": "Tonnage King", "description": "Lift 20,000 lbs total",
          "quest_type": "total_volume", "target_value": 20000, "xp_reward": 70, "difficulty": "hard"},
-
-        # Duration-based quests (complete workout within time)
-        {"id": "quick_60", "name": "Efficient Session", "description": "Complete workout in under 60 min",
-         "quest_type": "workout_duration", "target_value": 60, "xp_reward": 20, "difficulty": "easy"},
-        {"id": "quick_45", "name": "Time Crunch", "description": "Complete workout in under 45 min",
-         "quest_type": "workout_duration", "target_value": 45, "xp_reward": 35, "difficulty": "normal"},
-        {"id": "quick_30", "name": "Speed Demon", "description": "Complete workout in under 30 min",
-         "quest_type": "workout_duration", "target_value": 30, "xp_reward": 50, "difficulty": "hard"},
     ]
 
     created_count = 0

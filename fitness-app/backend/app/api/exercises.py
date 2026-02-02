@@ -394,6 +394,7 @@ async def test_create_workout(db: Session = Depends(get_db)):
     from app.services.quest_service import update_quest_progress
     from app.models.pr import PR
     from datetime import datetime
+    from sqlalchemy.orm import joinedload
     import traceback
 
     result = {"steps": []}
@@ -488,7 +489,14 @@ async def test_create_workout(db: Session = Depends(get_db)):
             result["progress_traceback"] = traceback.format_exc()
 
         try:
-            completed_quests = update_quest_progress(db, user.id, workout)
+            # Fetch workout with relationships for quest progress
+            workout_with_rels = db.query(WorkoutSession).options(
+                joinedload(WorkoutSession.workout_exercises)
+                .joinedload(WorkoutExercise.sets),
+                joinedload(WorkoutSession.workout_exercises)
+                .joinedload(WorkoutExercise.exercise)
+            ).filter(WorkoutSession.id == workout.id).first()
+            completed_quests = update_quest_progress(db, user.id, workout_with_rels)
             result["steps"].append(f"Quest progress: {completed_quests}")
         except Exception as e:
             result["steps"].append(f"Quest error: {str(e)}")
