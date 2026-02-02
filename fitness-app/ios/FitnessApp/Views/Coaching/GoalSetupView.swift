@@ -98,11 +98,38 @@ struct Step1ExerciseSelection: View {
     @State private var searchText = ""
     @FocusState private var isSearchFocused: Bool
 
+    // Big Three exercise names to prioritize at top
+    private let bigThreeNames = ["Squat", "Bench Press", "Deadlift"]
+
     var filteredExercises: [ExerciseResponse] {
+        let exercises: [ExerciseResponse]
         if searchText.isEmpty {
-            return viewModel.exercises
+            exercises = viewModel.exercises
+        } else {
+            exercises = viewModel.exercises.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
         }
-        return viewModel.exercises.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+
+        // Sort Big Three to top when not searching
+        if searchText.isEmpty {
+            return exercises.sorted { ex1, ex2 in
+                let ex1IsBigThree = bigThreeNames.contains { ex1.name.localizedCaseInsensitiveContains($0) }
+                let ex2IsBigThree = bigThreeNames.contains { ex2.name.localizedCaseInsensitiveContains($0) }
+
+                if ex1IsBigThree && !ex2IsBigThree { return true }
+                if !ex1IsBigThree && ex2IsBigThree { return false }
+
+                // Within Big Three, sort by order: Squat, Bench, Deadlift
+                if ex1IsBigThree && ex2IsBigThree {
+                    let ex1Index = bigThreeNames.firstIndex { ex1.name.localizedCaseInsensitiveContains($0) } ?? 0
+                    let ex2Index = bigThreeNames.firstIndex { ex2.name.localizedCaseInsensitiveContains($0) } ?? 0
+                    return ex1Index < ex2Index
+                }
+
+                return ex1.name < ex2.name
+            }
+        }
+
+        return exercises
     }
 
     var body: some View {
