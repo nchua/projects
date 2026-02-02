@@ -96,6 +96,7 @@ struct ProgressStepsIndicator: View {
 struct Step1ExerciseSelection: View {
     @ObservedObject var viewModel: GoalSetupViewModel
     @State private var searchText = ""
+    @FocusState private var isSearchFocused: Bool
 
     var filteredExercises: [ExerciseResponse] {
         if searchText.isEmpty {
@@ -124,6 +125,20 @@ struct Step1ExerciseSelection: View {
                     .foregroundColor(.textSecondary)
                 TextField("Search exercises...", text: $searchText)
                     .foregroundColor(.white)
+                    .focused($isSearchFocused)
+                    .submitLabel(.done)
+                    .onSubmit {
+                        isSearchFocused = false
+                    }
+
+                if isSearchFocused {
+                    Button {
+                        isSearchFocused = false
+                    } label: {
+                        Image(systemName: "keyboard.chevron.compact.down")
+                            .foregroundColor(.textSecondary)
+                    }
+                }
             }
             .padding(16)
             .background(Color.bgInput)
@@ -142,6 +157,7 @@ struct Step1ExerciseSelection: View {
                             exercise: exercise,
                             isSelected: viewModel.selectedExercise?.id == exercise.id
                         ) {
+                            isSearchFocused = false  // Dismiss keyboard
                             viewModel.selectedExercise = exercise
                         }
                     }
@@ -151,6 +167,7 @@ struct Step1ExerciseSelection: View {
 
             // Continue Button
             Button {
+                isSearchFocused = false  // Dismiss keyboard
                 viewModel.currentStep = 2
             } label: {
                 Text("Continue")
