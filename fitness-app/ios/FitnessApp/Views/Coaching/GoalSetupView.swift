@@ -913,15 +913,32 @@ struct Step5Confirmation: View {
                 )
                 .padding(.horizontal, 20)
 
-                // Mission Preview
+                // Error Display
+                if let error = viewModel.error {
+                    HStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.red)
+                        Text(error)
+                            .font(.system(size: 14))
+                            .foregroundColor(.red)
+                        Spacer()
+                    }
+                    .padding(16)
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(12)
+                    .padding(.horizontal, 20)
+                }
+
+                // Training Frequency Info
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Weekly training: ~3 workouts recommended")
+                    Text("Recommended training frequency")
                         .font(.system(size: 14))
                         .foregroundColor(.textSecondary)
 
                     HStack(spacing: 8) {
-                        ForEach(["S", "M", "T", "W", "T", "F", "S"], id: \.self) { day in
-                            let isWorkoutDay = ["M", "W", "F"].contains(day)
+                        // Show 2x/week for most compound lifts (Mon/Thu pattern)
+                        ForEach(Array(["S", "M", "T", "W", "T", "F", "S"].enumerated()), id: \.offset) { index, day in
+                            let isWorkoutDay = [1, 4].contains(index)  // Monday and Thursday
                             VStack(spacing: 4) {
                                 Text(day)
                                     .font(.system(size: 10))
@@ -941,6 +958,10 @@ struct Step5Confirmation: View {
                             )
                         }
                     }
+
+                    Text("2x per week is optimal for compound lifts like \(viewModel.selectedExercise?.name ?? "this exercise")")
+                        .font(.system(size: 12))
+                        .foregroundColor(.textSecondary.opacity(0.7))
                 }
                 .padding(20)
                 .background(Color.bgCard)
@@ -1119,7 +1140,10 @@ class GoalSetupViewModel: ObservableObject {
     }
 
     func createGoal() async {
-        guard let exercise = selectedExercise else { return }
+        guard let exercise = selectedExercise else {
+            error = "No exercise selected"
+            return
+        }
 
         isCreating = true
         error = nil
@@ -1138,10 +1162,14 @@ class GoalSetupViewModel: ObservableObject {
                 notes: nil
             )
 
-            let _ = try await APIClient.shared.createGoal(goalCreate)
+            print("Creating goal: \(exercise.name) - \(targetWeight) \(weightUnit) x \(targetReps) by \(deadlineString)")
+
+            let response = try await APIClient.shared.createGoal(goalCreate)
+            print("Goal created successfully: \(response.id)")
             goalCreated = true
         } catch {
-            self.error = error.localizedDescription
+            print("Failed to create goal: \(error)")
+            self.error = "Failed to save goal: \(error.localizedDescription)"
         }
 
         isCreating = false
