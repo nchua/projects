@@ -43,6 +43,7 @@ class Goal(Base):
 
     # Target
     target_weight = Column(Float, nullable=False)  # Target weight to lift
+    target_reps = Column(Integer, default=1, nullable=False)  # Target reps (1 = true 1RM)
     weight_unit = Column(String, default="lb", nullable=False)  # lb or kg
     deadline = Column(Date, nullable=False)
 

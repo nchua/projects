@@ -1564,6 +1564,7 @@ struct FriendProfileResponse: Decodable {
 struct GoalCreate: Encodable {
     let exerciseId: String
     let targetWeight: Double
+    let targetReps: Int  // Target reps (1 = true 1RM goal)
     let weightUnit: String
     let deadline: String  // ISO date string
     let notes: String?
@@ -1572,6 +1573,7 @@ struct GoalCreate: Encodable {
         case notes, deadline
         case exerciseId = "exercise_id"
         case targetWeight = "target_weight"
+        case targetReps = "target_reps"
         case weightUnit = "weight_unit"
     }
 }
@@ -1581,6 +1583,8 @@ struct GoalResponse: Decodable, Identifiable {
     let exerciseId: String
     let exerciseName: String
     let targetWeight: Double
+    let targetReps: Int  // Target reps (1 = true 1RM goal)
+    let targetE1rm: Double  // Calculated e1RM for target
     let weightUnit: String
     let deadline: String
     let startingE1rm: Double?
@@ -1589,7 +1593,7 @@ struct GoalResponse: Decodable, Identifiable {
     let notes: String?
     let createdAt: String
     let progressPercent: Double
-    let weightToGo: Double
+    let weightToGo: Double  // Actually e1RM to go
     let weeksRemaining: Int
 
     enum CodingKeys: String, CodingKey {
@@ -1597,6 +1601,8 @@ struct GoalResponse: Decodable, Identifiable {
         case exerciseId = "exercise_id"
         case exerciseName = "exercise_name"
         case targetWeight = "target_weight"
+        case targetReps = "target_reps"
+        case targetE1rm = "target_e1rm"
         case weightUnit = "weight_unit"
         case startingE1rm = "starting_e1rm"
         case currentE1rm = "current_e1rm"
@@ -1611,6 +1617,8 @@ struct GoalSummaryResponse: Decodable, Identifiable {
     let id: String
     let exerciseName: String
     let targetWeight: Double
+    let targetReps: Int  // Target reps (1 = true 1RM goal)
+    let targetE1rm: Double  // Calculated e1RM for target
     let weightUnit: String
     let deadline: String
     let progressPercent: Double
@@ -1620,6 +1628,8 @@ struct GoalSummaryResponse: Decodable, Identifiable {
         case id, deadline, status
         case exerciseName = "exercise_name"
         case targetWeight = "target_weight"
+        case targetReps = "target_reps"
+        case targetE1rm = "target_e1rm"
         case weightUnit = "weight_unit"
         case progressPercent = "progress_percent"
     }

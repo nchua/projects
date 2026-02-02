@@ -61,6 +61,7 @@ async def create_new_goal(
         target_weight=goal_data.target_weight,
         weight_unit=goal_data.weight_unit,
         deadline=goal_data.deadline,
+        target_reps=goal_data.target_reps,
         notes=goal_data.notes
     )
 
@@ -163,6 +164,7 @@ async def update_existing_goal(
         db=db,
         goal=goal,
         target_weight=goal_data.target_weight,
+        target_reps=goal_data.target_reps,
         weight_unit=goal_data.weight_unit,
         deadline=goal_data.deadline,
         notes=goal_data.notes,

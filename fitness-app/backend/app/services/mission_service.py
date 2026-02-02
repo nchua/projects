@@ -42,6 +42,20 @@ def weeks_until(target_date: date) -> int:
     return days_until(target_date) // 7
 
 
+def calculate_e1rm(weight: float, reps: int) -> float:
+    """
+    Calculate estimated 1RM using Epley formula.
+    e1RM = weight * (1 + reps/30)
+
+    For 1 rep, e1RM equals the weight itself.
+    """
+    if reps <= 0 or weight <= 0:
+        return 0
+    if reps == 1:
+        return weight
+    return weight * (1 + reps / 30)
+
+
 # ============ Goal Functions ============
 
 def create_goal(
@@ -51,6 +65,7 @@ def create_goal(
     target_weight: float,
     weight_unit: str,
     deadline: date,
+    target_reps: int = 1,
     notes: Optional[str] = None
 ) -> Goal:
     """
@@ -63,6 +78,7 @@ def create_goal(
         target_weight: Target weight to lift
         weight_unit: lb or kg
         deadline: Target date
+        target_reps: Target reps (1 = true 1RM goal, higher = rep goal)
         notes: Optional notes
 
     Returns:
@@ -81,6 +97,7 @@ def create_goal(
         user_id=user_id,
         exercise_id=exercise_id,
         target_weight=target_weight,
+        target_reps=target_reps,
         weight_unit=weight_unit,
         deadline=deadline,
         starting_e1rm=starting_e1rm,
@@ -120,6 +137,7 @@ def update_goal(
     db: Session,
     goal: Goal,
     target_weight: Optional[float] = None,
+    target_reps: Optional[int] = None,
     weight_unit: Optional[str] = None,
     deadline: Optional[date] = None,
     notes: Optional[str] = None,
@@ -128,6 +146,8 @@ def update_goal(
     """Update an existing goal"""
     if target_weight is not None:
         goal.target_weight = target_weight
+    if target_reps is not None:
+        goal.target_reps = target_reps
     if weight_unit is not None:
         goal.weight_unit = weight_unit
     if deadline is not None:
@@ -172,8 +192,11 @@ def update_goal_progress(db: Session, user_id: str, exercise_id: str, new_e1rm: 
         if goal.current_e1rm is None or new_e1rm > goal.current_e1rm:
             goal.current_e1rm = new_e1rm
 
-        # Check if goal is achieved
-        if new_e1rm >= goal.target_weight and goal.status == GoalStatus.ACTIVE.value:
+        # Calculate target e1RM (accounts for target_reps)
+        target_e1rm = calculate_e1rm(goal.target_weight, goal.target_reps)
+
+        # Check if goal is achieved (compare e1RMs)
+        if new_e1rm >= target_e1rm and goal.status == GoalStatus.ACTIVE.value:
             goal.status = GoalStatus.COMPLETED.value
             goal.achieved_at = datetime.utcnow()
             completed_goal_ids.append(goal.id)
@@ -185,31 +208,38 @@ def update_goal_progress(db: Session, user_id: str, exercise_id: str, new_e1rm: 
 def calculate_goal_progress(goal: Goal) -> Dict[str, Any]:
     """Calculate progress metrics for a goal"""
     current = goal.current_e1rm or goal.starting_e1rm or 0
-    target = goal.target_weight
+    # Calculate target e1RM from weight and reps
+    target_reps = goal.target_reps if goal.target_reps else 1
+    target_e1rm = calculate_e1rm(goal.target_weight, target_reps)
 
-    if target > 0:
-        progress_percent = min(100, (current / target) * 100)
+    if target_e1rm > 0:
+        progress_percent = min(100, (current / target_e1rm) * 100)
     else:
         progress_percent = 0
 
-    weight_to_go = max(0, target - current)
+    # Weight to go is now in terms of e1RM
+    e1rm_to_go = max(0, target_e1rm - current)
 
     return {
         "progress_percent": round(progress_percent, 1),
-        "weight_to_go": weight_to_go,
-        "weeks_remaining": weeks_until(goal.deadline)
+        "weight_to_go": round(e1rm_to_go, 1),  # Actually e1RM to go
+        "weeks_remaining": weeks_until(goal.deadline),
+        "target_e1rm": round(target_e1rm, 1)
     }
 
 
 def goal_to_response(goal: Goal) -> Dict[str, Any]:
     """Convert Goal model to response dict"""
     progress = calculate_goal_progress(goal)
+    target_reps = goal.target_reps if goal.target_reps else 1
 
     return {
         "id": goal.id,
         "exercise_id": goal.exercise_id,
         "exercise_name": goal.exercise.name if goal.exercise else "Unknown",
         "target_weight": goal.target_weight,
+        "target_reps": target_reps,
+        "target_e1rm": progress["target_e1rm"],
         "weight_unit": goal.weight_unit,
         "deadline": goal.deadline.isoformat(),
         "starting_e1rm": goal.starting_e1rm,
@@ -224,11 +254,14 @@ def goal_to_response(goal: Goal) -> Dict[str, Any]:
 def goal_to_summary(goal: Goal) -> Dict[str, Any]:
     """Convert Goal model to summary dict"""
     progress = calculate_goal_progress(goal)
+    target_reps = goal.target_reps if goal.target_reps else 1
 
     return {
         "id": goal.id,
         "exercise_name": goal.exercise.name if goal.exercise else "Unknown",
         "target_weight": goal.target_weight,
+        "target_reps": target_reps,
+        "target_e1rm": progress["target_e1rm"],
         "weight_unit": goal.weight_unit,
         "deadline": goal.deadline.isoformat(),
         "progress_percent": progress["progress_percent"],

@@ -477,14 +477,14 @@ struct Step3TargetWeight: View {
     @ObservedObject var viewModel: GoalSetupViewModel
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 20) {
             // Title
             VStack(alignment: .leading, spacing: 8) {
                 Text("Set Your Target")
                     .font(.system(size: 28, weight: .bold))
                     .foregroundColor(.white)
 
-                Text("What weight do you want to hit on \(viewModel.selectedExercise?.name ?? "this exercise")?")
+                Text("What weight and reps do you want to hit on \(viewModel.selectedExercise?.name ?? "this exercise")?")
                     .font(.system(size: 15))
                     .foregroundColor(.textSecondary)
             }
@@ -493,21 +493,34 @@ struct Step3TargetWeight: View {
 
             Spacer()
 
-            // Weight Display
-            VStack(spacing: 8) {
-                HStack(alignment: .lastTextBaseline, spacing: 4) {
+            // Weight x Reps Display
+            VStack(spacing: 12) {
+                HStack(alignment: .lastTextBaseline, spacing: 8) {
                     Text("\(Int(viewModel.targetWeight))")
-                        .font(.system(size: 72, weight: .bold))
+                        .font(.system(size: 56, weight: .bold))
                         .foregroundColor(.systemPrimary)
 
                     Text(viewModel.weightUnit)
-                        .font(.system(size: 24))
+                        .font(.system(size: 20))
+                        .foregroundColor(.textSecondary)
+
+                    Text("x")
+                        .font(.system(size: 24, weight: .medium))
+                        .foregroundColor(.textSecondary)
+                        .padding(.horizontal, 4)
+
+                    Text("\(viewModel.targetReps)")
+                        .font(.system(size: 56, weight: .bold))
+                        .foregroundColor(.systemPrimary)
+
+                    Text(viewModel.targetReps == 1 ? "rep" : "reps")
+                        .font(.system(size: 20))
                         .foregroundColor(.textSecondary)
                 }
 
                 if let currentMax = viewModel.currentMax {
                     VStack(spacing: 4) {
-                        Text("Your current max: \(Int(currentMax)) \(viewModel.weightUnit)")
+                        Text("Your current e1RM: \(Int(currentMax)) \(viewModel.weightUnit)")
                             .font(.system(size: 14))
                             .foregroundColor(.textSecondary)
 
@@ -521,18 +534,46 @@ struct Step3TargetWeight: View {
             }
 
             // Weight Controls
-            HStack(spacing: 12) {
-                WeightControlButton(text: "-10", isLarge: true) {
-                    viewModel.targetWeight = max(0, viewModel.targetWeight - 10)
+            VStack(spacing: 6) {
+                Text("Weight")
+                    .font(.system(size: 12))
+                    .foregroundColor(.textSecondary)
+
+                HStack(spacing: 12) {
+                    WeightControlButton(text: "-10", isLarge: true) {
+                        viewModel.targetWeight = max(0, viewModel.targetWeight - 10)
+                    }
+                    WeightControlButton(text: "-5", isLarge: false) {
+                        viewModel.targetWeight = max(0, viewModel.targetWeight - 5)
+                    }
+                    WeightControlButton(text: "+5", isLarge: false) {
+                        viewModel.targetWeight += 5
+                    }
+                    WeightControlButton(text: "+10", isLarge: true) {
+                        viewModel.targetWeight += 10
+                    }
                 }
-                WeightControlButton(text: "-5", isLarge: false) {
-                    viewModel.targetWeight = max(0, viewModel.targetWeight - 5)
-                }
-                WeightControlButton(text: "+5", isLarge: false) {
-                    viewModel.targetWeight += 5
-                }
-                WeightControlButton(text: "+10", isLarge: true) {
-                    viewModel.targetWeight += 10
+            }
+
+            // Reps Controls
+            VStack(spacing: 6) {
+                Text("Reps")
+                    .font(.system(size: 12))
+                    .foregroundColor(.textSecondary)
+
+                HStack(spacing: 12) {
+                    RepControlButton(text: "-5", isLarge: true) {
+                        viewModel.targetReps = max(1, viewModel.targetReps - 5)
+                    }
+                    RepControlButton(text: "-1", isLarge: false) {
+                        viewModel.targetReps = max(1, viewModel.targetReps - 1)
+                    }
+                    RepControlButton(text: "+1", isLarge: false) {
+                        viewModel.targetReps = min(20, viewModel.targetReps + 1)
+                    }
+                    RepControlButton(text: "+5", isLarge: true) {
+                        viewModel.targetReps = min(20, viewModel.targetReps + 5)
+                    }
                 }
             }
 
@@ -547,13 +588,12 @@ struct Step3TargetWeight: View {
             }
             .background(Color.bgInput)
             .cornerRadius(50)
-            .padding(.top, 16)
 
             Spacer()
 
-            // Progress needed
-            if let currentMax = viewModel.currentMax, viewModel.targetWeight > currentMax {
-                let diff = viewModel.targetWeight - currentMax
+            // Progress needed (comparing e1RMs)
+            if let currentMax = viewModel.currentMax, viewModel.targetE1RM > currentMax {
+                let diff = viewModel.targetE1RM - currentMax
                 let percent = (diff / currentMax) * 100
 
                 HStack {
@@ -562,9 +602,17 @@ struct Step3TargetWeight: View {
                             .font(.system(size: 12))
                             .foregroundColor(.textSecondary)
 
-                        Text("+\(Int(diff)) \(viewModel.weightUnit) (+\(String(format: "%.1f", percent))%)")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.white)
+                        HStack(spacing: 8) {
+                            Text("+\(Int(diff)) \(viewModel.weightUnit) e1RM (+\(String(format: "%.1f", percent))%)")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
+
+                        if viewModel.targetReps > 1 {
+                            Text("Target e1RM: \(Int(viewModel.targetE1RM)) \(viewModel.weightUnit)")
+                                .font(.system(size: 12))
+                                .foregroundColor(.systemPrimary.opacity(0.8))
+                        }
                     }
                     Spacer()
                 }
@@ -622,6 +670,23 @@ struct WeightControlButton: View {
     }
 }
 
+struct RepControlButton: View {
+    let text: String
+    let isLarge: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(text)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(isLarge ? Color(hex: "00FF88") : .white)
+                .frame(width: 56, height: 56)
+                .background(isLarge ? Color(hex: "00FF88").opacity(0.2) : Color.bgInput)
+                .clipShape(Circle())
+        }
+    }
+}
+
 struct UnitToggleOption: View {
     let text: String
     let isSelected: Bool
@@ -658,7 +723,7 @@ struct Step4Deadline: View {
                     .font(.system(size: 28, weight: .bold))
                     .foregroundColor(.white)
 
-                Text("When do you want to hit \(Int(viewModel.targetWeight)) \(viewModel.weightUnit) on \(viewModel.selectedExercise?.name ?? "this exercise")?")
+                Text("When do you want to hit \(Int(viewModel.targetWeight)) \(viewModel.weightUnit) x \(viewModel.targetReps) on \(viewModel.selectedExercise?.name ?? "this exercise")?")
                     .font(.system(size: 15))
                     .foregroundColor(.textSecondary)
             }
@@ -747,7 +812,7 @@ struct Step5Confirmation: View {
 
     var progressNeeded: Double {
         guard let currentMax = viewModel.currentMax, currentMax > 0 else { return 0 }
-        return viewModel.targetWeight - currentMax
+        return viewModel.targetE1RM - currentMax
     }
 
     var body: some View {
@@ -791,6 +856,19 @@ struct Step5Confirmation: View {
                                 Text(viewModel.weightUnit)
                                     .font(.system(size: 16))
                                     .foregroundColor(.textSecondary)
+
+                                Text("x")
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundColor(.textSecondary)
+                                    .padding(.horizontal, 2)
+
+                                Text("\(viewModel.targetReps)")
+                                    .font(.system(size: 32, weight: .bold))
+                                    .foregroundColor(.systemPrimary)
+
+                                Text(viewModel.targetReps == 1 ? "rep" : "reps")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.textSecondary)
                             }
                         }
 
@@ -799,11 +877,17 @@ struct Step5Confirmation: View {
 
                     // Details
                     VStack(spacing: 0) {
-                        GoalDetailRow(label: "Current Max", value: viewModel.currentMax != nil ? "\(Int(viewModel.currentMax!)) \(viewModel.weightUnit)" : "Unknown")
+                        GoalDetailRow(label: "Current e1RM", value: viewModel.currentMax != nil ? "\(Int(viewModel.currentMax!)) \(viewModel.weightUnit)" : "Unknown")
 
                         Divider().background(Color.white.opacity(0.05))
 
-                        GoalDetailRow(label: "Progress Needed", value: "+\(Int(progressNeeded)) \(viewModel.weightUnit)", isHighlight: true)
+                        if viewModel.targetReps > 1 {
+                            GoalDetailRow(label: "Target e1RM", value: "\(Int(viewModel.targetE1RM)) \(viewModel.weightUnit)")
+
+                            Divider().background(Color.white.opacity(0.05))
+                        }
+
+                        GoalDetailRow(label: "Progress Needed", value: "+\(Int(progressNeeded)) \(viewModel.weightUnit) e1RM", isHighlight: true)
 
                         Divider().background(Color.white.opacity(0.05))
 
@@ -944,6 +1028,7 @@ class GoalSetupViewModel: ObservableObject {
     @Published var exercises: [ExerciseResponse] = []
     @Published var selectedExercise: ExerciseResponse?
     @Published var targetWeight: Double = 225
+    @Published var targetReps: Int = 1  // Target rep count (1 = true 1RM)
     @Published var weightUnit: String = "lb"
     @Published var deadline: Date = Calendar.current.date(byAdding: .month, value: 2, to: Date()) ?? Date()
     @Published var currentMax: Double?
@@ -972,6 +1057,14 @@ class GoalSetupViewModel: ObservableObject {
         }
         // Epley formula
         return weight * (1 + Double(reps) / 30)
+    }
+
+    // Target e1RM based on targetWeight and targetReps
+    var targetE1RM: Double {
+        if targetReps == 1 {
+            return targetWeight
+        }
+        return targetWeight * (1 + Double(targetReps) / 30)
     }
 
     var hasValidCurrentAbility: Bool {
@@ -1039,6 +1132,7 @@ class GoalSetupViewModel: ObservableObject {
             let goalCreate = GoalCreate(
                 exerciseId: exercise.id,
                 targetWeight: targetWeight,
+                targetReps: targetReps,
                 weightUnit: weightUnit,
                 deadline: deadlineString,
                 notes: nil

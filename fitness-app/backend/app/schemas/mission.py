@@ -12,6 +12,7 @@ class GoalCreate(BaseModel):
     """Request to create a new strength goal"""
     exercise_id: str = Field(..., description="ID of the exercise to set goal for")
     target_weight: float = Field(..., gt=0, description="Target weight to lift")
+    target_reps: int = Field(default=1, ge=1, le=20, description="Target reps (1 = true 1RM goal)")
     weight_unit: str = Field(default="lb", description="Weight unit (lb or kg)")
     deadline: date = Field(..., description="Target date to achieve the goal")
     notes: Optional[str] = Field(None, max_length=500)
@@ -20,6 +21,7 @@ class GoalCreate(BaseModel):
 class GoalUpdate(BaseModel):
     """Request to update an existing goal"""
     target_weight: Optional[float] = Field(None, gt=0)
+    target_reps: Optional[int] = Field(None, ge=1, le=20)
     weight_unit: Optional[str] = None
     deadline: Optional[date] = None
     notes: Optional[str] = Field(None, max_length=500)
@@ -32,6 +34,8 @@ class GoalResponse(BaseModel):
     exercise_id: str
     exercise_name: str
     target_weight: float
+    target_reps: int  # Target reps (1 = true 1RM goal)
+    target_e1rm: float  # Calculated e1RM for target (weight * (1 + reps/30))
     weight_unit: str
     deadline: str  # ISO date string
     starting_e1rm: Optional[float]
@@ -42,7 +46,7 @@ class GoalResponse(BaseModel):
 
     # Computed progress fields
     progress_percent: float  # 0-100
-    weight_to_go: float  # Remaining weight to reach goal
+    weight_to_go: float  # Remaining e1RM to reach goal
     weeks_remaining: int
 
     class Config:
@@ -54,6 +58,8 @@ class GoalSummaryResponse(BaseModel):
     id: str
     exercise_name: str
     target_weight: float
+    target_reps: int  # Target reps (1 = true 1RM goal)
+    target_e1rm: float  # Calculated e1RM for target
     weight_unit: str
     deadline: str
     progress_percent: float
