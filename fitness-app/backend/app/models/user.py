@@ -50,6 +50,8 @@ class User(Base):
     bodyweight_entries = relationship("BodyweightEntry", back_populates="user", cascade="all, delete-orphan")
     prs = relationship("PR", back_populates="user", cascade="all, delete-orphan")
     daily_activities = relationship("DailyActivity", back_populates="user", cascade="all, delete-orphan")
+    goals = relationship("Goal", back_populates="user", cascade="all, delete-orphan")
+    weekly_missions = relationship("WeeklyMission", back_populates="user", cascade="all, delete-orphan")
 
 
 class UserProfile(Base):

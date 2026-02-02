@@ -98,9 +98,30 @@ def get_daily_quests(db: Session, user_id: str) -> Dict[str, Any]:
     Get today's daily quests for a user. Generate new ones if needed.
     Recalculates progress from all workouts logged today.
 
+    If the user has an active weekly mission, returns mission objectives
+    instead of regular daily quests.
+
     Returns:
         Dict with quests list, refresh timestamp, and counts
     """
+    # Check for active mission first
+    from app.services.mission_service import get_active_mission_for_quests, format_mission_as_quests
+
+    active_mission = get_active_mission_for_quests(db, user_id)
+    if active_mission:
+        # Return mission objectives as quests
+        mission_quests = format_mission_as_quests(active_mission)
+        completed_count = sum(1 for q in mission_quests if q["is_completed"])
+
+        return {
+            "quests": mission_quests,
+            "refresh_at": to_iso8601_utc(get_midnight_utc_tomorrow()),
+            "completed_count": completed_count,
+            "total_count": len(mission_quests),
+            "is_mission_mode": True,
+            "mission_id": active_mission.id
+        }
+
     today = get_today_utc()
 
     # Check for existing quests assigned today
@@ -146,7 +167,9 @@ def get_daily_quests(db: Session, user_id: str) -> Dict[str, Any]:
         "quests": quests,
         "refresh_at": to_iso8601_utc(get_midnight_utc_tomorrow()),
         "completed_count": completed_count,
-        "total_count": len(quests)
+        "total_count": len(quests),
+        "is_mission_mode": False,
+        "mission_id": None
     }
 
 
