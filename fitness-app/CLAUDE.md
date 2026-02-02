@@ -198,6 +198,47 @@ git gc --prune=now --aggressive
 
 ---
 
+## SQLAlchemy Relationship Loading (CRITICAL)
+
+### Bug: Empty Relationships After commit/refresh (Feb 2026)
+
+**Symptom**: Quest progress shows 0 even after logging a workout with exercises and sets.
+
+**Root Cause**: SQLAlchemy uses lazy loading by default. After `db.commit()` + `db.refresh(workout)`, the workout object has **empty relationship collections** - they aren't loaded automatically.
+
+```python
+# WRONG - relationships not loaded after refresh
+db.add(workout_session)
+db.commit()
+db.refresh(workout_session)
+update_quest_progress(db, user_id, workout_session)  # workout_exercises is []!
+
+# CORRECT - explicitly load relationships with joinedload
+workout = db.query(WorkoutSession).options(
+    joinedload(WorkoutSession.workout_exercises)
+    .joinedload(WorkoutExercise.sets),
+    joinedload(WorkoutSession.workout_exercises)
+    .joinedload(WorkoutExercise.exercise)
+).filter(WorkoutSession.id == workout_session.id).first()
+update_quest_progress(db, user_id, workout)  # relationships loaded!
+```
+
+### Rule: Always Use joinedload Before Passing to Services
+
+When passing a model to a service function that accesses relationships:
+1. **Check if the service iterates over relationships** (e.g., `workout.workout_exercises`)
+2. **If yes, fetch with `joinedload()`** before passing
+3. **Don't trust `db.refresh()`** - it doesn't load relationships
+
+**Affected Services**:
+- `update_quest_progress()` - needs `workout_exercises`, `sets`, `exercise`
+- `update_dungeon_progress()` - needs `workout_exercises`, `sets`, `exercise`
+- `check_and_unlock_achievements()` - may need relationships depending on achievement type
+
+**Test for this**: `tests/test_quest_service.py` documents the bug and required patterns.
+
+---
+
 ## Workout Data Display Guidelines
 
 ### IMPORTANT: When Changing Workout Data Sources
