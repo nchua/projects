@@ -98,38 +98,38 @@ struct Step1ExerciseSelection: View {
     @State private var searchText = ""
     @FocusState private var isSearchFocused: Bool
 
-    // Big Three exercise names to prioritize at top
-    private let bigThreeNames = ["Squat", "Bench Press", "Deadlift"]
+    // Exact Big Three exercise names to show at top (in order)
+    private let bigThreeExact = [
+        "Barbell Back Squat",
+        "Barbell Bench Press",
+        "Barbell Deadlift"
+    ]
 
     var filteredExercises: [ExerciseResponse] {
-        let exercises: [ExerciseResponse]
-        if searchText.isEmpty {
-            exercises = viewModel.exercises
-        } else {
-            exercises = viewModel.exercises.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+        if !searchText.isEmpty {
+            return viewModel.exercises.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
         }
 
-        // Sort Big Three to top when not searching
-        if searchText.isEmpty {
-            return exercises.sorted { ex1, ex2 in
-                let ex1IsBigThree = bigThreeNames.contains { ex1.name.localizedCaseInsensitiveContains($0) }
-                let ex2IsBigThree = bigThreeNames.contains { ex2.name.localizedCaseInsensitiveContains($0) }
+        // Put exact Big Three at top, then rest alphabetically
+        var bigThree: [ExerciseResponse] = []
+        var others: [ExerciseResponse] = []
 
-                if ex1IsBigThree && !ex2IsBigThree { return true }
-                if !ex1IsBigThree && ex2IsBigThree { return false }
-
-                // Within Big Three, sort by order: Squat, Bench, Deadlift
-                if ex1IsBigThree && ex2IsBigThree {
-                    let ex1Index = bigThreeNames.firstIndex { ex1.name.localizedCaseInsensitiveContains($0) } ?? 0
-                    let ex2Index = bigThreeNames.firstIndex { ex2.name.localizedCaseInsensitiveContains($0) } ?? 0
-                    return ex1Index < ex2Index
-                }
-
-                return ex1.name < ex2.name
+        for exercise in viewModel.exercises {
+            if bigThreeExact.contains(where: { $0.caseInsensitiveCompare(exercise.name) == .orderedSame }) {
+                bigThree.append(exercise)
+            } else {
+                others.append(exercise)
             }
         }
 
-        return exercises
+        // Sort Big Three by defined order
+        bigThree.sort { ex1, ex2 in
+            let idx1 = bigThreeExact.firstIndex { $0.caseInsensitiveCompare(ex1.name) == .orderedSame } ?? 999
+            let idx2 = bigThreeExact.firstIndex { $0.caseInsensitiveCompare(ex2.name) == .orderedSame } ?? 999
+            return idx1 < idx2
+        }
+
+        return bigThree + others.sorted { $0.name < $1.name }
     }
 
     var body: some View {
