@@ -72,9 +72,9 @@ def create_goal(
     current_pr = db.query(PR).filter(
         PR.user_id == user_id,
         PR.exercise_id == exercise_id
-    ).order_by(PR.e1rm.desc()).first()
+    ).order_by(PR.value.desc()).first()
 
-    starting_e1rm = current_pr.e1rm if current_pr else None
+    starting_e1rm = current_pr.value if current_pr else None
 
     goal = Goal(
         id=str(uuid.uuid4()),
