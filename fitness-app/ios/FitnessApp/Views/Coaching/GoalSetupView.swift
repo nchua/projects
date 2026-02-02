@@ -43,7 +43,12 @@ struct GoalSetupView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
                         if viewModel.currentStep > 1 {
-                            viewModel.currentStep -= 1
+                            // If on Step 3 and we skipped Step 2 (has history), go back to Step 1
+                            if viewModel.currentStep == 3 && viewModel.hasExerciseHistory {
+                                viewModel.currentStep = 1
+                            } else {
+                                viewModel.currentStep -= 1
+                            }
                         } else {
                             dismiss()
                         }
@@ -189,30 +194,76 @@ struct Step1ExerciseSelection: View {
                         ) {
                             isSearchFocused = false  // Dismiss keyboard
                             viewModel.selectedExercise = exercise
+                            // Fetch current max from workout history
+                            Task {
+                                await viewModel.fetchCurrentMax(for: exercise.id)
+                            }
                         }
                     }
                 }
                 .padding(.horizontal, 20)
             }
 
+            // Show current max when exercise is selected and has history
+            if viewModel.selectedExercise != nil && viewModel.hasExerciseHistory, let currentMax = viewModel.currentMax {
+                HStack(spacing: 12) {
+                    Image(systemName: "chart.line.uptrend.xyaxis")
+                        .font(.system(size: 16))
+                        .foregroundColor(.systemPrimary)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Current max from history")
+                            .font(.system(size: 12))
+                            .foregroundColor(.textSecondary)
+
+                        Text("\(Int(currentMax)) \(viewModel.weightUnit)")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+
+                    Spacer()
+                }
+                .padding(14)
+                .background(Color.systemPrimary.opacity(0.1))
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.systemPrimary.opacity(0.3), lineWidth: 1)
+                )
+                .padding(.horizontal, 20)
+            }
+
             // Continue Button
             Button {
                 isSearchFocused = false  // Dismiss keyboard
-                viewModel.currentStep = 2
+                if viewModel.hasExerciseHistory {
+                    // Skip current ability step - we have history
+                    viewModel.currentStep = 3
+                } else {
+                    // Show manual entry step
+                    viewModel.currentStep = 2
+                }
             } label: {
-                Text("Continue")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.black)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
-                    .background(
-                        viewModel.selectedExercise != nil
-                            ? Color.systemPrimary
-                            : Color.white.opacity(0.1)
-                    )
-                    .cornerRadius(50)
+                HStack(spacing: 8) {
+                    if viewModel.isLoadingHistory {
+                        ProgressView()
+                            .tint(.black)
+                            .scaleEffect(0.8)
+                    }
+                    Text(viewModel.isLoadingHistory ? "Loading history..." : "Continue")
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                .foregroundColor(.black)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 18)
+                .background(
+                    viewModel.selectedExercise != nil && !viewModel.isLoadingHistory
+                        ? Color.systemPrimary
+                        : Color.white.opacity(0.1)
+                )
+                .cornerRadius(50)
             }
-            .disabled(viewModel.selectedExercise == nil)
+            .disabled(viewModel.selectedExercise == nil || viewModel.isLoadingHistory)
             .padding(.horizontal, 20)
             .padding(.bottom, 20)
         }
@@ -455,9 +506,17 @@ struct Step3TargetWeight: View {
                 }
 
                 if let currentMax = viewModel.currentMax {
-                    Text("Your current max: \(Int(currentMax)) \(viewModel.weightUnit)")
-                        .font(.system(size: 14))
-                        .foregroundColor(.textSecondary)
+                    VStack(spacing: 4) {
+                        Text("Your current max: \(Int(currentMax)) \(viewModel.weightUnit)")
+                            .font(.system(size: 14))
+                            .foregroundColor(.textSecondary)
+
+                        if viewModel.hasExerciseHistory {
+                            Text("(from workout history)")
+                                .font(.system(size: 12))
+                                .foregroundColor(.systemPrimary.opacity(0.7))
+                        }
+                    }
                 }
             }
 
@@ -892,6 +951,10 @@ class GoalSetupViewModel: ObservableObject {
     @Published var goalCreated = false
     @Published var error: String?
 
+    // History loading state
+    @Published var isLoadingHistory = false
+    @Published var hasExerciseHistory = false
+
     // Current ability inputs
     @Published var currentWeightInput: String = ""
     @Published var currentRepsInput: String = ""
@@ -923,6 +986,31 @@ class GoalSetupViewModel: ObservableObject {
         if calculatedE1RM > 0 {
             currentMax = calculatedE1RM
         }
+    }
+
+    func fetchCurrentMax(for exerciseId: String) async {
+        isLoadingHistory = true
+        hasExerciseHistory = false
+
+        do {
+            let trend = try await APIClient.shared.getExerciseTrend(
+                exerciseId: exerciseId,
+                timeRange: "all"
+            )
+            if let e1rm = trend.currentE1rm, e1rm > 0 {
+                currentMax = e1rm
+                hasExerciseHistory = true
+                // Set target weight to a reasonable goal (10% higher than current)
+                targetWeight = (e1rm * 1.1).rounded()
+            } else {
+                hasExerciseHistory = false
+            }
+        } catch {
+            print("Failed to fetch exercise history: \(error)")
+            hasExerciseHistory = false
+        }
+
+        isLoadingHistory = false
     }
 
     private let apiClient = APIClient.shared
