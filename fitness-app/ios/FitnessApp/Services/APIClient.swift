@@ -315,6 +315,32 @@ class APIClient {
         let _: SeedResponse = try await post("/dungeons/seed", body: EmptyBody())
     }
 
+    // MARK: - Goals & Missions
+
+    func getGoals() async throws -> GoalsListResponse {
+        return try await get("/goals")
+    }
+
+    func createGoal(_ goal: GoalCreate) async throws -> GoalResponse {
+        return try await post("/goals", body: goal)
+    }
+
+    func getCurrentMission() async throws -> CurrentMissionResponse {
+        return try await get("/missions/current")
+    }
+
+    func getMission(id: String) async throws -> WeeklyMissionResponse {
+        return try await get("/missions/\(id)")
+    }
+
+    func acceptMission(id: String) async throws -> MissionAcceptResponse {
+        return try await post("/missions/\(id)/accept", body: EmptyBody())
+    }
+
+    func declineMission(id: String) async throws -> MissionDeclineResponse {
+        return try await post("/missions/\(id)/decline", body: EmptyBody())
+    }
+
     // MARK: - Friends
 
     func getFriends() async throws -> [FriendResponse] {

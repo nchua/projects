@@ -248,8 +248,7 @@ class HomeViewModel: ObservableObject {
 
             group.addTask { @MainActor in
                 do {
-                    let mission: CurrentMissionResponse = try await APIClient.shared.get(endpoint: "missions/current")
-                    self.currentMission = mission
+                    self.currentMission = try await APIClient.shared.getCurrentMission()
                 } catch {
                     print("DEBUG: Failed to load current mission: \(error)")
                 }
@@ -340,16 +339,11 @@ class HomeViewModel: ObservableObject {
 
     func acceptMission(missionId: String) async {
         do {
-            let _: MissionAcceptResponse = try await APIClient.shared.post(
-                endpoint: "missions/\(missionId)/accept",
-                body: EmptyBody()
-            )
+            let _ = try await APIClient.shared.acceptMission(id: missionId)
             // Reload mission data
-            let mission: CurrentMissionResponse = try await APIClient.shared.get(endpoint: "missions/current")
-            self.currentMission = mission
+            self.currentMission = try await APIClient.shared.getCurrentMission()
             // Reload quests (they'll now show mission objectives)
-            let quests = try await APIClient.shared.getDailyQuests()
-            self.dailyQuests = quests
+            self.dailyQuests = try await APIClient.shared.getDailyQuests()
         } catch {
             print("DEBUG: Failed to accept mission: \(error)")
             self.error = error.localizedDescription
@@ -358,13 +352,9 @@ class HomeViewModel: ObservableObject {
 
     func declineMission(missionId: String) async {
         do {
-            let _: MissionDeclineResponse = try await APIClient.shared.post(
-                endpoint: "missions/\(missionId)/decline",
-                body: EmptyBody()
-            )
+            let _ = try await APIClient.shared.declineMission(id: missionId)
             // Reload mission data
-            let mission: CurrentMissionResponse = try await APIClient.shared.get(endpoint: "missions/current")
-            self.currentMission = mission
+            self.currentMission = try await APIClient.shared.getCurrentMission()
         } catch {
             print("DEBUG: Failed to decline mission: \(error)")
             self.error = error.localizedDescription

@@ -738,7 +738,7 @@ class GoalSetupViewModel: ObservableObject {
                 notes: nil
             )
 
-            let _: GoalResponse = try await apiClient.post(endpoint: "goals", body: goalCreate)
+            let _ = try await APIClient.shared.createGoal(goalCreate)
             goalCreated = true
         } catch {
             self.error = error.localizedDescription

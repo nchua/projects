@@ -377,7 +377,7 @@ class MissionDetailViewModel: ObservableObject {
         error = nil
 
         do {
-            mission = try await apiClient.get(endpoint: "missions/\(id)")
+            mission = try await APIClient.shared.getMission(id: id)
         } catch {
             self.error = error.localizedDescription
         }
