@@ -31,21 +31,22 @@ def get_midnight_utc_tomorrow() -> datetime:
     return datetime(tomorrow.year, tomorrow.month, tomorrow.day, 0, 0, 0, tzinfo=timezone.utc)
 
 
-def calculate_todays_workout_stats(db: Session, user_id: str, today: date) -> Dict[str, Any]:
+def calculate_todays_workout_stats(db: Session, user_id: str, target_date: date) -> Dict[str, Any]:
     """
-    Calculate aggregate stats from workouts for quest progress.
+    Calculate aggregate stats from workouts for a specific date's quests.
 
-    To handle timezone differences (e.g., PST user at 5PM on Jan 31 = Feb 1 UTC),
-    we include workouts from both today AND yesterday. This ensures a workout
-    logged for the user's local "today" counts toward their active quests.
+    Only workouts matching the exact target_date are included. Earlier workouts
+    from the week do NOT count toward daily quests.
+
+    Args:
+        db: Database session
+        user_id: User ID
+        target_date: The specific date to calculate stats for
 
     Returns:
-        Dict with total_reps, compound_sets, total_volume, shortest_duration,
-        and completing_workout_id (the workout that would complete duration quests)
+        Dict with total_reps, compound_sets, total_volume, and workout_count
     """
-    yesterday = today - timedelta(days=1)
-
-    # Get workouts from today and yesterday with their exercises and sets
+    # Get workouts with their exercises and sets
     workouts = db.query(WorkoutSession).options(
         joinedload(WorkoutSession.workout_exercises)
         .joinedload(WorkoutExercise.sets),
@@ -56,21 +57,19 @@ def calculate_todays_workout_stats(db: Session, user_id: str, today: date) -> Di
         WorkoutSession.deleted_at == None
     ).all()
 
-    # Filter to workouts from today or yesterday (to handle timezone edge cases)
-    # A PST user at 5 PM on Jan 31 has UTC date Feb 1, but their workout is dated Jan 31
-    relevant_workouts = []
+    # Filter to ONLY workouts matching the exact target date
+    # A Feb 1 quest only counts Feb 1 workouts, not Jan 31 or earlier
+    matching_workouts = []
     for w in workouts:
         workout_date = w.date.date() if hasattr(w.date, 'date') else w.date
-        if workout_date == today or workout_date == yesterday:
-            relevant_workouts.append(w)
+        if workout_date == target_date:
+            matching_workouts.append(w)
 
     total_reps = 0
     compound_sets = 0
     total_volume = 0
-    shortest_duration = None
-    shortest_duration_workout_id = None
 
-    for workout in relevant_workouts:
+    for workout in matching_workouts:
         for workout_exercise in workout.workout_exercises:
             exercise_name = workout_exercise.exercise.name.lower() if workout_exercise.exercise else ""
 
@@ -81,19 +80,11 @@ def calculate_todays_workout_stats(db: Session, user_id: str, today: date) -> Di
                 if any(compound in exercise_name for compound in COMPOUND_EXERCISES):
                     compound_sets += 1
 
-        # Track shortest workout duration for duration quests
-        if workout.duration_minutes is not None:
-            if shortest_duration is None or workout.duration_minutes < shortest_duration:
-                shortest_duration = workout.duration_minutes
-                shortest_duration_workout_id = workout.id
-
     return {
         "total_reps": total_reps,
         "compound_sets": compound_sets,
         "total_volume": int(total_volume),
-        "shortest_duration": shortest_duration,
-        "shortest_duration_workout_id": shortest_duration_workout_id,
-        "workout_count": len(relevant_workouts)
+        "workout_count": len(matching_workouts)
     }
 
 
@@ -250,10 +241,7 @@ def recalculate_quest_progress(db: Session, user_id: str, user_quests: List[User
             progress = stats["compound_sets"]
         elif quest_def.quest_type == "total_volume":
             progress = stats["total_volume"]
-        elif quest_def.quest_type == "workout_duration":
-            # Duration quest: complete if ANY workout is under target time
-            if stats["shortest_duration"] is not None and stats["shortest_duration"] <= quest_def.target_value:
-                progress = quest_def.target_value  # Full completion
+        # Note: workout_duration quests have been removed
 
         # Update progress (don't exceed target)
         uq.progress = min(progress, quest_def.target_value)
@@ -262,12 +250,6 @@ def recalculate_quest_progress(db: Session, user_id: str, user_quests: List[User
         if uq.progress >= quest_def.target_value and not uq.is_completed:
             uq.is_completed = True
             uq.completed_at = datetime.utcnow()
-            # Track which workout completed this quest (for duration quests, use shortest)
-            if quest_def.quest_type == "workout_duration" and stats["shortest_duration_workout_id"]:
-                try:
-                    uq.completed_by_workout_id = stats["shortest_duration_workout_id"]
-                except AttributeError:
-                    pass  # Column may not exist yet
             completed_quest_ids.append(uq.id)
 
     db.flush()
@@ -338,9 +320,6 @@ def update_quest_progress(db: Session, user_id: str, workout: WorkoutSession) ->
             if any(compound in exercise_name for compound in COMPOUND_EXERCISES):
                 compound_sets += 1
 
-    # Duration (if provided)
-    workout_duration = workout.duration_minutes
-
     # Update each quest's progress
     completed_quest_ids = []
 
@@ -354,13 +333,7 @@ def update_quest_progress(db: Session, user_id: str, workout: WorkoutSession) ->
             progress = compound_sets
         elif quest_def.quest_type == "total_volume":
             progress = int(total_volume)
-        elif quest_def.quest_type == "workout_duration":
-            # Duration quest: complete if workout is under target time
-            # Set progress to target_value when complete so completion check works
-            if workout_duration is not None and workout_duration <= quest_def.target_value:
-                progress = quest_def.target_value  # Full completion
-            else:
-                progress = 0
+        # Note: workout_duration quests have been removed
 
         # Update progress (don't exceed target)
         uq.progress = min(progress, quest_def.target_value)

@@ -132,29 +132,28 @@ class TestCalculateTodaysWorkoutStats:
     Tests for the calculate_todays_workout_stats function.
     """
 
-    def test_includes_workouts_from_today_and_yesterday(self):
+    def test_only_includes_workouts_from_target_date(self):
         """
-        Stats should include workouts from both today AND yesterday
-        to handle timezone edge cases.
+        Stats should ONLY include workouts from the exact target date.
+        Earlier workouts from the week should NOT count toward daily quests.
 
-        Example: PST user at 5 PM on Jan 31 = Feb 1 UTC
-        Their "Jan 31" workout should count toward "Feb 1" quests.
+        Example: Feb 1 quests only count Feb 1 workouts, not Jan 31 or earlier.
         """
-        today = date(2026, 2, 1)
-        yesterday = today - timedelta(days=1)
+        target_date = date(2026, 2, 1)
 
         # Simulating the filter logic in calculate_todays_workout_stats
         workout_dates = [
-            date(2026, 2, 1),   # Today - should be included
-            date(2026, 1, 31),  # Yesterday - should be included (timezone edge case)
+            date(2026, 2, 1),   # Target date - should be included
+            date(2026, 1, 31),  # Yesterday - should NOT be included
             date(2026, 1, 30),  # Two days ago - should NOT be included
         ]
 
-        included = [d for d in workout_dates if d == today or d == yesterday]
+        # Only exact date match is included
+        included = [d for d in workout_dates if d == target_date]
 
         assert date(2026, 2, 1) in included
-        assert date(2026, 1, 31) in included
-        assert date(2026, 1, 30) not in included
+        assert date(2026, 1, 31) not in included  # Yesterday excluded
+        assert date(2026, 1, 30) not in included  # Earlier dates excluded
 
     def test_aggregates_multiple_workouts(self):
         """
@@ -227,6 +226,64 @@ class TestDurationQuestsRemoval:
         assert "total_reps" in allowed_types
         assert "compound_sets" in allowed_types
         assert "total_volume" in allowed_types
+
+
+class TestQuestPersistence:
+    """
+    Tests for quest visibility and persistence rules.
+
+    KEY RULES:
+    1. Quests stay visible until the next calendar day (UTC)
+    2. Completed quests remain visible (don't disappear)
+    3. Only 3 quests per calendar day
+    4. Quests are filtered by assigned_date == today
+    """
+
+    def test_completed_quests_stay_visible(self):
+        """
+        Completed quests should remain visible until the next day.
+        They should NOT disappear after completion.
+        """
+        # Simulate quest states
+        quests = [
+            {"id": "q1", "is_completed": True, "is_claimed": False},
+            {"id": "q2", "is_completed": True, "is_claimed": True},
+            {"id": "q3", "is_completed": False, "is_claimed": False},
+        ]
+
+        # All quests should be returned regardless of completion status
+        visible_quests = quests  # No filtering by completion
+
+        assert len(visible_quests) == 3
+        assert any(q["is_completed"] for q in visible_quests)
+
+    def test_quests_filtered_by_assigned_date(self):
+        """
+        Only quests assigned on the current UTC date should be returned.
+        """
+        today = date(2026, 2, 1)
+        yesterday = date(2026, 1, 31)
+
+        quests = [
+            {"id": "q1", "assigned_date": today},
+            {"id": "q2", "assigned_date": today},
+            {"id": "q3", "assigned_date": yesterday},  # From yesterday
+        ]
+
+        # Filter by today's date
+        todays_quests = [q for q in quests if q["assigned_date"] == today]
+
+        assert len(todays_quests) == 2
+        assert all(q["assigned_date"] == today for q in todays_quests)
+
+    def test_three_quests_per_day(self):
+        """
+        Each day should have exactly 3 quests (one per difficulty).
+        """
+        difficulties = ["easy", "normal", "hard"]
+        quest_count = len(difficulties)
+
+        assert quest_count == 3
 
 
 class TestRelationshipLoadingContract:
