@@ -678,6 +678,12 @@ class APIClient {
                 self.onSessionExpired?()
             }
             throw APIError.unauthorized
+        case 400:
+            // Extract error message from backend response
+            if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                throw APIError.badRequest(errorResponse.detail)
+            }
+            throw APIError.validationError
         case 404:
             throw APIError.notFound
         case 422:
@@ -755,6 +761,7 @@ enum APIError: Error, LocalizedError {
     case unauthorized
     case notFound
     case validationError
+    case badRequest(String)
     case serverError(Int)
     case networkError(String)
 
@@ -765,6 +772,7 @@ enum APIError: Error, LocalizedError {
         case .unauthorized: return "Session expired. Please sign in again."
         case .notFound: return "Resource not found"
         case .validationError: return "Invalid data provided. Please check your input."
+        case .badRequest(let message): return message
         case .serverError(let code): return "Server error: \(code)"
         case .networkError(let message): return message
         }

@@ -1184,9 +1184,12 @@ class GoalSetupViewModel: ObservableObject {
     }
 
     func createGoal() async {
+        print("DEBUG: createGoal() called, isEditMode=\(isEditMode), selectedExercise=\(selectedExercise?.name ?? "nil")")
+
         // In edit mode, we don't need a selected exercise
         if !isEditMode {
             guard selectedExercise != nil else {
+                print("DEBUG: ERROR - No exercise selected")
                 error = "No exercise selected"
                 return
             }
@@ -1210,10 +1213,10 @@ class GoalSetupViewModel: ObservableObject {
                     notes: nil
                 )
 
-                print("Updating goal \(goalId): \(targetWeight) \(weightUnit) x \(targetReps) by \(deadlineString)")
+                print("DEBUG: Updating goal \(goalId): \(targetWeight) \(weightUnit) x \(targetReps) by \(deadlineString)")
 
                 let response = try await APIClient.shared.updateGoal(id: goalId, goalUpdate)
-                print("Goal updated successfully: \(response.id)")
+                print("DEBUG: Goal updated successfully: id=\(response.id), exercise=\(response.exerciseName)")
                 goalCreated = true
             } else if let exercise = selectedExercise {
                 // Create new goal
@@ -1226,18 +1229,23 @@ class GoalSetupViewModel: ObservableObject {
                     notes: nil
                 )
 
-                print("Creating goal: \(exercise.name) - \(targetWeight) \(weightUnit) x \(targetReps) by \(deadlineString)")
+                print("DEBUG: Creating goal - exerciseId=\(exercise.id), name=\(exercise.name), target=\(targetWeight) \(weightUnit) x \(targetReps), deadline=\(deadlineString)")
 
                 let response = try await APIClient.shared.createGoal(goalCreate)
-                print("Goal created successfully: \(response.id)")
+                print("DEBUG: Goal created successfully! id=\(response.id), exercise=\(response.exerciseName), progress=\(response.progressPercent)%")
                 goalCreated = true
+                print("DEBUG: goalCreated set to true, view should dismiss")
             }
+        } catch let apiError as APIError {
+            print("DEBUG: API error creating goal: \(apiError), description: \(apiError.localizedDescription)")
+            self.error = "Failed to save goal: \(apiError.localizedDescription)"
         } catch {
-            print("Failed to save goal: \(error)")
+            print("DEBUG: Unknown error creating goal: \(error)")
             self.error = "Failed to save goal: \(error.localizedDescription)"
         }
 
         isCreating = false
+        print("DEBUG: createGoal() complete, goalCreated=\(goalCreated), error=\(error ?? "nil")")
     }
 }
 

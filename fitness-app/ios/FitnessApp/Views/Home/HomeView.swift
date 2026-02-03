@@ -155,7 +155,11 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showGoalSetup, onDismiss: {
             // Reload mission data after goal setup sheet is dismissed
-            Task { await viewModel.loadData() }
+            print("DEBUG: GoalSetup sheet dismissed, reloading data...")
+            Task {
+                await viewModel.loadData()
+                print("DEBUG: loadData complete, needsGoalSetup=\(viewModel.currentMission?.needsGoalSetup ?? true), goal=\(viewModel.currentMission?.goal?.exerciseName ?? "nil")")
+            }
         }) {
             GoalSetupView()
         }

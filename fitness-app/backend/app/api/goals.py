@@ -1,11 +1,14 @@
 """
 Goals API endpoints - Strength PR goals CRUD
 """
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
 from app.core.database import get_db
+
+logger = logging.getLogger(__name__)
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.models.exercise import Exercise
@@ -52,9 +55,15 @@ async def create_new_goal(
     Raises:
         400: If max goals (5) reached or exercise not found
     """
+    logger.info(f"Creating goal for user {current_user.id}: exercise={goal_data.exercise_id}, "
+                f"target={goal_data.target_weight} {goal_data.weight_unit} x {goal_data.target_reps}")
+
     # Check max goals limit
     active_goals = get_user_goals(db, current_user.id, include_inactive=False)
+    logger.info(f"User has {len(active_goals)} active goals (max: {MAX_ACTIVE_GOALS})")
+
     if len(active_goals) >= MAX_ACTIVE_GOALS:
+        logger.warning(f"User {current_user.id} at max goals limit")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Maximum {MAX_ACTIVE_GOALS} active goals allowed. Abandon or complete existing goals first."
@@ -63,6 +72,7 @@ async def create_new_goal(
     # Verify exercise exists
     exercise = db.query(Exercise).filter(Exercise.id == goal_data.exercise_id).first()
     if not exercise:
+        logger.error(f"Exercise not found: {goal_data.exercise_id}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Exercise not found"
@@ -82,9 +92,19 @@ async def create_new_goal(
 
     db.commit()
     db.refresh(goal)
+    logger.info(f"Goal created successfully: {goal.id}")
 
     # Reload with exercise relationship
     goal = get_goal_by_id(db, current_user.id, goal.id)
+
+    if not goal:
+        logger.error(f"Goal not found after creation - this should not happen!")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Goal creation failed - please try again"
+        )
+
+    logger.info(f"Goal verified after reload: {goal.id}, exercise={goal.exercise.name if goal.exercise else 'None'}")
 
     return GoalResponse(**goal_to_response(goal))
 
