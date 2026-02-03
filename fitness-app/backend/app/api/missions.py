@@ -39,30 +39,42 @@ async def get_current_mission(
     Get the current week's mission for the user.
 
     If no mission exists and it's Sunday/Monday, one will be generated
-    based on the user's active goals.
+    based on the user's active goals (supports multiple goals).
 
     Returns:
-        - has_active_goal: Whether user has any active goals
-        - goal: Summary of the primary goal (if exists)
+        - has_active_goal: Whether user has any active goals (legacy)
+        - has_active_goals: Whether user has any active goals
+        - goal: Summary of the primary goal (legacy, for backwards compat)
+        - goals: List of all active goals
         - mission: Current week's mission (if exists)
         - needs_goal_setup: True if user should create a goal first
+        - can_add_more_goals: True if user can add more goals (< 5)
     """
     result = get_or_create_current_mission(db, current_user.id)
     db.commit()
 
-    # Build response with proper schema objects
+    # Build goal summaries
     goal_summary = None
     if result.get("goal"):
         goal_summary = GoalSummaryResponse(**result["goal"])
 
+    goals_summaries = []
+    if result.get("goals"):
+        goals_summaries = [GoalSummaryResponse(**g) for g in result["goals"]]
+
+    # Build mission summary
     mission_summary = None
     if result.get("mission"):
         m = result["mission"]
+        mission_goals = [GoalSummaryResponse(**g) for g in m.get("goals", [])]
         mission_summary = WeeklyMissionSummary(
             id=m["id"],
             goal_exercise_name=m["goal_exercise_name"],
             goal_target_weight=m["goal_target_weight"],
             goal_weight_unit=m["goal_weight_unit"],
+            training_split=m.get("training_split"),
+            goals=mission_goals,
+            goal_count=m.get("goal_count", 1),
             status=m["status"],
             week_start=m["week_start"],
             week_end=m["week_end"],
@@ -74,10 +86,13 @@ async def get_current_mission(
         )
 
     return CurrentMissionResponse(
-        has_active_goal=result["has_active_goal"],
+        has_active_goal=result.get("has_active_goal", False),
+        has_active_goals=result.get("has_active_goals", False),
         goal=goal_summary,
+        goals=goals_summaries,
         mission=mission_summary,
-        needs_goal_setup=result["needs_goal_setup"]
+        needs_goal_setup=result.get("needs_goal_setup", True),
+        can_add_more_goals=result.get("can_add_more_goals", True)
     )
 
 

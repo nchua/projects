@@ -7,14 +7,33 @@ struct MissionCard: View {
     let onCreateGoal: () -> Void
     let onAcceptMission: (String) -> Void
     let onViewMission: (String) -> Void
+    var onAddGoal: (() -> Void)? = nil  // For adding more goals (< 5)
+    var onEditGoal: (() -> Void)? = nil
+    var onChangeGoal: (() -> Void)? = nil
+    var onAbandonGoal: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             // Section Header
-            Text("Weekly Mission")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.textPrimary)
-                .padding(.horizontal, 20)
+            HStack {
+                Text("Weekly Mission")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+
+                Spacer()
+
+                // Goal count badge if has multiple goals
+                if let data = missionData, data.goals.count > 1 {
+                    Text("\(data.goals.count) Goals")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.systemPrimary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Color.systemPrimary.opacity(0.15))
+                        .cornerRadius(50)
+                }
+            }
+            .padding(.horizontal, 20)
 
             // Card Content based on state
             if let data = missionData {
@@ -22,17 +41,31 @@ struct MissionCard: View {
                     EmptyMissionCard(onCreateGoal: onCreateGoal)
                 } else if let mission = data.mission {
                     if mission.status == "offered" {
-                        ReadyMissionCard(mission: mission, onAccept: {
-                            onAcceptMission(mission.id)
-                        })
+                        ReadyMissionCard(
+                            mission: mission,
+                            canAddMoreGoals: data.canAddMoreGoals,
+                            onAccept: { onAcceptMission(mission.id) },
+                            onAddGoal: onAddGoal,
+                            onEditGoal: onEditGoal,
+                            onChangeGoal: onChangeGoal,
+                            onAbandonGoal: onAbandonGoal
+                        )
                     } else {
-                        ActiveMissionCard(mission: mission, onViewDetails: {
-                            onViewMission(mission.id)
-                        })
+                        ActiveMissionCard(
+                            mission: mission,
+                            goals: data.goals,
+                            onViewDetails: {
+                                onViewMission(mission.id)
+                            }
+                        )
                     }
-                } else if data.hasActiveGoal {
-                    // Has goal but no mission yet (mid-week)
-                    MidWeekCard(goal: data.goal)
+                } else if data.hasActiveGoals {
+                    // Has goal(s) but no mission yet (mid-week)
+                    MidWeekCard(
+                        goals: data.goals,
+                        canAddMoreGoals: data.canAddMoreGoals,
+                        onAddGoal: onAddGoal
+                    )
                 }
             } else {
                 // Loading state
@@ -103,7 +136,12 @@ struct EmptyMissionCard: View {
 
 struct ReadyMissionCard: View {
     let mission: WeeklyMissionSummary
+    let canAddMoreGoals: Bool
     let onAccept: () -> Void
+    var onAddGoal: (() -> Void)? = nil
+    var onEditGoal: (() -> Void)? = nil
+    var onChangeGoal: (() -> Void)? = nil
+    var onAbandonGoal: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 16) {
@@ -118,9 +156,19 @@ struct ReadyMissionCard: View {
                             .foregroundColor(.systemPrimary)
                     }
 
-                    Text("\(mission.workoutsTotal) workouts this week")
-                        .font(.system(size: 13))
-                        .foregroundColor(.textSecondary)
+                    HStack(spacing: 8) {
+                        Text("\(mission.workoutsTotal) workouts")
+                            .font(.system(size: 13))
+                            .foregroundColor(.textSecondary)
+
+                        if let split = mission.trainingSplit {
+                            Text("•")
+                                .foregroundColor(.textSecondary)
+                            Text(formatTrainingSplit(split))
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.systemPrimary)
+                        }
+                    }
                 }
 
                 Spacer()
@@ -136,6 +184,49 @@ struct ReadyMissionCard: View {
                 .padding(.vertical, 6)
                 .background(Color.gold.opacity(0.15))
                 .cornerRadius(50)
+
+                // Goal Management Menu
+                Menu {
+                    if canAddMoreGoals {
+                        Button {
+                            onAddGoal?()
+                        } label: {
+                            Label("Add Another Goal", systemImage: "plus.circle")
+                        }
+
+                        Divider()
+                    }
+
+                    Button {
+                        onEditGoal?()
+                    } label: {
+                        Label("Edit Goals", systemImage: "pencil")
+                    }
+
+                    Button {
+                        onChangeGoal?()
+                    } label: {
+                        Label("Change Goals", systemImage: "arrow.triangle.2.circlepath")
+                    }
+
+                    Divider()
+
+                    Button(role: .destructive) {
+                        onAbandonGoal?()
+                    } label: {
+                        Label("Abandon All Goals", systemImage: "xmark.circle")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.textSecondary)
+                        .frame(width: 32, height: 32)
+                }
+            }
+
+            // Goals summary (if multiple)
+            if mission.goals.count > 1 {
+                GoalsSummaryRow(goals: mission.goals)
             }
 
             // Workout Preview
@@ -185,6 +276,7 @@ struct ReadyMissionCard: View {
 
 struct ActiveMissionCard: View {
     let mission: WeeklyMissionSummary
+    let goals: [GoalSummaryResponse]
     let onViewDetails: () -> Void
 
     var progressPercent: Double {
@@ -198,13 +290,30 @@ struct ActiveMissionCard: View {
                 // Header
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(mission.goalExerciseName)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white)
+                        // Show training split or primary goal name
+                        if let split = mission.trainingSplit, goals.count > 1 {
+                            Text(formatTrainingSplit(split))
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.white)
+                        } else {
+                            Text(mission.goalExerciseName)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
 
-                        Text("\(mission.daysRemaining) days remaining")
-                            .font(.system(size: 13))
-                            .foregroundColor(.textSecondary)
+                        HStack(spacing: 8) {
+                            Text("\(mission.daysRemaining) days remaining")
+                                .font(.system(size: 13))
+                                .foregroundColor(.textSecondary)
+
+                            if goals.count > 1 {
+                                Text("•")
+                                    .foregroundColor(.textSecondary)
+                                Text("\(goals.count) goals")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.systemPrimary)
+                            }
+                        }
                     }
 
                     Spacer()
@@ -225,6 +334,11 @@ struct ActiveMissionCard: View {
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundColor(.white)
                     }
+                }
+
+                // Goals summary (if multiple)
+                if goals.count > 1 {
+                    GoalsSummaryRow(goals: goals)
                 }
 
                 // Workout Progress Bars
@@ -261,16 +375,18 @@ struct ActiveMissionCard: View {
     }
 }
 
-// MARK: - Mid-Week Card (Goal but no mission)
+// MARK: - Mid-Week Card (Goal(s) but no mission)
 
 struct MidWeekCard: View {
-    let goal: GoalSummaryResponse?
+    let goals: [GoalSummaryResponse]
+    let canAddMoreGoals: Bool
+    var onAddGoal: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 16) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    if let goal = goal {
+                    if goals.count == 1, let goal = goals.first {
                         Text("Goal: \(goal.exerciseName)")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.white)
@@ -278,30 +394,122 @@ struct MidWeekCard: View {
                         Text("\(Int(goal.targetWeight)) \(goal.weightUnit) target")
                             .font(.system(size: 13))
                             .foregroundColor(.textSecondary)
+                    } else if goals.count > 1 {
+                        Text("\(goals.count) Active Goals")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+
+                        Text(goals.map { $0.exerciseName }.joined(separator: ", "))
+                            .font(.system(size: 13))
+                            .foregroundColor(.textSecondary)
+                            .lineLimit(1)
                     }
                 }
 
                 Spacer()
 
-                // Progress
-                if let goal = goal {
-                    CircularProgressView(progress: goal.progressPercent / 100, size: 44)
+                // Progress (average if multiple)
+                if !goals.isEmpty {
+                    let avgProgress = goals.reduce(0) { $0 + $1.progressPercent } / Double(goals.count)
+                    CircularProgressView(progress: avgProgress / 100, size: 44)
                 }
             }
 
-            // Info message
+            // Goals list (if multiple)
+            if goals.count > 1 {
+                GoalsSummaryRow(goals: goals)
+            }
+
+            // Info message and add button
             HStack(spacing: 8) {
                 Image(systemName: "calendar")
                     .foregroundColor(.systemPrimary)
                 Text("New mission available Sunday")
                     .font(.system(size: 13))
                     .foregroundColor(.textSecondary)
+
+                Spacer()
+
+                if canAddMoreGoals {
+                    Button {
+                        onAddGoal?()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 12, weight: .semibold))
+                            Text("Add Goal")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .foregroundColor(.systemPrimary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.systemPrimary.opacity(0.15))
+                        .cornerRadius(50)
+                    }
+                }
             }
         }
         .padding(20)
         .background(Color.bgCard)
         .cornerRadius(16)
         .padding(.horizontal, 20)
+    }
+}
+
+// MARK: - Goals Summary Row
+
+struct GoalsSummaryRow: View {
+    let goals: [GoalSummaryResponse]
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(goals) { goal in
+                    GoalChip(goal: goal)
+                }
+            }
+        }
+    }
+}
+
+struct GoalChip: View {
+    let goal: GoalSummaryResponse
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(shortExerciseName(goal.exerciseName))
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.white)
+
+            Text("\(Int(goal.targetWeight))\(goal.weightUnit)")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.systemPrimary)
+
+            // Progress indicator
+            Text("\(Int(goal.progressPercent))%")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.textSecondary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color.white.opacity(0.05))
+        .cornerRadius(50)
+        .overlay(
+            RoundedRectangle(cornerRadius: 50)
+                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+        )
+    }
+
+    private func shortExerciseName(_ name: String) -> String {
+        // Shorten common exercise names
+        let shortNames: [String: String] = [
+            "Barbell Back Squat": "Squat",
+            "Barbell Bench Press": "Bench",
+            "Barbell Deadlift": "Deadlift",
+            "Overhead Press": "OHP",
+            "Barbell Row": "Row"
+        ]
+        return shortNames[name] ?? String(name.prefix(8))
     }
 }
 
@@ -401,7 +609,25 @@ struct CircularProgressView: View {
 }
 
 #Preview {
-    ZStack {
+    let sampleGoal = GoalSummaryResponse(
+        id: "1",
+        exerciseName: "Bench Press",
+        targetWeight: 225,
+        targetReps: 1,
+        targetE1rm: 225,
+        weightUnit: "lb",
+        deadline: "2026-03-15",
+        progressPercent: 82,
+        status: "active"
+    )
+
+    let sampleWorkouts = [
+        MissionWorkoutSummary(id: "w1", dayNumber: 1, focus: "Heavy Bench", status: "pending", exerciseCount: 4),
+        MissionWorkoutSummary(id: "w2", dayNumber: 2, focus: "Pull", status: "pending", exerciseCount: 5),
+        MissionWorkoutSummary(id: "w3", dayNumber: 3, focus: "Volume Bench", status: "pending", exerciseCount: 4)
+    ]
+
+    return ZStack {
         Color.bgVoid.ignoresSafeArea()
 
         ScrollView {
@@ -410,33 +636,33 @@ struct CircularProgressView: View {
                 MissionCard(
                     missionData: CurrentMissionResponse(
                         hasActiveGoal: false,
+                        hasActiveGoals: false,
                         goal: nil,
+                        goals: [],
                         mission: nil,
-                        needsGoalSetup: true
+                        needsGoalSetup: true,
+                        canAddMoreGoals: true
                     ),
                     onCreateGoal: {},
                     onAcceptMission: { _ in },
                     onViewMission: { _ in }
                 )
 
-                // Ready state
+                // Ready state (single goal)
                 MissionCard(
                     missionData: CurrentMissionResponse(
                         hasActiveGoal: true,
-                        goal: GoalSummaryResponse(
-                            id: "1",
-                            exerciseName: "Bench Press",
-                            targetWeight: 225,
-                            weightUnit: "lb",
-                            deadline: "2026-03-15",
-                            progressPercent: 82,
-                            status: "active"
-                        ),
+                        hasActiveGoals: true,
+                        goal: sampleGoal,
+                        goals: [sampleGoal],
                         mission: WeeklyMissionSummary(
                             id: "1",
                             goalExerciseName: "Bench Press",
                             goalTargetWeight: 225,
                             goalWeightUnit: "lb",
+                            trainingSplit: nil,
+                            goals: [sampleGoal],
+                            goalCount: 1,
                             status: "offered",
                             weekStart: "2026-02-01",
                             weekEnd: "2026-02-07",
@@ -444,13 +670,10 @@ struct CircularProgressView: View {
                             workoutsCompleted: 0,
                             workoutsTotal: 3,
                             daysRemaining: 6,
-                            workouts: [
-                                MissionWorkoutSummary(id: "w1", dayNumber: 1, focus: "Heavy Bench", status: "pending", exerciseCount: 4),
-                                MissionWorkoutSummary(id: "w2", dayNumber: 2, focus: "Pull", status: "pending", exerciseCount: 5),
-                                MissionWorkoutSummary(id: "w3", dayNumber: 3, focus: "Volume Bench", status: "pending", exerciseCount: 4)
-                            ]
+                            workouts: sampleWorkouts
                         ),
-                        needsGoalSetup: false
+                        needsGoalSetup: false,
+                        canAddMoreGoals: true
                     ),
                     onCreateGoal: {},
                     onAcceptMission: { _ in },
@@ -459,5 +682,18 @@ struct CircularProgressView: View {
             }
             .padding(.vertical)
         }
+    }
+}
+
+// MARK: - Shared Helpers
+
+/// Formats training split identifier to display name
+func formatTrainingSplit(_ split: String) -> String {
+    switch split.lowercased() {
+    case "ppl": return "Push/Pull/Legs"
+    case "upper_lower": return "Upper/Lower"
+    case "full_body": return "Full Body"
+    case "single_focus": return "Focused Training"
+    default: return split.capitalized
     }
 }

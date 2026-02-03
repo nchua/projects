@@ -17,8 +17,8 @@ from app.models.dungeon import (
 from app.models.friend import FriendRequest, Friendship, FriendRequestStatus
 from app.models.password_reset import PasswordResetToken
 from app.models.mission import (
-    Goal, WeeklyMission, MissionWorkout, ExercisePrescription,
-    GoalStatus, MissionStatus, MissionWorkoutStatus
+    Goal, WeeklyMission, MissionWorkout, ExercisePrescription, MissionGoal,
+    GoalStatus, MissionStatus, MissionWorkoutStatus, TrainingSplit
 )
 
 __all__ = [
@@ -59,7 +59,9 @@ __all__ = [
     "WeeklyMission",
     "MissionWorkout",
     "ExercisePrescription",
+    "MissionGoal",
     "GoalStatus",
     "MissionStatus",
     "MissionWorkoutStatus",
+    "TrainingSplit",
 ]

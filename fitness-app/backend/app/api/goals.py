@@ -16,14 +16,18 @@ from app.services.mission_service import (
     update_goal,
     goal_to_response,
     goal_to_summary,
-    GoalStatus
+    GoalStatus,
+    MAX_ACTIVE_GOALS
 )
 from app.schemas.mission import (
     GoalCreate,
     GoalUpdate,
     GoalResponse,
     GoalSummaryResponse,
-    GoalsListResponse
+    GoalsListResponse,
+    GoalBatchCreate,
+    GoalBatchCreateResponse,
+    MAX_ACTIVE_GOALS as SCHEMA_MAX_GOALS
 )
 
 router = APIRouter()
@@ -44,7 +48,18 @@ async def create_new_goal(
 
     Returns:
         Created goal with progress metrics
+
+    Raises:
+        400: If max goals (5) reached or exercise not found
     """
+    # Check max goals limit
+    active_goals = get_user_goals(db, current_user.id, include_inactive=False)
+    if len(active_goals) >= MAX_ACTIVE_GOALS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Maximum {MAX_ACTIVE_GOALS} active goals allowed. Abandon or complete existing goals first."
+        )
+
     # Verify exercise exists
     exercise = db.query(Exercise).filter(Exercise.id == goal_data.exercise_id).first()
     if not exercise:
@@ -74,6 +89,78 @@ async def create_new_goal(
     return GoalResponse(**goal_to_response(goal))
 
 
+@router.post("/batch", response_model=GoalBatchCreateResponse, status_code=status.HTTP_201_CREATED)
+async def create_goals_batch(
+    batch_data: GoalBatchCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Create multiple strength PR goals at once (for multi-goal wizard).
+
+    Args:
+        batch_data: List of goals to create (max 5 total)
+
+    Returns:
+        Created goals with progress metrics
+
+    Raises:
+        400: If total goals would exceed max (5)
+    """
+    # Check max goals limit
+    active_goals = get_user_goals(db, current_user.id, include_inactive=False)
+    slots_available = MAX_ACTIVE_GOALS - len(active_goals)
+
+    if len(batch_data.goals) > slots_available:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Can only create {slots_available} more goals. You have {len(active_goals)} active goals."
+        )
+
+    # Verify all exercises exist
+    exercise_ids = [g.exercise_id for g in batch_data.goals]
+    exercises = db.query(Exercise).filter(Exercise.id.in_(exercise_ids)).all()
+    found_ids = {e.id for e in exercises}
+    missing_ids = set(exercise_ids) - found_ids
+    if missing_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Exercises not found: {', '.join(missing_ids)}"
+        )
+
+    # Create all goals
+    created_goals = []
+    for goal_data in batch_data.goals:
+        goal = create_goal(
+            db=db,
+            user_id=current_user.id,
+            exercise_id=goal_data.exercise_id,
+            target_weight=goal_data.target_weight,
+            weight_unit=goal_data.weight_unit,
+            deadline=goal_data.deadline,
+            target_reps=goal_data.target_reps,
+            notes=goal_data.notes
+        )
+        created_goals.append(goal)
+
+    db.commit()
+
+    # Reload with exercise relationships
+    loaded_goals = []
+    for goal in created_goals:
+        loaded_goal = get_goal_by_id(db, current_user.id, goal.id)
+        loaded_goals.append(loaded_goal)
+
+    # Get updated active count
+    active_goals = get_user_goals(db, current_user.id, include_inactive=False)
+
+    return GoalBatchCreateResponse(
+        goals=[GoalResponse(**goal_to_response(g)) for g in loaded_goals],
+        created_count=len(loaded_goals),
+        active_count=len(active_goals)
+    )
+
+
 @router.get("", response_model=GoalsListResponse)
 @router.get("/", response_model=GoalsListResponse)
 async def list_goals(
@@ -88,7 +175,7 @@ async def list_goals(
         include_inactive: Include completed/abandoned goals (default: False)
 
     Returns:
-        List of goals with counts
+        List of goals with counts and availability info
     """
     goals = get_user_goals(db, current_user.id, include_inactive=include_inactive)
 
@@ -98,7 +185,9 @@ async def list_goals(
     return GoalsListResponse(
         goals=[GoalSummaryResponse(**goal_to_summary(g)) for g in goals],
         active_count=active_count,
-        completed_count=completed_count
+        completed_count=completed_count,
+        can_add_more=active_count < MAX_ACTIVE_GOALS,
+        max_goals=MAX_ACTIVE_GOALS
     )
 
 

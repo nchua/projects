@@ -2,7 +2,13 @@ import SwiftUI
 
 struct GoalSetupView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var viewModel = GoalSetupViewModel()
+    @StateObject private var viewModel: GoalSetupViewModel
+    let editingGoal: GoalResponse?
+
+    init(editingGoal: GoalResponse? = nil) {
+        self.editingGoal = editingGoal
+        _viewModel = StateObject(wrappedValue: GoalSetupViewModel(editingGoal: editingGoal))
+    }
 
     var body: some View {
         NavigationStack {
@@ -10,18 +16,23 @@ struct GoalSetupView: View {
                 Color.bgVoid.ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    // Progress Steps
-                    ProgressStepsIndicator(currentStep: viewModel.currentStep, totalSteps: 5)
+                    // Progress Steps - fewer steps when editing (skip exercise selection)
+                    ProgressStepsIndicator(
+                        currentStep: viewModel.isEditMode ? viewModel.currentStep - 2 : viewModel.currentStep,
+                        totalSteps: viewModel.isEditMode ? 3 : 5
+                    )
                         .padding(.top, 20)
                         .padding(.horizontal, 20)
 
                     // Step Content
                     TabView(selection: $viewModel.currentStep) {
-                        Step1ExerciseSelection(viewModel: viewModel)
-                            .tag(1)
+                        if !viewModel.isEditMode {
+                            Step1ExerciseSelection(viewModel: viewModel)
+                                .tag(1)
 
-                        Step2CurrentAbility(viewModel: viewModel)
-                            .tag(2)
+                            Step2CurrentAbility(viewModel: viewModel)
+                                .tag(2)
+                        }
 
                         Step3TargetWeight(viewModel: viewModel)
                             .tag(3)
@@ -42,9 +53,10 @@ struct GoalSetupView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
-                        if viewModel.currentStep > 1 {
+                        let minStep = viewModel.isEditMode ? 3 : 1
+                        if viewModel.currentStep > minStep {
                             // If on Step 3 and we skipped Step 2 (has history), go back to Step 1
-                            if viewModel.currentStep == 3 && viewModel.hasExerciseHistory {
+                            if viewModel.currentStep == 3 && viewModel.hasExerciseHistory && !viewModel.isEditMode {
                                 viewModel.currentStep = 1
                             } else {
                                 viewModel.currentStep -= 1
@@ -60,7 +72,7 @@ struct GoalSetupView: View {
                 }
 
                 ToolbarItem(placement: .principal) {
-                    Text("New Strength Goal")
+                    Text(viewModel.isEditMode ? "Edit Goal" : "New Strength Goal")
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(.white)
                 }
@@ -484,7 +496,7 @@ struct Step3TargetWeight: View {
                     .font(.system(size: 28, weight: .bold))
                     .foregroundColor(.white)
 
-                Text("What weight and reps do you want to hit on \(viewModel.selectedExercise?.name ?? "this exercise")?")
+                Text("What weight and reps do you want to hit on \(viewModel.selectedExercise?.name ?? viewModel.editingExerciseName ?? "this exercise")?")
                     .font(.system(size: 15))
                     .foregroundColor(.textSecondary)
             }
@@ -723,7 +735,7 @@ struct Step4Deadline: View {
                     .font(.system(size: 28, weight: .bold))
                     .foregroundColor(.white)
 
-                Text("When do you want to hit \(Int(viewModel.targetWeight)) \(viewModel.weightUnit) x \(viewModel.targetReps) on \(viewModel.selectedExercise?.name ?? "this exercise")?")
+                Text("When do you want to hit \(Int(viewModel.targetWeight)) \(viewModel.weightUnit) x \(viewModel.targetReps) on \(viewModel.selectedExercise?.name ?? viewModel.editingExerciseName ?? "this exercise")?")
                     .font(.system(size: 15))
                     .foregroundColor(.textSecondary)
             }
@@ -844,7 +856,7 @@ struct Step5Confirmation: View {
                         }
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(viewModel.selectedExercise?.name ?? "Exercise")
+                            Text(viewModel.selectedExercise?.name ?? viewModel.editingExerciseName ?? "Exercise")
                                 .font(.system(size: 20, weight: .bold))
                                 .foregroundColor(.white)
 
@@ -959,7 +971,7 @@ struct Step5Confirmation: View {
                         }
                     }
 
-                    Text("2x per week is optimal for compound lifts like \(viewModel.selectedExercise?.name ?? "this exercise")")
+                    Text("2x per week is optimal for compound lifts like \(viewModel.selectedExercise?.name ?? viewModel.editingExerciseName ?? "this exercise")")
                         .font(.system(size: 12))
                         .foregroundColor(.textSecondary.opacity(0.7))
                 }
@@ -987,7 +999,7 @@ struct Step5Confirmation: View {
                         ProgressView()
                             .tint(.black)
                     } else {
-                        Text("Create Goal")
+                        Text(viewModel.isEditMode ? "Save Changes" : "Create Goal")
                             .font(.system(size: 16, weight: .bold))
                     }
                 }
@@ -1057,6 +1069,11 @@ class GoalSetupViewModel: ObservableObject {
     @Published var goalCreated = false
     @Published var error: String?
 
+    // Edit mode properties
+    let isEditMode: Bool
+    let editingGoalId: String?
+    let editingExerciseName: String?
+
     // History loading state
     @Published var isLoadingHistory = false
     @Published var hasExerciseHistory = false
@@ -1064,6 +1081,33 @@ class GoalSetupViewModel: ObservableObject {
     // Current ability inputs
     @Published var currentWeightInput: String = ""
     @Published var currentRepsInput: String = ""
+
+    init(editingGoal: GoalResponse? = nil) {
+        if let goal = editingGoal {
+            self.isEditMode = true
+            self.editingGoalId = goal.id
+            self.editingExerciseName = goal.exerciseName
+            self.targetWeight = goal.targetWeight
+            self.targetReps = goal.targetReps
+            self.weightUnit = goal.weightUnit
+            self.currentMax = goal.currentE1rm
+            self.hasExerciseHistory = goal.currentE1rm != nil
+
+            // Parse deadline string to Date
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd"
+            if let date = dateFormatter.date(from: goal.deadline) {
+                self.deadline = date
+            }
+
+            // Start at step 3 (target weight) since exercise can't change
+            self.currentStep = 3
+        } else {
+            self.isEditMode = false
+            self.editingGoalId = nil
+            self.editingExerciseName = nil
+        }
+    }
 
     // Calculated e1RM using Epley formula: weight * (1 + reps/30)
     var calculatedE1RM: Double {
@@ -1140,9 +1184,12 @@ class GoalSetupViewModel: ObservableObject {
     }
 
     func createGoal() async {
-        guard let exercise = selectedExercise else {
-            error = "No exercise selected"
-            return
+        // In edit mode, we don't need a selected exercise
+        if !isEditMode {
+            guard selectedExercise != nil else {
+                error = "No exercise selected"
+                return
+            }
         }
 
         isCreating = true
@@ -1153,22 +1200,40 @@ class GoalSetupViewModel: ObservableObject {
             dateFormatter.dateFormat = "yyyy-MM-dd"
             let deadlineString = dateFormatter.string(from: deadline)
 
-            let goalCreate = GoalCreate(
-                exerciseId: exercise.id,
-                targetWeight: targetWeight,
-                targetReps: targetReps,
-                weightUnit: weightUnit,
-                deadline: deadlineString,
-                notes: nil
-            )
+            if isEditMode, let goalId = editingGoalId {
+                // Update existing goal
+                let goalUpdate = GoalUpdate(
+                    targetWeight: targetWeight,
+                    targetReps: targetReps,
+                    weightUnit: weightUnit,
+                    deadline: deadlineString,
+                    notes: nil
+                )
 
-            print("Creating goal: \(exercise.name) - \(targetWeight) \(weightUnit) x \(targetReps) by \(deadlineString)")
+                print("Updating goal \(goalId): \(targetWeight) \(weightUnit) x \(targetReps) by \(deadlineString)")
 
-            let response = try await APIClient.shared.createGoal(goalCreate)
-            print("Goal created successfully: \(response.id)")
-            goalCreated = true
+                let response = try await APIClient.shared.updateGoal(id: goalId, goalUpdate)
+                print("Goal updated successfully: \(response.id)")
+                goalCreated = true
+            } else if let exercise = selectedExercise {
+                // Create new goal
+                let goalCreate = GoalCreate(
+                    exerciseId: exercise.id,
+                    targetWeight: targetWeight,
+                    targetReps: targetReps,
+                    weightUnit: weightUnit,
+                    deadline: deadlineString,
+                    notes: nil
+                )
+
+                print("Creating goal: \(exercise.name) - \(targetWeight) \(weightUnit) x \(targetReps) by \(deadlineString)")
+
+                let response = try await APIClient.shared.createGoal(goalCreate)
+                print("Goal created successfully: \(response.id)")
+                goalCreated = true
+            }
         } catch {
-            print("Failed to create goal: \(error)")
+            print("Failed to save goal: \(error)")
             self.error = "Failed to save goal: \(error.localizedDescription)"
         }
 

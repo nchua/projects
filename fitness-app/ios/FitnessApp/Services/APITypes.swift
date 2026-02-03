@@ -1578,6 +1578,21 @@ struct GoalCreate: Encodable {
     }
 }
 
+struct GoalUpdate: Encodable {
+    let targetWeight: Double?
+    let targetReps: Int?
+    let weightUnit: String?
+    let deadline: String?
+    let notes: String?
+
+    enum CodingKeys: String, CodingKey {
+        case notes, deadline
+        case targetWeight = "target_weight"
+        case targetReps = "target_reps"
+        case weightUnit = "weight_unit"
+    }
+}
+
 struct GoalResponse: Decodable, Identifiable {
     let id: String
     let exerciseId: String
@@ -1639,11 +1654,33 @@ struct GoalsListResponse: Decodable {
     let goals: [GoalSummaryResponse]
     let activeCount: Int
     let completedCount: Int
+    let canAddMore: Bool
+    let maxGoals: Int
 
     enum CodingKeys: String, CodingKey {
         case goals
         case activeCount = "active_count"
         case completedCount = "completed_count"
+        case canAddMore = "can_add_more"
+        case maxGoals = "max_goals"
+    }
+}
+
+// MARK: - Batch Goal Creation
+
+struct GoalBatchCreate: Encodable {
+    let goals: [GoalCreate]
+}
+
+struct GoalBatchCreateResponse: Decodable {
+    let goals: [GoalResponse]
+    let createdCount: Int
+    let activeCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case goals
+        case createdCount = "created_count"
+        case activeCount = "active_count"
     }
 }
 
@@ -1708,10 +1745,13 @@ struct MissionWorkoutSummary: Decodable, Identifiable {
 
 struct WeeklyMissionResponse: Decodable, Identifiable {
     let id: String
-    let goalId: String
+    let goalId: String?  // Nullable for multi-goal missions
     let goalExerciseName: String
     let goalTargetWeight: Double
     let goalWeightUnit: String
+    let trainingSplit: String?  // e.g., "ppl", "upper_lower", "full_body"
+    let goals: [GoalSummaryResponse]  // All goals in this mission
+    let goalCount: Int  // Number of goals
     let weekStart: String
     let weekEnd: String
     let status: String
@@ -1724,11 +1764,13 @@ struct WeeklyMissionResponse: Decodable, Identifiable {
     let daysRemaining: Int
 
     enum CodingKeys: String, CodingKey {
-        case id, status, workouts
+        case id, status, workouts, goals
         case goalId = "goal_id"
         case goalExerciseName = "goal_exercise_name"
         case goalTargetWeight = "goal_target_weight"
         case goalWeightUnit = "goal_weight_unit"
+        case trainingSplit = "training_split"
+        case goalCount = "goal_count"
         case weekStart = "week_start"
         case weekEnd = "week_end"
         case xpReward = "xp_reward"
@@ -1745,6 +1787,9 @@ struct WeeklyMissionSummary: Decodable, Identifiable {
     let goalExerciseName: String
     let goalTargetWeight: Double
     let goalWeightUnit: String
+    let trainingSplit: String?  // e.g., "ppl", "upper_lower", "full_body"
+    let goals: [GoalSummaryResponse]  // All goals in this mission
+    let goalCount: Int  // Number of goals
     let status: String
     let weekStart: String
     let weekEnd: String
@@ -1755,10 +1800,12 @@ struct WeeklyMissionSummary: Decodable, Identifiable {
     let workouts: [MissionWorkoutSummary]
 
     enum CodingKeys: String, CodingKey {
-        case id, status, workouts
+        case id, status, workouts, goals
         case goalExerciseName = "goal_exercise_name"
         case goalTargetWeight = "goal_target_weight"
         case goalWeightUnit = "goal_weight_unit"
+        case trainingSplit = "training_split"
+        case goalCount = "goal_count"
         case weekStart = "week_start"
         case weekEnd = "week_end"
         case xpReward = "xp_reward"
@@ -1769,15 +1816,20 @@ struct WeeklyMissionSummary: Decodable, Identifiable {
 }
 
 struct CurrentMissionResponse: Decodable {
-    let hasActiveGoal: Bool
-    let goal: GoalSummaryResponse?
+    let hasActiveGoal: Bool  // Legacy: True if any active goals
+    let hasActiveGoals: Bool  // True if any active goals
+    let goal: GoalSummaryResponse?  // Legacy: primary goal
+    let goals: [GoalSummaryResponse]  // All active goals
     let mission: WeeklyMissionSummary?
     let needsGoalSetup: Bool
+    let canAddMoreGoals: Bool  // True if < 5 active goals
 
     enum CodingKeys: String, CodingKey {
-        case goal, mission
+        case goal, mission, goals
         case hasActiveGoal = "has_active_goal"
+        case hasActiveGoals = "has_active_goals"
         case needsGoalSetup = "needs_goal_setup"
+        case canAddMoreGoals = "can_add_more_goals"
     }
 }
 

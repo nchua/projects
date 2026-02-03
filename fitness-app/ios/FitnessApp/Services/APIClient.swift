@@ -325,6 +325,19 @@ class APIClient {
         return try await post("/goals", body: goal)
     }
 
+    func createGoalsBatch(_ goals: [GoalCreate]) async throws -> GoalBatchCreateResponse {
+        let batch = GoalBatchCreate(goals: goals)
+        return try await post("/goals/batch", body: batch)
+    }
+
+    func updateGoal(id: String, _ goal: GoalUpdate) async throws -> GoalResponse {
+        return try await put("/goals/\(id)", body: goal)
+    }
+
+    func deleteGoal(id: String) async throws {
+        try await delete("/goals/\(id)")
+    }
+
     func getCurrentMission() async throws -> CurrentMissionResponse {
         return try await get("/missions/current")
     }

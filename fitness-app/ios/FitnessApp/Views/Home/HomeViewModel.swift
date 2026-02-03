@@ -32,6 +32,7 @@ class HomeViewModel: ObservableObject {
     @Published var cooldownStatus: [MuscleCooldownStatus] = []
     @Published var cooldownAgeModifier: Double = 1.0
     @Published var currentMission: CurrentMissionResponse?
+    @Published var goalForEdit: GoalResponse?
     @Published var isLoading = false
     @Published var error: String?
 
@@ -357,6 +358,59 @@ class HomeViewModel: ObservableObject {
             self.currentMission = try await APIClient.shared.getCurrentMission()
         } catch {
             print("DEBUG: Failed to decline mission: \(error)")
+            self.error = error.localizedDescription
+        }
+    }
+
+    // MARK: - Goal Actions
+
+    func loadGoalForEdit(goalId: String) async {
+        do {
+            // Load the full goal details for editing
+            let goals = try await APIClient.shared.getGoals()
+            // Find the matching goal from the list
+            if let goal = goals.goals.first(where: { $0.id == goalId }) {
+                // Convert GoalSummaryResponse to GoalResponse by fetching full details
+                // For now, create a GoalResponse from summary data
+                self.goalForEdit = GoalResponse(
+                    id: goal.id,
+                    exerciseId: "",  // Not needed for editing
+                    exerciseName: goal.exerciseName,
+                    targetWeight: goal.targetWeight,
+                    targetReps: goal.targetReps,
+                    targetE1rm: goal.targetE1rm,
+                    weightUnit: goal.weightUnit,
+                    deadline: goal.deadline,
+                    startingE1rm: nil,
+                    currentE1rm: nil,
+                    status: goal.status,
+                    notes: nil,
+                    createdAt: "",
+                    progressPercent: goal.progressPercent,
+                    weightToGo: 0,
+                    weeksRemaining: 0
+                )
+            }
+        } catch {
+            print("DEBUG: Failed to load goal for edit: \(error)")
+            self.error = error.localizedDescription
+        }
+    }
+
+    func abandonGoal() async {
+        guard let goalId = currentMission?.goal?.id else {
+            print("DEBUG: No goal to abandon")
+            return
+        }
+
+        do {
+            try await APIClient.shared.deleteGoal(id: goalId)
+            // Reload mission data (should now show empty state)
+            self.currentMission = try await APIClient.shared.getCurrentMission()
+            // Also reload quests
+            self.dailyQuests = try await APIClient.shared.getDailyQuests()
+        } catch {
+            print("DEBUG: Failed to abandon goal: \(error)")
             self.error = error.localizedDescription
         }
     }

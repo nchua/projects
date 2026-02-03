@@ -3,17 +3,48 @@ Mission Service - Goals, weekly missions, and AI-powered coaching
 """
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime, date, timedelta, timezone
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Set
 import uuid
 
 from app.models.mission import (
-    Goal, WeeklyMission, MissionWorkout, ExercisePrescription,
-    GoalStatus, MissionStatus, MissionWorkoutStatus
+    Goal, WeeklyMission, MissionWorkout, ExercisePrescription, MissionGoal,
+    GoalStatus, MissionStatus, MissionWorkoutStatus, TrainingSplit
 )
 from app.models.workout import WorkoutSession, WorkoutExercise
 from app.models.exercise import Exercise
 from app.models.pr import PR
 from app.core.utils import to_iso8601_utc
+from app.services.exercise_equivalence import get_equivalent_exercise_ids
+
+
+# Maximum number of active goals per user
+MAX_ACTIVE_GOALS = 5
+
+# Exercise muscle group mappings for training split determination
+EXERCISE_MUSCLE_MAP = {
+    # Push exercises (chest, shoulders, triceps)
+    "bench": "push", "bench press": "push", "incline bench": "push", "decline bench": "push",
+    "overhead press": "push", "ohp": "push", "shoulder press": "push", "military press": "push",
+    "dumbbell press": "push", "dips": "push", "tricep": "push", "chest fly": "push",
+    # Pull exercises (back, biceps)
+    "deadlift": "pull", "row": "pull", "pull-up": "pull", "pullup": "pull", "chin-up": "pull",
+    "chinup": "pull", "lat pulldown": "pull", "pulldown": "pull", "curl": "pull", "bicep": "pull",
+    "barbell row": "pull", "bent over row": "pull", "face pull": "pull",
+    # Leg exercises
+    "squat": "legs", "leg press": "legs", "lunge": "legs", "leg extension": "legs",
+    "leg curl": "legs", "hamstring": "legs", "calf": "legs", "romanian deadlift": "legs",
+    "rdl": "legs", "hip thrust": "legs", "glute": "legs", "front squat": "legs",
+}
+
+
+def get_muscle_group(exercise_name: str) -> str:
+    """Determine muscle group from exercise name"""
+    name_lower = exercise_name.lower()
+    for keyword, group in EXERCISE_MUSCLE_MAP.items():
+        if keyword in name_lower:
+            return group
+    # Default to full body if unknown
+    return "full_body"
 
 
 def get_today_utc() -> date:
@@ -271,63 +302,121 @@ def goal_to_summary(goal: Goal) -> Dict[str, Any]:
 
 # ============ Mission Functions ============
 
+def determine_training_split(goals: List[Goal]) -> TrainingSplit:
+    """
+    Determine the optimal training split based on goals.
+
+    Args:
+        goals: List of active goals
+
+    Returns:
+        TrainingSplit enum value
+    """
+    if len(goals) == 1:
+        return TrainingSplit.SINGLE_FOCUS
+
+    # Determine muscle groups for each goal
+    muscle_groups = set()
+    for goal in goals:
+        if goal.exercise:
+            group = get_muscle_group(goal.exercise.name)
+            muscle_groups.add(group)
+
+    # If all goals hit same muscle group, still use PPL for variety
+    if len(muscle_groups) == 1:
+        return TrainingSplit.PPL
+
+    # Check if goals are diverse
+    has_push = "push" in muscle_groups
+    has_pull = "pull" in muscle_groups
+    has_legs = "legs" in muscle_groups
+
+    # Classic Big Three (squat, bench, deadlift) -> PPL
+    if has_push and has_pull and has_legs:
+        return TrainingSplit.PPL
+
+    # Upper body only or lower body only
+    if (has_push or has_pull) and not has_legs:
+        return TrainingSplit.UPPER_LOWER
+    if has_legs and not (has_push or has_pull):
+        return TrainingSplit.UPPER_LOWER
+
+    # 4-5 goals with diverse muscle groups
+    if len(goals) >= 4:
+        return TrainingSplit.PPL
+
+    # Default to PPL for 2-3 diverse goals
+    return TrainingSplit.PPL
+
+
 def get_or_create_current_mission(db: Session, user_id: str) -> Dict[str, Any]:
     """
     Get the current week's mission, or generate one if needed.
 
     Returns a dict with:
-    - has_active_goal: bool
-    - goal: GoalSummary or None
+    - has_active_goals: bool (plural)
+    - goals: List[GoalSummary] (all active goals)
     - mission: MissionSummary or None
     - needs_goal_setup: bool
+    - can_add_more_goals: bool (True if < 5 goals)
     """
     # Check for active goals
     active_goals = get_user_goals(db, user_id, include_inactive=False)
 
     if not active_goals:
         return {
-            "has_active_goal": False,
-            "goal": None,
+            "has_active_goal": False,  # Keep for backwards compatibility
+            "has_active_goals": False,
+            "goal": None,  # Keep for backwards compatibility
+            "goals": [],
             "mission": None,
-            "needs_goal_setup": True
+            "needs_goal_setup": True,
+            "can_add_more_goals": True
         }
-
-    # Use the first active goal (could later support multiple)
-    primary_goal = active_goals[0]
 
     # Get week boundaries
     today = get_today_utc()
     week_start, week_end = get_week_boundaries(today)
 
-    # Check for existing mission this week
+    # Check for existing mission this week (using junction table for multi-goal)
     mission = db.query(WeeklyMission).options(
         joinedload(WeeklyMission.workouts).joinedload(MissionWorkout.prescriptions),
-        joinedload(WeeklyMission.goal).joinedload(Goal.exercise)
+        joinedload(WeeklyMission.mission_goals).joinedload(MissionGoal.goal).joinedload(Goal.exercise),
+        joinedload(WeeklyMission.goal).joinedload(Goal.exercise)  # Legacy support
     ).filter(
         WeeklyMission.user_id == user_id,
-        WeeklyMission.goal_id == primary_goal.id,
         WeeklyMission.week_start == week_start
     ).first()
+
+    # Build goals summary (use all active goals)
+    goals_summary = [goal_to_summary(g) for g in active_goals]
+    primary_goal_summary = goals_summary[0] if goals_summary else None
 
     # If no mission exists and it's Sunday or Monday, create one
     if not mission:
         # Only auto-generate on Sunday (6) or Monday (0)
         if today.weekday() in [0, 6]:
-            mission = generate_weekly_mission(db, user_id, primary_goal, week_start, week_end)
+            mission = generate_multi_goal_mission(db, user_id, active_goals, week_start, week_end)
         else:
             # Mid-week with no mission - they can still create goals
             return {
                 "has_active_goal": True,
-                "goal": goal_to_summary(primary_goal),
+                "has_active_goals": len(active_goals) > 0,
+                "goal": primary_goal_summary,
+                "goals": goals_summary,
                 "mission": None,
-                "needs_goal_setup": False
+                "needs_goal_setup": False,
+                "can_add_more_goals": len(active_goals) < MAX_ACTIVE_GOALS
             }
 
     return {
         "has_active_goal": True,
-        "goal": goal_to_summary(primary_goal),
+        "has_active_goals": len(active_goals) > 0,
+        "goal": primary_goal_summary,
+        "goals": goals_summary,
         "mission": mission_to_summary(mission) if mission else None,
-        "needs_goal_setup": False
+        "needs_goal_setup": False,
+        "can_add_more_goals": len(active_goals) < MAX_ACTIVE_GOALS
     }
 
 
@@ -339,32 +428,83 @@ def generate_weekly_mission(
     week_end: date
 ) -> WeeklyMission:
     """
-    Generate a weekly mission based on a goal.
-
-    For MVP, generates 3 workouts with basic structure.
-    Later phases will use AI to customize.
+    Generate a weekly mission based on a single goal.
+    Delegates to generate_multi_goal_mission for consistency.
     """
+    return generate_multi_goal_mission(db, user_id, [goal], week_start, week_end)
+
+
+def generate_multi_goal_mission(
+    db: Session,
+    user_id: str,
+    goals: List[Goal],
+    week_start: date,
+    week_end: date
+) -> WeeklyMission:
+    """
+    Generate a weekly mission based on multiple goals.
+
+    Creates an intelligent training split (PPL, Upper/Lower, etc.) to
+    work towards all goals simultaneously.
+
+    Args:
+        db: Database session
+        user_id: User ID
+        goals: List of active goals (1-5)
+        week_start: Monday of the week
+        week_end: Sunday of the week
+
+    Returns:
+        WeeklyMission with workouts targeting all goals
+    """
+    if not goals:
+        raise ValueError("At least one goal is required")
+
+    # Determine training split
+    training_split = determine_training_split(goals)
+
+    # Build goal names for weekly target message
+    goal_names = [g.exercise.name for g in goals if g.exercise]
+    if len(goal_names) == 1:
+        target_msg = f"Focus on {goal_names[0]}"
+    elif len(goal_names) <= 3:
+        target_msg = f"Build strength in {', '.join(goal_names)}"
+    else:
+        target_msg = f"Progress all {len(goal_names)} goals this week"
+
+    # Calculate XP reward (50 base + 50 per goal)
+    xp_reward = 50 + (50 * len(goals))
+
+    # Create mission (legacy goal_id set to first goal for backwards compat)
     mission = WeeklyMission(
         id=str(uuid.uuid4()),
         user_id=user_id,
-        goal_id=goal.id,
+        goal_id=goals[0].id,  # Legacy: primary goal
+        training_split=training_split.value,
         week_start=week_start,
         week_end=week_end,
         status=MissionStatus.OFFERED.value,
-        xp_reward=200,
-        weekly_target=f"Focus on {goal.exercise.name if goal.exercise else 'your goal lift'}",
-        coaching_message="Complete these workouts this week to progress toward your goal!"
+        xp_reward=xp_reward,
+        weekly_target=target_msg,
+        coaching_message=_generate_coaching_message(goals, training_split)
     )
 
     db.add(mission)
     db.flush()
 
-    # Generate 3 workouts
-    workout_templates = [
-        {"day": 1, "focus": f"Heavy {goal.exercise.name if goal.exercise else 'Main Lift'}", "primary_lift": goal.exercise.name if goal.exercise else None},
-        {"day": 2, "focus": "Accessory Work", "primary_lift": None},
-        {"day": 3, "focus": f"Volume {goal.exercise.name if goal.exercise else 'Main Lift'}", "primary_lift": goal.exercise.name if goal.exercise else None},
-    ]
+    # Create mission_goal entries for each goal
+    for goal in goals:
+        mission_goal = MissionGoal(
+            id=str(uuid.uuid4()),
+            mission_id=mission.id,
+            goal_id=goal.id,
+            workouts_completed=0,
+            is_satisfied=False
+        )
+        db.add(mission_goal)
+
+    # Generate workouts based on training split
+    workout_templates = _generate_workout_templates(goals, training_split)
 
     for template in workout_templates:
         workout = MissionWorkout(
@@ -372,32 +512,24 @@ def generate_weekly_mission(
             mission_id=mission.id,
             day_number=template["day"],
             focus=template["focus"],
-            primary_lift=template["primary_lift"],
+            primary_lift=template.get("primary_lift"),
             status=MissionWorkoutStatus.PENDING.value
         )
         db.add(workout)
         db.flush()
 
-        # Add exercise prescriptions for workouts with the goal exercise
-        if template["primary_lift"] and goal.exercise_id:
-            # Main lift prescription
-            if template["day"] == 1:
-                # Heavy day: 4x5
-                sets, reps = 4, 5
-            else:
-                # Volume day: 3x10
-                sets, reps = 3, 10
-
+        # Add exercise prescriptions
+        for idx, prescription_data in enumerate(template.get("prescriptions", [])):
             prescription = ExercisePrescription(
                 id=str(uuid.uuid4()),
                 mission_workout_id=workout.id,
-                exercise_id=goal.exercise_id,
-                order_index=0,
-                sets=sets,
-                reps=reps,
-                weight=None,  # User can input their own weight
-                weight_unit=goal.weight_unit,
-                notes="Focus on form and progressive overload"
+                exercise_id=prescription_data["exercise_id"],
+                order_index=idx,
+                sets=prescription_data["sets"],
+                reps=prescription_data["reps"],
+                weight=None,
+                weight_unit=prescription_data.get("weight_unit", "lb"),
+                notes=prescription_data.get("notes", "Focus on form and progressive overload")
             )
             db.add(prescription)
 
@@ -406,10 +538,261 @@ def generate_weekly_mission(
     # Reload with relationships
     mission = db.query(WeeklyMission).options(
         joinedload(WeeklyMission.workouts).joinedload(MissionWorkout.prescriptions).joinedload(ExercisePrescription.exercise),
+        joinedload(WeeklyMission.mission_goals).joinedload(MissionGoal.goal).joinedload(Goal.exercise),
         joinedload(WeeklyMission.goal).joinedload(Goal.exercise)
     ).filter(WeeklyMission.id == mission.id).first()
 
     return mission
+
+
+def _generate_coaching_message(goals: List[Goal], split: TrainingSplit) -> str:
+    """Generate a coaching message based on goals and split"""
+    if len(goals) == 1:
+        return "Complete these workouts this week to progress toward your goal!"
+
+    split_name = {
+        TrainingSplit.SINGLE_FOCUS: "focused program",
+        TrainingSplit.PPL: "Push/Pull/Legs split",
+        TrainingSplit.UPPER_LOWER: "Upper/Lower split",
+        TrainingSplit.FULL_BODY: "Full Body program",
+    }.get(split, "training program")
+
+    return f"This week's {split_name} targets all {len(goals)} of your goals. Complete each workout to make progress!"
+
+
+def _generate_workout_templates(goals: List[Goal], split: TrainingSplit) -> List[Dict[str, Any]]:
+    """
+    Generate workout templates based on goals and training split.
+
+    Returns list of workout dicts with day, focus, primary_lift, and prescriptions.
+    """
+    if split == TrainingSplit.SINGLE_FOCUS or len(goals) == 1:
+        return _generate_single_focus_workouts(goals[0])
+
+    if split == TrainingSplit.PPL:
+        return _generate_ppl_workouts(goals)
+
+    if split == TrainingSplit.UPPER_LOWER:
+        return _generate_upper_lower_workouts(goals)
+
+    # Default: full body
+    return _generate_full_body_workouts(goals)
+
+
+def _generate_single_focus_workouts(goal: Goal) -> List[Dict[str, Any]]:
+    """Generate 3-day Heavy/Accessory/Volume split for single goal"""
+    exercise_name = goal.exercise.name if goal.exercise else "Main Lift"
+    exercise_id = goal.exercise_id
+
+    return [
+        {
+            "day": 1,
+            "focus": f"Heavy {exercise_name}",
+            "primary_lift": exercise_name,
+            "prescriptions": [
+                {"exercise_id": exercise_id, "sets": 4, "reps": 5, "weight_unit": goal.weight_unit, "notes": "Heavy working sets - 85-90% 1RM"}
+            ] if exercise_id else []
+        },
+        {
+            "day": 2,
+            "focus": "Accessory Work",
+            "primary_lift": None,
+            "prescriptions": []  # User adds accessories
+        },
+        {
+            "day": 3,
+            "focus": f"Volume {exercise_name}",
+            "primary_lift": exercise_name,
+            "prescriptions": [
+                {"exercise_id": exercise_id, "sets": 3, "reps": 10, "weight_unit": goal.weight_unit, "notes": "Volume work - 65-70% 1RM"}
+            ] if exercise_id else []
+        }
+    ]
+
+
+def _generate_ppl_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
+    """Generate Push/Pull/Legs split for multiple goals"""
+    # Categorize goals by muscle group
+    push_goals = []
+    pull_goals = []
+    leg_goals = []
+
+    for goal in goals:
+        if goal.exercise:
+            group = get_muscle_group(goal.exercise.name)
+            if group == "push":
+                push_goals.append(goal)
+            elif group == "pull":
+                pull_goals.append(goal)
+            elif group == "legs":
+                leg_goals.append(goal)
+            else:
+                # Unknown - add to whichever is emptiest
+                min_list = min([push_goals, pull_goals, leg_goals], key=len)
+                min_list.append(goal)
+
+    workouts = []
+
+    # Push Day
+    push_prescriptions = []
+    for goal in push_goals:
+        if goal.exercise_id:
+            push_prescriptions.append({
+                "exercise_id": goal.exercise_id,
+                "sets": 4,
+                "reps": 6,
+                "weight_unit": goal.weight_unit,
+                "notes": f"Focus on {goal.exercise.name}"
+            })
+    workouts.append({
+        "day": 1,
+        "focus": "Push - " + (push_goals[0].exercise.name if push_goals and push_goals[0].exercise else "Chest/Shoulders"),
+        "primary_lift": push_goals[0].exercise.name if push_goals and push_goals[0].exercise else None,
+        "prescriptions": push_prescriptions
+    })
+
+    # Pull Day
+    pull_prescriptions = []
+    for goal in pull_goals:
+        if goal.exercise_id:
+            pull_prescriptions.append({
+                "exercise_id": goal.exercise_id,
+                "sets": 4,
+                "reps": 6,
+                "weight_unit": goal.weight_unit,
+                "notes": f"Focus on {goal.exercise.name}"
+            })
+    workouts.append({
+        "day": 2,
+        "focus": "Pull - " + (pull_goals[0].exercise.name if pull_goals and pull_goals[0].exercise else "Back/Biceps"),
+        "primary_lift": pull_goals[0].exercise.name if pull_goals and pull_goals[0].exercise else None,
+        "prescriptions": pull_prescriptions
+    })
+
+    # Legs Day
+    leg_prescriptions = []
+    for goal in leg_goals:
+        if goal.exercise_id:
+            leg_prescriptions.append({
+                "exercise_id": goal.exercise_id,
+                "sets": 4,
+                "reps": 6,
+                "weight_unit": goal.weight_unit,
+                "notes": f"Focus on {goal.exercise.name}"
+            })
+    workouts.append({
+        "day": 3,
+        "focus": "Legs - " + (leg_goals[0].exercise.name if leg_goals and leg_goals[0].exercise else "Quads/Hamstrings"),
+        "primary_lift": leg_goals[0].exercise.name if leg_goals and leg_goals[0].exercise else None,
+        "prescriptions": leg_prescriptions
+    })
+
+    return workouts
+
+
+def _generate_upper_lower_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
+    """Generate Upper/Lower split for goals"""
+    upper_goals = []
+    lower_goals = []
+
+    for goal in goals:
+        if goal.exercise:
+            group = get_muscle_group(goal.exercise.name)
+            if group in ["push", "pull"]:
+                upper_goals.append(goal)
+            else:
+                lower_goals.append(goal)
+
+    workouts = []
+
+    # Upper Day 1 (heavy)
+    upper_prescriptions = []
+    for goal in upper_goals:
+        if goal.exercise_id:
+            upper_prescriptions.append({
+                "exercise_id": goal.exercise_id,
+                "sets": 4,
+                "reps": 5,
+                "weight_unit": goal.weight_unit,
+                "notes": f"Heavy {goal.exercise.name}"
+            })
+    workouts.append({
+        "day": 1,
+        "focus": "Upper Body (Heavy)",
+        "primary_lift": upper_goals[0].exercise.name if upper_goals and upper_goals[0].exercise else None,
+        "prescriptions": upper_prescriptions
+    })
+
+    # Lower Day
+    lower_prescriptions = []
+    for goal in lower_goals:
+        if goal.exercise_id:
+            lower_prescriptions.append({
+                "exercise_id": goal.exercise_id,
+                "sets": 4,
+                "reps": 5,
+                "weight_unit": goal.weight_unit,
+                "notes": f"Heavy {goal.exercise.name}"
+            })
+    workouts.append({
+        "day": 2,
+        "focus": "Lower Body",
+        "primary_lift": lower_goals[0].exercise.name if lower_goals and lower_goals[0].exercise else None,
+        "prescriptions": lower_prescriptions
+    })
+
+    # Upper Day 2 (volume)
+    upper_volume_prescriptions = []
+    for goal in upper_goals:
+        if goal.exercise_id:
+            upper_volume_prescriptions.append({
+                "exercise_id": goal.exercise_id,
+                "sets": 3,
+                "reps": 10,
+                "weight_unit": goal.weight_unit,
+                "notes": f"Volume {goal.exercise.name}"
+            })
+    workouts.append({
+        "day": 3,
+        "focus": "Upper Body (Volume)",
+        "primary_lift": upper_goals[0].exercise.name if upper_goals and upper_goals[0].exercise else None,
+        "prescriptions": upper_volume_prescriptions
+    })
+
+    return workouts
+
+
+def _generate_full_body_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
+    """Generate full body workouts hitting all goals each session"""
+    workouts = []
+
+    # 3 full body days with varying rep schemes
+    rep_schemes = [
+        (5, "Heavy"),
+        (8, "Moderate"),
+        (10, "Volume")
+    ]
+
+    for day, (reps, intensity) in enumerate(rep_schemes, 1):
+        prescriptions = []
+        for goal in goals:
+            if goal.exercise_id:
+                prescriptions.append({
+                    "exercise_id": goal.exercise_id,
+                    "sets": 3,
+                    "reps": reps,
+                    "weight_unit": goal.weight_unit,
+                    "notes": f"{intensity} {goal.exercise.name}"
+                })
+
+        workouts.append({
+            "day": day,
+            "focus": f"Full Body ({intensity})",
+            "primary_lift": goals[0].exercise.name if goals[0].exercise else None,
+            "prescriptions": prescriptions
+        })
+
+    return workouts
 
 
 def get_mission_by_id(db: Session, user_id: str, mission_id: str) -> Optional[WeeklyMission]:
@@ -493,8 +876,8 @@ def check_mission_workout_completion(
     """
     Check if a logged workout completes any mission workouts.
 
-    For MVP, uses simple matching: if workout has the goal exercise, it counts.
-    Later phases will use AI to evaluate exercise equivalence.
+    Uses exercise equivalence to match similar exercises (e.g., Incline Bench → Bench goal).
+    Credits ALL matching goals from one workout (not just one).
 
     Args:
         db: Database session
@@ -507,13 +890,15 @@ def check_mission_workout_completion(
     result = {
         "mission_workouts_completed": [],
         "missions_completed": [],
+        "goals_progressed": [],
         "xp_earned": 0
     }
 
-    # Get active missions
+    # Get active missions with goals loaded
     active_missions = db.query(WeeklyMission).options(
         joinedload(WeeklyMission.workouts).joinedload(MissionWorkout.prescriptions),
-        joinedload(WeeklyMission.goal)
+        joinedload(WeeklyMission.mission_goals).joinedload(MissionGoal.goal).joinedload(Goal.exercise),
+        joinedload(WeeklyMission.goal).joinedload(Goal.exercise)
     ).filter(
         WeeklyMission.user_id == user_id,
         WeeklyMission.status == MissionStatus.ACCEPTED.value
@@ -528,24 +913,65 @@ def check_mission_workout_completion(
         logged_exercise_ids.add(we.exercise_id)
 
     for mission in active_missions:
-        mission_goal_exercise_id = mission.goal.exercise_id if mission.goal else None
+        # Get all goals for this mission (from junction table or legacy single goal)
+        mission_goals = [mg for mg in mission.mission_goals] if mission.mission_goals else []
+        if not mission_goals and mission.goal:
+            # Create a pseudo MissionGoal for legacy single-goal missions
+            class LegacyMissionGoal:
+                def __init__(self, goal):
+                    self.goal = goal
+                    self.workouts_completed = 0
+                    self.is_satisfied = False
+            mission_goals = [LegacyMissionGoal(mission.goal)]
 
-        for mission_workout in mission.workouts:
-            if mission_workout.status != MissionWorkoutStatus.PENDING.value:
+        # Track which goals were hit by this workout
+        goals_hit_this_workout = []
+
+        # Check each goal for matches (credit ALL matching goals)
+        for mission_goal in mission_goals:
+            if not mission_goal.goal or not mission_goal.goal.exercise_id:
                 continue
 
-            # For MVP: Check if logged workout includes the goal exercise
-            if mission_goal_exercise_id and mission_goal_exercise_id in logged_exercise_ids:
+            # Get equivalent exercise IDs for this goal
+            equivalent_ids = get_equivalent_exercise_ids(mission_goal.goal.exercise_id, db)
+
+            # Check if logged workout includes any equivalent exercise
+            if logged_exercise_ids & equivalent_ids:
+                goals_hit_this_workout.append(mission_goal)
+
+                # Update per-goal progress (for MissionGoal entries from DB)
+                if hasattr(mission_goal, 'id'):  # Real MissionGoal from DB
+                    mission_goal.workouts_completed += 1
+                    # Goal is satisfied if at least 2 workouts hit it this week
+                    if mission_goal.workouts_completed >= 2:
+                        mission_goal.is_satisfied = True
+
+                result["goals_progressed"].append({
+                    "goal_id": mission_goal.goal.id,
+                    "exercise_name": mission_goal.goal.exercise.name if mission_goal.goal.exercise else "Unknown"
+                })
+
+        # If any goals were hit, credit a mission workout
+        if goals_hit_this_workout:
+            for mission_workout in mission.workouts:
+                if mission_workout.status != MissionWorkoutStatus.PENDING.value:
+                    continue
+
                 # Mark this mission workout as completed
                 mission_workout.status = MissionWorkoutStatus.COMPLETED.value
                 mission_workout.completed_workout_id = workout.id
                 mission_workout.completed_at = datetime.utcnow()
-                mission_workout.completion_notes = "Workout included the goal exercise"
+
+                # Note which goals were progressed
+                goal_names = [mg.goal.exercise.name for mg in goals_hit_this_workout
+                             if mg.goal and mg.goal.exercise]
+                mission_workout.completion_notes = f"Progressed goals: {', '.join(goal_names)}"
 
                 result["mission_workouts_completed"].append({
                     "id": mission_workout.id,
                     "focus": mission_workout.focus,
-                    "day_number": mission_workout.day_number
+                    "day_number": mission_workout.day_number,
+                    "goals_hit": len(goals_hit_this_workout)
                 })
 
                 # Only credit one mission workout per logged workout
@@ -560,7 +986,8 @@ def check_mission_workout_completion(
 
             result["missions_completed"].append({
                 "id": mission.id,
-                "xp_reward": mission.xp_reward
+                "xp_reward": mission.xp_reward,
+                "goals_count": len([mg for mg in mission_goals if mg.goal])
             })
             result["xp_earned"] += mission.xp_reward
 
@@ -594,15 +1021,23 @@ def get_mission_history(db: Session, user_id: str, limit: int = 10) -> Dict[str,
 
 def mission_to_response(mission: WeeklyMission) -> Dict[str, Any]:
     """Convert WeeklyMission to full response dict"""
-    goal = mission.goal
+    # Get goals from junction table or legacy single goal
+    mission_goals = [mg.goal for mg in mission.mission_goals if mg.goal] if mission.mission_goals else []
+    if not mission_goals and mission.goal:
+        mission_goals = [mission.goal]
+
+    primary_goal = mission_goals[0] if mission_goals else mission.goal
     workouts_completed = sum(1 for w in mission.workouts if w.status == MissionWorkoutStatus.COMPLETED.value)
 
     return {
         "id": mission.id,
-        "goal_id": mission.goal_id,
-        "goal_exercise_name": goal.exercise.name if goal and goal.exercise else "Unknown",
-        "goal_target_weight": goal.target_weight if goal else 0,
-        "goal_weight_unit": goal.weight_unit if goal else "lb",
+        "goal_id": mission.goal_id,  # Legacy: primary goal
+        "goal_exercise_name": primary_goal.exercise.name if primary_goal and primary_goal.exercise else "Unknown",
+        "goal_target_weight": primary_goal.target_weight if primary_goal else 0,
+        "goal_weight_unit": primary_goal.weight_unit if primary_goal else "lb",
+        "training_split": mission.training_split,
+        "goals": [goal_to_summary(g) for g in mission_goals],
+        "goal_count": len(mission_goals),
         "week_start": mission.week_start.isoformat(),
         "week_end": mission.week_end.isoformat(),
         "status": mission.status,
@@ -618,14 +1053,22 @@ def mission_to_response(mission: WeeklyMission) -> Dict[str, Any]:
 
 def mission_to_summary(mission: WeeklyMission) -> Dict[str, Any]:
     """Convert WeeklyMission to summary dict"""
-    goal = mission.goal
+    # Get goals from junction table or legacy single goal
+    mission_goals = [mg.goal for mg in mission.mission_goals if mg.goal] if mission.mission_goals else []
+    if not mission_goals and mission.goal:
+        mission_goals = [mission.goal]
+
+    primary_goal = mission_goals[0] if mission_goals else mission.goal
     workouts_completed = sum(1 for w in mission.workouts if w.status == MissionWorkoutStatus.COMPLETED.value)
 
     return {
         "id": mission.id,
-        "goal_exercise_name": goal.exercise.name if goal and goal.exercise else "Unknown",
-        "goal_target_weight": goal.target_weight if goal else 0,
-        "goal_weight_unit": goal.weight_unit if goal else "lb",
+        "goal_exercise_name": primary_goal.exercise.name if primary_goal and primary_goal.exercise else "Unknown",
+        "goal_target_weight": primary_goal.target_weight if primary_goal else 0,
+        "goal_weight_unit": primary_goal.weight_unit if primary_goal else "lb",
+        "training_split": mission.training_split,
+        "goals": [goal_to_summary(g) for g in mission_goals],
+        "goal_count": len(mission_goals),
         "status": mission.status,
         "week_start": mission.week_start.isoformat(),
         "week_end": mission.week_end.isoformat(),

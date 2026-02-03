@@ -4,15 +4,15 @@ import Charts
 struct HomeView: View {
     @Binding var selectedTab: Int
     @StateObject private var viewModel = HomeViewModel()
-    @StateObject private var historyViewModel = HistoryViewModel()  // For workout detail navigation
-    @State private var selectedInsight: InsightResponse?
-    @State private var selectedWorkout: WorkoutSummaryResponse?
     @State private var showProfile = false
     @State private var questWorkoutId: String?  // For navigating from completed quest
     @State private var selectedQuest: QuestResponse?  // For showing quest detail sheet
     @State private var showGoalSetup = false
+    @State private var showMultiGoalSetup = false  // For multi-goal wizard
     @State private var selectedMissionId: String?
     @State private var missionToAccept: WeeklyMissionSummary?
+    @State private var goalToEdit: GoalResponse?
+    @State private var showAbandonConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -60,7 +60,21 @@ struct HomeView: View {
                             },
                             onViewMission: { missionId in
                                 selectedMissionId = missionId
-                            }
+                            },
+                            onAddGoal: { showMultiGoalSetup = true },
+                            onEditGoal: {
+                                // Convert GoalSummaryResponse to GoalResponse for editing
+                                if let goalSummary = viewModel.currentMission?.goal {
+                                    Task {
+                                        await viewModel.loadGoalForEdit(goalId: goalSummary.id)
+                                        if let goal = viewModel.goalForEdit {
+                                            goalToEdit = goal
+                                        }
+                                    }
+                                }
+                            },
+                            onChangeGoal: { showGoalSetup = true },
+                            onAbandonGoal: { showAbandonConfirmation = true }
                         )
 
                         // 5. Daily Quests (Edge Flow - left accent style)
@@ -118,17 +132,6 @@ struct HomeView: View {
         .task {
             await viewModel.loadData()
         }
-        .sheet(item: $selectedInsight) { insight in
-            if let exerciseId = insight.exerciseId {
-                ExerciseHistorySheet(
-                    exerciseId: exerciseId,
-                    exerciseName: insight.exerciseName ?? "Exercise"
-                )
-            }
-        }
-        .sheet(item: $selectedWorkout) { workout in
-            WorkoutDetailSheet(workoutId: workout.id)
-        }
         .sheet(isPresented: $showProfile) {
             ProfileView()
         }
@@ -149,8 +152,29 @@ struct HomeView: View {
         .sheet(isPresented: $showGoalSetup) {
             GoalSetupView()
         }
+        .sheet(isPresented: $showMultiGoalSetup) {
+            MultiGoalSetupView(onComplete: {
+                // Reload mission data after goals are created
+                Task {
+                    await viewModel.loadData()
+                }
+            })
+        }
+        .sheet(item: $goalToEdit) { goal in
+            GoalSetupView(editingGoal: goal)
+        }
         .sheet(item: $selectedMissionId) { missionId in
             MissionDetailView(missionId: missionId)
+        }
+        .confirmationDialog("Abandon Goal?", isPresented: $showAbandonConfirmation, titleVisibility: .visible) {
+            Button("Abandon Goal", role: .destructive) {
+                Task {
+                    await viewModel.abandonGoal()
+                }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This will delete your current goal and any active mission.")
         }
         .sheet(item: $missionToAccept) { mission in
             AcceptMissionSheet(

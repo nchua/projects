@@ -33,6 +33,14 @@ class MissionWorkoutStatus(str, enum.Enum):
     SKIPPED = "skipped"
 
 
+class TrainingSplit(str, enum.Enum):
+    """Training split types for multi-goal missions"""
+    SINGLE_FOCUS = "single_focus"     # 1 goal: Heavy/Accessory/Volume
+    PPL = "ppl"                        # Push/Pull/Legs
+    UPPER_LOWER = "upper_lower"        # Upper/Lower split
+    FULL_BODY = "full_body"            # Full body workouts
+
+
 class Goal(Base):
     """User's strength PR goal"""
     __tablename__ = "goals"
@@ -64,16 +72,43 @@ class Goal(Base):
     # Relationships
     user = relationship("User", back_populates="goals")
     exercise = relationship("Exercise")
-    missions = relationship("WeeklyMission", back_populates="goal", cascade="all, delete-orphan")
+    # Legacy: single-goal missions (for backwards compatibility during migration)
+    missions = relationship("WeeklyMission", back_populates="goal", foreign_keys="WeeklyMission.goal_id")
+    # Multi-goal: missions through junction table
+    mission_goals = relationship("MissionGoal", back_populates="goal", cascade="all, delete-orphan")
+
+
+class MissionGoal(Base):
+    """Many-to-many: Mission ↔ Goals junction table for multi-goal missions"""
+    __tablename__ = "mission_goals"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    mission_id = Column(String, ForeignKey("weekly_missions.id"), nullable=False, index=True)
+    goal_id = Column(String, ForeignKey("goals.id"), nullable=False, index=True)
+
+    # Per-goal progress tracking within the mission
+    workouts_completed = Column(Integer, default=0, nullable=False)  # How many workouts hit this goal
+    is_satisfied = Column(Boolean, default=False, nullable=False)    # True when goal has enough weekly volume
+
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    mission = relationship("WeeklyMission", back_populates="mission_goals")
+    goal = relationship("Goal", back_populates="mission_goals")
 
 
 class WeeklyMission(Base):
-    """A week's training mission tied to a goal"""
+    """A week's training mission - can be tied to multiple goals"""
     __tablename__ = "weekly_missions"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
-    goal_id = Column(String, ForeignKey("goals.id"), nullable=False, index=True)
+
+    # Legacy single-goal FK (nullable for new multi-goal missions)
+    goal_id = Column(String, ForeignKey("goals.id"), nullable=True, index=True)
+
+    # Training split for multi-goal missions
+    training_split = Column(String, nullable=True)  # TrainingSplit enum value
 
     # Week boundaries
     week_start = Column(Date, nullable=False)  # Monday of the week
@@ -98,8 +133,16 @@ class WeeklyMission(Base):
 
     # Relationships
     user = relationship("User", back_populates="weekly_missions")
-    goal = relationship("Goal", back_populates="missions")
+    # Legacy single-goal relationship
+    goal = relationship("Goal", back_populates="missions", foreign_keys=[goal_id])
+    # Multi-goal: goals through junction table
+    mission_goals = relationship("MissionGoal", back_populates="mission", cascade="all, delete-orphan")
     workouts = relationship("MissionWorkout", back_populates="mission", cascade="all, delete-orphan", order_by="MissionWorkout.day_number")
+
+    @property
+    def goals(self):
+        """Get all goals for this mission (from junction table)"""
+        return [mg.goal for mg in self.mission_goals if mg.goal]
 
 
 class MissionWorkout(Base):

@@ -1,9 +1,13 @@
 """
 Mission schemas - Goals and weekly mission responses
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import date, datetime
+
+
+# Maximum active goals per user
+MAX_ACTIVE_GOALS = 5
 
 
 # ============ Goal Schemas ============
@@ -16,6 +20,18 @@ class GoalCreate(BaseModel):
     weight_unit: str = Field(default="lb", description="Weight unit (lb or kg)")
     deadline: date = Field(..., description="Target date to achieve the goal")
     notes: Optional[str] = Field(None, max_length=500)
+
+
+class GoalBatchCreate(BaseModel):
+    """Request to create multiple strength goals at once (for wizard)"""
+    goals: List[GoalCreate] = Field(..., min_length=1, max_length=MAX_ACTIVE_GOALS)
+
+    @field_validator('goals')
+    @classmethod
+    def validate_goals_count(cls, v):
+        if len(v) > MAX_ACTIVE_GOALS:
+            raise ValueError(f'Maximum {MAX_ACTIVE_GOALS} goals allowed')
+        return v
 
 
 class GoalUpdate(BaseModel):
@@ -74,6 +90,15 @@ class GoalsListResponse(BaseModel):
     goals: List[GoalSummaryResponse]
     active_count: int
     completed_count: int
+    can_add_more: bool = True  # True if user can add more goals (< 5 active)
+    max_goals: int = MAX_ACTIVE_GOALS
+
+
+class GoalBatchCreateResponse(BaseModel):
+    """Response for batch goal creation"""
+    goals: List[GoalResponse]
+    created_count: int
+    active_count: int  # Total active goals after creation
 
 
 # ============ Exercise Prescription Schemas ============
@@ -130,10 +155,13 @@ class MissionWorkoutSummary(BaseModel):
 class WeeklyMissionResponse(BaseModel):
     """Full weekly mission details"""
     id: str
-    goal_id: str
+    goal_id: Optional[str] = None  # Legacy: primary goal (nullable for multi-goal)
     goal_exercise_name: str
     goal_target_weight: float
     goal_weight_unit: str
+    training_split: Optional[str] = None  # e.g., "ppl", "upper_lower"
+    goals: List[GoalSummaryResponse] = []  # All goals in this mission
+    goal_count: int = 1  # Number of goals
     week_start: str  # ISO date
     week_end: str    # ISO date
     status: str
@@ -157,6 +185,9 @@ class WeeklyMissionSummary(BaseModel):
     goal_exercise_name: str
     goal_target_weight: float
     goal_weight_unit: str
+    training_split: Optional[str] = None  # e.g., "ppl", "upper_lower"
+    goals: List[GoalSummaryResponse] = []  # All goals in this mission
+    goal_count: int = 1  # Number of goals
     status: str
     week_start: str
     week_end: str
@@ -172,10 +203,13 @@ class WeeklyMissionSummary(BaseModel):
 
 class CurrentMissionResponse(BaseModel):
     """Response for GET /missions/current"""
-    has_active_goal: bool
-    goal: Optional[GoalSummaryResponse]
-    mission: Optional[WeeklyMissionSummary]
+    has_active_goal: bool  # Legacy: True if any active goals
+    has_active_goals: bool = False  # True if any active goals
+    goal: Optional[GoalSummaryResponse] = None  # Legacy: primary goal
+    goals: List[GoalSummaryResponse] = []  # All active goals
+    mission: Optional[WeeklyMissionSummary] = None
     needs_goal_setup: bool  # True if user has no active goals
+    can_add_more_goals: bool = True  # True if < 5 active goals
 
 
 class MissionAcceptResponse(BaseModel):

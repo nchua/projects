@@ -740,7 +740,12 @@ struct ExerciseDetailView: View {
         }
         .navigationBarHidden(true)
         .swipeBackGesture()
-        .background(navigationLinkBackground)
+        .navigationDestination(item: $selectedWorkoutId) { workoutId in
+            QuestDetailView(
+                workoutId: workoutId,
+                viewModel: historyViewModel
+            )
+        }
     }
 
     // MARK: - Header Section
@@ -996,23 +1001,6 @@ struct ExerciseDetailView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 20)
         }
-    }
-
-    @ViewBuilder
-    private var navigationLinkBackground: some View {
-        NavigationLink(
-            destination: QuestDetailView(
-                workoutId: selectedWorkoutId ?? "",
-                viewModel: historyViewModel
-            ),
-            isActive: Binding(
-                get: { selectedWorkoutId != nil },
-                set: { if !$0 { selectedWorkoutId = nil } }
-            )
-        ) {
-            EmptyView()
-        }
-        .hidden()
     }
 
     private func trendIcon(_ direction: String) -> String {

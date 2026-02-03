@@ -52,6 +52,7 @@
 		89134716A036BC7417B1CCD3 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30AB8A1A5C01773A5442AA89 /* Extensions.swift */; };
 		8C36406D3B4272678C3FAE7E /* ProgressViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9622F7E459A288822E8C353 /* ProgressViewModel.swift */; };
 		8CFFE6C90310AADAA44449D5 /* QuestsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51AAF9C49F54E5A0DDD7F095 /* QuestsView.swift */; };
+		9023718321924BC97FFBFA2D /* MultiGoalSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B379C21E72B116391378732F /* MultiGoalSetupView.swift */; };
 		931B3F4D629AFEE4345D7E5B /* DailyQuestsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A971480DB0D51347A4285BDF /* DailyQuestsCard.swift */; };
 		9395F9F7ED69CF87325B9E27 /* Rajdhani-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B52347D7796B45246CD491A4 /* Rajdhani-SemiBold.ttf */; };
 		9A0951CB5C36BA31CB4D2084 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9FBB50D8EDC8445125B9270 /* HistoryView.swift */; };
@@ -158,6 +159,7 @@
 		A9B60FF81D2DC826DE66A125 /* FriendRequestsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendRequestsView.swift; sourceTree = "<group>"; };
 		A9FBB50D8EDC8445125B9270 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		ACE54964002442E7C8D25D14 /* MissionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MissionCard.swift; sourceTree = "<group>"; };
+		B379C21E72B116391378732F /* MultiGoalSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiGoalSetupView.swift; sourceTree = "<group>"; };
 		B52347D7796B45246CD491A4 /* Rajdhani-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Rajdhani-SemiBold.ttf"; sourceTree = "<group>"; };
 		B9622F7E459A288822E8C353 /* ProgressViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressViewModel.swift; sourceTree = "<group>"; };
 		BD1168F90C7EA3B9F66ADC03 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -345,6 +347,7 @@
 			children = (
 				4AF2D9A5212F46C78603591D /* GoalSetupView.swift */,
 				CE623E85DBB322B59010A443 /* MissionDetailView.swift */,
+				B379C21E72B116391378732F /* MultiGoalSetupView.swift */,
 			);
 			path = Coaching;
 			sourceTree = "<group>";
@@ -594,6 +597,7 @@
 				01B20D78A6832D2DE5301BAD /* LogViewModel.swift in Sources */,
 				51B44446B1720DFD9BF1EEAE /* MissionCard.swift in Sources */,
 				86C2E56AAEEC1FA2BDF123F4 /* MissionDetailView.swift in Sources */,
+				9023718321924BC97FFBFA2D /* MultiGoalSetupView.swift in Sources */,
 				B0752A9EA3FE7F975305D208 /* PRCelebrationView.swift in Sources */,
 				7F6C3F85FD8A35AE44727A0C /* PersonalRecord.swift in Sources */,
 				6CD1E6CE02F492B300256D51 /* ProfileView.swift in Sources */,
