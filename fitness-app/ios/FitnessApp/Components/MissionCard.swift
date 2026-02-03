@@ -550,7 +550,7 @@ struct ErrorMissionCard: View {
             // Error icon
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 32))
-                .foregroundColor(.systemOrange)
+                .foregroundColor(.gold)
 
             // Error message
             VStack(spacing: 4) {
@@ -585,7 +585,7 @@ struct ErrorMissionCard: View {
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.systemOrange.opacity(0.3), lineWidth: 1)
+                .stroke(Color.gold.opacity(0.3), lineWidth: 1)
         )
         .padding(.horizontal, 20)
     }
