@@ -1038,7 +1038,13 @@ def get_mission_history(db: Session, user_id: str, limit: int = 10) -> Dict[str,
 def mission_to_response(mission: WeeklyMission) -> Dict[str, Any]:
     """Convert WeeklyMission to full response dict"""
     # Get goals from junction table or legacy single goal
-    mission_goals = [mg.goal for mg in mission.mission_goals if mg.goal] if mission.mission_goals else []
+    # Handle case where mission_goals table doesn't exist yet
+    try:
+        mission_goals = [mg.goal for mg in mission.mission_goals if mg.goal] if mission.mission_goals else []
+    except (OperationalError, ProgrammingError, Exception) as e:
+        logger.warning(f"Failed to access mission_goals in response: {e}. Using legacy goal.")
+        mission_goals = []
+
     if not mission_goals and mission.goal:
         mission_goals = [mission.goal]
 
@@ -1070,7 +1076,13 @@ def mission_to_response(mission: WeeklyMission) -> Dict[str, Any]:
 def mission_to_summary(mission: WeeklyMission) -> Dict[str, Any]:
     """Convert WeeklyMission to summary dict"""
     # Get goals from junction table or legacy single goal
-    mission_goals = [mg.goal for mg in mission.mission_goals if mg.goal] if mission.mission_goals else []
+    # Handle case where mission_goals table doesn't exist yet
+    try:
+        mission_goals = [mg.goal for mg in mission.mission_goals if mg.goal] if mission.mission_goals else []
+    except (OperationalError, ProgrammingError, Exception) as e:
+        logger.warning(f"Failed to access mission_goals: {e}. Using legacy goal.")
+        mission_goals = []
+
     if not mission_goals and mission.goal:
         mission_goals = [mission.goal]
 
