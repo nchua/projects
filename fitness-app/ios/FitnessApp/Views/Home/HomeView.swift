@@ -153,7 +153,10 @@ struct HomeView: View {
                 }
             )
         }
-        .sheet(isPresented: $showGoalSetup) {
+        .sheet(isPresented: $showGoalSetup, onDismiss: {
+            // Reload mission data after goal setup sheet is dismissed
+            Task { await viewModel.loadData() }
+        }) {
             GoalSetupView()
         }
         .sheet(isPresented: $showMultiGoalSetup) {
@@ -164,7 +167,10 @@ struct HomeView: View {
                 }
             })
         }
-        .sheet(item: $goalToEdit) { goal in
+        .sheet(item: $goalToEdit, onDismiss: {
+            // Reload mission data after editing goal
+            Task { await viewModel.loadData() }
+        }) { goal in
             GoalSetupView(editingGoal: goal)
         }
         .sheet(item: $selectedMissionId) { missionId in

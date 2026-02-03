@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 
 # revision identifiers, used by Alembic.
@@ -19,49 +20,62 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Add training_split column to weekly_missions
-    op.add_column('weekly_missions', sa.Column('training_split', sa.String(), nullable=True))
+    conn = op.get_bind()
+    inspector = inspect(conn)
+    existing_tables = inspector.get_table_names()
+
+    # Get existing columns for weekly_missions
+    existing_columns = []
+    if 'weekly_missions' in existing_tables:
+        existing_columns = [col['name'] for col in inspector.get_columns('weekly_missions')]
+
+    # Add training_split column to weekly_missions (if not exists)
+    if 'training_split' not in existing_columns:
+        op.add_column('weekly_missions', sa.Column('training_split', sa.String(), nullable=True))
 
     # Make goal_id nullable (for new multi-goal missions that use junction table)
-    op.alter_column('weekly_missions', 'goal_id',
-                    existing_type=sa.String(),
-                    nullable=True)
+    # Only alter if table exists
+    if 'weekly_missions' in existing_tables:
+        op.alter_column('weekly_missions', 'goal_id',
+                        existing_type=sa.String(),
+                        nullable=True)
 
-    # Create mission_goals junction table
-    op.create_table(
-        'mission_goals',
-        sa.Column('id', sa.String(), primary_key=True),
-        sa.Column('mission_id', sa.String(), sa.ForeignKey('weekly_missions.id'), nullable=False),
-        sa.Column('goal_id', sa.String(), sa.ForeignKey('goals.id'), nullable=False),
-        sa.Column('workouts_completed', sa.Integer(), nullable=False, server_default='0'),
-        sa.Column('is_satisfied', sa.Boolean(), nullable=False, server_default='false'),
-        sa.Column('created_at', sa.DateTime(), nullable=False),
-    )
-    op.create_index('ix_mission_goals_mission_id', 'mission_goals', ['mission_id'])
-    op.create_index('ix_mission_goals_goal_id', 'mission_goals', ['goal_id'])
-
-    # Migrate existing missions to use junction table
-    # For each existing mission with goal_id, create a corresponding mission_goal entry
-    conn = op.get_bind()
-    missions = conn.execute(
-        sa.text("SELECT id, goal_id FROM weekly_missions WHERE goal_id IS NOT NULL")
-    ).fetchall()
-
-    for mission_id, goal_id in missions:
-        import uuid
-        from datetime import datetime
-        conn.execute(
-            sa.text("""
-                INSERT INTO mission_goals (id, mission_id, goal_id, workouts_completed, is_satisfied, created_at)
-                VALUES (:id, :mission_id, :goal_id, 0, false, :created_at)
-            """),
-            {
-                "id": str(uuid.uuid4()),
-                "mission_id": mission_id,
-                "goal_id": goal_id,
-                "created_at": datetime.utcnow()
-            }
+    # Create mission_goals junction table (if not exists)
+    if 'mission_goals' not in existing_tables:
+        op.create_table(
+            'mission_goals',
+            sa.Column('id', sa.String(), primary_key=True),
+            sa.Column('mission_id', sa.String(), sa.ForeignKey('weekly_missions.id'), nullable=False),
+            sa.Column('goal_id', sa.String(), sa.ForeignKey('goals.id'), nullable=False),
+            sa.Column('workouts_completed', sa.Integer(), nullable=False, server_default='0'),
+            sa.Column('is_satisfied', sa.Boolean(), nullable=False, server_default='false'),
+            sa.Column('created_at', sa.DateTime(), nullable=False),
         )
+        op.create_index('ix_mission_goals_mission_id', 'mission_goals', ['mission_id'])
+        op.create_index('ix_mission_goals_goal_id', 'mission_goals', ['goal_id'])
+
+        # Migrate existing missions to use junction table
+        # For each existing mission with goal_id, create a corresponding mission_goal entry
+        # Only run if we just created the table (to avoid duplicate entries)
+        missions = conn.execute(
+            sa.text("SELECT id, goal_id FROM weekly_missions WHERE goal_id IS NOT NULL")
+        ).fetchall()
+
+        for mission_id, goal_id in missions:
+            import uuid
+            from datetime import datetime
+            conn.execute(
+                sa.text("""
+                    INSERT INTO mission_goals (id, mission_id, goal_id, workouts_completed, is_satisfied, created_at)
+                    VALUES (:id, :mission_id, :goal_id, 0, false, :created_at)
+                """),
+                {
+                    "id": str(uuid.uuid4()),
+                    "mission_id": mission_id,
+                    "goal_id": goal_id,
+                    "created_at": datetime.utcnow()
+                }
+            )
 
 
 def downgrade() -> None:
