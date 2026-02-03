@@ -116,10 +116,10 @@ async def root():
     """Root endpoint - API information"""
     return {
         "message": "Fitness Tracker API",
-        "version": "0.2.1-pr-fix",
+        "version": "0.3.0-multi-goal",
         "status": "running",
         "docs": "/docs",
-        "deploy_check": "2026-01-04-exif-date-fallback"
+        "deploy_check": "2026-02-02-multi-goal-missions"
     }
 
 @app.get("/health")
