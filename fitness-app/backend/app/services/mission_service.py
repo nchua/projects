@@ -2,9 +2,13 @@
 Mission Service - Goals, weekly missions, and AI-powered coaching
 """
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from datetime import datetime, date, timedelta, timezone
 from typing import Optional, List, Dict, Any, Set
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app.models.mission import (
     Goal, WeeklyMission, MissionWorkout, ExercisePrescription, MissionGoal,
@@ -379,14 +383,26 @@ def get_or_create_current_mission(db: Session, user_id: str) -> Dict[str, Any]:
     week_start, week_end = get_week_boundaries(today)
 
     # Check for existing mission this week (using junction table for multi-goal)
-    mission = db.query(WeeklyMission).options(
-        joinedload(WeeklyMission.workouts).joinedload(MissionWorkout.prescriptions),
-        joinedload(WeeklyMission.mission_goals).joinedload(MissionGoal.goal).joinedload(Goal.exercise),
-        joinedload(WeeklyMission.goal).joinedload(Goal.exercise)  # Legacy support
-    ).filter(
-        WeeklyMission.user_id == user_id,
-        WeeklyMission.week_start == week_start
-    ).first()
+    try:
+        mission = db.query(WeeklyMission).options(
+            joinedload(WeeklyMission.workouts).joinedload(MissionWorkout.prescriptions),
+            joinedload(WeeklyMission.mission_goals).joinedload(MissionGoal.goal).joinedload(Goal.exercise),
+            joinedload(WeeklyMission.goal).joinedload(Goal.exercise)  # Legacy support
+        ).filter(
+            WeeklyMission.user_id == user_id,
+            WeeklyMission.week_start == week_start
+        ).first()
+    except (OperationalError, ProgrammingError) as e:
+        # Handle case where mission_goals table doesn't exist yet (migration not applied)
+        logger.warning(f"Failed to query missions with mission_goals join: {e}. Trying legacy query.")
+        # Fallback to legacy query without mission_goals
+        mission = db.query(WeeklyMission).options(
+            joinedload(WeeklyMission.workouts).joinedload(MissionWorkout.prescriptions),
+            joinedload(WeeklyMission.goal).joinedload(Goal.exercise)
+        ).filter(
+            WeeklyMission.user_id == user_id,
+            WeeklyMission.week_start == week_start
+        ).first()
 
     # Build goals summary (use all active goals)
     goals_summary = [goal_to_summary(g) for g in active_goals]
