@@ -50,8 +50,24 @@ async def get_current_mission(
         - needs_goal_setup: True if user should create a goal first
         - can_add_more_goals: True if user can add more goals (< 5)
     """
-    result = get_or_create_current_mission(db, current_user.id)
-    db.commit()
+    try:
+        result = get_or_create_current_mission(db, current_user.id)
+        db.commit()
+    except Exception as e:
+        # Log the error and return empty state so app doesn't break
+        import logging
+        logging.error(f"Failed to get/create mission: {e}")
+        db.rollback()
+        # Return safe default - no goals, needs setup
+        return CurrentMissionResponse(
+            has_active_goal=False,
+            has_active_goals=False,
+            goal=None,
+            goals=[],
+            mission=None,
+            needs_goal_setup=True,
+            can_add_more_goals=True
+        )
 
     # Build goal summaries
     goal_summary = None
