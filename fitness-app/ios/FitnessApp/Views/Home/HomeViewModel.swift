@@ -32,6 +32,7 @@ class HomeViewModel: ObservableObject {
     @Published var cooldownStatus: [MuscleCooldownStatus] = []
     @Published var cooldownAgeModifier: Double = 1.0
     @Published var currentMission: CurrentMissionResponse?
+    @Published var missionLoadError: String?
     @Published var goalForEdit: GoalResponse?
     @Published var isLoading = false
     @Published var error: String?
@@ -250,8 +251,10 @@ class HomeViewModel: ObservableObject {
             group.addTask { @MainActor in
                 do {
                     self.currentMission = try await APIClient.shared.getCurrentMission()
+                    self.missionLoadError = nil
                 } catch {
                     print("DEBUG: Failed to load current mission: \(error)")
+                    self.missionLoadError = error.localizedDescription
                 }
             }
         }

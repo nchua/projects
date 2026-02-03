@@ -1,12 +1,14 @@
 import SwiftUI
 
 /// Mission card displayed on Home tab - shows current weekly mission status
-/// Three states: empty (create goal), ready (accept mission), active (in progress)
+/// Four states: loading, error, empty (create goal), ready (accept mission), active (in progress)
 struct MissionCard: View {
     let missionData: CurrentMissionResponse?
+    var missionLoadError: String? = nil
     let onCreateGoal: () -> Void
     let onAcceptMission: (String) -> Void
     let onViewMission: (String) -> Void
+    var onRetry: (() -> Void)? = nil  // For retrying after error
     var onAddGoal: (() -> Void)? = nil  // For adding more goals (< 5)
     var onEditGoal: (() -> Void)? = nil
     var onChangeGoal: (() -> Void)? = nil
@@ -67,6 +69,11 @@ struct MissionCard: View {
                         onAddGoal: onAddGoal
                     )
                 }
+            } else if let error = missionLoadError {
+                // Error state - show retry option
+                ErrorMissionCard(error: error, onRetry: {
+                    onRetry?()
+                })
             } else {
                 // Loading state
                 LoadingMissionCard()
@@ -528,6 +535,58 @@ struct LoadingMissionCard: View {
         .padding(32)
         .background(Color.bgCard)
         .cornerRadius(16)
+        .padding(.horizontal, 20)
+    }
+}
+
+// MARK: - Error State
+
+struct ErrorMissionCard: View {
+    let error: String
+    let onRetry: () -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            // Error icon
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 32))
+                .foregroundColor(.systemOrange)
+
+            // Error message
+            VStack(spacing: 4) {
+                Text("Failed to load mission")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+
+                Text(error)
+                    .font(.system(size: 12))
+                    .foregroundColor(.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+            }
+
+            // Retry button
+            Button(action: onRetry) {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.clockwise")
+                    Text("Retry")
+                }
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.black)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(Color.systemPrimary)
+                .cornerRadius(50)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(24)
+        .background(Color.bgCard)
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.systemOrange.opacity(0.3), lineWidth: 1)
+        )
         .padding(.horizontal, 20)
     }
 }

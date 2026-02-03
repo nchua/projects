@@ -52,6 +52,7 @@ struct HomeView: View {
                         // 4. Weekly Mission Card (if coaching feature enabled)
                         MissionCard(
                             missionData: viewModel.currentMission,
+                            missionLoadError: viewModel.missionLoadError,
                             onCreateGoal: { showGoalSetup = true },
                             onAcceptMission: { missionId in
                                 if let mission = viewModel.currentMission?.mission {
@@ -60,6 +61,9 @@ struct HomeView: View {
                             },
                             onViewMission: { missionId in
                                 selectedMissionId = missionId
+                            },
+                            onRetry: {
+                                Task { await viewModel.loadData() }
                             },
                             onAddGoal: { showMultiGoalSetup = true },
                             onEditGoal: {
