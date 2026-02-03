@@ -91,6 +91,78 @@ def calculate_e1rm(weight: float, reps: int) -> float:
     return weight * (1 + reps / 30)
 
 
+# ============ Prescription Weight Helpers ============
+
+def _get_target_e1rm(goal: Goal) -> float:
+    """Calculate target e1RM based on goal target weight/reps."""
+    target_reps = goal.target_reps if goal.target_reps else 1
+    return calculate_e1rm(goal.target_weight, target_reps)
+
+
+def _get_projected_e1rm(goal: Goal) -> float:
+    """
+    Calculate this week's projected e1RM by linearly progressing toward target.
+
+    base_e1rm: current > starting > 85% of target
+    projected_e1rm: base + (target - base) / weeks_remaining
+    """
+    target_e1rm = _get_target_e1rm(goal)
+    if target_e1rm <= 0:
+        return 0
+
+    base_e1rm = goal.current_e1rm or goal.starting_e1rm or (0.85 * target_e1rm)
+    weeks_remaining = max(1, weeks_until(goal.deadline))
+
+    projected_e1rm = base_e1rm + (target_e1rm - base_e1rm) / weeks_remaining
+    return min(target_e1rm, projected_e1rm)
+
+
+def _rep_intensity(reps: int) -> float:
+    """Map reps to intensity percentage of projected e1RM."""
+    rep_map = {
+        5: 0.85,
+        6: 0.82,
+        8: 0.75,
+        10: 0.70,
+    }
+    if reps in rep_map:
+        return rep_map[reps]
+    if reps <= 0:
+        return 0
+    # Fallback: inverse of Epley
+    return 1 / (1 + reps / 30)
+
+
+def _round_prescribed_weight(weight: float, weight_unit: str) -> float:
+    """Round to nearest 5 lb or 2.5 kg."""
+    if weight <= 0:
+        return 0
+    increment = 2.5 if weight_unit == "kg" else 5
+    return round(weight / increment) * increment
+
+
+def _prescribed_weight(goal: Goal, reps: int) -> Optional[float]:
+    """Compute prescribed weight for a given rep scheme."""
+    projected_e1rm = _get_projected_e1rm(goal)
+    if projected_e1rm <= 0:
+        return None
+    intensity = _rep_intensity(reps)
+    if intensity <= 0:
+        return None
+    weight = projected_e1rm * intensity
+    rounded = _round_prescribed_weight(weight, goal.weight_unit)
+    return rounded if rounded > 0 else None
+
+
+def _intensity_note(reps: int) -> str:
+    """Return a human-friendly intensity note for a rep scheme."""
+    intensity = _rep_intensity(reps)
+    if intensity <= 0:
+        return "Focus on form and progressive overload"
+    percent = int(round(intensity * 100))
+    return f"~{percent}% projected 1RM"
+
+
 # ============ Goal Functions ============
 
 def create_goal(
@@ -543,7 +615,7 @@ def generate_multi_goal_mission(
                 order_index=idx,
                 sets=prescription_data["sets"],
                 reps=prescription_data["reps"],
-                weight=None,
+                weight=prescription_data.get("weight"),
                 weight_unit=prescription_data.get("weight_unit", "lb"),
                 notes=prescription_data.get("notes", "Focus on form and progressive overload")
             )
@@ -599,6 +671,9 @@ def _generate_single_focus_workouts(goal: Goal) -> List[Dict[str, Any]]:
     """Generate 3-day Heavy/Accessory/Volume split for single goal"""
     exercise_name = goal.exercise.name if goal.exercise else "Main Lift"
     exercise_id = goal.exercise_id
+    heavy_reps = 5
+    accessory_reps = 8
+    volume_reps = 10
 
     return [
         {
@@ -606,21 +681,44 @@ def _generate_single_focus_workouts(goal: Goal) -> List[Dict[str, Any]]:
             "focus": f"Heavy {exercise_name}",
             "primary_lift": exercise_name,
             "prescriptions": [
-                {"exercise_id": exercise_id, "sets": 4, "reps": 5, "weight_unit": goal.weight_unit, "notes": "Heavy working sets - 85-90% 1RM"}
+                {
+                    "exercise_id": exercise_id,
+                    "sets": 4,
+                    "reps": heavy_reps,
+                    "weight": _prescribed_weight(goal, heavy_reps),
+                    "weight_unit": goal.weight_unit,
+                    "notes": f"Heavy working sets - {_intensity_note(heavy_reps)}"
+                }
             ] if exercise_id else []
         },
         {
             "day": 2,
             "focus": "Accessory Work",
             "primary_lift": None,
-            "prescriptions": []  # User adds accessories
+            "prescriptions": [
+                {
+                    "exercise_id": exercise_id,
+                    "sets": 3,
+                    "reps": accessory_reps,
+                    "weight": _prescribed_weight(goal, accessory_reps),
+                    "weight_unit": goal.weight_unit,
+                    "notes": f"Accessory volume - swap to a variation if desired ({_intensity_note(accessory_reps)})"
+                }
+            ] if exercise_id else []
         },
         {
             "day": 3,
             "focus": f"Volume {exercise_name}",
             "primary_lift": exercise_name,
             "prescriptions": [
-                {"exercise_id": exercise_id, "sets": 3, "reps": 10, "weight_unit": goal.weight_unit, "notes": "Volume work - 65-70% 1RM"}
+                {
+                    "exercise_id": exercise_id,
+                    "sets": 3,
+                    "reps": volume_reps,
+                    "weight": _prescribed_weight(goal, volume_reps),
+                    "weight_unit": goal.weight_unit,
+                    "notes": f"Volume work - {_intensity_note(volume_reps)}"
+                }
             ] if exercise_id else []
         }
     ]
@@ -653,12 +751,14 @@ def _generate_ppl_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
     push_prescriptions = []
     for goal in push_goals:
         if goal.exercise_id:
+            reps = 6
             push_prescriptions.append({
                 "exercise_id": goal.exercise_id,
                 "sets": 4,
-                "reps": 6,
+                "reps": reps,
+                "weight": _prescribed_weight(goal, reps),
                 "weight_unit": goal.weight_unit,
-                "notes": f"Focus on {goal.exercise.name}"
+                "notes": f"Focus on {goal.exercise.name} ({_intensity_note(reps)})"
             })
     workouts.append({
         "day": 1,
@@ -671,12 +771,14 @@ def _generate_ppl_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
     pull_prescriptions = []
     for goal in pull_goals:
         if goal.exercise_id:
+            reps = 6
             pull_prescriptions.append({
                 "exercise_id": goal.exercise_id,
                 "sets": 4,
-                "reps": 6,
+                "reps": reps,
+                "weight": _prescribed_weight(goal, reps),
                 "weight_unit": goal.weight_unit,
-                "notes": f"Focus on {goal.exercise.name}"
+                "notes": f"Focus on {goal.exercise.name} ({_intensity_note(reps)})"
             })
     workouts.append({
         "day": 2,
@@ -689,12 +791,14 @@ def _generate_ppl_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
     leg_prescriptions = []
     for goal in leg_goals:
         if goal.exercise_id:
+            reps = 6
             leg_prescriptions.append({
                 "exercise_id": goal.exercise_id,
                 "sets": 4,
-                "reps": 6,
+                "reps": reps,
+                "weight": _prescribed_weight(goal, reps),
                 "weight_unit": goal.weight_unit,
-                "notes": f"Focus on {goal.exercise.name}"
+                "notes": f"Focus on {goal.exercise.name} ({_intensity_note(reps)})"
             })
     workouts.append({
         "day": 3,
@@ -725,12 +829,14 @@ def _generate_upper_lower_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
     upper_prescriptions = []
     for goal in upper_goals:
         if goal.exercise_id:
+            reps = 5
             upper_prescriptions.append({
                 "exercise_id": goal.exercise_id,
                 "sets": 4,
-                "reps": 5,
+                "reps": reps,
+                "weight": _prescribed_weight(goal, reps),
                 "weight_unit": goal.weight_unit,
-                "notes": f"Heavy {goal.exercise.name}"
+                "notes": f"Heavy {goal.exercise.name} ({_intensity_note(reps)})"
             })
     workouts.append({
         "day": 1,
@@ -743,12 +849,14 @@ def _generate_upper_lower_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
     lower_prescriptions = []
     for goal in lower_goals:
         if goal.exercise_id:
+            reps = 5
             lower_prescriptions.append({
                 "exercise_id": goal.exercise_id,
                 "sets": 4,
-                "reps": 5,
+                "reps": reps,
+                "weight": _prescribed_weight(goal, reps),
                 "weight_unit": goal.weight_unit,
-                "notes": f"Heavy {goal.exercise.name}"
+                "notes": f"Heavy {goal.exercise.name} ({_intensity_note(reps)})"
             })
     workouts.append({
         "day": 2,
@@ -761,12 +869,14 @@ def _generate_upper_lower_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
     upper_volume_prescriptions = []
     for goal in upper_goals:
         if goal.exercise_id:
+            reps = 10
             upper_volume_prescriptions.append({
                 "exercise_id": goal.exercise_id,
                 "sets": 3,
-                "reps": 10,
+                "reps": reps,
+                "weight": _prescribed_weight(goal, reps),
                 "weight_unit": goal.weight_unit,
-                "notes": f"Volume {goal.exercise.name}"
+                "notes": f"Volume {goal.exercise.name} ({_intensity_note(reps)})"
             })
     workouts.append({
         "day": 3,
@@ -797,8 +907,9 @@ def _generate_full_body_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
                     "exercise_id": goal.exercise_id,
                     "sets": 3,
                     "reps": reps,
+                    "weight": _prescribed_weight(goal, reps),
                     "weight_unit": goal.weight_unit,
-                    "notes": f"{intensity} {goal.exercise.name}"
+                    "notes": f"{intensity} {goal.exercise.name} ({_intensity_note(reps)})"
                 })
 
         workouts.append({

@@ -19,7 +19,10 @@ from app.services.mission_service import (
     determine_training_split,
     get_muscle_group,
     calculate_e1rm,
+    _get_projected_e1rm,
+    _prescribed_weight,
     generate_multi_goal_mission,
+    _generate_single_focus_workouts,
     check_mission_workout_completion,
     MAX_ACTIVE_GOALS,
 )
@@ -198,6 +201,86 @@ class TestCalculateE1rm:
 
     e1RM = weight * (1 + reps/30)
     """
+
+
+class TestMissionPrescriptionWeights:
+    def test_projected_e1rm_and_weight_rounding(self):
+        """Projected e1RM should progress toward target and weights should round to nearest 5 lb."""
+        exercise = MockExercise("ex-bench-001", "Barbell Bench Press", "compound")
+        deadline = date.today() + timedelta(weeks=4)
+        goal = MockGoal(
+            id="goal-1",
+            user_id="user-1",
+            exercise_id=exercise.id,
+            exercise=exercise,
+            target_weight=250,
+            target_reps=1,
+            weight_unit="lb",
+            deadline=deadline,
+            current_e1rm=200,
+            starting_e1rm=200,
+        )
+
+        projected = _get_projected_e1rm(goal)
+        assert projected == pytest.approx(212.5, rel=1e-3)
+
+        weight_5 = _prescribed_weight(goal, 5)
+        weight_6 = _prescribed_weight(goal, 6)
+
+        assert weight_5 == 180  # 212.5 * 0.85 = 180.625 -> 180
+        assert weight_6 == 175  # 212.5 * 0.82 = 174.25 -> 175
+
+    def test_projected_e1rm_fallback_to_85_percent_of_target(self):
+        """If no current/starting e1RM exists, base on 85% of target e1RM."""
+        exercise = MockExercise("ex-bench-001", "Barbell Bench Press", "compound")
+        deadline = date.today() + timedelta(weeks=4)
+        goal = MockGoal(
+            id="goal-2",
+            user_id="user-1",
+            exercise_id=exercise.id,
+            exercise=exercise,
+            target_weight=200,
+            target_reps=1,
+            weight_unit="lb",
+            deadline=deadline,
+            current_e1rm=None,
+            starting_e1rm=None,
+        )
+
+        projected = _get_projected_e1rm(goal)
+        # base = 170, target = 200, weeks = 4 -> 170 + 7.5 = 177.5
+        assert projected == pytest.approx(177.5, rel=1e-3)
+
+    def test_single_focus_workout_includes_accessory_volume_and_weights(self):
+        """Single-focus missions should be 4x5, 3x8, 3x10 with weights and total sets = 10."""
+        exercise = MockExercise("ex-bench-001", "Barbell Bench Press", "compound")
+        goal = MockGoal(
+            id="goal-3",
+            user_id="user-1",
+            exercise_id=exercise.id,
+            exercise=exercise,
+            target_weight=225,
+            target_reps=1,
+            weight_unit="lb",
+            deadline=date.today() + timedelta(weeks=8),
+            current_e1rm=185,
+            starting_e1rm=185,
+        )
+
+        workouts = _generate_single_focus_workouts(goal)
+        assert len(workouts) == 3
+
+        reps_by_day = [workouts[0]["prescriptions"][0]["reps"],
+                       workouts[1]["prescriptions"][0]["reps"],
+                       workouts[2]["prescriptions"][0]["reps"]]
+        assert reps_by_day == [5, 8, 10]
+
+        total_sets = sum(p["sets"] for w in workouts for p in w["prescriptions"])
+        assert total_sets == 10
+
+        for workout in workouts:
+            for prescription in workout["prescriptions"]:
+                assert prescription["weight"] is not None
 
     def test_one_rep_equals_weight(self):
         """For 1 rep, e1RM equals the weight"""
