@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stats - Modern B (Power Meter Dashboard)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-void: #050508;
+            --bg-dark: #0a0a12;
+            --bg-medium: #0f1018;
+            --bg-light: #16171f;
+            --bg-elevated: #1a1b24;
+            --accent-primary: #00D4FF;
+            --accent-secondary: #7B61FF;
+            --accent-gold: #FFD700;
+            --accent-success: #00FF88;
+            --accent-warning: #FF9500;
+            --accent-danger: #FF4757;
+            --text-primary: #FFFFFF;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --text-muted: rgba(255, 255, 255, 0.4);
+            --border: rgba(255, 255, 255, 0.08);
+            --glow-primary: rgba(0, 212, 255, 0.3);
+
+            --squat-color: #FF6B6B;
+            --bench-color: #00D4FF;
+            --deadlift-color: #7B61FF;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #0a0a14;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        .mockup-label {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .mockup-label span { color: var(--accent-primary); }
+
+        .iphone-frame {
+            width: 390px;
+            height: 844px;
+            background: #000;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow: 0 0 0 3px #1a1a1a, 0 0 0 6px #0d0d0d, 0 30px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-void);
+            border-radius: 40px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .iphone-screen::-webkit-scrollbar { display: none; }
+
+        .dynamic-island {
+            position: sticky;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 34px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 100;
+            margin-bottom: -34px;
+        }
+
+        .screen-content {
+            padding-bottom: 100px;
+            color: var(--text-primary);
+        }
+
+        .mono {
+            font-family: 'SF Mono', 'Menlo', monospace;
+            letter-spacing: 0.5px;
+        }
+
+        /* Header */
+        .header {
+            padding: 60px 20px 20px;
+            text-align: center;
+        }
+
+        .system-tag {
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--accent-primary);
+            letter-spacing: 2px;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-top: 4px;
+        }
+
+        /* Total Power Card */
+        .total-power-card {
+            margin: 0 20px 24px;
+            padding: 24px;
+            background: linear-gradient(180deg, var(--bg-light) 0%, var(--bg-medium) 100%);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .total-power-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--squat-color), var(--bench-color), var(--deadlift-color));
+        }
+
+        .total-power-label {
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+
+        .total-power-value {
+            font-size: 64px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .total-power-unit {
+            font-family: 'SF Mono', monospace;
+            font-size: 14px;
+            color: var(--text-secondary);
+            letter-spacing: 1px;
+        }
+
+        .power-breakdown {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .power-component {
+            text-align: center;
+        }
+
+        .power-component-value {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .power-component-label {
+            font-family: 'SF Mono', monospace;
+            font-size: 9px;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+
+        /* Rank Tier Display */
+        .rank-tier {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin: 16px 0 0;
+        }
+
+        .tier-badge {
+            padding: 6px 16px;
+            background: linear-gradient(135deg, var(--accent-primary), #0099CC);
+            border-radius: 20px;
+            font-family: 'SF Mono', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            color: #000;
+        }
+
+        .tier-label {
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        /* Power Meters Section */
+        .power-meters {
+            padding: 0 20px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .section-diamond {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-primary);
+            transform: rotate(45deg);
+        }
+
+        .section-title {
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 1.5px;
+        }
+
+        /* Power Meter */
+        .power-meter {
+            margin-bottom: 16px;
+            padding: 16px;
+            background: var(--bg-medium);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .power-meter:hover {
+            background: var(--bg-light);
+            border-color: rgba(255,255,255,0.12);
+        }
+
+        .power-meter.squat { --meter-color: var(--squat-color); }
+        .power-meter.bench { --meter-color: var(--bench-color); }
+        .power-meter.deadlift { --meter-color: var(--deadlift-color); }
+
+        .meter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .meter-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .meter-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .meter-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .meter-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .meter-fantasy {
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            font-style: italic;
+            color: var(--text-muted);
+        }
+
+        .meter-value-display {
+            text-align: right;
+        }
+
+        .meter-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--meter-color);
+        }
+
+        .meter-trend {
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--accent-success);
+        }
+
+        /* Gauge Bar */
+        .meter-gauge {
+            position: relative;
+            height: 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .meter-gauge-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, var(--meter-color), color-mix(in srgb, var(--meter-color), white 20%));
+            box-shadow: 0 0 12px var(--meter-color);
+            transition: width 0.5s ease;
+        }
+
+        .meter-gauge-markers {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+        }
+
+        .meter-marker {
+            flex: 1;
+            border-right: 1px solid rgba(0,0,0,0.3);
+        }
+
+        .meter-marker:last-child {
+            border-right: none;
+        }
+
+        /* Gauge Labels */
+        .meter-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 6px;
+        }
+
+        .meter-label {
+            font-family: 'SF Mono', monospace;
+            font-size: 9px;
+            color: var(--text-muted);
+        }
+
+        .meter-label.rank {
+            padding: 2px 6px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+        }
+
+        .meter-label.current {
+            color: var(--meter-color);
+            font-weight: 600;
+        }
+
+        /* Mini Stats */
+        .meter-stats {
+            display: flex;
+            gap: 16px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .meter-stat {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .meter-stat-value {
+            font-family: 'SF Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .meter-stat-label {
+            font-family: 'SF Mono', monospace;
+            font-size: 9px;
+            color: var(--text-muted);
+        }
+
+        /* Tap hint */
+        .tap-hint {
+            text-align: center;
+            padding: 16px;
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .tap-hint span {
+            color: var(--accent-primary);
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="mockup-label">Stats Screen: <span>Modern B (Power Meter Dashboard)</span></div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="screen-content">
+                    <!-- Header -->
+                    <div class="header">
+                        <div class="system-tag">[ SYSTEM ]</div>
+                        <div class="header-title">Power Analysis</div>
+                    </div>
+
+                    <!-- Total Power Card -->
+                    <div class="total-power-card">
+                        <div class="total-power-label">TOTAL POWER LEVEL</div>
+                        <div class="total-power-value">962</div>
+                        <div class="total-power-unit">COMBINED E1RM (LB)</div>
+
+                        <div class="power-breakdown">
+                            <div class="power-component">
+                                <div class="power-component-value" style="color: var(--squat-color);">315</div>
+                                <div class="power-component-label">SQUAT</div>
+                            </div>
+                            <div class="power-component">
+                                <div class="power-component-value" style="color: var(--bench-color);">242</div>
+                                <div class="power-component-label">BENCH</div>
+                            </div>
+                            <div class="power-component">
+                                <div class="power-component-value" style="color: var(--deadlift-color);">405</div>
+                                <div class="power-component-label">DEADLIFT</div>
+                            </div>
+                        </div>
+
+                        <div class="rank-tier">
+                            <span class="tier-badge">A-RANK</span>
+                            <span class="tier-label">Top 22% of Hunters</span>
+                        </div>
+                    </div>
+
+                    <!-- Power Meters -->
+                    <div class="power-meters">
+                        <div class="section-header">
+                            <div class="section-diamond"></div>
+                            <div class="section-title">POWER LEVELS</div>
+                        </div>
+
+                        <!-- Squat Meter -->
+                        <div class="power-meter squat">
+                            <div class="meter-header">
+                                <div class="meter-left">
+                                    <div class="meter-icon">🦵</div>
+                                    <div class="meter-info">
+                                        <div class="meter-name">Barbell Squat</div>
+                                        <div class="meter-fantasy">"Earthshatter"</div>
+                                    </div>
+                                </div>
+                                <div class="meter-value-display">
+                                    <div class="meter-value">315</div>
+                                    <div class="meter-trend">↗ +4.2%</div>
+                                </div>
+                            </div>
+
+                            <div class="meter-gauge">
+                                <div class="meter-gauge-fill" style="width: 72%;"></div>
+                                <div class="meter-gauge-markers">
+                                    <div class="meter-marker"></div>
+                                    <div class="meter-marker"></div>
+                                    <div class="meter-marker"></div>
+                                    <div class="meter-marker"></div>
+                                    <div class="meter-marker"></div>
+                                </div>
+                            </div>
+
+                            <div class="meter-labels">
+                                <span class="meter-label rank">E</span>
+                                <span class="meter-label rank">D</span>
+                                <span class="meter-label rank">C</span>
+                                <span class="meter-label rank current">B</span>
+                                <span class="meter-label rank">A</span>
+                                <span class="meter-label rank">S</span>
+                            </div>
+
+                            <div class="meter-stats">
+                                <div class="meter-stat">
+                                    <div class="meter-stat-value">1.90x</div>
+                                    <div class="meter-stat-label">BW RATIO</div>
+                                </div>
+                                <div class="meter-stat">
+                                    <div class="meter-stat-value">12</div>
+                                    <div class="meter-stat-label">QUESTS</div>
+                                </div>
+                                <div class="meter-stat">
+                                    <div class="meter-stat-value">310 lb</div>
+                                    <div class="meter-stat-label">4W AVG</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bench Meter -->
+                        <div class="power-meter bench">
+                            <div class="meter-header">
+                                <div class="meter-left">
+                                    <div class="meter-icon">🏋️</div>
+                                    <div class="meter-info">
+                                        <div class="meter-name">Bench Press</div>
+                                        <div class="meter-fantasy">"Titanic Press"</div>
+                                    </div>
+                                </div>
+                                <div class="meter-value-display">
+                                    <div class="meter-value">242</div>
+                                    <div class="meter-trend">↗ +2.8%</div>
+                                </div>
+                            </div>
+
+                            <div class="meter-gauge">
+                                <div class="meter-gauge-fill" style="width: 78%;"></div>
+                                <div class="meter-gauge-markers">
+                                    <div class="meter-marker"></div>
+                                    <div class="meter-marker"></div>
+                                    <div class="meter-marker"></div>
+                                    <div class="meter-marker"></div>
+                                    <div class="meter-marker"></div>
+                                </div>
+                            </div>
+
+                            <div class="meter-labels">
+                                <span class="meter-label rank">E</span>
+                                <span class="meter-label rank">D</span>
+                                <span class="meter-label rank">C</span>
+                                <span class="meter-label rank">B</span>
+                                <span class="meter-label rank current">A</span>
+                                <span class="meter-label rank">S</span>
+                            </div>
+
+                            <div class="meter-stats">
+                                <div class="meter-stat">
+                                    <div class="meter-stat-value">1.46x</div>
+                                    <div class="meter-stat-label">BW RATIO</div>
+                                </div>
+                                <div class="meter-stat">
+                                    <div class="meter-stat-value">14</div>
+                                    <div class="meter-stat-label">QUESTS</div>
+                                </div>
+                                <div class="meter-stat">
+                                    <div class="meter-stat-value">238 lb</div>
+                                    <div class="meter-stat-label">4W AVG</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Deadlift Meter -->
+                        <div class="power-meter deadlift">
+                            <div class="meter-header">
+                                <div class="meter-left">
+                                    <div class="meter-icon">🔱</div>
+                                    <div class="meter-info">
+                                        <div class="meter-name">Deadlift</div>
+                                        <div class="meter-fantasy">"World Breaker"</div>
+                                    </div>
+                                </div>
+                                <div class="meter-value-display">
+                                    <div class="meter-value">405</div>
+                                    <div class="meter-trend">↗ +6.1%</div>
+                                </div>
+                            </div>
+
+                            <div class="meter-gauge">
+                                <div class="meter-gauge-fill" style="width: 82%;"></div>
+                                <div class="meter-gauge-markers">
+                                    <div class="meter-marker"></div>
+                                    <div class="meter-marker"></div>
+                                    <div class="meter-marker"></div>
+                                    <div class="meter-marker"></div>
+                                    <div class="meter-marker"></div>
+                                </div>
+                            </div>
+
+                            <div class="meter-labels">
+                                <span class="meter-label rank">E</span>
+                                <span class="meter-label rank">D</span>
+                                <span class="meter-label rank">C</span>
+                                <span class="meter-label rank">B</span>
+                                <span class="meter-label rank current">A</span>
+                                <span class="meter-label rank">S</span>
+                            </div>
+
+                            <div class="meter-stats">
+                                <div class="meter-stat">
+                                    <div class="meter-stat-value">2.44x</div>
+                                    <div class="meter-stat-label">BW RATIO</div>
+                                </div>
+                                <div class="meter-stat">
+                                    <div class="meter-stat-value">10</div>
+                                    <div class="meter-stat-label">QUESTS</div>
+                                </div>
+                                <div class="meter-stat">
+                                    <div class="meter-stat-value">398 lb</div>
+                                    <div class="meter-stat-label">4W AVG</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tap-hint">
+                            Tap a power level to view <span>detailed chart</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

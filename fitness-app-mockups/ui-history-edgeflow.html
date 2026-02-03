@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History - Edge Flow</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #0a0a14;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        :root {
+            --bg-void: #050508;
+            --bg-dark: #0a0a12;
+            --bg-card: #0f1018;
+            --bg-elevated: #141520;
+            --accent-primary: #00D4FF;
+            --accent-secondary: #7B61FF;
+            --accent-gold: #FFD700;
+            --accent-success: #00FF88;
+            --accent-warning: #FF9500;
+            --accent-danger: #FF4757;
+            --text-primary: #FFFFFF;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --text-tertiary: rgba(255, 255, 255, 0.4);
+        }
+
+        .iphone-frame {
+            width: 390px;
+            height: 844px;
+            background: #000;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow: 0 0 0 3px #1a1a1a, 0 0 0 6px #0d0d0d, 0 30px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-void);
+            border-radius: 40px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .iphone-screen::-webkit-scrollbar { display: none; }
+
+        .dynamic-island {
+            position: sticky;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 34px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 100;
+            margin-bottom: -34px;
+        }
+
+        .screen-content { padding-bottom: 100px; color: var(--text-primary); }
+
+        .mockup-label {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .mockup-label span { color: var(--accent-primary); }
+
+        /* Header */
+        .history-header {
+            padding: 60px 20px 20px;
+            background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-void) 100%);
+        }
+
+        .header-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        /* Calendar strip */
+        .calendar-strip {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+        .calendar-strip::-webkit-scrollbar { display: none; }
+
+        .calendar-day {
+            flex: 0 0 auto;
+            width: 48px;
+            padding: 10px 0;
+            text-align: center;
+            border-radius: 12px;
+            background: var(--bg-card);
+        }
+
+        .calendar-day.today {
+            background: var(--accent-primary);
+            color: #000;
+        }
+
+        .calendar-day.has-workout {
+            border: 1px solid var(--accent-primary);
+        }
+
+        .calendar-day .day-name {
+            font-size: 10px;
+            color: var(--text-tertiary);
+            margin-bottom: 4px;
+        }
+
+        .calendar-day.today .day-name {
+            color: rgba(0, 0, 0, 0.6);
+        }
+
+        .calendar-day .day-num {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        /* Stats summary */
+        .month-stats {
+            display: flex;
+            justify-content: space-around;
+            padding: 20px;
+            margin: 16px 20px;
+            background: var(--bg-card);
+            border-radius: 16px;
+        }
+
+        .month-stat {
+            text-align: center;
+        }
+
+        .month-stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent-primary);
+        }
+
+        .month-stat-label {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        /* Workout history list */
+        .history-section {
+            padding: 0 20px;
+        }
+
+        .section-date {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            margin: 20px 0 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .workout-card {
+            background: var(--bg-card);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-left: 3px solid var(--accent-primary);
+        }
+
+        .workout-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .workout-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .workout-time {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .workout-duration {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .workout-exercises {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .exercise-tag {
+            padding: 6px 12px;
+            background: var(--bg-elevated);
+            border-radius: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .workout-stats {
+            display: flex;
+            gap: 16px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .workout-stat {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .workout-stat strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* PR indicator */
+        .pr-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--accent-gold);
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        /* Empty state */
+        .empty-day {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-tertiary);
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="mockup-label">History Screen: <span>Completed Quests</span></div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="screen-content">
+                    <div class="history-header">
+                        <div class="header-title">History</div>
+                        <div class="calendar-strip">
+                            <div class="calendar-day">
+                                <div class="day-name">Mon</div>
+                                <div class="day-num">20</div>
+                            </div>
+                            <div class="calendar-day has-workout">
+                                <div class="day-name">Tue</div>
+                                <div class="day-num">21</div>
+                            </div>
+                            <div class="calendar-day">
+                                <div class="day-name">Wed</div>
+                                <div class="day-num">22</div>
+                            </div>
+                            <div class="calendar-day has-workout">
+                                <div class="day-name">Thu</div>
+                                <div class="day-num">23</div>
+                            </div>
+                            <div class="calendar-day">
+                                <div class="day-name">Fri</div>
+                                <div class="day-num">24</div>
+                            </div>
+                            <div class="calendar-day today">
+                                <div class="day-name">Sat</div>
+                                <div class="day-num">25</div>
+                            </div>
+                            <div class="calendar-day">
+                                <div class="day-name">Sun</div>
+                                <div class="day-num">26</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="month-stats">
+                        <div class="month-stat">
+                            <div class="month-stat-value">12</div>
+                            <div class="month-stat-label">Workouts</div>
+                        </div>
+                        <div class="month-stat">
+                            <div class="month-stat-value">98K</div>
+                            <div class="month-stat-label">Volume</div>
+                        </div>
+                        <div class="month-stat">
+                            <div class="month-stat-value">3</div>
+                            <div class="month-stat-label">PRs</div>
+                        </div>
+                    </div>
+
+                    <div class="history-section">
+                        <div class="section-date">Today</div>
+
+                        <div class="workout-card">
+                            <div class="workout-card-header">
+                                <div>
+                                    <div class="workout-name">Push Day <span class="pr-indicator">🏆 2 PRs</span></div>
+                                    <div class="workout-time">2:30 PM</div>
+                                </div>
+                                <div class="workout-duration">52 min</div>
+                            </div>
+                            <div class="workout-exercises">
+                                <span class="exercise-tag">Bench Press</span>
+                                <span class="exercise-tag">Incline DB</span>
+                                <span class="exercise-tag">Shoulder Press</span>
+                                <span class="exercise-tag">+2 more</span>
+                            </div>
+                            <div class="workout-stats">
+                                <div class="workout-stat"><strong>24,500</strong> lbs</div>
+                                <div class="workout-stat"><strong>18</strong> sets</div>
+                                <div class="workout-stat"><strong>5</strong> exercises</div>
+                            </div>
+                        </div>
+
+                        <div class="section-date">Thursday</div>
+
+                        <div class="workout-card">
+                            <div class="workout-card-header">
+                                <div>
+                                    <div class="workout-name">Pull Day</div>
+                                    <div class="workout-time">6:00 PM</div>
+                                </div>
+                                <div class="workout-duration">48 min</div>
+                            </div>
+                            <div class="workout-exercises">
+                                <span class="exercise-tag">Deadlift</span>
+                                <span class="exercise-tag">Pull-ups</span>
+                                <span class="exercise-tag">Rows</span>
+                                <span class="exercise-tag">+3 more</span>
+                            </div>
+                            <div class="workout-stats">
+                                <div class="workout-stat"><strong>28,200</strong> lbs</div>
+                                <div class="workout-stat"><strong>20</strong> sets</div>
+                                <div class="workout-stat"><strong>6</strong> exercises</div>
+                            </div>
+                        </div>
+
+                        <div class="section-date">Tuesday</div>
+
+                        <div class="workout-card">
+                            <div class="workout-card-header">
+                                <div>
+                                    <div class="workout-name">Leg Day <span class="pr-indicator">🏆 1 PR</span></div>
+                                    <div class="workout-time">5:30 PM</div>
+                                </div>
+                                <div class="workout-duration">65 min</div>
+                            </div>
+                            <div class="workout-exercises">
+                                <span class="exercise-tag">Squat</span>
+                                <span class="exercise-tag">RDL</span>
+                                <span class="exercise-tag">Leg Press</span>
+                                <span class="exercise-tag">+2 more</span>
+                            </div>
+                            <div class="workout-stats">
+                                <div class="workout-stat"><strong>32,100</strong> lbs</div>
+                                <div class="workout-stat"><strong>22</strong> sets</div>
+                                <div class="workout-stat"><strong>5</strong> exercises</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

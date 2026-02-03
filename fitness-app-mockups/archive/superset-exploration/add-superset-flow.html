@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=414, initial-scale=1.0">
+    <title>Add Superset Flow</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800&family=Share+Tech+Mono&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --void-black: #0a0a12;
+            --void-dark: #0f0f1a;
+            --void-medium: #16162a;
+            --void-light: #1e1e3a;
+            --arise-border: #2a2a4a;
+            --system-primary: #7c3aed;
+            --system-primary-glow: rgba(124, 58, 237, 0.4);
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --text-muted: #606070;
+            --success-green: #22c55e;
+            --push-color: #ef4444;
+            --pull-color: #3b82f6;
+        }
+
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background: var(--void-black);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            text-align: center;
+            font-size: 20px;
+            margin-bottom: 8px;
+            color: var(--system-primary);
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 40px;
+            font-size: 13px;
+        }
+
+        .flow-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .step {
+            width: 380px;
+        }
+
+        .step-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px;
+            color: var(--system-primary);
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .step-number {
+            width: 24px;
+            height: 24px;
+            background: var(--system-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: white;
+        }
+
+        .arrow {
+            font-size: 24px;
+            color: var(--system-primary);
+            align-self: center;
+            margin-top: 40px;
+        }
+
+        .phone-frame {
+            background: var(--void-dark);
+            border-radius: 24px;
+            padding: 16px;
+            border: 2px solid var(--arise-border);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+        }
+
+        .add-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(124, 58, 237, 0.1);
+            border: none;
+            color: var(--system-primary);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 12px;
+            letter-spacing: 1px;
+            cursor: pointer;
+        }
+
+        .add-btn.active {
+            background: var(--system-primary);
+            color: white;
+        }
+
+        /* Dropdown Menu */
+        .dropdown-menu {
+            background: var(--void-medium);
+            border: 1px solid var(--arise-border);
+            border-radius: 8px;
+            padding: 6px;
+            margin-bottom: 16px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .menu-item:hover {
+            background: var(--void-light);
+        }
+
+        .menu-item.highlight {
+            background: rgba(124, 58, 237, 0.15);
+            color: var(--system-primary);
+        }
+
+        .menu-item .icon {
+            font-size: 16px;
+        }
+
+        /* Exercise Picker */
+        .picker-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .back-btn {
+            width: 36px;
+            height: 36px;
+            background: var(--void-light);
+            border: 1px solid var(--arise-border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .picker-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .step-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            padding: 12px;
+            background: var(--void-medium);
+            border-radius: 8px;
+        }
+
+        .step-dot {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .step-dot.complete {
+            background: var(--success-green);
+            color: white;
+        }
+
+        .step-dot.active {
+            background: var(--system-primary);
+            color: white;
+            box-shadow: 0 0 15px var(--system-primary-glow);
+        }
+
+        .step-dot.pending {
+            background: var(--void-light);
+            color: var(--text-muted);
+        }
+
+        .step-line {
+            flex: 1;
+            height: 2px;
+            background: var(--arise-border);
+        }
+
+        .step-line.complete {
+            background: var(--success-green);
+        }
+
+        .step-text {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .selected-exercise {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px;
+            background: var(--void-medium);
+            border: 1px solid var(--success-green);
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .selected-exercise .check {
+            width: 28px;
+            height: 28px;
+            background: var(--success-green);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+        }
+
+        .selected-exercise .info {
+            flex: 1;
+        }
+
+        .selected-exercise .name {
+            font-size: 14px;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .selected-exercise .meta {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .instruction {
+            font-size: 13px;
+            color: var(--system-primary);
+            margin-bottom: 12px;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 1px;
+        }
+
+        .search-bar {
+            width: 100%;
+            background: var(--void-light);
+            border: 1px solid var(--arise-border);
+            border-radius: 6px;
+            padding: 12px;
+            color: var(--text-primary);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .search-bar::placeholder {
+            color: var(--text-muted);
+        }
+
+        .exercise-list {
+            background: var(--void-medium);
+            border: 1px solid var(--arise-border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .exercise-row {
+            display: flex;
+            align-items: center;
+            padding: 14px;
+            border-bottom: 1px solid var(--arise-border);
+            cursor: pointer;
+        }
+
+        .exercise-row:last-child {
+            border-bottom: none;
+        }
+
+        .exercise-row:hover {
+            background: var(--void-light);
+        }
+
+        .exercise-row .color-dot {
+            width: 4px;
+            height: 32px;
+            border-radius: 2px;
+            margin-right: 12px;
+        }
+
+        .exercise-row .info {
+            flex: 1;
+        }
+
+        .exercise-row .name {
+            font-size: 14px;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .exercise-row .meta {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .exercise-row .add-icon {
+            width: 32px;
+            height: 32px;
+            background: rgba(124, 58, 237, 0.1);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--system-primary);
+            font-size: 16px;
+        }
+
+        /* Superset Card */
+        .superset-card {
+            border: 2px solid var(--system-primary);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 25px var(--system-primary-glow);
+            margin-bottom: 16px;
+        }
+
+        .superset-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: linear-gradient(135deg, var(--void-medium), rgba(124, 58, 237, 0.1));
+        }
+
+        .superset-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--system-primary), #a78bfa);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .superset-info {
+            flex: 1;
+        }
+
+        .superset-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            color: var(--system-primary);
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+        }
+
+        .superset-count {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .menu-btn {
+            width: 32px;
+            height: 32px;
+            background: var(--void-light);
+            border: none;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .round-label {
+            text-align: center;
+            font-size: 10px;
+            color: var(--system-primary);
+            letter-spacing: 1px;
+            padding: 10px;
+            background: var(--void-dark);
+            border-top: 1px solid var(--arise-border);
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .exercise-pair {
+            display: flex;
+            gap: 10px;
+            padding: 12px 16px;
+            border-top: 1px solid var(--arise-border);
+        }
+
+        .pair-exercise {
+            flex: 1;
+            background: var(--void-dark);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .pair-exercise .name {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .pair-exercise .name::before {
+            content: '';
+            width: 3px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        .pair-exercise.push .name::before {
+            background: var(--push-color);
+        }
+
+        .pair-exercise.pull .name::before {
+            background: var(--pull-color);
+        }
+
+        .pair-inputs {
+            display: flex;
+            gap: 6px;
+        }
+
+        .pair-inputs input {
+            flex: 1;
+            background: var(--void-light);
+            border: 1px solid var(--arise-border);
+            border-radius: 4px;
+            padding: 10px 6px;
+            color: var(--text-primary);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .pair-inputs .label {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 4px;
+        }
+
+        .add-round-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 14px;
+            background: var(--void-dark);
+            border: none;
+            border-top: 1px solid var(--arise-border);
+            color: var(--system-primary);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 12px;
+            letter-spacing: 1px;
+            cursor: pointer;
+        }
+
+        /* Empty state card for comparison */
+        .objective-card {
+            background: var(--void-medium);
+            border: 1px solid var(--arise-border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .objective-header {
+            display: flex;
+            padding: 16px;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .color-bar {
+            width: 4px;
+            height: 40px;
+            border-radius: 2px;
+        }
+
+        .objective-info h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 14px;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .objective-info .fantasy {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        @media (max-width: 1400px) {
+            .arrow {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>[ ADD SUPERSET FLOW ]</h1>
+    <p class="subtitle">Step-by-step user experience for creating a superset</p>
+
+    <div class="flow-container">
+
+        <!-- Step 1: Tap ADD -->
+        <div class="step">
+            <div class="step-label">
+                <div class="step-number">1</div>
+                TAP ADD BUTTON
+            </div>
+            <div class="phone-frame">
+                <div class="section-header">
+                    <span class="section-title">Objectives</span>
+                    <button class="add-btn active">+ ADD ▾</button>
+                </div>
+
+                <div class="dropdown-menu">
+                    <div class="menu-item">
+                        <span class="icon">💪</span>
+                        <span>Add Exercise</span>
+                    </div>
+                    <div class="menu-item highlight">
+                        <span class="icon">⛓️</span>
+                        <span>Add Superset</span>
+                    </div>
+                    <div class="menu-item">
+                        <span class="icon">🔥</span>
+                        <span>Add Circuit</span>
+                    </div>
+                </div>
+
+                <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 12px;">
+                    User taps "Add Superset"
+                </div>
+            </div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <!-- Step 2: Pick First Exercise -->
+        <div class="step">
+            <div class="step-label">
+                <div class="step-number">2</div>
+                SELECT FIRST EXERCISE
+            </div>
+            <div class="phone-frame">
+                <div class="picker-header">
+                    <button class="back-btn">←</button>
+                    <span class="picker-title">Create Superset</span>
+                </div>
+
+                <div class="step-indicator">
+                    <div class="step-dot active">1</div>
+                    <div class="step-text">First</div>
+                    <div class="step-line"></div>
+                    <div class="step-dot pending">2</div>
+                    <div class="step-text">Second</div>
+                </div>
+
+                <div class="instruction">Select first exercise:</div>
+
+                <input class="search-bar" placeholder="Search exercises...">
+
+                <div class="exercise-list">
+                    <div class="exercise-row">
+                        <div class="color-dot" style="background: var(--push-color);"></div>
+                        <div class="info">
+                            <div class="name">Bench Press</div>
+                            <div class="meta">Push • Chest</div>
+                        </div>
+                        <div class="add-icon">+</div>
+                    </div>
+                    <div class="exercise-row">
+                        <div class="color-dot" style="background: var(--push-color);"></div>
+                        <div class="info">
+                            <div class="name">Overhead Press</div>
+                            <div class="meta">Push • Shoulders</div>
+                        </div>
+                        <div class="add-icon">+</div>
+                    </div>
+                    <div class="exercise-row">
+                        <div class="color-dot" style="background: var(--pull-color);"></div>
+                        <div class="info">
+                            <div class="name">Bent Over Row</div>
+                            <div class="meta">Pull • Back</div>
+                        </div>
+                        <div class="add-icon">+</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <!-- Step 3: Pick Second Exercise -->
+        <div class="step">
+            <div class="step-label">
+                <div class="step-number">3</div>
+                SELECT SECOND EXERCISE
+            </div>
+            <div class="phone-frame">
+                <div class="picker-header">
+                    <button class="back-btn">←</button>
+                    <span class="picker-title">Create Superset</span>
+                </div>
+
+                <div class="step-indicator">
+                    <div class="step-dot complete">✓</div>
+                    <div class="step-text">First</div>
+                    <div class="step-line complete"></div>
+                    <div class="step-dot active">2</div>
+                    <div class="step-text">Second</div>
+                </div>
+
+                <div class="selected-exercise">
+                    <div class="check">✓</div>
+                    <div class="info">
+                        <div class="name">Bench Press</div>
+                        <div class="meta">Push • Chest</div>
+                    </div>
+                </div>
+
+                <div class="instruction">Select second exercise:</div>
+
+                <input class="search-bar" placeholder="Search exercises...">
+
+                <div class="exercise-list">
+                    <div class="exercise-row">
+                        <div class="color-dot" style="background: var(--pull-color);"></div>
+                        <div class="info">
+                            <div class="name">Bent Over Row</div>
+                            <div class="meta">Pull • Back</div>
+                        </div>
+                        <div class="add-icon">+</div>
+                    </div>
+                    <div class="exercise-row">
+                        <div class="color-dot" style="background: var(--pull-color);"></div>
+                        <div class="info">
+                            <div class="name">Cable Row</div>
+                            <div class="meta">Pull • Back</div>
+                        </div>
+                        <div class="add-icon">+</div>
+                    </div>
+                    <div class="exercise-row">
+                        <div class="color-dot" style="background: var(--pull-color);"></div>
+                        <div class="info">
+                            <div class="name">Lat Pulldown</div>
+                            <div class="meta">Pull • Back</div>
+                        </div>
+                        <div class="add-icon">+</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <!-- Step 4: Result -->
+        <div class="step">
+            <div class="step-label">
+                <div class="step-number">4</div>
+                SUPERSET ADDED
+            </div>
+            <div class="phone-frame">
+                <div class="section-header">
+                    <span class="section-title">Objectives</span>
+                    <button class="add-btn">+ ADD</button>
+                </div>
+
+                <!-- The superset card -->
+                <div class="superset-card">
+                    <div class="superset-header">
+                        <div class="superset-icon">⛓️</div>
+                        <div class="superset-info">
+                            <div class="superset-label">SUPERSET</div>
+                            <div class="superset-count">Bench Press & Bent Over Row</div>
+                        </div>
+                        <button class="menu-btn">⋮</button>
+                    </div>
+
+                    <div class="round-label">— ROUND 1 —</div>
+
+                    <div class="exercise-pair">
+                        <div class="pair-exercise push">
+                            <div class="name">Bench Press</div>
+                            <div class="pair-inputs">
+                                <div>
+                                    <input placeholder="185">
+                                    <div class="label">LB</div>
+                                </div>
+                                <div>
+                                    <input placeholder="8">
+                                    <div class="label">REPS</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pair-exercise pull">
+                            <div class="name">Bent Over Row</div>
+                            <div class="pair-inputs">
+                                <div>
+                                    <input placeholder="135">
+                                    <div class="label">LB</div>
+                                </div>
+                                <div>
+                                    <input placeholder="10">
+                                    <div class="label">REPS</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="add-round-btn">+ ADD ROUND</button>
+                </div>
+
+                <!-- Can still add regular exercises -->
+                <div style="padding: 16px; text-align: center; border: 1px dashed var(--arise-border); border-radius: 8px; color: var(--text-muted); font-size: 11px;">
+                    Can add more exercises or supersets below
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

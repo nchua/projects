@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iOS Keychain Configuration Playground</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+            background: #0a0a0f;
+            color: #e4e4e7;
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            grid-template-rows: 1fr auto;
+            min-height: 100vh;
+            gap: 1px;
+            background: #27272a;
+        }
+
+        /* Controls Panel */
+        .controls {
+            background: #18181b;
+            padding: 24px;
+            overflow-y: auto;
+            grid-row: span 2;
+        }
+
+        .controls h1 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #fafafa;
+        }
+
+        .controls .subtitle {
+            font-size: 13px;
+            color: #71717a;
+            margin-bottom: 24px;
+        }
+
+        .section {
+            margin-bottom: 28px;
+        }
+
+        .section-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #a1a1aa;
+            margin-bottom: 12px;
+        }
+
+        .control-group {
+            margin-bottom: 16px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #d4d4d8;
+            margin-bottom: 6px;
+        }
+
+        .control-group .hint {
+            font-size: 11px;
+            color: #71717a;
+            margin-top: 4px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px 12px;
+            background: #27272a;
+            border: 1px solid #3f3f46;
+            border-radius: 6px;
+            color: #fafafa;
+            font-size: 13px;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        }
+
+        select {
+            width: 100%;
+            padding: 10px 12px;
+            background: #27272a;
+            border: 1px solid #3f3f46;
+            border-radius: 6px;
+            color: #fafafa;
+            font-size: 13px;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2371717a'%3E%3Cpath d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 12px;
+            background: #27272a;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .checkbox-group:hover {
+            background: #3f3f46;
+        }
+
+        .checkbox-group input {
+            margin-top: 2px;
+            accent-color: #6366f1;
+        }
+
+        .checkbox-group .label-text {
+            font-size: 13px;
+            color: #d4d4d8;
+        }
+
+        .checkbox-group .label-desc {
+            font-size: 11px;
+            color: #71717a;
+            margin-top: 2px;
+        }
+
+        /* Presets */
+        .presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .preset-btn {
+            padding: 8px 14px;
+            background: #27272a;
+            border: 1px solid #3f3f46;
+            border-radius: 6px;
+            color: #d4d4d8;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .preset-btn:hover {
+            background: #3f3f46;
+            border-color: #52525b;
+        }
+
+        .preset-btn.active {
+            background: #6366f1;
+            border-color: #6366f1;
+            color: white;
+        }
+
+        /* Preview Panel */
+        .preview {
+            background: #09090b;
+            padding: 24px;
+            overflow: auto;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .preview-header h2 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #a1a1aa;
+        }
+
+        .file-tabs {
+            display: flex;
+            gap: 4px;
+        }
+
+        .file-tab {
+            padding: 6px 12px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: #71717a;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .file-tab:hover {
+            color: #a1a1aa;
+        }
+
+        .file-tab.active {
+            background: #27272a;
+            border-color: #3f3f46;
+            color: #fafafa;
+        }
+
+        .code-preview {
+            background: #18181b;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #27272a;
+            border-bottom: 1px solid #3f3f46;
+        }
+
+        .code-filename {
+            font-size: 12px;
+            font-family: 'SF Mono', Monaco, monospace;
+            color: #a1a1aa;
+        }
+
+        .code-content {
+            padding: 16px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            overflow-x: auto;
+            white-space: pre;
+            color: #e4e4e7;
+        }
+
+        .code-content .keyword {
+            color: #f472b6;
+        }
+
+        .code-content .type {
+            color: #a78bfa;
+        }
+
+        .code-content .string {
+            color: #34d399;
+        }
+
+        .code-content .comment {
+            color: #6b7280;
+        }
+
+        .code-content .func {
+            color: #60a5fa;
+        }
+
+        .code-content .property {
+            color: #fbbf24;
+        }
+
+        /* Security Visual */
+        .security-visual {
+            margin-top: 24px;
+            padding: 20px;
+            background: #18181b;
+            border-radius: 8px;
+            border: 1px solid #27272a;
+        }
+
+        .security-visual h3 {
+            font-size: 13px;
+            font-weight: 600;
+            color: #a1a1aa;
+            margin-bottom: 16px;
+        }
+
+        .security-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .security-box {
+            padding: 16px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .security-box.bad {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .security-box.good {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .security-box .icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .security-box .title {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .security-box.bad .title {
+            color: #ef4444;
+        }
+
+        .security-box.good .title {
+            color: #22c55e;
+        }
+
+        .security-box .desc {
+            font-size: 11px;
+            color: #71717a;
+        }
+
+        /* Prompt Output */
+        .prompt-output {
+            background: #18181b;
+            border-top: 1px solid #27272a;
+            padding: 20px 24px;
+        }
+
+        .prompt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .prompt-header h3 {
+            font-size: 12px;
+            font-weight: 600;
+            color: #a1a1aa;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .copy-btn {
+            padding: 8px 16px;
+            background: #6366f1;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .copy-btn:hover {
+            background: #4f46e5;
+        }
+
+        .copy-btn.copied {
+            background: #22c55e;
+        }
+
+        .prompt-text {
+            padding: 16px;
+            background: #27272a;
+            border-radius: 6px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #d4d4d8;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        /* Info Badge */
+        .info-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: rgba(99, 102, 241, 0.15);
+            border-radius: 4px;
+            font-size: 11px;
+            color: #818cf8;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="controls">
+            <h1>iOS Keychain Service</h1>
+            <p class="subtitle">Configure secure token storage for your fitness app</p>
+
+            <div class="section">
+                <div class="section-title">Presets</div>
+                <div class="presets">
+                    <button class="preset-btn active" onclick="applyPreset('recommended')">Recommended</button>
+                    <button class="preset-btn" onclick="applyPreset('maximum')">Maximum Security</button>
+                    <button class="preset-btn" onclick="applyPreset('convenience')">Convenience</button>
+                    <button class="preset-btn" onclick="applyPreset('shared')">App Groups</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Service Configuration</div>
+
+                <div class="control-group">
+                    <label>Service Name</label>
+                    <input type="text" id="serviceName" value="com.yourcompany.fitnessapp" oninput="updateAll()">
+                    <div class="hint">Bundle identifier prefix for keychain items</div>
+                </div>
+
+                <div class="control-group">
+                    <label>Access Token Key</label>
+                    <input type="text" id="accessTokenKey" value="accessToken" oninput="updateAll()">
+                </div>
+
+                <div class="control-group">
+                    <label>Refresh Token Key</label>
+                    <input type="text" id="refreshTokenKey" value="refreshToken" oninput="updateAll()">
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Accessibility</div>
+
+                <div class="control-group">
+                    <label>When Accessible</label>
+                    <select id="accessibility" onchange="updateAll()">
+                        <option value="afterFirstUnlock">After First Unlock (Recommended)</option>
+                        <option value="afterFirstUnlockThisDeviceOnly">After First Unlock - This Device Only</option>
+                        <option value="whenUnlocked">When Unlocked</option>
+                        <option value="whenUnlockedThisDeviceOnly">When Unlocked - This Device Only</option>
+                        <option value="whenPasscodeSetThisDeviceOnly">When Passcode Set - This Device Only</option>
+                    </select>
+                    <div class="hint">Controls when keychain items can be accessed</div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Security Options</div>
+
+                <div class="control-group">
+                    <label class="checkbox-group" onclick="toggleCheckbox('useBiometrics')">
+                        <input type="checkbox" id="useBiometrics" onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Require Biometrics</div>
+                            <div class="label-desc">Face ID or Touch ID required to access tokens</div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="control-group">
+                    <label class="checkbox-group" onclick="toggleCheckbox('syncToiCloud')">
+                        <input type="checkbox" id="syncToiCloud" onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Sync to iCloud Keychain</div>
+                            <div class="label-desc">Tokens available across user's devices</div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="control-group">
+                    <label class="checkbox-group" onclick="toggleCheckbox('useAccessGroup')">
+                        <input type="checkbox" id="useAccessGroup" onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Use Access Group</div>
+                            <div class="label-desc">Share tokens with app extensions or other apps</div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="control-group" id="accessGroupInput" style="display: none;">
+                    <label>Access Group</label>
+                    <input type="text" id="accessGroup" value="group.com.yourcompany.fitnessapp" oninput="updateAll()">
+                    <div class="hint">App group identifier for shared keychain access</div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Migration Options</div>
+
+                <div class="control-group">
+                    <label class="checkbox-group" onclick="toggleCheckbox('migrateLegacy')">
+                        <input type="checkbox" id="migrateLegacy" checked onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Migrate from UserDefaults</div>
+                            <div class="label-desc">Auto-migrate existing tokens for current users</div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="control-group">
+                    <label class="checkbox-group" onclick="toggleCheckbox('deleteLegacy')">
+                        <input type="checkbox" id="deleteLegacy" checked onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Delete Legacy Tokens</div>
+                            <div class="label-desc">Remove tokens from UserDefaults after migration</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview">
+            <div class="preview-header">
+                <h2>Generated Code</h2>
+                <div class="file-tabs">
+                    <button class="file-tab active" onclick="showTab('service')">KeychainService.swift</button>
+                    <button class="file-tab" onclick="showTab('usage')">APIClient Changes</button>
+                </div>
+            </div>
+
+            <div class="code-preview">
+                <div class="code-header">
+                    <span class="code-filename" id="currentFile">KeychainService.swift</span>
+                </div>
+                <div class="code-content" id="codeOutput"></div>
+            </div>
+
+            <div class="security-visual">
+                <h3>Security Comparison</h3>
+                <div class="security-comparison">
+                    <div class="security-box bad">
+                        <div class="icon">⚠️</div>
+                        <div class="title">Before: UserDefaults</div>
+                        <div class="desc">Plaintext storage, accessible via backup, no encryption</div>
+                    </div>
+                    <div class="security-box good">
+                        <div class="icon">🔐</div>
+                        <div class="title">After: Keychain</div>
+                        <div class="desc" id="securityDesc">Hardware encryption, secure enclave protection</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="prompt-output">
+            <div class="prompt-header">
+                <h3>Generated Prompt</h3>
+                <button class="copy-btn" onclick="copyPrompt()">Copy to Clipboard</button>
+            </div>
+            <div class="prompt-text" id="promptOutput"></div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        const DEFAULTS = {
+            serviceName: 'com.yourcompany.fitnessapp',
+            accessTokenKey: 'accessToken',
+            refreshTokenKey: 'refreshToken',
+            accessibility: 'afterFirstUnlock',
+            useBiometrics: false,
+            syncToiCloud: false,
+            useAccessGroup: false,
+            accessGroup: 'group.com.yourcompany.fitnessapp',
+            migrateLegacy: true,
+            deleteLegacy: true
+        };
+
+        const state = { ...DEFAULTS };
+        let currentTab = 'service';
+
+        // Presets
+        const presets = {
+            recommended: {
+                accessibility: 'afterFirstUnlock',
+                useBiometrics: false,
+                syncToiCloud: false,
+                useAccessGroup: false,
+                migrateLegacy: true,
+                deleteLegacy: true
+            },
+            maximum: {
+                accessibility: 'whenPasscodeSetThisDeviceOnly',
+                useBiometrics: true,
+                syncToiCloud: false,
+                useAccessGroup: false,
+                migrateLegacy: true,
+                deleteLegacy: true
+            },
+            convenience: {
+                accessibility: 'afterFirstUnlock',
+                useBiometrics: false,
+                syncToiCloud: true,
+                useAccessGroup: false,
+                migrateLegacy: true,
+                deleteLegacy: true
+            },
+            shared: {
+                accessibility: 'afterFirstUnlock',
+                useBiometrics: false,
+                syncToiCloud: false,
+                useAccessGroup: true,
+                migrateLegacy: true,
+                deleteLegacy: true
+            }
+        };
+
+        function toggleCheckbox(id) {
+            const checkbox = document.getElementById(id);
+            checkbox.checked = !checkbox.checked;
+            updateAll();
+        }
+
+        function applyPreset(name) {
+            const preset = presets[name];
+            Object.assign(state, preset);
+
+            // Update UI
+            document.getElementById('accessibility').value = state.accessibility;
+            document.getElementById('useBiometrics').checked = state.useBiometrics;
+            document.getElementById('syncToiCloud').checked = state.syncToiCloud;
+            document.getElementById('useAccessGroup').checked = state.useAccessGroup;
+            document.getElementById('migrateLegacy').checked = state.migrateLegacy;
+            document.getElementById('deleteLegacy').checked = state.deleteLegacy;
+
+            // Update preset buttons
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            updateAll();
+        }
+
+        function showTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.file-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('currentFile').textContent =
+                tab === 'service' ? 'KeychainService.swift' : 'APIClient.swift (changes)';
+            updateCode();
+        }
+
+        function readState() {
+            state.serviceName = document.getElementById('serviceName').value;
+            state.accessTokenKey = document.getElementById('accessTokenKey').value;
+            state.refreshTokenKey = document.getElementById('refreshTokenKey').value;
+            state.accessibility = document.getElementById('accessibility').value;
+            state.useBiometrics = document.getElementById('useBiometrics').checked;
+            state.syncToiCloud = document.getElementById('syncToiCloud').checked;
+            state.useAccessGroup = document.getElementById('useAccessGroup').checked;
+            state.accessGroup = document.getElementById('accessGroup').value;
+            state.migrateLegacy = document.getElementById('migrateLegacy').checked;
+            state.deleteLegacy = document.getElementById('deleteLegacy').checked;
+        }
+
+        function updateAll() {
+            readState();
+
+            // Show/hide access group input
+            document.getElementById('accessGroupInput').style.display =
+                state.useAccessGroup ? 'block' : 'none';
+
+            updateCode();
+            updatePrompt();
+            updateSecurityDesc();
+        }
+
+        function getAccessibilityConstant() {
+            const map = {
+                'afterFirstUnlock': 'kSecAttrAccessibleAfterFirstUnlock',
+                'afterFirstUnlockThisDeviceOnly': 'kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly',
+                'whenUnlocked': 'kSecAttrAccessibleWhenUnlocked',
+                'whenUnlockedThisDeviceOnly': 'kSecAttrAccessibleWhenUnlockedThisDeviceOnly',
+                'whenPasscodeSetThisDeviceOnly': 'kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly'
+            };
+            return map[state.accessibility];
+        }
+
+        function generateServiceCode() {
+            const accessConst = getAccessibilityConstant();
+            const needsLocalAuth = state.useBiometrics;
+
+            let imports = `<span class="keyword">import</span> <span class="type">Foundation</span>
+<span class="keyword">import</span> <span class="type">Security</span>`;
+
+            if (needsLocalAuth) {
+                imports += `\n<span class="keyword">import</span> <span class="type">LocalAuthentication</span>`;
+            }
+
+            let code = `${imports}
+
+<span class="comment">/// Secure storage for authentication tokens using iOS Keychain</span>
+<span class="keyword">final class</span> <span class="type">KeychainService</span> {
+    <span class="keyword">static let</span> shared = <span class="type">KeychainService</span>()
+
+    <span class="keyword">private let</span> service = <span class="string">"${state.serviceName}"</span>
+    <span class="keyword">private let</span> accessTokenKey = <span class="string">"${state.accessTokenKey}"</span>
+    <span class="keyword">private let</span> refreshTokenKey = <span class="string">"${state.refreshTokenKey}"</span>`;
+
+            if (state.useAccessGroup) {
+                code += `
+    <span class="keyword">private let</span> accessGroup = <span class="string">"${state.accessGroup}"</span>`;
+            }
+
+            code += `
+
+    <span class="keyword">private init</span>() {`;
+
+            if (state.migrateLegacy) {
+                code += `
+        <span class="func">migrateFromUserDefaults</span>()`;
+            }
+
+            code += `
+    }
+
+    <span class="comment">// MARK: - Access Token</span>
+
+    <span class="keyword">var</span> <span class="property">accessToken</span>: <span class="type">String</span>? {
+        <span class="keyword">get</span> { <span class="func">getValue</span>(forKey: accessTokenKey) }
+        <span class="keyword">set</span> {
+            <span class="keyword">if let</span> value = newValue {
+                <span class="func">setValue</span>(value, forKey: accessTokenKey)
+            } <span class="keyword">else</span> {
+                <span class="func">deleteValue</span>(forKey: accessTokenKey)
+            }
+        }
+    }
+
+    <span class="comment">// MARK: - Refresh Token</span>
+
+    <span class="keyword">var</span> <span class="property">refreshToken</span>: <span class="type">String</span>? {
+        <span class="keyword">get</span> { <span class="func">getValue</span>(forKey: refreshTokenKey) }
+        <span class="keyword">set</span> {
+            <span class="keyword">if let</span> value = newValue {
+                <span class="func">setValue</span>(value, forKey: refreshTokenKey)
+            } <span class="keyword">else</span> {
+                <span class="func">deleteValue</span>(forKey: refreshTokenKey)
+            }
+        }
+    }
+
+    <span class="comment">// MARK: - Clear All</span>
+
+    <span class="keyword">func</span> <span class="func">clearAll</span>() {
+        <span class="func">deleteValue</span>(forKey: accessTokenKey)
+        <span class="func">deleteValue</span>(forKey: refreshTokenKey)
+    }
+
+    <span class="comment">// MARK: - Private Methods</span>
+
+    <span class="keyword">private func</span> <span class="func">getValue</span>(forKey key: <span class="type">String</span>) -> <span class="type">String</span>? {
+        <span class="keyword">var</span> query = <span class="func">baseQuery</span>(forKey: key)
+        query[<span class="property">kSecReturnData</span> <span class="keyword">as</span> <span class="type">String</span>] = <span class="keyword">true</span>
+        query[<span class="property">kSecMatchLimit</span> <span class="keyword">as</span> <span class="type">String</span>] = <span class="property">kSecMatchLimitOne</span>
+
+        <span class="keyword">var</span> result: <span class="type">AnyObject</span>?
+        <span class="keyword">let</span> status = <span class="func">SecItemCopyMatching</span>(query <span class="keyword">as</span> <span class="type">CFDictionary</span>, &result)
+
+        <span class="keyword">guard</span> status == <span class="property">errSecSuccess</span>,
+              <span class="keyword">let</span> data = result <span class="keyword">as?</span> <span class="type">Data</span>,
+              <span class="keyword">let</span> string = <span class="type">String</span>(data: data, encoding: .utf8) <span class="keyword">else</span> {
+            <span class="keyword">return nil</span>
+        }
+
+        <span class="keyword">return</span> string
+    }
+
+    <span class="keyword">private func</span> <span class="func">setValue</span>(_ value: <span class="type">String</span>, forKey key: <span class="type">String</span>) {
+        <span class="keyword">guard let</span> data = value.<span class="func">data</span>(using: .utf8) <span class="keyword">else</span> { <span class="keyword">return</span> }
+
+        <span class="comment">// Delete existing item first</span>
+        <span class="func">deleteValue</span>(forKey: key)
+
+        <span class="keyword">var</span> query = <span class="func">baseQuery</span>(forKey: key)
+        query[<span class="property">kSecValueData</span> <span class="keyword">as</span> <span class="type">String</span>] = data`;
+
+            if (state.useBiometrics) {
+                code += `
+
+        <span class="comment">// Require biometric authentication</span>
+        <span class="keyword">let</span> context = <span class="type">LAContext</span>()
+        <span class="keyword">let</span> accessControl = <span class="func">SecAccessControlCreateWithFlags</span>(
+            <span class="keyword">nil</span>,
+            <span class="property">${accessConst}</span>,
+            .biometryCurrentSet,
+            <span class="keyword">nil</span>
+        )
+        <span class="keyword">if let</span> accessControl = accessControl {
+            query[<span class="property">kSecAttrAccessControl</span> <span class="keyword">as</span> <span class="type">String</span>] = accessControl
+            query[<span class="property">kSecUseAuthenticationContext</span> <span class="keyword">as</span> <span class="type">String</span>] = context
+        }`;
+            }
+
+            code += `
+
+        <span class="func">SecItemAdd</span>(query <span class="keyword">as</span> <span class="type">CFDictionary</span>, <span class="keyword">nil</span>)
+    }
+
+    <span class="keyword">private func</span> <span class="func">deleteValue</span>(forKey key: <span class="type">String</span>) {
+        <span class="keyword">let</span> query = <span class="func">baseQuery</span>(forKey: key)
+        <span class="func">SecItemDelete</span>(query <span class="keyword">as</span> <span class="type">CFDictionary</span>)
+    }
+
+    <span class="keyword">private func</span> <span class="func">baseQuery</span>(forKey key: <span class="type">String</span>) -> [<span class="type">String</span>: <span class="type">Any</span>] {
+        <span class="keyword">var</span> query: [<span class="type">String</span>: <span class="type">Any</span>] = [
+            <span class="property">kSecClass</span> <span class="keyword">as</span> <span class="type">String</span>: <span class="property">kSecClassGenericPassword</span>,
+            <span class="property">kSecAttrService</span> <span class="keyword">as</span> <span class="type">String</span>: service,
+            <span class="property">kSecAttrAccount</span> <span class="keyword">as</span> <span class="type">String</span>: key,
+            <span class="property">kSecAttrAccessible</span> <span class="keyword">as</span> <span class="type">String</span>: <span class="property">${accessConst}</span>
+        ]`;
+
+            if (state.useAccessGroup) {
+                code += `
+        query[<span class="property">kSecAttrAccessGroup</span> <span class="keyword">as</span> <span class="type">String</span>] = accessGroup`;
+            }
+
+            if (state.syncToiCloud) {
+                code += `
+        query[<span class="property">kSecAttrSynchronizable</span> <span class="keyword">as</span> <span class="type">String</span>] = <span class="keyword">true</span>`;
+            }
+
+            code += `
+        <span class="keyword">return</span> query
+    }`;
+
+            if (state.migrateLegacy) {
+                code += `
+
+    <span class="comment">// MARK: - Migration</span>
+
+    <span class="keyword">private func</span> <span class="func">migrateFromUserDefaults</span>() {
+        <span class="keyword">let</span> defaults = <span class="type">UserDefaults</span>.standard
+
+        <span class="comment">// Migrate access token</span>
+        <span class="keyword">if let</span> legacyAccessToken = defaults.<span class="func">string</span>(forKey: <span class="string">"accessToken"</span>),
+           accessToken == <span class="keyword">nil</span> {
+            accessToken = legacyAccessToken`;
+                if (state.deleteLegacy) {
+                    code += `
+            defaults.<span class="func">removeObject</span>(forKey: <span class="string">"accessToken"</span>)`;
+                }
+                code += `
+        }
+
+        <span class="comment">// Migrate refresh token</span>
+        <span class="keyword">if let</span> legacyRefreshToken = defaults.<span class="func">string</span>(forKey: <span class="string">"refreshToken"</span>),
+           refreshToken == <span class="keyword">nil</span> {
+            refreshToken = legacyRefreshToken`;
+                if (state.deleteLegacy) {
+                    code += `
+            defaults.<span class="func">removeObject</span>(forKey: <span class="string">"refreshToken"</span>)`;
+                }
+                code += `
+        }
+    }`;
+            }
+
+            code += `
+}`;
+
+            return code;
+        }
+
+        function generateUsageCode() {
+            return `<span class="comment">// APIClient.swift - Replace UserDefaults with KeychainService</span>
+
+<span class="comment">// BEFORE (insecure):</span>
+<span class="keyword">private var</span> <span class="property">accessToken</span>: <span class="type">String</span>? {
+    <span class="keyword">get</span> { <span class="type">UserDefaults</span>.standard.<span class="func">string</span>(forKey: <span class="string">"accessToken"</span>) }
+    <span class="keyword">set</span> { <span class="type">UserDefaults</span>.standard.<span class="func">set</span>(newValue, forKey: <span class="string">"accessToken"</span>) }
+}
+
+<span class="comment">// AFTER (secure):</span>
+<span class="keyword">private var</span> <span class="property">accessToken</span>: <span class="type">String</span>? {
+    <span class="keyword">get</span> { <span class="type">KeychainService</span>.shared.accessToken }
+    <span class="keyword">set</span> { <span class="type">KeychainService</span>.shared.accessToken = newValue }
+}
+
+<span class="keyword">private var</span> <span class="property">refreshToken</span>: <span class="type">String</span>? {
+    <span class="keyword">get</span> { <span class="type">KeychainService</span>.shared.refreshToken }
+    <span class="keyword">set</span> { <span class="type">KeychainService</span>.shared.refreshToken = newValue }
+}
+
+<span class="comment">// Update logout() method:</span>
+<span class="keyword">func</span> <span class="func">logout</span>() {
+    <span class="type">KeychainService</span>.shared.<span class="func">clearAll</span>()
+}`;
+        }
+
+        function updateCode() {
+            const output = document.getElementById('codeOutput');
+            output.innerHTML = currentTab === 'service' ? generateServiceCode() : generateUsageCode();
+        }
+
+        function updateSecurityDesc() {
+            const desc = document.getElementById('securityDesc');
+            const features = ['Hardware encryption'];
+
+            if (state.useBiometrics) features.push('biometric protection');
+            if (state.accessibility.includes('ThisDeviceOnly')) features.push('no backup sync');
+            if (state.syncToiCloud) features.push('iCloud sync');
+            if (state.useAccessGroup) features.push('app group sharing');
+
+            desc.textContent = features.join(', ');
+        }
+
+        function updatePrompt() {
+            const parts = [];
+
+            parts.push(`Create a KeychainService.swift file for secure token storage in my iOS fitness app.`);
+
+            // Service name if non-default
+            if (state.serviceName !== DEFAULTS.serviceName) {
+                parts.push(`Use "${state.serviceName}" as the service identifier.`);
+            }
+
+            // Accessibility
+            const accessibilityDesc = {
+                'afterFirstUnlock': 'accessible after first device unlock',
+                'afterFirstUnlockThisDeviceOnly': 'accessible after first unlock, not backed up to iCloud',
+                'whenUnlocked': 'only accessible when device is unlocked',
+                'whenUnlockedThisDeviceOnly': 'only accessible when unlocked, not synced',
+                'whenPasscodeSetThisDeviceOnly': 'requires device passcode, maximum security'
+            };
+
+            if (state.accessibility !== DEFAULTS.accessibility) {
+                parts.push(`Configure items to be ${accessibilityDesc[state.accessibility]}.`);
+            }
+
+            // Security options
+            if (state.useBiometrics) {
+                parts.push('Require Face ID or Touch ID authentication to access tokens.');
+            }
+
+            if (state.syncToiCloud) {
+                parts.push('Enable iCloud Keychain synchronization so tokens are available across devices.');
+            }
+
+            if (state.useAccessGroup) {
+                parts.push(`Use access group "${state.accessGroup}" for sharing with app extensions.`);
+            }
+
+            // Migration
+            if (state.migrateLegacy) {
+                parts.push('Include a migration function that moves existing tokens from UserDefaults to Keychain on first launch.');
+                if (state.deleteLegacy) {
+                    parts.push('Delete the old UserDefaults entries after successful migration.');
+                }
+            }
+
+            parts.push('Then update APIClient.swift to use KeychainService instead of UserDefaults for accessToken and refreshToken storage.');
+
+            document.getElementById('promptOutput').textContent = parts.join(' ');
+        }
+
+        function copyPrompt() {
+            const text = document.getElementById('promptOutput').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = 'Copied!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = 'Copy to Clipboard';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        }
+
+        // Initialize
+        updateAll();
+    </script>
+</body>
+</html>

@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - Minimal Ink</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        /* iPhone Frame */
+        .iphone-frame {
+            width: 390px;
+            height: 844px;
+            background: #000;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow:
+                0 0 0 3px #1a1a1a,
+                0 0 0 6px #0d0d0d,
+                0 30px 60px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: #0a0a0f;
+            border-radius: 40px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .iphone-screen::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Dynamic Island */
+        .dynamic-island {
+            position: sticky;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 34px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 100;
+            margin-bottom: -34px;
+        }
+
+        /* Screen Content */
+        .screen-content {
+            padding: 20px;
+            padding-top: 60px;
+            padding-bottom: 100px;
+            color: #ffffff;
+        }
+
+        /* Mockup Label */
+        .mockup-label {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .mockup-label span {
+            color: #00d4ff;
+        }
+
+        /* No cards - just sections with generous spacing */
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 12px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.35);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 16px;
+        }
+
+        /* ===== Hunter Status Header ===== */
+        .hunter-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 48px;
+        }
+
+        .avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1a1a24 0%, #0f0f14 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .hunter-info {
+            flex: 1;
+        }
+
+        .hunter-greeting {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 2px;
+        }
+
+        .hunter-name {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        .hunter-meta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .rank-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            color: #00d4ff;
+            font-weight: 600;
+        }
+
+        .streak {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: #ff9500;
+        }
+
+        .xp-container {
+            margin-top: 16px;
+        }
+
+        .xp-bar {
+            height: 3px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .xp-fill {
+            height: 100%;
+            width: 65%;
+            background: #00d4ff;
+            border-radius: 2px;
+        }
+
+        .xp-text {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.35);
+            margin-top: 6px;
+        }
+
+        /* ===== Big Numbers - Weekly Stats ===== */
+        .big-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 48px;
+        }
+
+        .big-stat {
+            text-align: center;
+        }
+
+        .big-stat-value {
+            font-size: 42px;
+            font-weight: 700;
+            letter-spacing: -2px;
+            color: #ffffff;
+        }
+
+        .big-stat-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.35);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        .big-stat-accent {
+            color: #00d4ff;
+        }
+
+        /* ===== Quick Actions - Floating Pills ===== */
+        .quick-actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 48px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 18px 24px;
+            border-radius: 100px;
+            border: none;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .action-btn.primary {
+            background: #ffffff;
+            color: #000000;
+        }
+
+        .action-btn.secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+        }
+
+        /* ===== Daily Quests - Clean List ===== */
+        .quest-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .quest-item {
+            display: flex;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .quest-item:first-child {
+            padding-top: 0;
+        }
+
+        .quest-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .quest-icon {
+            font-size: 20px;
+            margin-right: 16px;
+            opacity: 0.8;
+        }
+
+        .quest-info {
+            flex: 1;
+        }
+
+        .quest-name {
+            font-size: 15px;
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+
+        .quest-progress {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .quest-reward {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .quest-reward.claimable {
+            color: #00ff88;
+            font-weight: 600;
+        }
+
+        /* ===== Power Levels - Typography Driven ===== */
+        .power-list {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .power-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+
+        .power-name {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .power-value {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+
+        .power-value.squat { color: #ff6b6b; }
+        .power-value.bench { color: #00d4ff; }
+        .power-value.deadlift { color: #9d4edd; }
+
+        .power-unit {
+            font-size: 14px;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.4);
+            margin-left: 4px;
+        }
+
+        /* ===== Recovery - Inline Tags ===== */
+        .recovery-inline {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .recovery-tag {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .recovery-tag.fresh::before {
+            content: '●';
+            color: #00ff88;
+            margin-right: 6px;
+        }
+
+        .recovery-tag.moderate::before {
+            content: '●';
+            color: #ffd600;
+            margin-right: 6px;
+        }
+
+        .recovery-tag.fatigued::before {
+            content: '●';
+            color: #ff6b6b;
+            margin-right: 6px;
+        }
+
+        /* ===== Achievement - Subtle Highlight ===== */
+        .achievement {
+            padding: 20px 0;
+            border-top: 1px solid rgba(255, 215, 0, 0.15);
+        }
+
+        .achievement-label {
+            font-size: 11px;
+            color: rgba(255, 215, 0, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .achievement-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+
+        .achievement-exercise {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .achievement-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #ffd700;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="mockup-label">Mockup 2: <span>Minimal Ink</span> — No borders, typography-driven hierarchy</div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="screen-content">
+                    <!-- Hunter Status Header -->
+                    <div class="hunter-header">
+                        <div class="avatar">🏋️</div>
+                        <div class="hunter-info">
+                            <div class="hunter-greeting">Good evening,</div>
+                            <div class="hunter-name">Nick</div>
+                            <div class="hunter-meta">
+                                <span class="rank-badge">A-Rank</span>
+                                <span>Level 24</span>
+                                <span class="streak">🔥 12 day streak</span>
+                            </div>
+                            <div class="xp-container">
+                                <div class="xp-bar">
+                                    <div class="xp-fill"></div>
+                                </div>
+                                <div class="xp-text">6,500 / 10,000 XP to Level 25</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Big Stats - Weekly -->
+                    <div class="big-stats">
+                        <div class="big-stat">
+                            <div class="big-stat-value big-stat-accent">3</div>
+                            <div class="big-stat-label">Workouts</div>
+                        </div>
+                        <div class="big-stat">
+                            <div class="big-stat-value">24.5K</div>
+                            <div class="big-stat-label">Volume</div>
+                        </div>
+                        <div class="big-stat">
+                            <div class="big-stat-value">185</div>
+                            <div class="big-stat-label">Minutes</div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="quick-actions">
+                        <button class="action-btn primary">Start Workout</button>
+                        <button class="action-btn secondary">📷 Scan</button>
+                    </div>
+
+                    <!-- Daily Quests -->
+                    <div class="section">
+                        <div class="section-title">Daily Quests</div>
+                        <div class="quest-list">
+                            <div class="quest-item">
+                                <span class="quest-icon">💪</span>
+                                <div class="quest-info">
+                                    <div class="quest-name">Complete a workout</div>
+                                    <div class="quest-progress">0 of 1</div>
+                                </div>
+                                <span class="quest-reward">+100 XP</span>
+                            </div>
+                            <div class="quest-item">
+                                <span class="quest-icon">🎯</span>
+                                <div class="quest-info">
+                                    <div class="quest-name">Hit a new PR</div>
+                                    <div class="quest-progress">Done!</div>
+                                </div>
+                                <span class="quest-reward claimable">Claim</span>
+                            </div>
+                            <div class="quest-item">
+                                <span class="quest-icon">⏱️</span>
+                                <div class="quest-info">
+                                    <div class="quest-name">Train for 45+ minutes</div>
+                                    <div class="quest-progress">32 of 45 min</div>
+                                </div>
+                                <span class="quest-reward">+50 XP</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Power Levels -->
+                    <div class="section">
+                        <div class="section-title">Power Levels</div>
+                        <div class="power-list">
+                            <div class="power-item">
+                                <span class="power-name">Squat</span>
+                                <span class="power-value squat">315<span class="power-unit">lbs</span></span>
+                            </div>
+                            <div class="power-item">
+                                <span class="power-name">Bench Press</span>
+                                <span class="power-value bench">225<span class="power-unit">lbs</span></span>
+                            </div>
+                            <div class="power-item">
+                                <span class="power-name">Deadlift</span>
+                                <span class="power-value deadlift">405<span class="power-unit">lbs</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recovery Status -->
+                    <div class="section">
+                        <div class="section-title">Recovery</div>
+                        <div class="recovery-inline">
+                            <span class="recovery-tag fresh">Chest</span>
+                            <span class="recovery-tag fresh">Back</span>
+                            <span class="recovery-tag moderate">Legs</span>
+                            <span class="recovery-tag fatigued">Shoulders</span>
+                            <span class="recovery-tag fresh">Arms</span>
+                            <span class="recovery-tag moderate">Core</span>
+                        </div>
+                    </div>
+
+                    <!-- Achievement -->
+                    <div class="achievement">
+                        <div class="achievement-label">🏆 Latest PR</div>
+                        <div class="achievement-content">
+                            <span class="achievement-exercise">Barbell Squat</span>
+                            <span class="achievement-value">315 × 5</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stats - Modern C (Minimal Cards)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-void: #050508;
+            --bg-dark: #0a0a12;
+            --bg-medium: #0f1018;
+            --bg-light: #16171f;
+            --bg-elevated: #1a1b24;
+            --accent-primary: #00D4FF;
+            --accent-secondary: #7B61FF;
+            --accent-gold: #FFD700;
+            --accent-success: #00FF88;
+            --accent-warning: #FF9500;
+            --accent-danger: #FF4757;
+            --text-primary: #FFFFFF;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --text-muted: rgba(255, 255, 255, 0.4);
+            --border: rgba(255, 255, 255, 0.08);
+            --glow-primary: rgba(0, 212, 255, 0.3);
+
+            --squat-color: #FF6B6B;
+            --bench-color: #00D4FF;
+            --deadlift-color: #7B61FF;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #0a0a14;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        .mockup-label {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .mockup-label span { color: var(--accent-primary); }
+
+        .iphone-frame {
+            width: 390px;
+            height: 844px;
+            background: #000;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow: 0 0 0 3px #1a1a1a, 0 0 0 6px #0d0d0d, 0 30px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-void);
+            border-radius: 40px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .iphone-screen::-webkit-scrollbar { display: none; }
+
+        .dynamic-island {
+            position: sticky;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 34px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 100;
+            margin-bottom: -34px;
+        }
+
+        .screen-content {
+            padding: 0 20px 100px;
+            color: var(--text-primary);
+        }
+
+        .mono {
+            font-family: 'SF Mono', 'Menlo', monospace;
+            letter-spacing: 0.5px;
+        }
+
+        /* Header */
+        .header {
+            padding: 60px 0 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .header-left {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .system-tag {
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--accent-primary);
+            letter-spacing: 2px;
+        }
+
+        .header-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .header-right {
+            display: flex;
+            gap: 8px;
+        }
+
+        .time-pill {
+            padding: 8px 14px;
+            background: var(--accent-primary);
+            border-radius: 20px;
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: #000;
+        }
+
+        /* Minimal Card */
+        .minimal-card {
+            margin-bottom: 16px;
+            padding: 20px;
+            background: var(--bg-medium);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .minimal-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255,255,255,0.12);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+
+        .minimal-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--card-color, var(--accent-primary));
+        }
+
+        .minimal-card.squat { --card-color: var(--squat-color); }
+        .minimal-card.bench { --card-color: var(--bench-color); }
+        .minimal-card.deadlift { --card-color: var(--deadlift-color); }
+
+        .card-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .card-left {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .card-name-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .card-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .card-fantasy {
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            font-style: italic;
+            color: var(--text-muted);
+        }
+
+        /* Sparkline */
+        .sparkline-container {
+            width: 100px;
+            height: 32px;
+        }
+
+        .sparkline {
+            stroke: var(--card-color, var(--accent-primary));
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .sparkline-area {
+            fill: url(#sparkGradient);
+        }
+
+        .card-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        .e1rm-large {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+
+        .e1rm-number {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--card-color, var(--accent-primary));
+            line-height: 1;
+        }
+
+        .e1rm-unit {
+            font-family: 'SF Mono', monospace;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .trend-badge {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 12px;
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--accent-success);
+        }
+
+        .trend-badge.down {
+            background: rgba(255, 71, 87, 0.1);
+            color: var(--accent-danger);
+        }
+
+        /* Bottom Row */
+        .card-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .rank-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: var(--bg-light);
+            border-radius: 8px;
+        }
+
+        .rank-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 12px;
+            color: #000;
+        }
+
+        .rank-icon.a { background: linear-gradient(135deg, var(--accent-primary), #0099CC); }
+        .rank-icon.b { background: linear-gradient(135deg, var(--accent-secondary), #5A45CC); }
+        .rank-icon.s { background: linear-gradient(135deg, var(--accent-gold), #FFA500); }
+
+        .rank-text {
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .stat-pills {
+            display: flex;
+            gap: 8px;
+        }
+
+        .stat-pill {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 6px 12px;
+            background: var(--bg-light);
+            border-radius: 8px;
+        }
+
+        .stat-pill-value {
+            font-family: 'SF Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .stat-pill-label {
+            font-family: 'SF Mono', monospace;
+            font-size: 8px;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+        }
+
+        .view-arrow {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--bg-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .minimal-card:hover .view-arrow {
+            background: var(--card-color, var(--accent-primary));
+            color: #000;
+        }
+
+        /* Section Divider */
+        .section-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 28px 0 20px;
+        }
+
+        .divider-line {
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .divider-text {
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 1.5px;
+        }
+
+        /* Additional Skill Card (Smaller) */
+        .skill-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 12px;
+            padding: 14px 16px;
+            background: var(--bg-medium);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--skill-color, var(--accent-warning));
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .skill-card:hover {
+            background: var(--bg-light);
+        }
+
+        .skill-info {
+            flex: 1;
+        }
+
+        .skill-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .skill-fantasy {
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            font-style: italic;
+            color: var(--text-muted);
+        }
+
+        .skill-sparkline {
+            width: 60px;
+            height: 24px;
+        }
+
+        .skill-value {
+            text-align: right;
+            min-width: 60px;
+        }
+
+        .skill-e1rm {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--skill-color, var(--text-primary));
+        }
+
+        .skill-trend {
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            color: var(--accent-success);
+        }
+
+        /* Add Button */
+        .add-skill-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px;
+            background: transparent;
+            border: 1px dashed rgba(0, 212, 255, 0.3);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .add-skill-btn:hover {
+            background: rgba(0, 212, 255, 0.05);
+            border-color: var(--accent-primary);
+        }
+
+        .add-icon {
+            font-size: 18px;
+            color: var(--accent-primary);
+        }
+
+        .add-text {
+            font-family: 'SF Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent-primary);
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="mockup-label">Stats Screen: <span>Modern C (Minimal Cards)</span></div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="screen-content">
+                    <!-- Header -->
+                    <div class="header">
+                        <div class="header-left">
+                            <div class="system-tag">[ SYSTEM ]</div>
+                            <div class="header-title">Power Analysis</div>
+                        </div>
+                        <div class="header-right">
+                            <div class="time-pill">4 WEEKS</div>
+                        </div>
+                    </div>
+
+                    <!-- SVG Defs for sparklines -->
+                    <svg width="0" height="0">
+                        <defs>
+                            <linearGradient id="sparkGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="currentColor" stop-opacity="0.2"/>
+                                <stop offset="100%" stop-color="currentColor" stop-opacity="0"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+
+                    <!-- Squat Card -->
+                    <div class="minimal-card squat">
+                        <div class="card-row">
+                            <div class="card-left">
+                                <div class="card-name-group">
+                                    <div class="card-name">Barbell Squat</div>
+                                    <div class="card-fantasy">"Earthshatter"</div>
+                                </div>
+                                <div class="sparkline-container">
+                                    <svg viewBox="0 0 100 32" preserveAspectRatio="none" style="width: 100%; height: 100%; color: var(--squat-color);">
+                                        <path class="sparkline-area" d="M0,28 Q20,26 30,22 T50,18 T70,12 T100,8 L100,32 L0,32 Z"/>
+                                        <path class="sparkline" d="M0,28 Q20,26 30,22 T50,18 T70,12 T100,8"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="card-right">
+                                <div class="e1rm-large">
+                                    <span class="e1rm-number">315</span>
+                                    <span class="e1rm-unit">lb</span>
+                                </div>
+                                <div class="trend-badge">↗ +4.2%</div>
+                            </div>
+                        </div>
+                        <div class="card-bottom">
+                            <div class="rank-pill">
+                                <div class="rank-icon b">B</div>
+                                <span class="rank-text">Top 28%</span>
+                            </div>
+                            <div class="stat-pills">
+                                <div class="stat-pill">
+                                    <span class="stat-pill-value">12</span>
+                                    <span class="stat-pill-label">QUESTS</span>
+                                </div>
+                                <div class="stat-pill">
+                                    <span class="stat-pill-value">1.9x</span>
+                                    <span class="stat-pill-label">BW</span>
+                                </div>
+                            </div>
+                            <div class="view-arrow">→</div>
+                        </div>
+                    </div>
+
+                    <!-- Bench Card -->
+                    <div class="minimal-card bench">
+                        <div class="card-row">
+                            <div class="card-left">
+                                <div class="card-name-group">
+                                    <div class="card-name">Bench Press</div>
+                                    <div class="card-fantasy">"Titanic Press"</div>
+                                </div>
+                                <div class="sparkline-container">
+                                    <svg viewBox="0 0 100 32" preserveAspectRatio="none" style="width: 100%; height: 100%; color: var(--bench-color);">
+                                        <path class="sparkline-area" d="M0,26 Q25,24 40,20 T60,16 T80,10 T100,6 L100,32 L0,32 Z"/>
+                                        <path class="sparkline" d="M0,26 Q25,24 40,20 T60,16 T80,10 T100,6"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="card-right">
+                                <div class="e1rm-large">
+                                    <span class="e1rm-number">242</span>
+                                    <span class="e1rm-unit">lb</span>
+                                </div>
+                                <div class="trend-badge">↗ +2.8%</div>
+                            </div>
+                        </div>
+                        <div class="card-bottom">
+                            <div class="rank-pill">
+                                <div class="rank-icon a">A</div>
+                                <span class="rank-text">Top 22%</span>
+                            </div>
+                            <div class="stat-pills">
+                                <div class="stat-pill">
+                                    <span class="stat-pill-value">14</span>
+                                    <span class="stat-pill-label">QUESTS</span>
+                                </div>
+                                <div class="stat-pill">
+                                    <span class="stat-pill-value">1.5x</span>
+                                    <span class="stat-pill-label">BW</span>
+                                </div>
+                            </div>
+                            <div class="view-arrow">→</div>
+                        </div>
+                    </div>
+
+                    <!-- Deadlift Card -->
+                    <div class="minimal-card deadlift">
+                        <div class="card-row">
+                            <div class="card-left">
+                                <div class="card-name-group">
+                                    <div class="card-name">Deadlift</div>
+                                    <div class="card-fantasy">"World Breaker"</div>
+                                </div>
+                                <div class="sparkline-container">
+                                    <svg viewBox="0 0 100 32" preserveAspectRatio="none" style="width: 100%; height: 100%; color: var(--deadlift-color);">
+                                        <path class="sparkline-area" d="M0,24 Q15,22 30,18 T55,12 T75,8 T100,4 L100,32 L0,32 Z"/>
+                                        <path class="sparkline" d="M0,24 Q15,22 30,18 T55,12 T75,8 T100,4"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="card-right">
+                                <div class="e1rm-large">
+                                    <span class="e1rm-number">405</span>
+                                    <span class="e1rm-unit">lb</span>
+                                </div>
+                                <div class="trend-badge">↗ +6.1%</div>
+                            </div>
+                        </div>
+                        <div class="card-bottom">
+                            <div class="rank-pill">
+                                <div class="rank-icon a">A</div>
+                                <span class="rank-text">Top 18%</span>
+                            </div>
+                            <div class="stat-pills">
+                                <div class="stat-pill">
+                                    <span class="stat-pill-value">10</span>
+                                    <span class="stat-pill-label">QUESTS</span>
+                                </div>
+                                <div class="stat-pill">
+                                    <span class="stat-pill-value">2.4x</span>
+                                    <span class="stat-pill-label">BW</span>
+                                </div>
+                            </div>
+                            <div class="view-arrow">→</div>
+                        </div>
+                    </div>
+
+                    <!-- Section Divider -->
+                    <div class="section-divider">
+                        <div class="divider-line"></div>
+                        <span class="divider-text">ADDITIONAL SKILLS</span>
+                        <div class="divider-line"></div>
+                    </div>
+
+                    <!-- Skill Cards -->
+                    <div class="skill-card" style="--skill-color: #FF9500;">
+                        <div class="skill-info">
+                            <div class="skill-name">Barbell Curl</div>
+                            <div class="skill-fantasy">"Iron Embrace"</div>
+                        </div>
+                        <div class="skill-sparkline">
+                            <svg viewBox="0 0 60 24" preserveAspectRatio="none" style="width: 100%; height: 100%; color: #FF9500;">
+                                <path class="sparkline" d="M0,18 Q15,16 25,14 T45,10 T60,8"/>
+                            </svg>
+                        </div>
+                        <div class="skill-value">
+                            <div class="skill-e1rm">95</div>
+                            <div class="skill-trend">→ 0.0%</div>
+                        </div>
+                    </div>
+
+                    <div class="skill-card" style="--skill-color: #00FF88;">
+                        <div class="skill-info">
+                            <div class="skill-name">Lat Pulldown</div>
+                            <div class="skill-fantasy">"Heaven's Pull"</div>
+                        </div>
+                        <div class="skill-sparkline">
+                            <svg viewBox="0 0 60 24" preserveAspectRatio="none" style="width: 100%; height: 100%; color: #00FF88;">
+                                <path class="sparkline" d="M0,20 Q15,18 25,14 T45,10 T60,6"/>
+                            </svg>
+                        </div>
+                        <div class="skill-value">
+                            <div class="skill-e1rm">180</div>
+                            <div class="skill-trend">↗ +3.2%</div>
+                        </div>
+                    </div>
+
+                    <!-- Add Skill Button -->
+                    <div class="add-skill-btn">
+                        <span class="add-icon">+</span>
+                        <span class="add-text">ADD SKILL</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

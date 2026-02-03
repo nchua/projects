@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coaching - Mission Card on Home</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .mockup-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .mockup-label {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 16px;
+            font-weight: 500;
+        }
+
+        .mockup-label span {
+            color: #00d4ff;
+        }
+
+        .state-indicator {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        /* iPhone Frame */
+        .iphone-frame {
+            width: 390px;
+            height: 844px;
+            background: #000;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow:
+                0 0 0 3px #1a1a1a,
+                0 0 0 6px #0d0d0d,
+                0 30px 60px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: #0a0a0e;
+            border-radius: 40px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .iphone-screen::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Dynamic Island */
+        .dynamic-island {
+            position: sticky;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 34px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 100;
+            margin-bottom: -34px;
+        }
+
+        /* Screen Content */
+        .screen-content {
+            padding-bottom: 100px;
+            color: #ffffff;
+        }
+
+        /* Hunter Header */
+        .hunter-hero {
+            background: linear-gradient(180deg, #12141f 0%, #0a0a0e 100%);
+            padding: 60px 20px 24px;
+        }
+
+        .hunter-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #1e2030 0%, #14161f 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .hunter-info {
+            flex: 1;
+        }
+
+        .hunter-name {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .hunter-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .rank-tag {
+            color: #00d4ff;
+            font-weight: 600;
+        }
+
+        .streak-tag {
+            color: #ff9500;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .xp-full {
+            margin-top: 16px;
+        }
+
+        .xp-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-bottom: 6px;
+        }
+
+        .xp-track {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .xp-fill {
+            height: 100%;
+            width: 65%;
+            background: linear-gradient(90deg, #00d4ff 0%, #00ff88 100%);
+            border-radius: 2px;
+        }
+
+        /* Action Pills */
+        .actions-float {
+            display: flex;
+            gap: 10px;
+            padding: 0 20px;
+            margin-top: -10px;
+            margin-bottom: 28px;
+        }
+
+        .action-pill {
+            flex: 1;
+            padding: 14px 20px;
+            border-radius: 50px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .action-pill.primary {
+            background: #00d4ff;
+            color: #000;
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.35);
+        }
+
+        .action-pill.secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+
+        /* Section Styles */
+        .contained {
+            padding: 0 20px;
+            margin-bottom: 28px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .section-link {
+            font-size: 13px;
+            color: #00d4ff;
+        }
+
+        /* ===== MISSION CARD STATES ===== */
+
+        /* State A: No Goal Yet */
+        .mission-card-empty {
+            background: linear-gradient(135deg, #14161f 0%, #1a1d28 100%);
+            border-radius: 20px;
+            padding: 24px;
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .empty-icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        .empty-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .empty-subtitle {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-bottom: 16px;
+        }
+
+        .create-goal-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: rgba(0, 212, 255, 0.15);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 50px;
+            color: #00d4ff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* State B: Mission Ready (Not Accepted) */
+        .mission-card-ready {
+            background: linear-gradient(135deg, #0d1a24 0%, #14161f 100%);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mission-card-ready::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #00d4ff 0%, #00ff88 100%);
+        }
+
+        .mission-pulse {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 10px;
+            height: 10px;
+            background: #00ff88;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        .mission-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .mission-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(0, 212, 255, 0.15);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .mission-info {
+            flex: 1;
+        }
+
+        .mission-label {
+            font-size: 11px;
+            color: #00d4ff;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+
+        .mission-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .mission-goal {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .mission-preview {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+        }
+
+        .preview-workout {
+            flex: 1;
+            text-align: center;
+            padding: 8px 4px;
+        }
+
+        .preview-day {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.3);
+            margin-bottom: 4px;
+        }
+
+        .preview-focus {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .preview-workout.highlight {
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .preview-workout.highlight .preview-focus {
+            color: #00d4ff;
+        }
+
+        .accept-mission-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #00d4ff 0%, #00ff88 100%);
+            border: none;
+            border-radius: 50px;
+            color: #000;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        /* State C: Mission In Progress */
+        .mission-card-active {
+            background: linear-gradient(135deg, #14161f 0%, #1a1d28 100%);
+            border-radius: 20px;
+            padding: 20px;
+            border-left: 4px solid #00d4ff;
+        }
+
+        .active-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .active-info {
+            flex: 1;
+        }
+
+        .active-label {
+            font-size: 11px;
+            color: #00d4ff;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .active-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .active-goal {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Progress Ring */
+        .progress-ring-container {
+            position: relative;
+            width: 56px;
+            height: 56px;
+        }
+
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+
+        .progress-ring-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.1);
+            stroke-width: 4;
+        }
+
+        .progress-ring-fill {
+            fill: none;
+            stroke: url(#progressGradient);
+            stroke-width: 4;
+            stroke-linecap: round;
+            stroke-dasharray: 157;
+            stroke-dashoffset: 52; /* 2/3 complete = 157 * (1 - 0.67) */
+        }
+
+        .progress-ring-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        /* Workout Progress */
+        .workout-progress {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .workout-slot {
+            flex: 1;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        .workout-slot.completed {
+            background: linear-gradient(90deg, #00d4ff 0%, #00ff88 100%);
+        }
+
+        .workout-slot.current {
+            background: rgba(0, 212, 255, 0.3);
+            position: relative;
+        }
+
+        .workout-slot.current::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 50%;
+            background: #00d4ff;
+            border-radius: 3px;
+        }
+
+        /* Next Workout */
+        .next-workout {
+            display: flex;
+            align-items: center;
+            padding: 14px;
+            background: rgba(0, 212, 255, 0.08);
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        .next-workout-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 212, 255, 0.15);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            margin-right: 12px;
+        }
+
+        .next-workout-info {
+            flex: 1;
+        }
+
+        .next-workout-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-bottom: 2px;
+        }
+
+        .next-workout-name {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .next-workout-arrow {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Stats Scroll */
+        .stats-scroll {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 0 20px;
+            margin-bottom: 28px;
+        }
+
+        .stats-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        .stat-card {
+            flex: 0 0 auto;
+            min-width: 100px;
+            padding: 16px;
+            background: #14161f;
+            border-radius: 14px;
+            text-align: center;
+            border-left: 3px solid transparent;
+        }
+
+        .stat-card.accent {
+            border-left-color: #00d4ff;
+        }
+
+        .stat-value {
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <!-- State A: No Goal Yet -->
+    <div class="mockup-container">
+        <div class="mockup-label">Mission Card <span>State A</span>: No Goal</div>
+        <div class="state-indicator">User hasn't created a goal yet</div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="screen-content">
+                    <div class="hunter-hero">
+                        <div class="hunter-row">
+                            <div class="avatar">🏋️</div>
+                            <div class="hunter-info">
+                                <div class="hunter-name">Nick</div>
+                                <div class="hunter-meta">
+                                    <span class="rank-tag">A-Rank</span>
+                                    <span>Level 24</span>
+                                    <span class="streak-tag">🔥 12</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="xp-full">
+                            <div class="xp-labels">
+                                <span>Level 24</span>
+                                <span>6,500 / 10,000 XP</span>
+                            </div>
+                            <div class="xp-track">
+                                <div class="xp-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="actions-float">
+                        <button class="action-pill primary">⚔️ Start Workout</button>
+                        <button class="action-pill secondary">📷 Scan</button>
+                    </div>
+
+                    <!-- Mission Card: Empty State -->
+                    <div class="contained">
+                        <div class="section-header">
+                            <span class="section-title">Your Mission</span>
+                        </div>
+                        <div class="mission-card-empty">
+                            <div class="empty-icon">🎯</div>
+                            <div class="empty-title">No Active Goal</div>
+                            <div class="empty-subtitle">Set a strength goal and get weekly missions to reach it</div>
+                            <button class="create-goal-btn">+ Create Goal</button>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Stats -->
+                    <div class="stats-scroll">
+                        <div class="stat-card accent">
+                            <div class="stat-value">3</div>
+                            <div class="stat-label">Workouts</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">24.5K</div>
+                            <div class="stat-label">Volume</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">185</div>
+                            <div class="stat-label">Minutes</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- State B: Mission Ready -->
+    <div class="mockup-container">
+        <div class="mockup-label">Mission Card <span>State B</span>: Ready</div>
+        <div class="state-indicator">New week, mission not yet accepted</div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="screen-content">
+                    <div class="hunter-hero">
+                        <div class="hunter-row">
+                            <div class="avatar">🏋️</div>
+                            <div class="hunter-info">
+                                <div class="hunter-name">Nick</div>
+                                <div class="hunter-meta">
+                                    <span class="rank-tag">A-Rank</span>
+                                    <span>Level 24</span>
+                                    <span class="streak-tag">🔥 12</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="xp-full">
+                            <div class="xp-labels">
+                                <span>Level 24</span>
+                                <span>6,500 / 10,000 XP</span>
+                            </div>
+                            <div class="xp-track">
+                                <div class="xp-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="actions-float">
+                        <button class="action-pill primary">⚔️ Start Workout</button>
+                        <button class="action-pill secondary">📷 Scan</button>
+                    </div>
+
+                    <!-- Mission Card: Ready State -->
+                    <div class="contained">
+                        <div class="section-header">
+                            <span class="section-title">Weekly Dungeon</span>
+                            <span class="section-link">View Goal</span>
+                        </div>
+                        <div class="mission-card-ready">
+                            <div class="mission-pulse"></div>
+                            <div class="mission-header">
+                                <div class="mission-icon">⚔️</div>
+                                <div class="mission-info">
+                                    <div class="mission-label">New Mission Available</div>
+                                    <div class="mission-title">Week 3 of 6</div>
+                                    <div class="mission-goal">Bench Press → 225 lbs</div>
+                                </div>
+                            </div>
+                            <div class="mission-preview">
+                                <div class="preview-workout highlight">
+                                    <div class="preview-day">Workout 1</div>
+                                    <div class="preview-focus">Heavy Bench</div>
+                                </div>
+                                <div class="preview-workout">
+                                    <div class="preview-day">Workout 2</div>
+                                    <div class="preview-focus">Pull Day</div>
+                                </div>
+                                <div class="preview-workout">
+                                    <div class="preview-day">Workout 3</div>
+                                    <div class="preview-focus">Volume Bench</div>
+                                </div>
+                            </div>
+                            <button class="accept-mission-btn">⚔️ Accept Mission</button>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Stats -->
+                    <div class="stats-scroll">
+                        <div class="stat-card accent">
+                            <div class="stat-value">0</div>
+                            <div class="stat-label">Workouts</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">0</div>
+                            <div class="stat-label">Volume</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">0</div>
+                            <div class="stat-label">Minutes</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- State C: Mission In Progress -->
+    <div class="mockup-container">
+        <div class="mockup-label">Mission Card <span>State C</span>: Active</div>
+        <div class="state-indicator">2 of 3 workouts completed</div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="screen-content">
+                    <svg width="0" height="0">
+                        <defs>
+                            <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#00d4ff"/>
+                                <stop offset="100%" stop-color="#00ff88"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+
+                    <div class="hunter-hero">
+                        <div class="hunter-row">
+                            <div class="avatar">🏋️</div>
+                            <div class="hunter-info">
+                                <div class="hunter-name">Nick</div>
+                                <div class="hunter-meta">
+                                    <span class="rank-tag">A-Rank</span>
+                                    <span>Level 24</span>
+                                    <span class="streak-tag">🔥 14</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="xp-full">
+                            <div class="xp-labels">
+                                <span>Level 24</span>
+                                <span>7,200 / 10,000 XP</span>
+                            </div>
+                            <div class="xp-track">
+                                <div class="xp-fill" style="width: 72%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="actions-float">
+                        <button class="action-pill primary">⚔️ Start Workout</button>
+                        <button class="action-pill secondary">📷 Scan</button>
+                    </div>
+
+                    <!-- Mission Card: Active State -->
+                    <div class="contained">
+                        <div class="section-header">
+                            <span class="section-title">Weekly Dungeon</span>
+                            <span class="section-link">Details</span>
+                        </div>
+                        <div class="mission-card-active">
+                            <div class="active-header">
+                                <div class="active-info">
+                                    <div class="active-label">Week 3 • Bench 225</div>
+                                    <div class="active-title">1 Workout Left</div>
+                                    <div class="active-goal">Volume Bench remaining</div>
+                                </div>
+                                <div class="progress-ring-container">
+                                    <svg class="progress-ring" width="56" height="56" viewBox="0 0 56 56">
+                                        <circle class="progress-ring-bg" cx="28" cy="28" r="25"/>
+                                        <circle class="progress-ring-fill" cx="28" cy="28" r="25"/>
+                                    </svg>
+                                    <div class="progress-ring-text">2/3</div>
+                                </div>
+                            </div>
+                            <div class="workout-progress">
+                                <div class="workout-slot completed"></div>
+                                <div class="workout-slot completed"></div>
+                                <div class="workout-slot"></div>
+                            </div>
+                            <div class="next-workout">
+                                <div class="next-workout-icon">💪</div>
+                                <div class="next-workout-info">
+                                    <div class="next-workout-label">Next up</div>
+                                    <div class="next-workout-name">Volume Bench Day</div>
+                                </div>
+                                <div class="next-workout-arrow">›</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Stats -->
+                    <div class="stats-scroll">
+                        <div class="stat-card accent">
+                            <div class="stat-value">2</div>
+                            <div class="stat-label">Workouts</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">18.2K</div>
+                            <div class="stat-label">Volume</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">124</div>
+                            <div class="stat-label">Minutes</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

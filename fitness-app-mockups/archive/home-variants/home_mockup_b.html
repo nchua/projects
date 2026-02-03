@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=375, initial-scale=1.0">
+    <title>Home Mockup B - Progress Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #0a0a0f;
+            color: #e8e8e8;
+            min-height: 100vh;
+            max-width: 390px;
+            margin: 0 auto;
+            padding-bottom: 100px;
+        }
+
+        .mono {
+            font-family: 'SF Mono', 'Menlo', monospace;
+        }
+
+        :root {
+            --void-dark: #0a0a0f;
+            --void-medium: #12121a;
+            --void-light: #1a1a24;
+            --primary: #00d4ff;
+            --primary-glow: rgba(0, 212, 255, 0.3);
+            --gold: #ffd700;
+            --green: #00ff88;
+            --red: #ff4757;
+            --text-primary: #e8e8e8;
+            --text-secondary: #a0a0a0;
+            --text-muted: #606070;
+            --border: #2a2a3a;
+        }
+
+        .mockup-label {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--gold);
+            color: #000;
+            text-align: center;
+            padding: 8px;
+            font-weight: 700;
+            font-size: 12px;
+            letter-spacing: 1px;
+            z-index: 100;
+        }
+
+        .content-wrapper {
+            padding-top: 40px;
+        }
+
+        /* Compact Header */
+        .header-compact {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .avatar-small {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary), #0099cc);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            border: 2px solid var(--primary);
+        }
+
+        .header-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header-name {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .header-level {
+            font-size: 11px;
+            color: var(--primary);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .streak-compact {
+            background: linear-gradient(135deg, var(--gold), #cc9900);
+            color: #000;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        .content {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* Progress Hero */
+        .progress-hero {
+            background: var(--void-medium);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--gold));
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .progress-title {
+            font-size: 10px;
+            color: var(--text-muted);
+            letter-spacing: 1.5px;
+            margin-bottom: 4px;
+        }
+
+        .progress-value {
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--primary);
+            text-shadow: 0 0 30px var(--primary-glow);
+            line-height: 1;
+        }
+
+        .progress-unit {
+            font-size: 16px;
+            color: var(--text-muted);
+            margin-left: 4px;
+        }
+
+        .progress-trend {
+            text-align: right;
+        }
+
+        .trend-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(0, 255, 136, 0.15);
+            color: var(--green);
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .trend-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        /* Mini Chart */
+        .mini-chart {
+            height: 60px;
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            margin-top: 16px;
+        }
+
+        .chart-bar {
+            flex: 1;
+            background: var(--primary);
+            opacity: 0.6;
+            border-radius: 2px 2px 0 0;
+        }
+
+        .chart-bar:last-child {
+            opacity: 1;
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        /* Stats Row */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .stat-box {
+            background: var(--void-medium);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 12px 8px;
+            text-align: center;
+        }
+
+        .stat-icon {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .stat-label {
+            font-size: 9px;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+
+        /* Lift Cards */
+        .lifts-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .section-title {
+            font-size: 11px;
+            color: var(--text-muted);
+            letter-spacing: 1.5px;
+        }
+
+        .lift-card {
+            background: var(--void-medium);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            border-left: 4px solid;
+        }
+
+        .lift-card.squat { border-left-color: #ff6b6b; }
+        .lift-card.bench { border-left-color: #4ecdc4; }
+        .lift-card.deadlift { border-left-color: #ffe66d; }
+
+        .lift-info {
+            flex: 1;
+        }
+
+        .lift-name {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .lift-fantasy {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .lift-stats {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .lift-e1rm {
+            text-align: right;
+        }
+
+        .lift-e1rm .value {
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .lift-e1rm .unit {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .lift-trend {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            font-size: 12px;
+            color: var(--green);
+            font-weight: 600;
+        }
+
+        .lift-trend.down {
+            color: var(--red);
+        }
+
+        /* PRs Section */
+        .prs-scroll {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            margin: 0 -16px;
+            padding: 0 16px;
+        }
+
+        .pr-chip {
+            flex-shrink: 0;
+            background: var(--void-medium);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 4px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .pr-chip .icon {
+            font-size: 20px;
+        }
+
+        .pr-chip .exercise {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .pr-chip .value {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--gold);
+        }
+
+        /* Weekly Summary */
+        .weekly-summary {
+            background: var(--void-medium);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 16px;
+        }
+
+        .weekly-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .weekly-title {
+            font-size: 10px;
+            color: var(--primary);
+            letter-spacing: 1px;
+        }
+
+        .weekly-dates {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .weekly-progress {
+            margin-bottom: 16px;
+        }
+
+        .weekly-progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .weekly-progress-label {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .weekly-progress-value {
+            font-size: 13px;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--void-light);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), #00aaff);
+            border-radius: 4px;
+        }
+
+        .weekly-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .weekly-stat {
+            text-align: center;
+        }
+
+        .weekly-stat .value {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .weekly-stat .label {
+            font-size: 9px;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+        }
+
+        /* Start Workout FAB */
+        .fab {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            background: var(--primary);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: #000;
+            box-shadow: 0 4px 20px var(--primary-glow);
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="mockup-label">MOCKUP B: PROGRESS DASHBOARD</div>
+
+    <div class="content-wrapper">
+        <!-- Compact Header -->
+        <div class="header-compact">
+            <div class="header-left">
+                <div class="avatar-small">NC</div>
+                <div class="header-info">
+                    <span class="header-name">Nick</span>
+                    <span class="header-level mono">B-Rank  |  LV 23</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <span class="streak-compact">7</span>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Progress Hero - Total Strength -->
+            <div class="progress-hero">
+                <div class="progress-header">
+                    <div>
+                        <div class="progress-title mono">ESTIMATED TOTAL</div>
+                        <div class="progress-value mono">945<span class="progress-unit">lb</span></div>
+                    </div>
+                    <div class="progress-trend">
+                        <div class="trend-badge">+3.2%</div>
+                        <div class="trend-label mono">vs last month</div>
+                    </div>
+                </div>
+                <div class="mini-chart">
+                    <div class="chart-bar" style="height: 65%"></div>
+                    <div class="chart-bar" style="height: 70%"></div>
+                    <div class="chart-bar" style="height: 68%"></div>
+                    <div class="chart-bar" style="height: 75%"></div>
+                    <div class="chart-bar" style="height: 72%"></div>
+                    <div class="chart-bar" style="height: 80%"></div>
+                    <div class="chart-bar" style="height: 78%"></div>
+                    <div class="chart-bar" style="height: 85%"></div>
+                    <div class="chart-bar" style="height: 82%"></div>
+                    <div class="chart-bar" style="height: 88%"></div>
+                    <div class="chart-bar" style="height: 92%"></div>
+                    <div class="chart-bar" style="height: 100%"></div>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="stats-row">
+                <div class="stat-box">
+                    <div class="stat-icon">...</div>
+                    <div class="stat-value">47</div>
+                    <div class="stat-label mono">WORKOUTS</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-icon">...</div>
+                    <div class="stat-value">12</div>
+                    <div class="stat-label mono">PRs</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-icon">...</div>
+                    <div class="stat-value">7</div>
+                    <div class="stat-label mono">STREAK</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-icon">...</div>
+                    <div class="stat-value">23</div>
+                    <div class="stat-label mono">LEVEL</div>
+                </div>
+            </div>
+
+            <!-- Lift Cards -->
+            <div class="lifts-section">
+                <div class="section-title mono">POWER LEVELS</div>
+
+                <div class="lift-card squat">
+                    <div class="lift-info">
+                        <div class="lift-name">Squat</div>
+                        <div class="lift-fantasy">"Earth Pillars"</div>
+                    </div>
+                    <div class="lift-stats">
+                        <div class="lift-trend">+2.1%</div>
+                        <div class="lift-e1rm">
+                            <span class="value">315</span>
+                            <span class="unit">lb</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lift-card bench">
+                    <div class="lift-info">
+                        <div class="lift-name">Bench Press</div>
+                        <div class="lift-fantasy">"Titan's Core"</div>
+                    </div>
+                    <div class="lift-stats">
+                        <div class="lift-trend">+4.8%</div>
+                        <div class="lift-e1rm">
+                            <span class="value">225</span>
+                            <span class="unit">lb</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lift-card deadlift">
+                    <div class="lift-info">
+                        <div class="lift-name">Deadlift</div>
+                        <div class="lift-fantasy">"Shadow Pull"</div>
+                    </div>
+                    <div class="lift-stats">
+                        <div class="lift-trend down">-1.2%</div>
+                        <div class="lift-e1rm">
+                            <span class="value">405</span>
+                            <span class="unit">lb</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent PRs -->
+            <div class="section-title mono">RECENT RECORDS</div>
+            <div class="prs-scroll">
+                <div class="pr-chip">
+                    <span class="icon">...</span>
+                    <div>
+                        <div class="exercise">Bench Press</div>
+                        <div class="value mono">225 lb</div>
+                    </div>
+                </div>
+                <div class="pr-chip">
+                    <span class="icon">...</span>
+                    <div>
+                        <div class="exercise">Squat</div>
+                        <div class="value mono">315 lb</div>
+                    </div>
+                </div>
+                <div class="pr-chip">
+                    <span class="icon">...</span>
+                    <div>
+                        <div class="exercise">OHP</div>
+                        <div class="value mono">135 lb</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weekly Summary -->
+            <div class="weekly-summary">
+                <div class="weekly-header">
+                    <span class="weekly-title mono">[ THIS WEEK ]</span>
+                    <span class="weekly-dates mono">Jan 13 - Jan 19</span>
+                </div>
+
+                <div class="weekly-progress">
+                    <div class="weekly-progress-header">
+                        <span class="weekly-progress-label">Workout Goal</span>
+                        <span class="weekly-progress-value mono">2/4 sessions</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 50%"></div>
+                    </div>
+                </div>
+
+                <div class="weekly-stats">
+                    <div class="weekly-stat">
+                        <div class="value">12.4K</div>
+                        <div class="label mono">VOLUME</div>
+                    </div>
+                    <div class="weekly-stat">
+                        <div class="value" style="color: var(--gold)">2</div>
+                        <div class="label mono">PRs</div>
+                    </div>
+                    <div class="weekly-stat">
+                        <div class="value">87m</div>
+                        <div class="label mono">TIME</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Floating Action Button -->
+        <div class="fab">+</div>
+    </div>
+</body>
+</html>

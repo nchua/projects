@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Workout - Edge Flow</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #0a0a14;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        :root {
+            --bg-void: #050508;
+            --bg-dark: #0a0a12;
+            --bg-card: #0f1018;
+            --bg-elevated: #141520;
+            --bg-input: #1a1b28;
+            --accent-primary: #00D4FF;
+            --accent-secondary: #7B61FF;
+            --accent-gold: #FFD700;
+            --accent-success: #00FF88;
+            --accent-warning: #FF9500;
+            --accent-danger: #FF4757;
+            --text-primary: #FFFFFF;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --text-tertiary: rgba(255, 255, 255, 0.4);
+        }
+
+        .iphone-frame {
+            width: 390px;
+            height: 844px;
+            background: #000;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow: 0 0 0 3px #1a1a1a, 0 0 0 6px #0d0d0d, 0 30px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-void);
+            border-radius: 40px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .iphone-screen::-webkit-scrollbar { display: none; }
+
+        .dynamic-island {
+            position: sticky;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 34px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 100;
+            margin-bottom: -34px;
+        }
+
+        .screen-content { padding-bottom: 100px; color: var(--text-primary); }
+
+        .mockup-label {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .mockup-label span { color: var(--accent-primary); }
+
+        /* Header */
+        .log-header {
+            padding: 60px 20px 20px;
+            background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-void) 100%);
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .back-btn {
+            font-size: 24px;
+            opacity: 0.6;
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .timer {
+            font-size: 14px;
+            color: var(--accent-primary);
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Workout Title */
+        .workout-title-input {
+            width: 100%;
+            padding: 16px;
+            background: var(--bg-input);
+            border: none;
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .workout-title-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        /* Exercise Card */
+        .exercise-section {
+            padding: 0 20px;
+            margin-top: 20px;
+        }
+
+        .exercise-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        .exercise-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .exercise-name {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .exercise-menu {
+            font-size: 18px;
+            opacity: 0.4;
+        }
+
+        /* Set rows */
+        .set-header {
+            display: grid;
+            grid-template-columns: 40px 1fr 1fr 1fr 40px;
+            gap: 8px;
+            padding: 12px 16px;
+            font-size: 11px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+        }
+
+        .set-row {
+            display: grid;
+            grid-template-columns: 40px 1fr 1fr 1fr 40px;
+            gap: 8px;
+            padding: 8px 16px;
+            align-items: center;
+        }
+
+        .set-number {
+            width: 28px;
+            height: 28px;
+            background: var(--bg-elevated);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .set-input {
+            background: var(--bg-input);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 12px;
+            color: var(--text-primary);
+            font-size: 14px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .set-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .set-check {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .set-check.done {
+            background: var(--accent-success);
+            border-color: var(--accent-success);
+            color: #000;
+        }
+
+        /* Add set button */
+        .add-set-btn {
+            width: 100%;
+            padding: 12px;
+            background: transparent;
+            border: 1px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: var(--text-tertiary);
+            font-size: 13px;
+            cursor: pointer;
+            margin: 8px 16px 16px;
+            width: calc(100% - 32px);
+        }
+
+        /* PR Badge */
+        .pr-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255, 215, 0, 0.15);
+            color: var(--accent-gold);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        /* Add Exercise Button */
+        .add-exercise-btn {
+            margin: 0 20px;
+            padding: 16px;
+            background: var(--bg-card);
+            border: 1px dashed rgba(0, 212, 255, 0.3);
+            border-radius: 12px;
+            color: var(--accent-primary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        /* Bottom Action */
+        .bottom-action {
+            position: fixed;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 350px;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--accent-success) 0%, #00cc6a 100%);
+            border: none;
+            border-radius: 50px;
+            color: #000;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3);
+            text-align: center;
+        }
+
+        /* Notes section */
+        .notes-section {
+            margin: 20px;
+        }
+
+        .notes-label {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .notes-input {
+            width: 100%;
+            padding: 14px;
+            background: var(--bg-card);
+            border: none;
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 14px;
+            resize: none;
+            min-height: 80px;
+        }
+
+        .notes-input::placeholder {
+            color: var(--text-tertiary);
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="mockup-label">Log Screen: <span>Active Workout</span></div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="screen-content">
+                    <div class="log-header">
+                        <div class="header-row">
+                            <span class="back-btn">←</span>
+                            <span class="header-title">Log Workout</span>
+                            <span class="timer">32:15</span>
+                        </div>
+                        <input type="text" class="workout-title-input" placeholder="Workout name (optional)" value="Push Day">
+                    </div>
+
+                    <div class="exercise-section">
+                        <!-- Exercise 1 -->
+                        <div class="exercise-card">
+                            <div class="exercise-header">
+                                <span class="exercise-name">Bench Press <span class="pr-badge">🏆 PR</span></span>
+                                <span class="exercise-menu">⋯</span>
+                            </div>
+                            <div class="set-header">
+                                <span>Set</span>
+                                <span>Previous</span>
+                                <span>Weight</span>
+                                <span>Reps</span>
+                                <span></span>
+                            </div>
+                            <div class="set-row">
+                                <div class="set-number">1</div>
+                                <input class="set-input" value="185 × 8" disabled style="opacity: 0.5;">
+                                <input class="set-input" value="225">
+                                <input class="set-input" value="6">
+                                <div class="set-check done">✓</div>
+                            </div>
+                            <div class="set-row">
+                                <div class="set-number">2</div>
+                                <input class="set-input" value="185 × 8" disabled style="opacity: 0.5;">
+                                <input class="set-input" value="225">
+                                <input class="set-input" value="5">
+                                <div class="set-check done">✓</div>
+                            </div>
+                            <div class="set-row">
+                                <div class="set-number">3</div>
+                                <input class="set-input" value="185 × 6" disabled style="opacity: 0.5;">
+                                <input class="set-input" placeholder="lbs">
+                                <input class="set-input" placeholder="reps">
+                                <div class="set-check"></div>
+                            </div>
+                            <button class="add-set-btn">+ Add Set</button>
+                        </div>
+
+                        <!-- Exercise 2 -->
+                        <div class="exercise-card">
+                            <div class="exercise-header">
+                                <span class="exercise-name">Incline Dumbbell Press</span>
+                                <span class="exercise-menu">⋯</span>
+                            </div>
+                            <div class="set-header">
+                                <span>Set</span>
+                                <span>Previous</span>
+                                <span>Weight</span>
+                                <span>Reps</span>
+                                <span></span>
+                            </div>
+                            <div class="set-row">
+                                <div class="set-number">1</div>
+                                <input class="set-input" value="60 × 10" disabled style="opacity: 0.5;">
+                                <input class="set-input" value="65">
+                                <input class="set-input" value="10">
+                                <div class="set-check done">✓</div>
+                            </div>
+                            <div class="set-row">
+                                <div class="set-number">2</div>
+                                <input class="set-input" value="60 × 10" disabled style="opacity: 0.5;">
+                                <input class="set-input" placeholder="lbs">
+                                <input class="set-input" placeholder="reps">
+                                <div class="set-check"></div>
+                            </div>
+                            <button class="add-set-btn">+ Add Set</button>
+                        </div>
+
+                        <button class="add-exercise-btn">+ Add Exercise</button>
+
+                        <div class="notes-section">
+                            <div class="notes-label">Notes</div>
+                            <textarea class="notes-input" placeholder="How did the workout feel?"></textarea>
+                        </div>
+                    </div>
+
+                    <button class="bottom-action">Finish Workout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

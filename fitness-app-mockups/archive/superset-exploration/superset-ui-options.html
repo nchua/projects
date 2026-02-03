@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=414, initial-scale=1.0">
+    <title>Superset UI Options</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #0a0a12;
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .mockup-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 40px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .mockup-section {
+            background: #12121a;
+            border-radius: 24px;
+            padding: 20px;
+            border: 1px solid #2a2a3a;
+        }
+
+        .mockup-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #a78bfa;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .mockup-subtitle {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .phone-frame {
+            background: #0a0a12;
+            border-radius: 20px;
+            padding: 16px;
+            border: 2px solid #2a2a3a;
+        }
+
+        /* Common iOS-style components */
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 16px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #a78bfa;
+        }
+
+        .add-btn {
+            background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Exercise Card Base */
+        .exercise-card {
+            background: #1a1a2e;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid #2a2a3a;
+        }
+
+        .exercise-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .exercise-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .exercise-meta {
+            font-size: 11px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .exercise-menu {
+            color: #666;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .set-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+            border-bottom: 1px solid #2a2a3a;
+        }
+
+        .set-row:last-child {
+            border-bottom: none;
+        }
+
+        .set-num {
+            width: 28px;
+            height: 28px;
+            background: #2a2a3a;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #888;
+        }
+
+        .set-num.complete {
+            background: #22c55e;
+            color: white;
+        }
+
+        .set-input {
+            flex: 1;
+            background: #0a0a12;
+            border: 1px solid #2a2a3a;
+            border-radius: 8px;
+            padding: 8px;
+            color: #fff;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .set-input::placeholder {
+            color: #444;
+        }
+
+        .set-label {
+            font-size: 10px;
+            color: #666;
+            text-align: center;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            flex: 1;
+        }
+
+        /* ========== OPTION A: Link Button ========== */
+        .link-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            color: #a78bfa;
+            font-size: 12px;
+            gap: 8px;
+        }
+
+        .link-line {
+            height: 2px;
+            flex: 1;
+            background: linear-gradient(90deg, transparent, #7c3aed, transparent);
+        }
+
+        .superset-badge {
+            background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .link-btn {
+            background: transparent;
+            border: 1px dashed #7c3aed;
+            color: #a78bfa;
+            padding: 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            width: 100%;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        /* ========== OPTION B: Combined Card ========== */
+        .superset-group-card {
+            background: linear-gradient(135deg, #1a1a2e 0%, #1e1e3a 100%);
+            border: 2px solid #7c3aed;
+            border-radius: 20px;
+            padding: 16px;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .superset-group-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .superset-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .superset-group-label {
+            font-size: 11px;
+            color: #a78bfa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+        }
+
+        .exercise-pair {
+            display: flex;
+            gap: 12px;
+        }
+
+        .exercise-half {
+            flex: 1;
+            background: #12121a;
+            border-radius: 12px;
+            padding: 12px;
+        }
+
+        .exercise-half-name {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        .mini-set-row {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 4px;
+        }
+
+        .mini-input {
+            flex: 1;
+            background: #0a0a12;
+            border: 1px solid #2a2a3a;
+            border-radius: 6px;
+            padding: 6px;
+            color: #fff;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .round-indicator {
+            text-align: center;
+            font-size: 11px;
+            color: #a78bfa;
+            margin: 12px 0 8px 0;
+            font-weight: 600;
+        }
+
+        /* ========== OPTION C: Swipe to Link ========== */
+        .exercise-card-swipeable {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .swipe-action {
+            position: absolute;
+            right: -80px;
+            top: 0;
+            bottom: 0;
+            width: 80px;
+            background: #7c3aed;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0 16px 16px 0;
+        }
+
+        .swipe-action-text {
+            writing-mode: vertical-rl;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .dragging-hint {
+            background: rgba(124, 58, 237, 0.1);
+            border: 2px dashed #7c3aed;
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+            color: #a78bfa;
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+
+        /* ========== OPTION D: Alternating Sets ========== */
+        .alternating-card {
+            background: #1a1a2e;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 2px solid #7c3aed;
+        }
+
+        .alt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .exercise-tabs {
+            display: flex;
+            background: #0a0a12;
+            border-radius: 10px;
+            padding: 4px;
+            margin-bottom: 12px;
+        }
+
+        .exercise-tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .exercise-tab.active {
+            background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+            color: white;
+        }
+
+        .current-set-display {
+            background: #0a0a12;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .set-counter {
+            font-size: 32px;
+            font-weight: 700;
+            color: #a78bfa;
+            margin-bottom: 4px;
+        }
+
+        .set-of-total {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .big-inputs {
+            display: flex;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .big-input-group {
+            flex: 1;
+        }
+
+        .big-input-group label {
+            display: block;
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .big-input {
+            width: 100%;
+            background: #1a1a2e;
+            border: 2px solid #2a2a3a;
+            border-radius: 12px;
+            padding: 16px;
+            color: #fff;
+            font-size: 24px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .next-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+            border: none;
+            color: white;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            margin-top: 16px;
+            cursor: pointer;
+        }
+
+        /* Section labels */
+        h1 {
+            text-align: center;
+            font-size: 28px;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .page-subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 14px;
+        }
+
+        .pros-cons {
+            margin-top: 16px;
+            font-size: 12px;
+        }
+
+        .pros-cons h4 {
+            color: #22c55e;
+            margin-bottom: 4px;
+        }
+
+        .pros-cons h4.cons {
+            color: #ef4444;
+            margin-top: 8px;
+        }
+
+        .pros-cons ul {
+            color: #888;
+            margin-left: 16px;
+        }
+
+        .pros-cons li {
+            margin-bottom: 2px;
+        }
+
+        /* Menu Dropdown Demo */
+        .menu-dropdown {
+            position: absolute;
+            right: 16px;
+            top: 50px;
+            background: #1a1a2e;
+            border: 1px solid #2a2a3a;
+            border-radius: 12px;
+            padding: 8px;
+            min-width: 180px;
+            z-index: 10;
+        }
+
+        .menu-item {
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .menu-item:hover {
+            background: #2a2a3a;
+        }
+
+        .menu-item.superset {
+            color: #a78bfa;
+        }
+
+        .menu-item .icon {
+            width: 20px;
+            text-align: center;
+        }
+
+        .divider {
+            height: 1px;
+            background: #2a2a3a;
+            margin: 4px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Superset UI Options</h1>
+    <p class="page-subtitle">Different approaches for recording supersets during a workout</p>
+
+    <div class="mockup-grid">
+
+        <!-- OPTION A: Menu-Based Linking -->
+        <div class="mockup-section">
+            <div class="mockup-title">Option A: Menu Link</div>
+            <div class="mockup-subtitle">
+                Add exercises normally, then use the menu to "Link as Superset" which prompts you to select the partner exercise.
+            </div>
+
+            <div class="phone-frame">
+                <div class="header">
+                    <span class="header-title">Objectives</span>
+                    <button class="add-btn">+ ADD</button>
+                </div>
+
+                <!-- First exercise card with menu open -->
+                <div class="exercise-card" style="position: relative;">
+                    <div class="exercise-header">
+                        <div>
+                            <div class="exercise-name">Bench Press</div>
+                            <div class="exercise-meta">Barbell • Chest</div>
+                        </div>
+                        <span class="exercise-menu">⋮</span>
+                    </div>
+
+                    <!-- Menu dropdown -->
+                    <div class="menu-dropdown">
+                        <div class="menu-item superset">
+                            <span class="icon">⛓</span>
+                            <span>Link as Superset</span>
+                        </div>
+                        <div class="divider"></div>
+                        <div class="menu-item">
+                            <span class="icon">+</span>
+                            <span>Add Set</span>
+                        </div>
+                        <div class="menu-item">
+                            <span class="icon">⎘</span>
+                            <span>Copy Last Set</span>
+                        </div>
+                        <div class="menu-item" style="color: #ef4444;">
+                            <span class="icon">🗑</span>
+                            <span>Remove</span>
+                        </div>
+                    </div>
+
+                    <div class="set-row">
+                        <div class="set-num complete">✓</div>
+                        <div class="input-group">
+                            <input class="set-input" value="185">
+                            <span class="set-label">LB</span>
+                        </div>
+                        <div class="input-group">
+                            <input class="set-input" value="8">
+                            <span class="set-label">REPS</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Result: Two linked exercises -->
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px dashed #2a2a3a;">
+                    <div style="font-size: 11px; color: #666; margin-bottom: 12px;">After linking:</div>
+
+                    <div class="exercise-card" style="border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; border-bottom: none;">
+                        <div class="exercise-header">
+                            <div>
+                                <span class="superset-badge">Superset</span>
+                                <div class="exercise-name" style="margin-top: 6px;">Bench Press</div>
+                            </div>
+                            <span class="exercise-menu">⋮</span>
+                        </div>
+                        <div class="set-row">
+                            <div class="set-num complete">✓</div>
+                            <div class="input-group">
+                                <input class="set-input" value="185">
+                            </div>
+                            <div class="input-group">
+                                <input class="set-input" value="8">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="link-indicator">
+                        <div class="link-line"></div>
+                        <span>⛓</span>
+                        <div class="link-line"></div>
+                    </div>
+
+                    <div class="exercise-card" style="border-top-left-radius: 0; border-top-right-radius: 0; margin-top: 0;">
+                        <div class="exercise-header">
+                            <div>
+                                <div class="exercise-name">Bent Over Row</div>
+                            </div>
+                            <span class="exercise-menu">⋮</span>
+                        </div>
+                        <div class="set-row">
+                            <div class="set-num complete">✓</div>
+                            <div class="input-group">
+                                <input class="set-input" value="135">
+                            </div>
+                            <div class="input-group">
+                                <input class="set-input" value="10">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pros-cons">
+                <h4>+ Pros</h4>
+                <ul>
+                    <li>Minimal UI changes</li>
+                    <li>Flexible - link any two exercises</li>
+                    <li>Easy to unlink</li>
+                    <li>Works with existing flow</li>
+                </ul>
+                <h4 class="cons">- Cons</h4>
+                <ul>
+                    <li>Extra tap to link</li>
+                    <li>Not obvious feature exists</li>
+                    <li>Still separate cards (cluttered)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- OPTION B: Combined Superset Card -->
+        <div class="mockup-section">
+            <div class="mockup-title">Option B: Combined Card</div>
+            <div class="mockup-subtitle">
+                Supersets appear as a single unified card with both exercises side-by-side. "Add Superset" button in exercise picker.
+            </div>
+
+            <div class="phone-frame">
+                <div class="header">
+                    <span class="header-title">Objectives</span>
+                    <button class="add-btn">+ ADD</button>
+                </div>
+
+                <!-- Regular exercise -->
+                <div class="exercise-card">
+                    <div class="exercise-header">
+                        <div>
+                            <div class="exercise-name">Squat</div>
+                            <div class="exercise-meta">Barbell • Legs</div>
+                        </div>
+                        <span class="exercise-menu">⋮</span>
+                    </div>
+                    <div class="set-row">
+                        <div class="set-num complete">✓</div>
+                        <div class="input-group">
+                            <input class="set-input" value="225">
+                        </div>
+                        <div class="input-group">
+                            <input class="set-input" value="5">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Superset combined card -->
+                <div class="superset-group-card">
+                    <div class="superset-group-header">
+                        <div class="superset-icon">⛓</div>
+                        <div>
+                            <div class="superset-group-label">Superset</div>
+                        </div>
+                        <span class="exercise-menu" style="margin-left: auto;">⋮</span>
+                    </div>
+
+                    <div class="round-indicator">— Round 1 of 3 —</div>
+
+                    <div class="exercise-pair">
+                        <div class="exercise-half">
+                            <div class="exercise-half-name">Bench Press</div>
+                            <div class="mini-set-row">
+                                <input class="mini-input" placeholder="lb" value="185">
+                                <input class="mini-input" placeholder="reps" value="8">
+                            </div>
+                        </div>
+                        <div class="exercise-half">
+                            <div class="exercise-half-name">Bent Over Row</div>
+                            <div class="mini-set-row">
+                                <input class="mini-input" placeholder="lb" value="135">
+                                <input class="mini-input" placeholder="reps" value="10">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="round-indicator">— Round 2 of 3 —</div>
+
+                    <div class="exercise-pair">
+                        <div class="exercise-half">
+                            <div class="mini-set-row">
+                                <input class="mini-input" placeholder="lb" value="185">
+                                <input class="mini-input" placeholder="reps" value="8">
+                            </div>
+                        </div>
+                        <div class="exercise-half">
+                            <div class="mini-set-row">
+                                <input class="mini-input" placeholder="lb" value="135">
+                                <input class="mini-input" placeholder="reps" value="10">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="link-btn">+ Add Round</button>
+                </div>
+            </div>
+
+            <div class="pros-cons">
+                <h4>+ Pros</h4>
+                <ul>
+                    <li>Clear visual grouping</li>
+                    <li>Shows "rounds" concept naturally</li>
+                    <li>Compact - saves vertical space</li>
+                    <li>Easy to track which round you're on</li>
+                </ul>
+                <h4 class="cons">- Cons</h4>
+                <ul>
+                    <li>Smaller input fields</li>
+                    <li>Complex UI component to build</li>
+                    <li>Hard to add 3+ exercises (triset)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- OPTION C: Focused Set Entry -->
+        <div class="mockup-section">
+            <div class="mockup-title">Option C: Focused Mode</div>
+            <div class="mockup-subtitle">
+                Superset shows as tabs. Focus on one exercise at a time with large inputs. Tap "Next" to switch between exercises.
+            </div>
+
+            <div class="phone-frame">
+                <div class="header">
+                    <span class="header-title">Objectives</span>
+                    <button class="add-btn">+ ADD</button>
+                </div>
+
+                <!-- Focused superset card -->
+                <div class="alternating-card">
+                    <div class="alt-header">
+                        <span class="superset-badge">Superset</span>
+                        <span class="exercise-menu">⋮</span>
+                    </div>
+
+                    <div class="exercise-tabs">
+                        <div class="exercise-tab active">Bench Press</div>
+                        <div class="exercise-tab">Bent Row</div>
+                    </div>
+
+                    <div class="current-set-display">
+                        <div class="set-counter">Set 2</div>
+                        <div class="set-of-total">of 3 rounds</div>
+
+                        <div class="big-inputs">
+                            <div class="big-input-group">
+                                <label>Weight (lb)</label>
+                                <input class="big-input" value="185">
+                            </div>
+                            <div class="big-input-group">
+                                <label>Reps</label>
+                                <input class="big-input" value="8">
+                            </div>
+                        </div>
+
+                        <button class="next-btn">✓ Done → Bent Row</button>
+                    </div>
+                </div>
+
+                <!-- Progress summary below -->
+                <div style="background: #1a1a2e; border-radius: 12px; padding: 12px; margin-top: 12px;">
+                    <div style="font-size: 11px; color: #666; margin-bottom: 8px;">Completed Rounds</div>
+                    <div style="display: flex; gap: 8px;">
+                        <div style="flex: 1; background: #0a0a12; padding: 8px; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 10px; color: #888;">Round 1</div>
+                            <div style="font-size: 12px; color: #22c55e;">185×8 ⟷ 135×10</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pros-cons">
+                <h4>+ Pros</h4>
+                <ul>
+                    <li>Large, easy-to-tap inputs</li>
+                    <li>Clear what to do next</li>
+                    <li>Great for fast logging</li>
+                    <li>Guides user through superset</li>
+                </ul>
+                <h4 class="cons">- Cons</h4>
+                <ul>
+                    <li>Can't see both exercises at once</li>
+                    <li>More complex state management</li>
+                    <li>Learning curve for new users</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- OPTION D: Quick Add via Long Press -->
+        <div class="mockup-section">
+            <div class="mockup-title">Option D: Add Superset Flow</div>
+            <div class="mockup-subtitle">
+                Dedicated "Add Superset" option in the add menu. Picker shows both exercises to select in sequence.
+            </div>
+
+            <div class="phone-frame">
+                <div class="header">
+                    <span class="header-title">Objectives</span>
+                    <button class="add-btn">+ ADD ▾</button>
+                </div>
+
+                <!-- Add menu dropdown -->
+                <div style="background: #1a1a2e; border: 1px solid #2a2a3a; border-radius: 12px; padding: 8px; margin-bottom: 16px;">
+                    <div class="menu-item">
+                        <span class="icon">💪</span>
+                        <span>Add Exercise</span>
+                    </div>
+                    <div class="menu-item superset" style="background: rgba(124, 58, 237, 0.1);">
+                        <span class="icon">⛓</span>
+                        <span>Add Superset</span>
+                    </div>
+                    <div class="menu-item">
+                        <span class="icon">🔥</span>
+                        <span>Add Circuit (3+)</span>
+                    </div>
+                </div>
+
+                <div style="font-size: 11px; color: #666; margin: 20px 0 12px 0;">After selecting "Add Superset":</div>
+
+                <!-- Step indicator -->
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+                    <div style="width: 28px; height: 28px; background: #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; color: white;">✓</div>
+                    <div style="flex: 1; height: 2px; background: #7c3aed;"></div>
+                    <div style="width: 28px; height: 28px; background: #7c3aed; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; color: white;">2</div>
+                </div>
+
+                <div style="font-size: 14px; color: #a78bfa; margin-bottom: 8px; font-weight: 600;">
+                    Select second exercise
+                </div>
+                <div style="font-size: 12px; color: #666; margin-bottom: 12px;">
+                    First: <span style="color: #fff;">Bench Press</span>
+                </div>
+
+                <!-- Exercise list -->
+                <div style="background: #1a1a2e; border-radius: 12px; padding: 8px;">
+                    <input style="width: 100%; background: #0a0a12; border: 1px solid #2a2a3a; border-radius: 8px; padding: 10px; color: #fff; margin-bottom: 8px;" placeholder="Search exercises...">
+
+                    <div style="padding: 12px; border-radius: 8px; cursor: pointer;" onmouseover="this.style.background='#2a2a3a'" onmouseout="this.style.background='transparent'">
+                        <div style="font-size: 14px; color: #fff;">Bent Over Row</div>
+                        <div style="font-size: 11px; color: #666;">Barbell • Back</div>
+                    </div>
+                    <div style="padding: 12px; border-radius: 8px; cursor: pointer;" onmouseover="this.style.background='#2a2a3a'" onmouseout="this.style.background='transparent'">
+                        <div style="font-size: 14px; color: #fff;">Incline Dumbbell Row</div>
+                        <div style="font-size: 11px; color: #666;">Dumbbell • Back</div>
+                    </div>
+                    <div style="padding: 12px; border-radius: 8px; cursor: pointer;" onmouseover="this.style.background='#2a2a3a'" onmouseout="this.style.background='transparent'">
+                        <div style="font-size: 14px; color: #fff;">Cable Row</div>
+                        <div style="font-size: 11px; color: #666;">Cable • Back</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pros-cons">
+                <h4>+ Pros</h4>
+                <ul>
+                    <li>Explicit superset creation</li>
+                    <li>Guided two-step flow</li>
+                    <li>Extensible to circuits (3+)</li>
+                    <li>Clear user intent</li>
+                </ul>
+                <h4 class="cons">- Cons</h4>
+                <ul>
+                    <li>Two selections required upfront</li>
+                    <li>Can't change exercises easily</li>
+                    <li>More steps than single exercise</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <div style="max-width: 800px; margin: 60px auto; padding: 24px; background: #12121a; border-radius: 16px; border: 1px solid #2a2a3a;">
+        <h2 style="color: #a78bfa; margin-bottom: 16px;">Recommendation</h2>
+        <p style="color: #888; line-height: 1.7; margin-bottom: 16px;">
+            <strong style="color: #fff;">Option A (Menu Link) + Option B (Combined Card)</strong> would work well together:
+        </p>
+        <ul style="color: #888; line-height: 1.8; margin-left: 20px;">
+            <li><strong style="color: #fff;">Phase 1:</strong> Implement the menu link approach (minimal UI changes, quick to build)</li>
+            <li><strong style="color: #fff;">Phase 2:</strong> Once linked, display as a combined card for better visual grouping</li>
+            <li>Keep the "Add Superset" option in the add menu for power users who know what they want</li>
+            <li>Allow unlinking from the menu to go back to separate exercises</li>
+        </ul>
+
+        <div style="margin-top: 24px; padding: 16px; background: #1a1a2e; border-radius: 12px;">
+            <h3 style="color: #fff; font-size: 14px; margin-bottom: 8px;">Data Model Consideration</h3>
+            <p style="color: #666; font-size: 13px; line-height: 1.6;">
+                Add a <code style="background: #0a0a12; padding: 2px 6px; border-radius: 4px; color: #a78bfa;">supersetGroupId</code> field to exercises.
+                Exercises with the same ID are in the same superset. The backend stores this and returns it with workout data.
+                This supports 2+ exercises (trisets, giant sets) without schema changes.
+            </p>
+        </div>
+    </div>
+
+</body>
+</html>

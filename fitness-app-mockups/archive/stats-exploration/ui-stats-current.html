@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stats - Current State (Faithful Recreation)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-void: #050508;
+            --bg-dark: #0a0a12;
+            --bg-medium: #0f1018;
+            --bg-light: #16171f;
+            --bg-elevated: #1a1b24;
+            --accent-primary: #00D4FF;
+            --accent-secondary: #7B61FF;
+            --accent-gold: #FFD700;
+            --accent-success: #00FF88;
+            --accent-warning: #FF9500;
+            --accent-danger: #FF4757;
+            --text-primary: #FFFFFF;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --text-muted: rgba(255, 255, 255, 0.4);
+            --border: rgba(255, 255, 255, 0.08);
+            --glow-primary: rgba(0, 212, 255, 0.3);
+
+            /* Exercise colors */
+            --squat-color: #FF6B6B;
+            --bench-color: #00D4FF;
+            --deadlift-color: #7B61FF;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #0a0a14;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        .mockup-label {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .mockup-label span { color: var(--accent-primary); }
+
+        .iphone-frame {
+            width: 390px;
+            height: 844px;
+            background: #000;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow: 0 0 0 3px #1a1a1a, 0 0 0 6px #0d0d0d, 0 30px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-void);
+            border-radius: 40px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .iphone-screen::-webkit-scrollbar { display: none; }
+
+        .dynamic-island {
+            position: sticky;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 34px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 100;
+            margin-bottom: -34px;
+        }
+
+        .screen-content {
+            padding-bottom: 100px;
+            color: var(--text-primary);
+        }
+
+        /* Monospace font for ARISE theme */
+        .mono {
+            font-family: 'SF Mono', 'Menlo', monospace;
+            letter-spacing: 0.5px;
+        }
+
+        /* Header */
+        .header {
+            padding: 60px 20px 20px;
+        }
+
+        .system-tag {
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--accent-primary);
+            letter-spacing: 2px;
+            margin-bottom: 4px;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Tab Selector */
+        .tab-selector {
+            display: flex;
+            gap: 8px;
+            padding: 0 20px;
+            margin-bottom: 24px;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.inactive {
+            background: var(--bg-medium);
+            color: var(--text-secondary);
+        }
+
+        .tab-btn.active {
+            background: var(--accent-primary);
+            color: #000;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 16px var(--glow-primary);
+        }
+
+        /* Time Range Selector */
+        .time-range {
+            display: flex;
+            gap: 8px;
+            padding: 0 20px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+        .time-range::-webkit-scrollbar { display: none; }
+
+        .time-btn {
+            padding: 8px 16px;
+            font-family: 'SF Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .time-btn.inactive {
+            background: var(--bg-medium);
+            color: var(--text-secondary);
+        }
+
+        .time-btn.active {
+            background: var(--accent-primary);
+            color: #000;
+            border-color: var(--accent-primary);
+        }
+
+        /* Section Header */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 20px;
+            margin-bottom: 16px;
+        }
+
+        .section-diamond {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-primary);
+            transform: rotate(45deg);
+        }
+
+        .section-title {
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+        }
+
+        /* Big Three Card */
+        .big-three-card {
+            margin: 0 20px 12px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            background: var(--bg-medium);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .big-three-card:hover {
+            border-color: rgba(255,255,255,0.15);
+        }
+
+        .big-three-card.squat { --exercise-color: var(--squat-color); }
+        .big-three-card.bench { --exercise-color: var(--bench-color); }
+        .big-three-card.deadlift { --exercise-color: var(--deadlift-color); }
+
+        /* Top glow bar */
+        .card-glow-bar {
+            height: 1px;
+            background: var(--exercise-color);
+            opacity: 0.3;
+        }
+
+        .card-main {
+            display: flex;
+        }
+
+        /* Left color bar */
+        .card-color-bar {
+            width: 4px;
+            background: var(--exercise-color);
+        }
+
+        .card-content {
+            flex: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+        }
+
+        .exercise-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .exercise-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .exercise-fantasy {
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            font-style: italic;
+            color: var(--text-muted);
+        }
+
+        .e1rm-display {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+        }
+
+        .e1rm-value {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+
+        .e1rm-number {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--accent-primary);
+        }
+
+        .e1rm-unit {
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .trend-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .trend-indicator.up { color: var(--accent-success); }
+        .trend-indicator.down { color: var(--accent-danger); }
+        .trend-indicator.stable { color: var(--text-secondary); }
+
+        .chevron {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-left: 8px;
+        }
+
+        /* Expanded Card Content */
+        .card-expanded {
+            background: var(--bg-dark);
+            padding: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Chart */
+        .chart-container {
+            height: 140px;
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        .chart-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .chart-grid-line {
+            stroke: var(--border);
+            stroke-width: 0.5;
+            stroke-dasharray: 4;
+        }
+
+        .chart-line {
+            fill: none;
+            stroke: var(--accent-primary);
+            stroke-width: 2;
+        }
+
+        .chart-area {
+            fill: url(#areaGradient);
+        }
+
+        .chart-point {
+            fill: var(--accent-primary);
+        }
+
+        .chart-point.selected {
+            fill: var(--accent-gold);
+        }
+
+        .chart-label {
+            font-family: 'SF Mono', monospace;
+            font-size: 9px;
+            fill: var(--text-muted);
+        }
+
+        /* Rank and Stats Row */
+        .stats-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .rank-badge-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            background: var(--bg-light);
+            border-radius: 4px;
+        }
+
+        .rank-badge {
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: #000;
+        }
+
+        .rank-badge.s-rank { background: linear-gradient(135deg, #FFD700, #FFA500); }
+        .rank-badge.a-rank { background: linear-gradient(135deg, #00D4FF, #0099CC); }
+        .rank-badge.b-rank { background: linear-gradient(135deg, #7B61FF, #5A45CC); }
+        .rank-badge.c-rank { background: linear-gradient(135deg, #00FF88, #00CC6A); }
+        .rank-badge.d-rank { background: linear-gradient(135deg, #888, #666); }
+
+        .rank-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .rank-title {
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .rank-percentile {
+            font-family: 'SF Mono', monospace;
+            font-size: 9px;
+            color: var(--text-muted);
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+        }
+
+        .stat-value {
+            display: flex;
+            align-items: baseline;
+            gap: 2px;
+        }
+
+        .stat-number {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .stat-unit {
+            font-family: 'SF Mono', monospace;
+            font-size: 9px;
+            color: var(--text-muted);
+        }
+
+        .stat-label {
+            font-family: 'SF Mono', monospace;
+            font-size: 9px;
+            font-weight: 500;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+        }
+
+        /* Chart Annotation */
+        .chart-annotation {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-medium);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 4px;
+            padding: 8px 12px;
+            text-align: center;
+            display: none;
+        }
+
+        .chart-annotation.visible {
+            display: block;
+        }
+
+        .annotation-value {
+            font-family: 'SF Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent-primary);
+        }
+
+        .annotation-date {
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        /* Spacer */
+        .spacer { flex: 1; }
+
+        .section-spacer {
+            height: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="mockup-label">Stats Screen: <span>Current State (Faithful Recreation)</span></div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="screen-content">
+                    <!-- Header -->
+                    <div class="header">
+                        <div class="system-tag">[ SYSTEM ]</div>
+                        <div class="header-title">Power Analysis</div>
+                    </div>
+
+                    <!-- Tab Selector -->
+                    <div class="tab-selector">
+                        <button class="tab-btn active">POWER</button>
+                        <button class="tab-btn inactive">VESSEL</button>
+                        <button class="tab-btn inactive">RECORDS</button>
+                    </div>
+
+                    <!-- Time Range Selector -->
+                    <div class="time-range">
+                        <button class="time-btn active">4W</button>
+                        <button class="time-btn inactive">8W</button>
+                        <button class="time-btn inactive">12W</button>
+                        <button class="time-btn inactive">6M</button>
+                        <button class="time-btn inactive">1Y</button>
+                    </div>
+
+                    <!-- Section Header: THE BIG THREE -->
+                    <div class="section-header">
+                        <div class="section-diamond"></div>
+                        <div class="section-title">THE BIG THREE</div>
+                    </div>
+
+                    <!-- Squat Card (Collapsed) -->
+                    <div class="big-three-card squat">
+                        <div class="card-glow-bar"></div>
+                        <div class="card-main">
+                            <div class="card-color-bar"></div>
+                            <div class="card-content">
+                                <div class="exercise-info">
+                                    <div class="exercise-name">Barbell Squat</div>
+                                    <div class="exercise-fantasy">"Earthshatter"</div>
+                                </div>
+                                <div class="e1rm-display">
+                                    <div class="e1rm-value">
+                                        <span class="e1rm-number" style="color: var(--squat-color);">315</span>
+                                        <span class="e1rm-unit">lb</span>
+                                    </div>
+                                    <div class="trend-indicator up">
+                                        <span>↗</span>
+                                        <span>4.2%</span>
+                                    </div>
+                                </div>
+                                <span class="chevron">▼</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bench Card (Expanded - showing chart) -->
+                    <div class="big-three-card bench">
+                        <div class="card-glow-bar"></div>
+                        <div class="card-main">
+                            <div class="card-color-bar"></div>
+                            <div class="card-content">
+                                <div class="exercise-info">
+                                    <div class="exercise-name">Bench Press</div>
+                                    <div class="exercise-fantasy">"Titanic Press"</div>
+                                </div>
+                                <div class="e1rm-display">
+                                    <div class="e1rm-value">
+                                        <span class="e1rm-number">242</span>
+                                        <span class="e1rm-unit">lb</span>
+                                    </div>
+                                    <div class="trend-indicator up">
+                                        <span>↗</span>
+                                        <span>2.8%</span>
+                                    </div>
+                                </div>
+                                <span class="chevron">▲</span>
+                            </div>
+                        </div>
+                        <div class="card-expanded">
+                            <!-- Chart -->
+                            <div class="chart-container">
+                                <div class="chart-annotation visible">
+                                    <div class="annotation-value">242 lb</div>
+                                    <div class="annotation-date">Jan 22</div>
+                                </div>
+                                <svg class="chart-svg" viewBox="0 0 300 100" preserveAspectRatio="none">
+                                    <defs>
+                                        <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stop-color="rgba(0, 212, 255, 0.3)"/>
+                                            <stop offset="100%" stop-color="rgba(0, 212, 255, 0)"/>
+                                        </linearGradient>
+                                    </defs>
+                                    <!-- Grid lines -->
+                                    <line class="chart-grid-line" x1="0" y1="25" x2="300" y2="25"/>
+                                    <line class="chart-grid-line" x1="0" y1="50" x2="300" y2="50"/>
+                                    <line class="chart-grid-line" x1="0" y1="75" x2="300" y2="75"/>
+
+                                    <!-- Area fill -->
+                                    <path class="chart-area" d="M0,80 L50,75 L100,70 L150,55 L200,50 L250,35 L300,25 L300,100 L0,100 Z"/>
+
+                                    <!-- Line -->
+                                    <path class="chart-line" d="M0,80 L50,75 L100,70 L150,55 L200,50 L250,35 L300,25"/>
+
+                                    <!-- Points -->
+                                    <circle class="chart-point" cx="0" cy="80" r="3"/>
+                                    <circle class="chart-point" cx="50" cy="75" r="3"/>
+                                    <circle class="chart-point" cx="100" cy="70" r="3"/>
+                                    <circle class="chart-point" cx="150" cy="55" r="3"/>
+                                    <circle class="chart-point" cx="200" cy="50" r="3"/>
+                                    <circle class="chart-point" cx="250" cy="35" r="3"/>
+                                    <circle class="chart-point selected" cx="300" cy="25" r="5"/>
+
+                                    <!-- Axis labels -->
+                                    <text class="chart-label" x="0" y="95">Jan 1</text>
+                                    <text class="chart-label" x="145" y="95">Jan 12</text>
+                                    <text class="chart-label" x="280" y="95">Jan 22</text>
+                                </svg>
+                            </div>
+
+                            <!-- Rank and Stats Row -->
+                            <div class="stats-row">
+                                <div class="rank-badge-container">
+                                    <div class="rank-badge a-rank">A</div>
+                                    <div class="rank-info">
+                                        <div class="rank-title">A-Rank Hunter</div>
+                                        <div class="rank-percentile">Top 22%</div>
+                                    </div>
+                                </div>
+                                <div class="spacer"></div>
+                                <div class="stat-item">
+                                    <div class="stat-value">
+                                        <span class="stat-number">14</span>
+                                    </div>
+                                    <div class="stat-label">QUESTS</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value">
+                                        <span class="stat-number">238</span>
+                                        <span class="stat-unit">lb</span>
+                                    </div>
+                                    <div class="stat-label">4W AVG</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Deadlift Card (Collapsed) -->
+                    <div class="big-three-card deadlift">
+                        <div class="card-glow-bar"></div>
+                        <div class="card-main">
+                            <div class="card-color-bar"></div>
+                            <div class="card-content">
+                                <div class="exercise-info">
+                                    <div class="exercise-name">Deadlift</div>
+                                    <div class="exercise-fantasy">"World Breaker"</div>
+                                </div>
+                                <div class="e1rm-display">
+                                    <div class="e1rm-value">
+                                        <span class="e1rm-number" style="color: var(--deadlift-color);">405</span>
+                                        <span class="e1rm-unit">lb</span>
+                                    </div>
+                                    <div class="trend-indicator up">
+                                        <span>↗</span>
+                                        <span>6.1%</span>
+                                    </div>
+                                </div>
+                                <span class="chevron">▼</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-spacer"></div>
+
+                    <!-- Additional Skills Section -->
+                    <div class="section-header">
+                        <div class="section-diamond"></div>
+                        <div class="section-title">ADDITIONAL SKILLS</div>
+                    </div>
+
+                    <!-- Barbell Curl Card -->
+                    <div class="big-three-card" style="--exercise-color: #FF9500;">
+                        <div class="card-glow-bar"></div>
+                        <div class="card-main">
+                            <div class="card-color-bar"></div>
+                            <div class="card-content">
+                                <div class="exercise-info">
+                                    <div class="exercise-name">Barbell Curl</div>
+                                    <div class="exercise-fantasy">"Iron Embrace"</div>
+                                </div>
+                                <div class="e1rm-display">
+                                    <div class="e1rm-value">
+                                        <span class="e1rm-number" style="color: #FF9500;">95</span>
+                                        <span class="e1rm-unit">lb</span>
+                                    </div>
+                                    <div class="trend-indicator stable">
+                                        <span>→</span>
+                                        <span>0.0%</span>
+                                    </div>
+                                </div>
+                                <span style="font-size: 16px; color: var(--text-muted); margin-right: 4px;">×</span>
+                                <span class="chevron">▼</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Add Skill Button -->
+                    <div style="margin: 12px 20px;">
+                        <div style="
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 8px;
+                            padding: 16px;
+                            background: var(--bg-medium);
+                            border-radius: 4px;
+                            border: 1px dashed rgba(0, 212, 255, 0.3);
+                            cursor: pointer;
+                        ">
+                            <span style="font-size: 16px; color: var(--accent-primary);">⊕</span>
+                            <span style="font-family: 'SF Mono', monospace; font-size: 12px; font-weight: 600; color: var(--accent-primary); letter-spacing: 1px;">ADD SKILL</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - Solo Leveling Shadow Monarch</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #0a0a14;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        /* Solo Leveling Color Palette C - Shadow Monarch */
+        :root {
+            --bg-void: #020204;
+            --bg-dark: #060608;
+            --bg-card: #0c0c10;
+            --bg-elevated: #121216;
+            --accent-primary: #00D4FF;      /* System Blue */
+            --accent-shadow: #1a1a2e;       /* Shadow Blue */
+            --accent-gold: #FFD700;
+            --accent-success: #00FF88;
+            --accent-warning: #FF9500;
+            --accent-danger: #FF3333;       /* Blood Red */
+            --accent-ice: #88DDFF;          /* Ice Blue */
+            --text-primary: #FFFFFF;
+            --text-secondary: rgba(255, 255, 255, 0.5);
+            --text-tertiary: rgba(255, 255, 255, 0.3);
+            --glow-primary: rgba(0, 212, 255, 0.3);
+            --glow-shadow: rgba(26, 26, 46, 0.8);
+        }
+
+        .iphone-frame {
+            width: 390px;
+            height: 844px;
+            background: #000;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow:
+                0 0 0 3px #1a1a1a,
+                0 0 0 6px #0d0d0d,
+                0 30px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-void);
+            border-radius: 40px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .iphone-screen::-webkit-scrollbar { display: none; }
+
+        .dynamic-island {
+            position: sticky;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 34px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 100;
+            margin-bottom: -34px;
+        }
+
+        .screen-content {
+            padding-bottom: 100px;
+            color: var(--text-primary);
+        }
+
+        .mockup-label {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .mockup-label span { color: var(--accent-ice); }
+
+        /* Hunter Header */
+        .hunter-hero {
+            background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-void) 100%);
+            padding: 60px 20px 24px;
+            position: relative;
+        }
+
+        .hunter-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100%;
+            background:
+                radial-gradient(ellipse at top left, rgba(0, 212, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(ellipse at top right, rgba(0, 212, 255, 0.05) 0%, transparent 40%);
+            pointer-events: none;
+        }
+
+        .hunter-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 14px;
+            background: var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow:
+                0 0 20px var(--glow-primary),
+                inset 0 0 20px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 212, 255, 0.15);
+        }
+
+        .hunter-info { flex: 1; }
+        .hunter-name {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 2px;
+            color: var(--accent-ice);
+            text-shadow: 0 0 20px var(--glow-primary);
+        }
+
+        .hunter-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .rank-tag {
+            color: var(--accent-primary);
+            font-weight: 600;
+        }
+
+        .streak-tag {
+            color: var(--accent-warning);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .xp-full { margin-top: 16px; }
+        .xp-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-tertiary);
+            margin-bottom: 6px;
+        }
+
+        .xp-track {
+            height: 4px;
+            background: var(--bg-card);
+            border-radius: 2px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+        }
+
+        .xp-fill {
+            height: 100%;
+            width: 65%;
+            background: linear-gradient(90deg, var(--accent-primary) 0%, var(--accent-ice) 100%);
+            border-radius: 2px;
+            box-shadow: 0 0 8px var(--glow-primary);
+        }
+
+        /* Actions */
+        .actions-float {
+            display: flex;
+            gap: 10px;
+            padding: 0 20px;
+            margin-top: -10px;
+            margin-bottom: 28px;
+        }
+
+        .action-pill {
+            flex: 1;
+            padding: 14px 20px;
+            border-radius: 50px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .action-pill.primary {
+            background: linear-gradient(135deg, var(--accent-primary) 0%, #0088aa 100%);
+            color: #000;
+            box-shadow: 0 4px 20px var(--glow-primary);
+        }
+
+        .action-pill.secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        }
+
+        /* Stats */
+        .stats-scroll {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 0 20px;
+            margin-bottom: 28px;
+        }
+        .stats-scroll::-webkit-scrollbar { display: none; }
+
+        .stat-card {
+            flex: 0 0 auto;
+            min-width: 100px;
+            padding: 16px;
+            background: var(--bg-card);
+            border-radius: 14px;
+            text-align: center;
+            border-left: 3px solid transparent;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+        }
+
+        .stat-card.accent {
+            border-left-color: var(--accent-primary);
+        }
+
+        .stat-value {
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 2px;
+            color: var(--accent-ice);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+        }
+
+        /* Sections */
+        .contained {
+            padding: 0 20px;
+            margin-bottom: 28px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .section-link {
+            font-size: 13px;
+            color: var(--accent-primary);
+        }
+
+        /* Quests */
+        .quest-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .quest-row {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            border-left: 3px solid rgba(255, 255, 255, 0.05);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+        }
+
+        .quest-row.claimable {
+            border-left-color: var(--accent-success);
+        }
+
+        .quest-icon { font-size: 18px; margin-right: 12px; opacity: 0.8; }
+        .quest-content { flex: 1; }
+        .quest-name { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+        .quest-progress { font-size: 12px; color: var(--text-tertiary); }
+        .quest-xp { font-size: 12px; color: var(--text-tertiary); }
+
+        .quest-claim-btn {
+            padding: 6px 14px;
+            background: var(--accent-success);
+            border: none;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #000;
+            cursor: pointer;
+            box-shadow: 0 0 12px rgba(0, 255, 136, 0.25);
+        }
+
+        /* Power Levels */
+        .power-edge {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 0 20px;
+            margin-bottom: 28px;
+        }
+        .power-edge::-webkit-scrollbar { display: none; }
+
+        .power-card {
+            flex: 1;
+            min-width: 110px;
+            padding: 16px;
+            background: var(--bg-card);
+            border-radius: 14px;
+            border-left: 3px solid;
+            text-align: center;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+        }
+
+        .power-card.squat { border-left-color: var(--accent-danger); }
+        .power-card.bench { border-left-color: var(--accent-primary); }
+        .power-card.deadlift { border-left-color: var(--accent-ice); }
+
+        .power-label { font-size: 11px; color: var(--text-tertiary); margin-bottom: 6px; }
+        .power-value { font-size: 22px; font-weight: 700; }
+        .power-card.squat .power-value { color: var(--accent-danger); }
+        .power-card.bench .power-value { color: var(--accent-primary); }
+        .power-card.deadlift .power-value { color: var(--accent-ice); }
+        .power-unit { font-size: 12px; color: var(--text-tertiary); }
+
+        /* Recovery */
+        .recovery-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+        .recovery-pill {
+            padding: 8px 14px;
+            background: var(--bg-card);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-secondary);
+        }
+
+        .recovery-dot { width: 6px; height: 6px; border-radius: 50%; }
+        .recovery-pill.fresh .recovery-dot { background: var(--accent-success); box-shadow: 0 0 6px rgba(0, 255, 136, 0.5); }
+        .recovery-pill.moderate .recovery-dot { background: var(--accent-warning); box-shadow: 0 0 6px rgba(255, 149, 0, 0.5); }
+        .recovery-pill.fatigued .recovery-dot { background: var(--accent-danger); box-shadow: 0 0 6px rgba(255, 51, 51, 0.5); }
+
+        /* Achievement */
+        .achievement-banner {
+            margin: 0 20px;
+            padding: 16px 18px;
+            background: var(--bg-card);
+            border-radius: 14px;
+            border-left: 3px solid var(--accent-gold);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.02),
+                0 0 30px rgba(255, 215, 0, 0.05);
+        }
+
+        .achievement-icon { font-size: 28px; }
+        .achievement-content { flex: 1; }
+        .achievement-label {
+            font-size: 11px;
+            color: rgba(255, 215, 0, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+        .achievement-exercise { font-size: 14px; font-weight: 500; }
+        .achievement-value { font-size: 20px; font-weight: 700; color: var(--accent-gold); }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="mockup-label">Solo Leveling C: <span>Shadow Monarch</span> — Deep blacks + ice blue</div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="screen-content">
+                    <div class="hunter-hero">
+                        <div class="hunter-row">
+                            <div class="avatar">🏋️</div>
+                            <div class="hunter-info">
+                                <div class="hunter-name">Nick</div>
+                                <div class="hunter-meta">
+                                    <span class="rank-tag">A-Rank</span>
+                                    <span>Level 24</span>
+                                    <span class="streak-tag">🔥 12</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="xp-full">
+                            <div class="xp-labels">
+                                <span>Level 24</span>
+                                <span>6,500 / 10,000 XP</span>
+                            </div>
+                            <div class="xp-track">
+                                <div class="xp-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="actions-float">
+                        <button class="action-pill primary">⚔️ Start Workout</button>
+                        <button class="action-pill secondary">📷 Scan</button>
+                    </div>
+
+                    <div class="stats-scroll">
+                        <div class="stat-card accent">
+                            <div class="stat-value">3</div>
+                            <div class="stat-label">Workouts</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">24.5K</div>
+                            <div class="stat-label">Volume</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">185</div>
+                            <div class="stat-label">Minutes</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">60%</div>
+                            <div class="stat-label">Weekly</div>
+                        </div>
+                    </div>
+
+                    <div class="contained">
+                        <div class="section-header">
+                            <span class="section-title">Daily Quests</span>
+                            <span class="section-link">View All</span>
+                        </div>
+                        <div class="quest-list">
+                            <div class="quest-row">
+                                <span class="quest-icon">💪</span>
+                                <div class="quest-content">
+                                    <div class="quest-name">Complete a workout</div>
+                                    <div class="quest-progress">0/1 completed</div>
+                                </div>
+                                <span class="quest-xp">+100 XP</span>
+                            </div>
+                            <div class="quest-row claimable">
+                                <span class="quest-icon">🎯</span>
+                                <div class="quest-content">
+                                    <div class="quest-name">Hit a new PR</div>
+                                    <div class="quest-progress">Ready!</div>
+                                </div>
+                                <button class="quest-claim-btn">Claim</button>
+                            </div>
+                            <div class="quest-row">
+                                <span class="quest-icon">⏱️</span>
+                                <div class="quest-content">
+                                    <div class="quest-name">Train for 45+ minutes</div>
+                                    <div class="quest-progress">32/45 min</div>
+                                </div>
+                                <span class="quest-xp">+50 XP</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="contained" style="padding: 0;">
+                        <div class="section-header" style="padding: 0 20px;">
+                            <span class="section-title">Power Levels</span>
+                            <span class="section-link">Details</span>
+                        </div>
+                    </div>
+                    <div class="power-edge">
+                        <div class="power-card squat">
+                            <div class="power-label">🦵 Squat</div>
+                            <div class="power-value">315<span class="power-unit"> lbs</span></div>
+                        </div>
+                        <div class="power-card bench">
+                            <div class="power-label">🏋️ Bench</div>
+                            <div class="power-value">225<span class="power-unit"> lbs</span></div>
+                        </div>
+                        <div class="power-card deadlift">
+                            <div class="power-label">🔱 Deadlift</div>
+                            <div class="power-value">405<span class="power-unit"> lbs</span></div>
+                        </div>
+                    </div>
+
+                    <div class="contained">
+                        <div class="section-header">
+                            <span class="section-title">Recovery</span>
+                        </div>
+                        <div class="recovery-row">
+                            <span class="recovery-pill fresh"><span class="recovery-dot"></span>Chest</span>
+                            <span class="recovery-pill fresh"><span class="recovery-dot"></span>Back</span>
+                            <span class="recovery-pill moderate"><span class="recovery-dot"></span>Legs</span>
+                            <span class="recovery-pill fatigued"><span class="recovery-dot"></span>Shoulders</span>
+                            <span class="recovery-pill fresh"><span class="recovery-dot"></span>Arms</span>
+                            <span class="recovery-pill moderate"><span class="recovery-dot"></span>Core</span>
+                        </div>
+                    </div>
+
+                    <div class="achievement-banner">
+                        <span class="achievement-icon">🏆</span>
+                        <div class="achievement-content">
+                            <div class="achievement-label">New PR</div>
+                            <div class="achievement-exercise">Barbell Squat</div>
+                        </div>
+                        <span class="achievement-value">315×5</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stats - Edge Flow</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #0a0a14;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        :root {
+            --bg-void: #050508;
+            --bg-dark: #0a0a12;
+            --bg-card: #0f1018;
+            --bg-elevated: #141520;
+            --accent-primary: #00D4FF;
+            --accent-secondary: #7B61FF;
+            --accent-gold: #FFD700;
+            --accent-success: #00FF88;
+            --accent-warning: #FF9500;
+            --accent-danger: #FF4757;
+            --text-primary: #FFFFFF;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --text-tertiary: rgba(255, 255, 255, 0.4);
+        }
+
+        .iphone-frame {
+            width: 390px;
+            height: 844px;
+            background: #000;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow: 0 0 0 3px #1a1a1a, 0 0 0 6px #0d0d0d, 0 30px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-void);
+            border-radius: 40px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .iphone-screen::-webkit-scrollbar { display: none; }
+
+        .dynamic-island {
+            position: sticky;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 34px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 100;
+            margin-bottom: -34px;
+        }
+
+        .screen-content { padding-bottom: 100px; color: var(--text-primary); }
+
+        .mockup-label {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .mockup-label span { color: var(--accent-primary); }
+
+        /* Header */
+        .stats-header {
+            padding: 60px 20px 20px;
+            background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-void) 100%);
+        }
+
+        .header-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .header-subtitle {
+            font-size: 14px;
+            color: var(--text-tertiary);
+        }
+
+        /* Time filter */
+        .time-filter {
+            display: flex;
+            gap: 8px;
+            padding: 0 20px;
+            margin: 16px 0;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border: none;
+            border-radius: 20px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .filter-btn.active {
+            background: var(--accent-primary);
+            color: #000;
+            font-weight: 600;
+        }
+
+        /* Big 3 Section */
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            padding: 0 20px;
+            margin: 24px 0 16px;
+        }
+
+        .big-three-cards {
+            display: flex;
+            gap: 10px;
+            padding: 0 20px;
+            overflow-x: auto;
+        }
+        .big-three-cards::-webkit-scrollbar { display: none; }
+
+        .lift-card {
+            flex: 1;
+            min-width: 110px;
+            padding: 16px;
+            background: var(--bg-card);
+            border-radius: 14px;
+            border-left: 3px solid;
+        }
+
+        .lift-card.squat { border-left-color: #FF6B6B; }
+        .lift-card.bench { border-left-color: var(--accent-primary); }
+        .lift-card.deadlift { border-left-color: var(--accent-secondary); }
+
+        .lift-name {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-bottom: 8px;
+        }
+
+        .lift-value {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .lift-card.squat .lift-value { color: #FF6B6B; }
+        .lift-card.bench .lift-value { color: var(--accent-primary); }
+        .lift-card.deadlift .lift-value { color: var(--accent-secondary); }
+
+        .lift-trend {
+            font-size: 11px;
+            color: var(--accent-success);
+        }
+
+        .lift-trend.down {
+            color: var(--accent-danger);
+        }
+
+        /* Chart placeholder */
+        .chart-container {
+            margin: 20px;
+            padding: 20px;
+            background: var(--bg-card);
+            border-radius: 16px;
+            height: 180px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .chart-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .chart-value {
+            font-size: 12px;
+            color: var(--accent-primary);
+        }
+
+        .chart-area {
+            flex: 1;
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            padding-top: 10px;
+        }
+
+        .chart-bar {
+            flex: 1;
+            background: linear-gradient(180deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            border-radius: 4px 4px 0 0;
+            opacity: 0.8;
+        }
+
+        /* PR List */
+        .pr-list {
+            padding: 0 20px;
+        }
+
+        .pr-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border-left: 3px solid var(--accent-gold);
+        }
+
+        .pr-icon {
+            font-size: 24px;
+            margin-right: 14px;
+        }
+
+        .pr-info {
+            flex: 1;
+        }
+
+        .pr-exercise {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .pr-date {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .pr-value {
+            text-align: right;
+        }
+
+        .pr-weight {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent-gold);
+        }
+
+        .pr-reps {
+            font-size: 11px;
+            color: var(--text-tertiary);
+        }
+
+        /* Percentile ranking */
+        .ranking-card {
+            margin: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, var(--bg-card) 100%);
+            border-radius: 16px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+
+        .ranking-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .ranking-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .ranking-badge {
+            padding: 4px 10px;
+            background: var(--accent-primary);
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #000;
+        }
+
+        .ranking-bar-container {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .ranking-bar {
+            height: 100%;
+            width: 78%;
+            background: linear-gradient(90deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            border-radius: 4px;
+        }
+
+        .ranking-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-tertiary);
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="mockup-label">Stats Screen: <span>Power Analysis</span></div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="screen-content">
+                    <div class="stats-header">
+                        <div class="header-title">Stats</div>
+                        <div class="header-subtitle">Track your strength journey</div>
+                    </div>
+
+                    <div class="time-filter">
+                        <button class="filter-btn">Week</button>
+                        <button class="filter-btn active">Month</button>
+                        <button class="filter-btn">Year</button>
+                        <button class="filter-btn">All</button>
+                    </div>
+
+                    <div class="section-title">Power Levels</div>
+                    <div class="big-three-cards">
+                        <div class="lift-card squat">
+                            <div class="lift-name">🦵 Squat</div>
+                            <div class="lift-value">315</div>
+                            <div class="lift-trend">↑ +15 lbs</div>
+                        </div>
+                        <div class="lift-card bench">
+                            <div class="lift-name">🏋️ Bench</div>
+                            <div class="lift-value">225</div>
+                            <div class="lift-trend">↑ +10 lbs</div>
+                        </div>
+                        <div class="lift-card deadlift">
+                            <div class="lift-name">🔱 Deadlift</div>
+                            <div class="lift-value">405</div>
+                            <div class="lift-trend">↑ +20 lbs</div>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <span class="chart-title">Weekly Volume</span>
+                            <span class="chart-value">98,500 lbs total</span>
+                        </div>
+                        <div class="chart-area">
+                            <div class="chart-bar" style="height: 60%;"></div>
+                            <div class="chart-bar" style="height: 75%;"></div>
+                            <div class="chart-bar" style="height: 45%;"></div>
+                            <div class="chart-bar" style="height: 90%;"></div>
+                            <div class="chart-bar" style="height: 100%;"></div>
+                            <div class="chart-bar" style="height: 80%;"></div>
+                            <div class="chart-bar" style="height: 55%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="ranking-card">
+                        <div class="ranking-header">
+                            <span class="ranking-title">Strength Percentile</span>
+                            <span class="ranking-badge">A-RANK</span>
+                        </div>
+                        <div class="ranking-bar-container">
+                            <div class="ranking-bar"></div>
+                        </div>
+                        <div class="ranking-labels">
+                            <span>Beginner</span>
+                            <span>78th percentile</span>
+                            <span>Elite</span>
+                        </div>
+                    </div>
+
+                    <div class="section-title">Recent PRs</div>
+                    <div class="pr-list">
+                        <div class="pr-item">
+                            <span class="pr-icon">🏆</span>
+                            <div class="pr-info">
+                                <div class="pr-exercise">Barbell Squat</div>
+                                <div class="pr-date">Today</div>
+                            </div>
+                            <div class="pr-value">
+                                <div class="pr-weight">315 lbs</div>
+                                <div class="pr-reps">5 reps</div>
+                            </div>
+                        </div>
+                        <div class="pr-item">
+                            <span class="pr-icon">🏆</span>
+                            <div class="pr-info">
+                                <div class="pr-exercise">Bench Press</div>
+                                <div class="pr-date">Today</div>
+                            </div>
+                            <div class="pr-value">
+                                <div class="pr-weight">225 lbs</div>
+                                <div class="pr-reps">6 reps</div>
+                            </div>
+                        </div>
+                        <div class="pr-item">
+                            <span class="pr-icon">🏆</span>
+                            <div class="pr-info">
+                                <div class="pr-exercise">Deadlift</div>
+                                <div class="pr-date">Jan 18</div>
+                            </div>
+                            <div class="pr-value">
+                                <div class="pr-weight">405 lbs</div>
+                                <div class="pr-reps">3 reps</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

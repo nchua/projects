@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - Soft Glow</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        /* iPhone Frame */
+        .iphone-frame {
+            width: 390px;
+            height: 844px;
+            background: #000;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow:
+                0 0 0 3px #1a1a1a,
+                0 0 0 6px #0d0d0d,
+                0 30px 60px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: #0f0f14;
+            border-radius: 40px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .iphone-screen::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Dynamic Island */
+        .dynamic-island {
+            position: sticky;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 34px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 100;
+            margin-bottom: -34px;
+        }
+
+        /* Screen Content */
+        .screen-content {
+            padding: 16px;
+            padding-top: 60px;
+            padding-bottom: 100px;
+            color: #ffffff;
+        }
+
+        /* Mockup Label */
+        .mockup-label {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .mockup-label span {
+            color: #00d4ff;
+        }
+
+        /* Neumorphic card style - soft shadows create depth */
+        .soft-card {
+            background: #14141c;
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 14px;
+            box-shadow:
+                8px 8px 20px rgba(0, 0, 0, 0.5),
+                -4px -4px 12px rgba(40, 40, 60, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.02);
+        }
+
+        /* Pressed/inset style for interactive elements */
+        .soft-inset {
+            background: #0c0c10;
+            box-shadow:
+                inset 4px 4px 10px rgba(0, 0, 0, 0.5),
+                inset -2px -2px 8px rgba(40, 40, 60, 0.1);
+        }
+
+        .section-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.35);
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-bottom: 14px;
+        }
+
+        /* ===== Hunter Status Header ===== */
+        .hunter-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 20px;
+        }
+
+        .avatar-wrapper {
+            position: relative;
+        }
+
+        .avatar {
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            background: #0c0c10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            box-shadow:
+                inset 4px 4px 10px rgba(0, 0, 0, 0.5),
+                inset -2px -2px 6px rgba(50, 50, 70, 0.1);
+        }
+
+        .rank-glow {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #14141c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: #00d4ff;
+            box-shadow:
+                0 0 12px rgba(0, 212, 255, 0.4),
+                2px 2px 6px rgba(0, 0, 0, 0.4);
+        }
+
+        .hunter-info {
+            flex: 1;
+        }
+
+        .hunter-name {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .hunter-level {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 10px;
+        }
+
+        .xp-track {
+            height: 6px;
+            background: #0c0c10;
+            border-radius: 3px;
+            box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        .xp-fill {
+            height: 100%;
+            width: 65%;
+            background: linear-gradient(90deg, #00d4ff 0%, #00a5cc 100%);
+            border-radius: 3px;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.4);
+        }
+
+        .xp-meta {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-top: 6px;
+        }
+
+        .streak-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #0c0c10;
+            padding: 10px 14px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #ff9500;
+            box-shadow:
+                inset 3px 3px 8px rgba(0, 0, 0, 0.4),
+                inset -2px -2px 6px rgba(50, 50, 70, 0.08);
+        }
+
+        /* ===== Weekly Progress ===== */
+        .weekly-card {
+            padding: 20px;
+        }
+
+        .weekly-bar-track {
+            height: 8px;
+            background: #0c0c10;
+            border-radius: 4px;
+            box-shadow: inset 2px 2px 6px rgba(0, 0, 0, 0.5);
+            margin-bottom: 18px;
+            overflow: hidden;
+        }
+
+        .weekly-bar-fill {
+            height: 100%;
+            width: 60%;
+            background: linear-gradient(90deg, #00d4ff 0%, #7b2cbf 100%);
+            border-radius: 4px;
+            box-shadow: 0 0 12px rgba(0, 212, 255, 0.3);
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 12px 16px;
+            background: #0c0c10;
+            border-radius: 10px;
+            box-shadow:
+                inset 3px 3px 8px rgba(0, 0, 0, 0.4),
+                inset -2px -2px 5px rgba(50, 50, 70, 0.06);
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-top: 2px;
+            text-transform: uppercase;
+        }
+
+        /* ===== Quick Actions ===== */
+        .actions-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 16px;
+            border-radius: 12px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .action-btn.primary {
+            background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+            color: #000;
+            box-shadow:
+                6px 6px 16px rgba(0, 0, 0, 0.4),
+                -3px -3px 10px rgba(40, 40, 60, 0.1),
+                0 0 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .action-btn.secondary {
+            background: #14141c;
+            color: #fff;
+            box-shadow:
+                6px 6px 16px rgba(0, 0, 0, 0.4),
+                -3px -3px 10px rgba(40, 40, 60, 0.1);
+        }
+
+        /* ===== Daily Quests ===== */
+        .quest-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .quest-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .quest-item:first-child {
+            padding-top: 0;
+        }
+
+        .quest-icon-wrap {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: #0c0c10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 18px;
+            box-shadow:
+                inset 3px 3px 8px rgba(0, 0, 0, 0.4),
+                inset -2px -2px 5px rgba(50, 50, 70, 0.06);
+        }
+
+        .quest-content {
+            flex: 1;
+        }
+
+        .quest-name {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+
+        .quest-progress {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .quest-reward {
+            font-size: 12px;
+            color: #00d4ff;
+            padding: 6px 12px;
+            background: #0c0c10;
+            border-radius: 8px;
+            box-shadow:
+                inset 2px 2px 5px rgba(0, 0, 0, 0.3),
+                inset -1px -1px 3px rgba(50, 50, 70, 0.05);
+        }
+
+        .quest-claim {
+            padding: 8px 14px;
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #000;
+            cursor: pointer;
+            box-shadow:
+                4px 4px 12px rgba(0, 0, 0, 0.3),
+                0 0 12px rgba(0, 255, 136, 0.3);
+        }
+
+        /* ===== Power Levels ===== */
+        .power-item {
+            margin-bottom: 16px;
+        }
+
+        .power-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .power-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .power-name {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .power-value {
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .power-bar-track {
+            height: 8px;
+            background: #0c0c10;
+            border-radius: 4px;
+            box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+        }
+
+        .power-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+        }
+
+        .power-bar-fill.squat {
+            width: 75%;
+            background: linear-gradient(90deg, #ff6b6b 0%, #ff8e8e 100%);
+            box-shadow: 0 0 10px rgba(255, 107, 107, 0.3);
+        }
+
+        .power-bar-fill.bench {
+            width: 60%;
+            background: linear-gradient(90deg, #00d4ff 0%, #66e0ff 100%);
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+
+        .power-bar-fill.deadlift {
+            width: 85%;
+            background: linear-gradient(90deg, #7b2cbf 0%, #9d4edd 100%);
+            box-shadow: 0 0 10px rgba(123, 44, 191, 0.3);
+        }
+
+        /* ===== Recovery ===== */
+        .recovery-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .recovery-chip {
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            background: #0c0c10;
+            box-shadow:
+                inset 2px 2px 6px rgba(0, 0, 0, 0.4),
+                inset -1px -1px 4px rgba(50, 50, 70, 0.05);
+        }
+
+        .recovery-chip.fresh {
+            color: #00ff88;
+            box-shadow:
+                inset 2px 2px 6px rgba(0, 0, 0, 0.4),
+                0 0 8px rgba(0, 255, 136, 0.15);
+        }
+
+        .recovery-chip.moderate {
+            color: #ffd600;
+            box-shadow:
+                inset 2px 2px 6px rgba(0, 0, 0, 0.4),
+                0 0 8px rgba(255, 214, 0, 0.15);
+        }
+
+        .recovery-chip.fatigued {
+            color: #ff6b6b;
+            box-shadow:
+                inset 2px 2px 6px rgba(0, 0, 0, 0.4),
+                0 0 8px rgba(255, 107, 107, 0.15);
+        }
+
+        /* ===== Achievement ===== */
+        .achievement-card {
+            padding: 18px;
+            box-shadow:
+                8px 8px 20px rgba(0, 0, 0, 0.5),
+                -4px -4px 12px rgba(40, 40, 60, 0.15),
+                0 0 20px rgba(255, 215, 0, 0.08);
+        }
+
+        .achievement-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .achievement-icon {
+            font-size: 36px;
+            filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.4));
+        }
+
+        .achievement-info {
+            flex: 1;
+        }
+
+        .achievement-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #ffd700;
+            margin-bottom: 2px;
+        }
+
+        .achievement-subtitle {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .achievement-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffd700;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="mockup-label">Mockup 4: <span>Soft Glow</span> — Neumorphism with soft inner/outer shadows</div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="screen-content">
+                    <!-- Hunter Status Header -->
+                    <div class="soft-card hunter-header">
+                        <div class="avatar-wrapper">
+                            <div class="avatar">🏋️</div>
+                            <div class="rank-glow">A</div>
+                        </div>
+                        <div class="hunter-info">
+                            <div class="hunter-name">Nick</div>
+                            <div class="hunter-level">Level 24 Hunter</div>
+                            <div class="xp-track">
+                                <div class="xp-fill"></div>
+                            </div>
+                            <div class="xp-meta">6,500 / 10,000 XP</div>
+                        </div>
+                        <div class="streak-pill">
+                            🔥 12
+                        </div>
+                    </div>
+
+                    <!-- Weekly Progress -->
+                    <div class="soft-card weekly-card">
+                        <div class="section-label">Weekly Quest</div>
+                        <div class="weekly-bar-track">
+                            <div class="weekly-bar-fill"></div>
+                        </div>
+                        <div class="stats-row">
+                            <div class="stat-item">
+                                <div class="stat-value">3</div>
+                                <div class="stat-label">Workouts</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">24.5K</div>
+                                <div class="stat-label">Volume</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">185</div>
+                                <div class="stat-label">Minutes</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="actions-row">
+                        <button class="action-btn primary">⚔️ Start Workout</button>
+                        <button class="action-btn secondary">📷 Scan</button>
+                    </div>
+
+                    <!-- Daily Quests -->
+                    <div class="soft-card">
+                        <div class="section-label">Daily Quests</div>
+                        <div class="quest-item">
+                            <div class="quest-icon-wrap">💪</div>
+                            <div class="quest-content">
+                                <div class="quest-name">Complete a workout</div>
+                                <div class="quest-progress">0/1 completed</div>
+                            </div>
+                            <span class="quest-reward">+100 XP</span>
+                        </div>
+                        <div class="quest-item">
+                            <div class="quest-icon-wrap">🎯</div>
+                            <div class="quest-content">
+                                <div class="quest-name">Hit a new PR</div>
+                                <div class="quest-progress">Ready!</div>
+                            </div>
+                            <button class="quest-claim">Claim</button>
+                        </div>
+                        <div class="quest-item">
+                            <div class="quest-icon-wrap">⏱️</div>
+                            <div class="quest-content">
+                                <div class="quest-name">Train for 45+ minutes</div>
+                                <div class="quest-progress">32/45 min</div>
+                            </div>
+                            <span class="quest-reward">+50 XP</span>
+                        </div>
+                    </div>
+
+                    <!-- Power Levels -->
+                    <div class="soft-card">
+                        <div class="section-label">Power Levels</div>
+                        <div class="power-item">
+                            <div class="power-header">
+                                <span class="power-name">🦵 Squat</span>
+                                <span class="power-value" style="color: #ff6b6b;">315 lbs</span>
+                            </div>
+                            <div class="power-bar-track">
+                                <div class="power-bar-fill squat"></div>
+                            </div>
+                        </div>
+                        <div class="power-item">
+                            <div class="power-header">
+                                <span class="power-name">🏋️ Bench Press</span>
+                                <span class="power-value" style="color: #00d4ff;">225 lbs</span>
+                            </div>
+                            <div class="power-bar-track">
+                                <div class="power-bar-fill bench"></div>
+                            </div>
+                        </div>
+                        <div class="power-item">
+                            <div class="power-header">
+                                <span class="power-name">🔱 Deadlift</span>
+                                <span class="power-value" style="color: #9d4edd;">405 lbs</span>
+                            </div>
+                            <div class="power-bar-track">
+                                <div class="power-bar-fill deadlift"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recovery -->
+                    <div class="soft-card">
+                        <div class="section-label">Recovery Status</div>
+                        <div class="recovery-grid">
+                            <span class="recovery-chip fresh">Chest ✓</span>
+                            <span class="recovery-chip fresh">Back ✓</span>
+                            <span class="recovery-chip moderate">Legs ⚡</span>
+                            <span class="recovery-chip fatigued">Shoulders 🔥</span>
+                            <span class="recovery-chip fresh">Arms ✓</span>
+                            <span class="recovery-chip moderate">Core ⚡</span>
+                        </div>
+                    </div>
+
+                    <!-- Achievement -->
+                    <div class="soft-card achievement-card">
+                        <div class="achievement-row">
+                            <span class="achievement-icon">🏆</span>
+                            <div class="achievement-info">
+                                <div class="achievement-title">New Personal Record!</div>
+                                <div class="achievement-subtitle">Barbell Squat • 2 hours ago</div>
+                            </div>
+                            <span class="achievement-value">315×5</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

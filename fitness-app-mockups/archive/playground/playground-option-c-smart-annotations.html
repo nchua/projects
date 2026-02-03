@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Option C: Smart Annotations Layer - AI-Enhanced Playground</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-deepest: #04040a;
+            --bg-deep: #08080f;
+            --bg-surface: #0e0e16;
+            --bg-elevated: #16161f;
+            --bg-hover: #1e1e28;
+            --border: #222230;
+            --border-bright: #32324a;
+            --text-primary: #f2f2f8;
+            --text-secondary: #a0a0b5;
+            --text-muted: #555568;
+            --indigo: #6366f1;
+            --indigo-bright: #818cf8;
+            --indigo-dim: #4f46e5;
+            --indigo-glow: rgba(99, 102, 241, 0.1);
+            --emerald: #10b981;
+            --emerald-glow: rgba(16, 185, 129, 0.1);
+            --amber: #f59e0b;
+            --amber-glow: rgba(245, 158, 11, 0.1);
+            --rose: #f43f5e;
+            --rose-glow: rgba(244, 63, 94, 0.1);
+            --cyan: #06b6d4;
+        }
+
+        body {
+            font-family: 'Outfit', -apple-system, sans-serif;
+            background: var(--bg-deepest);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            grid-template-rows: auto 1fr auto;
+            min-height: 100vh;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            grid-column: span 2;
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .top-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .top-bar-logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--indigo) 0%, #8b5cf6 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .top-bar h1 {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        /* EXPLAIN MODE TOGGLE - Key feature */
+        .explain-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .explain-toggle:hover {
+            background: var(--bg-hover);
+        }
+
+        .explain-toggle.active {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: var(--indigo);
+        }
+
+        .explain-toggle-switch {
+            width: 36px;
+            height: 20px;
+            background: var(--border);
+            border-radius: 10px;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .explain-toggle.active .explain-toggle-switch {
+            background: var(--indigo);
+        }
+
+        .explain-toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: all 0.2s ease;
+        }
+
+        .explain-toggle.active .explain-toggle-switch::after {
+            left: 18px;
+        }
+
+        .explain-toggle-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .explain-toggle.active .explain-toggle-label {
+            color: var(--indigo-bright);
+        }
+
+        /* Controls Panel */
+        .controls {
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .controls::-webkit-scrollbar { width: 5px; }
+        .controls::-webkit-scrollbar-track { background: transparent; }
+        .controls::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        .section {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .section-title {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .preset-btn {
+            padding: 8px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .preset-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .preset-btn.active {
+            background: var(--indigo);
+            border-color: var(--indigo);
+            color: white;
+        }
+
+        .control-group {
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .control-group > label:not(.checkbox-row) {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        select {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: 'Fira Code', monospace;
+            font-size: 11px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23555568'%3E%3Cpath d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--indigo);
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            position: relative;
+        }
+
+        .checkbox-row:hover {
+            background: var(--bg-hover);
+        }
+
+        .checkbox-row input[type="checkbox"] {
+            margin-top: 2px;
+            accent-color: var(--indigo);
+        }
+
+        .checkbox-row .label-text {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .checkbox-row .label-desc {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* ========================================
+           SMART ANNOTATIONS - Key feature
+           ======================================== */
+
+        .annotation {
+            display: none;
+            margin-top: 8px;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            line-height: 1.6;
+            animation: annotationIn 0.3s ease;
+        }
+
+        .explain-mode .annotation {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        @keyframes annotationIn {
+            from {
+                opacity: 0;
+                transform: translateY(-4px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .annotation-icon {
+            flex-shrink: 0;
+            font-size: 12px;
+        }
+
+        .annotation-text {
+            color: var(--text-secondary);
+        }
+
+        .annotation-text strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .annotation.info {
+            background: var(--indigo-glow);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .annotation.info .annotation-icon { color: var(--indigo-bright); }
+
+        .annotation.success {
+            background: var(--emerald-glow);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .annotation.success .annotation-icon { color: var(--emerald); }
+
+        .annotation.warning {
+            background: var(--amber-glow);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .annotation.warning .annotation-icon { color: var(--amber); }
+
+        .annotation.danger {
+            background: var(--rose-glow);
+            border: 1px solid rgba(244, 63, 94, 0.2);
+        }
+
+        .annotation.danger .annotation-icon { color: var(--rose); }
+
+        /* Trade-off Meter */
+        .tradeoff-meter {
+            display: none;
+            margin-top: 16px;
+            padding: 14px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .explain-mode .tradeoff-meter {
+            display: block;
+        }
+
+        .tradeoff-meter h4 {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .tradeoff-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .tradeoff-label {
+            width: 70px;
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .tradeoff-track {
+            flex: 1;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .tradeoff-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        .tradeoff-fill.security { background: linear-gradient(90deg, var(--emerald) 0%, #059669 100%); }
+        .tradeoff-fill.convenience { background: linear-gradient(90deg, var(--cyan) 0%, #0891b2 100%); }
+        .tradeoff-fill.compatibility { background: linear-gradient(90deg, var(--indigo) 0%, #7c3aed 100%); }
+
+        .tradeoff-value {
+            width: 35px;
+            font-size: 10px;
+            font-weight: 600;
+            text-align: right;
+        }
+
+        /* Warning Badge */
+        .warning-badge {
+            display: none;
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 20px;
+            height: 20px;
+            background: var(--amber);
+            border-radius: 50%;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+            animation: badgePulse 2s infinite;
+        }
+
+        .explain-mode .warning-badge.visible {
+            display: flex;
+        }
+
+        @keyframes badgePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        /* Preview Panel */
+        .preview {
+            background: var(--bg-deep);
+            padding: 20px;
+            overflow: auto;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .preview-header h2 {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .file-tabs {
+            display: flex;
+            gap: 4px;
+        }
+
+        .file-tab {
+            padding: 6px 10px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 5px;
+            color: var(--text-muted);
+            font-family: 'Fira Code', monospace;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .file-tab:hover { color: var(--text-secondary); }
+        .file-tab.active {
+            background: var(--bg-elevated);
+            border-color: var(--border);
+            color: var(--text-primary);
+        }
+
+        .code-preview {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .code-header {
+            padding: 10px 12px;
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .code-filename {
+            font-size: 10px;
+            font-family: 'Fira Code', monospace;
+            color: var(--text-muted);
+        }
+
+        .code-content {
+            padding: 14px;
+            font-family: 'Fira Code', monospace;
+            font-size: 10px;
+            line-height: 1.7;
+            overflow-x: auto;
+            white-space: pre;
+            color: var(--text-secondary);
+            max-height: 300px;
+        }
+
+        .code-content .keyword { color: #f472b6; }
+        .code-content .type { color: #a78bfa; }
+        .code-content .string { color: #34d399; }
+        .code-content .comment { color: #404055; }
+        .code-content .func { color: #60a5fa; }
+        .code-content .property { color: #fbbf24; }
+
+        /* Security Visual */
+        .security-visual {
+            margin-top: 16px;
+            padding: 14px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .security-visual h3 {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .security-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .security-box {
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .security-box.bad {
+            background: var(--rose-glow);
+            border: 1px solid rgba(244, 63, 94, 0.2);
+        }
+
+        .security-box.good {
+            background: var(--emerald-glow);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .security-box .icon { font-size: 20px; margin-bottom: 4px; }
+        .security-box .title { font-size: 10px; font-weight: 600; margin-bottom: 2px; }
+        .security-box.bad .title { color: var(--rose); }
+        .security-box.good .title { color: var(--emerald); }
+        .security-box .desc { font-size: 9px; color: var(--text-muted); }
+
+        /* Prompt Output */
+        .prompt-output {
+            grid-column: span 2;
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border);
+            padding: 14px 20px;
+        }
+
+        .prompt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .prompt-header h3 {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .copy-btn {
+            padding: 6px 12px;
+            background: var(--indigo);
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-family: inherit;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .copy-btn:hover { background: var(--indigo-dim); }
+        .copy-btn.copied { background: var(--emerald); }
+
+        .prompt-text {
+            padding: 10px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font-size: 11px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+            max-height: 80px;
+            overflow-y: auto;
+        }
+
+        /* Combination Warning Panel */
+        .combination-warning {
+            display: none;
+            margin-top: 16px;
+            padding: 14px;
+            background: var(--rose-glow);
+            border: 1px solid rgba(244, 63, 94, 0.3);
+            border-radius: 8px;
+        }
+
+        .explain-mode .combination-warning.visible {
+            display: block;
+            animation: annotationIn 0.3s ease;
+        }
+
+        .combination-warning h4 {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--rose);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .combination-warning p {
+            font-size: 11px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container" id="appContainer">
+        <!-- Top Bar with Explain Mode Toggle -->
+        <div class="top-bar">
+            <div class="top-bar-left">
+                <div class="top-bar-logo">🔐</div>
+                <h1>iOS Keychain Configuration</h1>
+            </div>
+            <div class="explain-toggle" id="explainToggle" onclick="toggleExplainMode()">
+                <div class="explain-toggle-switch"></div>
+                <span class="explain-toggle-label">Explain Mode</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <!-- Presets -->
+            <div class="section">
+                <div class="section-title">Presets</div>
+                <div class="presets">
+                    <button class="preset-btn active" onclick="applyPreset('recommended')">Recommended</button>
+                    <button class="preset-btn" onclick="applyPreset('maximum')">Maximum Security</button>
+                    <button class="preset-btn" onclick="applyPreset('convenience')">Convenience</button>
+                    <button class="preset-btn" onclick="applyPreset('shared')">App Groups</button>
+                </div>
+            </div>
+
+            <!-- Accessibility -->
+            <div class="section">
+                <div class="section-title">Accessibility</div>
+                <div class="control-group">
+                    <label>When Accessible</label>
+                    <select id="accessibility" onchange="updateAll()">
+                        <option value="afterFirstUnlock">After First Unlock (Recommended)</option>
+                        <option value="afterFirstUnlockThisDeviceOnly">After First Unlock - This Device Only</option>
+                        <option value="whenUnlocked">When Unlocked</option>
+                        <option value="whenUnlockedThisDeviceOnly">When Unlocked - This Device Only</option>
+                        <option value="whenPasscodeSetThisDeviceOnly">When Passcode Set - This Device Only</option>
+                    </select>
+                    <!-- Smart Annotation -->
+                    <div class="annotation info" id="annotation-accessibility">
+                        <span class="annotation-icon">💡</span>
+                        <span class="annotation-text" id="annotation-accessibility-text">
+                            <strong>After First Unlock</strong> allows background access after the user unlocks their device once. Best for apps that sync in the background.
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Options -->
+            <div class="section">
+                <div class="section-title">Security Options</div>
+
+                <div class="control-group" id="biometrics-group">
+                    <label class="checkbox-row" onclick="toggleCheckbox('useBiometrics')">
+                        <input type="checkbox" id="useBiometrics" onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Require Biometrics</div>
+                            <div class="label-desc">Face ID / Touch ID required</div>
+                        </div>
+                    </label>
+                    <div class="warning-badge" id="badge-biometrics">⚡</div>
+                    <div class="annotation warning" id="annotation-biometrics">
+                        <span class="annotation-icon">⚡</span>
+                        <span class="annotation-text">
+                            <strong>High friction option.</strong> Users must authenticate every time the app reads the token. Only recommended for banking/financial apps.
+                        </span>
+                    </div>
+                </div>
+
+                <div class="control-group" id="icloud-group">
+                    <label class="checkbox-row" onclick="toggleCheckbox('syncToiCloud')">
+                        <input type="checkbox" id="syncToiCloud" onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Sync to iCloud Keychain</div>
+                            <div class="label-desc">Available across user's devices</div>
+                        </div>
+                    </label>
+                    <div class="annotation info" id="annotation-icloud">
+                        <span class="annotation-icon">☁️</span>
+                        <span class="annotation-text" id="annotation-icloud-text">
+                            Disabled. Tokens stay on this device only, reducing attack surface.
+                        </span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="checkbox-row" onclick="toggleCheckbox('useAccessGroup')">
+                        <input type="checkbox" id="useAccessGroup" onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Use Access Group</div>
+                            <div class="label-desc">Share with app extensions</div>
+                        </div>
+                    </label>
+                    <div class="annotation info" id="annotation-accessgroup">
+                        <span class="annotation-icon">📦</span>
+                        <span class="annotation-text" id="annotation-accessgroup-text">
+                            Not needed unless you have Watch apps, widgets, or share extensions that require authentication.
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Combination Warning -->
+                <div class="combination-warning" id="combinationWarning">
+                    <h4>⚠️ Conflicting Options Detected</h4>
+                    <p id="combinationWarningText">You've enabled both biometrics and iCloud sync. Biometric-protected items cannot sync to iCloud. The iCloud sync setting will be ignored.</p>
+                </div>
+            </div>
+
+            <!-- Migration -->
+            <div class="section">
+                <div class="section-title">Migration</div>
+                <div class="control-group">
+                    <label class="checkbox-row" onclick="toggleCheckbox('migrateLegacy')">
+                        <input type="checkbox" id="migrateLegacy" checked onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Migrate from UserDefaults</div>
+                            <div class="label-desc">Auto-migrate existing tokens</div>
+                        </div>
+                    </label>
+                    <div class="annotation success" id="annotation-migration">
+                        <span class="annotation-icon">✓</span>
+                        <span class="annotation-text">
+                            <strong>Enabled.</strong> Existing users will be automatically migrated without needing to log in again.
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trade-off Meter -->
+            <div class="tradeoff-meter">
+                <h4>Configuration Trade-offs</h4>
+                <div class="tradeoff-bar">
+                    <span class="tradeoff-label">Security</span>
+                    <div class="tradeoff-track">
+                        <div class="tradeoff-fill security" id="tradeoff-security" style="width: 70%;"></div>
+                    </div>
+                    <span class="tradeoff-value" id="tradeoff-security-val">70%</span>
+                </div>
+                <div class="tradeoff-bar">
+                    <span class="tradeoff-label">Convenience</span>
+                    <div class="tradeoff-track">
+                        <div class="tradeoff-fill convenience" id="tradeoff-convenience" style="width: 85%;"></div>
+                    </div>
+                    <span class="tradeoff-value" id="tradeoff-convenience-val">85%</span>
+                </div>
+                <div class="tradeoff-bar">
+                    <span class="tradeoff-label">Compatibility</span>
+                    <div class="tradeoff-track">
+                        <div class="tradeoff-fill compatibility" id="tradeoff-compatibility" style="width: 90%;"></div>
+                    </div>
+                    <span class="tradeoff-value" id="tradeoff-compatibility-val">90%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview">
+            <div class="preview-header">
+                <h2>Generated Code</h2>
+                <div class="file-tabs">
+                    <button class="file-tab active" onclick="showTab('service')">KeychainService.swift</button>
+                    <button class="file-tab" onclick="showTab('usage')">APIClient Changes</button>
+                </div>
+            </div>
+
+            <div class="code-preview">
+                <div class="code-header">
+                    <span class="code-filename" id="currentFile">KeychainService.swift</span>
+                </div>
+                <div class="code-content" id="codeOutput"></div>
+            </div>
+
+            <div class="security-visual">
+                <h3>Security Comparison</h3>
+                <div class="security-comparison">
+                    <div class="security-box bad">
+                        <div class="icon">⚠️</div>
+                        <div class="title">Before: UserDefaults</div>
+                        <div class="desc">Plaintext, backup accessible</div>
+                    </div>
+                    <div class="security-box good">
+                        <div class="icon">🔐</div>
+                        <div class="title">After: Keychain</div>
+                        <div class="desc" id="securityDesc">Hardware encrypted</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="prompt-output">
+            <div class="prompt-header">
+                <h3>Generated Prompt</h3>
+                <button class="copy-btn" onclick="copyPrompt()">Copy to Clipboard</button>
+            </div>
+            <div class="prompt-text" id="promptOutput"></div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        const state = {
+            accessibility: 'afterFirstUnlock',
+            useBiometrics: false,
+            syncToiCloud: false,
+            useAccessGroup: false,
+            migrateLegacy: true
+        };
+
+        let currentTab = 'service';
+        let explainMode = false;
+
+        const presets = {
+            recommended: { accessibility: 'afterFirstUnlock', useBiometrics: false, syncToiCloud: false, useAccessGroup: false, migrateLegacy: true },
+            maximum: { accessibility: 'whenPasscodeSetThisDeviceOnly', useBiometrics: true, syncToiCloud: false, useAccessGroup: false, migrateLegacy: true },
+            convenience: { accessibility: 'afterFirstUnlock', useBiometrics: false, syncToiCloud: true, useAccessGroup: false, migrateLegacy: true },
+            shared: { accessibility: 'afterFirstUnlock', useBiometrics: false, syncToiCloud: false, useAccessGroup: true, migrateLegacy: true }
+        };
+
+        // Accessibility descriptions
+        const accessibilityAnnotations = {
+            'afterFirstUnlock': '<strong>After First Unlock</strong> allows background access after the user unlocks their device once. Best for apps that sync in the background.',
+            'afterFirstUnlockThisDeviceOnly': '<strong>After First Unlock - Device Only</strong> provides background access but tokens won\'t appear in iCloud backups. Extra security layer.',
+            'whenUnlocked': '<strong>When Unlocked</strong> only allows access while the device is actively unlocked. More secure but breaks background sync.',
+            'whenUnlockedThisDeviceOnly': '<strong>When Unlocked - Device Only</strong> combines active-unlock requirement with no backup sync. High security.',
+            'whenPasscodeSetThisDeviceOnly': '<strong>When Passcode Set</strong> is the most secure option. Requires device passcode and won\'t work on devices without one.'
+        };
+
+        function toggleExplainMode() {
+            explainMode = !explainMode;
+            document.getElementById('explainToggle').classList.toggle('active', explainMode);
+            document.getElementById('appContainer').classList.toggle('explain-mode', explainMode);
+            updateAnnotations();
+        }
+
+        function toggleCheckbox(id) {
+            const cb = document.getElementById(id);
+            cb.checked = !cb.checked;
+            updateAll();
+        }
+
+        function applyPreset(name) {
+            Object.assign(state, presets[name]);
+            document.getElementById('accessibility').value = state.accessibility;
+            document.getElementById('useBiometrics').checked = state.useBiometrics;
+            document.getElementById('syncToiCloud').checked = state.syncToiCloud;
+            document.getElementById('useAccessGroup').checked = state.useAccessGroup;
+            document.getElementById('migrateLegacy').checked = state.migrateLegacy;
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            updateAll();
+        }
+
+        function showTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.file-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('currentFile').textContent = tab === 'service' ? 'KeychainService.swift' : 'APIClient.swift';
+            updateCode();
+        }
+
+        function updateAll() {
+            state.accessibility = document.getElementById('accessibility').value;
+            state.useBiometrics = document.getElementById('useBiometrics').checked;
+            state.syncToiCloud = document.getElementById('syncToiCloud').checked;
+            state.useAccessGroup = document.getElementById('useAccessGroup').checked;
+            state.migrateLegacy = document.getElementById('migrateLegacy').checked;
+            updateCode();
+            updatePrompt();
+            updateSecurityDesc();
+            updateAnnotations();
+            updateTradeoffs();
+        }
+
+        function updateAnnotations() {
+            // Accessibility annotation
+            document.getElementById('annotation-accessibility-text').innerHTML = accessibilityAnnotations[state.accessibility];
+
+            // Biometrics warning badge
+            document.getElementById('badge-biometrics').classList.toggle('visible', state.useBiometrics);
+
+            // iCloud annotation
+            const icloudText = state.syncToiCloud
+                ? '<strong>Enabled.</strong> Tokens sync across all user\'s Apple devices. End-to-end encrypted but increases attack surface.'
+                : 'Disabled. Tokens stay on this device only, reducing attack surface.';
+            document.getElementById('annotation-icloud-text').innerHTML = icloudText;
+            document.getElementById('annotation-icloud').className = `annotation ${state.syncToiCloud ? 'warning' : 'info'}`;
+
+            // Access group annotation
+            const accessGroupText = state.useAccessGroup
+                ? '<strong>Enabled.</strong> Extensions and other apps in your group can access these tokens.'
+                : 'Not needed unless you have Watch apps, widgets, or share extensions that require authentication.';
+            document.getElementById('annotation-accessgroup-text').innerHTML = accessGroupText;
+
+            // Migration annotation
+            const migrationAnnotation = document.getElementById('annotation-migration');
+            if (state.migrateLegacy) {
+                migrationAnnotation.className = 'annotation success';
+                migrationAnnotation.innerHTML = '<span class="annotation-icon">✓</span><span class="annotation-text"><strong>Enabled.</strong> Existing users will be automatically migrated without needing to log in again.</span>';
+            } else {
+                migrationAnnotation.className = 'annotation warning';
+                migrationAnnotation.innerHTML = '<span class="annotation-icon">⚠️</span><span class="annotation-text"><strong>Disabled.</strong> Existing users will be logged out when you deploy this change!</span>';
+            }
+
+            // Combination warning
+            const hasConflict = state.useBiometrics && state.syncToiCloud;
+            document.getElementById('combinationWarning').classList.toggle('visible', hasConflict);
+        }
+
+        function updateTradeoffs() {
+            let security = 70;
+            let convenience = 85;
+            let compatibility = 90;
+
+            if (state.useBiometrics) {
+                security += 20;
+                convenience -= 30;
+            }
+            if (state.syncToiCloud) {
+                security -= 10;
+                convenience += 15;
+            }
+            if (state.accessibility.includes('ThisDeviceOnly')) {
+                security += 10;
+                convenience -= 5;
+            }
+            if (state.accessibility.includes('whenPasscode')) {
+                security += 15;
+                compatibility -= 20;
+            }
+            if (state.accessibility.includes('whenUnlocked') && !state.accessibility.includes('afterFirst')) {
+                security += 10;
+                convenience -= 20;
+            }
+
+            security = Math.min(100, Math.max(0, security));
+            convenience = Math.min(100, Math.max(0, convenience));
+            compatibility = Math.min(100, Math.max(0, compatibility));
+
+            document.getElementById('tradeoff-security').style.width = security + '%';
+            document.getElementById('tradeoff-security-val').textContent = security + '%';
+            document.getElementById('tradeoff-convenience').style.width = convenience + '%';
+            document.getElementById('tradeoff-convenience-val').textContent = convenience + '%';
+            document.getElementById('tradeoff-compatibility').style.width = compatibility + '%';
+            document.getElementById('tradeoff-compatibility-val').textContent = compatibility + '%';
+        }
+
+        function updateCode() {
+            document.getElementById('codeOutput').innerHTML = currentTab === 'service' ? generateServiceCode() : generateUsageCode();
+        }
+
+        function generateServiceCode() {
+            return `<span class="keyword">import</span> <span class="type">Foundation</span>
+<span class="keyword">import</span> <span class="type">Security</span>
+
+<span class="keyword">final class</span> <span class="type">KeychainService</span> {
+    <span class="keyword">static let</span> shared = <span class="type">KeychainService</span>()
+
+    <span class="keyword">var</span> <span class="property">accessToken</span>: <span class="type">String</span>? {
+        <span class="keyword">get</span> { <span class="func">getValue</span>(forKey: <span class="string">"accessToken"</span>) }
+        <span class="keyword">set</span> { <span class="func">setValue</span>(newValue, forKey: <span class="string">"accessToken"</span>) }
+    }
+    <span class="comment">// ... implementation</span>
+}`;
+        }
+
+        function generateUsageCode() {
+            return `<span class="comment">// Replace UserDefaults with KeychainService</span>
+
+<span class="keyword">private var</span> <span class="property">accessToken</span>: <span class="type">String</span>? {
+    <span class="keyword">get</span> { <span class="type">KeychainService</span>.shared.accessToken }
+    <span class="keyword">set</span> { <span class="type">KeychainService</span>.shared.accessToken = newValue }
+}`;
+        }
+
+        function updateSecurityDesc() {
+            const features = ['Hardware encrypted'];
+            if (state.useBiometrics) features.push('biometric');
+            if (state.accessibility.includes('ThisDeviceOnly')) features.push('device-only');
+            document.getElementById('securityDesc').textContent = features.join(', ');
+        }
+
+        function updatePrompt() {
+            const parts = ['Create a KeychainService.swift for secure token storage.'];
+            if (state.useBiometrics) parts.push('Require Face ID/Touch ID.');
+            if (state.syncToiCloud) parts.push('Enable iCloud sync.');
+            if (state.migrateLegacy) parts.push('Include UserDefaults migration.');
+            document.getElementById('promptOutput').textContent = parts.join(' ');
+        }
+
+        function copyPrompt() {
+            navigator.clipboard.writeText(document.getElementById('promptOutput').textContent);
+            const btn = document.querySelector('.copy-btn');
+            btn.textContent = 'Copied!';
+            btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = 'Copy to Clipboard'; btn.classList.remove('copied'); }, 2000);
+        }
+
+        // Initialize
+        updateAll();
+    </script>
+</body>
+</html>

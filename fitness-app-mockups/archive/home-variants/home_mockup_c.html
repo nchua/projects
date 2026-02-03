@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=375, initial-scale=1.0">
+    <title>Home Mockup C - Card Stack</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #0a0a0f;
+            color: #e8e8e8;
+            min-height: 100vh;
+            max-width: 390px;
+            margin: 0 auto;
+            padding-bottom: 100px;
+        }
+
+        .mono {
+            font-family: 'SF Mono', 'Menlo', monospace;
+        }
+
+        :root {
+            --void-dark: #0a0a0f;
+            --void-medium: #12121a;
+            --void-light: #1a1a24;
+            --primary: #00d4ff;
+            --primary-glow: rgba(0, 212, 255, 0.3);
+            --gold: #ffd700;
+            --green: #00ff88;
+            --red: #ff4757;
+            --purple: #a855f7;
+            --text-primary: #e8e8e8;
+            --text-secondary: #a0a0a0;
+            --text-muted: #606070;
+            --border: #2a2a3a;
+        }
+
+        .mockup-label {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--green);
+            color: #000;
+            text-align: center;
+            padding: 8px;
+            font-weight: 700;
+            font-size: 12px;
+            letter-spacing: 1px;
+            z-index: 100;
+        }
+
+        .content-wrapper {
+            padding-top: 40px;
+        }
+
+        /* Full-width Header Card */
+        .header-card {
+            background: linear-gradient(180deg, var(--void-medium) 0%, var(--void-dark) 100%);
+            padding: 20px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .avatar-ring {
+            position: relative;
+            width: 56px;
+            height: 56px;
+        }
+
+        .avatar-ring::before {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            border-radius: 12px;
+            background: conic-gradient(var(--primary) 65%, var(--void-light) 65%);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .avatar {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary), #0099cc);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        .header-info {
+            flex: 1;
+        }
+
+        .header-greeting {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+
+        .header-name {
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .header-badges {
+            display: flex;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge.rank {
+            background: var(--primary);
+            color: #000;
+        }
+
+        .badge.streak {
+            background: var(--gold);
+            color: #000;
+        }
+
+        .header-xp {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .xp-bar-container {
+            flex: 1;
+        }
+
+        .xp-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .xp-bar {
+            height: 6px;
+            background: var(--void-light);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .xp-fill {
+            height: 100%;
+            width: 65%;
+            background: linear-gradient(90deg, var(--primary), #00aaff);
+            border-radius: 3px;
+        }
+
+        .xp-total {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .xp-total span {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        /* Content */
+        .content {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Swipeable Card Stack */
+        .card {
+            background: var(--void-medium);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .card-glow {
+            box-shadow: 0 0 20px var(--primary-glow);
+            border-color: var(--primary);
+        }
+
+        /* Active Dungeon Card */
+        .dungeon-card {
+            border-left: 4px solid var(--purple);
+        }
+
+        .dungeon-header {
+            padding: 14px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(90deg, rgba(168, 85, 247, 0.1) 0%, transparent 100%);
+        }
+
+        .dungeon-tag {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .dungeon-tag .icon {
+            font-size: 18px;
+        }
+
+        .dungeon-tag .text {
+            font-size: 10px;
+            color: var(--purple);
+            letter-spacing: 1px;
+        }
+
+        .dungeon-time {
+            font-size: 12px;
+            color: var(--red);
+            font-weight: 600;
+        }
+
+        .dungeon-content {
+            padding: 0 16px 16px;
+        }
+
+        .dungeon-name {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .dungeon-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .dungeon-objectives {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .objective {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .objective-check {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border);
+            border-radius: 4px;
+        }
+
+        .objective-check.done {
+            background: var(--green);
+            border-color: var(--green);
+        }
+
+        .dungeon-reward {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .reward-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+        }
+
+        .reward-xp {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--gold);
+        }
+
+        /* Quick Stats Card */
+        .stats-card {
+            padding: 16px;
+        }
+
+        .stats-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .stats-card-title {
+            font-size: 10px;
+            color: var(--text-muted);
+            letter-spacing: 1.5px;
+        }
+
+        .stats-card-period {
+            font-size: 11px;
+            color: var(--primary);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: var(--void-dark);
+            border-radius: 4px;
+        }
+
+        .stat-icon-wrap {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .stat-icon-wrap.blue { background: rgba(0, 212, 255, 0.15); }
+        .stat-icon-wrap.gold { background: rgba(255, 215, 0, 0.15); }
+        .stat-icon-wrap.green { background: rgba(0, 255, 136, 0.15); }
+        .stat-icon-wrap.red { background: rgba(255, 71, 87, 0.15); }
+
+        .stat-info .value {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .stat-info .label {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        /* Power Snapshot */
+        .power-card {
+            padding: 16px;
+        }
+
+        .power-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .power-title {
+            font-size: 10px;
+            color: var(--text-muted);
+            letter-spacing: 1.5px;
+        }
+
+        .power-total {
+            font-size: 12px;
+        }
+
+        .power-total .value {
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .power-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .power-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .power-label {
+            width: 60px;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .power-bar-bg {
+            flex: 1;
+            height: 20px;
+            background: var(--void-dark);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .power-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #000;
+        }
+
+        .power-bar-fill.squat { background: #ff6b6b; width: 78%; }
+        .power-bar-fill.bench { background: #4ecdc4; width: 56%; }
+        .power-bar-fill.dead { background: #ffe66d; width: 100%; }
+
+        /* Recent Activity */
+        .activity-card {
+            padding: 16px;
+        }
+
+        .activity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .activity-title {
+            font-size: 10px;
+            color: var(--text-muted);
+            letter-spacing: 1.5px;
+        }
+
+        .activity-see-all {
+            font-size: 12px;
+            color: var(--primary);
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .activity-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--void-light);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .activity-info {
+            flex: 1;
+        }
+
+        .activity-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .activity-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .activity-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .activity-badge.pr {
+            background: rgba(255, 215, 0, 0.15);
+            color: var(--gold);
+        }
+
+        .activity-badge.done {
+            background: rgba(0, 255, 136, 0.15);
+            color: var(--green);
+        }
+
+        /* Start Button */
+        .start-btn {
+            background: var(--primary);
+            color: #000;
+            border: none;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px var(--primary-glow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="mockup-label">MOCKUP C: UNIFIED CARD STACK</div>
+
+    <div class="content-wrapper">
+        <!-- Full Header Card -->
+        <div class="header-card">
+            <div class="header-top">
+                <div class="avatar-ring">
+                    <div class="avatar">NC</div>
+                </div>
+                <div class="header-info">
+                    <div class="header-greeting mono">Welcome back,</div>
+                    <div class="header-name">Nick</div>
+                    <div class="header-badges">
+                        <span class="badge rank mono">B-RANK</span>
+                        <span class="badge streak">7 day streak</span>
+                    </div>
+                </div>
+            </div>
+            <div class="header-xp">
+                <div class="xp-bar-container">
+                    <div class="xp-label mono">
+                        <span>LEVEL 23</span>
+                        <span>2,340 / 3,600 XP</span>
+                    </div>
+                    <div class="xp-bar">
+                        <div class="xp-fill"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Active Dungeon -->
+            <div class="card dungeon-card">
+                <div class="dungeon-header">
+                    <div class="dungeon-tag">
+                        <span class="icon">...</span>
+                        <span class="text mono">ACTIVE DUNGEON</span>
+                    </div>
+                    <span class="dungeon-time mono">23h left</span>
+                </div>
+                <div class="dungeon-content">
+                    <div class="dungeon-name">Chest Conquest</div>
+                    <div class="dungeon-desc">Complete a chest-focused workout with these objectives</div>
+                    <div class="dungeon-objectives">
+                        <div class="objective">
+                            <div class="objective-check done"></div>
+                            <span>Complete 12 sets of chest exercises</span>
+                        </div>
+                        <div class="objective">
+                            <div class="objective-check"></div>
+                            <span>Hit a bench press PR</span>
+                        </div>
+                        <div class="objective">
+                            <div class="objective-check"></div>
+                            <span>Reach 5,000 lb total volume</span>
+                        </div>
+                    </div>
+                    <div class="dungeon-reward">
+                        <span class="reward-label mono">COMPLETION REWARD</span>
+                        <span class="reward-xp mono">+250 XP</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="card stats-card">
+                <div class="stats-card-header">
+                    <span class="stats-card-title mono">THIS WEEK</span>
+                    <span class="stats-card-period mono">Jan 13-19</span>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-icon-wrap blue">...</div>
+                        <div class="stat-info">
+                            <div class="value">2/4</div>
+                            <div class="label mono">WORKOUTS</div>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-icon-wrap gold">...</div>
+                        <div class="stat-info">
+                            <div class="value">2</div>
+                            <div class="label mono">NEW PRs</div>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-icon-wrap green">...</div>
+                        <div class="stat-info">
+                            <div class="value">12.4K</div>
+                            <div class="label mono">VOLUME</div>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-icon-wrap red">...</div>
+                        <div class="stat-info">
+                            <div class="value">87m</div>
+                            <div class="label mono">TIME</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Power Levels -->
+            <div class="card power-card">
+                <div class="power-header">
+                    <span class="power-title mono">POWER LEVELS</span>
+                    <span class="power-total mono">Total: <span class="value">945 lb</span></span>
+                </div>
+                <div class="power-bars">
+                    <div class="power-row">
+                        <span class="power-label mono">Squat</span>
+                        <div class="power-bar-bg">
+                            <div class="power-bar-fill squat">315</div>
+                        </div>
+                    </div>
+                    <div class="power-row">
+                        <span class="power-label mono">Bench</span>
+                        <div class="power-bar-bg">
+                            <div class="power-bar-fill bench">225</div>
+                        </div>
+                    </div>
+                    <div class="power-row">
+                        <span class="power-label mono">Deadlift</span>
+                        <div class="power-bar-bg">
+                            <div class="power-bar-fill dead">405</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card activity-card">
+                <div class="activity-header">
+                    <span class="activity-title mono">RECENT ACTIVITY</span>
+                    <span class="activity-see-all">See all</span>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-icon">...</div>
+                    <div class="activity-info">
+                        <div class="activity-name">Push Day</div>
+                        <div class="activity-meta mono">Today  |  5 exercises</div>
+                    </div>
+                    <span class="activity-badge pr">+PR</span>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-icon">...</div>
+                    <div class="activity-info">
+                        <div class="activity-name">Leg Day</div>
+                        <div class="activity-meta mono">Yesterday  |  4 exercises</div>
+                    </div>
+                    <span class="activity-badge done">Done</span>
+                </div>
+            </div>
+
+            <!-- Start Workout Button -->
+            <button class="start-btn mono">
+                + START WORKOUT
+            </button>
+        </div>
+    </div>
+</body>
+</html>

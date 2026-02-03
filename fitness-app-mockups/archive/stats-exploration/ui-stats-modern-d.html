@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stats - Modern D (Detail View from Minimal Cards)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-void: #050508;
+            --bg-dark: #0a0a12;
+            --bg-medium: #0f1018;
+            --bg-light: #16171f;
+            --bg-elevated: #1a1b24;
+            --accent-primary: #00D4FF;
+            --accent-secondary: #7B61FF;
+            --accent-gold: #FFD700;
+            --accent-success: #00FF88;
+            --accent-warning: #FF9500;
+            --accent-danger: #FF4757;
+            --text-primary: #FFFFFF;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --text-muted: rgba(255, 255, 255, 0.4);
+            --border: rgba(255, 255, 255, 0.08);
+            --glow-primary: rgba(0, 212, 255, 0.3);
+
+            --squat-color: #FF6B6B;
+            --bench-color: #00D4FF;
+            --deadlift-color: #7B61FF;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #0a0a14;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        .mockup-label {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .mockup-label span { color: var(--accent-primary); }
+
+        .iphone-frame {
+            width: 390px;
+            height: 844px;
+            background: #000;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow: 0 0 0 3px #1a1a1a, 0 0 0 6px #0d0d0d, 0 30px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-void);
+            border-radius: 40px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .iphone-screen::-webkit-scrollbar { display: none; }
+
+        .dynamic-island {
+            position: sticky;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 34px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 100;
+            margin-bottom: -34px;
+        }
+
+        .screen-content {
+            padding: 0 0 100px;
+            color: var(--text-primary);
+        }
+
+        .mono {
+            font-family: 'SF Mono', 'Menlo', monospace;
+            letter-spacing: 0.5px;
+        }
+
+        /* Detail Header */
+        .detail-header {
+            padding: 60px 20px 20px;
+            background: linear-gradient(180deg, var(--bg-light) 0%, var(--bg-void) 100%);
+            position: relative;
+        }
+
+        .detail-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--bench-color);
+        }
+
+        .back-button {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'SF Mono', monospace;
+            font-size: 12px;
+            color: var(--accent-primary);
+            margin-bottom: 16px;
+            cursor: pointer;
+        }
+
+        .back-arrow {
+            font-size: 16px;
+        }
+
+        .detail-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .detail-title-left {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .detail-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .detail-fantasy {
+            font-family: 'SF Mono', monospace;
+            font-size: 12px;
+            font-style: italic;
+            color: var(--text-muted);
+        }
+
+        .detail-e1rm {
+            text-align: right;
+        }
+
+        .e1rm-hero {
+            font-size: 48px;
+            font-weight: 800;
+            color: var(--bench-color);
+            line-height: 1;
+        }
+
+        .e1rm-label {
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+        }
+
+        .e1rm-trend {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 6px;
+            padding: 4px 10px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 12px;
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--accent-success);
+        }
+
+        /* Time Range Pills */
+        .time-range-pills {
+            display: flex;
+            gap: 8px;
+            padding: 16px 20px;
+            overflow-x: auto;
+        }
+        .time-range-pills::-webkit-scrollbar { display: none; }
+
+        .time-pill {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .time-pill.inactive {
+            background: var(--bg-medium);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .time-pill.active {
+            background: var(--accent-primary);
+            color: #000;
+            border: 1px solid var(--accent-primary);
+        }
+
+        /* Chart Section */
+        .chart-section {
+            padding: 0 20px;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            background: var(--bg-medium);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .chart-area {
+            height: 200px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .chart-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .chart-grid-line {
+            stroke: var(--border);
+            stroke-width: 0.5;
+            stroke-dasharray: 4;
+        }
+
+        .chart-line {
+            fill: none;
+            stroke: var(--bench-color);
+            stroke-width: 2.5;
+        }
+
+        .chart-area-fill {
+            fill: url(#detailGradient);
+        }
+
+        .chart-point {
+            fill: var(--bench-color);
+            cursor: pointer;
+        }
+
+        .chart-point:hover {
+            r: 6;
+        }
+
+        .chart-point.selected {
+            fill: var(--accent-gold);
+            filter: drop-shadow(0 0 8px var(--accent-gold));
+        }
+
+        .chart-label {
+            font-family: 'SF Mono', monospace;
+            font-size: 9px;
+            fill: var(--text-muted);
+        }
+
+        .chart-y-label {
+            font-family: 'SF Mono', monospace;
+            font-size: 9px;
+            fill: var(--text-muted);
+        }
+
+        /* Selected Point Tooltip */
+        .point-tooltip {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: var(--bg-dark);
+            border: 1px solid var(--accent-gold);
+            border-radius: 8px;
+            padding: 12px 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+
+        .tooltip-header {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .tooltip-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent-gold);
+        }
+
+        .tooltip-date {
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .tooltip-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 8px 0;
+        }
+
+        .tooltip-sets {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .tooltip-set {
+            display: flex;
+            justify-content: space-between;
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+        }
+
+        .tooltip-set-reps {
+            color: var(--text-primary);
+        }
+
+        .tooltip-set-e1rm {
+            color: var(--text-secondary);
+        }
+
+        .tooltip-set-e1rm.best {
+            color: var(--accent-gold);
+            font-weight: 600;
+        }
+
+        .tooltip-action {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 10px;
+            padding: 8px;
+            background: rgba(255, 215, 0, 0.1);
+            border-radius: 6px;
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--accent-gold);
+            cursor: pointer;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border-top: 1px solid var(--border);
+        }
+
+        .stat-cell {
+            padding: 16px;
+            background: var(--bg-medium);
+            text-align: center;
+        }
+
+        .stat-cell-value {
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .stat-cell-number {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .stat-cell-unit {
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .stat-cell-label {
+            font-family: 'SF Mono', monospace;
+            font-size: 9px;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        /* Rank Section */
+        .rank-section {
+            padding: 0 20px;
+            margin-bottom: 20px;
+        }
+
+        .rank-card {
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, var(--bg-medium) 100%);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 16px;
+        }
+
+        .rank-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .rank-badge-large {
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 24px;
+            color: #000;
+            background: linear-gradient(135deg, var(--accent-primary), #0099CC);
+            box-shadow: 0 4px 16px rgba(0, 212, 255, 0.4);
+        }
+
+        .rank-info {
+            flex: 1;
+        }
+
+        .rank-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .rank-percentile {
+            font-family: 'SF Mono', monospace;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .rank-bw {
+            text-align: right;
+        }
+
+        .bw-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent-gold);
+        }
+
+        .bw-label {
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        /* Progress Bar */
+        .rank-progress {
+            margin-top: 12px;
+        }
+
+        .progress-bar-bg {
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 78%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 4px;
+            box-shadow: 0 0 12px var(--accent-primary);
+        }
+
+        .progress-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+
+        .progress-label {
+            font-family: 'SF Mono', monospace;
+            font-size: 9px;
+            color: var(--text-muted);
+            padding: 2px 6px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+        }
+
+        .progress-label.current {
+            color: var(--accent-primary);
+            background: rgba(0, 212, 255, 0.15);
+        }
+
+        /* Recent Sessions */
+        .sessions-section {
+            padding: 0 20px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .section-title-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-diamond {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-primary);
+            transform: rotate(45deg);
+        }
+
+        .section-title {
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 1.5px;
+        }
+
+        .section-action {
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            color: var(--accent-primary);
+            cursor: pointer;
+        }
+
+        /* Session Card */
+        .session-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: var(--bg-medium);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .session-card:hover {
+            background: var(--bg-light);
+            border-color: rgba(255,255,255,0.12);
+        }
+
+        .session-date {
+            width: 48px;
+            text-align: center;
+        }
+
+        .session-day {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .session-month {
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .session-divider {
+            width: 1px;
+            height: 36px;
+            background: var(--border);
+        }
+
+        .session-info {
+            flex: 1;
+        }
+
+        .session-sets {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .session-volume {
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .session-e1rm {
+            text-align: right;
+        }
+
+        .session-e1rm-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--bench-color);
+        }
+
+        .session-e1rm-label {
+            font-family: 'SF Mono', monospace;
+            font-size: 9px;
+            color: var(--text-muted);
+        }
+
+        .session-pr-badge {
+            padding: 3px 8px;
+            background: rgba(255, 215, 0, 0.15);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 4px;
+            font-family: 'SF Mono', monospace;
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--accent-gold);
+            margin-top: 4px;
+        }
+
+        .session-arrow {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="mockup-label">Stats Screen: <span>Modern D (Detail View)</span></div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="screen-content">
+                    <!-- Detail Header -->
+                    <div class="detail-header">
+                        <div class="back-button">
+                            <span class="back-arrow">←</span>
+                            <span>Power Analysis</span>
+                        </div>
+                        <div class="detail-title-row">
+                            <div class="detail-title-left">
+                                <div class="detail-name">Bench Press</div>
+                                <div class="detail-fantasy">"Titanic Press"</div>
+                            </div>
+                            <div class="detail-e1rm">
+                                <div class="e1rm-hero">242</div>
+                                <div class="e1rm-label">CURRENT E1RM (LB)</div>
+                                <div class="e1rm-trend">↗ +2.8% vs 4W ago</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Time Range Pills -->
+                    <div class="time-range-pills">
+                        <div class="time-pill active">4 WEEKS</div>
+                        <div class="time-pill inactive">8 WEEKS</div>
+                        <div class="time-pill inactive">12 WEEKS</div>
+                        <div class="time-pill inactive">6 MONTHS</div>
+                        <div class="time-pill inactive">1 YEAR</div>
+                    </div>
+
+                    <!-- Chart Section -->
+                    <div class="chart-section">
+                        <div class="chart-container">
+                            <div class="chart-area">
+                                <!-- Tooltip for selected point -->
+                                <div class="point-tooltip">
+                                    <div class="tooltip-header">
+                                        <span class="tooltip-value">242 lb</span>
+                                        <span class="tooltip-date">Jan 22</span>
+                                    </div>
+                                    <div class="tooltip-divider"></div>
+                                    <div class="tooltip-sets">
+                                        <div class="tooltip-set">
+                                            <span class="tooltip-set-reps">185 × 8</span>
+                                            <span class="tooltip-set-e1rm">228</span>
+                                        </div>
+                                        <div class="tooltip-set">
+                                            <span class="tooltip-set-reps">205 × 5</span>
+                                            <span class="tooltip-set-e1rm">239</span>
+                                        </div>
+                                        <div class="tooltip-set">
+                                            <span class="tooltip-set-reps">215 × 4</span>
+                                            <span class="tooltip-set-e1rm best">242 ★</span>
+                                        </div>
+                                        <div class="tooltip-set">
+                                            <span class="tooltip-set-reps">185 × 10</span>
+                                            <span class="tooltip-set-e1rm">231</span>
+                                        </div>
+                                    </div>
+                                    <div class="tooltip-action">
+                                        → VIEW QUEST
+                                    </div>
+                                </div>
+
+                                <svg class="chart-svg" viewBox="0 0 320 140" preserveAspectRatio="none">
+                                    <defs>
+                                        <linearGradient id="detailGradient" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stop-color="rgba(0, 212, 255, 0.35)"/>
+                                            <stop offset="100%" stop-color="rgba(0, 212, 255, 0)"/>
+                                        </linearGradient>
+                                    </defs>
+
+                                    <!-- Y-axis labels -->
+                                    <text class="chart-y-label" x="5" y="15">250</text>
+                                    <text class="chart-y-label" x="5" y="50">235</text>
+                                    <text class="chart-y-label" x="5" y="85">220</text>
+                                    <text class="chart-y-label" x="5" y="120">205</text>
+
+                                    <!-- Grid lines -->
+                                    <line class="chart-grid-line" x1="30" y1="12" x2="310" y2="12"/>
+                                    <line class="chart-grid-line" x1="30" y1="47" x2="310" y2="47"/>
+                                    <line class="chart-grid-line" x1="30" y1="82" x2="310" y2="82"/>
+                                    <line class="chart-grid-line" x1="30" y1="117" x2="310" y2="117"/>
+
+                                    <!-- Area fill -->
+                                    <path class="chart-area-fill" d="M35,100 Q80,95 100,85 T170,65 T230,45 T310,25 L310,130 L35,130 Z"/>
+
+                                    <!-- Line -->
+                                    <path class="chart-line" d="M35,100 Q80,95 100,85 T170,65 T230,45 T310,25"/>
+
+                                    <!-- Points -->
+                                    <circle class="chart-point" cx="35" cy="100" r="4"/>
+                                    <circle class="chart-point" cx="100" cy="85" r="4"/>
+                                    <circle class="chart-point" cx="170" cy="65" r="4"/>
+                                    <circle class="chart-point" cx="230" cy="45" r="4"/>
+                                    <circle class="chart-point selected" cx="310" cy="25" r="6"/>
+
+                                    <!-- X-axis labels -->
+                                    <text class="chart-label" x="35" y="135">Jan 1</text>
+                                    <text class="chart-label" x="160" y="135">Jan 12</text>
+                                    <text class="chart-label" x="290" y="135">Jan 22</text>
+                                </svg>
+                            </div>
+
+                            <!-- Stats Grid -->
+                            <div class="stats-grid">
+                                <div class="stat-cell">
+                                    <div class="stat-cell-value">
+                                        <span class="stat-cell-number">14</span>
+                                    </div>
+                                    <div class="stat-cell-label">TOTAL QUESTS</div>
+                                </div>
+                                <div class="stat-cell">
+                                    <div class="stat-cell-value">
+                                        <span class="stat-cell-number">238</span>
+                                        <span class="stat-cell-unit">lb</span>
+                                    </div>
+                                    <div class="stat-cell-label">4W AVERAGE</div>
+                                </div>
+                                <div class="stat-cell">
+                                    <div class="stat-cell-value">
+                                        <span class="stat-cell-number">+7</span>
+                                        <span class="stat-cell-unit">lb</span>
+                                    </div>
+                                    <div class="stat-cell-label">VS LAST PERIOD</div>
+                                </div>
+                                <div class="stat-cell">
+                                    <div class="stat-cell-value">
+                                        <span class="stat-cell-number">225</span>
+                                        <span class="stat-cell-unit">lb</span>
+                                    </div>
+                                    <div class="stat-cell-label">ALL-TIME PR</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rank Section -->
+                    <div class="rank-section">
+                        <div class="rank-card">
+                            <div class="rank-header">
+                                <div class="rank-badge-large">A</div>
+                                <div class="rank-info">
+                                    <div class="rank-title">A-Rank Hunter</div>
+                                    <div class="rank-percentile">Top 22% of lifters at 166 lb bodyweight</div>
+                                </div>
+                                <div class="rank-bw">
+                                    <div class="bw-value">1.46x</div>
+                                    <div class="bw-label">BW RATIO</div>
+                                </div>
+                            </div>
+                            <div class="rank-progress">
+                                <div class="progress-bar-bg">
+                                    <div class="progress-bar-fill"></div>
+                                </div>
+                                <div class="progress-labels">
+                                    <span class="progress-label">E</span>
+                                    <span class="progress-label">D</span>
+                                    <span class="progress-label">C</span>
+                                    <span class="progress-label">B</span>
+                                    <span class="progress-label current">A</span>
+                                    <span class="progress-label">S</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Sessions -->
+                    <div class="sessions-section">
+                        <div class="section-header">
+                            <div class="section-title-left">
+                                <div class="section-diamond"></div>
+                                <span class="section-title">RECENT SESSIONS</span>
+                            </div>
+                            <span class="section-action">VIEW ALL →</span>
+                        </div>
+
+                        <div class="session-card">
+                            <div class="session-date">
+                                <div class="session-day">22</div>
+                                <div class="session-month">Jan</div>
+                            </div>
+                            <div class="session-divider"></div>
+                            <div class="session-info">
+                                <div class="session-sets">4 sets • Push Day</div>
+                                <div class="session-volume">3,680 lb volume</div>
+                            </div>
+                            <div class="session-e1rm">
+                                <div class="session-e1rm-value">242</div>
+                                <div class="session-e1rm-label">E1RM</div>
+                                <div class="session-pr-badge">★ PR</div>
+                            </div>
+                            <span class="session-arrow">→</span>
+                        </div>
+
+                        <div class="session-card">
+                            <div class="session-date">
+                                <div class="session-day">18</div>
+                                <div class="session-month">Jan</div>
+                            </div>
+                            <div class="session-divider"></div>
+                            <div class="session-info">
+                                <div class="session-sets">5 sets • Push Day</div>
+                                <div class="session-volume">4,125 lb volume</div>
+                            </div>
+                            <div class="session-e1rm">
+                                <div class="session-e1rm-value">238</div>
+                                <div class="session-e1rm-label">E1RM</div>
+                            </div>
+                            <span class="session-arrow">→</span>
+                        </div>
+
+                        <div class="session-card">
+                            <div class="session-date">
+                                <div class="session-day">14</div>
+                                <div class="session-month">Jan</div>
+                            </div>
+                            <div class="session-divider"></div>
+                            <div class="session-info">
+                                <div class="session-sets">4 sets • Push Day</div>
+                                <div class="session-volume">3,520 lb volume</div>
+                            </div>
+                            <div class="session-e1rm">
+                                <div class="session-e1rm-value">235</div>
+                                <div class="session-e1rm-label">E1RM</div>
+                            </div>
+                            <span class="session-arrow">→</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

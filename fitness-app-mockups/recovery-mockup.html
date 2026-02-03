@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recovery Card Mockups - ARISE Theme</title>
+    <style>
+        /* ARISE Theme Colors (from Colors.swift) */
+        :root {
+            --void-black: #0a0a0f;
+            --void-dark: #12121a;
+            --void-medium: #1a1a24;
+            --void-light: #252530;
+            --system-primary: #00d4ff;
+            --system-primary-dim: #00a8cc;
+            --system-primary-glow: rgba(0, 212, 255, 0.4);
+            --system-primary-subtle: rgba(0, 212, 255, 0.1);
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --text-muted: #606070;
+            --border: rgba(0, 212, 255, 0.2);
+            --border-light: rgba(0, 212, 255, 0.1);
+            --gold: #ffd700;
+            --success: #33ff88;
+            --warning: #ff3333;
+            --rank-e: #808080;
+            --rank-d: #4a9b4a;
+            --rank-c: #4a7bb5;
+            --rank-b: #9b4a9b;
+            --rank-a: #ffd700;
+            --rank-s: #ff4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+            background: var(--void-black);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+            background-image:
+                radial-gradient(circle at 50% 50%, rgba(0, 212, 255, 0.03) 0%, transparent 50%),
+                linear-gradient(rgba(0, 212, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 212, 255, 0.02) 1px, transparent 1px);
+            background-size: 100% 100%, 20px 20px, 20px 20px;
+        }
+
+        .container {
+            max-width: 420px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 14px;
+            color: var(--system-primary);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 8px;
+            text-align: center;
+            text-shadow: 0 0 20px var(--system-primary-glow);
+        }
+
+        .subtitle {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 40px 0 16px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        h2::before {
+            content: '';
+            width: 4px;
+            height: 4px;
+            background: var(--system-primary);
+            box-shadow: 0 0 8px var(--system-primary);
+        }
+
+        .recommended {
+            color: var(--gold);
+            font-size: 9px;
+            padding: 2px 6px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 2px;
+            margin-left: auto;
+        }
+
+        /* ============================================
+           BASE CARD STYLES (systemPanelStyle)
+           ============================================ */
+        .card {
+            background: linear-gradient(180deg, rgba(26, 26, 36, 0.95), rgba(18, 18, 26, 0.98));
+            border: 1px solid var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            padding: 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .card-header:hover {
+            background: rgba(0, 212, 255, 0.03);
+        }
+
+        /* ============================================
+           VARIATION 1: ORIGINAL (BASELINE)
+           ============================================ */
+        .v1 .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .title-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .title-icon {
+            color: var(--system-primary);
+            font-size: 14px;
+        }
+
+        .title-text {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: 1px;
+        }
+
+        .time-badge {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-muted);
+            font-size: 10px;
+        }
+
+        .chevron {
+            color: var(--text-muted);
+            font-size: 12px;
+            margin-left: 8px;
+            transition: transform 0.3s;
+        }
+
+        .expanded .chevron {
+            transform: rotate(180deg);
+        }
+
+        /* Muscle Pills */
+        .muscle-pills {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .muscle-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: var(--void-light);
+            border: 1px solid var(--border);
+            border-radius: 2px;
+            font-size: 9px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        /* Progress Bars */
+        .progress-bar {
+            height: 8px;
+            background: var(--void-light);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--system-primary-dim), var(--system-primary));
+            border-radius: 2px;
+            transition: width 0.5s;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* ============================================
+           VARIATION 2: SYSTEM WINDOW (Holographic)
+           ============================================ */
+        .v2.card {
+            background: linear-gradient(180deg,
+                rgba(0, 212, 255, 0.08) 0%,
+                rgba(18, 18, 26, 0.95) 100%);
+            border: 1px solid var(--system-primary);
+            box-shadow:
+                0 0 20px rgba(0, 212, 255, 0.15),
+                inset 0 1px 0 rgba(0, 212, 255, 0.2),
+                inset 0 0 40px rgba(0, 212, 255, 0.03);
+            position: relative;
+        }
+
+        .v2.card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg,
+                transparent,
+                var(--system-primary),
+                transparent);
+            animation: scan 3s linear infinite;
+        }
+
+        @keyframes scan {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        .v2 .system-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .v2 .system-icon {
+            width: 40px;
+            height: 40px;
+            border: 2px solid var(--system-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--system-primary);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(0, 212, 255, 0.3); }
+            50% { box-shadow: 0 0 25px rgba(0, 212, 255, 0.5); }
+        }
+
+        .v2 .system-title {
+            flex: 1;
+        }
+
+        .v2 .system-title h3 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--system-primary);
+            letter-spacing: 2px;
+            margin-bottom: 2px;
+            text-shadow: 0 0 10px var(--system-primary-glow);
+        }
+
+        .v2 .system-title span {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .v2 .status-badge {
+            padding: 4px 10px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid var(--system-primary);
+            border-radius: 2px;
+            font-size: 10px;
+            color: var(--system-primary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .v2 .muscle-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .v2 .muscle-cell {
+            background: rgba(0, 212, 255, 0.05);
+            border: 1px solid var(--border);
+            padding: 10px 8px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .v2 .muscle-cell::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: var(--progress, 0%);
+            background: linear-gradient(0deg,
+                rgba(0, 212, 255, 0.2),
+                rgba(0, 212, 255, 0.05));
+            transition: height 0.5s;
+        }
+
+        .v2 .muscle-cell .name {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .v2 .muscle-cell .time {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--system-primary);
+            margin-top: 4px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .v2 .muscle-cell .percent {
+            font-size: 9px;
+            color: var(--text-muted);
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ============================================
+           VARIATION 3: QUEST LOG STYLE
+           ============================================ */
+        .v3.card {
+            border-left: 3px solid var(--system-primary);
+            box-shadow:
+                -5px 0 20px rgba(0, 212, 255, 0.1),
+                0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .v3 .quest-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .v3 .quest-rank {
+            width: 36px;
+            height: 36px;
+            background: var(--void-light);
+            border: 2px solid var(--rank-c);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--rank-c);
+            flex-shrink: 0;
+        }
+
+        .v3 .quest-info {
+            flex: 1;
+        }
+
+        .v3 .quest-info h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .v3 .quest-info .quest-type {
+            font-size: 10px;
+            color: var(--system-primary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .v3 .quest-timer {
+            text-align: right;
+        }
+
+        .v3 .quest-timer .value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--system-primary);
+        }
+
+        .v3 .quest-timer .label {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .v3 .muscle-list {
+            margin-top: 12px;
+        }
+
+        .v3 .muscle-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .v3 .muscle-item:last-child {
+            border-bottom: none;
+        }
+
+        .v3 .muscle-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--void-light);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .v3 .muscle-details {
+            flex: 1;
+        }
+
+        .v3 .muscle-details .name {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .v3 .muscle-details .fantasy {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .v3 .muscle-progress {
+            width: 80px;
+        }
+
+        .v3 .muscle-progress .bar {
+            height: 6px;
+            background: var(--void-light);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+
+        .v3 .muscle-progress .fill {
+            height: 100%;
+            background: var(--system-primary);
+            border-radius: 3px;
+        }
+
+        .v3 .muscle-progress .text {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-align: right;
+        }
+
+        /* ============================================
+           VARIATION 4: STAT BARS (RPG Style)
+           ============================================ */
+        .v4.card {
+            background: linear-gradient(135deg,
+                rgba(26, 26, 36, 0.98),
+                rgba(18, 18, 26, 0.95));
+        }
+
+        .v4 .stat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .v4 .stat-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .v4 .stat-title .icon {
+            width: 24px;
+            height: 24px;
+            background: var(--system-primary);
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: var(--void-black);
+        }
+
+        .v4 .stat-title span {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .v4 .stat-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .v4 .stat-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .v4 .stat-label {
+            width: 80px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .v4 .stat-bar-container {
+            flex: 1;
+            position: relative;
+        }
+
+        .v4 .stat-bar-bg {
+            height: 20px;
+            background: var(--void-light);
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .v4 .stat-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg,
+                var(--system-primary-dim),
+                var(--system-primary));
+            position: relative;
+            transition: width 0.5s;
+        }
+
+        .v4 .stat-bar-fill::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(180deg,
+                rgba(255,255,255,0.15),
+                transparent);
+        }
+
+        .v4 .stat-bar-segments {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            pointer-events: none;
+        }
+
+        .v4 .stat-bar-segments span {
+            flex: 1;
+            border-right: 1px solid rgba(0, 0, 0, 0.3);
+        }
+
+        .v4 .stat-bar-segments span:last-child {
+            border-right: none;
+        }
+
+        .v4 .stat-value {
+            width: 50px;
+            text-align: right;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--system-primary);
+        }
+
+        /* ============================================
+           VARIATION 5: HEXAGON GRID
+           ============================================ */
+        .v5.card {
+            background: radial-gradient(ellipse at center,
+                rgba(0, 212, 255, 0.05) 0%,
+                rgba(18, 18, 26, 0.98) 70%);
+        }
+
+        .v5 .hex-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .v5 .hex-header h3 {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--system-primary);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 4px;
+        }
+
+        .v5 .hex-header span {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .v5 .hex-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 0;
+        }
+
+        .v5 .hex-item {
+            width: 70px;
+            text-align: center;
+        }
+
+        .v5 .hex-shape {
+            width: 60px;
+            height: 52px;
+            margin: 0 auto 8px;
+            position: relative;
+            background: var(--void-light);
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .v5 .hex-shape::before {
+            content: '';
+            position: absolute;
+            inset: 2px;
+            background: var(--void-dark);
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+        }
+
+        .v5 .hex-shape .content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .v5 .hex-shape .percent {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--system-primary);
+        }
+
+        .v5 .hex-shape .icon {
+            font-size: 10px;
+            margin-top: 2px;
+        }
+
+        .v5 .hex-item.recovering .hex-shape {
+            background: linear-gradient(180deg,
+                var(--system-primary),
+                var(--system-primary-dim));
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+        }
+
+        .v5 .hex-item .name {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .v5 .hex-item .time {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* ============================================
+           VARIATION 6: MINIMAL NOTIFICATION
+           ============================================ */
+        .v6.card {
+            background: transparent;
+            border: none;
+            padding: 0;
+        }
+
+        .v6 .notification {
+            background: linear-gradient(90deg,
+                rgba(0, 212, 255, 0.15),
+                rgba(0, 212, 255, 0.05),
+                transparent);
+            border-left: 3px solid var(--system-primary);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .v6 .notification::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(90deg,
+                transparent,
+                rgba(0, 212, 255, 0.1),
+                transparent);
+            animation: wave 3s ease-in-out infinite;
+        }
+
+        @keyframes wave {
+            0%, 100% { transform: translateX(-100%); }
+            50% { transform: translateX(100%); }
+        }
+
+        .v6 .notification-icon {
+            width: 32px;
+            height: 32px;
+            background: rgba(0, 212, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: var(--system-primary);
+            position: relative;
+            z-index: 1;
+        }
+
+        .v6 .notification-content {
+            flex: 1;
+            position: relative;
+            z-index: 1;
+        }
+
+        .v6 .notification-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .v6 .notification-subtitle {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .v6 .notification-action {
+            padding: 6px 12px;
+            background: var(--system-primary);
+            color: var(--void-black);
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border: none;
+            cursor: pointer;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ============================================
+           EXPANDED CONTENT (Shared)
+           ============================================ */
+        .expanded-content {
+            display: none;
+            border-top: 1px solid var(--border);
+            padding: 12px 16px;
+        }
+
+        .expanded .expanded-content {
+            display: block;
+        }
+
+        .muscle-row-detail {
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .muscle-row-detail:last-child {
+            border-bottom: none;
+        }
+
+        .muscle-row-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .muscle-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .muscle-fantasy {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .muscle-time {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--system-primary);
+        }
+
+        .muscle-bar {
+            height: 4px;
+            background: var(--void-light);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .muscle-bar-fill {
+            height: 100%;
+            background: var(--system-primary);
+            transition: width 0.5s;
+        }
+
+        /* Instructions */
+        .instructions {
+            background: var(--void-medium);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 16px;
+            margin-bottom: 30px;
+        }
+
+        .instructions h3 {
+            font-size: 12px;
+            color: var(--system-primary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .instructions p {
+            font-size: 11px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Comparison Grid */
+        .comparison-note {
+            background: rgba(255, 215, 0, 0.05);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            padding: 12px;
+            margin-top: 40px;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .comparison-note strong {
+            color: var(--gold);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Recovery Card Mockups</h1>
+        <p class="subtitle">ARISE Theme - Solo Leveling Inspired</p>
+
+        <div class="instructions">
+            <h3>&#x1F3AE; Interactive Demo</h3>
+            <p>Click any card header to expand/collapse. These mockups show different styling approaches for the muscle recovery feature. All use the existing ARISE color palette and design language.</p>
+        </div>
+
+        <!-- VARIATION 1: Original -->
+        <h2>Variation 1: Original Expandable</h2>
+        <div class="card v1" id="card1">
+            <div class="card-header" onclick="toggleCard('card1')">
+                <div class="header-row">
+                    <div class="title-group">
+                        <span class="title-icon">&#x26A1;</span>
+                        <span class="title-text">MUSCLE RECOVERY</span>
+                    </div>
+                    <div class="time-badge">
+                        <span>&#x23F0;</span>
+                        <span>1d 12h remaining</span>
+                    </div>
+                    <span class="chevron">&#x25BC;</span>
+                </div>
+                <div class="muscle-pills">
+                    <div class="muscle-pill">&#x1F535; Chest</div>
+                    <div class="muscle-pill">&#x1F535; Triceps</div>
+                    <div class="muscle-pill">&#x1F535; Shoulders</div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 47%"></div>
+                </div>
+            </div>
+            <div class="expanded-content">
+                <div class="muscle-row-detail">
+                    <div class="muscle-row-header">
+                        <div>
+                            <div class="muscle-name">Chest</div>
+                            <div class="muscle-fantasy">"Titan's Core"</div>
+                        </div>
+                        <div class="muscle-time">1d 12h</div>
+                    </div>
+                    <div class="muscle-bar">
+                        <div class="muscle-bar-fill" style="width: 35%"></div>
+                    </div>
+                </div>
+                <div class="muscle-row-detail">
+                    <div class="muscle-row-header">
+                        <div>
+                            <div class="muscle-name">Triceps</div>
+                            <div class="muscle-fantasy">"Storm Arms"</div>
+                        </div>
+                        <div class="muscle-time">20h</div>
+                    </div>
+                    <div class="muscle-bar">
+                        <div class="muscle-bar-fill" style="width: 45%"></div>
+                    </div>
+                </div>
+                <div class="muscle-row-detail">
+                    <div class="muscle-row-header">
+                        <div>
+                            <div class="muscle-name">Shoulders</div>
+                            <div class="muscle-fantasy">"Atlas Frame"</div>
+                        </div>
+                        <div class="muscle-time">12h</div>
+                    </div>
+                    <div class="muscle-bar">
+                        <div class="muscle-bar-fill" style="width: 75%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VARIATION 2: System Window - ICON OPTIONS -->
+        <h2>Variation 2: Icon Options <span class="recommended">PICK ONE</span></h2>
+
+        <!-- Option A: Heart Pulse -->
+        <p style="color: var(--gold); font-size: 10px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Option A: Heart Pulse</p>
+        <div class="card v2" id="card2a">
+            <div class="card-header" onclick="toggleCard('card2a')">
+                <div class="system-header">
+                    <div class="system-icon">&#x1F497;</div>
+                    <div class="system-title">
+                        <h3>RECOVERY STATUS</h3>
+                        <span>Muscle regeneration monitoring</span>
+                    </div>
+                    <div class="status-badge">Active</div>
+                    <span class="chevron">&#x25BC;</span>
+                </div>
+                <div class="muscle-grid">
+                    <div class="muscle-cell" style="--progress: 35%">
+                        <div class="name">Chest</div>
+                        <div class="time">36h</div>
+                        <div class="percent">35%</div>
+                    </div>
+                    <div class="muscle-cell" style="--progress: 45%">
+                        <div class="name">Triceps</div>
+                        <div class="time">20h</div>
+                        <div class="percent">45%</div>
+                    </div>
+                    <div class="muscle-cell" style="--progress: 75%">
+                        <div class="name">Shoulders</div>
+                        <div class="time">12h</div>
+                        <div class="percent">75%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Option B: Shield -->
+        <p style="color: var(--gold); font-size: 10px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Option B: Shield (Defense/Rebuild)</p>
+        <div class="card v2" id="card2b">
+            <div class="card-header" onclick="toggleCard('card2b')">
+                <div class="system-header">
+                    <div class="system-icon">&#x1F6E1;</div>
+                    <div class="system-title">
+                        <h3>RECOVERY STATUS</h3>
+                        <span>Muscle regeneration monitoring</span>
+                    </div>
+                    <div class="status-badge">Active</div>
+                    <span class="chevron">&#x25BC;</span>
+                </div>
+                <div class="muscle-grid">
+                    <div class="muscle-cell" style="--progress: 35%">
+                        <div class="name">Chest</div>
+                        <div class="time">36h</div>
+                        <div class="percent">35%</div>
+                    </div>
+                    <div class="muscle-cell" style="--progress: 45%">
+                        <div class="name">Triceps</div>
+                        <div class="time">20h</div>
+                        <div class="percent">45%</div>
+                    </div>
+                    <div class="muscle-cell" style="--progress: 75%">
+                        <div class="name">Shoulders</div>
+                        <div class="time">12h</div>
+                        <div class="percent">75%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Option C: Circular Arrows (Regeneration) -->
+        <p style="color: var(--gold); font-size: 10px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Option C: Cycle/Regeneration</p>
+        <div class="card v2" id="card2c">
+            <div class="card-header" onclick="toggleCard('card2c')">
+                <div class="system-header">
+                    <div class="system-icon">&#x1F504;</div>
+                    <div class="system-title">
+                        <h3>RECOVERY STATUS</h3>
+                        <span>Muscle regeneration monitoring</span>
+                    </div>
+                    <div class="status-badge">Active</div>
+                    <span class="chevron">&#x25BC;</span>
+                </div>
+                <div class="muscle-grid">
+                    <div class="muscle-cell" style="--progress: 35%">
+                        <div class="name">Chest</div>
+                        <div class="time">36h</div>
+                        <div class="percent">35%</div>
+                    </div>
+                    <div class="muscle-cell" style="--progress: 45%">
+                        <div class="name">Triceps</div>
+                        <div class="time">20h</div>
+                        <div class="percent">45%</div>
+                    </div>
+                    <div class="muscle-cell" style="--progress: 75%">
+                        <div class="name">Shoulders</div>
+                        <div class="time">12h</div>
+                        <div class="percent">75%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Option D: Lightning Bolt -->
+        <p style="color: var(--gold); font-size: 10px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Option D: Lightning Bolt (Energy)</p>
+        <div class="card v2" id="card2d">
+            <div class="card-header" onclick="toggleCard('card2d')">
+                <div class="system-header">
+                    <div class="system-icon">&#x26A1;</div>
+                    <div class="system-title">
+                        <h3>RECOVERY STATUS</h3>
+                        <span>Muscle regeneration monitoring</span>
+                    </div>
+                    <div class="status-badge">Active</div>
+                    <span class="chevron">&#x25BC;</span>
+                </div>
+                <div class="muscle-grid">
+                    <div class="muscle-cell" style="--progress: 35%">
+                        <div class="name">Chest</div>
+                        <div class="time">36h</div>
+                        <div class="percent">35%</div>
+                    </div>
+                    <div class="muscle-cell" style="--progress: 45%">
+                        <div class="name">Triceps</div>
+                        <div class="time">20h</div>
+                        <div class="percent">45%</div>
+                    </div>
+                    <div class="muscle-cell" style="--progress: 75%">
+                        <div class="name">Shoulders</div>
+                        <div class="time">12h</div>
+                        <div class="percent">75%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Option E: Flame (Burning/Building) -->
+        <p style="color: var(--gold); font-size: 10px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Option E: Flame (Muscle Building)</p>
+        <div class="card v2" id="card2e">
+            <div class="card-header" onclick="toggleCard('card2e')">
+                <div class="system-header">
+                    <div class="system-icon">&#x1F525;</div>
+                    <div class="system-title">
+                        <h3>RECOVERY STATUS</h3>
+                        <span>Muscle regeneration monitoring</span>
+                    </div>
+                    <div class="status-badge">Active</div>
+                    <span class="chevron">&#x25BC;</span>
+                </div>
+                <div class="muscle-grid">
+                    <div class="muscle-cell" style="--progress: 35%">
+                        <div class="name">Chest</div>
+                        <div class="time">36h</div>
+                        <div class="percent">35%</div>
+                    </div>
+                    <div class="muscle-cell" style="--progress: 45%">
+                        <div class="name">Triceps</div>
+                        <div class="time">20h</div>
+                        <div class="percent">45%</div>
+                    </div>
+                    <div class="muscle-cell" style="--progress: 75%">
+                        <div class="name">Shoulders</div>
+                        <div class="time">12h</div>
+                        <div class="percent">75%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Option F: Sparkles (Magic/Regeneration) -->
+        <p style="color: var(--gold); font-size: 10px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Option F: Sparkles (Magic Regen)</p>
+        <div class="card v2" id="card2f">
+            <div class="card-header" onclick="toggleCard('card2f')">
+                <div class="system-header">
+                    <div class="system-icon">&#x2728;</div>
+                    <div class="system-title">
+                        <h3>RECOVERY STATUS</h3>
+                        <span>Muscle regeneration monitoring</span>
+                    </div>
+                    <div class="status-badge">Active</div>
+                    <span class="chevron">&#x25BC;</span>
+                </div>
+                <div class="muscle-grid">
+                    <div class="muscle-cell" style="--progress: 35%">
+                        <div class="name">Chest</div>
+                        <div class="time">36h</div>
+                        <div class="percent">35%</div>
+                    </div>
+                    <div class="muscle-cell" style="--progress: 45%">
+                        <div class="name">Triceps</div>
+                        <div class="time">20h</div>
+                        <div class="percent">45%</div>
+                    </div>
+                    <div class="muscle-cell" style="--progress: 75%">
+                        <div class="name">Shoulders</div>
+                        <div class="time">12h</div>
+                        <div class="percent">75%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VARIATION 3: Quest Log Style -->
+        <h2>Variation 3: Quest Log Style</h2>
+        <div class="card v3">
+            <div class="card-header">
+                <div class="quest-header">
+                    <div class="quest-rank">C</div>
+                    <div class="quest-info">
+                        <h3>Recovery Protocol</h3>
+                        <span class="quest-type">&#x26A1; Passive Quest</span>
+                    </div>
+                    <div class="quest-timer">
+                        <div class="value">36h</div>
+                        <div class="label">Until Clear</div>
+                    </div>
+                </div>
+                <div class="muscle-list">
+                    <div class="muscle-item">
+                        <div class="muscle-icon">&#x1F4AA;</div>
+                        <div class="muscle-details">
+                            <div class="name">Chest</div>
+                            <div class="fantasy">"Titan's Core"</div>
+                        </div>
+                        <div class="muscle-progress">
+                            <div class="bar"><div class="fill" style="width: 35%"></div></div>
+                            <div class="text">35%</div>
+                        </div>
+                    </div>
+                    <div class="muscle-item">
+                        <div class="muscle-icon">&#x1F4AA;</div>
+                        <div class="muscle-details">
+                            <div class="name">Triceps</div>
+                            <div class="fantasy">"Storm Arms"</div>
+                        </div>
+                        <div class="muscle-progress">
+                            <div class="bar"><div class="fill" style="width: 45%"></div></div>
+                            <div class="text">45%</div>
+                        </div>
+                    </div>
+                    <div class="muscle-item">
+                        <div class="muscle-icon">&#x1F4AA;</div>
+                        <div class="muscle-details">
+                            <div class="name">Shoulders</div>
+                            <div class="fantasy">"Atlas Frame"</div>
+                        </div>
+                        <div class="muscle-progress">
+                            <div class="bar"><div class="fill" style="width: 75%"></div></div>
+                            <div class="text">75%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VARIATION 4: Stat Bars -->
+        <h2>Variation 4: RPG Stat Bars</h2>
+        <div class="card v4">
+            <div class="card-header">
+                <div class="stat-header">
+                    <div class="stat-title">
+                        <div class="icon">&#x2665;</div>
+                        <span>Recovery Status</span>
+                    </div>
+                    <div class="time-badge">
+                        <span>&#x23F0;</span>
+                        <span>36h max</span>
+                    </div>
+                </div>
+                <div class="stat-bars">
+                    <div class="stat-row">
+                        <div class="stat-label">Chest</div>
+                        <div class="stat-bar-container">
+                            <div class="stat-bar-bg">
+                                <div class="stat-bar-fill" style="width: 35%"></div>
+                                <div class="stat-bar-segments">
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-value">35%</div>
+                    </div>
+                    <div class="stat-row">
+                        <div class="stat-label">Triceps</div>
+                        <div class="stat-bar-container">
+                            <div class="stat-bar-bg">
+                                <div class="stat-bar-fill" style="width: 45%"></div>
+                                <div class="stat-bar-segments">
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-value">45%</div>
+                    </div>
+                    <div class="stat-row">
+                        <div class="stat-label">Shoulders</div>
+                        <div class="stat-bar-container">
+                            <div class="stat-bar-bg">
+                                <div class="stat-bar-fill" style="width: 75%"></div>
+                                <div class="stat-bar-segments">
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-value">75%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VARIATION 5: Hexagon Grid -->
+        <h2>Variation 5: Hexagon Grid</h2>
+        <div class="card v5">
+            <div class="card-header">
+                <div class="hex-header">
+                    <h3>&#x1F9EC; Body Recovery Map</h3>
+                    <span>3 muscle groups regenerating</span>
+                </div>
+                <div class="hex-grid">
+                    <div class="hex-item recovering">
+                        <div class="hex-shape">
+                            <div class="content">
+                                <div class="percent">35%</div>
+                                <div class="icon">&#x1F525;</div>
+                            </div>
+                        </div>
+                        <div class="name">Chest</div>
+                        <div class="time">36h</div>
+                    </div>
+                    <div class="hex-item recovering">
+                        <div class="hex-shape">
+                            <div class="content">
+                                <div class="percent">45%</div>
+                                <div class="icon">&#x1F525;</div>
+                            </div>
+                        </div>
+                        <div class="name">Triceps</div>
+                        <div class="time">20h</div>
+                    </div>
+                    <div class="hex-item recovering">
+                        <div class="hex-shape">
+                            <div class="content">
+                                <div class="percent">75%</div>
+                                <div class="icon">&#x1F525;</div>
+                            </div>
+                        </div>
+                        <div class="name">Shoulders</div>
+                        <div class="time">12h</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VARIATION 6: Minimal Notification -->
+        <h2>Variation 6: Minimal Notification Bar</h2>
+        <div class="card v6">
+            <div class="notification">
+                <div class="notification-icon">&#x26A1;</div>
+                <div class="notification-content">
+                    <div class="notification-title">3 Muscle Groups Recovering</div>
+                    <div class="notification-subtitle">Chest, Triceps, Shoulders • 36h until full recovery</div>
+                </div>
+                <button class="notification-action">View</button>
+            </div>
+        </div>
+
+        <!-- After Leg Day Example -->
+        <h2>Example: After Leg Day</h2>
+        <div class="card v2">
+            <div class="card-header">
+                <div class="system-header">
+                    <div class="system-icon">&#x1F9B5;</div>
+                    <div class="system-title">
+                        <h3>RECOVERY STATUS</h3>
+                        <span>Lower body regeneration active</span>
+                    </div>
+                    <div class="status-badge">Active</div>
+                </div>
+                <div class="muscle-grid">
+                    <div class="muscle-cell" style="--progress: 17%">
+                        <div class="name">Quads</div>
+                        <div class="time">40h</div>
+                        <div class="percent">17%</div>
+                    </div>
+                    <div class="muscle-cell" style="--progress: 22%">
+                        <div class="name">Hamstrings</div>
+                        <div class="time">56h</div>
+                        <div class="percent">22%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="comparison-note">
+            <strong>Design Inspiration Sources:</strong><br>
+            <a href="https://www.figma.com/community/file/1459229789167769742/solo-leveling" style="color: var(--system-primary)">Figma - Solo Leveling</a> |
+            <a href="https://devforum.roblox.com/t/some-ui-designs-i-made-off-a-manhwa-reference-solo-leveling/941145" style="color: var(--system-primary)">Roblox Dev Forum - Solo Leveling UI</a> |
+            <a href="https://www.behance.net/search/projects/solo%20leveling%20ui" style="color: var(--system-primary)">Behance - Solo Leveling UI Projects</a> |
+            <a href="https://v0.dev/chat/dark-fantasy-dashboard-design-bv2bao0a2RS" style="color: var(--system-primary)">v0.dev - Dark Fantasy Dashboard</a>
+        </div>
+    </div>
+
+    <script>
+        function toggleCard(cardId) {
+            const card = document.getElementById(cardId);
+            card.classList.toggle('expanded');
+        }
+    </script>
+</body>
+</html>

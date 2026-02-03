@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stats - Modern A (Chart-Forward)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-void: #050508;
+            --bg-dark: #0a0a12;
+            --bg-medium: #0f1018;
+            --bg-light: #16171f;
+            --bg-elevated: #1a1b24;
+            --accent-primary: #00D4FF;
+            --accent-secondary: #7B61FF;
+            --accent-gold: #FFD700;
+            --accent-success: #00FF88;
+            --accent-warning: #FF9500;
+            --accent-danger: #FF4757;
+            --text-primary: #FFFFFF;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --text-muted: rgba(255, 255, 255, 0.4);
+            --border: rgba(255, 255, 255, 0.08);
+            --glow-primary: rgba(0, 212, 255, 0.3);
+
+            --squat-color: #FF6B6B;
+            --bench-color: #00D4FF;
+            --deadlift-color: #7B61FF;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #0a0a14;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        .mockup-label {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .mockup-label span { color: var(--accent-primary); }
+
+        .iphone-frame {
+            width: 390px;
+            height: 844px;
+            background: #000;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow: 0 0 0 3px #1a1a1a, 0 0 0 6px #0d0d0d, 0 30px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-void);
+            border-radius: 40px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .iphone-screen::-webkit-scrollbar { display: none; }
+
+        .dynamic-island {
+            position: sticky;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 34px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 100;
+            margin-bottom: -34px;
+        }
+
+        .screen-content {
+            padding-bottom: 100px;
+            color: var(--text-primary);
+        }
+
+        .mono {
+            font-family: 'SF Mono', 'Menlo', monospace;
+            letter-spacing: 0.5px;
+        }
+
+        /* Header */
+        .header {
+            padding: 60px 20px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .header-left {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .system-tag {
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--accent-primary);
+            letter-spacing: 2px;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Time Range Selector */
+        .time-range {
+            display: flex;
+            gap: 6px;
+            padding: 0 20px;
+            margin-bottom: 20px;
+        }
+
+        .time-btn {
+            padding: 8px 14px;
+            font-family: 'SF Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .time-btn.inactive {
+            background: var(--bg-medium);
+            color: var(--text-secondary);
+        }
+
+        .time-btn.active {
+            background: var(--accent-primary);
+            color: #000;
+            border-color: var(--accent-primary);
+        }
+
+        /* Exercise Tabs */
+        .exercise-tabs {
+            display: flex;
+            margin: 0 20px 16px;
+            background: var(--bg-medium);
+            border-radius: 8px;
+            padding: 4px;
+            border: 1px solid var(--border);
+        }
+
+        .exercise-tab {
+            flex: 1;
+            padding: 12px 8px;
+            text-align: center;
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-secondary);
+            position: relative;
+        }
+
+        .exercise-tab.active {
+            background: var(--bg-light);
+            color: var(--text-primary);
+        }
+
+        .exercise-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40%;
+            height: 2px;
+            background: var(--tab-color, var(--accent-primary));
+        }
+
+        .exercise-tab.squat { --tab-color: var(--squat-color); }
+        .exercise-tab.bench { --tab-color: var(--bench-color); }
+        .exercise-tab.deadlift { --tab-color: var(--deadlift-color); }
+
+        /* Hero Chart Container */
+        .hero-chart {
+            margin: 0 20px;
+            background: var(--bg-medium);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .chart-header {
+            padding: 20px 20px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .chart-exercise-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .chart-exercise-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .chart-fantasy-name {
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            font-style: italic;
+            color: var(--text-muted);
+        }
+
+        .chart-e1rm-display {
+            text-align: right;
+        }
+
+        .chart-e1rm-value {
+            font-size: 42px;
+            font-weight: 700;
+            color: var(--accent-primary);
+            line-height: 1;
+        }
+
+        .chart-e1rm-label {
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+        }
+
+        .chart-trend {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 4px;
+            margin-top: 4px;
+            font-family: 'SF Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent-success);
+        }
+
+        /* Large Chart Area */
+        .chart-area {
+            height: 200px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .chart-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .chart-grid-line {
+            stroke: var(--border);
+            stroke-width: 0.5;
+            stroke-dasharray: 4;
+        }
+
+        .chart-line {
+            fill: none;
+            stroke: var(--bench-color);
+            stroke-width: 2.5;
+        }
+
+        .chart-area-fill {
+            fill: url(#heroGradient);
+        }
+
+        .chart-point {
+            fill: var(--bench-color);
+        }
+
+        .chart-point.selected {
+            fill: var(--accent-gold);
+            filter: drop-shadow(0 0 6px var(--accent-gold));
+        }
+
+        .chart-label {
+            font-family: 'SF Mono', monospace;
+            font-size: 9px;
+            fill: var(--text-muted);
+        }
+
+        .chart-y-label {
+            font-family: 'SF Mono', monospace;
+            font-size: 9px;
+            fill: var(--text-muted);
+        }
+
+        /* Annotation Tooltip */
+        .chart-tooltip {
+            position: absolute;
+            top: 30px;
+            right: 20px;
+            background: var(--bg-dark);
+            border: 1px solid var(--accent-gold);
+            border-radius: 6px;
+            padding: 10px 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+
+        .tooltip-value {
+            font-family: 'SF Mono', monospace;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent-gold);
+        }
+
+        .tooltip-date {
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        /* Stats Row Below Chart */
+        .stats-bar {
+            display: flex;
+            border-top: 1px solid var(--border);
+        }
+
+        .stat-cell {
+            flex: 1;
+            padding: 16px;
+            text-align: center;
+            border-right: 1px solid var(--border);
+        }
+
+        .stat-cell:last-child {
+            border-right: none;
+        }
+
+        .stat-cell-value {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .stat-cell-number {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .stat-cell-unit {
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .stat-cell-label {
+            font-family: 'SF Mono', monospace;
+            font-size: 9px;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        /* Rank Card */
+        .rank-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 16px 20px;
+            padding: 16px;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, var(--bg-medium) 100%);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 8px;
+        }
+
+        .rank-badge-large {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 20px;
+            color: #000;
+            background: linear-gradient(135deg, var(--accent-primary), #0099CC);
+            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
+        }
+
+        .rank-info {
+            flex: 1;
+        }
+
+        .rank-title-large {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .rank-percentile-large {
+            font-family: 'SF Mono', monospace;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .rank-progress {
+            margin-top: 8px;
+        }
+
+        .rank-progress-bar {
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .rank-progress-fill {
+            height: 100%;
+            width: 78%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 2px;
+        }
+
+        .rank-bw-multiplier {
+            text-align: right;
+        }
+
+        .bw-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent-gold);
+        }
+
+        .bw-label {
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        /* Other Lifts Summary */
+        .other-lifts {
+            margin: 24px 20px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .section-diamond {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-primary);
+            transform: rotate(45deg);
+        }
+
+        .section-title {
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 1.5px;
+        }
+
+        .mini-lift-cards {
+            display: flex;
+            gap: 10px;
+        }
+
+        .mini-lift-card {
+            flex: 1;
+            padding: 14px;
+            background: var(--bg-medium);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--lift-color, var(--accent-primary));
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mini-lift-card:hover {
+            background: var(--bg-light);
+        }
+
+        .mini-lift-card.squat { --lift-color: var(--squat-color); }
+        .mini-lift-card.deadlift { --lift-color: var(--deadlift-color); }
+
+        .mini-lift-name {
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .mini-lift-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--lift-color, var(--text-primary));
+        }
+
+        .mini-lift-trend {
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            color: var(--accent-success);
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="mockup-label">Stats Screen: <span>Modern A (Chart-Forward)</span></div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="screen-content">
+                    <!-- Header -->
+                    <div class="header">
+                        <div class="header-left">
+                            <div class="system-tag">[ SYSTEM ]</div>
+                            <div class="header-title">Power Analysis</div>
+                        </div>
+                    </div>
+
+                    <!-- Time Range -->
+                    <div class="time-range">
+                        <button class="time-btn active">4W</button>
+                        <button class="time-btn inactive">8W</button>
+                        <button class="time-btn inactive">12W</button>
+                        <button class="time-btn inactive">6M</button>
+                        <button class="time-btn inactive">1Y</button>
+                    </div>
+
+                    <!-- Exercise Tabs -->
+                    <div class="exercise-tabs">
+                        <div class="exercise-tab squat">SQUAT</div>
+                        <div class="exercise-tab bench active">BENCH</div>
+                        <div class="exercise-tab deadlift">DEADLIFT</div>
+                    </div>
+
+                    <!-- Hero Chart -->
+                    <div class="hero-chart">
+                        <div class="chart-header">
+                            <div class="chart-exercise-info">
+                                <div class="chart-exercise-name">Bench Press</div>
+                                <div class="chart-fantasy-name">"Titanic Press"</div>
+                            </div>
+                            <div class="chart-e1rm-display">
+                                <div class="chart-e1rm-value">242</div>
+                                <div class="chart-e1rm-label">E1RM (LB)</div>
+                                <div class="chart-trend">↗ +2.8%</div>
+                            </div>
+                        </div>
+
+                        <div class="chart-area">
+                            <div class="chart-tooltip">
+                                <div class="tooltip-value">242 lb</div>
+                                <div class="tooltip-date">Jan 22</div>
+                            </div>
+                            <svg class="chart-svg" viewBox="0 0 320 140" preserveAspectRatio="none">
+                                <defs>
+                                    <linearGradient id="heroGradient" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="rgba(0, 212, 255, 0.35)"/>
+                                        <stop offset="100%" stop-color="rgba(0, 212, 255, 0)"/>
+                                    </linearGradient>
+                                </defs>
+
+                                <!-- Y-axis labels -->
+                                <text class="chart-y-label" x="5" y="15">250</text>
+                                <text class="chart-y-label" x="5" y="50">235</text>
+                                <text class="chart-y-label" x="5" y="85">220</text>
+                                <text class="chart-y-label" x="5" y="120">205</text>
+
+                                <!-- Grid lines -->
+                                <line class="chart-grid-line" x1="30" y1="12" x2="310" y2="12"/>
+                                <line class="chart-grid-line" x1="30" y1="47" x2="310" y2="47"/>
+                                <line class="chart-grid-line" x1="30" y1="82" x2="310" y2="82"/>
+                                <line class="chart-grid-line" x1="30" y1="117" x2="310" y2="117"/>
+
+                                <!-- Area fill -->
+                                <path class="chart-area-fill" d="M35,100 Q80,95 100,85 T170,65 T230,45 T310,25 L310,130 L35,130 Z"/>
+
+                                <!-- Line -->
+                                <path class="chart-line" d="M35,100 Q80,95 100,85 T170,65 T230,45 T310,25"/>
+
+                                <!-- Points -->
+                                <circle class="chart-point" cx="35" cy="100" r="4"/>
+                                <circle class="chart-point" cx="100" cy="85" r="4"/>
+                                <circle class="chart-point" cx="170" cy="65" r="4"/>
+                                <circle class="chart-point" cx="230" cy="45" r="4"/>
+                                <circle class="chart-point selected" cx="310" cy="25" r="6"/>
+
+                                <!-- X-axis labels -->
+                                <text class="chart-label" x="35" y="135">Jan 1</text>
+                                <text class="chart-label" x="160" y="135">Jan 12</text>
+                                <text class="chart-label" x="290" y="135">Jan 22</text>
+                            </svg>
+                        </div>
+
+                        <!-- Stats Bar -->
+                        <div class="stats-bar">
+                            <div class="stat-cell">
+                                <div class="stat-cell-value">
+                                    <span class="stat-cell-number">14</span>
+                                </div>
+                                <div class="stat-cell-label">QUESTS</div>
+                            </div>
+                            <div class="stat-cell">
+                                <div class="stat-cell-value">
+                                    <span class="stat-cell-number">238</span>
+                                    <span class="stat-cell-unit">lb</span>
+                                </div>
+                                <div class="stat-cell-label">4W AVG</div>
+                            </div>
+                            <div class="stat-cell">
+                                <div class="stat-cell-value">
+                                    <span class="stat-cell-number">+7</span>
+                                    <span class="stat-cell-unit">lb</span>
+                                </div>
+                                <div class="stat-cell-label">VS LAST</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rank Card -->
+                    <div class="rank-card">
+                        <div class="rank-badge-large">A</div>
+                        <div class="rank-info">
+                            <div class="rank-title-large">A-Rank Hunter</div>
+                            <div class="rank-percentile-large">Top 22% of lifters</div>
+                            <div class="rank-progress">
+                                <div class="rank-progress-bar">
+                                    <div class="rank-progress-fill"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="rank-bw-multiplier">
+                            <div class="bw-value">1.46x</div>
+                            <div class="bw-label">BW</div>
+                        </div>
+                    </div>
+
+                    <!-- Other Lifts Summary -->
+                    <div class="other-lifts">
+                        <div class="section-header">
+                            <div class="section-diamond"></div>
+                            <div class="section-title">OTHER POWER LEVELS</div>
+                        </div>
+                        <div class="mini-lift-cards">
+                            <div class="mini-lift-card squat">
+                                <div class="mini-lift-name">SQUAT</div>
+                                <div class="mini-lift-value">315</div>
+                                <div class="mini-lift-trend">↗ +4.2%</div>
+                            </div>
+                            <div class="mini-lift-card deadlift">
+                                <div class="mini-lift-name">DEADLIFT</div>
+                                <div class="mini-lift-value">405</div>
+                                <div class="mini-lift-trend">↗ +6.1%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

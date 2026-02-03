@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Option D3: Split Assistant Panel - Persistent Claude Integration</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-deepest: #030306;
+            --bg-deep: #07070c;
+            --bg-surface: #0c0c14;
+            --bg-elevated: #14141e;
+            --bg-hover: #1c1c28;
+            --border: #1e1e2e;
+            --border-bright: #2e2e42;
+            --text-primary: #f4f4f9;
+            --text-secondary: #9898ad;
+            --text-muted: #505068;
+            --indigo: #6366f1;
+            --indigo-bright: #818cf8;
+            --claude-orange: #da7756;
+            --claude-orange-dim: #c4684a;
+            --claude-bg: #0f0d0b;
+            --emerald: #10b981;
+            --rose: #f43f5e;
+        }
+
+        body {
+            font-family: 'Sora', -apple-system, sans-serif;
+            background: var(--bg-deepest);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+            overflow: hidden;
+        }
+
+        /* Three-column layout */
+        .app-container {
+            display: grid;
+            grid-template-columns: 400px 1fr 360px;
+            grid-template-rows: 1fr auto;
+            height: 100vh;
+            transition: grid-template-columns 0.3s ease;
+        }
+
+        .app-container.assistant-collapsed {
+            grid-template-columns: 400px 1fr 48px;
+        }
+
+        /* Left Panel - Comparison */
+        .comparison-panel {
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            padding: 20px;
+            overflow-y: auto;
+            grid-row: span 2;
+        }
+
+        .panel-header {
+            margin-bottom: 20px;
+        }
+
+        .panel-header h1 {
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .panel-header p {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* Comparison Cards */
+        .comparison-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .comparison-card {
+            background: var(--bg-elevated);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .comparison-card:hover { border-color: var(--border-bright); }
+        .comparison-card.selected { border-color: var(--indigo); }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .card-title-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-surface);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .card-title h3 { font-size: 13px; font-weight: 600; }
+        .card-title .badge {
+            padding: 2px 6px;
+            background: rgba(16, 185, 129, 0.15);
+            border-radius: 3px;
+            font-size: 8px;
+            font-weight: 600;
+            color: var(--emerald);
+            text-transform: uppercase;
+        }
+
+        .card-check {
+            width: 20px;
+            height: 20px;
+            background: var(--bg-surface);
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: transparent;
+        }
+
+        .comparison-card.selected .card-check {
+            background: var(--indigo);
+            border-color: var(--indigo);
+            color: white;
+        }
+
+        .card-desc {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .card-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .feature-tag {
+            padding: 3px 8px;
+            background: var(--bg-surface);
+            border-radius: 4px;
+            font-size: 9px;
+            color: var(--text-secondary);
+        }
+
+        .feature-tag.positive::before { content: '✓ '; color: var(--emerald); }
+        .feature-tag.negative::before { content: '✗ '; color: var(--rose); }
+
+        /* Middle Panel - Preview */
+        .preview {
+            background: var(--bg-deep);
+            padding: 20px;
+            overflow: auto;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .preview-header h2 {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .file-tabs {
+            display: flex;
+            gap: 4px;
+        }
+
+        .file-tab {
+            padding: 5px 10px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 5px;
+            color: var(--text-muted);
+            font-family: 'Source Code Pro', monospace;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .file-tab.active {
+            background: var(--bg-elevated);
+            border-color: var(--border);
+            color: var(--text-primary);
+        }
+
+        .code-preview {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .code-header {
+            padding: 10px 12px;
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border);
+            font-size: 10px;
+            font-family: 'Source Code Pro', monospace;
+            color: var(--text-muted);
+        }
+
+        .code-content {
+            padding: 14px;
+            font-family: 'Source Code Pro', monospace;
+            font-size: 10px;
+            line-height: 1.7;
+            white-space: pre;
+            color: var(--text-secondary);
+            max-height: 300px;
+            overflow: auto;
+        }
+
+        .code-content .keyword { color: #f472b6; }
+        .code-content .type { color: #a78bfa; }
+        .code-content .string { color: #34d399; }
+        .code-content .comment { color: #3a3a50; }
+
+        /* Prompt Output */
+        .prompt-output {
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border);
+            padding: 14px 20px;
+        }
+
+        .prompt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .prompt-header h3 {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .copy-btn {
+            padding: 6px 12px;
+            background: var(--indigo);
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-family: inherit;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .prompt-text {
+            padding: 10px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        /* ================================================
+           ASSISTANT PANEL - Persistent right panel
+           ================================================ */
+
+        .assistant-panel {
+            background: var(--claude-bg);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            grid-row: span 2;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .assistant-panel.collapsed {
+            background: var(--bg-surface);
+        }
+
+        /* Collapse Toggle */
+        .assistant-toggle {
+            position: absolute;
+            left: -14px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 28px;
+            height: 28px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            color: var(--text-muted);
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .assistant-toggle:hover {
+            background: var(--claude-orange);
+            border-color: var(--claude-orange);
+            color: white;
+        }
+
+        .assistant-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+        }
+
+        .assistant-header-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--claude-orange) 0%, var(--claude-orange-dim) 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .assistant-header-text {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .assistant-header-text h3 {
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .assistant-header-text p {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        /* Collapsed state */
+        .collapsed .assistant-header {
+            padding: 12px;
+            justify-content: center;
+        }
+
+        .collapsed .assistant-header-text,
+        .collapsed .assistant-messages,
+        .collapsed .assistant-input {
+            display: none;
+        }
+
+        .collapsed .assistant-header-icon {
+            width: 28px;
+            height: 28px;
+            font-size: 14px;
+        }
+
+        /* Messages */
+        .assistant-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .message {
+            display: flex;
+            gap: 10px;
+            animation: messageIn 0.3s ease;
+        }
+
+        @keyframes messageIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .message.assistant .message-avatar {
+            background: linear-gradient(135deg, var(--claude-orange) 0%, var(--claude-orange-dim) 100%);
+        }
+
+        .message.user .message-avatar {
+            background: var(--bg-hover);
+        }
+
+        .message-content {
+            max-width: 85%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .message.assistant .message-content {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            border-top-left-radius: 3px;
+        }
+
+        .message.user .message-content {
+            background: var(--indigo);
+            color: white;
+            border-top-right-radius: 3px;
+        }
+
+        .message-content strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .message-content code {
+            padding: 1px 5px;
+            background: rgba(99, 102, 241, 0.2);
+            border-radius: 3px;
+            font-family: 'Source Code Pro', monospace;
+            font-size: 10px;
+            color: var(--indigo-bright);
+        }
+
+        /* Context Indicator */
+        .context-indicator {
+            margin: 0 16px;
+            padding: 10px 12px;
+            background: rgba(218, 119, 86, 0.08);
+            border: 1px solid rgba(218, 119, 86, 0.2);
+            border-radius: 8px;
+            font-size: 10px;
+            color: var(--claude-orange);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .context-indicator::before {
+            content: '👁';
+            font-size: 12px;
+        }
+
+        .context-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-left: auto;
+        }
+
+        .context-pill {
+            padding: 2px 8px;
+            background: rgba(218, 119, 86, 0.15);
+            border-radius: 10px;
+            font-size: 9px;
+        }
+
+        /* Apply Button in messages */
+        .message-action {
+            margin-top: 10px;
+            padding: 7px 12px;
+            background: var(--indigo);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-family: inherit;
+            font-size: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .message-action:hover {
+            filter: brightness(1.1);
+        }
+
+        .message-action.applied {
+            background: var(--emerald);
+        }
+
+        /* Input */
+        .assistant-input {
+            padding: 14px 16px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-surface);
+        }
+
+        .input-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .assistant-textarea {
+            flex: 1;
+            padding: 10px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 12px;
+            resize: none;
+            min-height: 40px;
+            max-height: 100px;
+        }
+
+        .assistant-textarea:focus {
+            outline: none;
+            border-color: var(--claude-orange);
+        }
+
+        .assistant-textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        .send-btn {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--claude-orange) 0%, var(--claude-orange-dim) 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover {
+            filter: brightness(1.1);
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .quick-action {
+            padding: 5px 10px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            color: var(--text-muted);
+            font-family: inherit;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .quick-action:hover {
+            border-color: var(--claude-orange);
+            color: var(--claude-orange);
+        }
+
+        /* Loading indicator */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 12px;
+        }
+
+        .typing-indicator span {
+            width: 6px;
+            height: 6px;
+            background: var(--claude-orange);
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container" id="appContainer">
+        <!-- Left: Comparison Panel -->
+        <div class="comparison-panel">
+            <div class="panel-header">
+                <h1>🔐 Keychain Service</h1>
+                <p>Compare and configure</p>
+            </div>
+
+            <div class="comparison-cards">
+                <div class="comparison-card selected" data-preset="recommended" onclick="selectPreset('recommended')">
+                    <div class="card-header">
+                        <div class="card-title-row">
+                            <div class="card-icon">⚖️</div>
+                            <div class="card-title">
+                                <h3>Recommended</h3>
+                                <span class="badge">Best for most</span>
+                            </div>
+                        </div>
+                        <div class="card-check">✓</div>
+                    </div>
+                    <p class="card-desc">Balanced security and usability with background access support.</p>
+                    <div class="card-features">
+                        <span class="feature-tag positive">Background sync</span>
+                        <span class="feature-tag positive">Hardware encryption</span>
+                    </div>
+                </div>
+
+                <div class="comparison-card" data-preset="maximum" onclick="selectPreset('maximum')">
+                    <div class="card-header">
+                        <div class="card-title-row">
+                            <div class="card-icon">🛡️</div>
+                            <div class="card-title">
+                                <h3>Maximum Security</h3>
+                            </div>
+                        </div>
+                        <div class="card-check">✓</div>
+                    </div>
+                    <p class="card-desc">Biometric protection. For banking or healthcare apps.</p>
+                    <div class="card-features">
+                        <span class="feature-tag positive">Biometric</span>
+                        <span class="feature-tag negative">No background</span>
+                    </div>
+                </div>
+
+                <div class="comparison-card" data-preset="convenience" onclick="selectPreset('convenience')">
+                    <div class="card-header">
+                        <div class="card-title-row">
+                            <div class="card-icon">☁️</div>
+                            <div class="card-title">
+                                <h3>Convenience</h3>
+                            </div>
+                        </div>
+                        <div class="card-check">✓</div>
+                    </div>
+                    <p class="card-desc">iCloud sync for multi-device experience.</p>
+                    <div class="card-features">
+                        <span class="feature-tag positive">Cross-device</span>
+                        <span class="feature-tag negative">Larger surface</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Middle: Preview -->
+        <div class="preview">
+            <div class="preview-header">
+                <h2>Generated Code</h2>
+                <div class="file-tabs">
+                    <button class="file-tab active">KeychainService.swift</button>
+                    <button class="file-tab">APIClient.swift</button>
+                </div>
+            </div>
+            <div class="code-preview">
+                <div class="code-header">KeychainService.swift</div>
+                <div class="code-content"><span class="keyword">import</span> <span class="type">Foundation</span>
+<span class="keyword">import</span> <span class="type">Security</span>
+
+<span class="keyword">final class</span> <span class="type">KeychainService</span> {
+    <span class="keyword">static let</span> shared = <span class="type">KeychainService</span>()
+
+    <span class="comment">// Recommended configuration</span>
+    <span class="comment">// - After First Unlock</span>
+    <span class="comment">// - Migration enabled</span>
+}</div>
+            </div>
+        </div>
+
+        <!-- Bottom: Prompt -->
+        <div class="prompt-output">
+            <div class="prompt-header">
+                <h3>Generated Prompt</h3>
+                <button class="copy-btn">Copy</button>
+            </div>
+            <div class="prompt-text">Create a KeychainService.swift with secure token storage and migration.</div>
+        </div>
+
+        <!-- Right: Claude Assistant Panel -->
+        <div class="assistant-panel" id="assistantPanel">
+            <div class="assistant-header">
+                <button class="assistant-toggle" onclick="toggleAssistant()">
+                    <span id="toggleIcon">◀</span>
+                </button>
+                <div class="assistant-header-icon">✨</div>
+                <div class="assistant-header-text">
+                    <h3>Claude Assistant</h3>
+                    <p>Ask about your config</p>
+                </div>
+            </div>
+
+            <div class="context-indicator">
+                <span>Watching:</span>
+                <div class="context-pills">
+                    <span class="context-pill" id="presetPill">Recommended</span>
+                </div>
+            </div>
+
+            <div class="assistant-messages" id="messages">
+                <div class="message assistant">
+                    <div class="message-avatar">✨</div>
+                    <div class="message-content">
+                        <strong>Hi! I can help you understand your Keychain configuration.</strong>
+                        <br><br>
+                        You've selected the <strong>Recommended</strong> preset, which is a great choice for your fitness app. Ask me anything about the security implications or alternatives.
+                    </div>
+                </div>
+            </div>
+
+            <div class="assistant-input">
+                <div class="quick-actions">
+                    <button class="quick-action" onclick="sendQuickQuestion('Why this preset?')">Why this preset?</button>
+                    <button class="quick-action" onclick="sendQuickQuestion('Security level?')">Security level?</button>
+                    <button class="quick-action" onclick="sendQuickQuestion('Compare options')">Compare</button>
+                </div>
+                <div class="input-row">
+                    <textarea class="assistant-textarea" id="inputField" placeholder="Ask about your configuration..." rows="1"></textarea>
+                    <button class="send-btn" onclick="sendMessage()">→</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedPreset = 'recommended';
+        let isCollapsed = false;
+
+        function toggleAssistant() {
+            isCollapsed = !isCollapsed;
+            document.getElementById('appContainer').classList.toggle('assistant-collapsed', isCollapsed);
+            document.getElementById('assistantPanel').classList.toggle('collapsed', isCollapsed);
+            document.getElementById('toggleIcon').textContent = isCollapsed ? '▶' : '◀';
+        }
+
+        function selectPreset(preset) {
+            selectedPreset = preset;
+            document.querySelectorAll('.comparison-card').forEach(card => {
+                card.classList.toggle('selected', card.dataset.preset === preset);
+            });
+            document.getElementById('presetPill').textContent = preset.charAt(0).toUpperCase() + preset.slice(1);
+
+            // Auto-message when preset changes
+            addMessage('assistant', getPresetMessage(preset));
+        }
+
+        function getPresetMessage(preset) {
+            const messages = {
+                recommended: `You switched to <strong>Recommended</strong>. This is ideal for your fitness app because:
+                    <br><br>
+                    • Background sync works (for workout notifications)
+                    <br>• No intrusive Face ID prompts
+                    <br>• Still hardware-encrypted
+                    <br><br>
+                    This is what most consumer apps should use.`,
+                maximum: `You switched to <strong>Maximum Security</strong>. This adds biometric protection but has trade-offs:
+                    <br><br>
+                    • Users authenticate on every API call
+                    <br>• Background refresh won't work
+                    <br>• Best for banking/healthcare apps
+                    <br><br>
+                    <button class="message-action" onclick="this.textContent='✓ Switched back'; selectPreset('recommended')">⚡ Switch to Recommended instead</button>`,
+                convenience: `You switched to <strong>Convenience</strong> with iCloud sync enabled.
+                    <br><br>
+                    This means tokens sync across iPhone, iPad, and Mac. It's end-to-end encrypted, but increases attack surface if the iCloud account is compromised.
+                    <br><br>
+                    <strong>Recommendation:</strong> Unless users specifically need multi-device login, keep sync off.`
+            };
+            return messages[preset];
+        }
+
+        function addMessage(type, content) {
+            const container = document.getElementById('messages');
+            const msg = document.createElement('div');
+            msg.className = `message ${type}`;
+            msg.innerHTML = `
+                <div class="message-avatar">${type === 'assistant' ? '✨' : '👤'}</div>
+                <div class="message-content">${content}</div>
+            `;
+            container.appendChild(msg);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function showTyping() {
+            const container = document.getElementById('messages');
+            const typing = document.createElement('div');
+            typing.className = 'message assistant';
+            typing.id = 'typingIndicator';
+            typing.innerHTML = `
+                <div class="message-avatar">✨</div>
+                <div class="typing-indicator"><span></span><span></span><span></span></div>
+            `;
+            container.appendChild(typing);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function hideTyping() {
+            const typing = document.getElementById('typingIndicator');
+            if (typing) typing.remove();
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('inputField');
+            const text = input.value.trim();
+            if (!text) return;
+
+            addMessage('user', text);
+            input.value = '';
+
+            showTyping();
+
+            setTimeout(() => {
+                hideTyping();
+                const response = generateResponse(text);
+                addMessage('assistant', response);
+            }, 1000 + Math.random() * 500);
+        }
+
+        function sendQuickQuestion(q) {
+            document.getElementById('inputField').value = q;
+            sendMessage();
+        }
+
+        function generateResponse(question) {
+            const q = question.toLowerCase();
+
+            if (q.includes('why') && q.includes('preset')) {
+                return `The <strong>Recommended</strong> preset uses <code>kSecAttrAccessibleAfterFirstUnlock</code>, which:
+                    <br><br>
+                    • Lets your app access tokens after the user unlocks their device once
+                    <br>• Enables background sync and notifications
+                    <br>• Is still encrypted by the Secure Enclave
+                    <br><br>
+                    For a fitness app, this is the right balance. Users don't expect to authenticate just to see their workout history.`;
+            }
+
+            if (q.includes('security') || q.includes('level')) {
+                return `<strong>Security Assessment:</strong>
+                    <br><br>
+                    Your current config (${selectedPreset}) provides:
+                    <br>• Hardware encryption via Secure Enclave
+                    <br>• Protection against backup extraction
+                    <br>• No plaintext storage on disk
+                    <br><br>
+                    This is <strong>significantly more secure</strong> than UserDefaults (your previous approach).
+                    <br><br>
+                    The main difference vs. Maximum Security is whether you want Face ID on every token read.`;
+            }
+
+            if (q.includes('compare')) {
+                return `<strong>Quick Comparison:</strong>
+                    <br><br>
+                    <strong>Recommended:</strong> Background works, no friction → Best for fitness
+                    <br><strong>Maximum:</strong> Biometric every read → For banking
+                    <br><strong>Convenience:</strong> iCloud sync → For multi-device
+                    <br><br>
+                    Your fitness app should use <strong>Recommended</strong> unless you're storing payment info.`;
+            }
+
+            return `I understand you're asking about "${question}".
+                <br><br>
+                Could you be more specific? I can help with:
+                <br>• Security implications of each option
+                <br>• Which preset fits your use case
+                <br>• Technical details of the Keychain APIs
+                <br>• Migration strategy from UserDefaults`;
+        }
+
+        // Enter to send
+        document.getElementById('inputField').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quests Tab - Edge Flow Design</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: linear-gradient(180deg, #0a0a0f 0%, #050508 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .phone-frame {
+            max-width: 390px;
+            margin: 0 auto;
+            background: #050508;
+            border-radius: 40px;
+            padding: 60px 20px 40px;
+            box-shadow: 0 0 60px rgba(0, 212, 255, 0.1);
+        }
+
+        /* Colors */
+        :root {
+            --primary: #00D4FF;
+            --primary-glow: rgba(0, 212, 255, 0.3);
+            --success: #00FF88;
+            --gold: #FFD700;
+            --orange: #FF9500;
+            --void-dark: #0a0a0f;
+            --void-medium: #12121a;
+            --void-light: #1a1a24;
+            --text-primary: #FFFFFF;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --text-muted: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Header Section - Plain text, no box */
+        .header-section {
+            margin-bottom: 24px;
+        }
+
+        .header-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .header-subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+        }
+
+        /* Quick Actions - Pill Buttons */
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 28px;
+        }
+
+        .pill-button {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 16px 20px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .pill-button.primary {
+            background: linear-gradient(135deg, #00D4FF 0%, #0099CC 100%);
+            color: #000;
+            box-shadow: 0 4px 20px var(--primary-glow);
+        }
+
+        .pill-button.secondary {
+            background: var(--void-medium);
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .pill-button:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Section Header */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .section-action {
+            font-size: 13px;
+            color: var(--primary);
+            cursor: pointer;
+        }
+
+        /* Calendar Toggle */
+        .calendar-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .toggle-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: var(--void-medium);
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .toggle-btn.active {
+            background: rgba(0, 212, 255, 0.15);
+            color: var(--primary);
+        }
+
+        /* Calendar Section - Edge Flow Style */
+        .calendar-section {
+            background: var(--void-medium);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        .calendar-section::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--primary);
+            border-radius: 14px 0 0 14px;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .calendar-nav {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: var(--void-light);
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .calendar-month {
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: var(--text-primary);
+        }
+
+        .calendar-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            text-align: center;
+        }
+
+        .day-header {
+            font-size: 10px;
+            color: var(--text-muted);
+            padding: 8px 0;
+            font-weight: 600;
+        }
+
+        .day-cell {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            color: var(--text-muted);
+            border-radius: 8px;
+            cursor: pointer;
+            gap: 2px;
+        }
+
+        .day-cell.has-workout {
+            color: var(--text-primary);
+        }
+
+        .day-cell.selected {
+            background: rgba(0, 212, 255, 0.15);
+            color: var(--primary);
+        }
+
+        .day-cell.today {
+            border: 2px solid var(--primary);
+        }
+
+        .workout-dot {
+            width: 10px;
+            height: 3px;
+            border-radius: 2px;
+            background: var(--success);
+        }
+
+        /* Quest Row - Edge Flow Card */
+        .quest-row {
+            background: var(--void-medium);
+            border-radius: 14px;
+            margin-bottom: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quest-row::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--success);
+        }
+
+        .quest-row.activity::before {
+            background: var(--orange);
+        }
+
+        .quest-content {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            padding-left: 18px;
+        }
+
+        .quest-info {
+            flex: 1;
+        }
+
+        .quest-date-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .quest-date {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .quest-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .quest-badge.complete {
+            background: rgba(0, 255, 136, 0.1);
+            color: var(--success);
+        }
+
+        .quest-badge.activity {
+            background: rgba(255, 149, 0, 0.1);
+            color: var(--orange);
+        }
+
+        .quest-stats {
+            display: flex;
+            gap: 16px;
+        }
+
+        .quest-stat {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .quest-stat svg {
+            width: 12px;
+            height: 12px;
+            fill: var(--text-muted);
+        }
+
+        .quest-chevron {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            background: var(--void-medium);
+            border-radius: 14px;
+            padding: 40px 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .empty-state::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--primary);
+            border-radius: 14px 0 0 14px;
+        }
+
+        .empty-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 14px;
+            background: var(--void-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 28px;
+        }
+
+        .empty-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .empty-subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Comparison Section */
+        .comparison {
+            display: flex;
+            gap: 20px;
+            margin-top: 40px;
+            padding-top: 40px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .comparison-column {
+            flex: 1;
+        }
+
+        .comparison-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            letter-spacing: 1px;
+        }
+
+        /* Old ARISE Style */
+        .arise-card {
+            background: var(--void-medium);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            padding: 16px;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .arise-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            opacity: 0.3;
+        }
+
+        .arise-header {
+            background: var(--void-medium);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .arise-label {
+            font-size: 10px;
+            color: var(--primary);
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+
+        .arise-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .arise-button {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 20px;
+            background: var(--void-medium);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        .arise-button.primary {
+            background: var(--primary);
+            border: none;
+            color: #000;
+        }
+
+        .arise-button.secondary {
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="phone-frame">
+        <!-- Header - Plain text style -->
+        <div class="header-section">
+            <div class="header-title">Quest Center</div>
+            <div class="header-subtitle">Log workouts and track your progress</div>
+        </div>
+
+        <!-- Quick Actions - Pill Buttons -->
+        <div class="quick-actions">
+            <button class="pill-button primary">
+                <span>+</span>
+                <span>Begin Quest</span>
+            </button>
+            <button class="pill-button secondary">
+                <span>camera</span>
+                <span>Scan</span>
+            </button>
+        </div>
+
+        <!-- Archive Section Header -->
+        <div class="section-header">
+            <span class="section-title">Quest Archive</span>
+            <div class="calendar-toggle">
+                <span class="section-action">Clear</span>
+                <button class="toggle-btn active">cal</button>
+            </div>
+        </div>
+
+        <!-- Calendar - Edge Flow Style -->
+        <div class="calendar-section">
+            <div class="calendar-header">
+                <button class="calendar-nav">&lt;</button>
+                <span class="calendar-month">JANUARY 2026</span>
+                <button class="calendar-nav">&gt;</button>
+            </div>
+            <div class="calendar-days">
+                <div class="day-header">S</div>
+                <div class="day-header">M</div>
+                <div class="day-header">T</div>
+                <div class="day-header">W</div>
+                <div class="day-header">T</div>
+                <div class="day-header">F</div>
+                <div class="day-header">S</div>
+
+                <div class="day-cell"></div>
+                <div class="day-cell"></div>
+                <div class="day-cell"></div>
+                <div class="day-cell has-workout">1<div class="workout-dot"></div></div>
+                <div class="day-cell">2</div>
+                <div class="day-cell has-workout">3<div class="workout-dot"></div></div>
+                <div class="day-cell">4</div>
+
+                <div class="day-cell">5</div>
+                <div class="day-cell has-workout">6<div class="workout-dot"></div></div>
+                <div class="day-cell">7</div>
+                <div class="day-cell has-workout">8<div class="workout-dot"></div></div>
+                <div class="day-cell">9</div>
+                <div class="day-cell has-workout">10<div class="workout-dot"></div></div>
+                <div class="day-cell">11</div>
+
+                <div class="day-cell">12</div>
+                <div class="day-cell has-workout">13<div class="workout-dot"></div></div>
+                <div class="day-cell">14</div>
+                <div class="day-cell has-workout">15<div class="workout-dot"></div></div>
+                <div class="day-cell">16</div>
+                <div class="day-cell">17</div>
+                <div class="day-cell">18</div>
+
+                <div class="day-cell">19</div>
+                <div class="day-cell has-workout">20<div class="workout-dot"></div></div>
+                <div class="day-cell">21</div>
+                <div class="day-cell has-workout">22<div class="workout-dot"></div></div>
+                <div class="day-cell">23</div>
+                <div class="day-cell">24</div>
+                <div class="day-cell today selected">25</div>
+            </div>
+        </div>
+
+        <!-- Quest Rows - Edge Flow Cards -->
+        <div class="quest-row">
+            <div class="quest-content">
+                <div class="quest-info">
+                    <div class="quest-date-row">
+                        <span class="quest-date">Jan 25, 2026</span>
+                        <span class="quest-badge complete">COMPLETE</span>
+                    </div>
+                    <div class="quest-stats">
+                        <span class="quest-stat">
+                            <svg viewBox="0 0 20 20"><path d="M4 4h3v12H4V4zm5 4h3v8H9V8zm5-2h3v10h-3V6z"/></svg>
+                            5 objectives
+                        </span>
+                        <span class="quest-stat">
+                            <svg viewBox="0 0 20 20"><rect x="3" y="3" width="5" height="5"/><rect x="3" y="12" width="5" height="5"/><rect x="12" y="3" width="5" height="5"/><rect x="12" y="12" width="5" height="5"/></svg>
+                            18 sets
+                        </span>
+                    </div>
+                </div>
+                <span class="quest-chevron">&rsaquo;</span>
+            </div>
+        </div>
+
+        <div class="quest-row activity">
+            <div class="quest-content">
+                <div class="quest-info">
+                    <div class="quest-date-row">
+                        <span class="quest-date">Jan 24, 2026</span>
+                        <span class="quest-badge activity">ACTIVITY</span>
+                    </div>
+                    <div class="quest-stats">
+                        <span class="quest-stat" style="color: #FF9500;">
+                            <svg viewBox="0 0 20 20" style="fill: #FF9500;"><circle cx="10" cy="10" r="6"/></svg>
+                            Tennis
+                        </span>
+                        <span class="quest-stat">
+                            12.4 strain
+                        </span>
+                        <span class="quest-stat">
+                            482 cal
+                        </span>
+                    </div>
+                </div>
+                <span class="quest-chevron">&rsaquo;</span>
+            </div>
+        </div>
+
+        <div class="quest-row">
+            <div class="quest-content">
+                <div class="quest-info">
+                    <div class="quest-date-row">
+                        <span class="quest-date">Jan 22, 2026</span>
+                        <span class="quest-badge complete">COMPLETE</span>
+                    </div>
+                    <div class="quest-stats">
+                        <span class="quest-stat">
+                            <svg viewBox="0 0 20 20"><path d="M4 4h3v12H4V4zm5 4h3v8H9V8zm5-2h3v10h-3V6z"/></svg>
+                            4 objectives
+                        </span>
+                        <span class="quest-stat">
+                            <svg viewBox="0 0 20 20"><rect x="3" y="3" width="5" height="5"/><rect x="3" y="12" width="5" height="5"/><rect x="12" y="3" width="5" height="5"/><rect x="12" y="12" width="5" height="5"/></svg>
+                            16 sets
+                        </span>
+                    </div>
+                </div>
+                <span class="quest-chevron">&rsaquo;</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Style Comparison -->
+    <div class="comparison" style="max-width: 800px; margin: 40px auto;">
+        <div class="comparison-column">
+            <div class="comparison-title">OLD (ARISE)</div>
+
+            <div class="arise-header">
+                <div class="arise-label">[ QUEST CENTER ]</div>
+                <div style="font-size: 18px; font-weight: 600;">Training Quests</div>
+                <div style="font-size: 11px; color: var(--text-muted);">Log workouts and track progress</div>
+            </div>
+
+            <div class="arise-buttons">
+                <div class="arise-button primary">
+                    <span style="font-size: 24px;">+</span>
+                    BEGIN QUEST
+                </div>
+                <div class="arise-button secondary">
+                    <span style="font-size: 24px;">cam</span>
+                    SCAN LOG
+                </div>
+            </div>
+
+            <div class="arise-card">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 4px; height: 60px; background: var(--success);"></div>
+                    <div>
+                        <div style="font-size: 14px; font-weight: 600;">Jan 25, 2026</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">5 objectives - 18 sets</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="comparison-column">
+            <div class="comparison-title">NEW (EDGE FLOW)</div>
+
+            <div class="header-section" style="margin-bottom: 16px;">
+                <div class="header-title" style="font-size: 18px;">Quest Center</div>
+                <div class="header-subtitle">Log workouts and track progress</div>
+            </div>
+
+            <div class="quick-actions" style="margin-bottom: 16px;">
+                <button class="pill-button primary" style="padding: 12px 16px; font-size: 12px;">
+                    <span>+</span> Begin Quest
+                </button>
+                <button class="pill-button secondary" style="padding: 12px 16px; font-size: 12px;">
+                    <span>cam</span> Scan
+                </button>
+            </div>
+
+            <div class="quest-row">
+                <div class="quest-content" style="padding: 12px 16px;">
+                    <div class="quest-info">
+                        <div class="quest-date-row" style="margin-bottom: 4px;">
+                            <span class="quest-date" style="font-size: 14px;">Jan 25, 2026</span>
+                            <span class="quest-badge complete">COMPLETE</span>
+                        </div>
+                        <div class="quest-stats">
+                            <span class="quest-stat">5 objectives</span>
+                            <span class="quest-stat">18 sets</span>
+                        </div>
+                    </div>
+                    <span class="quest-chevron">&rsaquo;</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 12px;">
+        <p><strong>Key Changes:</strong></p>
+        <p>- Header: Plain text instead of bordered box</p>
+        <p>- Buttons: Pill-shaped with gradients instead of square with borders</p>
+        <p>- Cards: 14pt radius with 3px left accent bar instead of 4pt with full border</p>
+        <p>- Calendar: Minimal styling with left accent bar</p>
+        <p>- Spacing: More generous (16pt+) between sections</p>
+    </div>
+</body>
+</html>

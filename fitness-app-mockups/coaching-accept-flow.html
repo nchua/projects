@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coaching - Accept Mission Flow</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .mockup-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .mockup-label {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 16px;
+            font-weight: 500;
+        }
+
+        .mockup-label span {
+            color: #00d4ff;
+        }
+
+        .state-indicator {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        /* iPhone Frame */
+        .iphone-frame {
+            width: 390px;
+            height: 844px;
+            background: #000;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow:
+                0 0 0 3px #1a1a1a,
+                0 0 0 6px #0d0d0d,
+                0 30px 60px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: #0a0a0e;
+            border-radius: 40px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Dynamic Island */
+        .dynamic-island {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 34px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 100;
+        }
+
+        /* Dimmed Background */
+        .dimmed-bg {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* Bottom Sheet */
+        .bottom-sheet {
+            width: 100%;
+            background: #14161f;
+            border-radius: 28px 28px 0 0;
+            padding: 24px 20px 40px;
+            max-height: 85%;
+            overflow-y: auto;
+        }
+
+        .sheet-handle {
+            width: 36px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            margin: 0 auto 24px;
+        }
+
+        /* Mission Accept Content */
+        .accept-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.2) 0%, rgba(0, 255, 136, 0.1) 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            position: relative;
+        }
+
+        .accept-icon::before {
+            content: "";
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            animation: iconPulse 2s infinite;
+        }
+
+        @keyframes iconPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.5; }
+        }
+
+        .accept-title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .accept-subtitle {
+            text-align: center;
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 28px;
+        }
+
+        /* Mission Details Card */
+        .mission-details {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .detail-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .detail-value.highlight {
+            color: #00d4ff;
+        }
+
+        /* Workout Preview */
+        .workout-preview {
+            margin-bottom: 24px;
+        }
+
+        .preview-title {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 12px;
+        }
+
+        .preview-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .preview-item {
+            display: flex;
+            align-items: center;
+            padding: 14px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            border-left: 3px solid rgba(0, 212, 255, 0.5);
+        }
+
+        .preview-day {
+            width: 40px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .preview-name {
+            flex: 1;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .preview-focus {
+            font-size: 12px;
+            color: #00d4ff;
+        }
+
+        /* Warning Note */
+        .warning-note {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px;
+            background: rgba(255, 149, 0, 0.1);
+            border-radius: 12px;
+            margin-bottom: 24px;
+        }
+
+        .warning-icon {
+            font-size: 18px;
+        }
+
+        .warning-text {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.4;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .accept-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #00d4ff 0%, #00ff88 100%);
+            border: none;
+            border-radius: 50px;
+            color: #000;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.35);
+        }
+
+        .decline-btn {
+            width: 100%;
+            padding: 16px;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        /* Success State */
+        .success-content {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .success-icon {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 24px;
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.2) 0%, rgba(0, 212, 255, 0.1) 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+            animation: successPop 0.5s ease-out;
+        }
+
+        @keyframes successPop {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .success-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .success-subtitle {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 32px;
+        }
+
+        .quest-replace-note {
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 32px;
+            border-left: 3px solid #00d4ff;
+        }
+
+        .quest-note-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #00d4ff;
+            margin-bottom: 4px;
+        }
+
+        .quest-note-text {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .start-btn {
+            width: 100%;
+            padding: 18px;
+            background: #00d4ff;
+            border: none;
+            border-radius: 50px;
+            color: #000;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.35);
+        }
+
+        .later-btn {
+            width: 100%;
+            padding: 16px;
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 15px;
+            cursor: pointer;
+            margin-top: 12px;
+        }
+
+        /* Decline Confirmation */
+        .decline-content {
+            padding: 20px;
+        }
+
+        .decline-icon {
+            width: 70px;
+            height: 70px;
+            margin: 0 auto 20px;
+            background: rgba(255, 107, 107, 0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+        }
+
+        .decline-title {
+            text-align: center;
+            font-size: 20px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .decline-text {
+            text-align: center;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .confirm-decline-btn {
+            width: 100%;
+            padding: 16px;
+            background: rgba(255, 107, 107, 0.2);
+            border: 1px solid rgba(255, 107, 107, 0.3);
+            border-radius: 50px;
+            color: #ff6b6b;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 12px;
+        }
+
+        .go-back-btn {
+            width: 100%;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            border-radius: 50px;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- Accept Mission Prompt -->
+    <div class="mockup-container">
+        <div class="mockup-label">Accept Flow <span>Step 1</span>: Prompt</div>
+        <div class="state-indicator">User tapped "Accept Mission"</div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="dimmed-bg">
+                    <div class="bottom-sheet">
+                        <div class="sheet-handle"></div>
+
+                        <div class="accept-icon">⚔️</div>
+                        <div class="accept-title">Accept This Mission?</div>
+                        <div class="accept-subtitle">Week 3 of your Bench 225 journey</div>
+
+                        <div class="mission-details">
+                            <div class="detail-row">
+                                <span class="detail-label">Goal</span>
+                                <span class="detail-value">Bench Press 225 lbs</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Workouts This Week</span>
+                                <span class="detail-value highlight">3 workouts</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Deadline</span>
+                                <span class="detail-value">Sunday, Feb 9</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">XP Reward</span>
+                                <span class="detail-value highlight">+500 XP</span>
+                            </div>
+                        </div>
+
+                        <div class="workout-preview">
+                            <div class="preview-title">This week's workouts</div>
+                            <div class="preview-grid">
+                                <div class="preview-item">
+                                    <div class="preview-day">W1</div>
+                                    <div class="preview-name">Heavy Bench Day</div>
+                                    <div class="preview-focus">Strength</div>
+                                </div>
+                                <div class="preview-item">
+                                    <div class="preview-day">W2</div>
+                                    <div class="preview-name">Pull Day</div>
+                                    <div class="preview-focus">Back</div>
+                                </div>
+                                <div class="preview-item">
+                                    <div class="preview-day">W3</div>
+                                    <div class="preview-name">Volume Bench Day</div>
+                                    <div class="preview-focus">Hypertrophy</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="warning-note">
+                            <span class="warning-icon">⚡</span>
+                            <div class="warning-text">Accepting will replace your daily quests with mission objectives for the week.</div>
+                        </div>
+
+                        <div class="action-buttons">
+                            <button class="accept-btn">⚔️ Accept Mission</button>
+                            <button class="decline-btn">Skip This Week</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mission Accepted Success -->
+    <div class="mockup-container">
+        <div class="mockup-label">Accept Flow <span>Step 2</span>: Success</div>
+        <div class="state-indicator">Mission accepted!</div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="dimmed-bg">
+                    <div class="bottom-sheet">
+                        <div class="sheet-handle"></div>
+
+                        <div class="success-content">
+                            <div class="success-icon">✓</div>
+                            <div class="success-title">Mission Accepted!</div>
+                            <div class="success-subtitle">Your dungeon awaits, Hunter</div>
+
+                            <div class="quest-replace-note">
+                                <div class="quest-note-title">Quests Updated</div>
+                                <div class="quest-note-text">Your daily quests are now aligned with your mission objectives. Complete them to conquer the dungeon!</div>
+                            </div>
+
+                            <button class="start-btn">Start First Workout</button>
+                            <button class="later-btn">I'll start later</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Skip/Decline Confirmation -->
+    <div class="mockup-container">
+        <div class="mockup-label">Accept Flow <span>Alt</span>: Skip Week</div>
+        <div class="state-indicator">User tapped "Skip This Week"</div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="dimmed-bg">
+                    <div class="bottom-sheet" style="max-height: 60%;">
+                        <div class="sheet-handle"></div>
+
+                        <div class="decline-content">
+                            <div class="decline-icon">⏭️</div>
+                            <div class="decline-title">Skip This Week?</div>
+                            <div class="decline-text">
+                                No worries! You can still log workouts manually. A new mission will be ready next Monday.
+                                <br><br>
+                                Your goal progress won't be affected, but you'll miss out on the +500 XP dungeon bonus.
+                            </div>
+
+                            <button class="confirm-decline-btn">Skip Week</button>
+                            <button class="go-back-btn">Go Back</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

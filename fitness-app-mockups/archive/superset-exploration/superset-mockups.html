@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=414, initial-scale=1.0">
+    <title>Superset Mockups - ARISE Theme</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800&family=Share+Tech+Mono&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* ARISE Color System */
+            --void-black: #0a0a12;
+            --void-dark: #0f0f1a;
+            --void-medium: #16162a;
+            --void-light: #1e1e3a;
+            --arise-border: #2a2a4a;
+
+            --system-primary: #7c3aed;
+            --system-primary-glow: rgba(124, 58, 237, 0.4);
+
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --text-muted: #606070;
+
+            --success-green: #22c55e;
+            --gold: #fbbf24;
+            --error-red: #ef4444;
+
+            /* Exercise colors */
+            --push-color: #ef4444;
+            --pull-color: #3b82f6;
+            --legs-color: #22c55e;
+        }
+
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background: var(--void-black);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 8px;
+            color: var(--system-primary);
+            text-shadow: 0 0 20px var(--system-primary-glow);
+            letter-spacing: 2px;
+        }
+
+        .page-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 40px;
+            font-size: 13px;
+        }
+
+        .mockup-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 40px;
+            justify-content: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .mockup-section {
+            width: 380px;
+        }
+
+        .mockup-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px;
+            color: var(--system-primary);
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+
+        .mockup-description {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        /* Phone Frame */
+        .phone-frame {
+            background: var(--void-dark);
+            border-radius: 24px;
+            padding: 16px;
+            border: 2px solid var(--arise-border);
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Section Header */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .add-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(124, 58, 237, 0.1);
+            border: none;
+            color: var(--system-primary);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 12px;
+            letter-spacing: 1px;
+            cursor: pointer;
+        }
+
+        /* Objective Card (Exercise Card) */
+        .objective-card {
+            background: var(--void-medium);
+            border-radius: 4px;
+            border: 1px solid var(--arise-border);
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+
+        .objective-header {
+            display: flex;
+            background: var(--void-medium);
+        }
+
+        .color-bar {
+            width: 4px;
+            flex-shrink: 0;
+        }
+
+        .color-bar.push { background: var(--push-color); }
+        .color-bar.pull { background: var(--pull-color); }
+        .color-bar.legs { background: var(--legs-color); }
+
+        .header-content {
+            flex: 1;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .exercise-info h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .exercise-info .fantasy-name {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sets-count {
+            font-size: 12px;
+        }
+
+        .sets-count .current {
+            color: var(--text-secondary);
+        }
+
+        .sets-count .label {
+            font-size: 10px;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+        }
+
+        .menu-btn {
+            width: 32px;
+            height: 32px;
+            background: var(--void-light);
+            border: none;
+            border-radius: 4px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Set Header Row */
+        .set-header {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            background: var(--void-dark);
+            border-top: 1px solid var(--arise-border);
+            font-size: 10px;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+        }
+
+        .set-header .col-set { width: 36px; }
+        .set-header .col-bw { width: 28px; text-align: center; }
+        .set-header .col-weight { flex: 1; }
+        .set-header .col-reps { width: 56px; text-align: center; }
+        .set-header .col-rpe { width: 44px; text-align: center; }
+        .set-header .col-del { width: 28px; }
+
+        /* Set Row */
+        .set-row {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            gap: 8px;
+            border-top: 1px solid var(--arise-border);
+        }
+
+        .set-row.completed {
+            background: rgba(34, 197, 94, 0.05);
+        }
+
+        .set-num {
+            width: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .set-num .number {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .set-num.complete {
+            width: 24px;
+            height: 24px;
+            background: var(--success-green);
+            border-radius: 4px;
+            color: var(--void-black);
+            font-size: 10px;
+        }
+
+        .bw-toggle {
+            width: 28px;
+            height: 28px;
+            background: var(--void-light);
+            border: 1px solid var(--arise-border);
+            border-radius: 4px;
+            font-size: 9px;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .bw-toggle.active {
+            background: rgba(124, 58, 237, 0.2);
+            border-color: var(--system-primary);
+            color: var(--system-primary);
+        }
+
+        .input-field {
+            background: var(--void-light);
+            border: 1px solid var(--arise-border);
+            border-radius: 4px;
+            padding: 10px 8px;
+            color: var(--text-primary);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 15px;
+            text-align: center;
+        }
+
+        .weight-group {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .weight-group .input-field {
+            flex: 1;
+        }
+
+        .weight-group .unit {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .reps-input {
+            width: 56px;
+        }
+
+        .rpe-btn {
+            width: 36px;
+            height: 36px;
+            background: var(--void-light);
+            border: 1px solid var(--arise-border);
+            border-radius: 4px;
+            color: var(--text-muted);
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .rpe-btn.has-value {
+            color: var(--system-primary);
+        }
+
+        .delete-btn {
+            width: 28px;
+            color: var(--text-muted);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 10px;
+        }
+
+        /* Add Set Button */
+        .add-set-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 12px;
+            background: var(--void-dark);
+            border: none;
+            border-top: 1px solid var(--arise-border);
+            color: var(--system-primary);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 1px;
+            cursor: pointer;
+        }
+
+        /* ============ SUPERSET STYLES ============ */
+
+        /* Superset Badge */
+        .superset-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--system-primary), #a78bfa);
+            color: white;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 4px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* Superset Link Indicator */
+        .superset-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 0;
+            margin: -6px 16px;
+        }
+
+        .link-line {
+            height: 2px;
+            flex: 1;
+            background: linear-gradient(90deg, transparent, var(--system-primary), transparent);
+        }
+
+        .link-icon {
+            color: var(--system-primary);
+            font-size: 14px;
+            padding: 0 8px;
+        }
+
+        /* Superset Group Card */
+        .superset-group {
+            border: 2px solid var(--system-primary);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 20px var(--system-primary-glow);
+        }
+
+        .superset-group-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, var(--void-medium), rgba(124, 58, 237, 0.1));
+            border-bottom: 1px solid var(--arise-border);
+        }
+
+        .superset-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--system-primary), #a78bfa);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .superset-title {
+            flex: 1;
+        }
+
+        .superset-title .label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            color: var(--system-primary);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .superset-title .count {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        /* Round indicator */
+        .round-indicator {
+            text-align: center;
+            font-size: 10px;
+            color: var(--system-primary);
+            letter-spacing: 1px;
+            padding: 8px;
+            background: var(--void-dark);
+            border-top: 1px solid var(--arise-border);
+            border-bottom: 1px solid var(--arise-border);
+        }
+
+        /* Menu Dropdown */
+        .menu-dropdown {
+            position: absolute;
+            right: 16px;
+            top: 48px;
+            background: var(--void-medium);
+            border: 1px solid var(--arise-border);
+            border-radius: 8px;
+            padding: 6px;
+            min-width: 180px;
+            z-index: 100;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        .menu-item:hover {
+            background: var(--void-light);
+        }
+
+        .menu-item.highlight {
+            color: var(--system-primary);
+        }
+
+        .menu-item.danger {
+            color: var(--error-red);
+        }
+
+        .menu-divider {
+            height: 1px;
+            background: var(--arise-border);
+            margin: 4px 0;
+        }
+
+        .menu-item .icon {
+            width: 18px;
+            text-align: center;
+        }
+
+        /* Comparison Label */
+        .comparison-label {
+            display: inline-block;
+            background: var(--void-light);
+            color: var(--text-muted);
+            font-size: 10px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            letter-spacing: 1px;
+        }
+
+        /* Pros/Cons */
+        .pros-cons {
+            margin-top: 20px;
+            padding: 16px;
+            background: var(--void-medium);
+            border-radius: 8px;
+            border: 1px solid var(--arise-border);
+        }
+
+        .pros-cons h4 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .pros-cons h4.pros { color: var(--success-green); }
+        .pros-cons h4.cons { color: var(--error-red); margin-top: 12px; }
+
+        .pros-cons ul {
+            list-style: none;
+            font-size: 11px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .pros-cons li::before {
+            content: "•";
+            margin-right: 8px;
+            color: var(--text-muted);
+        }
+
+        /* Compact superset row for Option C */
+        .superset-compact-row {
+            display: flex;
+            gap: 8px;
+            padding: 8px 16px;
+            border-top: 1px solid var(--arise-border);
+        }
+
+        .compact-exercise {
+            flex: 1;
+            background: var(--void-dark);
+            border-radius: 4px;
+            padding: 8px;
+        }
+
+        .compact-exercise .name {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .compact-inputs {
+            display: flex;
+            gap: 4px;
+        }
+
+        .compact-inputs input {
+            flex: 1;
+            background: var(--void-light);
+            border: 1px solid var(--arise-border);
+            border-radius: 4px;
+            padding: 8px 4px;
+            color: var(--text-primary);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        /* Add Superset flow */
+        .step-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .step-dot {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .step-dot.complete {
+            background: var(--success-green);
+            color: white;
+        }
+
+        .step-dot.active {
+            background: var(--system-primary);
+            color: white;
+        }
+
+        .step-dot.pending {
+            background: var(--void-light);
+            color: var(--text-muted);
+        }
+
+        .step-line {
+            flex: 1;
+            height: 2px;
+            background: var(--arise-border);
+        }
+
+        .step-line.complete {
+            background: var(--system-primary);
+        }
+
+        .selected-exercise {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--void-medium);
+            border: 1px solid var(--arise-border);
+            border-radius: 4px;
+            margin-bottom: 12px;
+        }
+
+        .selected-exercise .check {
+            width: 24px;
+            height: 24px;
+            background: var(--success-green);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+        }
+
+        .selected-exercise .name {
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .instruction-text {
+            font-size: 13px;
+            color: var(--system-primary);
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>[ SUPERSET OPTIONS ]</h1>
+    <p class="page-subtitle">Recording supersets during an active quest</p>
+
+    <div class="mockup-container">
+
+        <!-- CURRENT STATE -->
+        <div class="mockup-section">
+            <div class="mockup-label">Current Design</div>
+            <div class="mockup-description">
+                How exercises currently appear in the Objectives section. Each exercise is its own card.
+            </div>
+
+            <div class="phone-frame">
+                <div class="section-header">
+                    <span class="section-title">Objectives</span>
+                    <button class="add-btn">+ ADD</button>
+                </div>
+
+                <!-- Exercise 1 -->
+                <div class="objective-card">
+                    <div class="objective-header">
+                        <div class="color-bar push"></div>
+                        <div class="header-content">
+                            <div class="exercise-info">
+                                <h3>Bench Press</h3>
+                                <span class="fantasy-name">"Titan's Embrace"</span>
+                            </div>
+                            <div class="header-right">
+                                <span class="sets-count">
+                                    <span class="current">1/3</span>
+                                    <span class="label">SETS</span>
+                                </span>
+                                <button class="menu-btn">⋮</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="set-header">
+                        <span class="col-set">SET</span>
+                        <span class="col-bw">BW</span>
+                        <span class="col-weight">WEIGHT</span>
+                        <span class="col-reps">REPS</span>
+                        <span class="col-rpe">RPE</span>
+                        <span class="col-del"></span>
+                    </div>
+                    <div class="set-row completed">
+                        <div class="set-num complete">✓</div>
+                        <button class="bw-toggle">BW</button>
+                        <div class="weight-group">
+                            <input class="input-field" value="185">
+                            <span class="unit">lb</span>
+                        </div>
+                        <input class="input-field reps-input" value="8">
+                        <button class="rpe-btn has-value">8</button>
+                        <button class="delete-btn">✕</button>
+                    </div>
+                    <div class="set-row">
+                        <div class="set-num"><span class="number">2</span></div>
+                        <button class="bw-toggle">BW</button>
+                        <div class="weight-group">
+                            <input class="input-field" placeholder="">
+                            <span class="unit">lb</span>
+                        </div>
+                        <input class="input-field reps-input" placeholder="">
+                        <button class="rpe-btn">-</button>
+                        <button class="delete-btn">✕</button>
+                    </div>
+                    <button class="add-set-btn">+ ADD SET</button>
+                </div>
+
+                <!-- Exercise 2 -->
+                <div class="objective-card">
+                    <div class="objective-header">
+                        <div class="color-bar pull"></div>
+                        <div class="header-content">
+                            <div class="exercise-info">
+                                <h3>Bent Over Row</h3>
+                                <span class="fantasy-name">"Shadow Pull"</span>
+                            </div>
+                            <div class="header-right">
+                                <span class="sets-count">
+                                    <span class="current">0/3</span>
+                                    <span class="label">SETS</span>
+                                </span>
+                                <button class="menu-btn">⋮</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="set-header">
+                        <span class="col-set">SET</span>
+                        <span class="col-bw">BW</span>
+                        <span class="col-weight">WEIGHT</span>
+                        <span class="col-reps">REPS</span>
+                        <span class="col-rpe">RPE</span>
+                        <span class="col-del"></span>
+                    </div>
+                    <div class="set-row">
+                        <div class="set-num"><span class="number">1</span></div>
+                        <button class="bw-toggle">BW</button>
+                        <div class="weight-group">
+                            <input class="input-field" placeholder="">
+                            <span class="unit">lb</span>
+                        </div>
+                        <input class="input-field reps-input" placeholder="">
+                        <button class="rpe-btn">-</button>
+                        <button class="delete-btn">✕</button>
+                    </div>
+                    <button class="add-set-btn">+ ADD SET</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- OPTION A: Link via Menu -->
+        <div class="mockup-section">
+            <div class="mockup-label">Option A: Link via Menu</div>
+            <div class="mockup-description">
+                Add exercises normally. Use the ⋮ menu to "Link as Superset" with another exercise. Linked exercises show a visual connector.
+            </div>
+
+            <div class="phone-frame">
+                <div class="section-header">
+                    <span class="section-title">Objectives</span>
+                    <button class="add-btn">+ ADD</button>
+                </div>
+
+                <span class="comparison-label">MENU OPEN STATE</span>
+
+                <!-- Exercise with menu open -->
+                <div class="objective-card" style="position: relative;">
+                    <div class="objective-header">
+                        <div class="color-bar push"></div>
+                        <div class="header-content">
+                            <div class="exercise-info">
+                                <h3>Bench Press</h3>
+                                <span class="fantasy-name">"Titan's Embrace"</span>
+                            </div>
+                            <div class="header-right">
+                                <span class="sets-count">
+                                    <span class="current">1/3</span>
+                                    <span class="label">SETS</span>
+                                </span>
+                                <button class="menu-btn" style="background: var(--system-primary); color: white;">⋮</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Menu Dropdown -->
+                    <div class="menu-dropdown">
+                        <div class="menu-item highlight">
+                            <span class="icon">⛓</span>
+                            <span>Link as Superset</span>
+                        </div>
+                        <div class="menu-divider"></div>
+                        <div class="menu-item">
+                            <span class="icon">+</span>
+                            <span>Add Set</span>
+                        </div>
+                        <div class="menu-item">
+                            <span class="icon">⎘</span>
+                            <span>Copy Last Set</span>
+                        </div>
+                        <div class="menu-divider"></div>
+                        <div class="menu-item danger">
+                            <span class="icon">🗑</span>
+                            <span>Remove Objective</span>
+                        </div>
+                    </div>
+
+                    <div class="set-header">
+                        <span class="col-set">SET</span>
+                        <span class="col-bw">BW</span>
+                        <span class="col-weight">WEIGHT</span>
+                        <span class="col-reps">REPS</span>
+                        <span class="col-rpe">RPE</span>
+                        <span class="col-del"></span>
+                    </div>
+                    <div class="set-row completed">
+                        <div class="set-num complete">✓</div>
+                        <button class="bw-toggle">BW</button>
+                        <div class="weight-group">
+                            <input class="input-field" value="185">
+                            <span class="unit">lb</span>
+                        </div>
+                        <input class="input-field reps-input" value="8">
+                        <button class="rpe-btn has-value">8</button>
+                        <button class="delete-btn">✕</button>
+                    </div>
+                    <button class="add-set-btn">+ ADD SET</button>
+                </div>
+
+                <span class="comparison-label" style="margin-top: 24px;">AFTER LINKING</span>
+
+                <!-- Linked Exercises -->
+                <div class="objective-card" style="border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; border-bottom: none;">
+                    <div class="objective-header">
+                        <div class="color-bar push"></div>
+                        <div class="header-content">
+                            <div class="exercise-info">
+                                <span class="superset-badge">⛓ Superset</span>
+                                <h3 style="margin-top: 6px;">Bench Press</h3>
+                            </div>
+                            <div class="header-right">
+                                <span class="sets-count">
+                                    <span class="current" style="color: var(--success-green);">3/3</span>
+                                    <span class="label">SETS</span>
+                                </span>
+                                <button class="menu-btn">⋮</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="set-row completed" style="padding: 8px 16px;">
+                        <div class="set-num complete" style="width: 20px; height: 20px; font-size: 8px;">✓</div>
+                        <span style="font-size: 12px; color: var(--text-secondary);">185 lb × 8</span>
+                    </div>
+                </div>
+
+                <div class="superset-link">
+                    <div class="link-line"></div>
+                    <span class="link-icon">⛓</span>
+                    <div class="link-line"></div>
+                </div>
+
+                <div class="objective-card" style="border-top-left-radius: 0; border-top-right-radius: 0; margin-top: 0;">
+                    <div class="objective-header">
+                        <div class="color-bar pull"></div>
+                        <div class="header-content">
+                            <div class="exercise-info">
+                                <h3>Bent Over Row</h3>
+                            </div>
+                            <div class="header-right">
+                                <span class="sets-count">
+                                    <span class="current" style="color: var(--success-green);">3/3</span>
+                                    <span class="label">SETS</span>
+                                </span>
+                                <button class="menu-btn">⋮</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="set-row completed" style="padding: 8px 16px;">
+                        <div class="set-num complete" style="width: 20px; height: 20px; font-size: 8px;">✓</div>
+                        <span style="font-size: 12px; color: var(--text-secondary);">135 lb × 10</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pros-cons">
+                <h4 class="pros">+ ADVANTAGES</h4>
+                <ul>
+                    <li>Minimal UI changes to existing cards</li>
+                    <li>Flexible - link any two exercises</li>
+                    <li>Can easily unlink from menu</li>
+                </ul>
+                <h4 class="cons">- DISADVANTAGES</h4>
+                <ul>
+                    <li>Feature not discoverable</li>
+                    <li>Requires linking after adding</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- OPTION B: Grouped Superset Card -->
+        <div class="mockup-section">
+            <div class="mockup-label">Option B: Grouped Card</div>
+            <div class="mockup-description">
+                Supersets appear as a single combined card. Shows "Round X" to track progress through the superset. Both exercises visible at once.
+            </div>
+
+            <div class="phone-frame">
+                <div class="section-header">
+                    <span class="section-title">Objectives</span>
+                    <button class="add-btn">+ ADD ▾</button>
+                </div>
+
+                <!-- Grouped Superset Card -->
+                <div class="superset-group">
+                    <div class="superset-group-header">
+                        <div class="superset-icon">⛓</div>
+                        <div class="superset-title">
+                            <div class="label">Superset</div>
+                            <div class="count">2 exercises • 3 rounds</div>
+                        </div>
+                        <button class="menu-btn">⋮</button>
+                    </div>
+
+                    <div class="round-indicator">— ROUND 1 OF 3 —</div>
+
+                    <div class="superset-compact-row">
+                        <div class="compact-exercise" style="border-left: 3px solid var(--push-color);">
+                            <div class="name">Bench Press</div>
+                            <div class="compact-inputs">
+                                <input value="185" style="flex: 1.2;">
+                                <input value="8">
+                            </div>
+                        </div>
+                        <div class="compact-exercise" style="border-left: 3px solid var(--pull-color);">
+                            <div class="name">Bent Over Row</div>
+                            <div class="compact-inputs">
+                                <input value="135" style="flex: 1.2;">
+                                <input value="10">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="round-indicator">— ROUND 2 OF 3 —</div>
+
+                    <div class="superset-compact-row">
+                        <div class="compact-exercise" style="border-left: 3px solid var(--push-color);">
+                            <div class="name">Bench Press</div>
+                            <div class="compact-inputs">
+                                <input placeholder="lb" style="flex: 1.2;">
+                                <input placeholder="reps">
+                            </div>
+                        </div>
+                        <div class="compact-exercise" style="border-left: 3px solid var(--pull-color);">
+                            <div class="name">Bent Over Row</div>
+                            <div class="compact-inputs">
+                                <input placeholder="lb" style="flex: 1.2;">
+                                <input placeholder="reps">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="add-set-btn">+ ADD ROUND</button>
+                </div>
+
+                <!-- Regular exercise below -->
+                <div class="objective-card">
+                    <div class="objective-header">
+                        <div class="color-bar legs"></div>
+                        <div class="header-content">
+                            <div class="exercise-info">
+                                <h3>Squat</h3>
+                                <span class="fantasy-name">"Ground Shatter"</span>
+                            </div>
+                            <div class="header-right">
+                                <span class="sets-count">
+                                    <span class="current">0/3</span>
+                                    <span class="label">SETS</span>
+                                </span>
+                                <button class="menu-btn">⋮</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="set-row">
+                        <div class="set-num"><span class="number">1</span></div>
+                        <button class="bw-toggle">BW</button>
+                        <div class="weight-group">
+                            <input class="input-field" placeholder="">
+                            <span class="unit">lb</span>
+                        </div>
+                        <input class="input-field reps-input" placeholder="">
+                        <button class="rpe-btn">-</button>
+                        <button class="delete-btn">✕</button>
+                    </div>
+                    <button class="add-set-btn">+ ADD SET</button>
+                </div>
+            </div>
+
+            <div class="pros-cons">
+                <h4 class="pros">+ ADVANTAGES</h4>
+                <ul>
+                    <li>Clear visual grouping</li>
+                    <li>"Rounds" concept is intuitive</li>
+                    <li>Both exercises visible at once</li>
+                    <li>Saves vertical space</li>
+                </ul>
+                <h4 class="cons">- DISADVANTAGES</h4>
+                <ul>
+                    <li>Smaller input fields</li>
+                    <li>Different UI than normal exercises</li>
+                    <li>No RPE per set (could add)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- OPTION C: Add Superset Flow -->
+        <div class="mockup-section">
+            <div class="mockup-label">Option C: "Add Superset" Flow</div>
+            <div class="mockup-description">
+                Dedicated "Add Superset" option in the ADD menu. Guides you to pick both exercises in sequence before adding.
+            </div>
+
+            <div class="phone-frame">
+                <div class="section-header">
+                    <span class="section-title">Objectives</span>
+                    <button class="add-btn" style="background: var(--system-primary); color: white;">+ ADD ▾</button>
+                </div>
+
+                <span class="comparison-label">ADD MENU</span>
+
+                <!-- Add Menu -->
+                <div style="background: var(--void-medium); border: 1px solid var(--arise-border); border-radius: 8px; padding: 6px; margin-bottom: 20px;">
+                    <div class="menu-item">
+                        <span class="icon">💪</span>
+                        <span>Add Exercise</span>
+                    </div>
+                    <div class="menu-item highlight" style="background: rgba(124, 58, 237, 0.15);">
+                        <span class="icon">⛓</span>
+                        <span>Add Superset</span>
+                    </div>
+                    <div class="menu-item">
+                        <span class="icon">🔥</span>
+                        <span>Add Circuit (3+)</span>
+                    </div>
+                </div>
+
+                <span class="comparison-label">SUPERSET PICKER</span>
+
+                <!-- Step Indicator -->
+                <div class="step-indicator">
+                    <div class="step-dot complete">✓</div>
+                    <div class="step-line complete"></div>
+                    <div class="step-dot active">2</div>
+                </div>
+
+                <!-- Already selected -->
+                <div class="selected-exercise">
+                    <div class="check">✓</div>
+                    <div>
+                        <div class="name">Bench Press</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">Push • Chest</div>
+                    </div>
+                </div>
+
+                <div class="instruction-text">Select second exercise:</div>
+
+                <!-- Exercise picker list -->
+                <div style="background: var(--void-medium); border: 1px solid var(--arise-border); border-radius: 4px; overflow: hidden;">
+                    <div style="padding: 12px; border-bottom: 1px solid var(--arise-border);">
+                        <input style="width: 100%; background: var(--void-light); border: 1px solid var(--arise-border); border-radius: 4px; padding: 10px; color: var(--text-primary); font-family: 'Share Tech Mono', monospace;" placeholder="Search exercises...">
+                    </div>
+                    <div style="padding: 12px; border-bottom: 1px solid var(--arise-border); cursor: pointer;" onmouseover="this.style.background='var(--void-light)'" onmouseout="this.style.background='transparent'">
+                        <div style="font-size: 14px; color: var(--text-primary);">Bent Over Row</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">Pull • Back</div>
+                    </div>
+                    <div style="padding: 12px; border-bottom: 1px solid var(--arise-border); cursor: pointer;" onmouseover="this.style.background='var(--void-light)'" onmouseout="this.style.background='transparent'">
+                        <div style="font-size: 14px; color: var(--text-primary);">Incline Dumbbell Row</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">Pull • Back</div>
+                    </div>
+                    <div style="padding: 12px; cursor: pointer;" onmouseover="this.style.background='var(--void-light)'" onmouseout="this.style.background='transparent'">
+                        <div style="font-size: 14px; color: var(--text-primary);">Cable Row</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">Pull • Back</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pros-cons">
+                <h4 class="pros">+ ADVANTAGES</h4>
+                <ul>
+                    <li>Explicit intent to create superset</li>
+                    <li>Guided step-by-step flow</li>
+                    <li>Extensible to circuits (3+)</li>
+                    <li>Discoverable in menu</li>
+                </ul>
+                <h4 class="cons">- DISADVANTAGES</h4>
+                <ul>
+                    <li>Must select both exercises upfront</li>
+                    <li>More steps than single exercise</li>
+                    <li>Can't easily change exercises later</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Recommendation Section -->
+    <div style="max-width: 800px; margin: 60px auto; padding: 24px; background: var(--void-medium); border-radius: 12px; border: 1px solid var(--arise-border);">
+        <h2 style="font-family: 'Orbitron', sans-serif; color: var(--system-primary); margin-bottom: 16px; font-size: 16px; letter-spacing: 2px;">[ RECOMMENDATION ]</h2>
+        <p style="color: var(--text-secondary); line-height: 1.7; margin-bottom: 16px;">
+            <strong style="color: var(--text-primary);">Combine Option A + B:</strong>
+        </p>
+        <ul style="color: var(--text-secondary); line-height: 1.8; margin-left: 20px; list-style: none;">
+            <li style="margin-bottom: 8px;">
+                <span style="color: var(--system-primary);">1.</span>
+                Add "Link as Superset" to the exercise menu (Option A)
+            </li>
+            <li style="margin-bottom: 8px;">
+                <span style="color: var(--system-primary);">2.</span>
+                Once linked, display as a grouped card (Option B visual)
+            </li>
+            <li style="margin-bottom: 8px;">
+                <span style="color: var(--system-primary);">3.</span>
+                Add "Add Superset" to menu for power users (Option C)
+            </li>
+            <li>
+                <span style="color: var(--system-primary);">4.</span>
+                Menu option to "Unlink" returns to separate cards
+            </li>
+        </ul>
+
+        <div style="margin-top: 24px; padding: 16px; background: var(--void-dark); border-radius: 8px; border-left: 3px solid var(--system-primary);">
+            <h3 style="font-family: 'Orbitron', sans-serif; color: var(--text-primary); font-size: 12px; margin-bottom: 8px; letter-spacing: 1px;">DATA MODEL</h3>
+            <p style="color: var(--text-muted); font-size: 12px; line-height: 1.6;">
+                Add <code style="background: var(--void-light); padding: 2px 6px; border-radius: 4px; color: var(--system-primary);">supersetGroupId: String?</code> to LoggedExercise. Exercises with the same groupId are in the same superset. This supports trisets/giant sets (3+ exercises) without schema changes.
+            </p>
+        </div>
+    </div>
+
+</body>
+</html>

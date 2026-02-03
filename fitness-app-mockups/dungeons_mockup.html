@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARISE Dungeons UI Mockup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+            background: #1a1a2e;
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #00D4FF;
+            margin-bottom: 10px;
+            font-size: 28px;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #606070;
+            margin-bottom: 40px;
+            font-family: 'SF Mono', monospace;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        .mockup-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(375px, 1fr));
+            gap: 40px;
+            justify-items: center;
+        }
+
+        .phone-frame {
+            width: 375px;
+            height: 812px;
+            background: #0A0A0F;
+            border-radius: 40px;
+            padding: 20px;
+            position: relative;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5), 0 0 0 2px #333;
+            overflow: hidden;
+        }
+
+        .phone-frame::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 30px;
+            background: #0A0A0F;
+            border-radius: 0 0 20px 20px;
+            z-index: 10;
+        }
+
+        .screen {
+            height: 100%;
+            overflow-y: auto;
+            padding-bottom: 80px;
+        }
+
+        .screen-title {
+            text-align: center;
+            color: #00D4FF;
+            font-size: 11px;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            font-family: 'SF Mono', monospace;
+            padding-top: 20px;
+        }
+
+        /* Tab Bar */
+        .tab-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: linear-gradient(to top, #12121A 60%, transparent);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 20px 20px;
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            opacity: 0.5;
+        }
+
+        .tab-item.active {
+            opacity: 1;
+        }
+
+        .tab-item.active .tab-icon {
+            color: #00D4FF;
+        }
+
+        .tab-item.active .tab-label {
+            color: #00D4FF;
+        }
+
+        .tab-icon {
+            font-size: 20px;
+            color: #606070;
+        }
+
+        .tab-label {
+            font-size: 10px;
+            color: #606070;
+            font-family: 'SF Mono', monospace;
+        }
+
+        /* Hunter Header */
+        .hunter-header {
+            background: linear-gradient(135deg, #1A1A24 0%, #12121A 100%);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 4px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .hunter-header-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #252530, #1A1A24);
+            border: 2px solid #808080;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .avatar:hover {
+            border-color: #00D4FF;
+        }
+
+        .avatar .rank-badge-small {
+            position: absolute;
+            bottom: -6px;
+            right: -6px;
+            font-size: 10px;
+            padding: 2px 6px;
+        }
+
+        .hunter-info {
+            flex: 1;
+        }
+
+        .hunter-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .hunter-title {
+            font-size: 11px;
+            color: #606070;
+            font-style: italic;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .header-btn {
+            width: 36px;
+            height: 36px;
+            background: #252530;
+            border: none;
+            border-radius: 4px;
+            color: #A0A0B0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .header-btn:hover {
+            background: #333;
+            color: #00D4FF;
+        }
+
+        .xp-bar {
+            height: 6px;
+            background: #252530;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .xp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #1A4A5E, #00D4FF);
+            width: 65%;
+            border-radius: 3px;
+        }
+
+        .xp-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #606070;
+            font-family: 'SF Mono', monospace;
+        }
+
+        /* Dungeon Board Header */
+        .board-header {
+            background: #1A1A24;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 4px;
+            padding: 16px;
+            margin-bottom: 20px;
+            border-top: 2px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .board-tag {
+            font-size: 11px;
+            color: #00D4FF;
+            letter-spacing: 2px;
+            font-family: 'SF Mono', monospace;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .level-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .level-badge span:first-child {
+            color: #606070;
+            font-size: 10px;
+        }
+
+        .level-badge span:last-child {
+            color: #00D4FF;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .board-title-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .gate-icon {
+            font-size: 24px;
+            color: #00D4FF;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+
+        .board-title {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .board-subtitle {
+            font-size: 11px;
+            color: #606070;
+            font-family: 'SF Mono', monospace;
+        }
+
+        /* Section */
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding: 0 4px;
+        }
+
+        .section-icon {
+            font-size: 14px;
+        }
+
+        .section-icon.gold { color: #FFD700; }
+        .section-icon.cyan { color: #00D4FF; }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .section-subtitle {
+            font-size: 10px;
+            color: #606070;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .section-count {
+            margin-left: auto;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .section-count.gold { color: #FFD700; }
+        .section-count.cyan { color: #00D4FF; }
+
+        /* Dungeon Card */
+        .dungeon-card {
+            background: #1A1A24;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 4px;
+            margin-bottom: 12px;
+            display: flex;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .dungeon-card:hover {
+            border-color: rgba(0, 212, 255, 0.5);
+            transform: translateX(2px);
+        }
+
+        .dungeon-card.urgent {
+            border-color: rgba(255, 68, 68, 0.5);
+        }
+
+        .rank-bar {
+            width: 4px;
+            flex-shrink: 0;
+        }
+
+        .rank-bar.e { background: #808080; }
+        .rank-bar.d { background: #4A9B4A; }
+        .rank-bar.c { background: #4A7BB5; }
+        .rank-bar.b { background: #9B4A9B; }
+        .rank-bar.a { background: #FFD700; }
+        .rank-bar.s { background: #FF4444; }
+
+        .dungeon-content {
+            flex: 1;
+            padding: 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .rank-badge {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .rank-badge.e { background: #808080; color: #000; }
+        .rank-badge.d { background: #4A9B4A; color: #000; }
+        .rank-badge.c { background: #4A7BB5; color: #fff; }
+        .rank-badge.b { background: #9B4A9B; color: #fff; }
+        .rank-badge.a { background: #FFD700; color: #000; }
+        .rank-badge.s { background: #FF4444; color: #fff; }
+
+        .dungeon-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .dungeon-name-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+
+        .dungeon-name {
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tag {
+            font-size: 8px;
+            padding: 2px 6px;
+            border-radius: 2px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .tag.boss {
+            background: rgba(255, 68, 68, 0.15);
+            color: #FF4444;
+        }
+
+        .tag.stretch {
+            background: rgba(255, 215, 0, 0.15);
+            color: #FFD700;
+        }
+
+        .dungeon-progress {
+            font-size: 11px;
+            color: #A0A0B0;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .dungeon-progress .complete {
+            color: #33FF88;
+        }
+
+        .dungeon-meta {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .time-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: #A0A0B0;
+            background: #252530;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-bottom: 4px;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .time-badge.urgent {
+            background: rgba(255, 68, 68, 0.1);
+            color: #FF4444;
+        }
+
+        .xp-reward {
+            font-size: 12px;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .xp-reward span:first-child {
+            color: #FFD700;
+            font-weight: 600;
+        }
+
+        .xp-reward span:last-child {
+            color: #606070;
+            font-size: 9px;
+        }
+
+        .chevron {
+            color: #606070;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px 24px;
+            background: #1A1A24;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        .empty-icon {
+            width: 80px;
+            height: 80px;
+            background: #252530;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 36px;
+            color: #606070;
+        }
+
+        .empty-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .empty-text {
+            font-size: 12px;
+            color: #A0A0B0;
+            font-family: 'SF Mono', monospace;
+            line-height: 1.5;
+        }
+
+        /* Detail Sheet */
+        .detail-header {
+            background: #1A1A24;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border-top: 2px solid #4A7BB5;
+        }
+
+        .detail-top {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .detail-info {
+            flex: 1;
+        }
+
+        .detail-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .detail-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-label {
+            font-size: 10px;
+            font-family: 'SF Mono', monospace;
+            letter-spacing: 1px;
+        }
+
+        .status-label.active { color: #FFD700; }
+        .status-label.available { color: #00D4FF; }
+        .status-label.completed { color: #33FF88; }
+
+        .detail-desc {
+            font-size: 12px;
+            color: #A0A0B0;
+            font-family: 'SF Mono', monospace;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .progress-section {
+            margin-bottom: 8px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #606070;
+            font-family: 'SF Mono', monospace;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #252530;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00A8CC, #00D4FF);
+            border-radius: 4px;
+        }
+
+        .progress-fill.complete {
+            background: linear-gradient(90deg, #1A6B3A, #33FF88);
+        }
+
+        /* Objectives */
+        .objective-card {
+            background: #1A1A24;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 4px;
+            padding: 14px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .objective-card.complete {
+            background: rgba(51, 255, 136, 0.05);
+            border-color: rgba(51, 255, 136, 0.3);
+        }
+
+        .objective-check {
+            width: 28px;
+            height: 28px;
+            background: #252530;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: #606070;
+            font-family: 'SF Mono', monospace;
+            flex-shrink: 0;
+        }
+
+        .objective-check.complete {
+            background: #33FF88;
+            color: #0A0A0F;
+        }
+
+        .objective-info {
+            flex: 1;
+        }
+
+        .objective-name {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .objective-name.complete {
+            color: #A0A0B0;
+            text-decoration: line-through;
+        }
+
+        .objective-desc {
+            font-size: 11px;
+            color: #606070;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .objective-meta {
+            text-align: right;
+        }
+
+        .objective-progress {
+            font-size: 12px;
+            color: #A0A0B0;
+            font-family: 'SF Mono', monospace;
+            margin-bottom: 2px;
+        }
+
+        .objective-xp {
+            font-size: 10px;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .objective-xp span:first-child { color: #FFD700; }
+        .objective-xp span:last-child { color: #606070; }
+
+        /* Rewards Card */
+        .rewards-card {
+            background: rgba(255, 215, 0, 0.05);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 4px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .rewards-label {
+            font-size: 10px;
+            color: #FFD700;
+            font-family: 'SF Mono', monospace;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .rewards-row {
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .reward-item {
+            text-align: center;
+        }
+
+        .reward-label {
+            font-size: 9px;
+            color: #606070;
+            font-family: 'SF Mono', monospace;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .reward-value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .reward-value.cyan { color: #00D4FF; }
+        .reward-value.gold { color: #FFD700; }
+
+        /* Action Buttons */
+        .action-btn {
+            width: 100%;
+            height: 54px;
+            border: none;
+            border-radius: 0;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .action-btn.primary {
+            background: #00D4FF;
+            color: #0A0A0F;
+        }
+
+        .action-btn.gold {
+            background: #FFD700;
+            color: #0A0A0F;
+        }
+
+        .action-btn.danger {
+            background: transparent;
+            color: #FF4444;
+            height: auto;
+            padding: 12px;
+        }
+
+        /* Reward Celebration */
+        .celebration {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .trophy-container {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 30px;
+        }
+
+        .trophy-ring {
+            position: absolute;
+            border: 2px solid rgba(255, 215, 0, 0.2);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .trophy-ring:nth-child(1) { width: 100px; height: 100px; }
+        .trophy-ring:nth-child(2) { width: 130px; height: 130px; opacity: 0.7; }
+        .trophy-ring:nth-child(3) { width: 160px; height: 160px; opacity: 0.4; }
+
+        .trophy-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: #FFD700;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+
+        .celebration-tag {
+            font-size: 12px;
+            color: #FFD700;
+            font-family: 'SF Mono', monospace;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+
+        .celebration-title {
+            font-size: 40px;
+            font-weight: bold;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+            margin-bottom: 30px;
+        }
+
+        .xp-earned {
+            margin-bottom: 30px;
+        }
+
+        .xp-value {
+            font-size: 56px;
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+
+        .xp-label {
+            font-size: 24px;
+            color: #606070;
+            font-weight: 600;
+        }
+
+        .level-up-banner {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 4px;
+            padding: 16px;
+            margin: 0 20px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-align: left;
+        }
+
+        .level-up-icon {
+            font-size: 24px;
+            color: #00D4FF;
+        }
+
+        .level-up-info {
+            flex: 1;
+        }
+
+        .level-up-label {
+            font-size: 10px;
+            color: #00D4FF;
+            font-family: 'SF Mono', monospace;
+            letter-spacing: 1px;
+        }
+
+        .level-up-text {
+            font-size: 14px;
+        }
+
+        .level-up-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00D4FF;
+        }
+
+        /* Comparison Arrows */
+        .comparison {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin: 40px 0;
+        }
+
+        .comparison-item {
+            text-align: center;
+        }
+
+        .comparison-label {
+            font-size: 11px;
+            color: #606070;
+            font-family: 'SF Mono', monospace;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .arrow {
+            font-size: 40px;
+            color: #00D4FF;
+        }
+
+        /* Legend */
+        .legend {
+            background: #12121A;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 40px;
+        }
+
+        .legend h3 {
+            color: #00D4FF;
+            font-size: 14px;
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 12px;
+        }
+
+        .legend-item {
+            text-align: center;
+        }
+
+        .legend-color {
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            margin: 0 auto 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .legend-name {
+            font-size: 10px;
+            color: #A0A0B0;
+            font-family: 'SF Mono', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ARISE DUNGEONS UI</h1>
+        <p class="subtitle">[ iOS UI MOCKUP - JANUARY 2026 ]</p>
+
+        <div class="mockup-grid">
+            <!-- Screen 1: Home with New Header -->
+            <div>
+                <p class="screen-title">HOME VIEW (UPDATED HEADER)</p>
+                <div class="phone-frame">
+                    <div class="screen">
+                        <div class="hunter-header">
+                            <div class="hunter-header-top">
+                                <div class="avatar">
+                                    NC
+                                    <div class="rank-badge-small rank-badge e">E</div>
+                                </div>
+                                <div class="hunter-info">
+                                    <div class="hunter-name">Nick</div>
+                                    <div class="hunter-title">"Awakened"</div>
+                                </div>
+                                <div class="header-actions">
+                                    <button class="header-btn" title="History">&#128214;</button>
+                                    <button class="header-btn" title="Settings">&#9881;</button>
+                                </div>
+                            </div>
+                            <div class="xp-bar">
+                                <div class="xp-fill"></div>
+                            </div>
+                            <div class="xp-labels">
+                                <span>[ 10 JAN ]</span>
+                                <span>1,250 XP TOTAL</span>
+                            </div>
+                        </div>
+
+                        <div style="padding: 0 4px;">
+                            <div style="background: #1A1A24; border: 1px solid rgba(0,212,255,0.2); border-radius: 4px; padding: 16px; margin-bottom: 16px;">
+                                <div style="font-size: 10px; color: #606070; font-family: monospace; letter-spacing: 1px; margin-bottom: 8px;">[ WEEKLY QUEST ]</div>
+                                <div style="font-size: 16px; font-weight: bold; margin-bottom: 4px;">Complete 4 Workouts</div>
+                                <div style="font-size: 11px; color: #A0A0B0; font-family: monospace;">2/4 completed</div>
+                            </div>
+
+                            <div style="background: #1A1A24; border: 1px solid rgba(0,212,255,0.2); border-radius: 4px; padding: 16px;">
+                                <div style="font-size: 10px; color: #606070; font-family: monospace; letter-spacing: 1px; margin-bottom: 8px;">[ LAST QUEST ]</div>
+                                <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Push Day</div>
+                                <div style="font-size: 11px; color: #A0A0B0; font-family: monospace;">Yesterday - 45 min</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-bar">
+                        <div class="tab-item active">
+                            <span class="tab-icon">&#128737;</span>
+                            <span class="tab-label">Status</span>
+                        </div>
+                        <div class="tab-item">
+                            <span class="tab-icon">&#10133;</span>
+                            <span class="tab-label">Log</span>
+                        </div>
+                        <div class="tab-item">
+                            <span class="tab-icon">&#128682;</span>
+                            <span class="tab-label">Dungeons</span>
+                        </div>
+                        <div class="tab-item">
+                            <span class="tab-icon">&#128200;</span>
+                            <span class="tab-label">Stats</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Screen 2: Dungeons View -->
+            <div>
+                <p class="screen-title">DUNGEONS VIEW (NEW)</p>
+                <div class="phone-frame">
+                    <div class="screen">
+                        <div class="board-header">
+                            <div class="board-tag">
+                                <span>[ DUNGEON GATE BOARD ]</span>
+                                <div class="level-badge">
+                                    <span>LV</span>
+                                    <span>7</span>
+                                    <div class="rank-badge e" style="font-size: 10px; padding: 2px 6px;">E</div>
+                                </div>
+                            </div>
+                            <div class="board-title-row">
+                                <span class="gate-icon">&#128682;</span>
+                                <div>
+                                    <div class="board-title">Dungeon Gates</div>
+                                    <div class="board-subtitle">Complete objectives to earn rewards</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Rewards Ready Section -->
+                        <div class="section">
+                            <div class="section-header">
+                                <span class="section-icon gold">&#127942;</span>
+                                <div>
+                                    <div class="section-title">Rewards Ready</div>
+                                    <div class="section-subtitle">Claim your spoils</div>
+                                </div>
+                                <span class="section-count gold">1</span>
+                            </div>
+                            <div class="dungeon-card">
+                                <div class="rank-bar d"></div>
+                                <div class="dungeon-content">
+                                    <div class="rank-badge d">D</div>
+                                    <div class="dungeon-info">
+                                        <div class="dungeon-name-row">
+                                            <span class="dungeon-name">Goblin Cave</span>
+                                        </div>
+                                        <div class="dungeon-progress"><span class="complete">3/3</span> objectives</div>
+                                    </div>
+                                    <div class="dungeon-meta">
+                                        <div class="xp-reward"><span>+100</span> <span>XP</span></div>
+                                    </div>
+                                    <span class="chevron">&#8250;</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Active Section -->
+                        <div class="section">
+                            <div class="section-header">
+                                <span class="section-icon gold">&#128293;</span>
+                                <div>
+                                    <div class="section-title">Active Dungeons</div>
+                                    <div class="section-subtitle">Gates you've entered</div>
+                                </div>
+                                <span class="section-count gold">1</span>
+                            </div>
+                            <div class="dungeon-card">
+                                <div class="rank-bar c"></div>
+                                <div class="dungeon-content">
+                                    <div class="rank-badge c">C</div>
+                                    <div class="dungeon-info">
+                                        <div class="dungeon-name-row">
+                                            <span class="dungeon-name">Shadow Temple</span>
+                                            <span class="tag stretch">&#8599; +50%</span>
+                                        </div>
+                                        <div class="dungeon-progress">2/3 objectives</div>
+                                    </div>
+                                    <div class="dungeon-meta">
+                                        <div class="time-badge">&#128339; 23h</div>
+                                        <div class="xp-reward"><span>+200</span> <span>XP</span></div>
+                                    </div>
+                                    <span class="chevron">&#8250;</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Available Section -->
+                        <div class="section">
+                            <div class="section-header">
+                                <span class="section-icon cyan">&#128682;</span>
+                                <div>
+                                    <div class="section-title">Available Gates</div>
+                                    <div class="section-subtitle">Enter before they close</div>
+                                </div>
+                                <span class="section-count cyan">2</span>
+                            </div>
+                            <div class="dungeon-card">
+                                <div class="rank-bar e"></div>
+                                <div class="dungeon-content">
+                                    <div class="rank-badge e">E</div>
+                                    <div class="dungeon-info">
+                                        <div class="dungeon-name-row">
+                                            <span class="dungeon-name">Training Grounds</span>
+                                        </div>
+                                        <div class="dungeon-progress">0/2 objectives</div>
+                                    </div>
+                                    <div class="dungeon-meta">
+                                        <div class="time-badge">&#128339; 47h</div>
+                                        <div class="xp-reward"><span>+50</span> <span>XP</span></div>
+                                    </div>
+                                    <span class="chevron">&#8250;</span>
+                                </div>
+                            </div>
+                            <div class="dungeon-card urgent">
+                                <div class="rank-bar b"></div>
+                                <div class="dungeon-content">
+                                    <div class="rank-badge b">B</div>
+                                    <div class="dungeon-info">
+                                        <div class="dungeon-name-row">
+                                            <span class="dungeon-name">Demon Castle</span>
+                                            <span class="tag boss">&#128081; BOSS</span>
+                                        </div>
+                                        <div class="dungeon-progress">0/4 objectives</div>
+                                    </div>
+                                    <div class="dungeon-meta">
+                                        <div class="time-badge urgent">&#128339; 2h</div>
+                                        <div class="xp-reward"><span>+500</span> <span>XP</span></div>
+                                    </div>
+                                    <span class="chevron">&#8250;</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-bar">
+                        <div class="tab-item">
+                            <span class="tab-icon">&#128737;</span>
+                            <span class="tab-label">Status</span>
+                        </div>
+                        <div class="tab-item">
+                            <span class="tab-icon">&#10133;</span>
+                            <span class="tab-label">Log</span>
+                        </div>
+                        <div class="tab-item active">
+                            <span class="tab-icon">&#128682;</span>
+                            <span class="tab-label">Dungeons</span>
+                        </div>
+                        <div class="tab-item">
+                            <span class="tab-icon">&#128200;</span>
+                            <span class="tab-label">Stats</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Screen 3: Dungeon Detail -->
+            <div>
+                <p class="screen-title">DUNGEON DETAIL SHEET</p>
+                <div class="phone-frame">
+                    <div class="screen" style="padding-top: 50px;">
+                        <div class="detail-header">
+                            <div class="detail-top">
+                                <div class="rank-badge c" style="width: 44px; height: 44px; font-size: 18px;">C</div>
+                                <div class="detail-info">
+                                    <div class="detail-name">Shadow Temple</div>
+                                    <div class="detail-status">
+                                        <span class="status-label active">IN PROGRESS</span>
+                                        <span class="tag stretch">&#8599; +50%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="detail-desc">
+                                Ancient temple filled with shadow creatures. Clear the corruption to claim its treasures.
+                            </div>
+                            <div class="progress-section">
+                                <div class="progress-header">
+                                    <span>OBJECTIVES</span>
+                                    <span>2/3</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 66%;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="padding: 0 16px;">
+                            <div style="font-size: 10px; color: #606070; font-family: monospace; letter-spacing: 1px; margin-bottom: 12px;">OBJECTIVES</div>
+
+                            <div class="objective-card complete">
+                                <div class="objective-check complete">&#10003;</div>
+                                <div class="objective-info">
+                                    <div class="objective-name complete">Complete a Workout</div>
+                                    <div class="objective-desc">Log any workout session</div>
+                                </div>
+                                <div class="objective-meta">
+                                    <div class="objective-xp"><span>+25</span> <span>XP</span></div>
+                                </div>
+                            </div>
+
+                            <div class="objective-card complete">
+                                <div class="objective-check complete">&#10003;</div>
+                                <div class="objective-info">
+                                    <div class="objective-name complete">Hit Volume Target</div>
+                                    <div class="objective-desc">Reach 10,000 lbs total volume</div>
+                                </div>
+                                <div class="objective-meta">
+                                    <div class="objective-xp"><span>+50</span> <span>XP</span></div>
+                                </div>
+                            </div>
+
+                            <div class="objective-card">
+                                <div class="objective-check">1</div>
+                                <div class="objective-info">
+                                    <div class="objective-name">
+                                        Set a PR
+                                        <span class="tag" style="background: rgba(255,215,0,0.15); color: #FFD700;">BONUS</span>
+                                    </div>
+                                    <div class="objective-desc">Beat a personal record on any lift</div>
+                                </div>
+                                <div class="objective-meta">
+                                    <div class="objective-progress">0/1</div>
+                                    <div class="objective-xp"><span>+100</span> <span>XP</span></div>
+                                </div>
+                            </div>
+
+                            <div class="rewards-card">
+                                <div class="rewards-label">[ REWARDS ]</div>
+                                <div class="rewards-row">
+                                    <div class="reward-item">
+                                        <div class="reward-label">BASE XP</div>
+                                        <div class="reward-value cyan">200</div>
+                                    </div>
+                                    <div class="reward-item">
+                                        <div class="reward-label">STRETCH</div>
+                                        <div class="reward-value gold">+50%</div>
+                                    </div>
+                                    <div class="reward-item">
+                                        <div class="reward-label">TOTAL XP</div>
+                                        <div class="reward-value gold">300</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button class="action-btn danger">
+                                &#10005; ABANDON DUNGEON
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Screen 4: Reward Celebration -->
+            <div>
+                <p class="screen-title">REWARD CELEBRATION</p>
+                <div class="phone-frame" style="background: #000;">
+                    <div class="screen celebration">
+                        <div class="trophy-container">
+                            <div class="trophy-ring"></div>
+                            <div class="trophy-ring"></div>
+                            <div class="trophy-ring"></div>
+                            <span class="trophy-icon">&#127942;</span>
+                        </div>
+
+                        <div class="celebration-tag">[ DUNGEON CLEARED ]</div>
+                        <div class="celebration-title">VICTORY</div>
+
+                        <div class="xp-earned">
+                            <span class="xp-value">+150</span>
+                            <span class="xp-label"> XP</span>
+                        </div>
+
+                        <div class="level-up-banner">
+                            <span class="level-up-icon">&#11014;</span>
+                            <div class="level-up-info">
+                                <div class="level-up-label">LEVEL UP!</div>
+                                <div class="level-up-text">You reached Level 8</div>
+                            </div>
+                            <span class="level-up-value">LV 8</span>
+                        </div>
+
+                        <button class="action-btn gold" style="margin: 20px;">
+                            CONTINUE
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Bar Comparison -->
+        <div class="comparison">
+            <div class="comparison-item">
+                <div class="comparison-label">BEFORE (5 TABS)</div>
+                <div style="display: flex; gap: 16px; justify-content: center;">
+                    <div class="tab-item"><span class="tab-icon">&#128737;</span><span class="tab-label">Status</span></div>
+                    <div class="tab-item"><span class="tab-icon">&#128220;</span><span class="tab-label">Quest</span></div>
+                    <div class="tab-item"><span class="tab-icon">&#128214;</span><span class="tab-label">Quests</span></div>
+                    <div class="tab-item"><span class="tab-icon">&#128200;</span><span class="tab-label">Stats</span></div>
+                    <div class="tab-item"><span class="tab-icon">&#128100;</span><span class="tab-label">Hunter</span></div>
+                </div>
+            </div>
+            <div class="comparison-item">
+                <span class="arrow">&#8594;</span>
+            </div>
+            <div class="comparison-item">
+                <div class="comparison-label">AFTER (4 TABS)</div>
+                <div style="display: flex; gap: 16px; justify-content: center;">
+                    <div class="tab-item active"><span class="tab-icon" style="color: #00D4FF;">&#128737;</span><span class="tab-label" style="color: #00D4FF;">Status</span></div>
+                    <div class="tab-item"><span class="tab-icon">&#10133;</span><span class="tab-label">Log</span></div>
+                    <div class="tab-item"><span class="tab-icon">&#128682;</span><span class="tab-label">Dungeons</span></div>
+                    <div class="tab-item"><span class="tab-icon">&#128200;</span><span class="tab-label">Stats</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rank Color Legend -->
+        <div class="legend">
+            <h3>[ DUNGEON RANK COLORS ]</h3>
+            <div class="legend-grid">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #808080; color: #000;">E</div>
+                    <div class="legend-name">E-Rank</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4A9B4A; color: #000;">D</div>
+                    <div class="legend-name">D-Rank</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4A7BB5; color: #fff;">C</div>
+                    <div class="legend-name">C-Rank</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #9B4A9B; color: #fff;">B</div>
+                    <div class="legend-name">B-Rank</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #FFD700; color: #000;">A</div>
+                    <div class="legend-name">A-Rank</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #FF4444; color: #fff;">S</div>
+                    <div class="legend-name">S-Rank</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

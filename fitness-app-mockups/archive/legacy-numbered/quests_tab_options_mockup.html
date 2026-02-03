@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quests Tab Options - Mockup Comparison</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #1a1a2e;
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #00D4FF;
+            margin-bottom: 10px;
+            font-size: 28px;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #606070;
+            margin-bottom: 40px;
+            font-family: 'SF Mono', monospace;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+
+        @media (max-width: 1200px) {
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .option-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .option-label {
+            background: linear-gradient(135deg, #1A1A24, #12121A);
+            border: 2px solid #00D4FF;
+            border-radius: 8px;
+            padding: 12px 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .option-number {
+            font-size: 12px;
+            color: #00D4FF;
+            letter-spacing: 2px;
+            font-family: 'SF Mono', monospace;
+            margin-bottom: 4px;
+        }
+
+        .option-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .option-desc {
+            font-size: 11px;
+            color: #A0A0B0;
+        }
+
+        .phone-frame {
+            width: 375px;
+            height: 812px;
+            background: #0A0A0F;
+            border-radius: 40px;
+            padding: 20px;
+            position: relative;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5), 0 0 0 2px #333;
+            overflow: hidden;
+        }
+
+        .phone-frame::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 30px;
+            background: #0A0A0F;
+            border-radius: 0 0 20px 20px;
+            z-index: 10;
+        }
+
+        .screen {
+            height: 100%;
+            overflow-y: auto;
+            padding-bottom: 80px;
+        }
+
+        .screen-header {
+            padding: 30px 0 16px;
+            text-align: center;
+        }
+
+        .screen-tag {
+            font-size: 11px;
+            color: #00D4FF;
+            letter-spacing: 2px;
+            font-family: 'SF Mono', monospace;
+        }
+
+        /* Tab Bar */
+        .tab-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: linear-gradient(to top, #12121A 60%, transparent);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 20px 20px;
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            opacity: 0.5;
+        }
+
+        .tab-item.active {
+            opacity: 1;
+        }
+
+        .tab-item.active .tab-icon {
+            color: #00D4FF;
+        }
+
+        .tab-item.active .tab-label {
+            color: #00D4FF;
+        }
+
+        .tab-icon {
+            font-size: 20px;
+            color: #606070;
+        }
+
+        .tab-label {
+            font-size: 10px;
+            color: #606070;
+            font-family: 'SF Mono', monospace;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            padding: 0 16px;
+            margin-bottom: 24px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 16px;
+            border-radius: 4px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .action-btn.primary {
+            background: #00D4FF;
+            color: #0A0A0F;
+        }
+
+        .action-btn.secondary {
+            background: #1A1A24;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            color: #00D4FF;
+        }
+
+        .action-btn-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .action-btn-text {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        /* Calendar Section */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            font-size: 10px;
+            color: #606070;
+            letter-spacing: 1px;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .toggle-btn {
+            font-size: 16px;
+            color: #00D4FF;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        .calendar {
+            background: #1A1A24;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 4px;
+            margin: 0 16px 16px;
+            padding: 12px;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .calendar-nav {
+            color: #606070;
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .calendar-month {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            text-align: center;
+        }
+
+        .calendar-day-header {
+            font-size: 10px;
+            color: #606070;
+            padding: 4px;
+        }
+
+        .calendar-day {
+            font-size: 12px;
+            padding: 8px 4px;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .calendar-day.today {
+            border: 1px solid #00D4FF;
+        }
+
+        .calendar-day.has-workout::after {
+            content: '';
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 16px;
+            height: 3px;
+            background: #33FF88;
+            border-radius: 2px;
+        }
+
+        .calendar-day.selected {
+            background: rgba(0, 212, 255, 0.2);
+        }
+
+        /* Workout Row */
+        .workout-row {
+            background: #1A1A24;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 4px;
+            margin: 0 16px 8px;
+            padding: 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-left: 4px solid #33FF88;
+        }
+
+        .workout-info {
+            flex: 1;
+        }
+
+        .workout-date {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .workout-meta {
+            font-size: 11px;
+            color: #606070;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .workout-chevron {
+            color: #606070;
+            font-size: 14px;
+        }
+
+        /* Full Screen Log View */
+        .full-screen-log {
+            padding: 16px;
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .log-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .log-cancel {
+            color: #FF4444;
+            font-size: 12px;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .timer-card {
+            background: #1A1A24;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 4px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .timer-label {
+            font-size: 10px;
+            color: #606070;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .timer-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #00D4FF;
+        }
+
+        .exercise-card {
+            background: #1A1A24;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 4px;
+            margin-bottom: 12px;
+            border-left: 4px solid #3B82F6;
+        }
+
+        .exercise-header {
+            padding: 12px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+        }
+
+        .exercise-name {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .set-row {
+            display: grid;
+            grid-template-columns: 40px 1fr 1fr 60px;
+            gap: 8px;
+            padding: 10px 12px;
+            align-items: center;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+        }
+
+        .set-row:last-child {
+            border-bottom: none;
+        }
+
+        .set-number {
+            font-size: 11px;
+            color: #606070;
+        }
+
+        .set-input {
+            background: #252530;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 4px;
+            padding: 8px;
+            color: #fff;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .complete-btn {
+            background: #00D4FF;
+            color: #0A0A0F;
+            border: none;
+            padding: 16px;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        /* Modal Sheet */
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .modal-sheet {
+            background: #0A0A0F;
+            border-radius: 20px 20px 0 0;
+            width: 100%;
+            max-height: 85%;
+            overflow-y: auto;
+            padding: 20px;
+            padding-bottom: 100px;
+        }
+
+        .modal-handle {
+            width: 40px;
+            height: 4px;
+            background: #606070;
+            border-radius: 2px;
+            margin: 0 auto 20px;
+        }
+
+        /* Inline Expansion */
+        .inline-log {
+            background: #12121A;
+            border: 2px solid #00D4FF;
+            border-radius: 4px;
+            margin: 0 16px 16px;
+            padding: 16px;
+        }
+
+        .collapsed-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            padding: 8px 16px;
+            margin-bottom: 16px;
+        }
+
+        .mini-btn {
+            padding: 8px 16px;
+            font-size: 10px;
+            border-radius: 4px;
+            background: #252530;
+            color: #A0A0B0;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+
+        .mini-btn.active {
+            background: #00D4FF;
+            color: #0A0A0F;
+            border-color: #00D4FF;
+        }
+
+        /* Pros/Cons */
+        .pros-cons {
+            margin-top: 20px;
+            padding: 16px;
+            background: #12121A;
+            border-radius: 8px;
+        }
+
+        .pros-cons h4 {
+            font-size: 12px;
+            color: #00D4FF;
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+        }
+
+        .pros-cons ul {
+            list-style: none;
+            font-size: 11px;
+            line-height: 1.8;
+        }
+
+        .pros-cons li.pro::before {
+            content: '✓ ';
+            color: #33FF88;
+        }
+
+        .pros-cons li.con::before {
+            content: '✗ ';
+            color: #FF4444;
+        }
+
+        /* Avatar Fix Demo */
+        .avatar-comparison {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            margin: 40px 0;
+            padding: 40px;
+            background: #12121A;
+            border-radius: 8px;
+        }
+
+        .avatar-demo {
+            text-align: center;
+        }
+
+        .avatar-demo-label {
+            font-size: 12px;
+            color: #606070;
+            margin-bottom: 16px;
+            letter-spacing: 1px;
+        }
+
+        .avatar {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #252530, #1A1A24);
+            border: 2px solid rgba(128, 128, 128, 0.5);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 24px;
+            position: relative;
+            margin: 0 auto;
+        }
+
+        .rank-badge {
+            position: absolute;
+            background: #808080;
+            color: #000;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 2px;
+        }
+
+        .rank-badge.old {
+            bottom: -8px;
+            right: -8px;
+        }
+
+        .rank-badge.new {
+            bottom: 2px;
+            right: 2px;
+            font-size: 10px;
+            padding: 2px 6px;
+            transform: scale(0.85);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>COMBINED QUESTS TAB</h1>
+        <p class="subtitle">[ CHOOSE YOUR PREFERRED INTERACTION PATTERN ]</p>
+
+        <div class="options-grid">
+            <!-- Option A: Full-Screen Navigation -->
+            <div class="option-container">
+                <div class="option-label">
+                    <div class="option-number">OPTION A</div>
+                    <div class="option-title">Full-Screen Navigation</div>
+                    <div class="option-desc">BEGIN QUEST navigates to separate screen</div>
+                </div>
+
+                <div class="phone-frame">
+                    <div class="screen">
+                        <div class="screen-header">
+                            <div class="screen-tag">[ QUEST CENTER ]</div>
+                        </div>
+
+                        <div class="action-buttons">
+                            <div class="action-btn primary">
+                                <div class="action-btn-icon">&#9876;</div>
+                                <div class="action-btn-text">BEGIN QUEST</div>
+                            </div>
+                            <div class="action-btn secondary">
+                                <div class="action-btn-icon">&#128247;</div>
+                                <div class="action-btn-text">SCAN LOG</div>
+                            </div>
+                        </div>
+
+                        <div class="section-header">
+                            <span class="section-title">[ QUEST ARCHIVE ]</span>
+                            <button class="toggle-btn">&#128197;</button>
+                        </div>
+
+                        <div class="calendar">
+                            <div class="calendar-header">
+                                <button class="calendar-nav">&lt;</button>
+                                <span class="calendar-month">January 2026</span>
+                                <button class="calendar-nav">&gt;</button>
+                            </div>
+                            <div class="calendar-grid">
+                                <div class="calendar-day-header">S</div>
+                                <div class="calendar-day-header">M</div>
+                                <div class="calendar-day-header">T</div>
+                                <div class="calendar-day-header">W</div>
+                                <div class="calendar-day-header">T</div>
+                                <div class="calendar-day-header">F</div>
+                                <div class="calendar-day-header">S</div>
+                                <div class="calendar-day"></div>
+                                <div class="calendar-day"></div>
+                                <div class="calendar-day"></div>
+                                <div class="calendar-day">1</div>
+                                <div class="calendar-day">2</div>
+                                <div class="calendar-day has-workout">3</div>
+                                <div class="calendar-day">4</div>
+                                <div class="calendar-day">5</div>
+                                <div class="calendar-day has-workout">6</div>
+                                <div class="calendar-day">7</div>
+                                <div class="calendar-day has-workout selected">8</div>
+                                <div class="calendar-day">9</div>
+                                <div class="calendar-day today">10</div>
+                                <div class="calendar-day">11</div>
+                            </div>
+                        </div>
+
+                        <div class="workout-row">
+                            <div class="workout-info">
+                                <div class="workout-date">Push Day</div>
+                                <div class="workout-meta">Jan 8 · 4 exercises · 16 sets</div>
+                            </div>
+                            <span class="workout-chevron">&#8250;</span>
+                        </div>
+                    </div>
+
+                    <div class="tab-bar">
+                        <div class="tab-item">
+                            <span class="tab-icon">&#128737;</span>
+                            <span class="tab-label">Status</span>
+                        </div>
+                        <div class="tab-item active">
+                            <span class="tab-icon">&#128220;</span>
+                            <span class="tab-label">Quests</span>
+                        </div>
+                        <div class="tab-item">
+                            <span class="tab-icon">&#128682;</span>
+                            <span class="tab-label">Dungeons</span>
+                        </div>
+                        <div class="tab-item">
+                            <span class="tab-icon">&#128200;</span>
+                            <span class="tab-label">Stats</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pros-cons">
+                    <h4>PROS & CONS</h4>
+                    <ul>
+                        <li class="pro">Clear separation of contexts</li>
+                        <li class="pro">More screen space for logging</li>
+                        <li class="pro">Familiar iOS navigation pattern</li>
+                        <li class="con">Extra tap to get back to history</li>
+                        <li class="con">Loses context of calendar view</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Option B: Inline Expansion -->
+            <div class="option-container">
+                <div class="option-label">
+                    <div class="option-number">OPTION B</div>
+                    <div class="option-title">Inline Expansion</div>
+                    <div class="option-desc">Logging UI expands above history</div>
+                </div>
+
+                <div class="phone-frame">
+                    <div class="screen">
+                        <div class="screen-header">
+                            <div class="screen-tag">[ QUEST CENTER ]</div>
+                        </div>
+
+                        <div class="collapsed-buttons">
+                            <button class="mini-btn active">&#9876; LOGGING</button>
+                            <button class="mini-btn">&#128247; SCAN</button>
+                            <button class="mini-btn">&#10005; CANCEL</button>
+                        </div>
+
+                        <div class="inline-log">
+                            <div class="timer-card" style="margin-bottom: 12px; padding: 12px;">
+                                <div class="timer-label">ELAPSED</div>
+                                <div class="timer-value" style="font-size: 24px;">12:34</div>
+                            </div>
+
+                            <div class="exercise-card" style="margin-bottom: 8px;">
+                                <div class="exercise-header" style="padding: 8px 12px;">
+                                    <div class="exercise-name" style="font-size: 12px;">Bench Press</div>
+                                </div>
+                                <div class="set-row" style="padding: 6px 12px;">
+                                    <span class="set-number">1</span>
+                                    <input class="set-input" value="135" style="padding: 6px; font-size: 12px;">
+                                    <input class="set-input" value="10" style="padding: 6px; font-size: 12px;">
+                                    <span style="font-size: 10px; color: #606070;">RPE 7</span>
+                                </div>
+                            </div>
+
+                            <button style="background: #252530; border: 1px dashed rgba(0,212,255,0.3); color: #00D4FF; padding: 10px; width: 100%; font-size: 11px; border-radius: 4px;">+ ADD EXERCISE</button>
+                        </div>
+
+                        <div class="section-header">
+                            <span class="section-title">[ QUEST ARCHIVE ]</span>
+                            <button class="toggle-btn">&#128197;</button>
+                        </div>
+
+                        <div class="workout-row">
+                            <div class="workout-info">
+                                <div class="workout-date">Push Day</div>
+                                <div class="workout-meta">Jan 8 · 4 exercises</div>
+                            </div>
+                            <span class="workout-chevron">&#8250;</span>
+                        </div>
+
+                        <div class="workout-row">
+                            <div class="workout-info">
+                                <div class="workout-date">Pull Day</div>
+                                <div class="workout-meta">Jan 6 · 5 exercises</div>
+                            </div>
+                            <span class="workout-chevron">&#8250;</span>
+                        </div>
+                    </div>
+
+                    <div class="tab-bar">
+                        <div class="tab-item">
+                            <span class="tab-icon">&#128737;</span>
+                            <span class="tab-label">Status</span>
+                        </div>
+                        <div class="tab-item active">
+                            <span class="tab-icon">&#128220;</span>
+                            <span class="tab-label">Quests</span>
+                        </div>
+                        <div class="tab-item">
+                            <span class="tab-icon">&#128682;</span>
+                            <span class="tab-label">Dungeons</span>
+                        </div>
+                        <div class="tab-item">
+                            <span class="tab-icon">&#128200;</span>
+                            <span class="tab-label">Stats</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pros-cons">
+                    <h4>PROS & CONS</h4>
+                    <ul>
+                        <li class="pro">Stay on same screen</li>
+                        <li class="pro">Can reference past workouts while logging</li>
+                        <li class="pro">Quick context switching</li>
+                        <li class="con">Less space for logging UI</li>
+                        <li class="con">More complex state management</li>
+                        <li class="con">Scrolling can feel cramped</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Option C: Modal Sheet -->
+            <div class="option-container">
+                <div class="option-label">
+                    <div class="option-number">OPTION C</div>
+                    <div class="option-title">Modal Sheet</div>
+                    <div class="option-desc">Logging slides up as a sheet</div>
+                </div>
+
+                <div class="phone-frame">
+                    <div class="screen" style="filter: brightness(0.4);">
+                        <div class="screen-header">
+                            <div class="screen-tag">[ QUEST CENTER ]</div>
+                        </div>
+
+                        <div class="action-buttons">
+                            <div class="action-btn primary">
+                                <div class="action-btn-icon">&#9876;</div>
+                                <div class="action-btn-text">BEGIN QUEST</div>
+                            </div>
+                            <div class="action-btn secondary">
+                                <div class="action-btn-icon">&#128247;</div>
+                                <div class="action-btn-text">SCAN LOG</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-overlay">
+                        <div class="modal-sheet">
+                            <div class="modal-handle"></div>
+
+                            <div class="log-header">
+                                <div class="log-title">Active Quest</div>
+                                <span class="log-cancel">CANCEL</span>
+                            </div>
+
+                            <div class="timer-card">
+                                <div class="timer-label">ELAPSED TIME</div>
+                                <div class="timer-value">12:34</div>
+                            </div>
+
+                            <div class="exercise-card">
+                                <div class="exercise-header">
+                                    <div class="exercise-name">Bench Press</div>
+                                </div>
+                                <div class="set-row">
+                                    <span class="set-number">SET 1</span>
+                                    <input class="set-input" value="135 lbs">
+                                    <input class="set-input" value="10 reps">
+                                    <span style="font-size: 11px; color: #606070;">RPE 7</span>
+                                </div>
+                                <div class="set-row">
+                                    <span class="set-number">SET 2</span>
+                                    <input class="set-input" value="145 lbs">
+                                    <input class="set-input" value="8 reps">
+                                    <span style="font-size: 11px; color: #606070;">RPE 8</span>
+                                </div>
+                            </div>
+
+                            <button class="complete-btn">COMPLETE QUEST</button>
+                        </div>
+                    </div>
+
+                    <div class="tab-bar" style="z-index: 0;">
+                        <div class="tab-item">
+                            <span class="tab-icon">&#128737;</span>
+                            <span class="tab-label">Status</span>
+                        </div>
+                        <div class="tab-item active">
+                            <span class="tab-icon">&#128220;</span>
+                            <span class="tab-label">Quests</span>
+                        </div>
+                        <div class="tab-item">
+                            <span class="tab-icon">&#128682;</span>
+                            <span class="tab-label">Dungeons</span>
+                        </div>
+                        <div class="tab-item">
+                            <span class="tab-icon">&#128200;</span>
+                            <span class="tab-label">Stats</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pros-cons">
+                    <h4>PROS & CONS</h4>
+                    <ul>
+                        <li class="pro">Can swipe down to dismiss/peek at history</li>
+                        <li class="pro">Full height for logging UI</li>
+                        <li class="pro">Modern iOS interaction pattern</li>
+                        <li class="pro">Easy to cancel/resume</li>
+                        <li class="con">Covers the calendar view</li>
+                        <li class="con">Might accidentally dismiss</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Avatar Fix Comparison -->
+        <h1 style="margin-top: 60px;">RANK BADGE FIX</h1>
+        <p class="subtitle">[ AVATAR RANK BADGE POSITIONING ]</p>
+
+        <div class="avatar-comparison">
+            <div class="avatar-demo">
+                <div class="avatar-demo-label">BEFORE (Too Large)</div>
+                <div class="avatar">
+                    NC
+                    <div class="rank-badge old">E</div>
+                </div>
+                <p style="font-size: 11px; color: #FF4444; margin-top: 12px;">Badge extends outside avatar<br>Covers profile picture</p>
+            </div>
+
+            <div class="avatar-demo">
+                <div class="avatar-demo-label">AFTER (Fixed)</div>
+                <div class="avatar">
+                    NC
+                    <div class="rank-badge new">E</div>
+                </div>
+                <p style="font-size: 11px; color: #33FF88; margin-top: 12px;">Badge stays inside corner<br>Smaller and less intrusive</p>
+            </div>
+        </div>
+
+        <!-- Recommended -->
+        <div style="text-align: center; padding: 40px; background: linear-gradient(135deg, rgba(0,212,255,0.1), transparent); border-radius: 8px; margin-top: 40px;">
+            <div style="font-size: 12px; color: #00D4FF; letter-spacing: 2px; margin-bottom: 8px;">[ RECOMMENDATION ]</div>
+            <div style="font-size: 24px; font-weight: bold; margin-bottom: 12px;">Option A or C</div>
+            <div style="font-size: 14px; color: #A0A0B0; max-width: 500px; margin: 0 auto;">
+                Full-screen navigation (A) is cleanest and most familiar.<br>
+                Modal sheet (C) offers flexibility to peek at history while logging.
+            </div>
+        </div>
+    </div>
+</body>
+</html>

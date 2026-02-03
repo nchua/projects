@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Option A: Embedded Chat Panel - AI-Enhanced Playground</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-deepest: #06060a;
+            --bg-deep: #0a0a0f;
+            --bg-surface: #12121a;
+            --bg-elevated: #1a1a24;
+            --bg-hover: #22222e;
+            --border: #2a2a3a;
+            --border-bright: #3a3a4a;
+            --text-primary: #f0f0f5;
+            --text-secondary: #a0a0b0;
+            --text-muted: #606070;
+            --indigo: #6366f1;
+            --indigo-bright: #818cf8;
+            --indigo-dim: #4f46e5;
+            --indigo-glow: rgba(99, 102, 241, 0.15);
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --rose: #f43f5e;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            background: var(--bg-deepest);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            grid-template-rows: 1fr auto;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Controls Panel */
+        .controls {
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            padding: 24px;
+            overflow-y: auto;
+            grid-row: span 2;
+        }
+
+        .controls::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .controls::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .controls::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--indigo) 0%, var(--indigo-dim) 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .logo h1 {
+            font-size: 17px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 28px;
+        }
+
+        .section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 20px;
+        }
+
+        .preset-btn {
+            padding: 7px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .preset-btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-bright);
+            color: var(--text-primary);
+        }
+
+        .preset-btn.active {
+            background: var(--indigo);
+            border-color: var(--indigo);
+            color: white;
+            box-shadow: 0 0 20px var(--indigo-glow);
+        }
+
+        .control-group {
+            margin-bottom: 14px;
+        }
+
+        .control-group > label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .control-group .hint {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: 9px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            transition: all 0.15s ease;
+        }
+
+        input[type="text"]:focus, select:focus {
+            outline: none;
+            border-color: var(--indigo);
+            box-shadow: 0 0 0 3px var(--indigo-glow);
+        }
+
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23606070'%3E%3Cpath d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            cursor: pointer;
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .checkbox-row:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-bright);
+        }
+
+        .checkbox-row input[type="checkbox"] {
+            margin-top: 2px;
+            accent-color: var(--indigo);
+            cursor: pointer;
+        }
+
+        .checkbox-row .label-text {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .checkbox-row .label-desc {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Preview Panel */
+        .preview {
+            background: var(--bg-deep);
+            padding: 24px;
+            overflow: auto;
+            position: relative;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .preview-header h2 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .file-tabs {
+            display: flex;
+            gap: 4px;
+        }
+
+        .file-tab {
+            padding: 6px 12px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .file-tab:hover {
+            color: var(--text-secondary);
+        }
+
+        .file-tab.active {
+            background: var(--bg-elevated);
+            border-color: var(--border);
+            color: var(--text-primary);
+        }
+
+        .code-preview {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .code-filename {
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-muted);
+        }
+
+        .code-content {
+            padding: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            line-height: 1.7;
+            overflow-x: auto;
+            white-space: pre;
+            color: var(--text-secondary);
+            max-height: 400px;
+        }
+
+        .code-content .keyword { color: #f472b6; }
+        .code-content .type { color: #a78bfa; }
+        .code-content .string { color: #34d399; }
+        .code-content .comment { color: #525270; }
+        .code-content .func { color: #60a5fa; }
+        .code-content .property { color: #fbbf24; }
+
+        /* Security Visual */
+        .security-visual {
+            margin-top: 20px;
+            padding: 16px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+        }
+
+        .security-visual h3 {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .security-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .security-box {
+            padding: 14px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .security-box.bad {
+            background: rgba(244, 63, 94, 0.08);
+            border: 1px solid rgba(244, 63, 94, 0.2);
+        }
+
+        .security-box.good {
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .security-box .icon {
+            font-size: 24px;
+            margin-bottom: 6px;
+        }
+
+        .security-box .title {
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .security-box.bad .title { color: var(--rose); }
+        .security-box.good .title { color: var(--emerald); }
+
+        .security-box .desc {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        /* Prompt Output */
+        .prompt-output {
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border);
+            padding: 16px 24px;
+        }
+
+        .prompt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .prompt-header h3 {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .copy-btn {
+            padding: 7px 14px;
+            background: var(--indigo);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .copy-btn:hover {
+            background: var(--indigo-dim);
+        }
+
+        .copy-btn.copied {
+            background: var(--emerald);
+        }
+
+        .prompt-text {
+            padding: 12px 14px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 12px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        /* ========================================
+           CHAT PANEL - THE NEW FEATURE
+           ======================================== */
+
+        .chat-toggle {
+            position: fixed;
+            right: 24px;
+            bottom: 140px;
+            width: 52px;
+            height: 52px;
+            background: linear-gradient(135deg, var(--indigo) 0%, var(--indigo-dim) 100%);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 22px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+            transition: all 0.2s ease;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-toggle:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 30px rgba(99, 102, 241, 0.5);
+        }
+
+        .chat-toggle.active {
+            background: var(--bg-elevated);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .chat-panel {
+            position: fixed;
+            right: -420px;
+            top: 0;
+            width: 400px;
+            height: 100vh;
+            background: var(--bg-surface);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 99;
+            box-shadow: -10px 0 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .chat-panel.open {
+            right: 0;
+        }
+
+        .chat-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chat-header-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--indigo) 0%, #8b5cf6 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .chat-header-text h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .chat-header-text p {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .chat-context {
+            padding: 12px 20px;
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border);
+            font-size: 10px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .chat-context-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--emerald);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .chat-message {
+            display: flex;
+            gap: 10px;
+            animation: fadeInUp 0.3s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chat-message.user {
+            flex-direction: row-reverse;
+        }
+
+        .chat-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .chat-message.assistant .chat-avatar {
+            background: linear-gradient(135deg, var(--indigo) 0%, #8b5cf6 100%);
+        }
+
+        .chat-message.user .chat-avatar {
+            background: var(--bg-hover);
+        }
+
+        .chat-bubble {
+            max-width: 280px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .chat-message.assistant .chat-bubble {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-message.user .chat-bubble {
+            background: var(--indigo);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-bubble strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .chat-bubble code {
+            background: rgba(99, 102, 241, 0.15);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--indigo-bright);
+        }
+
+        .chat-action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 10px;
+            padding: 7px 12px;
+            background: var(--indigo);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .chat-action-btn:hover {
+            background: var(--indigo-dim);
+        }
+
+        .chat-input-area {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-elevated);
+        }
+
+        .chat-suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .chat-suggestion {
+            padding: 6px 10px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            color: var(--text-muted);
+            font-family: inherit;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .chat-suggestion:hover {
+            border-color: var(--indigo);
+            color: var(--indigo-bright);
+        }
+
+        .chat-input-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 10px 14px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 12px;
+            resize: none;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--indigo);
+        }
+
+        .chat-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .chat-send {
+            width: 40px;
+            height: 40px;
+            background: var(--indigo);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .chat-send:hover {
+            background: var(--indigo-dim);
+        }
+
+        /* Adjust main content when chat is open */
+        .app-container.chat-open {
+            margin-right: 400px;
+            transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container" id="appContainer">
+        <div class="controls">
+            <div class="logo">
+                <div class="logo-icon">🔐</div>
+                <h1>Keychain Service</h1>
+            </div>
+            <p class="subtitle">Configure secure token storage for iOS</p>
+
+            <div class="section">
+                <div class="section-title">Presets</div>
+                <div class="presets">
+                    <button class="preset-btn active" onclick="applyPreset('recommended')">Recommended</button>
+                    <button class="preset-btn" onclick="applyPreset('maximum')">Maximum Security</button>
+                    <button class="preset-btn" onclick="applyPreset('convenience')">Convenience</button>
+                    <button class="preset-btn" onclick="applyPreset('shared')">App Groups</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Configuration</div>
+                <div class="control-group">
+                    <label>Service Name</label>
+                    <input type="text" id="serviceName" value="com.yourcompany.fitnessapp" oninput="updateAll()">
+                    <div class="hint">Bundle identifier prefix for keychain items</div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Accessibility</div>
+                <div class="control-group">
+                    <label>When Accessible</label>
+                    <select id="accessibility" onchange="updateAll()">
+                        <option value="afterFirstUnlock">After First Unlock (Recommended)</option>
+                        <option value="afterFirstUnlockThisDeviceOnly">After First Unlock - This Device Only</option>
+                        <option value="whenUnlocked">When Unlocked</option>
+                        <option value="whenUnlockedThisDeviceOnly">When Unlocked - This Device Only</option>
+                        <option value="whenPasscodeSetThisDeviceOnly">When Passcode Set - This Device Only</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Security Options</div>
+                <div class="control-group">
+                    <label class="checkbox-row" onclick="toggleCheckbox('useBiometrics')">
+                        <input type="checkbox" id="useBiometrics" onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Require Biometrics</div>
+                            <div class="label-desc">Face ID / Touch ID required</div>
+                        </div>
+                    </label>
+                </div>
+                <div class="control-group">
+                    <label class="checkbox-row" onclick="toggleCheckbox('syncToiCloud')">
+                        <input type="checkbox" id="syncToiCloud" onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Sync to iCloud Keychain</div>
+                            <div class="label-desc">Available across user's devices</div>
+                        </div>
+                    </label>
+                </div>
+                <div class="control-group">
+                    <label class="checkbox-row" onclick="toggleCheckbox('useAccessGroup')">
+                        <input type="checkbox" id="useAccessGroup" onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Use Access Group</div>
+                            <div class="label-desc">Share with app extensions</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Migration</div>
+                <div class="control-group">
+                    <label class="checkbox-row" onclick="toggleCheckbox('migrateLegacy')">
+                        <input type="checkbox" id="migrateLegacy" checked onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Migrate from UserDefaults</div>
+                            <div class="label-desc">Auto-migrate existing tokens</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview">
+            <div class="preview-header">
+                <h2>Generated Code</h2>
+                <div class="file-tabs">
+                    <button class="file-tab active" onclick="showTab('service')">KeychainService.swift</button>
+                    <button class="file-tab" onclick="showTab('usage')">APIClient Changes</button>
+                </div>
+            </div>
+
+            <div class="code-preview">
+                <div class="code-header">
+                    <span class="code-filename" id="currentFile">KeychainService.swift</span>
+                </div>
+                <div class="code-content" id="codeOutput"></div>
+            </div>
+
+            <div class="security-visual">
+                <h3>Security Comparison</h3>
+                <div class="security-comparison">
+                    <div class="security-box bad">
+                        <div class="icon">⚠️</div>
+                        <div class="title">Before: UserDefaults</div>
+                        <div class="desc">Plaintext, accessible via backup</div>
+                    </div>
+                    <div class="security-box good">
+                        <div class="icon">🔐</div>
+                        <div class="title">After: Keychain</div>
+                        <div class="desc" id="securityDesc">Hardware encryption, secure enclave</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="prompt-output">
+            <div class="prompt-header">
+                <h3>Generated Prompt</h3>
+                <button class="copy-btn" onclick="copyPrompt()">Copy to Clipboard</button>
+            </div>
+            <div class="prompt-text" id="promptOutput"></div>
+        </div>
+    </div>
+
+    <!-- CHAT TOGGLE BUTTON -->
+    <button class="chat-toggle" id="chatToggle" onclick="toggleChat()">
+        <span id="chatToggleIcon">💬</span>
+    </button>
+
+    <!-- CHAT PANEL -->
+    <div class="chat-panel" id="chatPanel">
+        <div class="chat-header">
+            <div class="chat-header-icon">✨</div>
+            <div class="chat-header-text">
+                <h3>Configuration Assistant</h3>
+                <p>Ask about your Keychain settings</p>
+            </div>
+        </div>
+
+        <div class="chat-context">
+            <span class="chat-context-dot"></span>
+            Watching your configuration in real-time
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-message assistant">
+                <div class="chat-avatar">✨</div>
+                <div class="chat-bubble">
+                    <strong>Hi!</strong> I can help you understand your Keychain configuration. Ask me anything about the security implications, when to use certain options, or best practices.
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-area">
+            <div class="chat-suggestions">
+                <button class="chat-suggestion" onclick="askQuestion('What does \"After First Unlock\" mean?')">What is "After First Unlock"?</button>
+                <button class="chat-suggestion" onclick="askQuestion('Should I enable biometrics?')">Should I use biometrics?</button>
+                <button class="chat-suggestion" onclick="askQuestion('iCloud sync security implications')">Is iCloud sync secure?</button>
+            </div>
+            <div class="chat-input-row">
+                <input type="text" class="chat-input" id="chatInput" placeholder="Ask about your configuration..." onkeypress="handleKeyPress(event)">
+                <button class="chat-send" onclick="sendMessage()">→</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        const state = {
+            serviceName: 'com.yourcompany.fitnessapp',
+            accessibility: 'afterFirstUnlock',
+            useBiometrics: false,
+            syncToiCloud: false,
+            useAccessGroup: false,
+            migrateLegacy: true
+        };
+
+        let currentTab = 'service';
+        let chatOpen = false;
+
+        // Presets
+        const presets = {
+            recommended: { accessibility: 'afterFirstUnlock', useBiometrics: false, syncToiCloud: false, useAccessGroup: false, migrateLegacy: true },
+            maximum: { accessibility: 'whenPasscodeSetThisDeviceOnly', useBiometrics: true, syncToiCloud: false, useAccessGroup: false, migrateLegacy: true },
+            convenience: { accessibility: 'afterFirstUnlock', useBiometrics: false, syncToiCloud: true, useAccessGroup: false, migrateLegacy: true },
+            shared: { accessibility: 'afterFirstUnlock', useBiometrics: false, syncToiCloud: false, useAccessGroup: true, migrateLegacy: true }
+        };
+
+        // Knowledge base for chat responses
+        const knowledgeBase = {
+            'after first unlock': {
+                response: `<strong>"After First Unlock"</strong> means the keychain item becomes accessible once the user unlocks their device for the first time after a restart.<br><br>This is the <strong>recommended setting</strong> for most apps because:<br>• Background processes can access tokens<br>• Good balance of security and usability<br>• Tokens are still encrypted at rest`,
+                suggestion: null
+            },
+            'biometrics': {
+                response: `<strong>Biometric authentication</strong> (Face ID/Touch ID) adds an extra layer of security by requiring the user to authenticate before accessing tokens.<br><br><strong>When to use it:</strong><br>• Banking or financial apps<br>• Apps with sensitive health data<br>• High-security requirements<br><br><strong>For a fitness app:</strong> Usually <em>not necessary</em> — it adds friction without significant benefit for workout data.`,
+                suggestion: { text: 'Keep biometrics off', action: () => { document.getElementById('useBiometrics').checked = false; updateAll(); } }
+            },
+            'icloud': {
+                response: `<strong>iCloud Keychain sync</strong> makes tokens available across all of the user's Apple devices.<br><br><strong>Security implications:</strong><br>• Tokens are encrypted end-to-end<br>• Apple cannot read them<br>• Increases attack surface slightly<br><br><strong>Trade-off:</strong> Convenience vs. security. If a user's iCloud account is compromised, tokens on all devices could be at risk.`,
+                suggestion: { text: 'Disable iCloud sync for better security', action: () => { document.getElementById('syncToiCloud').checked = false; updateAll(); } }
+            },
+            'access group': {
+                response: `<strong>Access Groups</strong> allow multiple apps or app extensions to share keychain items.<br><br><strong>Use cases:</strong><br>• Share extension needs auth<br>• Watch app companion<br>• Widget requires login state<br><br>If you don't have extensions, you don't need this.`,
+                suggestion: null
+            },
+            'migrate': {
+                response: `<strong>Migration from UserDefaults</strong> is crucial for existing users who already have tokens stored insecurely.<br><br>The migration:<br>1. Checks for tokens in UserDefaults<br>2. Copies them to Keychain<br>3. Deletes the old plaintext copies<br><br><strong>Always enable this</strong> unless this is a brand new app with no existing users.`,
+                suggestion: { text: 'Keep migration enabled', action: () => { document.getElementById('migrateLegacy').checked = true; updateAll(); } }
+            },
+            'recommended': {
+                response: `For a <strong>fitness tracking app</strong>, I recommend:<br><br>• <strong>Accessibility:</strong> After First Unlock<br>• <strong>Biometrics:</strong> Off (unnecessary friction)<br>• <strong>iCloud Sync:</strong> Off (better security)<br>• <strong>Access Group:</strong> Only if you have extensions<br>• <strong>Migration:</strong> On (for existing users)`,
+                suggestion: { text: 'Apply recommended settings', action: () => applyPreset('recommended') }
+            }
+        };
+
+        function toggleCheckbox(id) {
+            const cb = document.getElementById(id);
+            cb.checked = !cb.checked;
+            updateAll();
+        }
+
+        function applyPreset(name) {
+            Object.assign(state, presets[name]);
+            document.getElementById('accessibility').value = state.accessibility;
+            document.getElementById('useBiometrics').checked = state.useBiometrics;
+            document.getElementById('syncToiCloud').checked = state.syncToiCloud;
+            document.getElementById('useAccessGroup').checked = state.useAccessGroup;
+            document.getElementById('migrateLegacy').checked = state.migrateLegacy;
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            updateAll();
+        }
+
+        function showTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.file-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('currentFile').textContent = tab === 'service' ? 'KeychainService.swift' : 'APIClient.swift';
+            updateCode();
+        }
+
+        function updateAll() {
+            state.serviceName = document.getElementById('serviceName').value;
+            state.accessibility = document.getElementById('accessibility').value;
+            state.useBiometrics = document.getElementById('useBiometrics').checked;
+            state.syncToiCloud = document.getElementById('syncToiCloud').checked;
+            state.useAccessGroup = document.getElementById('useAccessGroup').checked;
+            state.migrateLegacy = document.getElementById('migrateLegacy').checked;
+            updateCode();
+            updatePrompt();
+            updateSecurityDesc();
+        }
+
+        function updateCode() {
+            const output = document.getElementById('codeOutput');
+            output.innerHTML = currentTab === 'service' ? generateServiceCode() : generateUsageCode();
+        }
+
+        function generateServiceCode() {
+            return `<span class="keyword">import</span> <span class="type">Foundation</span>
+<span class="keyword">import</span> <span class="type">Security</span>
+
+<span class="keyword">final class</span> <span class="type">KeychainService</span> {
+    <span class="keyword">static let</span> shared = <span class="type">KeychainService</span>()
+    <span class="keyword">private let</span> service = <span class="string">"${state.serviceName}"</span>
+
+    <span class="keyword">var</span> <span class="property">accessToken</span>: <span class="type">String</span>? {
+        <span class="keyword">get</span> { <span class="func">getValue</span>(forKey: <span class="string">"accessToken"</span>) }
+        <span class="keyword">set</span> { <span class="func">setValue</span>(newValue, forKey: <span class="string">"accessToken"</span>) }
+    }
+
+    <span class="comment">// ... full implementation</span>
+}`;
+        }
+
+        function generateUsageCode() {
+            return `<span class="comment">// Replace UserDefaults with KeychainService</span>
+
+<span class="keyword">private var</span> <span class="property">accessToken</span>: <span class="type">String</span>? {
+    <span class="keyword">get</span> { <span class="type">KeychainService</span>.shared.accessToken }
+    <span class="keyword">set</span> { <span class="type">KeychainService</span>.shared.accessToken = newValue }
+}`;
+        }
+
+        function updateSecurityDesc() {
+            const features = ['Hardware encryption'];
+            if (state.useBiometrics) features.push('biometric');
+            if (state.accessibility.includes('ThisDeviceOnly')) features.push('device-only');
+            if (state.syncToiCloud) features.push('iCloud');
+            document.getElementById('securityDesc').textContent = features.join(', ');
+        }
+
+        function updatePrompt() {
+            const parts = ['Create a KeychainService.swift for secure token storage.'];
+            if (state.useBiometrics) parts.push('Require Face ID/Touch ID.');
+            if (state.syncToiCloud) parts.push('Enable iCloud sync.');
+            if (state.migrateLegacy) parts.push('Include UserDefaults migration.');
+            document.getElementById('promptOutput').textContent = parts.join(' ');
+        }
+
+        function copyPrompt() {
+            navigator.clipboard.writeText(document.getElementById('promptOutput').textContent);
+            const btn = document.querySelector('.copy-btn');
+            btn.textContent = 'Copied!';
+            btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = 'Copy to Clipboard'; btn.classList.remove('copied'); }, 2000);
+        }
+
+        // Chat functions
+        function toggleChat() {
+            chatOpen = !chatOpen;
+            document.getElementById('chatPanel').classList.toggle('open', chatOpen);
+            document.getElementById('appContainer').classList.toggle('chat-open', chatOpen);
+            document.getElementById('chatToggleIcon').textContent = chatOpen ? '✕' : '💬';
+            document.getElementById('chatToggle').classList.toggle('active', chatOpen);
+        }
+
+        function askQuestion(question) {
+            document.getElementById('chatInput').value = question;
+            sendMessage();
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const question = input.value.trim();
+            if (!question) return;
+
+            addMessage('user', question);
+            input.value = '';
+
+            // Find matching response
+            setTimeout(() => {
+                const response = findResponse(question);
+                addMessage('assistant', response.text, response.suggestion);
+            }, 500);
+        }
+
+        function findResponse(question) {
+            const q = question.toLowerCase();
+            for (const [key, data] of Object.entries(knowledgeBase)) {
+                if (q.includes(key)) {
+                    return { text: data.response, suggestion: data.suggestion };
+                }
+            }
+            return {
+                text: `I can help with questions about:<br>• Accessibility options<br>• Biometric authentication<br>• iCloud synchronization<br>• Access groups<br>• Migration from UserDefaults<br><br>Try asking about one of these topics!`,
+                suggestion: null
+            };
+        }
+
+        function addMessage(type, text, suggestion = null) {
+            const container = document.getElementById('chatMessages');
+            const msg = document.createElement('div');
+            msg.className = `chat-message ${type}`;
+
+            let html = `
+                <div class="chat-avatar">${type === 'assistant' ? '✨' : '👤'}</div>
+                <div class="chat-bubble">${text}`;
+
+            if (suggestion) {
+                html += `<br><button class="chat-action-btn" onclick="applySuggestion(this)">⚡ ${suggestion.text}</button>`;
+                msg.dataset.action = suggestion.action.toString();
+            }
+
+            html += `</div>`;
+            msg.innerHTML = html;
+            container.appendChild(msg);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function applySuggestion(btn) {
+            const msg = btn.closest('.chat-message');
+            eval('(' + msg.dataset.action + ')()');
+            btn.textContent = '✓ Applied!';
+            btn.disabled = true;
+            addMessage('assistant', 'Done! I\'ve updated your configuration. The preview and generated code have been refreshed.');
+        }
+
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
+
+        // Initialize
+        updateAll();
+    </script>
+</body>
+</html>

@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coaching - Mission Detail View</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .mockup-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .mockup-label {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 16px;
+            font-weight: 500;
+        }
+
+        .mockup-label span {
+            color: #00d4ff;
+        }
+
+        .state-indicator {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        /* iPhone Frame */
+        .iphone-frame {
+            width: 390px;
+            height: 844px;
+            background: #000;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow:
+                0 0 0 3px #1a1a1a,
+                0 0 0 6px #0d0d0d,
+                0 30px 60px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: #0a0a0e;
+            border-radius: 40px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .iphone-screen::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Dynamic Island */
+        .dynamic-island {
+            position: sticky;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 34px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 100;
+            margin-bottom: -34px;
+        }
+
+        /* Screen Content */
+        .screen-content {
+            padding: 60px 0 40px;
+            color: #ffffff;
+            min-height: 100%;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            margin-bottom: 24px;
+        }
+
+        .back-btn {
+            width: 36px;
+            height: 36px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .header-title {
+            flex: 1;
+            text-align: center;
+            font-size: 17px;
+            font-weight: 600;
+        }
+
+        .header-spacer {
+            width: 36px;
+        }
+
+        /* Mission Hero */
+        .mission-hero {
+            padding: 0 20px 24px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 24px;
+        }
+
+        .mission-week {
+            font-size: 12px;
+            color: #00d4ff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .mission-main-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .mission-subtitle {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 20px;
+        }
+
+        /* Progress Summary */
+        .progress-summary {
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+        }
+
+        .progress-item {
+            text-align: center;
+        }
+
+        .progress-value {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .progress-value.highlight {
+            color: #00d4ff;
+        }
+
+        .progress-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+        }
+
+        /* Weekly Overview */
+        .weekly-overview {
+            padding: 0 20px;
+            margin-bottom: 24px;
+        }
+
+        .overview-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .week-grid {
+            display: flex;
+            gap: 6px;
+        }
+
+        .day-column {
+            flex: 1;
+            text-align: center;
+        }
+
+        .day-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.3);
+            margin-bottom: 8px;
+        }
+
+        .day-indicator {
+            height: 44px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.2);
+        }
+
+        .day-indicator.workout {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            color: #00d4ff;
+        }
+
+        .day-indicator.completed {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            color: #00ff88;
+        }
+
+        .day-indicator.today {
+            position: relative;
+        }
+
+        .day-indicator.today::after {
+            content: "";
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            background: #00d4ff;
+            border-radius: 50%;
+        }
+
+        /* Workout List */
+        .workout-list {
+            padding: 0 20px;
+        }
+
+        .workout-list-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .workout-card {
+            background: #14161f;
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 12px;
+            border-left: 4px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .workout-card:hover {
+            background: #1a1d28;
+        }
+
+        .workout-card.completed {
+            border-left-color: #00ff88;
+            opacity: 0.7;
+        }
+
+        .workout-card.next {
+            border-left-color: #00d4ff;
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        .workout-card.locked {
+            opacity: 0.5;
+        }
+
+        .workout-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .workout-info {
+            flex: 1;
+        }
+
+        .workout-number {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-bottom: 4px;
+        }
+
+        .workout-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .workout-focus {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .workout-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .workout-status.completed {
+            background: rgba(0, 255, 136, 0.15);
+            color: #00ff88;
+        }
+
+        .workout-status.next {
+            background: rgba(0, 212, 255, 0.15);
+            color: #00d4ff;
+        }
+
+        .workout-status.pending {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Exercise Preview */
+        .exercise-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .exercise-tag {
+            padding: 6px 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .exercise-tag.primary {
+            background: rgba(0, 212, 255, 0.1);
+            color: #00d4ff;
+        }
+
+        /* Coaching Tip */
+        .coaching-tip {
+            margin: 24px 20px;
+            padding: 16px;
+            background: linear-gradient(135deg, #1a1812 0%, #14161f 100%);
+            border-radius: 14px;
+            border-left: 3px solid #ffd700;
+        }
+
+        .tip-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .tip-icon {
+            font-size: 18px;
+        }
+
+        .tip-label {
+            font-size: 12px;
+            color: rgba(255, 215, 0, 0.8);
+            font-weight: 600;
+        }
+
+        .tip-text {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.5;
+        }
+
+        /* Goal Progress Card */
+        .goal-progress {
+            margin: 0 20px 24px;
+            padding: 20px;
+            background: #14161f;
+            border-radius: 16px;
+        }
+
+        .goal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .goal-title {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .goal-deadline {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .goal-bar-container {
+            margin-bottom: 12px;
+        }
+
+        .goal-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .goal-bar-fill {
+            height: 100%;
+            width: 45%;
+            background: linear-gradient(90deg, #00d4ff 0%, #00ff88 100%);
+            border-radius: 4px;
+        }
+
+        .goal-bar-target {
+            position: absolute;
+            right: 0;
+            top: -4px;
+            bottom: -4px;
+            width: 2px;
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .goal-values {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .goal-current {
+            font-size: 14px;
+        }
+
+        .goal-current span {
+            color: #00d4ff;
+            font-weight: 600;
+        }
+
+        .goal-target {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Start Button */
+        .start-btn-container {
+            padding: 20px;
+            background: linear-gradient(180deg, transparent 0%, #0a0a0e 50%);
+            position: sticky;
+            bottom: 0;
+        }
+
+        .start-workout-btn {
+            width: 100%;
+            padding: 18px;
+            background: #00d4ff;
+            border: none;
+            border-radius: 50px;
+            color: #000;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.35);
+        }
+
+        .start-workout-btn.completed {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.5);
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Mission Detail: In Progress -->
+    <div class="mockup-container">
+        <div class="mockup-label">Mission Detail <span>In Progress</span></div>
+        <div class="state-indicator">2 of 3 workouts complete</div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="screen-content">
+                    <div class="header">
+                        <div class="back-btn">←</div>
+                        <div class="header-title">Weekly Mission</div>
+                        <div class="header-spacer"></div>
+                    </div>
+
+                    <div class="mission-hero">
+                        <div class="mission-week">Week 3 of 6</div>
+                        <div class="mission-main-title">Bench Press 225</div>
+                        <div class="mission-subtitle">3 workouts to complete this week</div>
+
+                        <div class="progress-summary">
+                            <div class="progress-item">
+                                <div class="progress-value highlight">2/3</div>
+                                <div class="progress-label">Workouts</div>
+                            </div>
+                            <div class="progress-item">
+                                <div class="progress-value">4</div>
+                                <div class="progress-label">Days Left</div>
+                            </div>
+                            <div class="progress-item">
+                                <div class="progress-value">+5 lbs</div>
+                                <div class="progress-label">This Week</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="weekly-overview">
+                        <div class="overview-title">This Week</div>
+                        <div class="week-grid">
+                            <div class="day-column">
+                                <div class="day-label">S</div>
+                                <div class="day-indicator">-</div>
+                            </div>
+                            <div class="day-column">
+                                <div class="day-label">M</div>
+                                <div class="day-indicator completed">✓</div>
+                            </div>
+                            <div class="day-column">
+                                <div class="day-label">T</div>
+                                <div class="day-indicator">-</div>
+                            </div>
+                            <div class="day-column">
+                                <div class="day-label">W</div>
+                                <div class="day-indicator completed">✓</div>
+                            </div>
+                            <div class="day-column">
+                                <div class="day-label">T</div>
+                                <div class="day-indicator workout today">💪</div>
+                            </div>
+                            <div class="day-column">
+                                <div class="day-label">F</div>
+                                <div class="day-indicator">-</div>
+                            </div>
+                            <div class="day-column">
+                                <div class="day-label">S</div>
+                                <div class="day-indicator">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="workout-list">
+                        <div class="workout-list-title">Workouts</div>
+
+                        <div class="workout-card completed">
+                            <div class="workout-header">
+                                <div class="workout-info">
+                                    <div class="workout-number">Workout 1 • Monday</div>
+                                    <div class="workout-name">Heavy Bench Day</div>
+                                    <div class="workout-focus">Strength focus • 5 exercises</div>
+                                </div>
+                                <div class="workout-status completed">✓ Done</div>
+                            </div>
+                            <div class="exercise-preview">
+                                <span class="exercise-tag primary">Bench 4x5</span>
+                                <span class="exercise-tag">OHP</span>
+                                <span class="exercise-tag">Dips</span>
+                                <span class="exercise-tag">+2</span>
+                            </div>
+                        </div>
+
+                        <div class="workout-card completed">
+                            <div class="workout-header">
+                                <div class="workout-info">
+                                    <div class="workout-number">Workout 2 • Wednesday</div>
+                                    <div class="workout-name">Pull Day</div>
+                                    <div class="workout-focus">Back & Biceps • 5 exercises</div>
+                                </div>
+                                <div class="workout-status completed">✓ Done</div>
+                            </div>
+                            <div class="exercise-preview">
+                                <span class="exercise-tag">Rows</span>
+                                <span class="exercise-tag">Pull-ups</span>
+                                <span class="exercise-tag">Curls</span>
+                                <span class="exercise-tag">+2</span>
+                            </div>
+                        </div>
+
+                        <div class="workout-card next">
+                            <div class="workout-header">
+                                <div class="workout-info">
+                                    <div class="workout-number">Workout 3 • Today</div>
+                                    <div class="workout-name">Volume Bench Day</div>
+                                    <div class="workout-focus">Hypertrophy focus • 5 exercises</div>
+                                </div>
+                                <div class="workout-status next">Up Next</div>
+                            </div>
+                            <div class="exercise-preview">
+                                <span class="exercise-tag primary">Bench 4x10</span>
+                                <span class="exercise-tag">Incline</span>
+                                <span class="exercise-tag">Flies</span>
+                                <span class="exercise-tag">+2</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="coaching-tip">
+                        <div class="tip-header">
+                            <span class="tip-icon">💡</span>
+                            <span class="tip-label">Coach's Tip</span>
+                        </div>
+                        <div class="tip-text">Great work on the heavy day! Today focus on controlled tempo—3 seconds down, pause, explode up. This builds the strength you need for 225.</div>
+                    </div>
+
+                    <div class="goal-progress">
+                        <div class="goal-header">
+                            <div class="goal-title">Goal Progress</div>
+                            <div class="goal-deadline">3 weeks left</div>
+                        </div>
+                        <div class="goal-bar-container">
+                            <div class="goal-bar">
+                                <div class="goal-bar-fill"></div>
+                                <div class="goal-bar-target"></div>
+                            </div>
+                        </div>
+                        <div class="goal-values">
+                            <div class="goal-current">Current: <span>195 lbs</span></div>
+                            <div class="goal-target">Target: 225 lbs</div>
+                        </div>
+                    </div>
+
+                    <div class="start-btn-container">
+                        <button class="start-workout-btn">💪 Start Volume Bench Day</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mission Detail: Completed -->
+    <div class="mockup-container">
+        <div class="mockup-label">Mission Detail <span>Completed</span></div>
+        <div class="state-indicator">All workouts done!</div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="screen-content">
+                    <div class="header">
+                        <div class="back-btn">←</div>
+                        <div class="header-title">Weekly Mission</div>
+                        <div class="header-spacer"></div>
+                    </div>
+
+                    <div class="mission-hero" style="border-bottom-color: rgba(0, 255, 136, 0.2);">
+                        <div class="mission-week" style="color: #00ff88;">Week 3 Complete!</div>
+                        <div class="mission-main-title">Bench Press 225</div>
+                        <div class="mission-subtitle">Dungeon cleared! +500 XP earned</div>
+
+                        <div class="progress-summary">
+                            <div class="progress-item">
+                                <div class="progress-value" style="color: #00ff88;">3/3</div>
+                                <div class="progress-label">Workouts</div>
+                            </div>
+                            <div class="progress-item">
+                                <div class="progress-value">3</div>
+                                <div class="progress-label">Weeks Left</div>
+                            </div>
+                            <div class="progress-item">
+                                <div class="progress-value" style="color: #00ff88;">+5 lbs</div>
+                                <div class="progress-label">PR Gained</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="weekly-overview">
+                        <div class="overview-title">This Week</div>
+                        <div class="week-grid">
+                            <div class="day-column">
+                                <div class="day-label">S</div>
+                                <div class="day-indicator">-</div>
+                            </div>
+                            <div class="day-column">
+                                <div class="day-label">M</div>
+                                <div class="day-indicator completed">✓</div>
+                            </div>
+                            <div class="day-column">
+                                <div class="day-label">T</div>
+                                <div class="day-indicator">-</div>
+                            </div>
+                            <div class="day-column">
+                                <div class="day-label">W</div>
+                                <div class="day-indicator completed">✓</div>
+                            </div>
+                            <div class="day-column">
+                                <div class="day-label">T</div>
+                                <div class="day-indicator">-</div>
+                            </div>
+                            <div class="day-column">
+                                <div class="day-label">F</div>
+                                <div class="day-indicator completed">✓</div>
+                            </div>
+                            <div class="day-column">
+                                <div class="day-label">S</div>
+                                <div class="day-indicator today">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="workout-list">
+                        <div class="workout-list-title">Workouts</div>
+
+                        <div class="workout-card completed">
+                            <div class="workout-header">
+                                <div class="workout-info">
+                                    <div class="workout-number">Workout 1 • Monday</div>
+                                    <div class="workout-name">Heavy Bench Day</div>
+                                    <div class="workout-focus">Strength focus • 5 exercises</div>
+                                </div>
+                                <div class="workout-status completed">✓ Done</div>
+                            </div>
+                            <div class="exercise-preview">
+                                <span class="exercise-tag primary">Bench 4x5</span>
+                                <span class="exercise-tag">OHP</span>
+                                <span class="exercise-tag">Dips</span>
+                                <span class="exercise-tag">+2</span>
+                            </div>
+                        </div>
+
+                        <div class="workout-card completed">
+                            <div class="workout-header">
+                                <div class="workout-info">
+                                    <div class="workout-number">Workout 2 • Wednesday</div>
+                                    <div class="workout-name">Pull Day</div>
+                                    <div class="workout-focus">Back & Biceps • 5 exercises</div>
+                                </div>
+                                <div class="workout-status completed">✓ Done</div>
+                            </div>
+                            <div class="exercise-preview">
+                                <span class="exercise-tag">Rows</span>
+                                <span class="exercise-tag">Pull-ups</span>
+                                <span class="exercise-tag">Curls</span>
+                                <span class="exercise-tag">+2</span>
+                            </div>
+                        </div>
+
+                        <div class="workout-card completed">
+                            <div class="workout-header">
+                                <div class="workout-info">
+                                    <div class="workout-number">Workout 3 • Friday</div>
+                                    <div class="workout-name">Volume Bench Day</div>
+                                    <div class="workout-focus">Hypertrophy focus • 5 exercises</div>
+                                </div>
+                                <div class="workout-status completed">✓ Done</div>
+                            </div>
+                            <div class="exercise-preview">
+                                <span class="exercise-tag primary">Bench 4x10</span>
+                                <span class="exercise-tag">Incline</span>
+                                <span class="exercise-tag">Flies</span>
+                                <span class="exercise-tag">+2</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="coaching-tip" style="border-left-color: #00ff88; background: linear-gradient(135deg, #0d1a12 0%, #14161f 100%);">
+                        <div class="tip-header">
+                            <span class="tip-icon">🎉</span>
+                            <span class="tip-label" style="color: #00ff88;">Week Complete!</span>
+                        </div>
+                        <div class="tip-text">Excellent consistency! You hit a new 195 lb bench PR this week. At this pace, 225 is looking very achievable. Next week we'll push to 200.</div>
+                    </div>
+
+                    <div class="goal-progress">
+                        <div class="goal-header">
+                            <div class="goal-title">Goal Progress</div>
+                            <div class="goal-deadline">3 weeks left</div>
+                        </div>
+                        <div class="goal-bar-container">
+                            <div class="goal-bar">
+                                <div class="goal-bar-fill" style="width: 55%;"></div>
+                                <div class="goal-bar-target"></div>
+                            </div>
+                        </div>
+                        <div class="goal-values">
+                            <div class="goal-current">Current: <span>195 lbs</span> (+10 from start)</div>
+                            <div class="goal-target">Target: 225 lbs</div>
+                        </div>
+                    </div>
+
+                    <div class="start-btn-container">
+                        <button class="start-workout-btn completed">Dungeon Complete ✓</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

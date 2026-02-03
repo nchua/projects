@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playground + Claude Integration Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-deepest: #030306;
+            --bg-deep: #07070c;
+            --bg-surface: #0c0c14;
+            --bg-elevated: #14141e;
+            --bg-hover: #1c1c28;
+            --border: #1e1e2e;
+            --border-bright: #2e2e42;
+            --text-primary: #f4f4f9;
+            --text-secondary: #9898ad;
+            --text-muted: #505068;
+            --indigo: #6366f1;
+            --indigo-bright: #818cf8;
+            --claude-orange: #da7756;
+            --claude-orange-dim: #c4684a;
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --rose: #f43f5e;
+        }
+
+        body {
+            font-family: 'Sora', -apple-system, sans-serif;
+            background: var(--bg-deepest);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        /* Demo Banner */
+        .demo-banner {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-bottom: 1px solid var(--indigo);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .demo-banner h1 {
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .demo-banner .badge {
+            padding: 4px 10px;
+            background: var(--indigo);
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .demo-banner p {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .github-link {
+            padding: 8px 16px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .github-link:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 400px 1fr 380px;
+            grid-template-rows: 1fr auto;
+            height: calc(100vh - 49px);
+        }
+
+        /* Controls Panel */
+        .controls-panel {
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            padding: 20px;
+            overflow-y: auto;
+            grid-row: span 2;
+        }
+
+        .panel-header {
+            margin-bottom: 20px;
+        }
+
+        .panel-header h2 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .panel-header p {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* Control Groups */
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group-header {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .control-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .control-value {
+            font-size: 11px;
+            font-family: 'Source Code Pro', monospace;
+            color: var(--indigo-bright);
+            padding: 4px 8px;
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 4px;
+        }
+
+        /* Preset Buttons */
+        .preset-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .preset-btn {
+            flex: 1;
+            padding: 10px;
+            background: var(--bg-elevated);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .preset-btn:hover {
+            border-color: var(--border-bright);
+        }
+
+        .preset-btn.active {
+            border-color: var(--indigo);
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--indigo-bright);
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            width: 44px;
+            height: 24px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-switch.active {
+            background: var(--indigo);
+            border-color: var(--indigo);
+        }
+
+        .toggle-switch.active::after {
+            left: 22px;
+            background: white;
+        }
+
+        /* Select Dropdown */
+        .control-select {
+            padding: 6px 10px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        /* Preview Panel */
+        .preview-panel {
+            background: var(--bg-deep);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .preview-header h3 {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .code-block {
+            flex: 1;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .code-header {
+            padding: 10px 14px;
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border);
+            font-size: 10px;
+            font-family: 'Source Code Pro', monospace;
+            color: var(--text-muted);
+        }
+
+        .code-content {
+            padding: 16px;
+            font-family: 'Source Code Pro', monospace;
+            font-size: 11px;
+            line-height: 1.8;
+            white-space: pre;
+            color: var(--text-secondary);
+            overflow: auto;
+            max-height: 400px;
+        }
+
+        .code-content .keyword { color: #f472b6; }
+        .code-content .type { color: #a78bfa; }
+        .code-content .string { color: #34d399; }
+        .code-content .comment { color: #3a3a50; }
+        .code-content .highlight {
+            background: rgba(99, 102, 241, 0.2);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        /* Claude Panel */
+        .claude-panel {
+            background: var(--bg-surface);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            grid-row: span 2;
+        }
+
+        .claude-header {
+            padding: 16px 20px;
+            background: linear-gradient(135deg, rgba(218, 119, 86, 0.15) 0%, rgba(218, 119, 86, 0.05) 100%);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .claude-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--claude-orange) 0%, var(--claude-orange-dim) 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .claude-header-text h3 {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .claude-header-text p {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .connection-status {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--emerald);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Context Section */
+        .claude-context {
+            padding: 14px 20px;
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .context-label {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .context-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .context-chip {
+            padding: 4px 8px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 9px;
+            color: var(--text-secondary);
+        }
+
+        .context-chip.active {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: rgba(99, 102, 241, 0.3);
+            color: var(--indigo-bright);
+        }
+
+        /* Messages Area */
+        .claude-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px;
+        }
+
+        .message {
+            margin-bottom: 16px;
+        }
+
+        .message-user {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 12px 12px 4px 12px;
+            padding: 12px 14px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-left: 20px;
+        }
+
+        .message-claude {
+            background: rgba(218, 119, 86, 0.08);
+            border: 1px solid rgba(218, 119, 86, 0.2);
+            border-radius: 12px 12px 12px 4px;
+            padding: 14px;
+            font-size: 12px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+        }
+
+        .message-claude strong {
+            color: var(--text-primary);
+        }
+
+        .message-claude code {
+            padding: 2px 6px;
+            background: rgba(99, 102, 241, 0.15);
+            border-radius: 4px;
+            font-family: 'Source Code Pro', monospace;
+            font-size: 10px;
+            color: var(--indigo-bright);
+        }
+
+        /* Action Buttons from Claude */
+        .message-actions {
+            margin-top: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .action-btn {
+            padding: 8px 12px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s ease;
+        }
+
+        .action-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .action-btn.primary {
+            background: var(--indigo);
+            border-color: var(--indigo);
+            color: white;
+        }
+
+        .action-btn.primary:hover {
+            filter: brightness(1.1);
+        }
+
+        .action-btn.applied {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.3);
+            color: var(--emerald);
+            pointer-events: none;
+        }
+
+        /* Input Area */
+        .claude-input {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-elevated);
+        }
+
+        .quick-questions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .quick-q {
+            padding: 6px 10px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            color: var(--text-muted);
+            font-family: inherit;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .quick-q:hover {
+            border-color: var(--claude-orange);
+            color: var(--claude-orange);
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 12px 14px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 12px;
+            resize: none;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: var(--claude-orange);
+        }
+
+        .send-btn {
+            padding: 12px 18px;
+            background: linear-gradient(135deg, var(--claude-orange) 0%, var(--claude-orange-dim) 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .send-btn:hover {
+            filter: brightness(1.1);
+        }
+
+        /* Prompt Output */
+        .prompt-output {
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border);
+            padding: 14px 24px;
+        }
+
+        .prompt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .prompt-header h4 {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .copy-btn {
+            padding: 6px 12px;
+            background: var(--indigo);
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-family: inherit;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .prompt-text {
+            padding: 10px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Loading Animation */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 12px;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: var(--claude-orange);
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        /* State Change Flash */
+        @keyframes stateFlash {
+            0% { background: rgba(99, 102, 241, 0.3); }
+            100% { background: transparent; }
+        }
+
+        .flash {
+            animation: stateFlash 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-banner">
+        <div>
+            <h1>
+                Playground + Claude Integration
+                <span class="badge">Proof of Concept</span>
+            </h1>
+            <p>Demonstrating bidirectional communication: Claude can read state AND modify the playground</p>
+        </div>
+        <a href="https://github.com/nickchua/playground-claude-demo" class="github-link" target="_blank">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+            View on GitHub
+        </a>
+    </div>
+
+    <div class="app-container">
+        <!-- Controls Panel -->
+        <div class="controls-panel">
+            <div class="panel-header">
+                <h2>iOS Keychain Config</h2>
+                <p>Configure secure token storage</p>
+            </div>
+
+            <!-- Presets -->
+            <div class="preset-buttons">
+                <button class="preset-btn active" data-preset="recommended" onclick="applyPreset('recommended')">Recommended</button>
+                <button class="preset-btn" data-preset="maximum" onclick="applyPreset('maximum')">Max Security</button>
+                <button class="preset-btn" data-preset="convenience" onclick="applyPreset('convenience')">Convenience</button>
+            </div>
+
+            <!-- Accessibility -->
+            <div class="control-group">
+                <div class="control-group-header">
+                    <span>🔐</span> Accessibility
+                </div>
+                <div class="control-row">
+                    <span class="control-label">When accessible</span>
+                    <select class="control-select" id="accessibilitySelect" onchange="updateState('accessibility', this.value)">
+                        <option value="afterFirstUnlock">After First Unlock</option>
+                        <option value="whenUnlocked">When Unlocked</option>
+                        <option value="always">Always</option>
+                    </select>
+                </div>
+                <div class="control-row" id="biometricRow">
+                    <span class="control-label">Require biometrics</span>
+                    <div class="toggle-switch" id="biometricToggle" onclick="toggleState('biometric')"></div>
+                </div>
+            </div>
+
+            <!-- Storage -->
+            <div class="control-group">
+                <div class="control-group-header">
+                    <span>💾</span> Storage
+                </div>
+                <div class="control-row" id="syncRow">
+                    <span class="control-label">iCloud sync</span>
+                    <div class="toggle-switch" id="syncToggle" onclick="toggleState('sync')"></div>
+                </div>
+                <div class="control-row" id="migrationRow">
+                    <span class="control-label">Migrate from UserDefaults</span>
+                    <div class="toggle-switch active" id="migrationToggle" onclick="toggleState('migration')"></div>
+                </div>
+            </div>
+
+            <!-- Keys -->
+            <div class="control-group">
+                <div class="control-group-header">
+                    <span>🔑</span> Key Configuration
+                </div>
+                <div class="control-row">
+                    <span class="control-label">Service name</span>
+                    <span class="control-value" id="serviceDisplay">com.app.keychain</span>
+                </div>
+                <div class="control-row">
+                    <span class="control-label">Token key</span>
+                    <span class="control-value" id="keyDisplay">auth_token</span>
+                </div>
+            </div>
+
+            <!-- State Debug -->
+            <div class="control-group" style="margin-top: 24px; padding-top: 16px; border-top: 1px dashed var(--border);">
+                <div class="control-group-header">
+                    <span>🔧</span> Live State (for debugging)
+                </div>
+                <pre id="stateDebug" style="font-family: 'Source Code Pro', monospace; font-size: 10px; color: var(--text-muted); background: var(--bg-elevated); padding: 12px; border-radius: 6px; overflow: auto;"></pre>
+            </div>
+        </div>
+
+        <!-- Preview Panel -->
+        <div class="preview-panel">
+            <div class="preview-header">
+                <h3>Generated Code</h3>
+            </div>
+            <div class="code-block">
+                <div class="code-header">KeychainService.swift</div>
+                <div class="code-content" id="codePreview"></div>
+            </div>
+        </div>
+
+        <!-- Claude Panel -->
+        <div class="claude-panel">
+            <div class="claude-header">
+                <div class="claude-icon">🤖</div>
+                <div class="claude-header-text">
+                    <h3>Claude Assistant</h3>
+                    <p>Ask questions, get actionable responses</p>
+                </div>
+                <div class="connection-status">
+                    <div class="status-dot"></div>
+                    <span>Watching state</span>
+                </div>
+            </div>
+
+            <div class="claude-context">
+                <div class="context-label">Claude sees your current config</div>
+                <div class="context-chips" id="contextChips">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <div class="claude-messages" id="messagesContainer">
+                <!-- Welcome message -->
+                <div class="message message-claude">
+                    <strong>Welcome!</strong> I can see your Keychain configuration in real-time. Ask me anything about security trade-offs, or I can suggest changes directly.
+                    <br><br>
+                    Try clicking a quick question below, or ask your own.
+                </div>
+            </div>
+
+            <div class="claude-input">
+                <div class="quick-questions">
+                    <button class="quick-q" onclick="askQuestion('Is this secure enough for a fitness app?')">Secure for fitness app?</button>
+                    <button class="quick-q" onclick="askQuestion('What are the trade-offs of my current config?')">Current trade-offs?</button>
+                    <button class="quick-q" onclick="askQuestion('Should I enable biometrics?')">Enable biometrics?</button>
+                </div>
+                <div class="input-row">
+                    <input type="text" class="message-input" id="messageInput" placeholder="Ask about your configuration..." onkeydown="if(event.key==='Enter')sendMessage()">
+                    <button class="send-btn" onclick="sendMessage()">Send</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prompt Output -->
+        <div class="prompt-output">
+            <div class="prompt-header">
+                <h4>Generated Prompt</h4>
+                <button class="copy-btn" onclick="copyPrompt()">Copy</button>
+            </div>
+            <div class="prompt-text" id="promptOutput"></div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // STATE MANAGEMENT
+        // ============================================
+
+        const DEFAULTS = {
+            preset: 'recommended',
+            accessibility: 'afterFirstUnlock',
+            biometric: false,
+            sync: false,
+            migration: true,
+            serviceName: 'com.app.keychain',
+            tokenKey: 'auth_token'
+        };
+
+        const PRESETS = {
+            recommended: {
+                accessibility: 'afterFirstUnlock',
+                biometric: false,
+                sync: false,
+                migration: true
+            },
+            maximum: {
+                accessibility: 'whenUnlocked',
+                biometric: true,
+                sync: false,
+                migration: true
+            },
+            convenience: {
+                accessibility: 'afterFirstUnlock',
+                biometric: false,
+                sync: true,
+                migration: true
+            }
+        };
+
+        let state = { ...DEFAULTS };
+
+        // ============================================
+        // STATE UPDATE FUNCTIONS
+        // ============================================
+
+        function updateState(key, value, fromClaude = false) {
+            state[key] = value;
+            updateAll();
+
+            if (fromClaude) {
+                // Flash the control to show it changed
+                const controlMap = {
+                    accessibility: 'accessibilitySelect',
+                    biometric: 'biometricRow',
+                    sync: 'syncRow',
+                    migration: 'migrationRow'
+                };
+                const el = document.getElementById(controlMap[key]);
+                if (el) {
+                    el.classList.add('flash');
+                    setTimeout(() => el.classList.remove('flash'), 500);
+                }
+            }
+        }
+
+        function toggleState(key) {
+            state[key] = !state[key];
+            updateAll();
+        }
+
+        function applyPreset(preset, fromClaude = false) {
+            state.preset = preset;
+            Object.assign(state, PRESETS[preset]);
+            updateAll();
+
+            if (fromClaude) {
+                // Flash all controls
+                document.querySelectorAll('.control-row').forEach(el => {
+                    el.classList.add('flash');
+                    setTimeout(() => el.classList.remove('flash'), 500);
+                });
+            }
+        }
+
+        // ============================================
+        // RENDER FUNCTIONS
+        // ============================================
+
+        function updateAll() {
+            renderControls();
+            renderPreview();
+            renderPrompt();
+            renderContext();
+            renderStateDebug();
+        }
+
+        function renderControls() {
+            // Presets
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.preset === state.preset);
+            });
+
+            // Accessibility dropdown
+            document.getElementById('accessibilitySelect').value = state.accessibility;
+
+            // Toggles
+            document.getElementById('biometricToggle').classList.toggle('active', state.biometric);
+            document.getElementById('syncToggle').classList.toggle('active', state.sync);
+            document.getElementById('migrationToggle').classList.toggle('active', state.migration);
+        }
+
+        function renderPreview() {
+            const accessMap = {
+                afterFirstUnlock: 'kSecAttrAccessibleAfterFirstUnlock',
+                whenUnlocked: 'kSecAttrAccessibleWhenUnlocked',
+                always: 'kSecAttrAccessibleAlways'
+            };
+
+            let code = `<span class="keyword">import</span> <span class="type">Security</span>
+
+<span class="keyword">final class</span> <span class="type">KeychainService</span> {
+    <span class="keyword">static let</span> shared = <span class="type">KeychainService</span>()
+
+    <span class="keyword">private let</span> service = <span class="string">"${state.serviceName}"</span>
+    <span class="keyword">private let</span> tokenKey = <span class="string">"${state.tokenKey}"</span>
+
+    <span class="keyword">func</span> save(token: <span class="type">String</span>) <span class="keyword">throws</span> {
+        <span class="keyword">var</span> query: [<span class="type">CFString</span>: <span class="type">Any</span>] = [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: service,
+            kSecAttrAccount: tokenKey,
+            kSecValueData: token.data(using: .utf8)!,
+            <span class="${state.accessibility !== DEFAULTS.accessibility ? 'highlight' : ''}">kSecAttrAccessible: ${accessMap[state.accessibility]}</span>${state.sync ? `,
+            <span class="highlight">kSecAttrSynchronizable: true</span>` : ''}
+        ]`;
+
+            if (state.biometric) {
+                code += `
+
+        <span class="comment">// Biometric protection</span>
+        <span class="highlight"><span class="keyword">let</span> access = <span class="type">SecAccessControlCreateWithFlags</span>(
+            <span class="keyword">nil</span>,
+            ${accessMap[state.accessibility]},
+            .biometryCurrentSet,
+            <span class="keyword">nil</span>
+        )
+        query[kSecAttrAccessControl] = access</span>`;
+            }
+
+            code += `
+
+        <span class="type">SecItemAdd</span>(query <span class="keyword">as</span> <span class="type">CFDictionary</span>, <span class="keyword">nil</span>)
+    }`;
+
+            if (state.migration) {
+                code += `
+
+    <span class="highlight"><span class="keyword">func</span> migrateFromUserDefaults() {
+        <span class="keyword">if let</span> token = <span class="type">UserDefaults</span>.standard.string(forKey: <span class="string">"auth_token"</span>) {
+            <span class="keyword">try</span>? save(token: token)
+            <span class="type">UserDefaults</span>.standard.removeObject(forKey: <span class="string">"auth_token"</span>)
+        }
+    }</span>`;
+            }
+
+            code += `
+}`;
+
+            document.getElementById('codePreview').innerHTML = code;
+        }
+
+        function renderPrompt() {
+            const parts = [];
+
+            if (state.accessibility !== DEFAULTS.accessibility) {
+                const accessNames = {
+                    afterFirstUnlock: 'After First Unlock',
+                    whenUnlocked: 'When Unlocked',
+                    always: 'Always'
+                };
+                parts.push(`${accessNames[state.accessibility]} accessibility`);
+            }
+
+            if (state.biometric) parts.push('biometric protection required');
+            if (state.sync) parts.push('iCloud sync enabled');
+            if (state.migration) parts.push('UserDefaults migration');
+
+            let prompt = 'Create a KeychainService.swift for secure token storage';
+            if (parts.length > 0) {
+                prompt += ` with ${parts.join(', ')}`;
+            }
+            prompt += '.';
+
+            document.getElementById('promptOutput').textContent = prompt;
+        }
+
+        function renderContext() {
+            const chips = [];
+            chips.push({ label: 'iOS Keychain', active: true });
+            chips.push({ label: state.preset.charAt(0).toUpperCase() + state.preset.slice(1) + ' preset', active: true });
+
+            if (state.biometric) chips.push({ label: 'Biometric' });
+            if (state.sync) chips.push({ label: 'iCloud Sync' });
+            if (state.migration) chips.push({ label: 'Migration' });
+
+            document.getElementById('contextChips').innerHTML = chips
+                .map(c => `<span class="context-chip ${c.active ? 'active' : ''}">${c.label}</span>`)
+                .join('');
+        }
+
+        function renderStateDebug() {
+            document.getElementById('stateDebug').textContent = JSON.stringify(state, null, 2);
+        }
+
+        // ============================================
+        // CLAUDE INTEGRATION (Simulated)
+        // ============================================
+
+        const CLAUDE_RESPONSES = {
+            'Is this secure enough for a fitness app?': {
+                text: `<strong>Yes, the Recommended preset is ideal for a fitness app.</strong>
+                <br><br>
+                Your workout data isn't regulated like healthcare (HIPAA) or financial data. The current config gives you:
+                <br><br>
+                • <strong>Hardware encryption</strong> via Secure Enclave<br>
+                • <strong>Background sync</strong> works (important for workout uploads)<br>
+                • <strong>No annoying prompts</strong> – Face ID on every API call would frustrate users
+                <br><br>
+                You'd only need Maximum Security if you added payment processing or handled PHI.`,
+                actions: []
+            },
+            'What are the trade-offs of my current config?': {
+                text: `<strong>Current trade-offs for "${state.preset}" preset:</strong>
+                <br><br>
+                ${state.preset === 'recommended' ?
+                    `✅ <strong>Pros:</strong> Background refresh works, no friction for users, hardware-encrypted
+                    <br>⚠️ <strong>Cons:</strong> If device is unlocked and compromised, token is accessible
+                    <br><br>
+                    This is the right balance for consumer apps. The "When Unlocked" option would break background sync.` :
+                state.preset === 'maximum' ?
+                    `✅ <strong>Pros:</strong> Token requires Face ID every access, maximum protection
+                    <br>⚠️ <strong>Cons:</strong> Background refresh won't work, users prompted constantly
+                    <br><br>
+                    Only use this for banking, healthcare, or enterprise compliance.` :
+                    `✅ <strong>Pros:</strong> Seamless cross-device experience, tokens sync automatically
+                    <br>⚠️ <strong>Cons:</strong> Larger attack surface (iCloud account compromise = token compromise)
+                    <br><br>
+                    Good for low-sensitivity apps where convenience matters most.`
+                }`,
+                actions: state.preset !== 'recommended' ? [
+                    { label: '→ Switch to Recommended', primary: true, command: { action: 'applyPreset', preset: 'recommended' } }
+                ] : []
+            },
+            'Should I enable biometrics?': {
+                text: `<strong>For a fitness app? Probably not.</strong>
+                <br><br>
+                Biometrics add friction without proportional security benefit for workout data. Your users would need Face ID to:
+                <br>• Log a workout<br>• Sync in the background<br>• View their history
+                <br><br>
+                That's annoying for "I did 3 sets of squats" data.
+                <br><br>
+                <strong>When biometrics make sense:</strong><br>
+                • Banking apps<br>
+                • Password managers<br>
+                • Healthcare with PHI<br>
+                • Enterprise apps with compliance requirements`,
+                actions: state.biometric ? [
+                    { label: '→ Disable biometrics', primary: true, command: { action: 'setState', key: 'biometric', value: false } }
+                ] : []
+            }
+        };
+
+        function askQuestion(question) {
+            document.getElementById('messageInput').value = question;
+            sendMessage();
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const question = input.value.trim();
+            if (!question) return;
+
+            // Add user message
+            addMessage('user', question);
+            input.value = '';
+
+            // Show typing indicator
+            const typingId = addTypingIndicator();
+
+            // Simulate response delay
+            setTimeout(() => {
+                removeTypingIndicator(typingId);
+
+                // Find matching response or use generic
+                let response = CLAUDE_RESPONSES[question];
+                if (!response) {
+                    response = {
+                        text: `I can see you're using the <strong>${state.preset}</strong> preset with ${state.biometric ? 'biometric protection' : 'no biometrics'} and ${state.sync ? 'iCloud sync' : 'local storage only'}.
+                        <br><br>
+                        Based on your current configuration, here's what I'd suggest considering for a typical consumer app.`,
+                        actions: [
+                            { label: '→ Apply recommended settings', primary: true, command: { action: 'applyPreset', preset: 'recommended' } },
+                            { label: 'Enable migration', command: { action: 'setState', key: 'migration', value: true } }
+                        ]
+                    };
+                }
+
+                addMessage('claude', response.text, response.actions);
+            }, 1200);
+        }
+
+        function addMessage(type, content, actions = []) {
+            const container = document.getElementById('messagesContainer');
+            const msg = document.createElement('div');
+            msg.className = `message message-${type}`;
+
+            if (type === 'claude') {
+                let html = content;
+                if (actions.length > 0) {
+                    html += '<div class="message-actions">';
+                    actions.forEach((a, i) => {
+                        html += `<button class="action-btn ${a.primary ? 'primary' : ''}" onclick="executeAction(${i}, this)" data-command='${JSON.stringify(a.command)}'>${a.label}</button>`;
+                    });
+                    html += '</div>';
+                }
+                msg.innerHTML = html;
+            } else {
+                msg.textContent = content;
+            }
+
+            container.appendChild(msg);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function addTypingIndicator() {
+            const container = document.getElementById('messagesContainer');
+            const indicator = document.createElement('div');
+            indicator.className = 'message message-claude';
+            indicator.id = 'typing-' + Date.now();
+            indicator.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+            container.appendChild(indicator);
+            container.scrollTop = container.scrollHeight;
+            return indicator.id;
+        }
+
+        function removeTypingIndicator(id) {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        }
+
+        // ============================================
+        // COMMAND EXECUTION (The key feature!)
+        // ============================================
+
+        function executeAction(index, button) {
+            const command = JSON.parse(button.dataset.command);
+
+            // Execute the command
+            switch (command.action) {
+                case 'applyPreset':
+                    applyPreset(command.preset, true);
+                    break;
+                case 'setState':
+                    updateState(command.key, command.value, true);
+                    break;
+            }
+
+            // Mark button as applied
+            button.classList.add('applied');
+            button.textContent = '✓ Applied';
+
+            // Add confirmation message
+            addMessage('claude', `<strong>Done!</strong> I've updated your configuration. The changes are reflected in the controls and code preview.`);
+        }
+
+        function copyPrompt() {
+            const text = document.getElementById('promptOutput').textContent;
+            navigator.clipboard.writeText(text);
+            document.querySelector('.copy-btn').textContent = 'Copied!';
+            setTimeout(() => {
+                document.querySelector('.copy-btn').textContent = 'Copy';
+            }, 1500);
+        }
+
+        // Initialize
+        updateAll();
+    </script>
+</body>
+</html>

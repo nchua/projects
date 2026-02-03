@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARISE Friends UI Mockup</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ARISE Theme Colors */
+        :root {
+            --system-primary: #00D4FF;
+            --system-primary-glow: rgba(0, 212, 255, 0.4);
+            --system-primary-dim: #00A8CC;
+            --void-black: #0A0A0F;
+            --void-dark: #12121A;
+            --void-medium: #1A1A24;
+            --void-light: #252530;
+            --text-primary: #FFFFFF;
+            --text-secondary: #A0A0B0;
+            --text-muted: #606070;
+            --success-green: #33FF88;
+            --warning-red: #FF3333;
+            --gold: #FFD700;
+            --rank-e: #808080;
+            --rank-d: #4A9B4A;
+            --rank-c: #4A7BB5;
+            --rank-b: #9B4A9B;
+            --rank-a: #FFD700;
+            --rank-s: #FF4444;
+            --border: rgba(0, 212, 255, 0.2);
+            --border-light: rgba(0, 212, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #1a1a2e;
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--system-primary);
+            margin-bottom: 10px;
+            font-size: 28px;
+            letter-spacing: 2px;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 40px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        .mockup-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(375px, 1fr));
+            gap: 40px;
+            justify-items: center;
+        }
+
+        .phone-frame {
+            width: 375px;
+            height: 812px;
+            background: var(--void-black);
+            border-radius: 40px;
+            padding: 20px;
+            position: relative;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5), 0 0 0 2px #333;
+            overflow: hidden;
+        }
+
+        .phone-frame::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 30px;
+            background: var(--void-black);
+            border-radius: 0 0 20px 20px;
+            z-index: 10;
+        }
+
+        .screen {
+            height: 100%;
+            overflow-y: auto;
+            padding-bottom: 80px;
+        }
+
+        .screen::-webkit-scrollbar {
+            display: none;
+        }
+
+        .screen-title {
+            text-align: center;
+            color: var(--system-primary);
+            font-size: 11px;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            padding-top: 20px;
+        }
+
+        /* Tab Bar */
+        .tab-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: linear-gradient(to top, var(--void-dark) 60%, transparent);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 20px 20px;
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            opacity: 0.5;
+        }
+
+        .tab-item.active {
+            opacity: 1;
+        }
+
+        .tab-item.active .tab-icon {
+            color: var(--system-primary);
+        }
+
+        .tab-item.active .tab-label {
+            color: var(--system-primary);
+        }
+
+        .tab-icon {
+            font-size: 20px;
+            color: var(--text-muted);
+        }
+
+        .tab-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Header Styles */
+        .page-header {
+            background: var(--void-medium);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border-top: 2px solid var(--system-primary);
+        }
+
+        .header-tag {
+            font-size: 10px;
+            color: var(--system-primary);
+            letter-spacing: 2px;
+            font-family: 'JetBrains Mono', monospace;
+            margin-bottom: 8px;
+        }
+
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: bold;
+            font-family: 'Rajdhani', sans-serif;
+        }
+
+        .header-btn {
+            width: 36px;
+            height: 36px;
+            background: var(--void-light);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--system-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        /* Segment Control */
+        .segment-control {
+            display: flex;
+            background: var(--void-dark);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 4px;
+            margin-bottom: 16px;
+        }
+
+        .segment-btn {
+            flex: 1;
+            padding: 10px 16px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+            font-family: 'Rajdhani', sans-serif;
+            letter-spacing: 1px;
+            cursor: pointer;
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .segment-btn.active {
+            background: var(--system-primary);
+            color: var(--void-black);
+        }
+
+        .badge {
+            background: var(--warning-red);
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .segment-btn.active .badge {
+            background: var(--void-black);
+            color: var(--system-primary);
+        }
+
+        /* Friend Card */
+        .friend-card {
+            background: var(--void-medium);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 14px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .friend-card:hover {
+            border-color: var(--system-primary);
+            transform: translateX(2px);
+        }
+
+        .avatar {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--void-light), var(--void-dark));
+            border: 2px solid var(--rank-e);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+            font-family: 'Rajdhani', sans-serif;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .avatar.rank-e { border-color: var(--rank-e); }
+        .avatar.rank-d { border-color: var(--rank-d); }
+        .avatar.rank-c { border-color: var(--rank-c); }
+        .avatar.rank-b { border-color: var(--rank-b); }
+        .avatar.rank-a { border-color: var(--rank-a); }
+        .avatar.rank-s { border-color: var(--rank-s); }
+
+        .avatar-large {
+            width: 80px;
+            height: 80px;
+            font-size: 24px;
+            border-width: 3px;
+        }
+
+        .friend-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .friend-name {
+            font-size: 15px;
+            font-weight: 600;
+            font-family: 'Rajdhani', sans-serif;
+            margin-bottom: 2px;
+        }
+
+        .friend-handle {
+            font-size: 12px;
+            color: var(--system-primary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .friend-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .level-badge {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--void-light);
+            padding: 2px 8px;
+            border-radius: 2px;
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .level-badge span:first-child {
+            color: var(--text-muted);
+        }
+
+        .level-badge span:last-child {
+            color: var(--system-primary);
+            font-weight: bold;
+        }
+
+        .rank-badge {
+            padding: 2px 8px;
+            font-size: 10px;
+            font-weight: bold;
+            border-radius: 2px;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .rank-badge.e { background: var(--rank-e); color: #000; }
+        .rank-badge.d { background: var(--rank-d); color: #000; }
+        .rank-badge.c { background: var(--rank-c); color: #fff; }
+        .rank-badge.b { background: var(--rank-b); color: #fff; }
+        .rank-badge.a { background: var(--rank-a); color: #000; }
+        .rank-badge.s { background: var(--rank-s); color: #fff; }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .status-dot.online {
+            background: var(--success-green);
+            box-shadow: 0 0 8px var(--success-green);
+        }
+
+        .chevron {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* Sheet Styles */
+        .sheet-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+
+        .sheet-title {
+            font-size: 18px;
+            font-weight: bold;
+            font-family: 'Rajdhani', sans-serif;
+        }
+
+        .close-btn {
+            width: 32px;
+            height: 32px;
+            background: var(--void-light);
+            border: none;
+            border-radius: 4px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        /* Search Input */
+        .search-container {
+            padding: 0 16px;
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            width: 100%;
+            background: var(--void-dark);
+            border: 2px solid var(--system-primary);
+            border-radius: 4px;
+            padding: 12px 16px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: 'JetBrains Mono', monospace;
+            outline: none;
+            box-shadow: 0 0 15px var(--system-primary-glow);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-prefix {
+            color: var(--system-primary);
+        }
+
+        /* Search Result Card */
+        .search-result {
+            background: var(--void-medium);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 12px 16px;
+            margin: 0 16px 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .add-btn {
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid var(--system-primary);
+            border-radius: 4px;
+            color: var(--system-primary);
+            font-size: 11px;
+            font-weight: bold;
+            font-family: 'Rajdhani', sans-serif;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .add-btn:hover {
+            background: var(--system-primary);
+            color: var(--void-black);
+        }
+
+        .add-btn.pending {
+            border-color: var(--gold);
+            color: var(--gold);
+        }
+
+        .add-btn.friends {
+            border-color: var(--success-green);
+            color: var(--success-green);
+        }
+
+        /* Section Header */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 16px;
+            margin: 20px 0 12px;
+        }
+
+        .section-tag {
+            font-size: 10px;
+            color: var(--system-primary);
+            letter-spacing: 2px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .section-count {
+            background: var(--void-light);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Request Card */
+        .request-card {
+            background: var(--void-medium);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 14px 16px;
+            margin: 0 16px 10px;
+        }
+
+        .request-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .request-text {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .request-time {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .request-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: 'Rajdhani', sans-serif;
+            letter-spacing: 1px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .action-btn.accept {
+            background: var(--system-primary);
+            color: var(--void-black);
+        }
+
+        .action-btn.decline {
+            background: transparent;
+            border: 1px solid var(--warning-red);
+            color: var(--warning-red);
+        }
+
+        .action-btn.cancel {
+            background: transparent;
+            border: 1px solid var(--text-muted);
+            color: var(--text-muted);
+        }
+
+        /* Profile View */
+        .profile-header {
+            text-align: center;
+            padding: 30px 20px;
+            background: linear-gradient(180deg, rgba(0, 212, 255, 0.05) 0%, transparent 100%);
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        .profile-avatar {
+            margin: 0 auto 16px;
+        }
+
+        .profile-username {
+            font-size: 14px;
+            color: var(--system-primary);
+            font-family: 'JetBrains Mono', monospace;
+            margin-bottom: 12px;
+        }
+
+        .profile-badges {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .stats-panel {
+            display: flex;
+            justify-content: space-around;
+            background: var(--void-medium);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 16px;
+            margin: 0 16px 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            font-family: 'Orbitron', sans-serif;
+            color: var(--system-primary);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 1px;
+        }
+
+        .profile-actions {
+            padding: 0 16px;
+            margin-bottom: 20px;
+        }
+
+        .profile-btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: bold;
+            font-family: 'Rajdhani', sans-serif;
+            letter-spacing: 1px;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+        }
+
+        .profile-btn.danger {
+            background: transparent;
+            border: 1px solid var(--warning-red);
+            color: var(--warning-red);
+        }
+
+        .profile-btn.gold {
+            background: transparent;
+            border: 1px solid var(--gold);
+            color: var(--gold);
+        }
+
+        /* Activity Section */
+        .activity-section {
+            padding: 0 16px;
+        }
+
+        .activity-card {
+            background: var(--void-medium);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .activity-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--void-light);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .activity-info {
+            flex: 1;
+        }
+
+        .activity-title {
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .activity-date {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .activity-value {
+            font-size: 12px;
+            color: var(--gold);
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: bold;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px 24px;
+            background: var(--void-medium);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            margin: 0 16px;
+        }
+
+        .empty-icon {
+            width: 64px;
+            height: 64px;
+            background: var(--void-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 28px;
+            color: var(--text-muted);
+        }
+
+        .empty-title {
+            font-size: 14px;
+            font-weight: 600;
+            font-family: 'Rajdhani', sans-serif;
+            margin-bottom: 8px;
+        }
+
+        .empty-text {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1.5;
+        }
+
+        /* Divider */
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 20px 16px;
+        }
+
+        /* Recent Searches */
+        .recent-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            margin-bottom: 12px;
+        }
+
+        .recent-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 1px;
+        }
+
+        .clear-btn {
+            font-size: 10px;
+            color: var(--system-primary);
+            font-family: 'JetBrains Mono', monospace;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* Legend */
+        .legend {
+            background: var(--void-dark);
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 40px;
+        }
+
+        .legend h3 {
+            color: var(--system-primary);
+            font-size: 14px;
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 12px;
+        }
+
+        .legend-item {
+            text-align: center;
+        }
+
+        .legend-color {
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            margin: 0 auto 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .legend-name {
+            font-size: 10px;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ARISE FRIENDS UI</h1>
+        <p class="subtitle">[ HUNTER NETWORK MOCKUP - JANUARY 2026 ]</p>
+
+        <div class="mockup-grid">
+            <!-- Screen 1: Friends List View -->
+            <div>
+                <p class="screen-title">FRIENDS LIST VIEW</p>
+                <div class="phone-frame">
+                    <div class="screen">
+                        <div class="page-header">
+                            <div class="header-tag">[ HUNTER NETWORK ]</div>
+                            <div class="header-row">
+                                <span class="header-title">Friends</span>
+                                <button class="header-btn">+</button>
+                            </div>
+                        </div>
+
+                        <div class="segment-control">
+                            <button class="segment-btn active">ALL FRIENDS</button>
+                            <button class="segment-btn">
+                                REQUESTS
+                                <span class="badge">2</span>
+                            </button>
+                        </div>
+
+                        <div style="padding: 0 16px;">
+                            <!-- Online Friend -->
+                            <div class="friend-card">
+                                <div class="avatar rank-c">JK</div>
+                                <div class="friend-info">
+                                    <div class="friend-name">Jin-Woo Kim</div>
+                                    <div class="friend-handle">@shadowmonarch</div>
+                                    <div class="friend-meta">
+                                        <div class="level-badge">
+                                            <span>LV</span>
+                                            <span>24</span>
+                                        </div>
+                                        <span class="rank-badge c">C</span>
+                                        <div class="status-indicator">
+                                            <span class="status-dot online"></span>
+                                            Active now
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="chevron">&#8250;</span>
+                            </div>
+
+                            <!-- Offline Friend -->
+                            <div class="friend-card">
+                                <div class="avatar rank-d">CH</div>
+                                <div class="friend-info">
+                                    <div class="friend-name">Cha Hae-In</div>
+                                    <div class="friend-handle">@whitefang</div>
+                                    <div class="friend-meta">
+                                        <div class="level-badge">
+                                            <span>LV</span>
+                                            <span>18</span>
+                                        </div>
+                                        <span class="rank-badge d">D</span>
+                                        <div class="status-indicator">
+                                            <span class="status-dot"></span>
+                                            2h ago
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="chevron">&#8250;</span>
+                            </div>
+
+                            <!-- Another Friend -->
+                            <div class="friend-card">
+                                <div class="avatar rank-e">BJ</div>
+                                <div class="friend-info">
+                                    <div class="friend-name">Baek Yoonho</div>
+                                    <div class="friend-handle">@whitebear</div>
+                                    <div class="friend-meta">
+                                        <div class="level-badge">
+                                            <span>LV</span>
+                                            <span>12</span>
+                                        </div>
+                                        <span class="rank-badge e">E</span>
+                                        <div class="status-indicator">
+                                            <span class="status-dot"></span>
+                                            1d ago
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="chevron">&#8250;</span>
+                            </div>
+
+                            <!-- High Rank Friend -->
+                            <div class="friend-card">
+                                <div class="avatar rank-b">GS</div>
+                                <div class="friend-info">
+                                    <div class="friend-name">Go Gunhee</div>
+                                    <div class="friend-handle">@chairmanko</div>
+                                    <div class="friend-meta">
+                                        <div class="level-badge">
+                                            <span>LV</span>
+                                            <span>45</span>
+                                        </div>
+                                        <span class="rank-badge b">B</span>
+                                        <div class="status-indicator">
+                                            <span class="status-dot"></span>
+                                            3d ago
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="chevron">&#8250;</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-bar">
+                        <div class="tab-item">
+                            <span class="tab-icon">&#127968;</span>
+                            <span class="tab-label">Status</span>
+                        </div>
+                        <div class="tab-item">
+                            <span class="tab-icon">&#10133;</span>
+                            <span class="tab-label">Log</span>
+                        </div>
+                        <div class="tab-item active">
+                            <span class="tab-icon">&#128101;</span>
+                            <span class="tab-label">Friends</span>
+                        </div>
+                        <div class="tab-item">
+                            <span class="tab-icon">&#128200;</span>
+                            <span class="tab-label">Stats</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Screen 2: Add Friend Sheet -->
+            <div>
+                <p class="screen-title">ADD FRIEND SHEET</p>
+                <div class="phone-frame">
+                    <div class="screen" style="padding-top: 40px;">
+                        <div class="sheet-header">
+                            <span class="sheet-title">Add Hunter</span>
+                            <button class="close-btn">&#10005;</button>
+                        </div>
+
+                        <div class="search-container">
+                            <input type="text" class="search-input" placeholder="@username" value="@shadow">
+                        </div>
+
+                        <!-- Search Results -->
+                        <div class="section-header">
+                            <span class="section-tag">[ SEARCH RESULTS ]</span>
+                            <span class="section-count">3</span>
+                        </div>
+
+                        <div class="search-result">
+                            <div class="avatar rank-c">JK</div>
+                            <div class="friend-info">
+                                <div class="friend-name">Jin-Woo Kim</div>
+                                <div class="friend-handle">@shadowmonarch</div>
+                                <div class="friend-meta">
+                                    <div class="level-badge">
+                                        <span>LV</span>
+                                        <span>24</span>
+                                    </div>
+                                    <span class="rank-badge c">C</span>
+                                </div>
+                            </div>
+                            <button class="add-btn friends">&#10003; FRIENDS</button>
+                        </div>
+
+                        <div class="search-result">
+                            <div class="avatar rank-e">SK</div>
+                            <div class="friend-info">
+                                <div class="friend-name">Shadow Knight</div>
+                                <div class="friend-handle">@shadowknight99</div>
+                                <div class="friend-meta">
+                                    <div class="level-badge">
+                                        <span>LV</span>
+                                        <span>8</span>
+                                    </div>
+                                    <span class="rank-badge e">E</span>
+                                </div>
+                            </div>
+                            <button class="add-btn">ADD</button>
+                        </div>
+
+                        <div class="search-result">
+                            <div class="avatar rank-d">SH</div>
+                            <div class="friend-info">
+                                <div class="friend-name">Shadow Hunter</div>
+                                <div class="friend-handle">@shadowhunter_x</div>
+                                <div class="friend-meta">
+                                    <div class="level-badge">
+                                        <span>LV</span>
+                                        <span>15</span>
+                                    </div>
+                                    <span class="rank-badge d">D</span>
+                                </div>
+                            </div>
+                            <button class="add-btn pending">PENDING</button>
+                        </div>
+
+                        <div class="divider"></div>
+
+                        <!-- Recent Searches -->
+                        <div class="recent-header">
+                            <span class="recent-label">RECENT SEARCHES</span>
+                            <button class="clear-btn">CLEAR</button>
+                        </div>
+
+                        <div class="search-result" style="opacity: 0.7;">
+                            <div class="avatar rank-d">CH</div>
+                            <div class="friend-info">
+                                <div class="friend-name">Cha Hae-In</div>
+                                <div class="friend-handle">@whitefang</div>
+                            </div>
+                            <button class="add-btn friends">&#10003; FRIENDS</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Screen 3: Friend Requests View -->
+            <div>
+                <p class="screen-title">FRIEND REQUESTS VIEW</p>
+                <div class="phone-frame">
+                    <div class="screen">
+                        <div class="page-header">
+                            <div class="header-tag">[ HUNTER NETWORK ]</div>
+                            <div class="header-row">
+                                <span class="header-title">Requests</span>
+                            </div>
+                        </div>
+
+                        <!-- Incoming Requests -->
+                        <div class="section-header">
+                            <span class="section-tag">[ INCOMING REQUESTS ]</span>
+                            <span class="section-count">2</span>
+                        </div>
+
+                        <div class="request-card">
+                            <div class="request-top">
+                                <div class="avatar rank-d">YS</div>
+                                <div class="friend-info">
+                                    <div class="friend-name">Yoo Jin-Ho</div>
+                                    <div class="friend-meta" style="margin-top: 2px;">
+                                        <span class="rank-badge d">D</span>
+                                        <div class="level-badge">
+                                            <span>LV</span>
+                                            <span>11</span>
+                                        </div>
+                                    </div>
+                                    <div class="request-text">wants to join your network</div>
+                                    <div class="request-time">2h ago</div>
+                                </div>
+                            </div>
+                            <div class="request-actions">
+                                <button class="action-btn accept">ACCEPT</button>
+                                <button class="action-btn decline">DECLINE</button>
+                            </div>
+                        </div>
+
+                        <div class="request-card">
+                            <div class="request-top">
+                                <div class="avatar rank-e">LM</div>
+                                <div class="friend-info">
+                                    <div class="friend-name">Lee Min-Sung</div>
+                                    <div class="friend-meta" style="margin-top: 2px;">
+                                        <span class="rank-badge e">E</span>
+                                        <div class="level-badge">
+                                            <span>LV</span>
+                                            <span>5</span>
+                                        </div>
+                                    </div>
+                                    <div class="request-text">wants to join your network</div>
+                                    <div class="request-time">1d ago</div>
+                                </div>
+                            </div>
+                            <div class="request-actions">
+                                <button class="action-btn accept">ACCEPT</button>
+                                <button class="action-btn decline">DECLINE</button>
+                            </div>
+                        </div>
+
+                        <div class="divider"></div>
+
+                        <!-- Sent Requests -->
+                        <div class="section-header">
+                            <span class="section-tag">[ SENT REQUESTS ]</span>
+                            <span class="section-count">1</span>
+                        </div>
+
+                        <div class="request-card">
+                            <div class="request-top">
+                                <div class="avatar rank-a">TG</div>
+                                <div class="friend-info">
+                                    <div class="friend-name">Thomas Andre</div>
+                                    <div class="friend-meta" style="margin-top: 2px;">
+                                        <span class="rank-badge a">A</span>
+                                        <div class="level-badge">
+                                            <span>LV</span>
+                                            <span>52</span>
+                                        </div>
+                                    </div>
+                                    <div class="request-text" style="color: var(--gold);">Request pending</div>
+                                    <div class="request-time">3d ago</div>
+                                </div>
+                            </div>
+                            <div class="request-actions">
+                                <button class="action-btn cancel">CANCEL REQUEST</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-bar">
+                        <div class="tab-item">
+                            <span class="tab-icon">&#127968;</span>
+                            <span class="tab-label">Status</span>
+                        </div>
+                        <div class="tab-item">
+                            <span class="tab-icon">&#10133;</span>
+                            <span class="tab-label">Log</span>
+                        </div>
+                        <div class="tab-item active">
+                            <span class="tab-icon">&#128101;</span>
+                            <span class="tab-label">Friends</span>
+                        </div>
+                        <div class="tab-item">
+                            <span class="tab-icon">&#128200;</span>
+                            <span class="tab-label">Stats</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Screen 4: Friend Profile View -->
+            <div>
+                <p class="screen-title">FRIEND PROFILE VIEW</p>
+                <div class="phone-frame">
+                    <div class="screen" style="padding-top: 40px;">
+                        <div class="profile-header">
+                            <div class="avatar avatar-large rank-c profile-avatar">JK</div>
+                            <div class="profile-username">@shadowmonarch</div>
+                            <div class="profile-badges">
+                                <div class="level-badge" style="padding: 4px 12px; font-size: 12px;">
+                                    <span>LEVEL</span>
+                                    <span style="font-size: 16px;">24</span>
+                                </div>
+                                <span class="rank-badge c" style="padding: 4px 12px; font-size: 12px;">C-RANK</span>
+                            </div>
+                        </div>
+
+                        <div class="stats-panel">
+                            <div class="stat-item">
+                                <div class="stat-value">127</div>
+                                <div class="stat-label">QUESTS</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">14</div>
+                                <div class="stat-label">STREAK</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">23</div>
+                                <div class="stat-label">PRs</div>
+                            </div>
+                        </div>
+
+                        <div class="profile-actions">
+                            <button class="profile-btn gold">&#9876; CHALLENGE</button>
+                            <button class="profile-btn danger">&#128683; REMOVE FRIEND</button>
+                        </div>
+
+                        <div class="activity-section">
+                            <div class="section-header" style="padding: 0; margin-bottom: 12px;">
+                                <span class="section-tag">[ RECENT ACTIVITY ]</span>
+                            </div>
+
+                            <div class="activity-card">
+                                <div class="activity-icon">&#128170;</div>
+                                <div class="activity-info">
+                                    <div class="activity-title">Push Day</div>
+                                    <div class="activity-date">Today at 9:30 AM</div>
+                                </div>
+                                <div class="activity-value">+150 XP</div>
+                            </div>
+
+                            <div class="activity-card">
+                                <div class="activity-icon">&#127942;</div>
+                                <div class="activity-info">
+                                    <div class="activity-title">New PR: Bench Press</div>
+                                    <div class="activity-date">Yesterday</div>
+                                </div>
+                                <div class="activity-value">225 lbs</div>
+                            </div>
+
+                            <div class="activity-card">
+                                <div class="activity-icon">&#128170;</div>
+                                <div class="activity-info">
+                                    <div class="activity-title">Leg Day</div>
+                                    <div class="activity-date">2 days ago</div>
+                                </div>
+                                <div class="activity-value">+175 XP</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State Example -->
+        <div style="margin-top: 40px; max-width: 375px; margin-left: auto; margin-right: auto;">
+            <p class="screen-title">EMPTY STATE EXAMPLE</p>
+            <div style="background: var(--void-black); border-radius: 8px; padding: 20px;">
+                <div class="empty-state">
+                    <div class="empty-icon">&#128101;</div>
+                    <div class="empty-title">No hunters in your network yet</div>
+                    <div class="empty-text">Search for other hunters by username to add them to your network and track their progress.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rank Color Legend -->
+        <div class="legend">
+            <h3>[ HUNTER RANK COLORS ]</h3>
+            <div class="legend-grid">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: var(--rank-e); color: #000;">E</div>
+                    <div class="legend-name">E-Rank</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: var(--rank-d); color: #000;">D</div>
+                    <div class="legend-name">D-Rank</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: var(--rank-c); color: #fff;">C</div>
+                    <div class="legend-name">C-Rank</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: var(--rank-b); color: #fff;">B</div>
+                    <div class="legend-name">B-Rank</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: var(--rank-a); color: #000;">A</div>
+                    <div class="legend-name">A-Rank</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: var(--rank-s); color: #fff;">S</div>
+                    <div class="legend-name">S-Rank</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

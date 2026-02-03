@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Option D: Comparison Panel - AI-Enhanced Playground</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-deepest: #030306;
+            --bg-deep: #07070c;
+            --bg-surface: #0c0c14;
+            --bg-elevated: #14141e;
+            --bg-hover: #1c1c28;
+            --border: #1e1e2e;
+            --border-bright: #2e2e42;
+            --text-primary: #f4f4f9;
+            --text-secondary: #9898ad;
+            --text-muted: #505068;
+            --indigo: #6366f1;
+            --indigo-bright: #818cf8;
+            --indigo-dim: #4f46e5;
+            --indigo-glow: rgba(99, 102, 241, 0.08);
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --rose: #f43f5e;
+            --violet: #8b5cf6;
+        }
+
+        body {
+            font-family: 'Sora', -apple-system, sans-serif;
+            background: var(--bg-deepest);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 480px 1fr;
+            grid-template-rows: 1fr auto;
+            min-height: 100vh;
+        }
+
+        /* ========================================
+           COMPARISON PANEL - Key feature of Option D
+           ======================================== */
+
+        .comparison-panel {
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            padding: 24px;
+            overflow-y: auto;
+            grid-row: span 2;
+        }
+
+        .comparison-panel::-webkit-scrollbar { width: 5px; }
+        .comparison-panel::-webkit-scrollbar-track { background: transparent; }
+        .comparison-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        .panel-header {
+            margin-bottom: 24px;
+        }
+
+        .panel-header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel-header h1::before {
+            content: '🔐';
+        }
+
+        .panel-header p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .view-toggle {
+            display: flex;
+            background: var(--bg-elevated);
+            border-radius: 8px;
+            padding: 4px;
+            margin-bottom: 20px;
+        }
+
+        .view-toggle-btn {
+            flex: 1;
+            padding: 10px 16px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .view-toggle-btn:hover {
+            color: var(--text-secondary);
+        }
+
+        .view-toggle-btn.active {
+            background: var(--indigo);
+            color: white;
+        }
+
+        /* Comparison Cards */
+        .comparison-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .comparison-card {
+            background: var(--bg-elevated);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .comparison-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--border);
+            transition: all 0.2s ease;
+        }
+
+        .comparison-card:hover {
+            border-color: var(--border-bright);
+            background: var(--bg-hover);
+        }
+
+        .comparison-card.selected {
+            border-color: var(--indigo);
+        }
+
+        .comparison-card.selected::before {
+            background: linear-gradient(90deg, var(--indigo) 0%, var(--violet) 100%);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .card-title-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--bg-surface);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .comparison-card.selected .card-icon {
+            background: linear-gradient(135deg, var(--indigo) 0%, var(--violet) 100%);
+        }
+
+        .card-title h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .card-title .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: rgba(16, 185, 129, 0.15);
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--emerald);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .card-check {
+            width: 22px;
+            height: 22px;
+            background: var(--bg-surface);
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: transparent;
+            transition: all 0.15s ease;
+        }
+
+        .comparison-card.selected .card-check {
+            background: var(--indigo);
+            border-color: var(--indigo);
+            color: white;
+        }
+
+        .card-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 14px;
+            line-height: 1.6;
+        }
+
+        .card-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .feature-tag {
+            padding: 4px 10px;
+            background: var(--bg-surface);
+            border-radius: 5px;
+            font-size: 10px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .feature-tag.positive::before {
+            content: '✓';
+            color: var(--emerald);
+        }
+
+        .feature-tag.negative::before {
+            content: '✗';
+            color: var(--rose);
+        }
+
+        .feature-tag.neutral::before {
+            content: '○';
+            color: var(--text-muted);
+        }
+
+        /* Why Choose This - Expandable */
+        .why-section {
+            border-top: 1px solid var(--border);
+            padding-top: 12px;
+            margin-top: 12px;
+        }
+
+        .why-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: none;
+            border: none;
+            color: var(--indigo-bright);
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            padding: 0;
+        }
+
+        .why-toggle-icon {
+            transition: transform 0.2s ease;
+        }
+
+        .why-toggle.expanded .why-toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        .why-content {
+            display: none;
+            margin-top: 12px;
+            padding: 12px;
+            background: var(--bg-surface);
+            border-radius: 8px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        .why-content.visible {
+            display: block;
+            animation: expandIn 0.2s ease;
+        }
+
+        @keyframes expandIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .why-content strong {
+            color: var(--text-primary);
+        }
+
+        .why-content ul {
+            margin: 8px 0 0 16px;
+        }
+
+        .why-content ul li {
+            margin-bottom: 4px;
+        }
+
+        /* Difference Highlights */
+        .diff-section {
+            margin-top: 20px;
+            padding: 16px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+        }
+
+        .diff-section h4 {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 14px;
+        }
+
+        .diff-row {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .diff-row:last-child {
+            border-bottom: none;
+        }
+
+        .diff-label {
+            width: 120px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .diff-values {
+            flex: 1;
+            display: flex;
+            gap: 8px;
+        }
+
+        .diff-value {
+            flex: 1;
+            padding: 6px 10px;
+            background: var(--bg-surface);
+            border-radius: 6px;
+            font-size: 10px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .diff-value.highlight {
+            background: rgba(99, 102, 241, 0.15);
+            color: var(--indigo-bright);
+        }
+
+        .diff-value.positive {
+            color: var(--emerald);
+        }
+
+        .diff-value.negative {
+            color: var(--rose);
+        }
+
+        /* Custom Config View */
+        .custom-config {
+            display: none;
+        }
+
+        .custom-config.visible {
+            display: block;
+        }
+
+        .control-group {
+            margin-bottom: 14px;
+        }
+
+        .control-group label:not(.checkbox-row) {
+            display: block;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        select {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: 'Source Code Pro', monospace;
+            font-size: 11px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23505068'%3E%3Cpath d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            cursor: pointer;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--indigo);
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .checkbox-row:hover {
+            background: var(--bg-hover);
+        }
+
+        .checkbox-row input[type="checkbox"] {
+            margin-top: 2px;
+            accent-color: var(--indigo);
+        }
+
+        .checkbox-row .label-text {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .checkbox-row .label-desc {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Preview Panel */
+        .preview {
+            background: var(--bg-deep);
+            padding: 24px;
+            overflow: auto;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .preview-header h2 {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .file-tabs {
+            display: flex;
+            gap: 4px;
+        }
+
+        .file-tab {
+            padding: 6px 10px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 5px;
+            color: var(--text-muted);
+            font-family: 'Source Code Pro', monospace;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .file-tab:hover { color: var(--text-secondary); }
+        .file-tab.active {
+            background: var(--bg-elevated);
+            border-color: var(--border);
+            color: var(--text-primary);
+        }
+
+        .code-preview {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .code-header {
+            padding: 10px 14px;
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .code-filename {
+            font-size: 10px;
+            font-family: 'Source Code Pro', monospace;
+            color: var(--text-muted);
+        }
+
+        .config-badge {
+            padding: 4px 10px;
+            background: rgba(99, 102, 241, 0.15);
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--indigo-bright);
+        }
+
+        .code-content {
+            padding: 16px;
+            font-family: 'Source Code Pro', monospace;
+            font-size: 11px;
+            line-height: 1.7;
+            overflow-x: auto;
+            white-space: pre;
+            color: var(--text-secondary);
+            max-height: 350px;
+        }
+
+        .code-content .keyword { color: #f472b6; }
+        .code-content .type { color: #a78bfa; }
+        .code-content .string { color: #34d399; }
+        .code-content .comment { color: #3a3a50; }
+        .code-content .func { color: #60a5fa; }
+        .code-content .property { color: #fbbf24; }
+
+        /* Security Summary */
+        .security-summary {
+            margin-top: 20px;
+            padding: 16px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+        }
+
+        .security-summary h3 {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
+        }
+
+        .security-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .security-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .security-bar-label {
+            width: 80px;
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .security-bar-track {
+            flex: 1;
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .security-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .security-bar-fill.security { background: linear-gradient(90deg, var(--emerald) 0%, #059669 100%); }
+        .security-bar-fill.usability { background: linear-gradient(90deg, #06b6d4 0%, #0891b2 100%); }
+
+        /* Prompt Output */
+        .prompt-output {
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border);
+            padding: 16px 24px;
+        }
+
+        .prompt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .prompt-header h3 {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .copy-btn {
+            padding: 7px 14px;
+            background: var(--indigo);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .copy-btn:hover { background: var(--indigo-dim); }
+        .copy-btn.copied { background: var(--emerald); }
+
+        .prompt-text {
+            padding: 12px 14px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 12px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            max-height: 100px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="comparison-panel">
+            <div class="panel-header">
+                <h1>Keychain Service</h1>
+                <p>Compare configurations or build your own</p>
+            </div>
+
+            <!-- View Toggle -->
+            <div class="view-toggle">
+                <button class="view-toggle-btn active" onclick="setView('compare')">Compare Presets</button>
+                <button class="view-toggle-btn" onclick="setView('custom')">Custom Config</button>
+            </div>
+
+            <!-- Comparison View -->
+            <div class="comparison-view" id="compareView">
+                <div class="comparison-cards">
+                    <!-- Recommended Card -->
+                    <div class="comparison-card selected" data-preset="recommended" onclick="selectPreset('recommended')">
+                        <div class="card-header">
+                            <div class="card-title-row">
+                                <div class="card-icon">⚖️</div>
+                                <div class="card-title">
+                                    <h3>Recommended</h3>
+                                    <span class="badge">Best for most apps</span>
+                                </div>
+                            </div>
+                            <div class="card-check">✓</div>
+                        </div>
+                        <p class="card-desc">Balanced security and usability. Hardware encryption with background access support. Perfect for fitness, social, and productivity apps.</p>
+                        <div class="card-features">
+                            <span class="feature-tag positive">Background sync</span>
+                            <span class="feature-tag positive">Hardware encryption</span>
+                            <span class="feature-tag neutral">No biometrics</span>
+                            <span class="feature-tag positive">Migration included</span>
+                        </div>
+                        <div class="why-section">
+                            <button class="why-toggle" onclick="toggleWhy(event, 'recommended')">
+                                <span>Why choose this?</span>
+                                <span class="why-toggle-icon">▼</span>
+                            </button>
+                            <div class="why-content" id="why-recommended">
+                                <strong>Best for:</strong> Fitness apps, social apps, productivity tools, any app where tokens don't protect highly sensitive data.
+                                <ul>
+                                    <li>Users won't be prompted for Face ID on every API call</li>
+                                    <li>Background refresh and notifications work seamlessly</li>
+                                    <li>Still protected by iOS Secure Enclave hardware</li>
+                                    <li>Existing users migrate automatically</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Maximum Security Card -->
+                    <div class="comparison-card" data-preset="maximum" onclick="selectPreset('maximum')">
+                        <div class="card-header">
+                            <div class="card-title-row">
+                                <div class="card-icon">🛡️</div>
+                                <div class="card-title">
+                                    <h3>Maximum Security</h3>
+                                </div>
+                            </div>
+                            <div class="card-check">✓</div>
+                        </div>
+                        <p class="card-desc">Highest security with biometric protection. Every token access requires Face ID/Touch ID. For banking, healthcare, or enterprise apps.</p>
+                        <div class="card-features">
+                            <span class="feature-tag positive">Biometric required</span>
+                            <span class="feature-tag positive">Device-only storage</span>
+                            <span class="feature-tag negative">No background sync</span>
+                            <span class="feature-tag positive">No iCloud backup</span>
+                        </div>
+                        <div class="why-section">
+                            <button class="why-toggle" onclick="toggleWhy(event, 'maximum')">
+                                <span>Why choose this?</span>
+                                <span class="why-toggle-icon">▼</span>
+                            </button>
+                            <div class="why-content" id="why-maximum">
+                                <strong>Best for:</strong> Banking apps, healthcare/medical apps, enterprise apps with compliance requirements, password managers.
+                                <ul>
+                                    <li>Even if device is stolen while unlocked, tokens are protected</li>
+                                    <li>Tokens never leave the device (no iCloud backup)</li>
+                                    <li>Requires device passcode to even exist</li>
+                                    <li>Trade-off: Users authenticate frequently, background tasks fail</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Convenience Card -->
+                    <div class="comparison-card" data-preset="convenience" onclick="selectPreset('convenience')">
+                        <div class="card-header">
+                            <div class="card-title-row">
+                                <div class="card-icon">☁️</div>
+                                <div class="card-title">
+                                    <h3>Convenience</h3>
+                                </div>
+                            </div>
+                            <div class="card-check">✓</div>
+                        </div>
+                        <p class="card-desc">iCloud sync enabled for seamless multi-device experience. Users stay logged in across all their Apple devices automatically.</p>
+                        <div class="card-features">
+                            <span class="feature-tag positive">Cross-device sync</span>
+                            <span class="feature-tag positive">Background sync</span>
+                            <span class="feature-tag negative">Larger attack surface</span>
+                            <span class="feature-tag neutral">E2E encrypted</span>
+                        </div>
+                        <div class="why-section">
+                            <button class="why-toggle" onclick="toggleWhy(event, 'convenience')">
+                                <span>Why choose this?</span>
+                                <span class="why-toggle-icon">▼</span>
+                            </button>
+                            <div class="why-content" id="why-convenience">
+                                <strong>Best for:</strong> Apps where users expect seamless multi-device experience and low-sensitivity data.
+                                <ul>
+                                    <li>User logs in once, stays logged in on iPhone, iPad, Mac</li>
+                                    <li>Still encrypted end-to-end (Apple can't read it)</li>
+                                    <li>Trade-off: If iCloud account is compromised, tokens are at risk</li>
+                                    <li>Not recommended for financial or health apps</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Difference Comparison -->
+                <div class="diff-section">
+                    <h4>Compare Differences</h4>
+                    <div class="diff-row">
+                        <span class="diff-label">Biometrics</span>
+                        <div class="diff-values">
+                            <span class="diff-value highlight">Off</span>
+                            <span class="diff-value positive">Required</span>
+                            <span class="diff-value">Off</span>
+                        </div>
+                    </div>
+                    <div class="diff-row">
+                        <span class="diff-label">iCloud Sync</span>
+                        <div class="diff-values">
+                            <span class="diff-value highlight">Off</span>
+                            <span class="diff-value">Off</span>
+                            <span class="diff-value positive">On</span>
+                        </div>
+                    </div>
+                    <div class="diff-row">
+                        <span class="diff-label">Background</span>
+                        <div class="diff-values">
+                            <span class="diff-value positive highlight">Works</span>
+                            <span class="diff-value negative">Blocked</span>
+                            <span class="diff-value positive">Works</span>
+                        </div>
+                    </div>
+                    <div class="diff-row">
+                        <span class="diff-label">Security Level</span>
+                        <div class="diff-values">
+                            <span class="diff-value highlight">High</span>
+                            <span class="diff-value positive">Maximum</span>
+                            <span class="diff-value">Moderate</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Custom Config View -->
+            <div class="custom-config" id="customView">
+                <div class="control-group">
+                    <label>When Accessible</label>
+                    <select id="accessibility" onchange="updateAll()">
+                        <option value="afterFirstUnlock">After First Unlock (Recommended)</option>
+                        <option value="afterFirstUnlockThisDeviceOnly">After First Unlock - This Device Only</option>
+                        <option value="whenUnlocked">When Unlocked</option>
+                        <option value="whenUnlockedThisDeviceOnly">When Unlocked - This Device Only</option>
+                        <option value="whenPasscodeSetThisDeviceOnly">When Passcode Set - This Device Only</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="checkbox-row" onclick="toggleCheckbox('useBiometrics')">
+                        <input type="checkbox" id="useBiometrics" onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Require Biometrics</div>
+                            <div class="label-desc">Face ID / Touch ID required for access</div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="control-group">
+                    <label class="checkbox-row" onclick="toggleCheckbox('syncToiCloud')">
+                        <input type="checkbox" id="syncToiCloud" onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Sync to iCloud Keychain</div>
+                            <div class="label-desc">Available across user's devices</div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="control-group">
+                    <label class="checkbox-row" onclick="toggleCheckbox('useAccessGroup')">
+                        <input type="checkbox" id="useAccessGroup" onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Use Access Group</div>
+                            <div class="label-desc">Share with app extensions</div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="control-group">
+                    <label class="checkbox-row" onclick="toggleCheckbox('migrateLegacy')">
+                        <input type="checkbox" id="migrateLegacy" checked onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Migrate from UserDefaults</div>
+                            <div class="label-desc">Auto-migrate existing tokens</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview">
+            <div class="preview-header">
+                <h2>Generated Code</h2>
+                <div class="file-tabs">
+                    <button class="file-tab active" onclick="showTab('service')">KeychainService.swift</button>
+                    <button class="file-tab" onclick="showTab('usage')">APIClient Changes</button>
+                </div>
+            </div>
+
+            <div class="code-preview">
+                <div class="code-header">
+                    <span class="code-filename" id="currentFile">KeychainService.swift</span>
+                    <span class="config-badge" id="configBadge">Recommended</span>
+                </div>
+                <div class="code-content" id="codeOutput"></div>
+            </div>
+
+            <div class="security-summary">
+                <h3>Configuration Score</h3>
+                <div class="security-bars">
+                    <div class="security-bar">
+                        <span class="security-bar-label">Security</span>
+                        <div class="security-bar-track">
+                            <div class="security-bar-fill security" id="securityBar" style="width: 75%;"></div>
+                        </div>
+                    </div>
+                    <div class="security-bar">
+                        <span class="security-bar-label">Usability</span>
+                        <div class="security-bar-track">
+                            <div class="security-bar-fill usability" id="usabilityBar" style="width: 90%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="prompt-output">
+            <div class="prompt-header">
+                <h3>Generated Prompt</h3>
+                <button class="copy-btn" onclick="copyPrompt()">Copy to Clipboard</button>
+            </div>
+            <div class="prompt-text" id="promptOutput"></div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        const state = {
+            accessibility: 'afterFirstUnlock',
+            useBiometrics: false,
+            syncToiCloud: false,
+            useAccessGroup: false,
+            migrateLegacy: true
+        };
+
+        let currentTab = 'service';
+        let currentView = 'compare';
+        let selectedPreset = 'recommended';
+
+        const presets = {
+            recommended: {
+                accessibility: 'afterFirstUnlock',
+                useBiometrics: false,
+                syncToiCloud: false,
+                useAccessGroup: false,
+                migrateLegacy: true,
+                label: 'Recommended',
+                security: 75,
+                usability: 90
+            },
+            maximum: {
+                accessibility: 'whenPasscodeSetThisDeviceOnly',
+                useBiometrics: true,
+                syncToiCloud: false,
+                useAccessGroup: false,
+                migrateLegacy: true,
+                label: 'Maximum Security',
+                security: 95,
+                usability: 45
+            },
+            convenience: {
+                accessibility: 'afterFirstUnlock',
+                useBiometrics: false,
+                syncToiCloud: true,
+                useAccessGroup: false,
+                migrateLegacy: true,
+                label: 'Convenience',
+                security: 60,
+                usability: 95
+            }
+        };
+
+        function setView(view) {
+            currentView = view;
+            document.querySelectorAll('.view-toggle-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('compareView').style.display = view === 'compare' ? 'block' : 'none';
+            document.getElementById('customView').classList.toggle('visible', view === 'custom');
+
+            if (view === 'custom') {
+                document.getElementById('configBadge').textContent = 'Custom';
+            }
+        }
+
+        function selectPreset(preset) {
+            selectedPreset = preset;
+            const config = presets[preset];
+            Object.assign(state, config);
+
+            // Update UI
+            document.getElementById('accessibility').value = state.accessibility;
+            document.getElementById('useBiometrics').checked = state.useBiometrics;
+            document.getElementById('syncToiCloud').checked = state.syncToiCloud;
+            document.getElementById('useAccessGroup').checked = state.useAccessGroup;
+            document.getElementById('migrateLegacy').checked = state.migrateLegacy;
+
+            // Update cards
+            document.querySelectorAll('.comparison-card').forEach(card => {
+                card.classList.toggle('selected', card.dataset.preset === preset);
+            });
+
+            document.getElementById('configBadge').textContent = config.label;
+            updateAll();
+        }
+
+        function toggleWhy(e, preset) {
+            e.stopPropagation();
+            const toggle = e.currentTarget;
+            const content = document.getElementById(`why-${preset}`);
+            toggle.classList.toggle('expanded');
+            content.classList.toggle('visible');
+        }
+
+        function toggleCheckbox(id) {
+            const cb = document.getElementById(id);
+            cb.checked = !cb.checked;
+            document.getElementById('configBadge').textContent = 'Custom';
+            updateAll();
+        }
+
+        function showTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.file-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('currentFile').textContent = tab === 'service' ? 'KeychainService.swift' : 'APIClient.swift';
+            updateCode();
+        }
+
+        function updateAll() {
+            if (currentView === 'custom') {
+                state.accessibility = document.getElementById('accessibility').value;
+                state.useBiometrics = document.getElementById('useBiometrics').checked;
+                state.syncToiCloud = document.getElementById('syncToiCloud').checked;
+                state.useAccessGroup = document.getElementById('useAccessGroup').checked;
+                state.migrateLegacy = document.getElementById('migrateLegacy').checked;
+            }
+            updateCode();
+            updatePrompt();
+            updateScores();
+        }
+
+        function updateScores() {
+            let security = 70;
+            let usability = 85;
+
+            if (state.useBiometrics) { security += 20; usability -= 40; }
+            if (state.syncToiCloud) { security -= 15; usability += 10; }
+            if (state.accessibility.includes('ThisDeviceOnly')) { security += 10; }
+            if (state.accessibility.includes('whenPasscode')) { security += 10; usability -= 15; }
+
+            security = Math.min(100, Math.max(0, security));
+            usability = Math.min(100, Math.max(0, usability));
+
+            document.getElementById('securityBar').style.width = security + '%';
+            document.getElementById('usabilityBar').style.width = usability + '%';
+        }
+
+        function updateCode() {
+            document.getElementById('codeOutput').innerHTML = currentTab === 'service' ? generateServiceCode() : generateUsageCode();
+        }
+
+        function generateServiceCode() {
+            return `<span class="keyword">import</span> <span class="type">Foundation</span>
+<span class="keyword">import</span> <span class="type">Security</span>
+${state.useBiometrics ? `<span class="keyword">import</span> <span class="type">LocalAuthentication</span>` : ''}
+
+<span class="keyword">final class</span> <span class="type">KeychainService</span> {
+    <span class="keyword">static let</span> shared = <span class="type">KeychainService</span>()
+
+    <span class="keyword">var</span> <span class="property">accessToken</span>: <span class="type">String</span>? {
+        <span class="keyword">get</span> { <span class="func">getValue</span>(forKey: <span class="string">"accessToken"</span>) }
+        <span class="keyword">set</span> { <span class="func">setValue</span>(newValue, forKey: <span class="string">"accessToken"</span>) }
+    }
+
+    <span class="comment">// Full implementation with:</span>
+    <span class="comment">// - ${state.useBiometrics ? 'Biometric authentication' : 'No biometrics'}</span>
+    <span class="comment">// - ${state.syncToiCloud ? 'iCloud sync enabled' : 'Device-only storage'}</span>
+    <span class="comment">// - ${state.migrateLegacy ? 'Migration from UserDefaults' : 'No migration'}</span>
+}`;
+        }
+
+        function generateUsageCode() {
+            return `<span class="comment">// Replace UserDefaults with KeychainService</span>
+
+<span class="keyword">private var</span> <span class="property">accessToken</span>: <span class="type">String</span>? {
+    <span class="keyword">get</span> { <span class="type">KeychainService</span>.shared.accessToken }
+    <span class="keyword">set</span> { <span class="type">KeychainService</span>.shared.accessToken = newValue }
+}`;
+        }
+
+        function updatePrompt() {
+            const parts = ['Create a KeychainService.swift for secure token storage.'];
+            if (state.useBiometrics) parts.push('Require Face ID/Touch ID.');
+            if (state.syncToiCloud) parts.push('Enable iCloud sync.');
+            if (state.migrateLegacy) parts.push('Include UserDefaults migration.');
+            document.getElementById('promptOutput').textContent = parts.join(' ');
+        }
+
+        function copyPrompt() {
+            navigator.clipboard.writeText(document.getElementById('promptOutput').textContent);
+            const btn = document.querySelector('.copy-btn');
+            btn.textContent = 'Copied!';
+            btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = 'Copy to Clipboard'; btn.classList.remove('copied'); }, 2000);
+        }
+
+        // Initialize
+        updateAll();
+    </script>
+</body>
+</html>

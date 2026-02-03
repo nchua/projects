@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - Bento Energy</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        /* iPhone Frame */
+        .iphone-frame {
+            width: 390px;
+            height: 844px;
+            background: #000;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow:
+                0 0 0 3px #1a1a1a,
+                0 0 0 6px #0d0d0d,
+                0 30px 60px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: #08080c;
+            border-radius: 40px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .iphone-screen::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Dynamic Island */
+        .dynamic-island {
+            position: sticky;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 34px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 100;
+            margin-bottom: -34px;
+        }
+
+        /* Screen Content */
+        .screen-content {
+            padding: 12px;
+            padding-top: 56px;
+            padding-bottom: 100px;
+            color: #ffffff;
+        }
+
+        /* Mockup Label */
+        .mockup-label {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .mockup-label span {
+            color: #00d4ff;
+        }
+
+        /* Bento grid system */
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .bento-card {
+            background: #12121a;
+            border-radius: 20px;
+            padding: 16px;
+            overflow: hidden;
+        }
+
+        /* Size variants */
+        .bento-2x1 {
+            grid-column: span 2;
+        }
+
+        .bento-1x1 {
+            grid-column: span 1;
+            aspect-ratio: 1;
+        }
+
+        .bento-2x2 {
+            grid-column: span 2;
+            min-height: 200px;
+        }
+
+        /* Color variants */
+        .bento-accent {
+            background: linear-gradient(135deg, #0a1628 0%, #0d1f3c 100%);
+        }
+
+        .bento-warm {
+            background: linear-gradient(135deg, #1a1410 0%, #2d1f18 100%);
+        }
+
+        .bento-glow {
+            background: linear-gradient(135deg, #0a1a1a 0%, #0d2828 100%);
+        }
+
+        /* ===== Hunter Status - Hero 2x1 ===== */
+        .hunter-hero {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .hunter-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .avatar {
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .hunter-info h1 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .hunter-meta {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .rank {
+            color: #00d4ff;
+            font-weight: 600;
+        }
+
+        .hunter-right {
+            text-align: right;
+        }
+
+        .streak-big {
+            font-size: 32px;
+            font-weight: 700;
+            color: #ff9500;
+        }
+
+        .streak-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+        }
+
+        /* ===== XP Bar - Full Width 2x1 ===== */
+        .xp-hero {
+            padding: 16px 20px;
+        }
+
+        .xp-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .xp-level {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .xp-count {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .xp-bar {
+            height: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .xp-fill {
+            height: 100%;
+            width: 65%;
+            background: linear-gradient(90deg, #00d4ff 0%, #00ff88 100%);
+            border-radius: 5px;
+        }
+
+        /* ===== Weekly Quest - 2x2 Feature ===== */
+        .weekly-feature {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .weekly-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .weekly-title {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .weekly-progress-ring {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 20px;
+            position: relative;
+        }
+
+        .progress-circle {
+            transform: rotate(-90deg);
+        }
+
+        .progress-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.08);
+            stroke-width: 8;
+        }
+
+        .progress-fill {
+            fill: none;
+            stroke: url(#gradient);
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-dasharray: 251.2;
+            stroke-dashoffset: 100.48;
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .weekly-stats-row {
+            display: flex;
+            justify-content: space-around;
+            margin-top: auto;
+        }
+
+        .weekly-stat {
+            text-align: center;
+        }
+
+        .weekly-stat-value {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .weekly-stat-label {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+        }
+
+        /* ===== Action Buttons - 1x1 each ===== */
+        .action-tile {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .action-tile.primary {
+            background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+        }
+
+        .action-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .action-label {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .action-tile.primary .action-label {
+            color: #000;
+        }
+
+        /* ===== Power Levels - 3 x 1x1 tiles ===== */
+        .power-tile {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%;
+        }
+
+        .power-tile-header {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .power-tile-value {
+            font-size: 28px;
+            font-weight: 700;
+            margin-top: auto;
+        }
+
+        .power-tile-unit {
+            font-size: 12px;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .power-squat .power-tile-value { color: #ff6b6b; }
+        .power-bench .power-tile-value { color: #00d4ff; }
+        .power-dead .power-tile-value { color: #9d4edd; }
+
+        /* ===== Daily Quest Tile ===== */
+        .quest-tile {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .quest-mini {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+        }
+
+        .quest-mini-icon {
+            font-size: 16px;
+        }
+
+        .quest-mini-name {
+            font-size: 12px;
+            flex: 1;
+        }
+
+        .quest-mini-status {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .quest-mini-status.done {
+            color: #00ff88;
+        }
+
+        /* ===== Recovery Tile ===== */
+        .recovery-tile {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .recovery-tile-title {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 12px;
+        }
+
+        .recovery-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            flex: 1;
+        }
+
+        .recovery-item {
+            font-size: 11px;
+            padding: 6px 8px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .recovery-item.fresh {
+            background: rgba(0, 255, 136, 0.1);
+            color: #00ff88;
+        }
+
+        .recovery-item.moderate {
+            background: rgba(255, 214, 0, 0.1);
+            color: #ffd600;
+        }
+
+        .recovery-item.fatigued {
+            background: rgba(255, 107, 107, 0.1);
+            color: #ff6b6b;
+        }
+
+        /* ===== PR Achievement Tile ===== */
+        .pr-tile {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .pr-icon {
+            font-size: 36px;
+            margin-bottom: 8px;
+        }
+
+        .pr-label {
+            font-size: 11px;
+            color: rgba(255, 215, 0, 0.7);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .pr-exercise {
+            font-size: 13px;
+            margin-bottom: 2px;
+        }
+
+        .pr-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffd700;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="mockup-label">Mockup 3: <span>Bento Energy</span> — Asymmetric grid, mixed tile sizes</div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="screen-content">
+                    <svg width="0" height="0">
+                        <defs>
+                            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#00d4ff"/>
+                                <stop offset="100%" style="stop-color:#7b2cbf"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+
+                    <div class="bento-grid">
+                        <!-- Hunter Status - 2x1 -->
+                        <div class="bento-card bento-2x1 hunter-hero">
+                            <div class="hunter-left">
+                                <div class="avatar">🏋️</div>
+                                <div class="hunter-info">
+                                    <h1>Nick</h1>
+                                    <div class="hunter-meta">
+                                        <span class="rank">A-Rank</span>
+                                        <span>Level 24</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="hunter-right">
+                                <div class="streak-big">12</div>
+                                <div class="streak-label">🔥 Day Streak</div>
+                            </div>
+                        </div>
+
+                        <!-- XP Bar - 2x1 -->
+                        <div class="bento-card bento-2x1 bento-accent xp-hero">
+                            <div class="xp-header">
+                                <span class="xp-level">Level 24 → 25</span>
+                                <span class="xp-count">6,500 / 10,000 XP</span>
+                            </div>
+                            <div class="xp-bar">
+                                <div class="xp-fill"></div>
+                            </div>
+                        </div>
+
+                        <!-- Weekly Quest - 2x2 -->
+                        <div class="bento-card bento-2x2 bento-glow weekly-feature">
+                            <div class="weekly-header">
+                                <span class="weekly-title">Weekly Quest</span>
+                                <span style="font-size: 12px; color: rgba(255,255,255,0.4);">3 days left</span>
+                            </div>
+                            <div class="weekly-progress-ring">
+                                <svg class="progress-circle" width="100" height="100" viewBox="0 0 100 100">
+                                    <circle class="progress-bg" cx="50" cy="50" r="40"/>
+                                    <circle class="progress-fill" cx="50" cy="50" r="40"/>
+                                </svg>
+                                <div class="progress-text">60%</div>
+                            </div>
+                            <div class="weekly-stats-row">
+                                <div class="weekly-stat">
+                                    <div class="weekly-stat-value">3</div>
+                                    <div class="weekly-stat-label">Workouts</div>
+                                </div>
+                                <div class="weekly-stat">
+                                    <div class="weekly-stat-value">24.5K</div>
+                                    <div class="weekly-stat-label">Volume</div>
+                                </div>
+                                <div class="weekly-stat">
+                                    <div class="weekly-stat-value">185</div>
+                                    <div class="weekly-stat-label">Minutes</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons - 2 x 1x1 -->
+                        <div class="bento-card bento-1x1 action-tile primary">
+                            <span class="action-icon">⚔️</span>
+                            <span class="action-label">Start</span>
+                        </div>
+                        <div class="bento-card bento-1x1 action-tile">
+                            <span class="action-icon">📷</span>
+                            <span class="action-label">Scan</span>
+                        </div>
+
+                        <!-- Power Levels - 3 tiles spanning 2 columns -->
+                        <div class="bento-card bento-1x1 power-tile power-squat">
+                            <div class="power-tile-header">🦵 Squat</div>
+                            <div class="power-tile-value">315<span class="power-tile-unit"> lbs</span></div>
+                        </div>
+                        <div class="bento-card bento-1x1 power-tile power-bench">
+                            <div class="power-tile-header">🏋️ Bench</div>
+                            <div class="power-tile-value">225<span class="power-tile-unit"> lbs</span></div>
+                        </div>
+                        <div class="bento-card bento-1x1 power-tile power-dead">
+                            <div class="power-tile-header">🔱 Deadlift</div>
+                            <div class="power-tile-value">405<span class="power-tile-unit"> lbs</span></div>
+                        </div>
+
+                        <!-- PR Achievement - 1x1 -->
+                        <div class="bento-card bento-1x1 bento-warm pr-tile">
+                            <div class="pr-icon">🏆</div>
+                            <div class="pr-label">New PR</div>
+                            <div class="pr-exercise">Squat</div>
+                            <div class="pr-value">315×5</div>
+                        </div>
+
+                        <!-- Daily Quests - 2x1 -->
+                        <div class="bento-card bento-2x1 quest-tile">
+                            <div style="font-size: 12px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Daily Quests</div>
+                            <div class="quest-mini">
+                                <span class="quest-mini-icon">💪</span>
+                                <span class="quest-mini-name">Complete a workout</span>
+                                <span class="quest-mini-status">0/1</span>
+                            </div>
+                            <div class="quest-mini">
+                                <span class="quest-mini-icon">🎯</span>
+                                <span class="quest-mini-name">Hit a new PR</span>
+                                <span class="quest-mini-status done">Claim!</span>
+                            </div>
+                            <div class="quest-mini">
+                                <span class="quest-mini-icon">⏱️</span>
+                                <span class="quest-mini-name">Train 45+ min</span>
+                                <span class="quest-mini-status">32/45</span>
+                            </div>
+                        </div>
+
+                        <!-- Recovery - 2x1 -->
+                        <div class="bento-card bento-2x1 recovery-tile">
+                            <div class="recovery-tile-title">Recovery Status</div>
+                            <div class="recovery-grid">
+                                <div class="recovery-item fresh">Chest ✓</div>
+                                <div class="recovery-item fresh">Back ✓</div>
+                                <div class="recovery-item moderate">Legs ⚡</div>
+                                <div class="recovery-item fatigued">Shoulders 🔥</div>
+                                <div class="recovery-item fresh">Arms ✓</div>
+                                <div class="recovery-item moderate">Core ⚡</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

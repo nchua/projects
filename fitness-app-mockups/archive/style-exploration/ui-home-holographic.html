@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - Holographic Float</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        /* iPhone Frame */
+        .iphone-frame {
+            width: 390px;
+            height: 844px;
+            background: #000;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow:
+                0 0 0 3px #1a1a1a,
+                0 0 0 6px #0d0d0d,
+                0 30px 60px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, #0a0a12 0%, #0d0d1a 50%, #0a0a12 100%);
+            border-radius: 40px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .iphone-screen::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Dynamic Island */
+        .dynamic-island {
+            position: sticky;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 34px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 100;
+            margin-bottom: -34px;
+        }
+
+        /* Screen Content */
+        .screen-content {
+            padding: 16px;
+            padding-top: 60px;
+            padding-bottom: 100px;
+            color: #ffffff;
+        }
+
+        /* Mockup Label */
+        .mockup-label {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .mockup-label span {
+            color: #00d4ff;
+        }
+
+        /* Holographic card base - frosted glass effect */
+        .holo-card {
+            background: rgba(20, 25, 40, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            position: relative;
+            box-shadow:
+                0 0 20px rgba(0, 212, 255, 0.1),
+                0 4px 30px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        /* Subtle glow edge effect */
+        .holo-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 16px;
+            padding: 1px;
+            background: linear-gradient(
+                135deg,
+                rgba(0, 212, 255, 0.3) 0%,
+                rgba(0, 212, 255, 0.05) 50%,
+                rgba(138, 43, 226, 0.2) 100%
+            );
+            -webkit-mask:
+                linear-gradient(#fff 0 0) content-box,
+                linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+
+        /* ===== Hunter Status Header ===== */
+        .hunter-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 20px;
+        }
+
+        .avatar-container {
+            position: relative;
+        }
+
+        .avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .rank-badge {
+            position: absolute;
+            bottom: -4px;
+            right: -4px;
+            background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+            color: #000;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+
+        .hunter-info {
+            flex: 1;
+        }
+
+        .hunter-name {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .hunter-level {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 8px;
+        }
+
+        .xp-bar-container {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .xp-bar {
+            height: 100%;
+            width: 65%;
+            background: linear-gradient(90deg, #00d4ff 0%, #00ff88 100%);
+            border-radius: 3px;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+
+        .xp-text {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 4px;
+        }
+
+        .streak-badge {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255, 149, 0, 0.2);
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #ff9500;
+        }
+
+        /* ===== Weekly Quest Card ===== */
+        .weekly-quest {
+            padding: 20px;
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .weekly-progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .weekly-progress-fill {
+            height: 100%;
+            width: 60%;
+            background: linear-gradient(90deg, #00d4ff 0%, #7b2cbf 100%);
+            border-radius: 4px;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.4);
+        }
+
+        .weekly-stats {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .weekly-stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #00d4ff;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 2px;
+        }
+
+        /* ===== Quick Actions ===== */
+        .quick-actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 16px;
+            border-radius: 16px;
+            border: none;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .action-btn.primary {
+            background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+            color: #000;
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);
+        }
+
+        .action-btn.secondary {
+            background: rgba(20, 25, 40, 0.8);
+            color: #fff;
+            backdrop-filter: blur(10px);
+            box-shadow:
+                0 0 15px rgba(0, 212, 255, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        /* ===== Daily Quests ===== */
+        .daily-quests {
+            padding: 20px;
+        }
+
+        .quest-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .quest-item:last-child {
+            border-bottom: none;
+        }
+
+        .quest-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: rgba(0, 212, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 18px;
+        }
+
+        .quest-info {
+            flex: 1;
+        }
+
+        .quest-name {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .quest-progress {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .quest-xp {
+            font-size: 12px;
+            font-weight: 600;
+            color: #00d4ff;
+            padding: 4px 10px;
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .claim-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            border: none;
+            border-radius: 8px;
+            color: #000;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+        }
+
+        /* ===== Power Levels ===== */
+        .power-levels {
+            padding: 20px;
+        }
+
+        .power-item {
+            margin-bottom: 16px;
+        }
+
+        .power-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .power-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .power-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .power-value {
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .power-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .power-fill {
+            height: 100%;
+            border-radius: 4px;
+        }
+
+        .power-fill.squat {
+            width: 75%;
+            background: linear-gradient(90deg, #ff6b6b 0%, #ff8e8e 100%);
+            box-shadow: 0 0 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .power-fill.bench {
+            width: 60%;
+            background: linear-gradient(90deg, #00d4ff 0%, #66e0ff 100%);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.4);
+        }
+
+        .power-fill.deadlift {
+            width: 85%;
+            background: linear-gradient(90deg, #7b2cbf 0%, #9d4edd 100%);
+            box-shadow: 0 0 15px rgba(123, 44, 191, 0.4);
+        }
+
+        /* ===== Recovery Status ===== */
+        .recovery-section {
+            padding: 20px;
+        }
+
+        .recovery-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .recovery-tag {
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+        }
+
+        .recovery-tag.fresh {
+            background: rgba(0, 255, 136, 0.15);
+            color: #00ff88;
+        }
+
+        .recovery-tag.moderate {
+            background: rgba(255, 214, 0, 0.15);
+            color: #ffd600;
+        }
+
+        .recovery-tag.fatigued {
+            background: rgba(255, 107, 107, 0.15);
+            color: #ff6b6b;
+        }
+
+        /* ===== Achievement Card ===== */
+        .achievement-card {
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(20, 25, 40, 0.6) 100%);
+        }
+
+        .achievement-card::before {
+            background: linear-gradient(
+                135deg,
+                rgba(255, 215, 0, 0.4) 0%,
+                rgba(255, 215, 0, 0.1) 50%,
+                rgba(255, 215, 0, 0.2) 100%
+            );
+        }
+
+        .achievement-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .achievement-icon {
+            font-size: 32px;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .achievement-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #ffd700;
+        }
+
+        .achievement-subtitle {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .pr-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+        }
+
+        .pr-exercise {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .pr-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffd700;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="mockup-label">Mockup 1: <span>Holographic Float</span> — Frosted glass + soft glows</div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="screen-content">
+                    <!-- Hunter Status Header -->
+                    <div class="holo-card hunter-header">
+                        <div class="avatar-container">
+                            <div class="avatar">🏋️</div>
+                            <span class="rank-badge">A</span>
+                        </div>
+                        <div class="hunter-info">
+                            <div class="hunter-name">Nick</div>
+                            <div class="hunter-level">Level 24 Hunter</div>
+                            <div class="xp-bar-container">
+                                <div class="xp-bar"></div>
+                            </div>
+                            <div class="xp-text">6,500 / 10,000 XP</div>
+                        </div>
+                        <div class="streak-badge">
+                            🔥 12
+                        </div>
+                    </div>
+
+                    <!-- Weekly Quest Card -->
+                    <div class="holo-card weekly-quest">
+                        <div class="section-title">Weekly Quest</div>
+                        <div class="weekly-progress-bar">
+                            <div class="weekly-progress-fill"></div>
+                        </div>
+                        <div class="weekly-stats">
+                            <div class="weekly-stat">
+                                <div class="stat-value">3</div>
+                                <div class="stat-label">Workouts</div>
+                            </div>
+                            <div class="weekly-stat">
+                                <div class="stat-value">24.5K</div>
+                                <div class="stat-label">Volume (lbs)</div>
+                            </div>
+                            <div class="weekly-stat">
+                                <div class="stat-value">185</div>
+                                <div class="stat-label">Minutes</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="quick-actions">
+                        <button class="action-btn primary">
+                            ⚔️ Start Workout
+                        </button>
+                        <button class="action-btn secondary">
+                            📷 Scan
+                        </button>
+                    </div>
+
+                    <!-- Daily Quests -->
+                    <div class="holo-card daily-quests">
+                        <div class="section-title">Daily Quests</div>
+                        <div class="quest-item">
+                            <div class="quest-icon">💪</div>
+                            <div class="quest-info">
+                                <div class="quest-name">Complete a workout</div>
+                                <div class="quest-progress">0/1 completed</div>
+                            </div>
+                            <span class="quest-xp">+100 XP</span>
+                        </div>
+                        <div class="quest-item">
+                            <div class="quest-icon">🎯</div>
+                            <div class="quest-info">
+                                <div class="quest-name">Hit a new PR</div>
+                                <div class="quest-progress">Ready to claim!</div>
+                            </div>
+                            <button class="claim-btn">Claim</button>
+                        </div>
+                        <div class="quest-item">
+                            <div class="quest-icon">⏱️</div>
+                            <div class="quest-info">
+                                <div class="quest-name">Train for 45+ minutes</div>
+                                <div class="quest-progress">32/45 min</div>
+                            </div>
+                            <span class="quest-xp">+50 XP</span>
+                        </div>
+                    </div>
+
+                    <!-- Power Levels -->
+                    <div class="holo-card power-levels">
+                        <div class="section-title">Power Levels</div>
+                        <div class="power-item">
+                            <div class="power-header">
+                                <span class="power-name">🦵 Squat</span>
+                                <span class="power-value" style="color: #ff6b6b;">315 lbs</span>
+                            </div>
+                            <div class="power-bar">
+                                <div class="power-fill squat"></div>
+                            </div>
+                        </div>
+                        <div class="power-item">
+                            <div class="power-header">
+                                <span class="power-name">🏋️ Bench Press</span>
+                                <span class="power-value" style="color: #00d4ff;">225 lbs</span>
+                            </div>
+                            <div class="power-bar">
+                                <div class="power-fill bench"></div>
+                            </div>
+                        </div>
+                        <div class="power-item">
+                            <div class="power-header">
+                                <span class="power-name">🔱 Deadlift</span>
+                                <span class="power-value" style="color: #9d4edd;">405 lbs</span>
+                            </div>
+                            <div class="power-bar">
+                                <div class="power-fill deadlift"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recovery Status -->
+                    <div class="holo-card recovery-section">
+                        <div class="section-title">Recovery Status</div>
+                        <div class="recovery-tags">
+                            <span class="recovery-tag fresh">Chest ✓</span>
+                            <span class="recovery-tag fresh">Back ✓</span>
+                            <span class="recovery-tag moderate">Legs ⚡</span>
+                            <span class="recovery-tag fatigued">Shoulders 🔥</span>
+                            <span class="recovery-tag fresh">Arms ✓</span>
+                            <span class="recovery-tag moderate">Core ⚡</span>
+                        </div>
+                    </div>
+
+                    <!-- Achievement Card -->
+                    <div class="holo-card achievement-card">
+                        <div class="achievement-header">
+                            <span class="achievement-icon">🏆</span>
+                            <div>
+                                <div class="achievement-title">New Personal Record!</div>
+                                <div class="achievement-subtitle">2 hours ago</div>
+                            </div>
+                        </div>
+                        <div class="pr-details">
+                            <span class="pr-exercise">Barbell Squat</span>
+                            <span class="pr-value">315 × 5</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

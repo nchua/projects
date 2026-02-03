@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Edge Flow</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #0a0a14;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        :root {
+            --bg-void: #050508;
+            --bg-dark: #0a0a12;
+            --bg-card: #0f1018;
+            --bg-elevated: #141520;
+            --accent-primary: #00D4FF;
+            --accent-secondary: #7B61FF;
+            --accent-gold: #FFD700;
+            --accent-success: #00FF88;
+            --accent-warning: #FF9500;
+            --accent-danger: #FF4757;
+            --text-primary: #FFFFFF;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --text-tertiary: rgba(255, 255, 255, 0.4);
+        }
+
+        .iphone-frame {
+            width: 390px;
+            height: 844px;
+            background: #000;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow: 0 0 0 3px #1a1a1a, 0 0 0 6px #0d0d0d, 0 30px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-void);
+            border-radius: 40px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .iphone-screen::-webkit-scrollbar { display: none; }
+
+        .dynamic-island {
+            position: sticky;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 34px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 100;
+            margin-bottom: -34px;
+        }
+
+        .screen-content { padding-bottom: 100px; color: var(--text-primary); }
+
+        .mockup-label {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .mockup-label span { color: var(--accent-primary); }
+
+        /* Profile Header */
+        .profile-header {
+            padding: 60px 20px 30px;
+            background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-void) 100%);
+            text-align: center;
+            position: relative;
+        }
+
+        .profile-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100%;
+            background: radial-gradient(ellipse at top, rgba(0, 212, 255, 0.1) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .settings-btn {
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            font-size: 20px;
+            opacity: 0.6;
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-card) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            margin: 0 auto 16px;
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            position: relative;
+        }
+
+        .rank-badge {
+            position: absolute;
+            bottom: -4px;
+            right: -4px;
+            background: linear-gradient(135deg, var(--accent-primary) 0%, #0099cc 100%);
+            color: #000;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+        }
+
+        .profile-name {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .profile-title {
+            font-size: 14px;
+            color: var(--accent-primary);
+            margin-bottom: 16px;
+        }
+
+        /* XP Section */
+        .xp-section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 16px;
+            margin: 0 20px;
+        }
+
+        .xp-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .xp-level {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .xp-count {
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+
+        .xp-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .xp-fill {
+            height: 100%;
+            width: 65%;
+            background: linear-gradient(90deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            border-radius: 4px;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.4);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 20px;
+        }
+
+        .stat-box {
+            background: var(--bg-card);
+            border-radius: 14px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--accent-primary);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+        }
+
+        /* Achievements */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            margin: 20px 0 14px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .section-link {
+            font-size: 13px;
+            color: var(--accent-primary);
+        }
+
+        .achievements-scroll {
+            display: flex;
+            gap: 12px;
+            padding: 0 20px;
+            overflow-x: auto;
+        }
+        .achievements-scroll::-webkit-scrollbar { display: none; }
+
+        .achievement-card {
+            flex: 0 0 auto;
+            width: 100px;
+            padding: 16px;
+            background: var(--bg-card);
+            border-radius: 14px;
+            text-align: center;
+        }
+
+        .achievement-card.locked {
+            opacity: 0.4;
+        }
+
+        .achievement-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .achievement-name {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        /* Menu Items */
+        .menu-section {
+            padding: 0 20px;
+            margin-top: 24px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            margin-bottom: 8px;
+        }
+
+        .menu-icon {
+            font-size: 20px;
+            margin-right: 14px;
+            opacity: 0.8;
+        }
+
+        .menu-label {
+            flex: 1;
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .menu-arrow {
+            font-size: 14px;
+            opacity: 0.3;
+        }
+
+        .menu-badge {
+            background: var(--accent-danger);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-right: 8px;
+        }
+
+        /* Streak card */
+        .streak-card {
+            margin: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(255, 149, 0, 0.15) 0%, var(--bg-card) 100%);
+            border-radius: 16px;
+            border-left: 3px solid var(--accent-warning);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .streak-icon {
+            font-size: 40px;
+        }
+
+        .streak-info {
+            flex: 1;
+        }
+
+        .streak-count {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--accent-warning);
+        }
+
+        .streak-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .streak-best {
+            text-align: right;
+        }
+
+        .streak-best-value {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .streak-best-label {
+            font-size: 11px;
+            color: var(--text-tertiary);
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="mockup-label">Profile Screen: <span>Hunter Status</span></div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="screen-content">
+                    <div class="profile-header">
+                        <span class="settings-btn">⚙️</span>
+                        <div class="profile-avatar">
+                            🏋️
+                            <span class="rank-badge">A</span>
+                        </div>
+                        <div class="profile-name">Nick</div>
+                        <div class="profile-title">A-Rank Hunter • Level 24</div>
+                    </div>
+
+                    <div class="xp-section">
+                        <div class="xp-header">
+                            <span class="xp-level">Level 24 → 25</span>
+                            <span class="xp-count">6,500 / 10,000 XP</span>
+                        </div>
+                        <div class="xp-bar">
+                            <div class="xp-fill"></div>
+                        </div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-value">156</div>
+                            <div class="stat-label">Workouts</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">24</div>
+                            <div class="stat-label">PRs</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">945</div>
+                            <div class="stat-label">Total</div>
+                        </div>
+                    </div>
+
+                    <div class="streak-card">
+                        <span class="streak-icon">🔥</span>
+                        <div class="streak-info">
+                            <div class="streak-count">12 Days</div>
+                            <div class="streak-label">Current Streak</div>
+                        </div>
+                        <div class="streak-best">
+                            <div class="streak-best-value">28</div>
+                            <div class="streak-best-label">Best</div>
+                        </div>
+                    </div>
+
+                    <div class="section-header">
+                        <span class="section-title">Achievements</span>
+                        <span class="section-link">See All</span>
+                    </div>
+                    <div class="achievements-scroll">
+                        <div class="achievement-card">
+                            <div class="achievement-icon">🏆</div>
+                            <div class="achievement-name">First PR</div>
+                        </div>
+                        <div class="achievement-card">
+                            <div class="achievement-icon">💯</div>
+                            <div class="achievement-name">100 Workouts</div>
+                        </div>
+                        <div class="achievement-card">
+                            <div class="achievement-icon">⚡</div>
+                            <div class="achievement-name">7 Day Streak</div>
+                        </div>
+                        <div class="achievement-card">
+                            <div class="achievement-icon">🎯</div>
+                            <div class="achievement-name">Quest Master</div>
+                        </div>
+                        <div class="achievement-card locked">
+                            <div class="achievement-icon">👑</div>
+                            <div class="achievement-name">S-Rank</div>
+                        </div>
+                    </div>
+
+                    <div class="menu-section">
+                        <div class="menu-item">
+                            <span class="menu-icon">📊</span>
+                            <span class="menu-label">Body Measurements</span>
+                            <span class="menu-arrow">›</span>
+                        </div>
+                        <div class="menu-item">
+                            <span class="menu-icon">🎯</span>
+                            <span class="menu-label">Goals</span>
+                            <span class="menu-badge">2</span>
+                            <span class="menu-arrow">›</span>
+                        </div>
+                        <div class="menu-item">
+                            <span class="menu-icon">📱</span>
+                            <span class="menu-label">Connected Apps</span>
+                            <span class="menu-arrow">›</span>
+                        </div>
+                        <div class="menu-item">
+                            <span class="menu-icon">🔔</span>
+                            <span class="menu-label">Notifications</span>
+                            <span class="menu-arrow">›</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

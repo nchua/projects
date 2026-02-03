@@ -267,6 +267,143 @@
     white-space: nowrap;
   }
 
+  /* Weekly Mission Card */
+  .mission-card {
+    margin: 0 16px 16px;
+    background: var(--card);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    padding: 16px;
+  }
+
+  .mission-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+
+  .mission-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .mission-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--cyan);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .mission-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .mission-ring {
+    position: relative;
+    width: 48px;
+    height: 48px;
+  }
+
+  .ring-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .workout-slots {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .slot {
+    flex: 1;
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px;
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .slot.completed {
+    background: rgba(0, 255, 136, 0.08);
+    border-color: rgba(0, 255, 136, 0.2);
+  }
+
+  .slot-check {
+    font-size: 14px;
+    color: var(--success);
+  }
+
+  .slot-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+  }
+
+  .slot-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .slot.completed .slot-label {
+    color: var(--success);
+  }
+
+  .next-workout {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(0, 212, 255, 0.08);
+    border-radius: 10px;
+    border: 1px solid rgba(0, 212, 255, 0.15);
+    cursor: pointer;
+  }
+
+  .next-icon {
+    font-size: 20px;
+  }
+
+  .next-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .next-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .next-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .next-chevron {
+    font-size: 20px;
+    color: var(--cyan);
+  }
+
   /* Daily Quests Card */
   .quests-card {
     margin: 0 16px 16px;
@@ -617,6 +754,46 @@
         <button class="btn-secondary">&#x1F4F7; Scan</button>
       </div>
 
+      <!-- Weekly Mission Card -->
+      <div class="mission-card">
+        <div class="mission-header">
+          <div class="mission-left">
+            <span class="mission-label">WEEK 3 &middot; BENCH PRESS</span>
+            <span class="mission-title">225 lb Goal</span>
+          </div>
+          <div class="mission-ring">
+            <svg width="48" height="48" viewBox="0 0 48 48">
+              <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+              <circle cx="24" cy="24" r="20" fill="none" stroke="#00D4FF" stroke-width="4" stroke-linecap="round"
+                stroke-dasharray="125.6" stroke-dashoffset="41.9" transform="rotate(-90 24 24)"/>
+            </svg>
+            <span class="ring-text">2/3</span>
+          </div>
+        </div>
+        <div class="workout-slots">
+          <div class="slot completed">
+            <span class="slot-check">&#x2713;</span>
+            <span class="slot-label">Day 1</span>
+          </div>
+          <div class="slot completed">
+            <span class="slot-check">&#x2713;</span>
+            <span class="slot-label">Day 2</span>
+          </div>
+          <div class="slot pending">
+            <span class="slot-dot"></span>
+            <span class="slot-label">Day 3</span>
+          </div>
+        </div>
+        <div class="next-workout">
+          <span class="next-icon">&#x1F3CB;</span>
+          <div class="next-info">
+            <span class="next-label">Next Up</span>
+            <span class="next-name">Volume Bench</span>
+          </div>
+          <span class="next-chevron">&#x203A;</span>
+        </div>
+      </div>
+
       <!-- Daily Quests -->
       <div class="quests-card">
         <div class="quests-header">
@@ -712,16 +889,16 @@
         <span class="tab-label">Quests</span>
       </div>
       <div class="tab-item">
-        <span class="tab-icon large">&#x2295;</span>
-        <span class="tab-label">Log</span>
+        <span class="tab-icon">&#x1F5DD;</span>
+        <span class="tab-label">Dungeons</span>
+      </div>
+      <div class="tab-item">
+        <span class="tab-icon">&#x1F465;</span>
+        <span class="tab-label">Friends</span>
       </div>
       <div class="tab-item">
         <span class="tab-icon">&#x1F4CA;</span>
         <span class="tab-label">Stats</span>
-      </div>
-      <div class="tab-item">
-        <span class="tab-icon">&#x1F464;</span>
-        <span class="tab-label">Profile</span>
       </div>
     </div>
 

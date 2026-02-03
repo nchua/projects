@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Option B: Contextual Help + Decision Wizard - AI-Enhanced Playground</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-deepest: #050508;
+            --bg-deep: #0a0a0f;
+            --bg-surface: #101018;
+            --bg-elevated: #18181f;
+            --bg-hover: #202028;
+            --border: #252530;
+            --border-bright: #35354a;
+            --text-primary: #eeeef2;
+            --text-secondary: #9898a8;
+            --text-muted: #5a5a6a;
+            --indigo: #6366f1;
+            --indigo-bright: #818cf8;
+            --indigo-dim: #4f46e5;
+            --indigo-glow: rgba(99, 102, 241, 0.12);
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --rose: #f43f5e;
+            --cyan: #06b6d4;
+        }
+
+        body {
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            background: var(--bg-deepest);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            grid-template-rows: 1fr auto;
+            min-height: 100vh;
+        }
+
+        /* Controls Panel */
+        .controls {
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            padding: 24px;
+            overflow-y: auto;
+            grid-row: span 2;
+        }
+
+        .controls::-webkit-scrollbar { width: 5px; }
+        .controls::-webkit-scrollbar-track { background: transparent; }
+        .controls::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        .header {
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header h1::before {
+            content: '🔐';
+            font-size: 20px;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .section {
+            margin-bottom: 24px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+        }
+
+        /* THE HELP BUTTON - Key feature of Option B */
+        .help-btn {
+            width: 20px;
+            height: 20px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .help-btn:hover {
+            background: var(--indigo);
+            border-color: var(--indigo);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .help-btn.active {
+            background: var(--indigo);
+            border-color: var(--indigo);
+            color: white;
+        }
+
+        /* HELP PANEL - Expands below section */
+        .help-panel {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 16px;
+            display: none;
+            animation: expandIn 0.25s ease;
+        }
+
+        .help-panel.visible {
+            display: block;
+        }
+
+        @keyframes expandIn {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+                max-height: 0;
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+                max-height: 500px;
+            }
+        }
+
+        .help-panel-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .help-panel-icon {
+            width: 24px;
+            height: 24px;
+            background: var(--indigo);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .help-panel-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--indigo-bright);
+        }
+
+        .help-panel-content {
+            font-size: 12px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+        }
+
+        .help-panel-content strong {
+            color: var(--text-primary);
+        }
+
+        .help-panel-content code {
+            background: rgba(99, 102, 241, 0.15);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--indigo-bright);
+        }
+
+        .help-panel-tip {
+            margin-top: 10px;
+            padding: 10px 12px;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 6px;
+            font-size: 11px;
+            color: var(--emerald);
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .help-panel-tip::before {
+            content: '💡';
+            font-size: 12px;
+        }
+
+        .presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .preset-btn {
+            padding: 8px 14px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .preset-btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-bright);
+            color: var(--text-primary);
+        }
+
+        .preset-btn.active {
+            background: var(--indigo);
+            border-color: var(--indigo);
+            color: white;
+        }
+
+        .control-group {
+            margin-bottom: 14px;
+        }
+
+        .control-group > label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            transition: all 0.15s ease;
+        }
+
+        input[type="text"]:focus, select:focus {
+            outline: none;
+            border-color: var(--indigo);
+            box-shadow: 0 0 0 3px var(--indigo-glow);
+        }
+
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%235a5a6a'%3E%3Cpath d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            cursor: pointer;
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .checkbox-row:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-bright);
+        }
+
+        .checkbox-row input[type="checkbox"] {
+            margin-top: 2px;
+            accent-color: var(--indigo);
+            cursor: pointer;
+        }
+
+        .checkbox-row .label-text {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .checkbox-row .label-desc {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Preview Panel */
+        .preview {
+            background: var(--bg-deep);
+            padding: 24px;
+            overflow: auto;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .preview-header h2 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .file-tabs {
+            display: flex;
+            gap: 4px;
+        }
+
+        .file-tab {
+            padding: 6px 12px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .file-tab:hover { color: var(--text-secondary); }
+        .file-tab.active {
+            background: var(--bg-elevated);
+            border-color: var(--border);
+            color: var(--text-primary);
+        }
+
+        .code-preview {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .code-header {
+            padding: 10px 14px;
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .code-filename {
+            font-size: 11px;
+            font-family: 'IBM Plex Mono', monospace;
+            color: var(--text-muted);
+        }
+
+        .code-content {
+            padding: 16px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            line-height: 1.7;
+            overflow-x: auto;
+            white-space: pre;
+            color: var(--text-secondary);
+            max-height: 350px;
+        }
+
+        .code-content .keyword { color: #f472b6; }
+        .code-content .type { color: #a78bfa; }
+        .code-content .string { color: #34d399; }
+        .code-content .comment { color: #454560; }
+        .code-content .func { color: #60a5fa; }
+        .code-content .property { color: #fbbf24; }
+
+        /* Security Visual */
+        .security-visual {
+            margin-top: 20px;
+            padding: 16px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+        }
+
+        .security-visual h3 {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .security-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .security-box {
+            padding: 14px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .security-box.bad {
+            background: rgba(244, 63, 94, 0.08);
+            border: 1px solid rgba(244, 63, 94, 0.2);
+        }
+
+        .security-box.good {
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .security-box .icon { font-size: 24px; margin-bottom: 6px; }
+        .security-box .title { font-size: 11px; font-weight: 600; margin-bottom: 4px; }
+        .security-box.bad .title { color: var(--rose); }
+        .security-box.good .title { color: var(--emerald); }
+        .security-box .desc { font-size: 10px; color: var(--text-muted); }
+
+        /* Prompt Output */
+        .prompt-output {
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border);
+            padding: 16px 24px;
+        }
+
+        .prompt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .prompt-header h3 {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .copy-btn {
+            padding: 7px 14px;
+            background: var(--indigo);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .copy-btn:hover { background: var(--indigo-dim); }
+        .copy-btn.copied { background: var(--emerald); }
+
+        .prompt-text {
+            padding: 12px 14px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 12px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        /* ========================================
+           DECISION WIZARD - Key feature of Option B
+           ======================================== */
+
+        .wizard-fab {
+            position: fixed;
+            right: 24px;
+            bottom: 140px;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, var(--indigo) 0%, #8b5cf6 100%);
+            border: none;
+            border-radius: 30px;
+            color: white;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+            transition: all 0.2s ease;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .wizard-fab:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(99, 102, 241, 0.5);
+        }
+
+        .wizard-fab::before {
+            content: '✨';
+            font-size: 14px;
+        }
+
+        /* Wizard Modal */
+        .wizard-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(5, 5, 8, 0.85);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .wizard-overlay.visible {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .wizard-modal {
+            width: 480px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .wizard-header {
+            padding: 24px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-bottom: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .wizard-header-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--indigo) 0%, #8b5cf6 100%);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin: 0 auto 12px;
+        }
+
+        .wizard-header h2 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .wizard-header p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .wizard-progress {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .wizard-progress-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--border);
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+
+        .wizard-progress-dot.active {
+            background: var(--indigo);
+            width: 24px;
+            border-radius: 4px;
+        }
+
+        .wizard-progress-dot.completed {
+            background: var(--emerald);
+        }
+
+        .wizard-body {
+            padding: 24px;
+        }
+
+        .wizard-question {
+            display: none;
+        }
+
+        .wizard-question.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .wizard-question h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .wizard-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .wizard-option {
+            padding: 14px 16px;
+            background: var(--bg-elevated);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .wizard-option:hover {
+            border-color: var(--border-bright);
+            background: var(--bg-hover);
+        }
+
+        .wizard-option.selected {
+            border-color: var(--indigo);
+            background: rgba(99, 102, 241, 0.08);
+        }
+
+        .wizard-option-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--bg-surface);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .wizard-option-text h4 {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .wizard-option-text p {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* Wizard Result */
+        .wizard-result {
+            display: none;
+            text-align: center;
+        }
+
+        .wizard-result.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .wizard-result-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, var(--emerald) 0%, #059669 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin: 0 auto 16px;
+        }
+
+        .wizard-result h3 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .wizard-result p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        .wizard-result-preset {
+            padding: 16px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 16px;
+        }
+
+        .wizard-result-preset h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--indigo-bright);
+            margin-bottom: 8px;
+        }
+
+        .wizard-result-preset ul {
+            text-align: left;
+            font-size: 12px;
+            color: var(--text-secondary);
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .wizard-result-preset ul li::before {
+            content: '✓';
+            color: var(--emerald);
+            margin-right: 8px;
+        }
+
+        .wizard-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .wizard-btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .wizard-btn-secondary {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .wizard-btn-secondary:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .wizard-btn-primary {
+            background: var(--indigo);
+            border: none;
+            color: white;
+        }
+
+        .wizard-btn-primary:hover {
+            background: var(--indigo-dim);
+        }
+
+        .wizard-btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="controls">
+            <div class="header">
+                <h1>Keychain Service</h1>
+                <p class="subtitle">Configure secure token storage for iOS</p>
+            </div>
+
+            <!-- Presets Section with Help -->
+            <div class="section">
+                <div class="section-header">
+                    <span class="section-title">Presets</span>
+                    <button class="help-btn" onclick="toggleHelp('presets')">?</button>
+                </div>
+                <div class="help-panel" id="help-presets">
+                    <div class="help-panel-header">
+                        <div class="help-panel-icon">📋</div>
+                        <div class="help-panel-title">About Presets</div>
+                    </div>
+                    <div class="help-panel-content">
+                        <strong>Presets</strong> are pre-configured combinations of settings for common use cases:
+                        <br><br>
+                        • <strong>Recommended:</strong> Best for most apps - balanced security and convenience<br>
+                        • <strong>Maximum Security:</strong> Banking/financial apps with biometrics<br>
+                        • <strong>Convenience:</strong> iCloud sync for multi-device access<br>
+                        • <strong>App Groups:</strong> Share tokens with extensions
+                    </div>
+                    <div class="help-panel-tip">
+                        Not sure? Click "Help me decide" at the bottom for a guided recommendation.
+                    </div>
+                </div>
+                <div class="presets">
+                    <button class="preset-btn active" onclick="applyPreset('recommended')">Recommended</button>
+                    <button class="preset-btn" onclick="applyPreset('maximum')">Maximum Security</button>
+                    <button class="preset-btn" onclick="applyPreset('convenience')">Convenience</button>
+                    <button class="preset-btn" onclick="applyPreset('shared')">App Groups</button>
+                </div>
+            </div>
+
+            <!-- Accessibility Section with Help -->
+            <div class="section">
+                <div class="section-header">
+                    <span class="section-title">Accessibility</span>
+                    <button class="help-btn" onclick="toggleHelp('accessibility')">?</button>
+                </div>
+                <div class="help-panel" id="help-accessibility">
+                    <div class="help-panel-header">
+                        <div class="help-panel-icon">🔓</div>
+                        <div class="help-panel-title">When Can Tokens Be Accessed?</div>
+                    </div>
+                    <div class="help-panel-content">
+                        This controls <strong>when your app can read the tokens</strong> from the keychain:
+                        <br><br>
+                        • <strong>After First Unlock:</strong> Once user unlocks device after restart. <em>Best for most apps</em> - background refresh works.<br>
+                        • <strong>When Unlocked:</strong> Only while device is actively unlocked. More secure but breaks background tasks.<br>
+                        • <strong>This Device Only:</strong> Tokens won't be in iCloud backups - extra security layer.
+                    </div>
+                    <div class="help-panel-tip">
+                        For a fitness app, use "After First Unlock" so background sync works properly.
+                    </div>
+                </div>
+                <div class="control-group">
+                    <select id="accessibility" onchange="updateAll()">
+                        <option value="afterFirstUnlock">After First Unlock (Recommended)</option>
+                        <option value="afterFirstUnlockThisDeviceOnly">After First Unlock - This Device Only</option>
+                        <option value="whenUnlocked">When Unlocked</option>
+                        <option value="whenUnlockedThisDeviceOnly">When Unlocked - This Device Only</option>
+                        <option value="whenPasscodeSetThisDeviceOnly">When Passcode Set - This Device Only</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Security Options Section with Help -->
+            <div class="section">
+                <div class="section-header">
+                    <span class="section-title">Security Options</span>
+                    <button class="help-btn" onclick="toggleHelp('security')">?</button>
+                </div>
+                <div class="help-panel" id="help-security">
+                    <div class="help-panel-header">
+                        <div class="help-panel-icon">🛡️</div>
+                        <div class="help-panel-title">Additional Security Layers</div>
+                    </div>
+                    <div class="help-panel-content">
+                        <strong>Biometrics:</strong> Requires Face ID/Touch ID every time the token is accessed. Good for banking apps, <em>overkill for fitness apps</em>.<br><br>
+                        <strong>iCloud Sync:</strong> Tokens available on all user's devices. End-to-end encrypted, but increases attack surface.<br><br>
+                        <strong>Access Group:</strong> Share tokens with your app extensions (Watch, Widget, Share). Only enable if needed.
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="checkbox-row" onclick="toggleCheckbox('useBiometrics')">
+                        <input type="checkbox" id="useBiometrics" onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Require Biometrics</div>
+                            <div class="label-desc">Face ID / Touch ID required</div>
+                        </div>
+                    </label>
+                </div>
+                <div class="control-group">
+                    <label class="checkbox-row" onclick="toggleCheckbox('syncToiCloud')">
+                        <input type="checkbox" id="syncToiCloud" onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Sync to iCloud Keychain</div>
+                            <div class="label-desc">Available across user's devices</div>
+                        </div>
+                    </label>
+                </div>
+                <div class="control-group">
+                    <label class="checkbox-row" onclick="toggleCheckbox('useAccessGroup')">
+                        <input type="checkbox" id="useAccessGroup" onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Use Access Group</div>
+                            <div class="label-desc">Share with app extensions</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Migration Section with Help -->
+            <div class="section">
+                <div class="section-header">
+                    <span class="section-title">Migration</span>
+                    <button class="help-btn" onclick="toggleHelp('migration')">?</button>
+                </div>
+                <div class="help-panel" id="help-migration">
+                    <div class="help-panel-header">
+                        <div class="help-panel-icon">🔄</div>
+                        <div class="help-panel-title">Migrating Existing Users</div>
+                    </div>
+                    <div class="help-panel-content">
+                        If your app currently stores tokens in <code>UserDefaults</code>, you need to migrate existing users to avoid logging them out.
+                        <br><br>
+                        The migration will:<br>
+                        1. Check for tokens in UserDefaults<br>
+                        2. Copy them to Keychain (encrypted)<br>
+                        3. Delete the plaintext copies
+                    </div>
+                    <div class="help-panel-tip">
+                        Always enable this unless you're building a brand new app with no existing users.
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="checkbox-row" onclick="toggleCheckbox('migrateLegacy')">
+                        <input type="checkbox" id="migrateLegacy" checked onchange="updateAll()">
+                        <div>
+                            <div class="label-text">Migrate from UserDefaults</div>
+                            <div class="label-desc">Auto-migrate existing tokens</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview">
+            <div class="preview-header">
+                <h2>Generated Code</h2>
+                <div class="file-tabs">
+                    <button class="file-tab active" onclick="showTab('service')">KeychainService.swift</button>
+                    <button class="file-tab" onclick="showTab('usage')">APIClient Changes</button>
+                </div>
+            </div>
+
+            <div class="code-preview">
+                <div class="code-header">
+                    <span class="code-filename" id="currentFile">KeychainService.swift</span>
+                </div>
+                <div class="code-content" id="codeOutput"></div>
+            </div>
+
+            <div class="security-visual">
+                <h3>Security Comparison</h3>
+                <div class="security-comparison">
+                    <div class="security-box bad">
+                        <div class="icon">⚠️</div>
+                        <div class="title">Before: UserDefaults</div>
+                        <div class="desc">Plaintext, accessible via backup</div>
+                    </div>
+                    <div class="security-box good">
+                        <div class="icon">🔐</div>
+                        <div class="title">After: Keychain</div>
+                        <div class="desc" id="securityDesc">Hardware encryption, secure enclave</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="prompt-output">
+            <div class="prompt-header">
+                <h3>Generated Prompt</h3>
+                <button class="copy-btn" onclick="copyPrompt()">Copy to Clipboard</button>
+            </div>
+            <div class="prompt-text" id="promptOutput"></div>
+        </div>
+    </div>
+
+    <!-- DECISION WIZARD FAB -->
+    <button class="wizard-fab" onclick="openWizard()">Help me decide</button>
+
+    <!-- DECISION WIZARD MODAL -->
+    <div class="wizard-overlay" id="wizardOverlay" onclick="closeWizard(event)">
+        <div class="wizard-modal" onclick="event.stopPropagation()">
+            <div class="wizard-header">
+                <div class="wizard-header-icon">✨</div>
+                <h2>Configuration Wizard</h2>
+                <p>Answer 3 questions to get a personalized recommendation</p>
+                <div class="wizard-progress">
+                    <div class="wizard-progress-dot active" id="dot1"></div>
+                    <div class="wizard-progress-dot" id="dot2"></div>
+                    <div class="wizard-progress-dot" id="dot3"></div>
+                </div>
+            </div>
+
+            <div class="wizard-body">
+                <!-- Question 1 -->
+                <div class="wizard-question active" id="q1">
+                    <h3>What type of data does your app handle?</h3>
+                    <div class="wizard-options">
+                        <div class="wizard-option" onclick="selectOption(1, 'fitness')">
+                            <div class="wizard-option-icon">🏋️</div>
+                            <div class="wizard-option-text">
+                                <h4>Fitness / Lifestyle</h4>
+                                <p>Workout logs, health data, activity tracking</p>
+                            </div>
+                        </div>
+                        <div class="wizard-option" onclick="selectOption(1, 'financial')">
+                            <div class="wizard-option-icon">💰</div>
+                            <div class="wizard-option-text">
+                                <h4>Financial / Banking</h4>
+                                <p>Payment info, transactions, sensitive financial data</p>
+                            </div>
+                        </div>
+                        <div class="wizard-option" onclick="selectOption(1, 'social')">
+                            <div class="wizard-option-icon">💬</div>
+                            <div class="wizard-option-text">
+                                <h4>Social / Communication</h4>
+                                <p>Messaging, profiles, social interactions</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question 2 -->
+                <div class="wizard-question" id="q2">
+                    <h3>Do you have app extensions?</h3>
+                    <div class="wizard-options">
+                        <div class="wizard-option" onclick="selectOption(2, 'no-extensions')">
+                            <div class="wizard-option-icon">📱</div>
+                            <div class="wizard-option-text">
+                                <h4>No extensions</h4>
+                                <p>Just the main iOS app</p>
+                            </div>
+                        </div>
+                        <div class="wizard-option" onclick="selectOption(2, 'has-extensions')">
+                            <div class="wizard-option-icon">⚙️</div>
+                            <div class="wizard-option-text">
+                                <h4>Yes, I have extensions</h4>
+                                <p>Watch app, widgets, share extension, etc.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question 3 -->
+                <div class="wizard-question" id="q3">
+                    <h3>Do you have existing users?</h3>
+                    <div class="wizard-options">
+                        <div class="wizard-option" onclick="selectOption(3, 'existing-users')">
+                            <div class="wizard-option-icon">👥</div>
+                            <div class="wizard-option-text">
+                                <h4>Yes, existing users</h4>
+                                <p>App is live with users who have stored tokens</p>
+                            </div>
+                        </div>
+                        <div class="wizard-option" onclick="selectOption(3, 'new-app')">
+                            <div class="wizard-option-icon">🆕</div>
+                            <div class="wizard-option-text">
+                                <h4>New app / No users yet</h4>
+                                <p>Starting fresh, no migration needed</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Result -->
+                <div class="wizard-result" id="wizardResult">
+                    <div class="wizard-result-icon">✓</div>
+                    <h3 id="resultTitle">Recommended Settings</h3>
+                    <p id="resultDesc">Based on your answers, here's the best configuration:</p>
+                    <div class="wizard-result-preset">
+                        <h4 id="resultPreset">Recommended</h4>
+                        <ul id="resultFeatures">
+                            <li>After First Unlock accessibility</li>
+                            <li>No biometrics required</li>
+                            <li>Migration from UserDefaults enabled</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="wizard-footer">
+                <button class="wizard-btn wizard-btn-secondary" id="wizardBack" onclick="wizardBack()" style="visibility: hidden;">← Back</button>
+                <button class="wizard-btn wizard-btn-primary" id="wizardNext" onclick="wizardNext()" disabled>Continue →</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        const state = {
+            serviceName: 'com.yourcompany.fitnessapp',
+            accessibility: 'afterFirstUnlock',
+            useBiometrics: false,
+            syncToiCloud: false,
+            useAccessGroup: false,
+            migrateLegacy: true
+        };
+
+        let currentTab = 'service';
+        let wizardStep = 1;
+        let wizardAnswers = {};
+
+        // Presets
+        const presets = {
+            recommended: { accessibility: 'afterFirstUnlock', useBiometrics: false, syncToiCloud: false, useAccessGroup: false, migrateLegacy: true },
+            maximum: { accessibility: 'whenPasscodeSetThisDeviceOnly', useBiometrics: true, syncToiCloud: false, useAccessGroup: false, migrateLegacy: true },
+            convenience: { accessibility: 'afterFirstUnlock', useBiometrics: false, syncToiCloud: true, useAccessGroup: false, migrateLegacy: true },
+            shared: { accessibility: 'afterFirstUnlock', useBiometrics: false, syncToiCloud: false, useAccessGroup: true, migrateLegacy: true }
+        };
+
+        function toggleHelp(section) {
+            const panel = document.getElementById(`help-${section}`);
+            const btn = panel.previousElementSibling.querySelector('.help-btn');
+            const isVisible = panel.classList.contains('visible');
+
+            // Close all other panels
+            document.querySelectorAll('.help-panel').forEach(p => p.classList.remove('visible'));
+            document.querySelectorAll('.help-btn').forEach(b => b.classList.remove('active'));
+
+            if (!isVisible) {
+                panel.classList.add('visible');
+                btn.classList.add('active');
+            }
+        }
+
+        function toggleCheckbox(id) {
+            const cb = document.getElementById(id);
+            cb.checked = !cb.checked;
+            updateAll();
+        }
+
+        function applyPreset(name) {
+            Object.assign(state, presets[name]);
+            document.getElementById('accessibility').value = state.accessibility;
+            document.getElementById('useBiometrics').checked = state.useBiometrics;
+            document.getElementById('syncToiCloud').checked = state.syncToiCloud;
+            document.getElementById('useAccessGroup').checked = state.useAccessGroup;
+            document.getElementById('migrateLegacy').checked = state.migrateLegacy;
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            updateAll();
+        }
+
+        function showTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.file-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('currentFile').textContent = tab === 'service' ? 'KeychainService.swift' : 'APIClient.swift';
+            updateCode();
+        }
+
+        function updateAll() {
+            state.accessibility = document.getElementById('accessibility').value;
+            state.useBiometrics = document.getElementById('useBiometrics').checked;
+            state.syncToiCloud = document.getElementById('syncToiCloud').checked;
+            state.useAccessGroup = document.getElementById('useAccessGroup').checked;
+            state.migrateLegacy = document.getElementById('migrateLegacy').checked;
+            updateCode();
+            updatePrompt();
+            updateSecurityDesc();
+        }
+
+        function updateCode() {
+            document.getElementById('codeOutput').innerHTML = currentTab === 'service' ? generateServiceCode() : generateUsageCode();
+        }
+
+        function generateServiceCode() {
+            return `<span class="keyword">import</span> <span class="type">Foundation</span>
+<span class="keyword">import</span> <span class="type">Security</span>
+
+<span class="keyword">final class</span> <span class="type">KeychainService</span> {
+    <span class="keyword">static let</span> shared = <span class="type">KeychainService</span>()
+    <span class="keyword">private let</span> service = <span class="string">"${state.serviceName}"</span>
+
+    <span class="keyword">var</span> <span class="property">accessToken</span>: <span class="type">String</span>? {
+        <span class="keyword">get</span> { <span class="func">getValue</span>(forKey: <span class="string">"accessToken"</span>) }
+        <span class="keyword">set</span> { <span class="func">setValue</span>(newValue, forKey: <span class="string">"accessToken"</span>) }
+    }
+
+    <span class="comment">// ... implementation</span>
+}`;
+        }
+
+        function generateUsageCode() {
+            return `<span class="comment">// Replace UserDefaults with KeychainService</span>
+
+<span class="keyword">private var</span> <span class="property">accessToken</span>: <span class="type">String</span>? {
+    <span class="keyword">get</span> { <span class="type">KeychainService</span>.shared.accessToken }
+    <span class="keyword">set</span> { <span class="type">KeychainService</span>.shared.accessToken = newValue }
+}`;
+        }
+
+        function updateSecurityDesc() {
+            const features = ['Hardware encryption'];
+            if (state.useBiometrics) features.push('biometric');
+            if (state.accessibility.includes('ThisDeviceOnly')) features.push('device-only');
+            if (state.syncToiCloud) features.push('iCloud');
+            document.getElementById('securityDesc').textContent = features.join(', ');
+        }
+
+        function updatePrompt() {
+            const parts = ['Create a KeychainService.swift for secure token storage.'];
+            if (state.useBiometrics) parts.push('Require Face ID/Touch ID.');
+            if (state.syncToiCloud) parts.push('Enable iCloud sync.');
+            if (state.migrateLegacy) parts.push('Include UserDefaults migration.');
+            document.getElementById('promptOutput').textContent = parts.join(' ');
+        }
+
+        function copyPrompt() {
+            navigator.clipboard.writeText(document.getElementById('promptOutput').textContent);
+            const btn = document.querySelector('.copy-btn');
+            btn.textContent = 'Copied!';
+            btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = 'Copy to Clipboard'; btn.classList.remove('copied'); }, 2000);
+        }
+
+        // Wizard functions
+        function openWizard() {
+            document.getElementById('wizardOverlay').classList.add('visible');
+            wizardStep = 1;
+            wizardAnswers = {};
+            updateWizardUI();
+        }
+
+        function closeWizard(e) {
+            if (e.target === document.getElementById('wizardOverlay')) {
+                document.getElementById('wizardOverlay').classList.remove('visible');
+            }
+        }
+
+        function selectOption(question, value) {
+            wizardAnswers[question] = value;
+            document.querySelectorAll(`#q${question} .wizard-option`).forEach(opt => opt.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+            document.getElementById('wizardNext').disabled = false;
+        }
+
+        function wizardNext() {
+            if (wizardStep < 3) {
+                wizardStep++;
+                updateWizardUI();
+            } else {
+                showWizardResult();
+            }
+        }
+
+        function wizardBack() {
+            if (wizardStep > 1) {
+                wizardStep--;
+                updateWizardUI();
+            }
+        }
+
+        function updateWizardUI() {
+            // Update questions visibility
+            document.querySelectorAll('.wizard-question').forEach(q => q.classList.remove('active'));
+            document.getElementById(`q${wizardStep}`).classList.add('active');
+            document.getElementById('wizardResult').classList.remove('active');
+
+            // Update progress dots
+            for (let i = 1; i <= 3; i++) {
+                const dot = document.getElementById(`dot${i}`);
+                dot.classList.remove('active', 'completed');
+                if (i < wizardStep) dot.classList.add('completed');
+                if (i === wizardStep) dot.classList.add('active');
+            }
+
+            // Update buttons
+            document.getElementById('wizardBack').style.visibility = wizardStep > 1 ? 'visible' : 'hidden';
+            document.getElementById('wizardNext').textContent = wizardStep === 3 ? 'See Recommendation' : 'Continue →';
+            document.getElementById('wizardNext').disabled = !wizardAnswers[wizardStep];
+        }
+
+        function showWizardResult() {
+            document.querySelectorAll('.wizard-question').forEach(q => q.classList.remove('active'));
+            document.getElementById('wizardResult').classList.add('active');
+
+            // Calculate recommendation
+            let presetName = 'recommended';
+            let features = [];
+
+            if (wizardAnswers[1] === 'financial') {
+                presetName = 'maximum';
+                features = ['Passcode-required accessibility', 'Biometric authentication required', 'Device-only storage (no iCloud backup)'];
+            } else if (wizardAnswers[2] === 'has-extensions') {
+                presetName = 'shared';
+                features = ['After First Unlock accessibility', 'Access Group enabled for extensions', 'No biometrics (low-sensitivity data)'];
+            } else {
+                features = ['After First Unlock accessibility', 'No biometrics (appropriate for fitness)', 'Hardware encryption enabled'];
+            }
+
+            if (wizardAnswers[3] === 'existing-users') {
+                features.push('Migration from UserDefaults enabled');
+            }
+
+            document.getElementById('resultPreset').textContent = presetName.charAt(0).toUpperCase() + presetName.slice(1) + ' Configuration';
+            document.getElementById('resultFeatures').innerHTML = features.map(f => `<li>${f}</li>`).join('');
+
+            document.getElementById('wizardNext').textContent = 'Apply Settings';
+            document.getElementById('wizardNext').onclick = () => {
+                applyPreset(presetName);
+                if (wizardAnswers[3] === 'new-app') {
+                    document.getElementById('migrateLegacy').checked = false;
+                    updateAll();
+                }
+                document.getElementById('wizardOverlay').classList.remove('visible');
+            };
+        }
+
+        // Initialize
+        updateAll();
+    </script>
+</body>
+</html>
