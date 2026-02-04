@@ -911,3 +911,174 @@ class TestPPLWorkoutGeneration:
         assert workouts[0]["day"] == 1
         assert "Push" in workouts[0]["focus"]
         assert len(workouts[0]["prescriptions"]) > 0
+
+
+class TestWeightFallback:
+    """Tests for weight fallback when no e1RM data exists."""
+
+    def test_weight_fallback_uses_target_weight(self):
+        """If no e1RM data, should use 85% of target as base for progression."""
+        from datetime import date, timedelta
+
+        exercise = MockExercise("ex-bench-001", "Barbell Bench Press", "compound")
+        deadline = date.today() + timedelta(weeks=8)
+
+        # Goal with NO e1RM data
+        goal = MockGoal(
+            id="goal-no-e1rm",
+            user_id="user-1",
+            exercise_id=exercise.id,
+            exercise=exercise,
+            target_weight=200,  # Target is 200 lb
+            target_reps=1,
+            weight_unit="lb",
+            deadline=deadline,
+            current_e1rm=None,  # No current e1RM
+            starting_e1rm=None,  # No starting e1RM
+        )
+
+        # The weight should NOT be None thanks to fallback in _get_projected_e1rm
+        weight = _prescribed_weight(goal, 5)
+        assert weight is not None
+
+        # Calculation:
+        # - target_e1rm = 200 (for 1 rep)
+        # - base_e1rm = 0.85 * 200 = 170 (fallback when no e1RM data)
+        # - weeks_remaining = 8
+        # - projected_e1rm = 170 + (200 - 170) / 8 = 173.75
+        # - intensity for 5 reps = 0.85
+        # - weight = 173.75 * 0.85 = 147.69, rounded to 150
+        assert weight == 150
+
+    def test_weight_fallback_with_zero_target_returns_none(self):
+        """If target weight is 0 or None, weight should be None."""
+        from datetime import date, timedelta
+
+        exercise = MockExercise("ex-bench-001", "Barbell Bench Press", "compound")
+        deadline = date.today() + timedelta(weeks=8)
+
+        goal = MockGoal(
+            id="goal-bad",
+            user_id="user-1",
+            exercise_id=exercise.id,
+            exercise=exercise,
+            target_weight=0,  # Invalid target
+            target_reps=1,
+            weight_unit="lb",
+            deadline=deadline,
+            current_e1rm=None,
+            starting_e1rm=None,
+        )
+
+        weight = _prescribed_weight(goal, 5)
+        assert weight is None
+
+    def test_weight_uses_e1rm_when_available(self):
+        """When e1RM data exists, it should be used instead of fallback."""
+        from datetime import date, timedelta
+
+        exercise = MockExercise("ex-bench-001", "Barbell Bench Press", "compound")
+        deadline = date.today() + timedelta(weeks=8)
+
+        goal = MockGoal(
+            id="goal-with-e1rm",
+            user_id="user-1",
+            exercise_id=exercise.id,
+            exercise=exercise,
+            target_weight=225,
+            target_reps=1,
+            weight_unit="lb",
+            deadline=deadline,
+            current_e1rm=200,  # Has e1RM data
+            starting_e1rm=180,
+        )
+
+        weight = _prescribed_weight(goal, 5)
+        assert weight is not None
+        # Should use projected e1RM, not 70% of target
+        # With 8 weeks remaining, projected e1RM = 200 + (225-200)/8 = 203.125
+        # For 5 reps (0.85 intensity): 203.125 * 0.85 = 172.66, rounded to 175
+        assert weight == 175
+
+
+class TestAccessoryTemplates:
+    """Tests for accessory exercise template system."""
+
+    def test_accessory_templates_exist_for_main_groups(self):
+        """Verify templates exist for push, pull, and legs."""
+        from app.services.accessory_templates import ACCESSORY_TEMPLATES
+
+        assert "push" in ACCESSORY_TEMPLATES
+        assert "pull" in ACCESSORY_TEMPLATES
+        assert "legs" in ACCESSORY_TEMPLATES
+
+        # Each should have multiple accessories
+        assert len(ACCESSORY_TEMPLATES["push"]) >= 3
+        assert len(ACCESSORY_TEMPLATES["pull"]) >= 3
+        assert len(ACCESSORY_TEMPLATES["legs"]) >= 3
+
+    def test_accessory_templates_have_required_fields(self):
+        """Each accessory should have name, sets, reps, weight_pct."""
+        from app.services.accessory_templates import ACCESSORY_TEMPLATES
+
+        for group, accessories in ACCESSORY_TEMPLATES.items():
+            for acc in accessories:
+                assert "exercise_name" in acc, f"Missing exercise_name in {group}"
+                assert "sets" in acc, f"Missing sets in {group}"
+                assert "reps" in acc, f"Missing reps in {group}"
+                assert "weight_pct" in acc, f"Missing weight_pct in {group}"
+
+    def test_get_accessories_for_group_returns_correct_muscle_group(self):
+        """get_accessories_for_group should return exercises for requested group."""
+        from app.services.accessory_templates import get_accessories_for_group
+
+        push_acc = get_accessories_for_group("push", is_volume_day=False, limit=4)
+        assert len(push_acc) > 0
+        assert len(push_acc) <= 4
+
+        pull_acc = get_accessories_for_group("pull", is_volume_day=False, limit=4)
+        assert len(pull_acc) > 0
+
+        legs_acc = get_accessories_for_group("legs", is_volume_day=False, limit=4)
+        assert len(legs_acc) > 0
+
+    def test_get_accessories_for_unknown_group_returns_empty(self):
+        """Unknown muscle groups should return empty list."""
+        from app.services.accessory_templates import get_accessories_for_group
+
+        unknown_acc = get_accessories_for_group("full_body", is_volume_day=False)
+        assert unknown_acc == []
+
+        random_acc = get_accessories_for_group("arms", is_volume_day=False)
+        assert random_acc == []
+
+    def test_volume_day_accessories_differ_from_heavy_day(self):
+        """Volume day templates should have different reps/weights."""
+        from app.services.accessory_templates import (
+            ACCESSORY_TEMPLATES,
+            VOLUME_ACCESSORY_TEMPLATES,
+        )
+
+        # Volume templates exist
+        assert "push" in VOLUME_ACCESSORY_TEMPLATES
+
+        # They should have higher reps on average
+        heavy_push = ACCESSORY_TEMPLATES["push"]
+        volume_push = VOLUME_ACCESSORY_TEMPLATES["push"]
+
+        heavy_avg_reps = sum(a["reps"] for a in heavy_push) / len(heavy_push)
+        volume_avg_reps = sum(a["reps"] for a in volume_push) / len(volume_push)
+
+        assert volume_avg_reps >= heavy_avg_reps
+
+    def test_get_accessory_group_mapping(self):
+        """Verify exercise name to group mapping works correctly."""
+        from app.services.accessory_templates import get_accessory_group
+
+        assert get_accessory_group("Barbell Bench Press") == "push"
+        assert get_accessory_group("Incline Dumbbell Press") == "push"
+        assert get_accessory_group("Barbell Deadlift") == "pull"
+        assert get_accessory_group("Lat Pulldown") == "pull"
+        assert get_accessory_group("Barbell Back Squat") == "legs"
+        assert get_accessory_group("Leg Press") == "legs"
+        assert get_accessory_group("Unknown Exercise") == "full_body"

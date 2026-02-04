@@ -19,10 +19,19 @@ from app.models.exercise import Exercise
 from app.models.pr import PR
 from app.core.utils import to_iso8601_utc
 from app.services.exercise_equivalence import get_equivalent_exercise_ids
+from app.services.accessory_templates import (
+    get_accessory_group,
+    get_accessories_for_group,
+    ACCESSORY_TEMPLATES,
+    VOLUME_ACCESSORY_TEMPLATES,
+)
 
 
 # Maximum number of active goals per user
 MAX_ACTIVE_GOALS = 5
+
+# Cache for exercise name -> ID lookups (populated lazily)
+_exercise_id_cache: Dict[str, Optional[str]] = {}
 
 # Exercise muscle group mappings for training split determination
 EXERCISE_MUSCLE_MAP = {
@@ -148,10 +157,20 @@ def _round_prescribed_weight(weight: float, weight_unit: str) -> float:
 
 
 def _prescribed_weight(goal: Goal, reps: int) -> Optional[float]:
-    """Compute prescribed weight for a given rep scheme."""
+    """Compute prescribed weight for a given rep scheme.
+
+    Falls back to 70% of target_weight if no e1RM data is available.
+    This ensures all prescriptions have weights even for brand new goals.
+    """
     projected_e1rm = _get_projected_e1rm(goal)
+
+    # Fallback: use 70% of target weight if no e1RM data
     if projected_e1rm <= 0:
-        return None
+        if goal.target_weight and goal.target_weight > 0:
+            projected_e1rm = goal.target_weight * 0.70
+        else:
+            return None
+
     intensity = _rep_intensity(reps)
     if intensity <= 0:
         return None
@@ -167,6 +186,70 @@ def _intensity_note(reps: int) -> str:
         return "Focus on form and progressive overload"
     percent = int(round(intensity * 100))
     return f"~{percent}% projected 1RM"
+
+
+def _get_exercise_id_by_name(db: Session, exercise_name: str) -> Optional[str]:
+    """Look up exercise ID by name, using cache to avoid repeated queries."""
+    global _exercise_id_cache
+
+    if exercise_name in _exercise_id_cache:
+        return _exercise_id_cache[exercise_name]
+
+    exercise = db.query(Exercise).filter(
+        Exercise.name == exercise_name
+    ).first()
+
+    exercise_id = exercise.id if exercise else None
+    _exercise_id_cache[exercise_name] = exercise_id
+    return exercise_id
+
+
+def _generate_accessory_prescriptions(
+    db: Session,
+    primary_weight: float,
+    weight_unit: str,
+    muscle_group: str,
+    is_volume_day: bool = False,
+    limit: int = 4
+) -> List[Dict[str, Any]]:
+    """
+    Generate accessory exercise prescriptions based on the primary lift.
+
+    Args:
+        db: Database session for exercise lookups
+        primary_weight: Weight of the primary lift (for calculating accessory weights)
+        weight_unit: 'lb' or 'kg'
+        muscle_group: 'push', 'pull', or 'legs'
+        is_volume_day: Use volume templates (higher reps, lower weight)
+        limit: Maximum number of accessories
+
+    Returns:
+        List of prescription dicts ready for workout template
+    """
+    accessories = get_accessories_for_group(muscle_group, is_volume_day, limit)
+    prescriptions = []
+
+    for acc in accessories:
+        exercise_id = _get_exercise_id_by_name(db, acc["exercise_name"])
+        if not exercise_id:
+            # Skip if exercise not found in database
+            logger.debug(f"Accessory exercise not found: {acc['exercise_name']}")
+            continue
+
+        # Calculate weight as percentage of primary lift
+        acc_weight = primary_weight * acc["weight_pct"]
+        rounded_weight = _round_prescribed_weight(acc_weight, weight_unit)
+
+        prescriptions.append({
+            "exercise_id": exercise_id,
+            "sets": acc["sets"],
+            "reps": acc["reps"],
+            "weight": rounded_weight if rounded_weight > 0 else None,
+            "weight_unit": weight_unit,
+            "notes": f"Accessory work"
+        })
+
+    return prescriptions
 
 
 def _generate_weekly_target(goals: List[Goal]) -> str:
@@ -259,7 +342,7 @@ def backfill_current_mission(db: Session, mission: WeeklyMission, active_goals: 
     mission.coaching_message = _generate_coaching_message(active_goals, training_split)
 
     # Generate updated workout templates
-    workout_templates = _generate_workout_templates(active_goals, training_split)
+    workout_templates = _generate_workout_templates(active_goals, training_split, db)
     template_by_day = {t["day"]: t for t in workout_templates}
 
     # Update workouts by day
@@ -733,7 +816,7 @@ def generate_multi_goal_mission(
         db.add(mission_goal)
 
     # Generate workouts based on training split
-    workout_templates = _generate_workout_templates(goals, training_split)
+    workout_templates = _generate_workout_templates(goals, training_split, db)
 
     for template in workout_templates:
         workout = MissionWorkout(
@@ -789,26 +872,35 @@ def _generate_coaching_message(goals: List[Goal], split: TrainingSplit) -> str:
     return f"This week's {split_name} targets all {len(goals)} of your goals. Complete each workout to make progress!"
 
 
-def _generate_workout_templates(goals: List[Goal], split: TrainingSplit) -> List[Dict[str, Any]]:
+def _generate_workout_templates(
+    goals: List[Goal],
+    split: TrainingSplit,
+    db: Optional[Session] = None
+) -> List[Dict[str, Any]]:
     """
     Generate workout templates based on goals and training split.
+
+    Args:
+        goals: List of active goals
+        split: Training split type
+        db: Optional database session for accessory exercise lookups
 
     Returns list of workout dicts with day, focus, primary_lift, and prescriptions.
     """
     if _all_goals_same_group(goals):
-        return _generate_same_group_workouts(goals)
+        return _generate_same_group_workouts(goals, db)
 
     if split == TrainingSplit.SINGLE_FOCUS or len(goals) == 1:
-        return _generate_single_focus_workouts(goals[0])
+        return _generate_single_focus_workouts(goals[0], db)
 
     if split == TrainingSplit.PPL:
-        return _generate_ppl_workouts(goals)
+        return _generate_ppl_workouts(goals, db)
 
     if split == TrainingSplit.UPPER_LOWER:
-        return _generate_upper_lower_workouts(goals)
+        return _generate_upper_lower_workouts(goals, db)
 
     # Default: full body
-    return _generate_full_body_workouts(goals)
+    return _generate_full_body_workouts(goals, db)
 
 
 def _all_goals_same_group(goals: List[Goal]) -> bool:
@@ -824,11 +916,14 @@ def _all_goals_same_group(goals: List[Goal]) -> bool:
     return len(muscle_groups) == 1
 
 
-def _generate_same_group_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
+def _generate_same_group_workouts(
+    goals: List[Goal],
+    db: Optional[Session] = None
+) -> List[Dict[str, Any]]:
     """Rotate focus across goals that share the same muscle group."""
     goals_with_exercise = [g for g in goals if g.exercise_id and g.exercise]
     if len(goals_with_exercise) <= 1:
-        return _generate_single_focus_workouts(goals_with_exercise[0]) if goals_with_exercise else []
+        return _generate_single_focus_workouts(goals_with_exercise[0], db) if goals_with_exercise else []
 
     goals_sorted = sorted(goals_with_exercise, key=lambda g: g.exercise.name)
     primary_a = goals_sorted[0]
@@ -911,15 +1006,44 @@ def _generate_same_group_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
     ]
 
 
-def _generate_single_focus_workouts(goal: Goal) -> List[Dict[str, Any]]:
-    """Generate 3-day Heavy/Accessory/Volume split for single goal"""
+def _generate_single_focus_workouts(
+    goal: Goal,
+    db: Optional[Session] = None
+) -> List[Dict[str, Any]]:
+    """Generate 3-day Heavy/Accessory/Volume split for single goal with accessories."""
     exercise_name = goal.exercise.name if goal.exercise else "Main Lift"
     exercise_id = goal.exercise_id
     heavy_reps = 5
     accessory_reps = 8
     volume_reps = 10
 
-    return [
+    # Determine muscle group for accessory selection
+    muscle_group = get_muscle_group(exercise_name)
+
+    # Calculate primary lift weights for accessory weight calculation
+    heavy_weight = _prescribed_weight(goal, heavy_reps)
+    accessory_weight = _prescribed_weight(goal, accessory_reps)
+    volume_weight = _prescribed_weight(goal, volume_reps)
+
+    # Get accessory exercises if db is available
+    heavy_accessories = []
+    day2_accessories = []
+    volume_accessories = []
+
+    if db and heavy_weight:
+        heavy_accessories = _generate_accessory_prescriptions(
+            db, heavy_weight, goal.weight_unit, muscle_group, is_volume_day=False, limit=3
+        )
+    if db and accessory_weight:
+        day2_accessories = _generate_accessory_prescriptions(
+            db, accessory_weight, goal.weight_unit, muscle_group, is_volume_day=False, limit=4
+        )
+    if db and volume_weight:
+        volume_accessories = _generate_accessory_prescriptions(
+            db, volume_weight, goal.weight_unit, muscle_group, is_volume_day=True, limit=3
+        )
+
+    workouts = [
         {
             "day": 1,
             "focus": f"Heavy {exercise_name}",
@@ -929,25 +1053,27 @@ def _generate_single_focus_workouts(goal: Goal) -> List[Dict[str, Any]]:
                     "exercise_id": exercise_id,
                     "sets": 4,
                     "reps": heavy_reps,
-                    "weight": _prescribed_weight(goal, heavy_reps),
+                    "weight": heavy_weight,
                     "weight_unit": goal.weight_unit,
                     "notes": f"Heavy working sets - {_intensity_note(heavy_reps)}"
-                }
+                },
+                *heavy_accessories
             ] if exercise_id else []
         },
         {
             "day": 2,
             "focus": "Accessory Work",
-            "primary_lift": None,
+            "primary_lift": exercise_name,
             "prescriptions": [
                 {
                     "exercise_id": exercise_id,
                     "sets": 3,
                     "reps": accessory_reps,
-                    "weight": _prescribed_weight(goal, accessory_reps),
+                    "weight": accessory_weight,
                     "weight_unit": goal.weight_unit,
-                    "notes": f"Accessory volume - swap to a variation if desired ({_intensity_note(accessory_reps)})"
-                }
+                    "notes": f"Moderate weight - {_intensity_note(accessory_reps)}"
+                },
+                *day2_accessories
             ] if exercise_id else []
         },
         {
@@ -959,17 +1085,23 @@ def _generate_single_focus_workouts(goal: Goal) -> List[Dict[str, Any]]:
                     "exercise_id": exercise_id,
                     "sets": 3,
                     "reps": volume_reps,
-                    "weight": _prescribed_weight(goal, volume_reps),
+                    "weight": volume_weight,
                     "weight_unit": goal.weight_unit,
                     "notes": f"Volume work - {_intensity_note(volume_reps)}"
-                }
+                },
+                *volume_accessories
             ] if exercise_id else []
         }
     ]
 
+    return workouts
 
-def _generate_ppl_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
-    """Generate Push/Pull/Legs split for multiple goals"""
+
+def _generate_ppl_workouts(
+    goals: List[Goal],
+    db: Optional[Session] = None
+) -> List[Dict[str, Any]]:
+    """Generate Push/Pull/Legs split for multiple goals with accessories."""
     # Categorize goals by muscle group
     push_goals = []
     pull_goals = []
@@ -993,17 +1125,29 @@ def _generate_ppl_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
 
     # Push Day
     push_prescriptions = []
+    push_primary_weight = None
     for goal in push_goals:
         if goal.exercise_id:
             reps = 6
+            weight = _prescribed_weight(goal, reps)
+            if push_primary_weight is None:
+                push_primary_weight = weight
             push_prescriptions.append({
                 "exercise_id": goal.exercise_id,
                 "sets": 4,
                 "reps": reps,
-                "weight": _prescribed_weight(goal, reps),
+                "weight": weight,
                 "weight_unit": goal.weight_unit,
                 "notes": f"Focus on {goal.exercise.name} ({_intensity_note(reps)})"
             })
+
+    # Add push accessories if we have a primary weight and db
+    if db and push_primary_weight and push_goals:
+        push_accessories = _generate_accessory_prescriptions(
+            db, push_primary_weight, push_goals[0].weight_unit, "push", is_volume_day=False, limit=3
+        )
+        push_prescriptions.extend(push_accessories)
+
     workouts.append({
         "day": 1,
         "focus": "Push - " + (push_goals[0].exercise.name if push_goals and push_goals[0].exercise else "Chest/Shoulders"),
@@ -1013,17 +1157,29 @@ def _generate_ppl_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
 
     # Pull Day
     pull_prescriptions = []
+    pull_primary_weight = None
     for goal in pull_goals:
         if goal.exercise_id:
             reps = 6
+            weight = _prescribed_weight(goal, reps)
+            if pull_primary_weight is None:
+                pull_primary_weight = weight
             pull_prescriptions.append({
                 "exercise_id": goal.exercise_id,
                 "sets": 4,
                 "reps": reps,
-                "weight": _prescribed_weight(goal, reps),
+                "weight": weight,
                 "weight_unit": goal.weight_unit,
                 "notes": f"Focus on {goal.exercise.name} ({_intensity_note(reps)})"
             })
+
+    # Add pull accessories
+    if db and pull_primary_weight and pull_goals:
+        pull_accessories = _generate_accessory_prescriptions(
+            db, pull_primary_weight, pull_goals[0].weight_unit, "pull", is_volume_day=False, limit=3
+        )
+        pull_prescriptions.extend(pull_accessories)
+
     workouts.append({
         "day": 2,
         "focus": "Pull - " + (pull_goals[0].exercise.name if pull_goals and pull_goals[0].exercise else "Back/Biceps"),
@@ -1033,17 +1189,29 @@ def _generate_ppl_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
 
     # Legs Day
     leg_prescriptions = []
+    leg_primary_weight = None
     for goal in leg_goals:
         if goal.exercise_id:
             reps = 6
+            weight = _prescribed_weight(goal, reps)
+            if leg_primary_weight is None:
+                leg_primary_weight = weight
             leg_prescriptions.append({
                 "exercise_id": goal.exercise_id,
                 "sets": 4,
                 "reps": reps,
-                "weight": _prescribed_weight(goal, reps),
+                "weight": weight,
                 "weight_unit": goal.weight_unit,
                 "notes": f"Focus on {goal.exercise.name} ({_intensity_note(reps)})"
             })
+
+    # Add legs accessories
+    if db and leg_primary_weight and leg_goals:
+        leg_accessories = _generate_accessory_prescriptions(
+            db, leg_primary_weight, leg_goals[0].weight_unit, "legs", is_volume_day=False, limit=3
+        )
+        leg_prescriptions.extend(leg_accessories)
+
     workouts.append({
         "day": 3,
         "focus": "Legs - " + (leg_goals[0].exercise.name if leg_goals and leg_goals[0].exercise else "Quads/Hamstrings"),
@@ -1061,8 +1229,11 @@ def _generate_ppl_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
     return workouts
 
 
-def _generate_upper_lower_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
-    """Generate Upper/Lower split for goals"""
+def _generate_upper_lower_workouts(
+    goals: List[Goal],
+    db: Optional[Session] = None
+) -> List[Dict[str, Any]]:
+    """Generate Upper/Lower split for goals with accessories."""
     upper_goals = []
     lower_goals = []
 
@@ -1078,17 +1249,33 @@ def _generate_upper_lower_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
 
     # Upper Day 1 (heavy)
     upper_prescriptions = []
+    upper_primary_weight = None
     for goal in upper_goals:
         if goal.exercise_id:
             reps = 5
+            weight = _prescribed_weight(goal, reps)
+            if upper_primary_weight is None:
+                upper_primary_weight = weight
             upper_prescriptions.append({
                 "exercise_id": goal.exercise_id,
                 "sets": 4,
                 "reps": reps,
-                "weight": _prescribed_weight(goal, reps),
+                "weight": weight,
                 "weight_unit": goal.weight_unit,
                 "notes": f"Heavy {goal.exercise.name} ({_intensity_note(reps)})"
             })
+
+    # Add upper accessories (mix of push and pull)
+    if db and upper_primary_weight and upper_goals:
+        push_acc = _generate_accessory_prescriptions(
+            db, upper_primary_weight, upper_goals[0].weight_unit, "push", is_volume_day=False, limit=2
+        )
+        pull_acc = _generate_accessory_prescriptions(
+            db, upper_primary_weight, upper_goals[0].weight_unit, "pull", is_volume_day=False, limit=2
+        )
+        upper_prescriptions.extend(push_acc[:1])  # 1 push accessory
+        upper_prescriptions.extend(pull_acc[:1])  # 1 pull accessory
+
     workouts.append({
         "day": 1,
         "focus": "Upper Body (Heavy)",
@@ -1098,17 +1285,29 @@ def _generate_upper_lower_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
 
     # Lower Day
     lower_prescriptions = []
+    lower_primary_weight = None
     for goal in lower_goals:
         if goal.exercise_id:
             reps = 5
+            weight = _prescribed_weight(goal, reps)
+            if lower_primary_weight is None:
+                lower_primary_weight = weight
             lower_prescriptions.append({
                 "exercise_id": goal.exercise_id,
                 "sets": 4,
                 "reps": reps,
-                "weight": _prescribed_weight(goal, reps),
+                "weight": weight,
                 "weight_unit": goal.weight_unit,
                 "notes": f"Heavy {goal.exercise.name} ({_intensity_note(reps)})"
             })
+
+    # Add legs accessories
+    if db and lower_primary_weight and lower_goals:
+        leg_accessories = _generate_accessory_prescriptions(
+            db, lower_primary_weight, lower_goals[0].weight_unit, "legs", is_volume_day=False, limit=3
+        )
+        lower_prescriptions.extend(leg_accessories)
+
     workouts.append({
         "day": 2,
         "focus": "Lower Body",
@@ -1118,17 +1317,33 @@ def _generate_upper_lower_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
 
     # Upper Day 2 (volume)
     upper_volume_prescriptions = []
+    upper_volume_weight = None
     for goal in upper_goals:
         if goal.exercise_id:
             reps = 10
+            weight = _prescribed_weight(goal, reps)
+            if upper_volume_weight is None:
+                upper_volume_weight = weight
             upper_volume_prescriptions.append({
                 "exercise_id": goal.exercise_id,
                 "sets": 3,
                 "reps": reps,
-                "weight": _prescribed_weight(goal, reps),
+                "weight": weight,
                 "weight_unit": goal.weight_unit,
                 "notes": f"Volume {goal.exercise.name} ({_intensity_note(reps)})"
             })
+
+    # Add volume accessories
+    if db and upper_volume_weight and upper_goals:
+        push_acc = _generate_accessory_prescriptions(
+            db, upper_volume_weight, upper_goals[0].weight_unit, "push", is_volume_day=True, limit=2
+        )
+        pull_acc = _generate_accessory_prescriptions(
+            db, upper_volume_weight, upper_goals[0].weight_unit, "pull", is_volume_day=True, limit=2
+        )
+        upper_volume_prescriptions.extend(push_acc[:1])
+        upper_volume_prescriptions.extend(pull_acc[:1])
+
     workouts.append({
         "day": 3,
         "focus": "Upper Body (Volume)",
@@ -1139,29 +1354,53 @@ def _generate_upper_lower_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
     return workouts
 
 
-def _generate_full_body_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
-    """Generate full body workouts hitting all goals each session"""
+def _generate_full_body_workouts(
+    goals: List[Goal],
+    db: Optional[Session] = None
+) -> List[Dict[str, Any]]:
+    """Generate full body workouts hitting all goals each session.
+
+    Full body workouts focus on compound movements, so accessories are minimal
+    to keep workout duration reasonable.
+    """
     workouts = []
 
     # 3 full body days with varying rep schemes
     rep_schemes = [
-        (5, "Heavy"),
-        (8, "Moderate"),
-        (10, "Volume")
+        (5, "Heavy", False),
+        (8, "Moderate", False),
+        (10, "Volume", True)
     ]
 
-    for day, (reps, intensity) in enumerate(rep_schemes, 1):
+    for day, (reps, intensity, is_volume) in enumerate(rep_schemes, 1):
         prescriptions = []
+        primary_weight = None
+        weight_unit = "lb"
+
         for goal in goals:
             if goal.exercise_id:
+                weight = _prescribed_weight(goal, reps)
+                if primary_weight is None:
+                    primary_weight = weight
+                    weight_unit = goal.weight_unit
                 prescriptions.append({
                     "exercise_id": goal.exercise_id,
                     "sets": 3,
                     "reps": reps,
-                    "weight": _prescribed_weight(goal, reps),
+                    "weight": weight,
                     "weight_unit": goal.weight_unit,
                     "notes": f"{intensity} {goal.exercise.name} ({_intensity_note(reps)})"
                 })
+
+        # Add 1-2 accessories for full body (keep it simple)
+        if db and primary_weight:
+            # Rotate muscle groups for accessories
+            acc_groups = ["push", "pull", "legs"]
+            acc_group = acc_groups[day - 1]  # Different group each day
+            accessories = _generate_accessory_prescriptions(
+                db, primary_weight, weight_unit, acc_group, is_volume_day=is_volume, limit=2
+            )
+            prescriptions.extend(accessories[:2])
 
         workouts.append({
             "day": day,
