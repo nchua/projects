@@ -13,6 +13,8 @@ struct HomeView: View {
     @State private var missionToAccept: WeeklyMissionSummary?
     @State private var goalToEdit: GoalResponse?
     @State private var showAbandonConfirmation = false
+    @State private var showGoalsList = false
+    @State private var goalToEditFromList: GoalSummaryResponse?
 
     var body: some View {
         NavigationStack {
@@ -78,7 +80,8 @@ struct HomeView: View {
                                 }
                             },
                             onChangeGoal: { showGoalSetup = true },
-                            onAbandonGoal: { showAbandonConfirmation = true }
+                            onAbandonGoal: { showAbandonConfirmation = true },
+                            onGoalsBadgeTap: { showGoalsList = true }
                         )
 
                         // 5. Daily Quests (Edge Flow - left accent style)
@@ -205,6 +208,55 @@ struct HomeView: View {
                 }
             )
             .presentationDetents([.medium])
+        }
+        .sheet(isPresented: $showGoalsList) {
+            GoalsListSheet(
+                goals: viewModel.currentMission?.goals ?? [],
+                maxGoals: 5,
+                onDeleteGoal: { goalId in
+                    Task {
+                        await viewModel.deleteGoal(id: goalId)
+                    }
+                },
+                onEditGoal: { goal in
+                    // Dismiss goals list and open edit sheet
+                    showGoalsList = false
+                    goalToEditFromList = goal
+                },
+                onAddGoal: {
+                    showGoalsList = false
+                    showMultiGoalSetup = true
+                },
+                onDeleteAllGoals: {
+                    Task {
+                        await viewModel.deleteAllGoals()
+                    }
+                    showGoalsList = false
+                }
+            )
+        }
+        .sheet(item: $goalToEditFromList, onDismiss: {
+            Task { await viewModel.loadData() }
+        }) { goalSummary in
+            // Convert GoalSummaryResponse to GoalResponse for editing
+            GoalSetupView(editingGoal: GoalResponse(
+                id: goalSummary.id,
+                exerciseId: "",
+                exerciseName: goalSummary.exerciseName,
+                targetWeight: goalSummary.targetWeight,
+                targetReps: goalSummary.targetReps,
+                targetE1rm: goalSummary.targetE1rm,
+                weightUnit: goalSummary.weightUnit,
+                deadline: goalSummary.deadline,
+                startingE1rm: nil,
+                currentE1rm: nil,
+                status: goalSummary.status,
+                notes: nil,
+                createdAt: "",
+                progressPercent: goalSummary.progressPercent,
+                weightToGo: 0,
+                weeksRemaining: 0
+            ))
         }
     }
 }
@@ -524,127 +576,6 @@ struct PowerLevelCard: View {
         .frame(minWidth: 110)
         .padding(16)
         .edgeFlowCard(accent: liftColor)
-    }
-}
-
-// MARK: - Legacy Power Levels Card (kept for compatibility)
-
-struct PowerLevelsCard: View {
-    let lifts: [BigThreeLift]
-    @Binding var selectedTab: Int  // To switch to Stats tab
-
-    var totalE1RM: Double {
-        lifts.reduce(0) { $0 + $1.e1rm }
-    }
-
-    var overallTrend: Double {
-        let trends = lifts.compactMap { $0.trendPercent }
-        guard !trends.isEmpty else { return 0 }
-        return trends.reduce(0, +) / Double(trends.count)
-    }
-
-    var hasData: Bool {
-        lifts.contains { $0.e1rm > 0 }
-    }
-
-    var body: some View {
-        Button {
-            // Navigate to Stats tab (index 4)
-            selectedTab = 4
-        } label: {
-            VStack(alignment: .leading, spacing: 12) {
-                // Header
-                HStack {
-                    Text("Power Levels")
-                        .font(.ariseHeader(size: 15, weight: .semibold))
-                        .foregroundColor(.textPrimary)
-
-                    Spacer()
-
-                    if overallTrend != 0 {
-                        HStack(spacing: 4) {
-                            Image(systemName: overallTrend >= 0 ? "arrow.up.right" : "arrow.down.right")
-                                .font(.system(size: 10, weight: .bold))
-                            Text(String(format: "%.1f%%", abs(overallTrend)))
-                                .font(.ariseMono(size: 12, weight: .semibold))
-                        }
-                        .foregroundColor(overallTrend >= 0 ? .successGreen : .warningRed)
-                    }
-
-                    // Chevron to indicate tappable
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.textMuted)
-                }
-
-                // Lifts
-                HStack(spacing: 10) {
-                    ForEach(lifts) { lift in
-                        PowerLevelItem(lift: lift)
-                    }
-                }
-
-                // Empty state message
-                if !hasData {
-                    Text("Log workouts with Squat, Bench, or Deadlift to see your power levels")
-                        .font(.ariseMono(size: 11))
-                        .foregroundColor(.textMuted)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 4)
-                }
-            }
-            .padding(16)
-            .background(Color.voidMedium)
-            .cornerRadius(4)
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(Color.ariseBorder, lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-struct PowerLevelItem: View {
-    let lift: BigThreeLift
-
-    var liftColor: Color {
-        switch lift.name.lowercased() {
-        case "squat", "barbell back squat": return Color(red: 1.0, green: 0.42, blue: 0.42) // Red
-        case "bench", "bench press", "barbell bench press": return Color(red: 0.31, green: 0.80, blue: 0.77) // Teal
-        case "deadlift", "conventional deadlift": return Color(red: 1.0, green: 0.90, blue: 0.43) // Yellow
-        default: return .systemPrimary
-        }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(lift.shortName.uppercased())
-                .font(.ariseMono(size: 10, weight: .semibold))
-                .foregroundColor(.textMuted)
-                .tracking(0.5)
-
-            HStack(alignment: .lastTextBaseline, spacing: 2) {
-                Text(lift.e1rm.formattedWeight)
-                    .font(.ariseDisplay(size: 20, weight: .bold))
-                    .foregroundColor(.textPrimary)
-
-                Text("lb")
-                    .font(.ariseMono(size: 10))
-                    .foregroundColor(.textMuted)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(Color.voidDark)
-        .cornerRadius(4)
-        .overlay(
-            Rectangle()
-                .fill(liftColor)
-                .frame(width: 3),
-            alignment: .leading
-        )
     }
 }
 
