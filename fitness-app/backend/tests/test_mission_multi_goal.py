@@ -21,11 +21,16 @@ from app.services.mission_service import (
     calculate_e1rm,
     _get_projected_e1rm,
     _prescribed_weight,
+    weeks_until,
     generate_multi_goal_mission,
     _generate_single_focus_workouts,
+    _generate_same_group_workouts,
+    needs_backfill,
+    backfill_current_mission,
     check_mission_workout_completion,
     MAX_ACTIVE_GOALS,
 )
+from types import SimpleNamespace
 from app.models.mission import TrainingSplit, MissionStatus, MissionWorkoutStatus
 from tests.conftest import (
     MockGoal,
@@ -177,8 +182,8 @@ class TestDetermineTrainingSplit:
         ]
 
         split = determine_training_split(goals)
-        # Two leg goals - could be PPL for variety
-        assert split in [TrainingSplit.UPPER_LOWER, TrainingSplit.PPL]
+        # Two leg goals - could be UPPER_LOWER, PPL, or same-group rotation
+        assert split in [TrainingSplit.UPPER_LOWER, TrainingSplit.PPL, TrainingSplit.FULL_BODY]
 
     def test_four_plus_goals_returns_ppl(self, test_exercises, test_user_id):
         """
@@ -222,13 +227,18 @@ class TestMissionPrescriptionWeights:
         )
 
         projected = _get_projected_e1rm(goal)
-        assert projected == pytest.approx(212.5, rel=1e-3)
+        weeks_remaining = max(1, weeks_until(goal.deadline))
+        expected = 200 + (250 - 200) / weeks_remaining
+        assert projected == pytest.approx(expected, rel=1e-3)
 
         weight_5 = _prescribed_weight(goal, 5)
         weight_6 = _prescribed_weight(goal, 6)
 
-        assert weight_5 == 180  # 212.5 * 0.85 = 180.625 -> 180
-        assert weight_6 == 175  # 212.5 * 0.82 = 174.25 -> 175
+        expected_5 = round((projected * 0.85) / 5) * 5
+        expected_6 = round((projected * 0.82) / 5) * 5
+
+        assert weight_5 == expected_5
+        assert weight_6 == expected_6
 
     def test_projected_e1rm_fallback_to_85_percent_of_target(self):
         """If no current/starting e1RM exists, base on 85% of target e1RM."""
@@ -248,8 +258,10 @@ class TestMissionPrescriptionWeights:
         )
 
         projected = _get_projected_e1rm(goal)
-        # base = 170, target = 200, weeks = 4 -> 170 + 7.5 = 177.5
-        assert projected == pytest.approx(177.5, rel=1e-3)
+        weeks_remaining = max(1, weeks_until(goal.deadline))
+        base = 0.85 * 200
+        expected = base + (200 - base) / weeks_remaining
+        assert projected == pytest.approx(expected, rel=1e-3)
 
     def test_single_focus_workout_includes_accessory_volume_and_weights(self):
         """Single-focus missions should be 4x5, 3x8, 3x10 with weights and total sets = 10."""
@@ -281,6 +293,159 @@ class TestMissionPrescriptionWeights:
         for workout in workouts:
             for prescription in workout["prescriptions"]:
                 assert prescription["weight"] is not None
+
+
+class TestMissionBackfill:
+    def test_needs_backfill_for_missing_weights(self):
+        """If any prescription has no weight and no workouts completed, backfill is needed."""
+        exercise = MockExercise("ex-bench-001", "Barbell Bench Press", "compound")
+        goal = MockGoal(
+            id="goal-1",
+            user_id="user-1",
+            exercise_id=exercise.id,
+            exercise=exercise,
+            target_weight=225,
+            target_reps=1,
+            weight_unit="lb",
+        )
+        mission_goal = SimpleNamespace(goal_id=goal.id, goal=goal)
+        mission = SimpleNamespace(
+            workouts=[
+                SimpleNamespace(
+                    status="pending",
+                    focus="Heavy Barbell Bench Press",
+                    day_number=1,
+                    prescriptions=[SimpleNamespace(weight=None)]
+                )
+            ],
+            mission_goals=[mission_goal],
+            goal=None
+        )
+
+        assert needs_backfill(mission, [goal]) is True
+
+    def test_needs_backfill_skips_if_completed(self):
+        """If any workout is completed, backfill should be skipped."""
+        exercise = MockExercise("ex-bench-001", "Barbell Bench Press", "compound")
+        goal = MockGoal(
+            id="goal-1",
+            user_id="user-1",
+            exercise_id=exercise.id,
+            exercise=exercise,
+            target_weight=225,
+            target_reps=1,
+            weight_unit="lb",
+        )
+        mission_goal = SimpleNamespace(goal_id=goal.id, goal=goal)
+        mission = SimpleNamespace(
+            workouts=[
+                SimpleNamespace(
+                    status="completed",
+                    focus="Heavy Barbell Bench Press",
+                    day_number=1,
+                    prescriptions=[SimpleNamespace(weight=None)]
+                )
+            ],
+            mission_goals=[mission_goal],
+            goal=None
+        )
+
+        assert needs_backfill(mission, [goal]) is False
+
+    def test_backfill_adds_accessory_prescriptions(self):
+        """Backfill should populate accessory day prescriptions for single-goal missions."""
+        exercise = MockExercise("ex-bench-001", "Barbell Bench Press", "compound")
+        goal = MockGoal(
+            id="goal-1",
+            user_id="user-1",
+            exercise_id=exercise.id,
+            exercise=exercise,
+            target_weight=225,
+            target_reps=1,
+            weight_unit="lb",
+        )
+
+        mission = SimpleNamespace(
+            id="mission-1",
+            goal_id=goal.id,
+            training_split="single_focus",
+            weekly_target=None,
+            coaching_message=None,
+            mission_goals=[SimpleNamespace(goal_id=goal.id, goal=goal)],
+            workouts=[
+                SimpleNamespace(
+                    id="workout-1",
+                    day_number=1,
+                    focus="Heavy Barbell Bench Press",
+                    primary_lift="Barbell Bench Press",
+                    status="pending",
+                    prescriptions=[]
+                ),
+                SimpleNamespace(
+                    id="workout-2",
+                    day_number=2,
+                    focus="Accessory Work",
+                    primary_lift=None,
+                    status="pending",
+                    prescriptions=[]
+                ),
+                SimpleNamespace(
+                    id="workout-3",
+                    day_number=3,
+                    focus="Volume Barbell Bench Press",
+                    primary_lift="Barbell Bench Press",
+                    status="pending",
+                    prescriptions=[]
+                ),
+            ]
+        )
+
+        db = Mock()
+        db.add = Mock()
+        db.delete = Mock()
+        db.flush = Mock()
+
+        updated = backfill_current_mission(db, mission, [goal])
+        accessory = [w for w in updated.workouts if "accessory" in w.focus.lower()][0]
+        assert len(accessory.prescriptions) > 0
+        assert accessory.prescriptions[0].reps == 8
+
+
+class TestSameGroupRotation:
+    def test_same_group_rotation_includes_all_goals(self):
+        """Two push goals should appear across all three days with rotation."""
+        bench = MockExercise("ex-bench-001", "Barbell Bench Press", "compound")
+        incline = MockExercise("ex-bench-002", "Incline Bench Press", "compound")
+        goal_a = MockGoal(
+            id="goal-a",
+            user_id="user-1",
+            exercise_id=bench.id,
+            exercise=bench,
+            target_weight=225,
+            weight_unit="lb",
+        )
+        goal_b = MockGoal(
+            id="goal-b",
+            user_id="user-1",
+            exercise_id=incline.id,
+            exercise=incline,
+            target_weight=185,
+            weight_unit="lb",
+        )
+
+        workouts = _generate_same_group_workouts([goal_a, goal_b])
+        assert len(workouts) == 3
+
+        day1_ids = {p["exercise_id"] for p in workouts[0]["prescriptions"]}
+        day2_ids = {p["exercise_id"] for p in workouts[1]["prescriptions"]}
+        day3_ids = {p["exercise_id"] for p in workouts[2]["prescriptions"]}
+
+        assert goal_a.exercise_id in day1_ids
+        assert goal_b.exercise_id in day1_ids
+        assert goal_a.exercise_id in day2_ids
+        assert goal_b.exercise_id in day2_ids
+        assert goal_a.exercise_id in day3_ids
+        assert goal_b.exercise_id in day3_ids
 
     def test_one_rep_equals_weight(self):
         """For 1 rep, e1RM equals the weight"""
