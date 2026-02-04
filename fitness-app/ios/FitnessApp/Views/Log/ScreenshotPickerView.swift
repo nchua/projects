@@ -7,8 +7,6 @@ struct ScreenshotPickerView: View {
     let onImagesSelected: ([Data]) -> Void
 
     @State private var selectedItems: [PhotosPickerItem] = []
-    @State private var showCamera = false
-    @State private var showPhotosPicker = false
     @State private var isLoading = false
     @State private var loadedCount = 0
     @State private var totalToLoad = 0
@@ -57,30 +55,8 @@ struct ScreenshotPickerView: View {
 
                     Spacer()
 
-                    // Action Buttons
+                    // Action Button
                     VStack(spacing: 16) {
-                        // Camera Button
-                        Button {
-                            showCamera = true
-                        } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: "camera.fill")
-                                    .font(.system(size: 16))
-                                Text("TAKE PHOTO")
-                                    .font(.ariseHeader(size: 14, weight: .semibold))
-                                    .tracking(2)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 52)
-                            .background(Color.voidMedium)
-                            .foregroundColor(.textPrimary)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .stroke(Color.ariseBorder, lineWidth: 1)
-                            )
-                        }
-
-                        // Photo Library Button - Multi-select
                         PhotosPicker(
                             selection: $selectedItems,
                             maxSelectionCount: 10,
@@ -153,11 +129,6 @@ struct ScreenshotPickerView: View {
                 loadImages(from: newItems)
             }
         }
-        .fullScreenCover(isPresented: $showCamera) {
-            CameraView { imageData in
-                processSingleImage(imageData)
-            }
-        }
     }
 
     private func loadImages(from items: [PhotosPickerItem]) {
@@ -190,14 +161,6 @@ struct ScreenshotPickerView: View {
         }
     }
 
-    private func processSingleImage(_ data: Data) {
-        // Compress image if needed (max 1MB)
-        if let compressedData = compressImage(data, maxSizeKB: 1024) {
-            onImagesSelected([compressedData])
-            isPresented = false
-        }
-    }
-
     private func compressImage(_ data: Data, maxSizeKB: Int) -> Data? {
         guard let image = UIImage(data: data) else { return nil }
 
@@ -211,45 +174,5 @@ struct ScreenshotPickerView: View {
         }
 
         return imageData
-    }
-}
-
-// MARK: - Camera View
-
-struct CameraView: UIViewControllerRepresentable {
-    let onImageCaptured: (Data) -> Void
-    @Environment(\.dismiss) var dismiss
-
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = .camera
-        picker.delegate = context.coordinator
-        return picker
-    }
-
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let parent: CameraView
-
-        init(_ parent: CameraView) {
-            self.parent = parent
-        }
-
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-            if let image = info[.originalImage] as? UIImage,
-               let data = image.jpegData(compressionQuality: 0.8) {
-                parent.onImageCaptured(data)
-            }
-            parent.dismiss()
-        }
-
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            parent.dismiss()
-        }
     }
 }
