@@ -50,7 +50,16 @@ EXTRACTION_PROMPT = """Analyze this fitness screenshot and extract the data.
 
 FIRST, determine the screenshot type:
 1. "gym_workout" - Traditional weight training screenshot with exercises, sets, reps, weights
-2. "whoop_activity" - WHOOP app or cardio/activity screenshot with metrics like strain, heart rate, calories, steps
+2. "whoop_activity" - WHOOP app screenshot OR any cardio/activity screenshot (running, cycling, tennis, etc.) with metrics like strain, heart rate, calories, steps, duration
+
+IMPORTANT: Use "whoop_activity" for ANY of these:
+- WHOOP app screenshots showing strain scores, heart rate zones, activity metrics
+- Running/jogging activity summaries (from WHOOP, Apple Fitness, Strava, etc.)
+- Cycling, swimming, tennis, or other cardio activities
+- Any screenshot showing "Activity Strain", heart rate zones, or cardio metrics
+- Screenshots with activity names like "RUNNING", "CYCLING", "TENNIS", etc.
+
+Use "gym_workout" ONLY for weight training with exercises, sets, reps, and weights.
 
 Based on the type, return JSON in the appropriate format:
 
@@ -86,32 +95,34 @@ FOR GYM WORKOUT SCREENSHOTS (screenshot_type: "gym_workout"):
 FOR WHOOP/ACTIVITY SCREENSHOTS (screenshot_type: "whoop_activity"):
 {
   "screenshot_type": "whoop_activity",
-  "activity_type": "Activity name (e.g., 'TENNIS', 'RUNNING', 'CYCLING')",
-  "session_date": "YYYY-MM-DD - IMPORTANT: Look for the date at the top of the screen, in headers, or near the activity name. Convert any date format to YYYY-MM-DD.",
-  "time_range": "Start to end time if visible (e.g., '7:03 PM to 8:46 PM')",
-  "duration_minutes": number or null,
-  "strain": activity strain score if visible (e.g., 14.6),
-  "steps": step count if visible,
-  "calories": calories burned if visible,
-  "avg_hr": average heart rate in BPM if visible,
-  "max_hr": max heart rate in BPM if visible,
+  "activity_type": "Activity name exactly as shown (e.g., 'RUNNING', 'CYCLING', 'TENNIS', 'Indoor Run')",
+  "session_date": "YYYY-MM-DD or null if not visible",
+  "time_range": "Start to end time if visible (e.g., '6:30 AM to 6:40 AM')",
+  "duration_minutes": number extracted from duration shown (e.g., '0:09:59' = 10),
+  "strain": activity strain score as a number (e.g., 7.7),
+  "steps": step count as integer or null,
+  "calories": calories burned as integer or null,
+  "avg_hr": average heart rate in BPM as integer or null,
+  "max_hr": max heart rate in BPM as integer or null,
   "source": "Data source if shown (e.g., 'VIA APPLE WATCH')",
   "heart_rate_zones": [
     {
-      "zone": zone number (0-5),
-      "bpm_range": "BPM range (e.g., '93-111')",
-      "percentage": percentage of time in zone,
-      "duration": "time in zone (e.g., '15:30')"
+      "zone": zone number as integer (0-5),
+      "bpm_range": "BPM range as string (e.g., '150-161')",
+      "percentage": percentage as number without % sign (e.g., 53 not '53%'),
+      "duration": "time in zone as string (e.g., '5:05')"
     }
   ]
 }
 
-Important:
-- Convert all weights to pounds (lb) for gym workouts
-- Extract the exact numbers shown - don't estimate
-- Return ONLY valid JSON, no other text
-- For WHOOP screenshots, extract all visible metrics even if some are missing
-- CRITICAL: Always look for and extract the date (session_date) - check the top of screen, headers, navigation bars, or anywhere a date might appear. Convert formats like "Jan 3, 2026", "January 3", "1/3/26", "Friday, Jan 3" to YYYY-MM-DD format."""
+CRITICAL RULES:
+- Return ONLY valid JSON - no explanations, no markdown, no extra text before or after
+- All numeric values must be numbers, not strings (e.g., 7.7 not "7.7", 53 not "53%")
+- If a field is not visible, use null (not empty string)
+- For duration_minutes, convert time format to minutes (e.g., "0:09:59" = 10, "1:30:00" = 90)
+- For percentages, extract just the number (e.g., "53%" becomes 53)
+- Ignore any AI-generated summaries or motivational text at the bottom of screenshots
+- For WHOOP running/cardio screenshots: look for Activity Strain, heart rate zones, duration, steps"""
 
 
 def get_media_type(filename: str) -> str:
@@ -160,10 +171,23 @@ def clean_json_response(response_text: str) -> str:
     text = response_text.strip()
 
     # Remove markdown code blocks if present
-    if text.startswith('```'):
-        lines = text.split('\n')
-        # Remove first line (```json) and last line (```)
-        text = '\n'.join(lines[1:-1] if lines[-1].strip() == '```' else lines[1:])
+    if '```' in text:
+        # Find JSON within code blocks
+        import re
+        code_block_match = re.search(r'```(?:json)?\s*([\s\S]*?)```', text)
+        if code_block_match:
+            text = code_block_match.group(1).strip()
+        else:
+            # Just remove the backticks
+            text = text.replace('```json', '').replace('```', '').strip()
+
+    # Try to find JSON object boundaries if there's extra text
+    # Look for the outermost { } pair
+    first_brace = text.find('{')
+    last_brace = text.rfind('}')
+
+    if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+        text = text[first_brace:last_brace + 1]
 
     return text.strip()
 

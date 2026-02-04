@@ -499,7 +499,11 @@ class APIClient {
         case 401:
             throw APIError.unauthorized
         case 422:
-            throw APIError.validationError
+            // Extract actual error detail from response
+            if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                throw APIError.badRequest(errorResponse.detail ?? "Screenshot analysis failed")
+            }
+            throw APIError.badRequest("Screenshot analysis failed. Please try a different image.")
         default:
             throw APIError.serverError(httpResponse.statusCode)
         }
@@ -582,7 +586,11 @@ class APIClient {
         case 401:
             throw APIError.unauthorized
         case 422:
-            throw APIError.validationError
+            // Extract actual error detail from response
+            if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                throw APIError.badRequest(errorResponse.detail ?? "Screenshot analysis failed")
+            }
+            throw APIError.badRequest("Screenshot analysis failed. Please try a different image.")
         default:
             throw APIError.serverError(httpResponse.statusCode)
         }
@@ -747,7 +755,7 @@ class APIClient {
 
 // Helper struct for decoding error responses
 private struct ErrorResponse: Decodable {
-    let detail: String
+    let detail: String?
 }
 
 // MARK: - API Types
