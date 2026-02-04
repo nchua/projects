@@ -25,6 +25,7 @@ from app.services.mission_service import (
     generate_multi_goal_mission,
     _generate_single_focus_workouts,
     _generate_same_group_workouts,
+    _generate_ppl_workouts,
     needs_backfill,
     backfill_current_mission,
     check_mission_workout_completion,
@@ -84,17 +85,16 @@ class TestGetMuscleGroup:
 
     def test_leg_exercises(self):
         """Quad, hamstring, glute exercises should be 'legs'"""
-        # Note: Some exercises may map to different groups due to keyword matching order
-        # in EXERCISE_MUSCLE_MAP. The mapping checks keywords in order, so:
-        # - "Romanian Deadlift" matches "deadlift" -> "pull"
-        # - "Leg Curl" matches "curl" -> "pull"
+        # Keywords are checked longest-first, so specific matches like
+        # "leg curl" and "romanian deadlift" take precedence over generic
+        # matches like "curl" and "deadlift".
         leg_exercises = [
             "Squat",
             "Front Squat",
             "Leg Press",
             "Leg Extension",
-            # "Leg Curl" - maps to "pull" because "curl" matches first
-            # "Romanian Deadlift" - maps to "pull" because "deadlift" matches
+            "Leg Curl",
+            "Romanian Deadlift",
             "Hip Thrust",
             "Lunges",
             "Calf Raises",
@@ -103,15 +103,13 @@ class TestGetMuscleGroup:
             result = get_muscle_group(name)
             assert result == "legs", f"'{name}' should be 'legs', got '{result}'"
 
-    def test_leg_curl_maps_to_pull_due_to_keyword_order(self):
+    def test_leg_curl_maps_to_legs(self):
         """
-        Leg Curl maps to 'pull' because 'curl' keyword comes before 'leg curl'.
-        This is expected behavior based on how EXERCISE_MUSCLE_MAP is structured.
+        Leg Curl correctly maps to 'legs' because keywords are checked
+        longest-first, so 'leg curl' matches before 'curl'.
         """
-        # The mapping checks keywords in order, and 'curl' matches before 'leg curl'
         result = get_muscle_group("Leg Curl")
-        # This could be 'pull' due to 'curl' matching, or 'legs' if 'leg curl' is checked first
-        assert result in ["legs", "pull"], f"Leg Curl should map to 'legs' or 'pull', got '{result}'"
+        assert result == "legs", f"Leg Curl should map to 'legs', got '{result}'"
 
     def test_unknown_exercises_default_to_full_body(self):
         """Unknown exercises should default to 'full_body'"""
@@ -837,3 +835,79 @@ class TestMissionEdgeCases:
         split = determine_training_split(goals)
         # Should get a valid split for 5 goals
         assert split in [TrainingSplit.PPL, TrainingSplit.UPPER_LOWER, TrainingSplit.FULL_BODY]
+
+
+class TestPPLWorkoutGeneration:
+    """
+    Tests for _generate_ppl_workouts() function.
+
+    PPL should only generate workout days for categories that have goals.
+    """
+
+    def test_ppl_with_all_three_categories(self, test_exercises, test_user_id):
+        """
+        PPL with push, pull, and legs goals should generate 3 workout days.
+        """
+        bench = test_exercises["bench_press"]  # Push
+        deadlift = test_exercises["deadlift"]  # Pull
+        squat = test_exercises["squat"]        # Legs
+
+        goals = [
+            create_goal(test_user_id, bench, 225),
+            create_goal(test_user_id, deadlift, 405),
+            create_goal(test_user_id, squat, 315),
+        ]
+
+        workouts = _generate_ppl_workouts(goals)
+
+        assert len(workouts) == 3
+        assert workouts[0]["day"] == 1
+        assert workouts[1]["day"] == 2
+        assert workouts[2]["day"] == 3
+        # All days should have prescriptions
+        for w in workouts:
+            assert len(w["prescriptions"]) > 0
+
+    def test_ppl_with_two_categories_filters_empty_days(self, test_exercises, test_user_id):
+        """
+        PPL with only push + legs goals (no pull) should generate 2 workout days.
+        Empty pull day should be filtered out.
+        """
+        bench = test_exercises["bench_press"]  # Push
+        squat = test_exercises["squat"]        # Legs
+
+        goals = [
+            create_goal(test_user_id, bench, 225),
+            create_goal(test_user_id, squat, 315),
+        ]
+
+        workouts = _generate_ppl_workouts(goals)
+
+        # Should only have 2 days (push and legs), not 3
+        assert len(workouts) == 2
+
+        # Days should be renumbered 1, 2
+        assert workouts[0]["day"] == 1
+        assert workouts[1]["day"] == 2
+
+        # Each day should have prescriptions
+        for w in workouts:
+            assert len(w["prescriptions"]) > 0
+
+    def test_ppl_with_one_category_generates_one_day(self, test_exercises, test_user_id):
+        """
+        PPL with only push goals should generate 1 workout day.
+        """
+        bench = test_exercises["bench_press"]  # Push
+
+        goals = [
+            create_goal(test_user_id, bench, 225),
+        ]
+
+        workouts = _generate_ppl_workouts(goals)
+
+        # Should only have 1 day
+        assert len(workouts) == 1
+        assert workouts[0]["day"] == 1
+        assert "Push" in workouts[0]["focus"]
+        assert len(workouts[0]["prescriptions"]) > 0

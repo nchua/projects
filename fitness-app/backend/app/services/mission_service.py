@@ -42,11 +42,17 @@ EXERCISE_MUSCLE_MAP = {
 
 
 def get_muscle_group(exercise_name: str) -> str:
-    """Determine muscle group from exercise name"""
+    """Determine muscle group from exercise name.
+
+    Keywords are checked longest-first to ensure specific matches like
+    "leg curl" take precedence over generic matches like "curl".
+    """
     name_lower = exercise_name.lower()
-    for keyword, group in EXERCISE_MUSCLE_MAP.items():
+    # Sort keywords by length (longest first) so specific matches take precedence
+    # e.g., "leg curl" matches before "curl"
+    for keyword in sorted(EXERCISE_MUSCLE_MAP.keys(), key=len, reverse=True):
         if keyword in name_lower:
-            return group
+            return EXERCISE_MUSCLE_MAP[keyword]
     # Default to full body if unknown
     return "full_body"
 
@@ -1044,6 +1050,13 @@ def _generate_ppl_workouts(goals: List[Goal]) -> List[Dict[str, Any]]:
         "primary_lift": leg_goals[0].exercise.name if leg_goals and leg_goals[0].exercise else None,
         "prescriptions": leg_prescriptions
     })
+
+    # Filter out days with no prescriptions (e.g., user has goals in only 2 categories)
+    workouts = [w for w in workouts if w["prescriptions"]]
+
+    # Renumber days after filtering
+    for i, workout in enumerate(workouts, start=1):
+        workout["day"] = i
 
     return workouts
 
