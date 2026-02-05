@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coaching - Solo Leveling Fitness App</title>
+<style>
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  :root {
+    --void: #050508;
+    --card: #0f1018;
+    --elevated: #141520;
+    --cyan: #00D4FF;
+    --cyan-dark: #0099CC;
+    --success: #00FF88;
+    --gold: #FFD700;
+    --danger: #FF4757;
+    --blue: #3B82F6;
+    --red: #EF4444;
+    --purple: #8B5CF6;
+    --orange: #FF9500;
+    --text-primary: #FFFFFF;
+    --text-secondary: #A0A0B0;
+    --text-muted: #606070;
+    --border: rgba(255, 255, 255, 0.06);
+    --font-sans: -apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    --font-mono: 'SF Mono', 'Menlo', monospace;
+  }
+
+  body {
+    background: #111;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    padding: 40px 20px;
+    gap: 40px;
+    flex-wrap: wrap;
+  }
+
+  h1 {
+    width: 100%;
+    text-align: center;
+    color: var(--text-primary);
+    font-size: 28px;
+    margin-bottom: 20px;
+  }
+
+  .section-label {
+    color: var(--text-secondary);
+    font-size: 14px;
+    text-align: center;
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+
+  /* iPhone 15 Pro Frame */
+  .phone-frame {
+    width: 390px;
+    background: #1a1a1a;
+    border-radius: 50px;
+    padding: 16px;
+    position: relative;
+    box-shadow:
+      0 0 0 2px #333,
+      0 20px 60px rgba(0, 0, 0, 0.6),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+
+  .phone-screen {
+    width: 358px;
+    height: 780px;
+    background: var(--void);
+    border-radius: 36px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Dynamic Island */
+  .dynamic-island {
+    width: 126px;
+    height: 37px;
+    background: #000;
+    border-radius: 20px;
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+  }
+
+  /* Home Indicator */
+  .home-indicator {
+    width: 134px;
+    height: 5px;
+    background: #606070;
+    border-radius: 3px;
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+  }
+
+  /* Scrollable Content */
+  .screen-content {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 20px;
+    scrollbar-width: none;
+  }
+  .screen-content::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Header */
+  .header {
+    padding: 60px 20px 16px;
+    background: var(--elevated);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .back-btn {
+    width: 32px;
+    height: 32px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    font-size: 16px;
+  }
+
+  .header-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  /* Section Headers */
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 20px 12px;
+  }
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .goal-badge {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--cyan);
+    background: rgba(0, 212, 255, 0.15);
+    padding: 4px 10px;
+    border-radius: 50px;
+  }
+
+  /* Empty State Card */
+  .empty-card {
+    margin: 0 20px;
+    background: var(--card);
+    border-radius: 16px;
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    padding: 32px 24px;
+    text-align: center;
+  }
+
+  .empty-icon {
+    width: 80px;
+    height: 80px;
+    background: rgba(0, 212, 255, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 36px;
+  }
+
+  .empty-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+
+  .empty-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin-bottom: 20px;
+  }
+
+  .btn-primary {
+    background: var(--cyan);
+    color: #000;
+    font-weight: 600;
+    font-size: 15px;
+    padding: 12px 24px;
+    border-radius: 50px;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Ready Mission Card */
+  .mission-card {
+    margin: 0 20px;
+    background: var(--card);
+    border-radius: 16px;
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    padding: 20px;
+    box-shadow: 0 4px 20px rgba(0, 212, 255, 0.1);
+  }
+
+  .mission-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+
+  .mission-ready {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--cyan);
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .mission-info {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .mission-info span {
+    color: var(--cyan);
+    font-weight: 500;
+  }
+
+  .xp-badge {
+    background: rgba(255, 215, 0, 0.15);
+    color: var(--gold);
+    padding: 6px 12px;
+    border-radius: 50px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .goals-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .goal-chip {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50px;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+  }
+
+  .goal-chip-name {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .goal-chip-weight {
+    color: var(--cyan);
+    font-weight: 600;
+  }
+
+  .goal-chip-progress {
+    color: var(--text-muted);
+    font-size: 10px;
+  }
+
+  .workout-badges {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .workout-badge {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 10px 8px;
+    text-align: center;
+  }
+
+  .workout-badge.completed {
+    background: rgba(0, 255, 136, 0.1);
+    border-color: rgba(0, 255, 136, 0.3);
+  }
+
+  .workout-day {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+
+  .workout-focus {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .workout-badge.completed .workout-focus {
+    color: var(--success);
+  }
+
+  .btn-accept {
+    background: linear-gradient(135deg, var(--cyan), var(--success));
+    color: #000;
+    font-weight: 600;
+    font-size: 15px;
+    padding: 14px 24px;
+    border-radius: 12px;
+    border: none;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  /* Active Mission Card */
+  .active-mission-card {
+    margin: 0 20px;
+    background: var(--card);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 20px;
+  }
+
+  .active-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+
+  .active-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .progress-ring {
+    width: 44px;
+    height: 44px;
+    position: relative;
+  }
+
+  .progress-ring svg {
+    transform: rotate(-90deg);
+  }
+
+  .progress-ring .bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.1);
+    stroke-width: 4;
+  }
+
+  .progress-ring .progress {
+    fill: none;
+    stroke: var(--cyan);
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 113;
+  }
+
+  .progress-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .active-subtitle {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+  }
+
+  .active-subtitle span {
+    color: var(--cyan);
+    font-weight: 500;
+  }
+
+  .view-details {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--cyan);
+    font-size: 14px;
+    font-weight: 500;
+    padding-top: 4px;
+  }
+
+  /* Goal Setup Flow */
+  .setup-header {
+    padding: 60px 20px 16px;
+    background: var(--elevated);
+  }
+
+  .setup-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .setup-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+    text-align: center;
+  }
+
+  .progress-steps {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .step {
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .step.active {
+    background: var(--cyan);
+  }
+
+  .step.done {
+    background: var(--success);
+  }
+
+  .setup-content {
+    padding: 24px 20px;
+  }
+
+  .setup-question {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+
+  .setup-hint {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+  }
+
+  .exercise-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .exercise-option {
+    background: var(--card);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .exercise-option.selected {
+    border-color: var(--cyan);
+    background: rgba(0, 212, 255, 0.1);
+  }
+
+  .exercise-radio {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--text-muted);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .exercise-option.selected .exercise-radio {
+    border-color: var(--cyan);
+    background: var(--cyan);
+  }
+
+  .exercise-radio::after {
+    content: '✓';
+    display: none;
+    color: #000;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .exercise-option.selected .exercise-radio::after {
+    display: block;
+  }
+
+  .exercise-name {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-primary);
+    flex: 1;
+  }
+
+  .exercise-e1rm {
+    font-size: 14px;
+    color: var(--cyan);
+    font-weight: 600;
+  }
+
+  .input-group {
+    margin-bottom: 24px;
+  }
+
+  .input-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  .text-input {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 16px;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: center;
+    font-family: var(--font-mono);
+  }
+
+  .unit-badge {
+    background: var(--card);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 16px 20px;
+    font-size: 16px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+  }
+
+  .btn-continue {
+    background: var(--cyan);
+    color: #000;
+    font-weight: 600;
+    font-size: 16px;
+    padding: 16px 24px;
+    border-radius: 12px;
+    border: none;
+    width: 100%;
+    margin-top: auto;
+  }
+
+  .btn-continue:disabled {
+    opacity: 0.4;
+  }
+
+  /* Mission Detail */
+  .detail-header {
+    padding: 60px 20px 20px;
+    background: var(--elevated);
+  }
+
+  .detail-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .detail-card {
+    margin: 20px;
+    background: var(--card);
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .detail-goal-row {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .detail-goal-icon {
+    width: 60px;
+    height: 60px;
+    background: rgba(0, 212, 255, 0.15);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+  }
+
+  .detail-goal-info {
+    flex: 1;
+  }
+
+  .detail-goal-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+
+  .detail-goal-target {
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+
+  .detail-goal-target span {
+    color: var(--cyan);
+    font-weight: 600;
+  }
+
+  .detail-progress-bar {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+
+  .detail-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--cyan), var(--success));
+    border-radius: 4px;
+  }
+
+  .detail-progress-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .coaching-message {
+    background: rgba(0, 212, 255, 0.08);
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    border-radius: 12px;
+    padding: 16px;
+    margin: 0 20px 20px;
+  }
+
+  .coaching-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--cyan);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+
+  .coaching-text {
+    font-size: 14px;
+    color: var(--text-primary);
+    line-height: 1.5;
+  }
+
+  .workouts-section {
+    padding: 0 20px;
+  }
+
+  .workouts-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 14px;
+  }
+
+  .workout-card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .workout-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .workout-card-day {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .workout-card-focus {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .workout-card-status {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 50px;
+  }
+
+  .workout-card-status.pending {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+  }
+
+  .workout-card-status.completed {
+    background: rgba(0, 255, 136, 0.15);
+    color: var(--success);
+  }
+
+  .exercise-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .exercise-row:first-of-type {
+    border-top: none;
+  }
+
+  .exercise-row-name {
+    font-size: 14px;
+    color: var(--text-primary);
+  }
+
+  .exercise-row-prescription {
+    font-size: 13px;
+    color: var(--cyan);
+    font-weight: 500;
+    font-family: var(--font-mono);
+  }
+
+  .start-workout-btn {
+    background: var(--cyan);
+    color: #000;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: none;
+    width: 100%;
+    margin-top: 12px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Coaching Feature</h1>
+
+<!-- Empty State -->
+<div>
+  <div class="section-label">Empty State (No Goals)</div>
+  <div class="phone-frame">
+    <div class="phone-screen">
+      <div class="dynamic-island"></div>
+      <div class="screen-content">
+        <div class="section-header">
+          <span class="section-title">Weekly Mission</span>
+        </div>
+
+        <div class="empty-card">
+          <div class="empty-icon">🎯</div>
+          <div class="empty-title">No Active Goal</div>
+          <div class="empty-subtitle">Set a strength goal to receive personalized weekly training missions.</div>
+          <button class="btn-primary">
+            <span>+</span> Create Goal
+          </button>
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Ready State (Mission Offered) -->
+<div>
+  <div class="section-label">Mission Ready (Accept)</div>
+  <div class="phone-frame">
+    <div class="phone-screen">
+      <div class="dynamic-island"></div>
+      <div class="screen-content">
+        <div class="section-header">
+          <span class="section-title">Weekly Mission</span>
+          <span class="goal-badge">2 Goals</span>
+        </div>
+
+        <div class="mission-card">
+          <div class="mission-header">
+            <div>
+              <div class="mission-ready">
+                <span>🔔</span> Mission Ready
+              </div>
+              <div class="mission-info">3 workouts • <span>Push/Pull/Legs</span></div>
+            </div>
+            <div class="xp-badge">⚡️ +250</div>
+          </div>
+
+          <div class="goals-row">
+            <div class="goal-chip">
+              <span class="goal-chip-name">Bench</span>
+              <span class="goal-chip-weight">225lb</span>
+              <span class="goal-chip-progress">82%</span>
+            </div>
+            <div class="goal-chip">
+              <span class="goal-chip-name">Squat</span>
+              <span class="goal-chip-weight">315lb</span>
+              <span class="goal-chip-progress">68%</span>
+            </div>
+          </div>
+
+          <div class="workout-badges">
+            <div class="workout-badge">
+              <div class="workout-day">Day 1</div>
+              <div class="workout-focus">
+                <span>○</span> Push
+              </div>
+            </div>
+            <div class="workout-badge">
+              <div class="workout-day">Day 2</div>
+              <div class="workout-focus">
+                <span>○</span> Pull
+              </div>
+            </div>
+            <div class="workout-badge">
+              <div class="workout-day">Day 3</div>
+              <div class="workout-focus">
+                <span>○</span> Legs
+              </div>
+            </div>
+          </div>
+
+          <button class="btn-accept">
+            Accept Mission <span>→</span>
+          </button>
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Active State (In Progress) -->
+<div>
+  <div class="section-label">Mission Active (In Progress)</div>
+  <div class="phone-frame">
+    <div class="phone-screen">
+      <div class="dynamic-island"></div>
+      <div class="screen-content">
+        <div class="section-header">
+          <span class="section-title">Weekly Mission</span>
+          <span class="goal-badge">2 Goals</span>
+        </div>
+
+        <div class="active-mission-card">
+          <div class="active-header">
+            <div>
+              <div class="active-title">Push/Pull/Legs</div>
+            </div>
+            <div class="progress-ring">
+              <svg width="44" height="44">
+                <circle class="bg" cx="22" cy="22" r="18" />
+                <circle class="progress" cx="22" cy="22" r="18" style="stroke-dashoffset: 75" />
+              </svg>
+              <div class="progress-text">1/3</div>
+            </div>
+          </div>
+          <div class="active-subtitle">5 days remaining • <span>2 goals</span></div>
+
+          <div class="goals-row">
+            <div class="goal-chip">
+              <span class="goal-chip-name">Bench</span>
+              <span class="goal-chip-weight">225lb</span>
+              <span class="goal-chip-progress">82%</span>
+            </div>
+            <div class="goal-chip">
+              <span class="goal-chip-name">Squat</span>
+              <span class="goal-chip-weight">315lb</span>
+              <span class="goal-chip-progress">68%</span>
+            </div>
+          </div>
+
+          <div class="workout-badges">
+            <div class="workout-badge completed">
+              <div class="workout-day">Day 1</div>
+              <div class="workout-focus">
+                <span>✓</span> Push
+              </div>
+            </div>
+            <div class="workout-badge">
+              <div class="workout-day">Day 2</div>
+              <div class="workout-focus">
+                <span>○</span> Pull
+              </div>
+            </div>
+            <div class="workout-badge">
+              <div class="workout-day">Day 3</div>
+              <div class="workout-focus">
+                <span>○</span> Legs
+              </div>
+            </div>
+          </div>
+
+          <div class="view-details">
+            <span>View Mission Details</span>
+            <span>›</span>
+          </div>
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Goal Setup - Exercise Selection -->
+<div>
+  <div class="section-label">Goal Setup (Step 1)</div>
+  <div class="phone-frame">
+    <div class="phone-screen">
+      <div class="dynamic-island"></div>
+      <div class="screen-content">
+        <div class="setup-header">
+          <div class="setup-nav">
+            <div class="back-btn">‹</div>
+            <div class="setup-title">New Strength Goal</div>
+            <div style="width: 32px;"></div>
+          </div>
+          <div class="progress-steps">
+            <div class="step active"></div>
+            <div class="step"></div>
+            <div class="step"></div>
+            <div class="step"></div>
+            <div class="step"></div>
+          </div>
+        </div>
+
+        <div class="setup-content">
+          <div class="setup-question">Which lift do you want to improve?</div>
+          <div class="setup-hint">Big Three exercises shown first</div>
+
+          <div class="exercise-list">
+            <div class="exercise-option selected">
+              <div class="exercise-radio"></div>
+              <span class="exercise-name">Barbell Bench Press</span>
+              <span class="exercise-e1rm">185 lb</span>
+            </div>
+            <div class="exercise-option">
+              <div class="exercise-radio"></div>
+              <span class="exercise-name">Barbell Back Squat</span>
+              <span class="exercise-e1rm">245 lb</span>
+            </div>
+            <div class="exercise-option">
+              <div class="exercise-radio"></div>
+              <span class="exercise-name">Barbell Deadlift</span>
+              <span class="exercise-e1rm">315 lb</span>
+            </div>
+            <div class="exercise-option">
+              <div class="exercise-radio"></div>
+              <span class="exercise-name">Overhead Press</span>
+              <span class="exercise-e1rm">115 lb</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Goal Setup - Target Weight -->
+<div>
+  <div class="section-label">Goal Setup (Step 3)</div>
+  <div class="phone-frame">
+    <div class="phone-screen">
+      <div class="dynamic-island"></div>
+      <div class="screen-content">
+        <div class="setup-header">
+          <div class="setup-nav">
+            <div class="back-btn">‹</div>
+            <div class="setup-title">New Strength Goal</div>
+            <div style="width: 32px;"></div>
+          </div>
+          <div class="progress-steps">
+            <div class="step done"></div>
+            <div class="step done"></div>
+            <div class="step active"></div>
+            <div class="step"></div>
+            <div class="step"></div>
+          </div>
+        </div>
+
+        <div class="setup-content">
+          <div class="setup-question">What's your target weight?</div>
+          <div class="setup-hint">Barbell Bench Press • Current: 185 lb</div>
+
+          <div class="input-group">
+            <div class="input-label">Target Weight</div>
+            <div class="input-row">
+              <input type="text" class="text-input" value="225" readonly>
+              <div class="unit-badge">lb</div>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <div class="input-label">Target Reps (optional)</div>
+            <div class="input-row">
+              <input type="text" class="text-input" value="1" readonly>
+              <div class="unit-badge">reps</div>
+            </div>
+          </div>
+
+          <button class="btn-continue">Continue</button>
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Mission Detail View -->
+<div>
+  <div class="section-label">Mission Detail</div>
+  <div class="phone-frame">
+    <div class="phone-screen">
+      <div class="dynamic-island"></div>
+      <div class="screen-content">
+        <div class="detail-header">
+          <div class="detail-nav">
+            <div class="back-btn">✕</div>
+            <div class="setup-title">Weekly Mission</div>
+            <div style="width: 32px;"></div>
+          </div>
+        </div>
+
+        <div class="detail-card">
+          <div class="detail-goal-row">
+            <div class="detail-goal-icon">🏋️</div>
+            <div class="detail-goal-info">
+              <div class="detail-goal-name">Push/Pull/Legs</div>
+              <div class="detail-goal-target">Target: <span>225 lb</span> bench, <span>315 lb</span> squat</div>
+            </div>
+          </div>
+          <div class="detail-progress-bar">
+            <div class="detail-progress-fill" style="width: 33%"></div>
+          </div>
+          <div class="detail-progress-labels">
+            <span>1 of 3 workouts</span>
+            <span>5 days left</span>
+          </div>
+        </div>
+
+        <div class="coaching-message">
+          <div class="coaching-label">💬 Coach's Note</div>
+          <div class="coaching-text">Focus on progressive overload this week. Your bench is 82% to goal — try adding 5 lbs to your working sets if last week felt manageable.</div>
+        </div>
+
+        <div class="workouts-section">
+          <div class="workouts-title">This Week's Workouts</div>
+
+          <div class="workout-card">
+            <div class="workout-card-header">
+              <div>
+                <div class="workout-card-day">Day 1</div>
+                <div class="workout-card-focus">Push Day</div>
+              </div>
+              <span class="workout-card-status completed">Completed</span>
+            </div>
+            <div class="exercise-row">
+              <span class="exercise-row-name">Bench Press</span>
+              <span class="exercise-row-prescription">4×6 @ 175 lb</span>
+            </div>
+            <div class="exercise-row">
+              <span class="exercise-row-name">Incline DB Press</span>
+              <span class="exercise-row-prescription">3×10 @ 55 lb</span>
+            </div>
+            <div class="exercise-row">
+              <span class="exercise-row-name">Tricep Pushdown</span>
+              <span class="exercise-row-prescription">3×12</span>
+            </div>
+          </div>
+
+          <div class="workout-card">
+            <div class="workout-card-header">
+              <div>
+                <div class="workout-card-day">Day 2</div>
+                <div class="workout-card-focus">Pull Day</div>
+              </div>
+              <span class="workout-card-status pending">Pending</span>
+            </div>
+            <div class="exercise-row">
+              <span class="exercise-row-name">Barbell Row</span>
+              <span class="exercise-row-prescription">4×8 @ 135 lb</span>
+            </div>
+            <div class="exercise-row">
+              <span class="exercise-row-name">Lat Pulldown</span>
+              <span class="exercise-row-prescription">3×10 @ 120 lb</span>
+            </div>
+            <div class="exercise-row">
+              <span class="exercise-row-name">Barbell Curl</span>
+              <span class="exercise-row-prescription">3×12 @ 55 lb</span>
+            </div>
+            <button class="start-workout-btn">Start Workout</button>
+          </div>
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

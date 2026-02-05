@@ -11,6 +11,14 @@ A gamified iOS fitness tracking app inspired by *Solo Leveling*, with a FastAPI 
 - 50+ pre-populated exercises with custom exercise creation
 - Estimated 1RM calculation using the Epley formula
 - Superset support for paired exercises
+- Workout prescriptions from missions pre-filled with target weights
+
+### AI Coaching
+- Set up to 5 concurrent strength goals (e.g., "bench 225 lbs by March 15")
+- Weekly missions with personalized workout prescriptions based on goals
+- Auto-detect training split (Push/Pull/Legs, Upper/Lower, Full Body)
+- Weighted exercise prescriptions calculated from your current e1RM
+- Progress tracking with completion percentages toward each goal
 
 ### Gamification
 - XP system with level progression (100 x level^1.5 per level)
@@ -18,6 +26,7 @@ A gamified iOS fitness tracking app inspired by *Solo Leveling*, with a FastAPI 
 - Daily quests — 5 quest types generated each day based on training history
 - Dungeon gates — multi-day challenges with objectives, time limits, and difficulty ranks
 - Streak tracking, achievements, and PR celebration animations
+- Mission completion rewards tied to XP system
 
 ### Analytics
 - e1RM progression charts (Swift Charts)
@@ -43,6 +52,7 @@ Interactive HTML mockups of each screen: **[View all mockups](https://nickchua.m
 | Screen | Description |
 |--------|-------------|
 | [Home](https://nickchua.me/projects/fitness-app/home.html) | Hunter status, daily quests, power levels |
+| [Coaching](https://nickchua.me/projects/fitness-app/coaching.html) | Goal setup, weekly missions, workout prescriptions |
 | [Quests](https://nickchua.me/projects/fitness-app/quests.html) | Quest center with calendar and archive |
 | [Workout Log](https://nickchua.me/projects/fitness-app/log.html) | Active session with exercise tracking |
 | [Stats](https://nickchua.me/projects/fitness-app/stats.html) | e1RM charts, percentiles, trends |
@@ -78,7 +88,7 @@ fitness-app/
 │   └── main.py
 ├── ios/                        # iOS SwiftUI app
 │   └── FitnessApp/
-│       ├── Views/             # SwiftUI views (Home, Log, Quests,
+│       ├── Views/             # SwiftUI views (Home, Log, Quests, Coaching,
 │       │                      #   History, Stats, Profile, Dungeons, Friends)
 │       ├── Services/          # APIClient, AuthManager, HealthKitManager
 │       ├── Models/            # Data models and SwiftData schemas
@@ -97,10 +107,13 @@ fitness-app/
 | Group | Endpoints | Description |
 |-------|-----------|-------------|
 | Auth | `/auth/register`, `/auth/login`, `/auth/refresh` | Account creation and JWT tokens |
+| Password Reset | `/password-reset/request`, `/password-reset/reset` | Email-based password reset |
 | Workouts | CRUD on `/workouts` | Workout sessions with exercises and sets |
 | Exercises | `/exercises`, `/exercises/search` | Exercise library with search and filtering |
 | Analytics | `/analytics/*` | e1RM trends, strength percentiles, PRs, weekly reviews, insights |
 | Screenshots | `/screenshot/process`, `/screenshot/batch` | Claude Vision workout extraction |
+| Goals | `/goals`, `/goals/{id}` | Strength PR goals CRUD (up to 5 active) |
+| Missions | `/missions/current`, `/missions/{id}/accept` | Weekly workout prescriptions from goals |
 | Quests | `/quests`, `/quests/{id}/claim` | Daily quest generation and claiming |
 | Dungeons | `/dungeons/*` | Gate system — accept, progress, claim rewards |
 | Friends | `/friends/*` | Friend requests, profiles, competitive data |
@@ -112,6 +125,9 @@ fitness-app/
 
 ### Core
 `users`, `user_profiles`, `exercises`, `workout_sessions`, `workout_exercises`, `sets`, `bodyweight_entries`, `prs`
+
+### Coaching
+`goals`, `weekly_missions`, `mission_workouts`, `mission_exercises`, `mission_goals`
 
 ### Gamification
 `quest_definitions`, `user_quests`, `dungeon_definitions`, `user_dungeons`, `user_dungeon_objectives`, `achievements`, `user_achievements`

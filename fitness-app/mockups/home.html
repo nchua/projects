@@ -267,6 +267,130 @@
     white-space: nowrap;
   }
 
+  /* Weekly Mission Card */
+  .mission-card {
+    margin: 0 16px 16px;
+    background: var(--card);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    padding: 16px;
+  }
+
+  .mission-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .mission-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .mission-badge {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--cyan);
+    background: rgba(0, 212, 255, 0.15);
+    padding: 4px 10px;
+    border-radius: 50px;
+  }
+
+  .mission-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .mission-info-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .mission-split {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .mission-days {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .mission-progress-ring {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-top-color: var(--cyan);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mission-progress-text {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .mission-goals-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  .goal-chip {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .goal-pct {
+    color: var(--text-muted);
+    font-size: 10px;
+    margin-left: 4px;
+  }
+
+  .mission-workouts-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .mini-workout {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 8px;
+    font-size: 10px;
+    text-align: center;
+    color: var(--text-secondary);
+  }
+
+  .mini-workout.done {
+    background: rgba(0, 255, 136, 0.1);
+    border-color: rgba(0, 255, 136, 0.3);
+    color: var(--success);
+  }
+
+  .mission-view-link {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--cyan);
+  }
+
   /* Daily Quests Card */
   .quests-card {
     margin: 0 16px 16px;
@@ -615,6 +739,35 @@
       <div class="quick-actions">
         <button class="btn-primary">&#x26A1; Start Workout</button>
         <button class="btn-secondary">&#x1F4F7; Scan</button>
+      </div>
+
+      <!-- Weekly Mission -->
+      <div class="mission-card">
+        <div class="mission-header">
+          <span class="mission-title">Weekly Mission</span>
+          <span class="mission-badge">2 Goals</span>
+        </div>
+        <div class="mission-content">
+          <div class="mission-info-row">
+            <div class="mission-info-left">
+              <span class="mission-split">Push/Pull/Legs</span>
+              <span class="mission-days">5 days remaining</span>
+            </div>
+            <div class="mission-progress-ring">
+              <span class="mission-progress-text">1/3</span>
+            </div>
+          </div>
+          <div class="mission-goals-row">
+            <span class="goal-chip">Bench 225lb <span class="goal-pct">82%</span></span>
+            <span class="goal-chip">Squat 315lb <span class="goal-pct">68%</span></span>
+          </div>
+          <div class="mission-workouts-row">
+            <div class="mini-workout done">Day 1 &#x2713; Push</div>
+            <div class="mini-workout">Day 2 &#x25CB; Pull</div>
+            <div class="mini-workout">Day 3 &#x25CB; Legs</div>
+          </div>
+          <div class="mission-view-link">View Mission Details ›</div>
+        </div>
       </div>
 
       <!-- Daily Quests -->
