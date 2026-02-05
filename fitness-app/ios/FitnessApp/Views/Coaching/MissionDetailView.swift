@@ -5,6 +5,12 @@ struct MissionDetailView: View {
     @StateObject private var viewModel = MissionDetailViewModel()
     @Environment(\.dismiss) private var dismiss
 
+    // Goal progress sheet state
+    @State private var selectedGoalId: String?
+    @State private var showGoalProgressSheet = false
+    @State private var goalProgress: GoalProgressResponse?
+    @State private var isLoadingProgress = false
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -16,8 +22,13 @@ struct MissionDetailView: View {
                 } else if let mission = viewModel.mission {
                     ScrollView {
                         VStack(spacing: 24) {
-                            // Header Card
-                            MissionHeaderCard(mission: mission)
+                            // Header Card - tap on goals to see progress
+                            MissionHeaderCard(mission: mission) { goalId in
+                                selectedGoalId = goalId
+                                Task {
+                                    await loadGoalProgress(goalId: goalId)
+                                }
+                            }
 
                             // Coaching Message
                             if let message = mission.coachingMessage {
@@ -76,6 +87,81 @@ struct MissionDetailView: View {
         .task {
             await viewModel.loadMission(id: missionId)
         }
+        .sheet(isPresented: $showGoalProgressSheet) {
+            GoalProgressSheet(
+                progress: goalProgress,
+                isLoading: isLoadingProgress
+            )
+        }
+    }
+
+    private func loadGoalProgress(goalId: String) async {
+        isLoadingProgress = true
+        showGoalProgressSheet = true
+
+        do {
+            goalProgress = try await APIClient.shared.getGoalProgress(goalId: goalId)
+        } catch {
+            print("Failed to load goal progress: \(error)")
+            goalProgress = nil
+        }
+
+        isLoadingProgress = false
+    }
+}
+
+// MARK: - Goal Progress Sheet
+
+private struct GoalProgressSheet: View {
+    let progress: GoalProgressResponse?
+    let isLoading: Bool
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.bgVoid.ignoresSafeArea()
+
+                if isLoading {
+                    ProgressView()
+                        .tint(.systemPrimary)
+                } else if let progress = progress {
+                    ScrollView {
+                        GoalProgressGraphView(progress: progress)
+                            .padding()
+                    }
+                } else {
+                    VStack(spacing: 16) {
+                        Image(systemName: "chart.line.downtrend.xyaxis")
+                            .font(.system(size: 48))
+                            .foregroundColor(.textMuted)
+                        Text("Unable to load progress data")
+                            .foregroundColor(.textSecondary)
+                    }
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(width: 32, height: 32)
+                            .background(Color.white.opacity(0.1))
+                            .clipShape(Circle())
+                    }
+                }
+
+                ToolbarItem(placement: .principal) {
+                    Text("Goal Progress")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+            }
+        }
     }
 }
 
@@ -83,6 +169,7 @@ struct MissionDetailView: View {
 
 struct MissionHeaderCard: View {
     let mission: WeeklyMissionResponse
+    var onGoalTapped: ((String) -> Void)?
 
     var progressPercent: Double {
         guard mission.workoutsTotal > 0 else { return 0 }
@@ -91,40 +178,59 @@ struct MissionHeaderCard: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            // Goal Info
-            HStack(spacing: 16) {
-                // Goal Icon
-                ZStack {
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.systemPrimary.opacity(0.15))
-                        .frame(width: 60, height: 60)
-
-                    Text("🎯")
-                        .font(.system(size: 28))
+            // Goal Info - Tappable to show progress
+            Button {
+                // Use first goal ID from goals array, or goalId if available
+                if let firstGoal = mission.goals.first {
+                    onGoalTapped?(firstGoal.id)
+                } else if let goalId = mission.goalId {
+                    onGoalTapped?(goalId)
                 }
+            } label: {
+                HStack(spacing: 16) {
+                    // Goal Icon
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.systemPrimary.opacity(0.15))
+                            .frame(width: 60, height: 60)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(mission.goalExerciseName)
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(.white)
-
-                    HStack(spacing: 4) {
-                        Text("\(Int(mission.goalTargetWeight))")
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(.systemPrimary)
-
-                        Text(mission.goalWeightUnit)
-                            .font(.system(size: 14))
-                            .foregroundColor(.textSecondary)
-
-                        Text("goal")
-                            .font(.system(size: 14))
-                            .foregroundColor(.textSecondary)
+                        Text("🎯")
+                            .font(.system(size: 28))
                     }
-                }
 
-                Spacer()
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(mission.goalExerciseName)
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.white)
+
+                            Spacer()
+
+                            // Tap hint
+                            Image(systemName: "chart.line.uptrend.xyaxis")
+                                .font(.system(size: 14))
+                                .foregroundColor(.systemPrimary)
+                        }
+
+                        HStack(spacing: 4) {
+                            Text("\(Int(mission.goalTargetWeight))")
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundColor(.systemPrimary)
+
+                            Text(mission.goalWeightUnit)
+                                .font(.system(size: 14))
+                                .foregroundColor(.textSecondary)
+
+                            Text("goal")
+                                .font(.system(size: 14))
+                                .foregroundColor(.textSecondary)
+                        }
+                    }
+
+                    Spacer()
+                }
             }
+            .buttonStyle(.plain)
 
             // Progress Bar
             VStack(alignment: .leading, spacing: 8) {

@@ -1684,6 +1684,72 @@ struct GoalBatchCreateResponse: Decodable {
     }
 }
 
+// MARK: - Goal Progress
+
+struct ProgressPoint: Decodable {
+    let date: String
+    let e1rm: Double
+}
+
+struct GoalProgressResponse: Decodable {
+    let goalId: String
+    let exerciseName: String
+    let targetWeight: Double
+    let targetReps: Int
+    let targetE1rm: Double
+    let targetDate: String
+    let startingE1rm: Double?
+    let currentE1rm: Double?
+    let weightUnit: String
+
+    // Graph data
+    let actualPoints: [ProgressPoint]
+    let projectedPoints: [ProgressPoint]
+
+    // Status
+    let status: String  // "ahead", "on_track", "behind"
+    let weeksDifference: Int  // positive = ahead, negative = behind
+    let weeklyGainRate: Double  // lbs per week based on actual progress
+    let requiredGainRate: Double  // lbs per week needed to hit target
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case goalId = "goal_id"
+        case exerciseName = "exercise_name"
+        case targetWeight = "target_weight"
+        case targetReps = "target_reps"
+        case targetE1rm = "target_e1rm"
+        case targetDate = "target_date"
+        case startingE1rm = "starting_e1rm"
+        case currentE1rm = "current_e1rm"
+        case weightUnit = "weight_unit"
+        case actualPoints = "actual_points"
+        case projectedPoints = "projected_points"
+        case weeksDifference = "weeks_difference"
+        case weeklyGainRate = "weekly_gain_rate"
+        case requiredGainRate = "required_gain_rate"
+    }
+
+    /// Whether the user is on track or ahead of schedule
+    var isOnTrack: Bool {
+        status == "on_track" || status == "ahead"
+    }
+
+    /// Human-readable status message
+    var statusMessage: String {
+        switch status {
+        case "ahead":
+            return weeksDifference > 0 ? "+\(weeksDifference) weeks ahead" : "On track"
+        case "on_track":
+            return "On track"
+        case "behind":
+            return weeksDifference < 0 ? "\(abs(weeksDifference)) weeks behind" : "Behind schedule"
+        default:
+            return status.capitalized
+        }
+    }
+}
+
 // MARK: - Missions
 
 struct ExercisePrescriptionResponse: Decodable, Identifiable {

@@ -22,6 +22,7 @@ from app.services.xp_service import calculate_workout_xp, award_xp, get_or_creat
 from app.services.achievement_service import check_and_unlock_achievements
 from app.services.quest_service import update_quest_progress
 from app.services.dungeon_service import update_dungeon_progress, maybe_spawn_dungeon
+from app.services.mission_service import update_goal_progress
 from app.models.pr import PR, PRType
 
 router = APIRouter()
@@ -181,6 +182,20 @@ async def _create_workout_impl(
         # Detect and create PRs for this exercise
         db.flush()  # Ensure sets have IDs
         detect_and_create_prs(db, current_user.id, workout_exercise, exercise_sets)
+
+        # Update goal progress with best e1RM from this exercise
+        if exercise_sets:
+            best_set = max(exercise_sets, key=lambda s: s.e1rm or 0)
+            if best_set.e1rm and best_set.e1rm > 0:
+                update_goal_progress(
+                    db=db,
+                    user_id=current_user.id,
+                    exercise_id=exercise_data.exercise_id,
+                    new_e1rm=best_set.e1rm,
+                    weight=best_set.weight,
+                    reps=best_set.reps,
+                    workout_id=workout_session.id
+                )
 
     db.commit()
     db.refresh(workout_session)

@@ -76,6 +76,29 @@ class Goal(Base):
     missions = relationship("WeeklyMission", back_populates="goal", foreign_keys="WeeklyMission.goal_id")
     # Multi-goal: missions through junction table
     mission_goals = relationship("MissionGoal", back_populates="goal", cascade="all, delete-orphan")
+    # Progress snapshots for tracking e1RM over time
+    progress_snapshots = relationship("GoalProgressSnapshot", back_populates="goal", cascade="all, delete-orphan", order_by="GoalProgressSnapshot.recorded_at")
+
+
+class GoalProgressSnapshot(Base):
+    """Historical e1RM snapshot for tracking goal progress over time"""
+    __tablename__ = "goal_progress_snapshots"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    goal_id = Column(String, ForeignKey("goals.id"), nullable=False, index=True)
+    recorded_at = Column(DateTime, nullable=False)  # When this e1RM was achieved
+    e1rm = Column(Float, nullable=False)  # Estimated 1RM at this point
+
+    # Optional: actual lift details that produced this e1RM
+    weight = Column(Float, nullable=True)  # Weight lifted
+    reps = Column(Integer, nullable=True)  # Reps performed
+    workout_id = Column(String, ForeignKey("workout_sessions.id"), nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    goal = relationship("Goal", back_populates="progress_snapshots")
+    workout = relationship("WorkoutSession")
 
 
 class MissionGoal(Base):

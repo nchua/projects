@@ -19,6 +19,7 @@ from app.services.mission_service import (
     update_goal,
     goal_to_response,
     goal_to_summary,
+    get_goal_progress_data,
     GoalStatus,
     MAX_ACTIVE_GOALS
 )
@@ -30,6 +31,7 @@ from app.schemas.mission import (
     GoalsListResponse,
     GoalBatchCreate,
     GoalBatchCreateResponse,
+    GoalProgressResponse,
     MAX_ACTIVE_GOALS as SCHEMA_MAX_GOALS
 )
 
@@ -321,3 +323,31 @@ async def abandon_goal(
     db.commit()
 
     return {"message": "Goal abandoned successfully"}
+
+
+@router.get("/{goal_id}/progress", response_model=GoalProgressResponse)
+async def get_goal_progress(
+    goal_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get goal progress history with projected vs actual data for charting.
+
+    Args:
+        goal_id: ID of the goal
+
+    Returns:
+        Progress data with actual points, projected line, and status
+    """
+    goal = get_goal_by_id(db, current_user.id, goal_id)
+
+    if not goal:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Goal not found"
+        )
+
+    progress_data = get_goal_progress_data(db, goal)
+
+    return GoalProgressResponse(**progress_data)

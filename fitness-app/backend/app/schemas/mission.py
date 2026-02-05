@@ -101,6 +101,43 @@ class GoalBatchCreateResponse(BaseModel):
     active_count: int  # Total active goals after creation
 
 
+# ============ Goal Progress Schemas ============
+
+class ProgressPoint(BaseModel):
+    """A single point on the progress graph"""
+    date: str  # ISO date string
+    e1rm: float
+
+    class Config:
+        from_attributes = True
+
+
+class GoalProgressResponse(BaseModel):
+    """Goal progress history with projected vs actual data"""
+    goal_id: str
+    exercise_name: str
+    target_weight: float
+    target_reps: int
+    target_e1rm: float
+    target_date: str  # ISO date
+    starting_e1rm: Optional[float]
+    current_e1rm: Optional[float]
+    weight_unit: str
+
+    # Graph data
+    actual_points: List[ProgressPoint]
+    projected_points: List[ProgressPoint]
+
+    # Status
+    status: str  # "ahead", "on_track", "behind"
+    weeks_difference: int  # positive = ahead, negative = behind
+    weekly_gain_rate: float  # lbs per week based on actual progress
+    required_gain_rate: float  # lbs per week needed to hit target
+
+    class Config:
+        from_attributes = True
+
+
 # ============ Exercise Prescription Schemas ============
 
 class ExercisePrescriptionResponse(BaseModel):

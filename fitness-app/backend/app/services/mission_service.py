@@ -11,7 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from app.models.mission import (
-    Goal, WeeklyMission, MissionWorkout, ExercisePrescription, MissionGoal,
+    Goal, GoalProgressSnapshot, WeeklyMission, MissionWorkout, ExercisePrescription, MissionGoal,
     GoalStatus, MissionStatus, MissionWorkoutStatus, TrainingSplit
 )
 from app.models.workout import WorkoutSession, WorkoutExercise
@@ -498,15 +498,27 @@ def update_goal(
     return goal
 
 
-def update_goal_progress(db: Session, user_id: str, exercise_id: str, new_e1rm: float) -> List[str]:
+def update_goal_progress(
+    db: Session,
+    user_id: str,
+    exercise_id: str,
+    new_e1rm: float,
+    weight: Optional[float] = None,
+    reps: Optional[int] = None,
+    workout_id: Optional[str] = None
+) -> List[str]:
     """
     Update progress on goals when a new e1RM is achieved.
+    Records a progress snapshot for tracking historical progress.
 
     Args:
         db: Database session
         user_id: User ID
         exercise_id: Exercise that was performed
         new_e1rm: New estimated 1RM
+        weight: Actual weight lifted (optional)
+        reps: Actual reps performed (optional)
+        workout_id: Source workout ID (optional)
 
     Returns:
         List of goal IDs that were completed
@@ -524,6 +536,18 @@ def update_goal_progress(db: Session, user_id: str, exercise_id: str, new_e1rm: 
         # Update current e1RM if this is higher
         if goal.current_e1rm is None or new_e1rm > goal.current_e1rm:
             goal.current_e1rm = new_e1rm
+
+            # Record progress snapshot
+            snapshot = GoalProgressSnapshot(
+                id=str(uuid.uuid4()),
+                goal_id=goal.id,
+                recorded_at=datetime.utcnow(),
+                e1rm=new_e1rm,
+                weight=weight,
+                reps=reps,
+                workout_id=workout_id
+            )
+            db.add(snapshot)
 
         # Calculate target e1RM (accounts for target_reps)
         target_e1rm = calculate_e1rm(goal.target_weight, goal.target_reps)
@@ -599,6 +623,139 @@ def goal_to_summary(goal: Goal) -> Dict[str, Any]:
         "deadline": goal.deadline.isoformat(),
         "progress_percent": progress["progress_percent"],
         "status": goal.status
+    }
+
+
+def get_goal_progress_data(db: Session, goal: Goal) -> Dict[str, Any]:
+    """
+    Get goal progress history with projected vs actual data for charting.
+
+    Args:
+        db: Database session
+        goal: Goal with loaded exercise relationship
+
+    Returns:
+        Dict with actual_points, projected_points, status, and metrics
+    """
+    # Get progress snapshots ordered by date
+    snapshots = db.query(GoalProgressSnapshot).filter(
+        GoalProgressSnapshot.goal_id == goal.id
+    ).order_by(GoalProgressSnapshot.recorded_at).all()
+
+    # Build actual points from snapshots
+    actual_points = []
+    for snapshot in snapshots:
+        actual_points.append({
+            "date": snapshot.recorded_at.date().isoformat(),
+            "e1rm": round(snapshot.e1rm, 1)
+        })
+
+    # If no snapshots but we have starting e1rm, add that as first point
+    if not actual_points and goal.starting_e1rm:
+        actual_points.append({
+            "date": goal.created_at.date().isoformat(),
+            "e1rm": round(goal.starting_e1rm, 1)
+        })
+
+    # Add current e1rm as most recent point if different from last snapshot
+    if goal.current_e1rm:
+        if not actual_points or actual_points[-1]["e1rm"] != round(goal.current_e1rm, 1):
+            actual_points.append({
+                "date": get_today_utc().isoformat(),
+                "e1rm": round(goal.current_e1rm, 1)
+            })
+
+    # Calculate target e1RM
+    target_reps = goal.target_reps if goal.target_reps else 1
+    target_e1rm = calculate_e1rm(goal.target_weight, target_reps)
+
+    # Build projected line (linear from start to target)
+    start_date = goal.created_at.date()
+    end_date = goal.deadline
+    start_e1rm = goal.starting_e1rm or (goal.current_e1rm or target_e1rm * 0.85)
+
+    projected_points = [
+        {"date": start_date.isoformat(), "e1rm": round(start_e1rm, 1)},
+        {"date": end_date.isoformat(), "e1rm": round(target_e1rm, 1)}
+    ]
+
+    # Calculate status and metrics
+    today = get_today_utc()
+    current_e1rm = goal.current_e1rm or start_e1rm
+    total_days = (end_date - start_date).days
+    days_elapsed = (today - start_date).days
+
+    # Expected progress at this point (linear)
+    if total_days > 0:
+        expected_progress_pct = min(1.0, days_elapsed / total_days)
+        expected_e1rm = start_e1rm + (target_e1rm - start_e1rm) * expected_progress_pct
+    else:
+        expected_e1rm = target_e1rm
+
+    # Determine status
+    if current_e1rm >= target_e1rm:
+        status = "ahead"
+        # Calculate how many weeks early we'd hit the target
+        weeks_diff = max(0, weeks_until(end_date))
+    elif current_e1rm >= expected_e1rm:
+        # Check if significantly ahead (> 1 week)
+        if current_e1rm >= expected_e1rm + 2.5:  # 2.5 lb buffer
+            status = "ahead"
+        else:
+            status = "on_track"
+        # Calculate weeks difference based on progress rate
+        e1rm_gained = current_e1rm - start_e1rm
+        if e1rm_gained > 0 and days_elapsed > 0:
+            rate_per_day = e1rm_gained / days_elapsed
+            if rate_per_day > 0:
+                days_to_target = (target_e1rm - current_e1rm) / rate_per_day
+                projected_end = today + timedelta(days=int(days_to_target))
+                weeks_diff = (end_date - projected_end).days // 7
+            else:
+                weeks_diff = -weeks_until(end_date)
+        else:
+            weeks_diff = 0
+    else:
+        status = "behind"
+        # Calculate how many weeks behind
+        e1rm_behind = expected_e1rm - current_e1rm
+        if total_days > 0:
+            weekly_expected_gain = (target_e1rm - start_e1rm) / (total_days / 7)
+            if weekly_expected_gain > 0:
+                weeks_diff = -int(e1rm_behind / weekly_expected_gain)
+            else:
+                weeks_diff = 0
+        else:
+            weeks_diff = 0
+
+    # Calculate weekly gain rates
+    if days_elapsed >= 7:
+        weeks_elapsed = days_elapsed / 7
+        weekly_gain_rate = (current_e1rm - start_e1rm) / weeks_elapsed if weeks_elapsed > 0 else 0
+    else:
+        weekly_gain_rate = 0
+
+    days_remaining = (end_date - today).days
+    weeks_remaining = max(1, days_remaining / 7)
+    e1rm_remaining = target_e1rm - current_e1rm
+    required_gain_rate = e1rm_remaining / weeks_remaining if weeks_remaining > 0 else 0
+
+    return {
+        "goal_id": goal.id,
+        "exercise_name": goal.exercise.name if goal.exercise else "Unknown",
+        "target_weight": goal.target_weight,
+        "target_reps": target_reps,
+        "target_e1rm": round(target_e1rm, 1),
+        "target_date": end_date.isoformat(),
+        "starting_e1rm": goal.starting_e1rm,
+        "current_e1rm": goal.current_e1rm,
+        "weight_unit": goal.weight_unit,
+        "actual_points": actual_points,
+        "projected_points": projected_points,
+        "status": status,
+        "weeks_difference": weeks_diff,
+        "weekly_gain_rate": round(weekly_gain_rate, 2),
+        "required_gain_rate": round(required_gain_rate, 2)
     }
 
 

@@ -338,6 +338,10 @@ class APIClient {
         try await delete("/goals/\(id)")
     }
 
+    func getGoalProgress(goalId: String) async throws -> GoalProgressResponse {
+        return try await get("/goals/\(goalId)/progress")
+    }
+
     func getCurrentMission() async throws -> CurrentMissionResponse {
         return try await get("/missions/current")
     }
