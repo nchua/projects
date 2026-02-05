@@ -199,11 +199,11 @@ private struct StatusBadge: View {
     private var statusColor: Color {
         switch status {
         case "ahead":
-            return .systemGreen
+            return .successGreen
         case "on_track":
             return .systemPrimary
         case "behind":
-            return .systemRed
+            return .warningRed
         default:
             return .textSecondary
         }
@@ -285,5 +285,5 @@ private struct StatItem: View {
         )
     )
     .padding()
-    .background(Color.voidDeep)
+    .background(Color.bgVoid)
 }

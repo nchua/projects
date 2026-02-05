@@ -693,7 +693,7 @@ class APIClient {
         case 400:
             // Extract error message from backend response
             if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
-                throw APIError.badRequest(errorResponse.detail)
+                throw APIError.badRequest(errorResponse.detail ?? "Bad request")
             }
             throw APIError.validationError
         case 404:
@@ -746,7 +746,7 @@ class APIClient {
         case 400:
             // Try to decode error message from response
             if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
-                throw APIError.networkError(errorResponse.detail)
+                throw APIError.networkError(errorResponse.detail ?? "Bad request")
             }
             throw APIError.validationError
         case 422:
