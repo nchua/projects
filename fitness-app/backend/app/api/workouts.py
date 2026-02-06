@@ -539,6 +539,7 @@ async def update_workout(
             db.flush()  # Get workout_exercise.id
 
             # Create sets
+            exercise_sets = []
             for set_data in exercise_data.sets:
                 # Calculate e1RM
                 if set_data.rpe is not None:
@@ -564,6 +565,21 @@ async def update_workout(
                     e1rm=round(e1rm, 2)
                 )
                 db.add(set_obj)
+                exercise_sets.append(set_obj)
+
+            # Update goal progress with best e1RM from this exercise
+            if exercise_sets:
+                best_set = max(exercise_sets, key=lambda s: s.e1rm or 0)
+                if best_set.e1rm and best_set.e1rm > 0:
+                    update_goal_progress(
+                        db=db,
+                        user_id=current_user.id,
+                        exercise_id=exercise_data.exercise_id,
+                        new_e1rm=best_set.e1rm,
+                        weight=best_set.weight,
+                        reps=best_set.reps,
+                        workout_id=workout_id
+                    )
 
     db.commit()
     db.refresh(workout)

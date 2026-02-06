@@ -533,21 +533,21 @@ def update_goal_progress(
     completed_goal_ids = []
 
     for goal in goals:
-        # Update current e1RM if this is higher
+        # Always record snapshot for graph visibility (plateaus, regression)
+        snapshot = GoalProgressSnapshot(
+            id=str(uuid.uuid4()),
+            goal_id=goal.id,
+            recorded_at=datetime.utcnow(),
+            e1rm=new_e1rm,
+            weight=weight,
+            reps=reps,
+            workout_id=workout_id
+        )
+        db.add(snapshot)
+
+        # Only update current e1RM upward
         if goal.current_e1rm is None or new_e1rm > goal.current_e1rm:
             goal.current_e1rm = new_e1rm
-
-            # Record progress snapshot
-            snapshot = GoalProgressSnapshot(
-                id=str(uuid.uuid4()),
-                goal_id=goal.id,
-                recorded_at=datetime.utcnow(),
-                e1rm=new_e1rm,
-                weight=weight,
-                reps=reps,
-                workout_id=workout_id
-            )
-            db.add(snapshot)
 
         # Calculate target e1RM (accounts for target_reps)
         target_e1rm = calculate_e1rm(goal.target_weight, goal.target_reps)
