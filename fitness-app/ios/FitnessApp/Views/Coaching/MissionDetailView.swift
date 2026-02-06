@@ -177,83 +177,158 @@ struct MissionHeaderCard: View {
         return Double(mission.workoutsCompleted) / Double(mission.workoutsTotal)
     }
 
+    private var goalCount: Int {
+        mission.goals.isEmpty ? 1 : mission.goals.count
+    }
+
     var body: some View {
-        VStack(spacing: 20) {
-            // Goal Carousel
+        VStack(spacing: 0) {
             if mission.goals.isEmpty {
                 // Fallback for legacy single-goal data
-                GoalCarouselCard(
+                singleGoalCard(
                     exerciseName: mission.goalExerciseName,
                     targetWeight: mission.goalTargetWeight,
                     weightUnit: mission.goalWeightUnit,
-                    progressPercent: nil
-                ) {
-                    if let goalId = mission.goalId {
-                        onGoalTapped?(goalId)
-                    }
-                }
+                    progressPercent: nil,
+                    goalId: mission.goalId
+                )
             } else {
                 TabView(selection: $selectedGoalIndex) {
                     ForEach(Array(mission.goals.enumerated()), id: \.element.id) { index, goal in
-                        GoalCarouselCard(
+                        singleGoalCard(
                             exerciseName: goal.exerciseName,
                             targetWeight: goal.targetWeight,
                             weightUnit: goal.weightUnit,
-                            progressPercent: goal.progressPercent
-                        ) {
-                            onGoalTapped?(goal.id)
-                        }
+                            progressPercent: goal.progressPercent,
+                            goalId: goal.id
+                        )
                         .tag(index)
                     }
                 }
-                .tabViewStyle(.page(indexDisplayMode: mission.goals.count > 1 ? .always : .never))
-                .frame(height: 80)
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .frame(height: cardHeight)
             }
 
-            // Progress Bar
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("\(mission.workoutsCompleted) of \(mission.workoutsTotal) workouts completed")
-                        .font(.system(size: 13))
-                        .foregroundColor(.textSecondary)
+            // Page indicator (thin segments)
+            if goalCount > 1 {
+                HStack(spacing: 6) {
+                    ForEach(0..<goalCount, id: \.self) { index in
+                        Capsule()
+                            .fill(index == selectedGoalIndex ? Color.systemPrimary : Color.white.opacity(0.12))
+                            .frame(height: 3)
+                            .frame(maxWidth: 40)
+                    }
+                }
+                .padding(.top, 10)
+                .padding(.bottom, 4)
+                .padding(.horizontal, 20)
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+
+    /// Height for the TabView frame — must fit all card content
+    private var cardHeight: CGFloat {
+        // goal row + weight + stats + progress bar + weekly target + reward + padding
+        var h: CGFloat = 290
+        if mission.weeklyTarget != nil { h += 50 }
+        return h
+    }
+
+    @ViewBuilder
+    private func singleGoalCard(
+        exerciseName: String,
+        targetWeight: Double,
+        weightUnit: String,
+        progressPercent: Double?,
+        goalId: String?
+    ) -> some View {
+        VStack(spacing: 16) {
+            // Goal icon + name + chart button
+            Button {
+                if let id = goalId { onGoalTapped?(id) }
+            } label: {
+                HStack(spacing: 14) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(Color.systemPrimary.opacity(0.15))
+                            .frame(width: 48, height: 48)
+                        Text("🎯")
+                            .font(.system(size: 24))
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(exerciseName)
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+
+                        HStack(spacing: 4) {
+                            Text("\(Int(targetWeight))")
+                                .font(.system(size: 28, weight: .bold))
+                                .foregroundColor(.systemPrimary)
+                            Text("\(weightUnit) goal")
+                                .font(.system(size: 14))
+                                .foregroundColor(.textSecondary)
+
+                            if let pct = progressPercent, pct > 0 {
+                                Spacer()
+                                Text("\(Int(pct))%")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(.systemPrimary)
+                            }
+                        }
+                    }
 
                     Spacer()
 
-                    Text("\(mission.daysRemaining) days left")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(mission.daysRemaining <= 2 ? .warningRed : .systemPrimary)
+                    Image(systemName: "chart.line.uptrend.xyaxis")
+                        .font(.system(size: 14))
+                        .foregroundColor(.systemPrimary)
                 }
+            }
+            .buttonStyle(.plain)
 
-                GeometryReader { geometry in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(Color.white.opacity(0.1))
-                            .frame(height: 8)
-
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color.systemPrimary, Color(hex: "00FF88")],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .frame(width: geometry.size.width * progressPercent, height: 8)
-                    }
-                }
-                .frame(height: 8)
+            // Stats row
+            HStack {
+                Text("\(mission.workoutsCompleted) of \(mission.workoutsTotal) workouts")
+                    .font(.system(size: 13))
+                    .foregroundColor(.textSecondary)
+                Spacer()
+                Text("\(mission.daysRemaining) days left")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(mission.daysRemaining <= 2 ? .warningRed : .systemPrimary)
             }
 
-            // Weekly Target
+            // Progress bar
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Color.white.opacity(0.1))
+                        .frame(height: 6)
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.systemPrimary, Color(hex: "00FF88")],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: geometry.size.width * progressPercent, height: 6)
+                }
+            }
+            .frame(height: 6)
+
+            // Weekly target
             if let target = mission.weeklyTarget {
                 HStack(spacing: 8) {
                     Image(systemName: "flag.fill")
                         .foregroundColor(.gold)
                     Text(target)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.white)
                 }
-                .padding(12)
+                .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.gold.opacity(0.1))
                 .cornerRadius(10)
@@ -262,11 +337,9 @@ struct MissionHeaderCard: View {
             // XP Reward
             HStack {
                 Text("Mission Reward")
-                    .font(.system(size: 14))
+                    .font(.system(size: 13))
                     .foregroundColor(.textSecondary)
-
                 Spacer()
-
                 HStack(spacing: 4) {
                     Text("⚡️")
                     Text("+\(mission.xpReward) XP")
@@ -275,14 +348,13 @@ struct MissionHeaderCard: View {
                 }
             }
         }
-        .padding(20)
+        .padding(18)
         .background(Color.bgCard)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
                 .stroke(Color.systemPrimary.opacity(0.2), lineWidth: 1)
         )
-        .padding(.horizontal, 20)
     }
 }
 
@@ -310,70 +382,7 @@ struct CoachingMessageCard: View {
     }
 }
 
-// MARK: - Goal Carousel Card
-
-private struct GoalCarouselCard: View {
-    let exerciseName: String
-    let targetWeight: Double
-    let weightUnit: String
-    let progressPercent: Double?
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 16) {
-                // Goal Icon
-                ZStack {
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.systemPrimary.opacity(0.15))
-                        .frame(width: 60, height: 60)
-
-                    Text("🎯")
-                        .font(.system(size: 28))
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text(exerciseName)
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(.white)
-                            .lineLimit(1)
-
-                        Spacer()
-
-                        Image(systemName: "chart.line.uptrend.xyaxis")
-                            .font(.system(size: 14))
-                            .foregroundColor(.systemPrimary)
-                    }
-
-                    HStack(spacing: 4) {
-                        Text("\(Int(targetWeight))")
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(.systemPrimary)
-
-                        Text(weightUnit)
-                            .font(.system(size: 14))
-                            .foregroundColor(.textSecondary)
-
-                        Text("goal")
-                            .font(.system(size: 14))
-                            .foregroundColor(.textSecondary)
-
-                        if let percent = progressPercent, percent > 0 {
-                            Spacer()
-                            Text("\(Int(percent))%")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(.systemPrimary)
-                        }
-                    }
-                }
-
-                Spacer()
-            }
-        }
-        .buttonStyle(.plain)
-    }
-}
+// GoalCarouselCard removed — content now inlined in MissionHeaderCard.singleGoalCard
 
 // MARK: - Workout Prescription Card
 
