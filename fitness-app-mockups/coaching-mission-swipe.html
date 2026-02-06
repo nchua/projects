@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coaching - Swipeable Goal Card</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        .mockup-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .mockup-label {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 16px;
+            font-weight: 500;
+        }
+
+        .mockup-label span {
+            color: #00d4ff;
+        }
+
+        .state-indicator {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        /* iPhone Frame */
+        .iphone-frame {
+            width: 390px;
+            height: 844px;
+            background: #000;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow:
+                0 0 0 3px #1a1a1a,
+                0 0 0 6px #0d0d0d,
+                0 30px 60px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: #0a0a0e;
+            border-radius: 40px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .iphone-screen::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Dynamic Island */
+        .dynamic-island {
+            position: sticky;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 34px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 100;
+            margin-bottom: -34px;
+        }
+
+        /* Screen Content */
+        .screen-content {
+            padding: 56px 0 40px;
+            color: #ffffff;
+            min-height: 100%;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            margin-bottom: 16px;
+        }
+
+        .back-btn {
+            width: 36px;
+            height: 36px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .header-title {
+            flex: 1;
+            text-align: center;
+            font-size: 17px;
+            font-weight: 600;
+        }
+
+        .header-spacer {
+            width: 36px;
+        }
+
+        /* ===== CAROUSEL ===== */
+        .carousel-wrapper {
+            padding: 0 20px;
+            margin-bottom: 4px;
+        }
+
+        .carousel-container {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+            border-radius: 20px;
+            gap: 0;
+        }
+
+        .carousel-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Goal Card */
+        .goal-card {
+            min-width: 100%;
+            flex-shrink: 0;
+            scroll-snap-align: start;
+            background: linear-gradient(135deg, #14161f 0%, #1a1d28 100%);
+            border-radius: 20px;
+            padding: 18px;
+            position: relative;
+        }
+
+        /* Goal Top Row: Icon + Name + Chart */
+        .goal-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .goal-icon-box {
+            width: 44px;
+            height: 44px;
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .goal-name-area {
+            flex: 1;
+        }
+
+        .goal-exercise-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .goal-week-label {
+            font-size: 11px;
+            color: #00d4ff;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .goal-chart-btn {
+            width: 36px;
+            height: 36px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        /* Target Weight */
+        .goal-target-row {
+            margin-bottom: 12px;
+        }
+
+        .goal-weight {
+            font-size: 36px;
+            font-weight: 800;
+            color: #00d4ff;
+            line-height: 1;
+        }
+
+        .goal-weight-unit {
+            font-size: 15px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.4);
+            margin-left: 4px;
+        }
+
+        /* Stats Row */
+        .goal-stats-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .goal-stat {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .goal-stat strong {
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 600;
+        }
+
+        .goal-days-left {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Progress Bar */
+        .goal-progress-bar {
+            height: 5px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 14px;
+        }
+
+        .goal-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff 0%, #00ff88 100%);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        /* Mission Description */
+        .goal-mission-desc {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding: 10px 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+
+        .goal-mission-flag {
+            font-size: 14px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .goal-mission-text {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.55);
+            line-height: 1.45;
+        }
+
+        /* Mission Reward */
+        .goal-reward-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.06) 0%, rgba(255, 215, 0, 0.02) 100%);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 215, 0, 0.1);
+        }
+
+        .reward-label {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+            font-weight: 500;
+        }
+
+        .reward-value {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 15px;
+            font-weight: 700;
+            color: #ffd700;
+        }
+
+        /* ===== PAGE INDICATOR ===== */
+        .page-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 20px 0;
+            margin-bottom: 18px;
+        }
+
+        .page-segment {
+            height: 3px;
+            flex: 1;
+            max-width: 48px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            transition: background 0.3s ease;
+        }
+
+        .page-segment.active {
+            background: #00d4ff;
+        }
+
+        /* ===== COACHING MESSAGE ===== */
+        .coaching-quote {
+            margin: 0 20px 18px;
+            padding: 14px 16px;
+            background: linear-gradient(135deg, #1a1812 0%, #14161f 100%);
+            border-radius: 14px;
+            border-left: 3px solid rgba(255, 215, 0, 0.5);
+        }
+
+        .coaching-quote-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .coaching-quote-icon {
+            font-size: 16px;
+        }
+
+        .coaching-quote-label {
+            font-size: 11px;
+            color: rgba(255, 215, 0, 0.7);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .coaching-quote-text {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.45;
+            font-style: italic;
+        }
+
+        /* ===== WORKOUTS LIST ===== */
+        .workouts-section {
+            padding: 0 20px;
+        }
+
+        .workouts-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .workout-item {
+            display: flex;
+            align-items: center;
+            padding: 13px 14px;
+            background: #14161f;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            border-left: 4px solid transparent;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .workout-item:hover {
+            background: #1a1d28;
+        }
+
+        .workout-item.completed {
+            border-left-color: #00ff88;
+            opacity: 0.7;
+        }
+
+        .workout-item.next {
+            border-left-color: #00d4ff;
+            background: rgba(0, 212, 255, 0.04);
+        }
+
+        .workout-item.pending {
+            border-left-color: rgba(255, 255, 255, 0.08);
+            opacity: 0.6;
+        }
+
+        .workout-item-number {
+            width: 28px;
+            height: 28px;
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .workout-item.completed .workout-item-number {
+            background: rgba(0, 255, 136, 0.12);
+            color: #00ff88;
+        }
+
+        .workout-item.next .workout-item-number {
+            background: rgba(0, 212, 255, 0.12);
+            color: #00d4ff;
+        }
+
+        .workout-item.pending .workout-item-number {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .workout-item-info {
+            flex: 1;
+        }
+
+        .workout-item-type {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.35);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 2px;
+        }
+
+        .workout-item-name {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .workout-item-arrow {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Swipe hint animation */
+        @keyframes swipeHint {
+            0%, 100% { transform: translateX(0); opacity: 0; }
+            10% { opacity: 1; }
+            50% { transform: translateX(-12px); opacity: 1; }
+            80% { transform: translateX(-12px); opacity: 0; }
+        }
+
+        .swipe-hint {
+            position: absolute;
+            top: 50%;
+            right: 16px;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.2);
+            pointer-events: none;
+            animation: swipeHint 3s ease-in-out 2s 3;
+        }
+
+        .swipe-hint-arrow {
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="mockup-container">
+        <div class="mockup-label">Mission Detail <span>Swipeable Goals</span></div>
+        <div class="state-indicator">Swipe card to switch between goals</div>
+        <div class="iphone-frame">
+            <div class="iphone-screen">
+                <div class="dynamic-island"></div>
+                <div class="screen-content">
+                    <div class="header">
+                        <div class="back-btn">&larr;</div>
+                        <div class="header-title">Weekly Mission</div>
+                        <div class="header-spacer"></div>
+                    </div>
+
+                    <!-- Swipeable Goal Carousel -->
+                    <div class="carousel-wrapper">
+                        <div class="carousel-container" id="goalCarousel">
+
+                            <!-- Goal 1: Barbell Back Squat -->
+                            <div class="goal-card">
+                                <div class="swipe-hint">
+                                    <span>swipe</span>
+                                    <span class="swipe-hint-arrow">&lsaquo;</span>
+                                </div>
+                                <div class="goal-top">
+                                    <div class="goal-icon-box">🎯</div>
+                                    <div class="goal-name-area">
+                                        <div class="goal-exercise-name">Barbell Back Squat</div>
+                                        <div class="goal-week-label">Week 4 of 8</div>
+                                    </div>
+                                    <div class="goal-chart-btn">📈</div>
+                                </div>
+                                <div class="goal-target-row">
+                                    <span class="goal-weight">315</span>
+                                    <span class="goal-weight-unit">lb goal</span>
+                                </div>
+                                <div class="goal-stats-row">
+                                    <div class="goal-stat"><strong>1</strong> of 3 workouts</div>
+                                    <div class="goal-days-left">5 days left</div>
+                                </div>
+                                <div class="goal-progress-bar">
+                                    <div class="goal-progress-fill" style="width: 33%;"></div>
+                                </div>
+                                <div class="goal-mission-desc">
+                                    <span class="goal-mission-flag">🚩</span>
+                                    <span class="goal-mission-text">Build strength in your squat with progressive overload. Focus on depth and brace at the bottom.</span>
+                                </div>
+                                <div class="goal-reward-row">
+                                    <span class="reward-label">Mission Reward</span>
+                                    <span class="reward-value">⚡ +200 XP</span>
+                                </div>
+                            </div>
+
+                            <!-- Goal 2: Barbell Bench Press -->
+                            <div class="goal-card">
+                                <div class="goal-top">
+                                    <div class="goal-icon-box">🎯</div>
+                                    <div class="goal-name-area">
+                                        <div class="goal-exercise-name">Barbell Bench Press</div>
+                                        <div class="goal-week-label">Week 3 of 6</div>
+                                    </div>
+                                    <div class="goal-chart-btn">📈</div>
+                                </div>
+                                <div class="goal-target-row">
+                                    <span class="goal-weight">225</span>
+                                    <span class="goal-weight-unit">lb goal</span>
+                                </div>
+                                <div class="goal-stats-row">
+                                    <div class="goal-stat"><strong>2</strong> of 3 workouts</div>
+                                    <div class="goal-days-left">2 days left</div>
+                                </div>
+                                <div class="goal-progress-bar">
+                                    <div class="goal-progress-fill" style="width: 66%;"></div>
+                                </div>
+                                <div class="goal-mission-desc">
+                                    <span class="goal-mission-flag">🚩</span>
+                                    <span class="goal-mission-text">Push your bench press with heavy singles and volume work. Control the eccentric for maximum gains.</span>
+                                </div>
+                                <div class="goal-reward-row">
+                                    <span class="reward-label">Mission Reward</span>
+                                    <span class="reward-value">⚡ +200 XP</span>
+                                </div>
+                            </div>
+
+                            <!-- Goal 3: Barbell Deadlift -->
+                            <div class="goal-card">
+                                <div class="goal-top">
+                                    <div class="goal-icon-box">🎯</div>
+                                    <div class="goal-name-area">
+                                        <div class="goal-exercise-name">Barbell Deadlift</div>
+                                        <div class="goal-week-label">Week 2 of 10</div>
+                                    </div>
+                                    <div class="goal-chart-btn">📈</div>
+                                </div>
+                                <div class="goal-target-row">
+                                    <span class="goal-weight">405</span>
+                                    <span class="goal-weight-unit">lb goal</span>
+                                </div>
+                                <div class="goal-stats-row">
+                                    <div class="goal-stat"><strong>0</strong> of 3 workouts</div>
+                                    <div class="goal-days-left">6 days left</div>
+                                </div>
+                                <div class="goal-progress-bar">
+                                    <div class="goal-progress-fill" style="width: 0%;"></div>
+                                </div>
+                                <div class="goal-mission-desc">
+                                    <span class="goal-mission-flag">🚩</span>
+                                    <span class="goal-mission-text">Build a foundation for your 405 pull. This week focuses on technique and submaximal loading.</span>
+                                </div>
+                                <div class="goal-reward-row">
+                                    <span class="reward-label">Mission Reward</span>
+                                    <span class="reward-value">⚡ +200 XP</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- Page Indicator (thin segments, no dots) -->
+                    <div class="page-indicator" id="pageIndicator">
+                        <div class="page-segment active"></div>
+                        <div class="page-segment"></div>
+                        <div class="page-segment"></div>
+                    </div>
+
+                    <!-- Coaching Message (static, not part of swipe) -->
+                    <div class="coaching-quote">
+                        <div class="coaching-quote-header">
+                            <span class="coaching-quote-icon">💬</span>
+                            <span class="coaching-quote-label">Coach's Note</span>
+                        </div>
+                        <div class="coaching-quote-text">"Solid week ahead. Prioritize your squat session first while you're fresh, then bench mid-week. Deadlift can close out the week."</div>
+                    </div>
+
+                    <!-- This Week's Workouts (static, shared across goals) -->
+                    <div class="workouts-section">
+                        <div class="workouts-title">This Week's Workouts</div>
+
+                        <div class="workout-item completed">
+                            <div class="workout-item-number">&#10003;</div>
+                            <div class="workout-item-info">
+                                <div class="workout-item-type">Push</div>
+                                <div class="workout-item-name">Barbell Bench Press</div>
+                            </div>
+                            <div class="workout-item-arrow">&rsaquo;</div>
+                        </div>
+
+                        <div class="workout-item next">
+                            <div class="workout-item-number">2</div>
+                            <div class="workout-item-info">
+                                <div class="workout-item-type">Pull</div>
+                                <div class="workout-item-name">Barbell Deadlift</div>
+                            </div>
+                            <div class="workout-item-arrow">&rsaquo;</div>
+                        </div>
+
+                        <div class="workout-item pending">
+                            <div class="workout-item-number">3</div>
+                            <div class="workout-item-info">
+                                <div class="workout-item-type">Legs</div>
+                                <div class="workout-item-name">Barbell Back Squat</div>
+                            </div>
+                            <div class="workout-item-arrow">&rsaquo;</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const carousel = document.getElementById('goalCarousel');
+        const segments = document.querySelectorAll('.page-segment');
+        const cards = carousel.querySelectorAll('.goal-card');
+        const cardCount = cards.length;
+
+        // Update page indicator on scroll
+        function updateIndicator() {
+            const scrollLeft = carousel.scrollLeft;
+            const cardWidth = carousel.offsetWidth;
+            const index = Math.round(scrollLeft / cardWidth);
+            const clampedIndex = Math.max(0, Math.min(index, cardCount - 1));
+
+            segments.forEach((seg, i) => {
+                seg.classList.toggle('active', i === clampedIndex);
+            });
+        }
+
+        carousel.addEventListener('scroll', updateIndicator);
+
+        // Enhanced touch swipe detection for smoother feel
+        let startX = 0;
+        let startScrollLeft = 0;
+        let isDragging = false;
+
+        carousel.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            startScrollLeft = carousel.scrollLeft;
+            isDragging = true;
+            carousel.style.scrollBehavior = 'auto';
+        }, { passive: true });
+
+        carousel.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            const x = e.touches[0].clientX;
+            const diff = startX - x;
+            carousel.scrollLeft = startScrollLeft + diff;
+        }, { passive: true });
+
+        carousel.addEventListener('touchend', (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            carousel.style.scrollBehavior = 'smooth';
+
+            // Snap to nearest card
+            const cardWidth = carousel.offsetWidth;
+            const targetIndex = Math.round(carousel.scrollLeft / cardWidth);
+            carousel.scrollLeft = targetIndex * cardWidth;
+
+            // Brief visual pulse on snap
+            setTimeout(updateIndicator, 50);
+        });
+
+        // Mouse drag support for desktop testing
+        let mouseDown = false;
+        let mouseStartX = 0;
+        let mouseStartScroll = 0;
+
+        carousel.addEventListener('mousedown', (e) => {
+            mouseDown = true;
+            mouseStartX = e.clientX;
+            mouseStartScroll = carousel.scrollLeft;
+            carousel.style.scrollBehavior = 'auto';
+            carousel.style.cursor = 'grabbing';
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!mouseDown) return;
+            const diff = mouseStartX - e.clientX;
+            carousel.scrollLeft = mouseStartScroll + diff;
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (!mouseDown) return;
+            mouseDown = false;
+            carousel.style.scrollBehavior = 'smooth';
+            carousel.style.cursor = '';
+
+            const cardWidth = carousel.offsetWidth;
+            const targetIndex = Math.round(carousel.scrollLeft / cardWidth);
+            carousel.scrollLeft = targetIndex * cardWidth;
+
+            setTimeout(updateIndicator, 50);
+        });
+    </script>
+</body>
+</html>
