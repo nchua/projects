@@ -1806,6 +1806,15 @@ def mission_to_response(mission: WeeklyMission) -> Dict[str, Any]:
     if not mission_goals and mission.goal:
         mission_goals = [mission.goal]
 
+    # Deduplicate goals by ID (junction table can have duplicate rows)
+    seen_goal_ids = set()
+    unique_goals = []
+    for g in mission_goals:
+        if g.id not in seen_goal_ids:
+            seen_goal_ids.add(g.id)
+            unique_goals.append(g)
+    mission_goals = unique_goals
+
     primary_goal = mission_goals[0] if mission_goals else mission.goal
     workouts_completed = sum(1 for w in mission.workouts if w.status == MissionWorkoutStatus.COMPLETED.value)
 
@@ -1843,6 +1852,15 @@ def mission_to_summary(mission: WeeklyMission) -> Dict[str, Any]:
 
     if not mission_goals and mission.goal:
         mission_goals = [mission.goal]
+
+    # Deduplicate goals by ID (junction table can have duplicate rows)
+    seen_goal_ids = set()
+    unique_goals = []
+    for g in mission_goals:
+        if g.id not in seen_goal_ids:
+            seen_goal_ids.add(g.id)
+            unique_goals.append(g)
+    mission_goals = unique_goals
 
     primary_goal = mission_goals[0] if mission_goals else mission.goal
     workouts_completed = sum(1 for w in mission.workouts if w.status == MissionWorkoutStatus.COMPLETED.value)
