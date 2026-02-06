@@ -170,6 +170,7 @@ private struct GoalProgressSheet: View {
 struct MissionHeaderCard: View {
     let mission: WeeklyMissionResponse
     var onGoalTapped: ((String) -> Void)?
+    @State private var selectedGoalIndex = 0
 
     var progressPercent: Double {
         guard mission.workoutsTotal > 0 else { return 0 }
@@ -178,59 +179,36 @@ struct MissionHeaderCard: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            // Goal Info - Tappable to show progress
-            Button {
-                // Use first goal ID from goals array, or goalId if available
-                if let firstGoal = mission.goals.first {
-                    onGoalTapped?(firstGoal.id)
-                } else if let goalId = mission.goalId {
-                    onGoalTapped?(goalId)
-                }
-            } label: {
-                HStack(spacing: 16) {
-                    // Goal Icon
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color.systemPrimary.opacity(0.15))
-                            .frame(width: 60, height: 60)
-
-                        Text("🎯")
-                            .font(.system(size: 28))
+            // Goal Carousel
+            if mission.goals.isEmpty {
+                // Fallback for legacy single-goal data
+                GoalCarouselCard(
+                    exerciseName: mission.goalExerciseName,
+                    targetWeight: mission.goalTargetWeight,
+                    weightUnit: mission.goalWeightUnit,
+                    progressPercent: nil
+                ) {
+                    if let goalId = mission.goalId {
+                        onGoalTapped?(goalId)
                     }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(mission.goalExerciseName)
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(.white)
-
-                            Spacer()
-
-                            // Tap hint
-                            Image(systemName: "chart.line.uptrend.xyaxis")
-                                .font(.system(size: 14))
-                                .foregroundColor(.systemPrimary)
-                        }
-
-                        HStack(spacing: 4) {
-                            Text("\(Int(mission.goalTargetWeight))")
-                                .font(.system(size: 24, weight: .bold))
-                                .foregroundColor(.systemPrimary)
-
-                            Text(mission.goalWeightUnit)
-                                .font(.system(size: 14))
-                                .foregroundColor(.textSecondary)
-
-                            Text("goal")
-                                .font(.system(size: 14))
-                                .foregroundColor(.textSecondary)
-                        }
-                    }
-
-                    Spacer()
                 }
+            } else {
+                TabView(selection: $selectedGoalIndex) {
+                    ForEach(Array(mission.goals.enumerated()), id: \.element.id) { index, goal in
+                        GoalCarouselCard(
+                            exerciseName: goal.exerciseName,
+                            targetWeight: goal.targetWeight,
+                            weightUnit: goal.weightUnit,
+                            progressPercent: goal.progressPercent
+                        ) {
+                            onGoalTapped?(goal.id)
+                        }
+                        .tag(index)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: mission.goals.count > 1 ? .always : .never))
+                .frame(height: 80)
             }
-            .buttonStyle(.plain)
 
             // Progress Bar
             VStack(alignment: .leading, spacing: 8) {
@@ -329,6 +307,71 @@ struct CoachingMessageCard: View {
         .background(Color.bgCard)
         .cornerRadius(12)
         .padding(.horizontal, 20)
+    }
+}
+
+// MARK: - Goal Carousel Card
+
+private struct GoalCarouselCard: View {
+    let exerciseName: String
+    let targetWeight: Double
+    let weightUnit: String
+    let progressPercent: Double?
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 16) {
+                // Goal Icon
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color.systemPrimary.opacity(0.15))
+                        .frame(width: 60, height: 60)
+
+                    Text("🎯")
+                        .font(.system(size: 28))
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(exerciseName)
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+
+                        Spacer()
+
+                        Image(systemName: "chart.line.uptrend.xyaxis")
+                            .font(.system(size: 14))
+                            .foregroundColor(.systemPrimary)
+                    }
+
+                    HStack(spacing: 4) {
+                        Text("\(Int(targetWeight))")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(.systemPrimary)
+
+                        Text(weightUnit)
+                            .font(.system(size: 14))
+                            .foregroundColor(.textSecondary)
+
+                        Text("goal")
+                            .font(.system(size: 14))
+                            .foregroundColor(.textSecondary)
+
+                        if let percent = progressPercent, percent > 0 {
+                            Spacer()
+                            Text("\(Int(percent))%")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.systemPrimary)
+                        }
+                    }
+                }
+
+                Spacer()
+            }
+        }
+        .buttonStyle(.plain)
     }
 }
 
