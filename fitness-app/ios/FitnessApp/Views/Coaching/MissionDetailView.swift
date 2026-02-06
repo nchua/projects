@@ -314,7 +314,7 @@ struct MissionHeaderCard: View {
                                 endPoint: .trailing
                             )
                         )
-                        .frame(width: geometry.size.width * progressPercent, height: 6)
+                        .frame(width: geometry.size.width * self.progressPercent, height: 6)
                 }
             }
             .frame(height: 6)
