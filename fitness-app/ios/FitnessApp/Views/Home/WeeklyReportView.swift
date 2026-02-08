@@ -178,7 +178,7 @@ struct WeeklyReportView: View {
             // Exercise name + status badge
             HStack {
                 Text(goal.exerciseName)
-                    .font(.ariseHeading(size: 16))
+                    .font(.ariseHeader(size: 16))
                     .foregroundColor(.textPrimary)
 
                 Spacer()
@@ -254,13 +254,9 @@ struct WeeklyReportView: View {
                 if let actual = goal.actualWeeklyGain {
                     paceDetail(label: "Actual", value: "\(actual >= 0 ? "+" : "")\(String(format: "%.1f", actual))/wk")
                 }
-                if let projected = goal.projectedCompletionDate {
-                    let projDate = projected.parseISO8601Date()
-                    let formatter = DateFormatter()
-                    formatter.dateFormat = "MMM d"
-                    if let d = projDate {
-                        paceDetail(label: "Projected", value: formatter.string(from: d))
-                    }
+                if let projected = goal.projectedCompletionDate,
+                   let d = projected.parseISO8601Date() {
+                    paceDetail(label: "Projected", value: formatShortDate(d))
                 }
             }
         }
@@ -458,6 +454,12 @@ struct WeeklyReportView: View {
     }
 
     // MARK: - Helpers
+
+    private func formatShortDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        return formatter.string(from: date)
+    }
 
     private func statusColor(for status: String) -> Color {
         switch status {
