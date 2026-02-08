@@ -180,6 +180,56 @@ Instead of debugging complex automatic behavior, give users control:
 
 ---
 
+## Claude Code Best Practices (Boris Cherny)
+
+Tips from the creator of Claude Code for effective usage. Run `/best-practices` to review.
+
+### 1. Start Complex Tasks in Plan Mode
+- Pour energy into the plan so Claude can 1-shot the implementation
+- Use `/plan` or ask Claude to plan before implementing
+- Switch back to planning when issues arise rather than continuing forward
+
+### 2. Invest in CLAUDE.md
+- After each correction, instruct Claude to update CLAUDE.md to prevent recurring mistakes
+- Maintain a notes directory for every task and reference it in documentation
+- This file is your persistent memory across sessions
+
+### 3. Create Reusable Skills
+- Build custom skills and commit them to git
+- Automate repetitive tasks (performed multiple times daily) with slash commands
+- Include tech debt cleanup and context synchronization tools
+
+### 4. Let Claude Fix Bugs Independently
+- Use high-level instructions like "fix" or "Go fix the failing CI tests"
+- Don't micromanage implementation details
+- Enable MCP integrations to paste bug threads directly
+
+### 5. Level Up Your Prompting
+- Challenge Claude as a reviewer
+- Ask it to implement "the elegant solution"
+- Provide detailed specifications upfront to reduce ambiguity
+
+### 6. Optimize Terminal & Environment
+- Use a performant terminal (Ghostty recommended)
+- Customize status bars with `/statusline`
+- Color-code terminal tabs for different worktrees
+- Use voice dictation for more detailed prompts
+
+### 7. Use Subagents
+- Append "use subagents" for compute-intensive requests
+- Offload tasks to keep your main agent's context focused
+
+### 8. Use Claude for Data & Analytics
+- Leverage CLI tools like BigQuery within Claude Code
+- Build reusable skills for analytics queries instead of writing SQL manually
+
+### 9. Learning with Claude
+- Enable "Explanatory" or "Learning" output styles in `/config`
+- Request HTML presentations, ASCII diagrams for complex concepts
+- Build spaced-repetition learning skills
+
+---
+
 ## API Endpoints Reference
 
 ### Authentication

@@ -75,6 +75,18 @@ After modifying any iOS Swift files, the user must rebuild the app in Xcode for 
 cd /Users/nickchua/Desktop/AI/Fitness\ App/fitness-app/fitness-app/ios && xcodegen generate && open FitnessApp.xcodeproj
 ```
 
+### Backend-Only Changes: When Rebuild Is NOT Needed
+
+If changes are **backend-only** (FastAPI/services/schemas) and **no iOS Swift files changed**, the app **does not need an Xcode rebuild**.
+
+**What the user needs to do instead:**
+- **Using Railway/production backend**: Push to `main` and wait for deploy, then **re-open the app or refresh** the relevant screen.
+- **Using local backend**: Restart the backend (`python main.py`) and then **re-open or refresh** the app screen.
+
+**Rule of thumb for responses**:
+- If any Swift files changed → remind to rebuild in Xcode.
+- If only backend changed → say pushing/restarting backend is sufficient.
+
 ---
 
 ## Deployment
@@ -142,16 +154,6 @@ If code is missing or needs recovery:
 
 ### NEVER Commit Credentials
 
-**Incident (Jan 2026)**: Hardcoded email/password in `seed_user_data.py` was pushed to GitHub and detected by GitGuardian.
-
-**Resolution required**:
-1. Remove credentials from source files
-2. Scrub from git history with `git filter-branch`
-3. Force push to overwrite remote history
-4. Rotate any exposed passwords
-
-### Rules for Claude Code
-
 1. **NEVER hardcode credentials** in any file that will be committed
    - No real emails, passwords, API keys, or tokens
    - Use environment variables: `os.environ.get("VAR_NAME")`
@@ -169,73 +171,11 @@ If code is missing or needs recovery:
    - `import_workouts.py` - uses env vars
    - Any new seed/test scripts
 
-### If Credentials Are Accidentally Committed
-
-```bash
-# 1. Create backup branch
-git branch backup-$(date +%Y%m%d)
-
-# 2. Fix the file (replace with env vars)
-# 3. Commit the fix
-
-# 4. Rewrite history to scrub credentials
-FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --tree-filter '
-if [ -f path/to/file.py ]; then
-  sed -i "" "s/real@email.com/test@example.com/g" path/to/file.py
-fi
-' --tag-name-filter cat -- --all
-
-# 5. Force push
-git push origin main --force
-
-# 6. Clean up
-rm -rf .git/refs/original
-git reflog expire --expire=now --all
-git gc --prune=now --aggressive
-
-# 7. CHANGE THE EXPOSED PASSWORD if used elsewhere!
-```
-
 ---
 
-## SQLAlchemy Relationship Loading (CRITICAL)
+## SQLAlchemy: Always Use joinedload Before Passing to Services
 
-### Bug: Empty Relationships After commit/refresh (Feb 2026)
-
-**Symptom**: Quest progress shows 0 even after logging a workout with exercises and sets.
-
-**Root Cause**: SQLAlchemy uses lazy loading by default. After `db.commit()` + `db.refresh(workout)`, the workout object has **empty relationship collections** - they aren't loaded automatically.
-
-```python
-# WRONG - relationships not loaded after refresh
-db.add(workout_session)
-db.commit()
-db.refresh(workout_session)
-update_quest_progress(db, user_id, workout_session)  # workout_exercises is []!
-
-# CORRECT - explicitly load relationships with joinedload
-workout = db.query(WorkoutSession).options(
-    joinedload(WorkoutSession.workout_exercises)
-    .joinedload(WorkoutExercise.sets),
-    joinedload(WorkoutSession.workout_exercises)
-    .joinedload(WorkoutExercise.exercise)
-).filter(WorkoutSession.id == workout_session.id).first()
-update_quest_progress(db, user_id, workout)  # relationships loaded!
-```
-
-### Rule: Always Use joinedload Before Passing to Services
-
-When passing a model to a service function that accesses relationships:
-1. **Check if the service iterates over relationships** (e.g., `workout.workout_exercises`)
-2. **If yes, fetch with `joinedload()`** before passing
-3. **Don't trust `db.refresh()`** - it doesn't load relationships
-
-**Affected Services**:
-- `update_quest_progress()` - needs `workout_exercises`, `sets`, `exercise`
-- `update_dungeon_progress()` - needs `workout_exercises`, `sets`, `exercise`
-- `check_and_unlock_achievements()` - may need relationships depending on achievement type
-
-**Test for this**: `tests/test_quest_service.py` documents the bug and required patterns.
+After `db.commit()` + `db.refresh()`, relationship collections are **empty**. Always re-query with `joinedload()` before passing models to service functions that access relationships (`update_quest_progress()`, `update_dungeon_progress()`, `check_and_unlock_achievements()`).
 
 ---
 
@@ -243,7 +183,7 @@ When passing a model to a service function that accesses relationships:
 
 ### IMPORTANT: When Changing Workout Data Sources
 
-When modifying how workout data is fetched, stored, or structured, you MUST update ALL places that display workout information. The app displays workouts in multiple locations:
+When modifying how workout data is fetched, stored, or structured, you MUST update ALL places that display workout information:
 
 **Backend data flow:**
 1. `backend/app/schemas/workout.py` - `WorkoutSummary` and `WorkoutResponse` schemas
@@ -269,26 +209,13 @@ When modifying how workout data is fetched, stored, or structured, you MUST upda
 
 ### When Automatic Fixes Fail, Consider Manual User Controls
 
-**Lesson Learned (Jan 2026)**: When debugging timezone/date issues with workout dates showing on the wrong calendar day, multiple attempts to fix the automatic date handling (ISO8601DateFormatter, timezone conversions, UTC vs local time) did not resolve the issue quickly.
-
-**Better Approach**: Instead of continuing to debug complex automatic behavior, add a **manual override option** that gives users direct control.
-
-**Example - Date Selection for Screenshots**:
-- **Problem**: Workouts uploaded via screenshot showed on wrong calendar date due to server UTC vs user local time
-- **Attempted fixes**: Multiple timezone conversion fixes in iOS and backend - none worked reliably
-- **Solution**: Added a date picker screen before screenshot processing, letting users explicitly select the workout date
+Instead of debugging complex automatic behavior, add a **manual override option** that gives users direct control.
 
 **When to consider manual controls**:
 1. **Timezone/date issues** - Let users pick the date instead of auto-detecting
 2. **Data extraction errors** - Let users edit/correct extracted data
 3. **Ambiguous inputs** - Ask users to clarify rather than guessing
 4. **Environment-dependent behavior** - Server vs client differences
-
-**Benefits of manual controls**:
-- Users get correct results immediately
-- Avoids complex debugging of edge cases
-- More transparent behavior
-- Often simpler to implement than fixing root cause
 
 **Implementation pattern**:
 ```
@@ -298,317 +225,96 @@ After:  Show preview → User adjusts values → Process with user's values → 
 
 ---
 
-## Date Parsing: Backend ↔ iOS Format Compatibility
+## SwiftUI Rules (Quick Reference)
 
-### CRITICAL: iOS parseISO8601Date() Supported Formats
+### fullScreenCover: Always use .id() when iterating through items
+- Prevents black screens from stale `@State`
+- Always include else branch that cleans up all state
+- Guard double dismissal with `isDismissed` flag
+- Lint: `ios/scripts/lint-fullscreen-cover.sh`
 
-The iOS date parser in `Extensions.swift` handles these formats:
+### .onChange: Guard against infinite loops
+- Track processed response IDs to detect re-entry
+- Clear tracking flag in skip branch
+- Test full multi-step flows end-to-end
 
-| Format | Example | Source |
-|--------|---------|--------|
-| ISO8601 with fractional seconds | `2025-12-12T12:00:00.123Z` | Rare |
-| ISO8601 with timezone | `2025-12-12T12:00:00Z` | Standard API responses |
-| ISO8601 WITHOUT timezone | `2025-12-12T12:00:00` | Python `datetime.isoformat()` |
-| Date only | `2025-12-12` | Python `date.isoformat()` |
-
-### Bug Pattern: Charts Not Rendering (Jan 2026)
-
-**Symptom**: Power chart (e1RM) showed Y-axis grid but NO line or data points. Debug showed valid data (4 points, dates spanning Dec-Jan).
-
-**Root Cause**: Backend returned dates as `2025-12-12T12:00:00` (ISO8601 without timezone). The iOS parser only handled formats WITH timezone (`Z` suffix) or date-only. The format without timezone returned `nil`, causing all data points to collapse to the same X coordinate (fallback `Date()`).
-
-**Fix**: Added handler for ISO8601 without timezone in `parseISO8601Date()`:
-```swift
-// Try ISO8601 WITHOUT timezone: "2025-12-12T12:00:00"
-let noTimezoneFormatter = DateFormatter()
-noTimezoneFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-noTimezoneFormatter.timeZone = TimeZone(identifier: "UTC")
-if let date = noTimezoneFormatter.date(from: self) {
-    return date
-}
-```
-
-### Prevention Checklist
-
-When backend returns date strings to iOS:
-- [ ] Check what format Python is returning (`datetime.isoformat()` vs `date.isoformat()`)
-- [ ] Verify iOS `parseISO8601Date()` handles that format
-- [ ] If chart/data doesn't render, add debug output to check if dates parse to `nil`
-
-**Debug pattern for date issues**:
-```swift
-// Add temporarily to chart view
-Text("DEBUG: \(dataPoints.count) pts, first: \(dataPoints.first?.date ?? "none")")
-    .background(Color.yellow)
-```
+### View Naming: Use {DesignSystem}{DataType}{ComponentType}
+- Prevents duplicate struct name build errors
+- Search before creating: `grep -r "struct YourStructName" ios/`
 
 ---
 
-## Recent Changes Summary (Jan 2026)
+## Claude Code Best Practices (Boris Cherny)
 
-### Bug Fix: Exercise Names in Completed Quest Card
+Tips from the creator of Claude Code for effective usage. Run `/best-practices` to review.
 
-**Problem**: `LastQuestCard` in `HomeView.swift` displayed "Exercise 1", "Exercise 2" instead of actual names.
+### 1. Start Complex Tasks in Plan Mode
+- Pour energy into the plan so Claude can 1-shot the implementation
+- Use `/plan` or ask Claude to plan before implementing
+- Switch back to planning when issues arise rather than continuing forward
 
-**Root Cause**: `WorkoutSummaryResponse` only had `exerciseCount` (integer), not actual names. The UI used loop index: `Text("Exercise \(index + 1)")`.
+### 2. Invest in CLAUDE.md
+- After each correction, instruct Claude to update CLAUDE.md to prevent recurring mistakes
+- Maintain a notes directory for every task and reference it in documentation
+- This file is your persistent memory across sessions
 
-**Files Modified**:
-- `backend/app/schemas/workout.py` - Added `exercise_names: List[str]` to `WorkoutSummary`
-- `backend/app/api/workouts.py` - Updated `/workouts` endpoint to include exercise names
-- `ios/.../APITypes.swift` - Added `exerciseNames: [String]?` to `WorkoutSummaryResponse`
-- `ios/.../HomeView.swift` - `LastQuestCard` now uses `exerciseNamesToShow` computed property
+### 3. Create Reusable Skills
+- Build custom skills and commit them to git
+- Automate repetitive tasks (performed multiple times daily) with slash commands
+- Include tech debt cleanup and context synchronization tools
 
-### Feature: WHOOP Screenshot Support
+### 4. Let Claude Fix Bugs Independently
+- Use high-level instructions like "fix" or "Go fix the failing CI tests"
+- Don't micromanage implementation details
+- Enable MCP integrations to paste bug threads directly
 
-**Problem**: Screenshot analyzer only recognized gym workout screenshots, not WHOOP activity screenshots.
+### 5. Level Up Your Prompting
+- Challenge Claude as a reviewer
+- Ask it to implement "the elegant solution"
+- Provide detailed specifications upfront to reduce ambiguity
 
-**Solution**: Updated Claude Vision prompt to detect screenshot type and extract appropriate data.
+### 6. Optimize Terminal & Environment
+- Use a performant terminal (Ghostty recommended)
+- Customize status bars with `/statusline`
+- Color-code terminal tabs for different worktrees
+- Use voice dictation for more detailed prompts
 
-**Files Modified**:
-- `backend/app/services/screenshot_service.py`:
-  - Updated `EXTRACTION_PROMPT` to detect `gym_workout` vs `whoop_activity`
-  - Added WHOOP-specific extraction (strain, HR zones, calories, steps, activity type)
-  - Modified `extract_workout_from_screenshot()` to return appropriate data per type
+### 7. Use Subagents
+- Append "use subagents" for compute-intensive requests
+- Offload tasks to keep your main agent's context focused
 
-- `backend/app/schemas/screenshot.py`:
-  - Added `HeartRateZone` model
-  - Added WHOOP fields to `ScreenshotProcessResponse` and `ScreenshotBatchResponse`
-  - Added `screenshot_type` field
+### 8. Use Claude for Data & Analytics
+- Leverage CLI tools like BigQuery within Claude Code
+- Build reusable skills for analytics queries instead of writing SQL manually
 
-- `backend/app/api/screenshot.py`:
-  - Updated both endpoints to include WHOOP data in response
-  - Only auto-saves workouts for gym screenshots (not WHOOP activities)
-
-- `ios/.../APITypes.swift`:
-  - Added `HeartRateZone` struct
-  - Added WHOOP fields and `isWhoopActivity` computed property to response structs
-
-- `ios/.../ScreenshotProcessingViewModel.swift`:
-  - Added WHOOP detection properties (`isWhoopActivity`, `activityType`, `whoopStrain`, etc.)
-  - Updated `convertToLoggedExercises()` to return empty for WHOOP activities
-
-**WHOOP Data Extracted**:
-- `activity_type` (e.g., "TENNIS", "RUNNING")
-- `strain` score
-- `steps`, `calories`, `avg_hr`, `max_hr`
-- `heart_rate_zones` with BPM ranges, percentages, durations
-- `time_range` and `source` (e.g., "VIA APPLE WATCH")
-
-### Feature: Expanded Strength Standards (Jan 2026)
-
-**Problem**: Stats page only showed percentile rankings for Big Three exercises (squat, bench, deadlift). Additional skills like Barbell Curl showed rank badge but no percentile.
-
-**Solution**: Added strength standards (bodyweight multipliers) for 17 additional exercises.
-
-**Files Modified**:
-- `backend/app/api/analytics.py`:
-  - Expanded `STRENGTH_STANDARDS` dict with new exercises
-  - Updated `CANONICAL_EXERCISE_KEYWORDS` for exercise name matching
-
-**Exercises Now Supported**:
-| Category | Exercises |
-|----------|-----------|
-| Big Three | squat, bench, deadlift |
-| Pressing | overhead press, incline bench, dip |
-| Pulling | row, pullup/chinup, lat pulldown |
-| Arms | curl, tricep extension |
-| Legs | leg press, romanian deadlift, hip thrust, leg curl, leg extension, calf raise |
-| Shoulders | lateral raise, face pull |
-| Chest | fly/pec deck |
-
-**Keyword Matching Examples**:
-- "Barbell Curl" / "Bicep Curl" / "Hammer Curl" → `curl`
-- "Lat Pulldown" / "Pulldown" → `lat_pulldown`
-- "RDL" / "Romanian Deadlift" / "Stiff Leg Deadlift" → `romanian_deadlift`
-- "Skull Crusher" / "Tricep Pushdown" → `tricep_extension`
-- "Pull Up" / "Chin Up" → `pullup`
-
-**iOS Changes** (`StatsView.swift`):
-- `AdditionalExerciseCard` now shows trend percentage and rank badge (matches Big Three cards)
-- Rank badge only displays when real percentile data exists
-- Trend indicator hidden for "insufficient_data" (requires 4+ weeks of data)
-
-### Bug Fix: Black Screen After PR Celebration (Jan 2026)
-
-**Problem**: After PR celebration from screenshot-logged workout, app shows black screen requiring restart.
-
-**Root Cause**:
-1. `fullScreenCover` for PR celebration had no fallback when `prQueue` was empty
-2. Auto-dismiss timer in `PRCelebrationView` could fire after manual dismissal, calling `onDismiss()` twice
-3. Race condition between dismiss animation and state reset
-
-**Files Modified**:
-- `ios/.../Views/Log/LogView.swift` - Added EmptyView fallback with auto-dismiss in PR celebration fullScreenCover
-- `ios/.../Components/PRCelebrationView.swift` - Added `isDismissed` guard to prevent double dismissal
-
-**Fix Pattern**: When using `fullScreenCover(isPresented:)` with conditional content, ALWAYS include an else branch that either shows content or immediately dismisses to prevent black screens.
-
-### Build Error: Duplicate Swift Struct Names (Jan 2026)
-
-**Problem**: iOS build failed with "Invalid redeclaration of 'EdgeFlowQuestRow'"
-
-**Root Cause**: Two different structs with the same name existed in different files:
-- `DailyQuestsCard.swift:36` - `EdgeFlowQuestRow` taking `QuestResponse`
-- `QuestsView.swift:467` - `EdgeFlowQuestRow` taking `WorkoutSummaryResponse`
-
-Swift doesn't allow duplicate type names at the same scope level, even across different files.
-
-**Fix**: Renamed the workout-focused struct to `EdgeFlowWorkoutRow` to reflect its actual purpose.
-
-**Prevention Rules**:
-1. **Use descriptive, unique struct names** - Include the data type in the name (e.g., `QuestRow` vs `WorkoutRow`)
-2. **Before creating new View structs**, search the codebase: `grep -r "struct YourStructName" ios/`
-3. **When copying/adapting UI components**, always rename them to avoid collisions
-4. **Naming convention**: `{DesignSystem}{DataType}{ComponentType}` (e.g., `EdgeFlowWorkoutRow`, `EdgeFlowQuestCard`)
+### 9. Learning with Claude
+- Enable "Explanatory" or "Learning" output styles in `/config`
+- Request HTML presentations, ASCII diagrams for complex concepts
+- Build spaced-repetition learning skills
 
 ---
 
-## SwiftUI fullScreenCover State Management (CRITICAL)
+## API Endpoints Reference
 
-### Problem: Black Screen from Stale @State in fullScreenCover
+### Authentication
+- `POST /api/auth/register` - Create account
+- `POST /api/auth/login` - Get JWT token
 
-**Symptom**: After dismissing a fullScreenCover, the app shows an indefinite black screen requiring restart.
+### Workouts
+- `GET /api/workouts` - List user workouts
+- `POST /api/workouts` - Create workout session
+- `GET /api/workouts/{id}` - Get workout details
+- `PUT /api/workouts/{id}` - Update workout
+- `DELETE /api/workouts/{id}` - Soft delete workout
 
-**Root Cause**: SwiftUI view reuse with stale `@State` variables. When using `fullScreenCover(isPresented:)` with:
-1. Conditional content (`if index < array.count`)
-2. Views that have internal `@State` (e.g., `@State private var isDismissed = false`)
+### Exercises
+- `GET /api/exercises` - List all exercises
+- `GET /api/exercises/search?q=` - Search exercises
 
-SwiftUI may **reuse** the existing view instance instead of creating a new one when the condition changes but `isPresented` stays true. This causes:
-- `@State` variables retain their old values (e.g., `isDismissed = true` from previous dismissal)
-- The view appears but doesn't function correctly
-- Dismiss callbacks never fire, leaving the cover stuck
+### Progress
+- `GET /api/progress/summary` - Overall stats
+- `GET /api/progress/prs` - Personal records
 
-### The Pattern That Causes Black Screens
-
-```swift
-// DANGEROUS: No .id() modifier when iterating through items
-.fullScreenCover(isPresented: $showCelebration) {
-    if currentIndex < items.count {
-        CelebrationView(item: items[currentIndex], onDismiss: { handleDismiss() })
-        // ❌ When currentIndex changes, SwiftUI may reuse this view with stale @State
-    } else {
-        Color.clear.onAppear { showCelebration = false }  // ❌ May not dismiss properly
-    }
-}
-```
-
-### The Fix: Force View Recreation with .id()
-
-```swift
-// SAFE: .id() forces new view instance when index changes
-.fullScreenCover(isPresented: $showCelebration) {
-    if currentIndex < items.count {
-        CelebrationView(item: items[currentIndex], onDismiss: { handleDismiss() })
-            .id(currentIndex)  // ✅ Forces fresh view with reset @State
-    } else {
-        Color.clear
-            .onAppear {
-                // ✅ Full cleanup in fallback
-                items = []
-                currentIndex = 0
-                showCelebration = false
-            }
-    }
-}
-```
-
-### Rules for fullScreenCover Usage
-
-1. **Always use `.id()` when iterating through items** in a fullScreenCover
-   - Add `.id(currentIndex)` or `.id(item.id)` to force view recreation
-
-2. **Prepare next state BEFORE dismissing**
-   - Set up the next view's data before setting `isPresented = false`
-   - Prevents intermediate states where cover shows empty content
-
-3. **Fallback branches must clean up completely**
-   - Don't just set `isPresented = false`
-   - Reset all related state variables
-   - Transition to a valid app state (e.g., return to idle)
-
-4. **Guard against double dismissal in views with auto-dismiss**
-   - If a view has a timer that calls `onDismiss()`, add a guard:
-   ```swift
-   @State private var isDismissed = false
-
-   private func dismissWithAnimation() {
-       guard !isDismissed else { return }  // Prevent double-fire
-       isDismissed = true
-       onDismiss()
-   }
-   ```
-
-### Lint Script
-
-Run `ios/scripts/lint-fullscreen-cover.sh` to detect potential issues:
-```bash
-./ios/scripts/lint-fullscreen-cover.sh
-```
-
-This checks for:
-- `fullScreenCover(isPresented:` with conditional content but no `.id()` modifier
-- Views with `@State` that might become stale
-
-### Files Most at Risk
-
-- `LogView.swift` - Multiple celebration fullScreenCovers (PR, rank-up, XP)
-- Any view that cycles through multiple items in a fullScreenCover
-- Views with auto-dismiss timers
-
----
-
-## SwiftUI .onChange Infinite Loop Prevention (CRITICAL)
-
-### Problem: Re-triggering .onChange with Same Data
-
-**Symptom**: App freezes or shows black screen after completing a multi-step celebration flow.
-
-**Root Cause**: When using `.onChange(of:)` to intercept and redirect state, setting the observed value back to a previously-seen value re-triggers the handler, causing infinite loops.
-
-### The Pattern That Causes Loops
-
-```swift
-// LogView.swift - Celebration flow
-.onChange(of: viewModel.xpRewardResponse?.id) { oldValue, newValue in
-    guard let response = viewModel.xpRewardResponse else { return }
-
-    // BUG: After PR celebration completes, we set xpRewardResponse = pendingResponse
-    // This triggers onChange again, which sees prsAchieved is NOT empty
-    // and restarts the PR celebration flow!
-    if !response.prsAchieved.isEmpty {
-        prQueue = response.prsAchieved  // Sets up PR flow
-        pendingXPResponse = response     // Saves response for later
-        viewModel.xpRewardResponse = nil // Clears to show PRs first
-        showPRCelebration = true
-        return
-    }
-    // ...
-}
-
-// Later, in handlePRDismiss:
-viewModel.xpRewardResponse = pendingXPResponse  // RE-TRIGGERS onChange!
-```
-
-### The Fix: Track Processed Responses
-
-```swift
-.onChange(of: viewModel.xpRewardResponse?.id) { oldValue, newValue in
-    guard let response = viewModel.xpRewardResponse else { return }
-
-    // CRITICAL: Skip if this response was already processed
-    if let pending = pendingXPResponse, pending.id == response.id {
-        pendingXPResponse = nil  // Clear the flag
-        return  // Let XP view show directly without re-processing
-    }
-
-    // Now safe to check for PRs/rank-up
-    // ...
-}
-```
-
-### Rules for .onChange with State Redirection
-
-1. **Track processed items** - Use a flag or ID comparison to detect re-entry
-2. **Clear the tracking flag** in the skip branch to allow future legitimate triggers
-3. **Never assume .onChange won't re-trigger** - Always guard against loops
-4. **Test the full flow** - Especially when chaining multiple celebrations/states
+### Screenshot Processing
+- `POST /api/screenshot/process` - Process single screenshot
+- `POST /api/screenshot/batch` - Process multiple screenshots
