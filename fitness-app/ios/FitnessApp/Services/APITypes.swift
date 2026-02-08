@@ -494,6 +494,90 @@ struct WeeklyReviewResponse: Decodable {
     }
 }
 
+// MARK: - Weekly Progress Report
+
+struct GoalProgressReportResponse: Decodable, Identifiable {
+    let goalId: String
+    let exerciseName: String
+    let exerciseId: String
+    let targetWeight: Double
+    let targetReps: Int
+    let weightUnit: String
+    let deadline: String
+    let startingE1rm: Double?
+    let currentE1rm: Double?
+    let progressPercent: Double
+    let requiredWeeklyGain: Double?
+    let actualWeeklyGain: Double?
+    let status: String  // "on_track" | "ahead" | "behind"
+    let projectedCompletionDate: String?
+    let weeksRemaining: Double
+    let actualPoints: [ProgressPoint]
+    let projectedPoints: [ProgressPoint]
+
+    var id: String { goalId }
+
+    enum CodingKeys: String, CodingKey {
+        case deadline, status
+        case goalId = "goal_id"
+        case exerciseName = "exercise_name"
+        case exerciseId = "exercise_id"
+        case targetWeight = "target_weight"
+        case targetReps = "target_reps"
+        case weightUnit = "weight_unit"
+        case startingE1rm = "starting_e1rm"
+        case currentE1rm = "current_e1rm"
+        case progressPercent = "progress_percent"
+        case requiredWeeklyGain = "required_weekly_gain"
+        case actualWeeklyGain = "actual_weekly_gain"
+        case projectedCompletionDate = "projected_completion_date"
+        case weeksRemaining = "weeks_remaining"
+        case actualPoints = "actual_points"
+        case projectedPoints = "projected_points"
+    }
+}
+
+struct CoachingSuggestionResponse: Decodable, Identifiable {
+    let type: String      // "volume" | "plateau" | "frequency" | "slowdown" | "motivation"
+    let priority: String  // "high" | "medium" | "low"
+    let title: String
+    let description: String
+    let exerciseName: String?
+
+    var id: String { title + type }
+
+    enum CodingKeys: String, CodingKey {
+        case type, priority, title, description
+        case exerciseName = "exercise_name"
+    }
+}
+
+struct WeeklyProgressReportResponse: Decodable {
+    let weekStart: String
+    let weekEnd: String
+    let totalWorkouts: Int
+    let totalSets: Int
+    let totalVolume: Double
+    let volumeChangePercent: Double?
+    let prsAchieved: [PRResponse]
+    let goalReports: [GoalProgressReportResponse]
+    let suggestions: [CoachingSuggestionResponse]
+    let hasSufficientData: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case suggestions
+        case weekStart = "week_start"
+        case weekEnd = "week_end"
+        case totalWorkouts = "total_workouts"
+        case totalSets = "total_sets"
+        case totalVolume = "total_volume"
+        case volumeChangePercent = "volume_change_percent"
+        case prsAchieved = "prs_achieved"
+        case goalReports = "goal_reports"
+        case hasSufficientData = "has_sufficient_data"
+    }
+}
+
 // MARK: - Sync
 
 struct SyncRequest: Encodable {
