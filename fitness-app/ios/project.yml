@@ -52,8 +52,6 @@ targets:
         CFBundleShortVersionString: "1.0"
         CFBundleVersion: "1"
         UILaunchScreen: {}
-        NSAppTransportSecurity:
-          NSAllowsArbitraryLoads: true
         NSHealthShareUsageDescription: "Arise syncs your steps, calories, and activity data to track your overall fitness progress alongside your workouts."
         NSHealthUpdateUsageDescription: "Arise can log your strength workouts to Apple Health."
         NSPhotoLibraryUsageDescription: "Arise needs access to your photo library to import workout screenshots from your fitness apps."

@@ -1,7 +1,7 @@
 """
 User and UserProfile models
 """
-from sqlalchemy import Column, String, Integer, Float, Enum, ForeignKey, DateTime
+from sqlalchemy import Column, String, Integer, Float, Enum, ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
@@ -40,6 +40,8 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     username = Column(String(20), unique=True, nullable=True, index=True)
     password_hash = Column(String, nullable=False)
+    is_deleted = Column(Boolean, default=False, nullable=False, server_default="false")
+    deleted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

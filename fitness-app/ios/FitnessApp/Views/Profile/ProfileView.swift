@@ -6,6 +6,11 @@ struct ProfileView: View {
     @EnvironmentObject var authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
     @State private var showLogoutConfirmation = false
+    @State private var showDeleteAccountConfirmation = false
+    @State private var showDeletePasswordEntry = false
+    @State private var deletePassword = ""
+    @State private var deleteError: String?
+    @State private var isDeleting = false
     @State private var showAllAchievements = false
     @State private var showImagePicker = false
     @State private var showUsernameSetup = false
@@ -152,6 +157,21 @@ struct ProfileView: View {
                             }
                             .padding(.top, 8)
 
+                            // Delete Account Button
+                            Button {
+                                showDeleteAccountConfirmation = true
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "trash.fill")
+                                        .font(.system(size: 12))
+                                    Text("DELETE ACCOUNT")
+                                        .font(.ariseMono(size: 12, weight: .semibold))
+                                        .tracking(1)
+                                }
+                                .foregroundColor(.warningRed.opacity(0.7))
+                            }
+                            .padding(.top, 4)
+
                             Spacer(minLength: 100)
                         }
                         .padding(.vertical)
@@ -186,6 +206,45 @@ struct ProfileView: View {
                 }
             } message: {
                 Text("Warning: You will need to re-authenticate to access the System.")
+            }
+            .alert("Delete Account?", isPresented: $showDeleteAccountConfirmation) {
+                Button("Cancel", role: .cancel) {}
+                Button("Delete Account", role: .destructive) {
+                    showDeletePasswordEntry = true
+                }
+            } message: {
+                Text("Your account will be permanently deleted after 30 days. This action cannot be undone.")
+            }
+            .alert("Confirm Password", isPresented: $showDeletePasswordEntry) {
+                SecureField("Password", text: $deletePassword)
+                Button("Cancel", role: .cancel) {
+                    deletePassword = ""
+                }
+                Button("Delete", role: .destructive) {
+                    guard !deletePassword.isEmpty, !isDeleting else { return }
+                    let pw = deletePassword
+                    deletePassword = ""
+                    Task {
+                        isDeleting = true
+                        deleteError = nil
+                        do {
+                            try await APIClient.shared.deleteAccount(password: pw)
+                            authManager.logout()
+                        } catch {
+                            deleteError = error.localizedDescription
+                        }
+                        isDeleting = false
+                    }
+                }
+            } message: {
+                Text("Enter your password to confirm account deletion.")
+            }
+            .alert("Deletion Failed", isPresented: .constant(deleteError != nil)) {
+                Button("OK", role: .cancel) {
+                    deleteError = nil
+                }
+            } message: {
+                Text(deleteError ?? "")
             }
             .sheet(isPresented: $viewModel.showBodyweightEntry) {
                 VesselEntrySheet(viewModel: viewModel)
@@ -1072,6 +1131,25 @@ struct SystemSettingsSection: View {
                         }
                     }
                 )
+
+                AriseDivider()
+
+                Button {
+                    if let url = URL(string: "https://backend-production-e316.up.railway.app/privacy") {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
+                    AriseSettingsRow(
+                        icon: "doc.text.fill",
+                        iconColor: .textSecondary,
+                        title: "Privacy Policy",
+                        trailing: {
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.system(size: 12))
+                                .foregroundColor(.textMuted)
+                        }
+                    )
+                }
             }
             .background(Color.voidMedium)
             .cornerRadius(4)

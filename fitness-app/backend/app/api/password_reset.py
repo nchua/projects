@@ -57,7 +57,7 @@ async def request_password_reset(
     # Find user by email
     user = db.query(User).filter(User.email == email).first()
 
-    if user:
+    if user and not user.is_deleted:
         # Generate code and create token
         code = generate_reset_code()
         expires_at = datetime.utcnow() + timedelta(minutes=CODE_EXPIRY_MINUTES)
@@ -142,7 +142,7 @@ async def verify_password_reset(
 
     # Code is valid - update password
     user = db.query(User).filter(User.id == token.user_id).first()
-    if not user:
+    if not user or user.is_deleted:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User not found."

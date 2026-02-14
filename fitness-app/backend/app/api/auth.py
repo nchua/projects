@@ -6,8 +6,9 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token, verify_token
 from app.core.utils import to_iso8601_utc
+from app.core.dependencies import get_current_user
 from app.models.user import User, UserProfile
-from app.schemas.auth import UserRegister, UserLogin, Token, TokenRefresh, RegisterResponse, UserResponse
+from app.schemas.auth import UserRegister, UserLogin, Token, TokenRefresh, RegisterResponse, UserResponse, DeleteAccountRequest
 
 router = APIRouter()
 
@@ -90,6 +91,13 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Reject deleted users
+    if user.is_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account scheduled for deletion. Contact support to recover.",
+        )
+
     # Verify password
     if not verify_password(user_data.password, user.password_hash):
         raise HTTPException(
@@ -151,6 +159,14 @@ async def refresh_token(token_data: TokenRefresh, db: Session = Depends(get_db))
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Reject deleted users
+    if user.is_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Account has been deleted",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     # Create new tokens
     access_token = create_access_token(data={"sub": user.id})
     new_refresh_token = create_refresh_token(data={"sub": user.id})
@@ -160,3 +176,29 @@ async def refresh_token(token_data: TokenRefresh, db: Session = Depends(get_db))
         refresh_token=new_refresh_token,
         token_type="bearer"
     )
+
+
+@router.delete("/account", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_account(
+    request: DeleteAccountRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Soft-delete the current user's account.
+
+    Requires password confirmation. Account will be inaccessible immediately
+    and permanently deleted after 30 days.
+    """
+    if not verify_password(request.password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password",
+        )
+
+    from datetime import datetime
+    current_user.is_deleted = True
+    current_user.deleted_at = datetime.utcnow()
+    db.commit()
+
+    return None

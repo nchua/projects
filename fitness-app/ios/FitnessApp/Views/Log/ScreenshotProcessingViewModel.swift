@@ -56,6 +56,10 @@ class ScreenshotProcessingViewModel: ObservableObject {
                     activitySaved = data.activitySaved
                     savedActivityId = data.activityId
                 }
+            } catch APIError.rateLimited(let message) {
+                self.error = message
+            } catch APIError.serviceUnavailable(let message) {
+                self.error = message
             } catch {
                 self.error = error.localizedDescription
             }
@@ -84,6 +88,10 @@ class ScreenshotProcessingViewModel: ObservableObject {
                 }
 
                 processingProgress = "Complete! Processed \(batchData?.screenshotsProcessed ?? 0) screenshots."
+            } catch APIError.rateLimited(let message) {
+                self.error = message
+            } catch APIError.serviceUnavailable(let message) {
+                self.error = message
             } catch {
                 self.error = error.localizedDescription
             }

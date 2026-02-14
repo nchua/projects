@@ -57,6 +57,14 @@ class APIClient {
         refreshToken = nil
     }
 
+    func deleteAccount(password: String) async throws {
+        struct DeleteRequest: Encodable {
+            let password: String
+        }
+        let body = DeleteRequest(password: password)
+        let _: EmptyResponse = try await request(method: "DELETE", path: "/auth/account", body: body)
+    }
+
     // MARK: - Password Reset
 
     func requestPasswordReset(email: String) async throws -> PasswordResetResponse {
@@ -176,6 +184,14 @@ class APIClient {
 
     func getCooldownStatus() async throws -> CooldownResponse {
         return try await get("/analytics/cooldowns")
+    }
+
+    func getWeeklyProgressReport(weekStart: String? = nil) async throws -> WeeklyProgressReportResponse {
+        var path = "/progress/weekly-report"
+        if let weekStart = weekStart {
+            path += "?week_start=\(weekStart)"
+        }
+        return try await get(path)
     }
 
     // MARK: - Sync
@@ -508,6 +524,16 @@ class APIClient {
                 throw APIError.badRequest(errorResponse.detail ?? "Screenshot analysis failed")
             }
             throw APIError.badRequest("Screenshot analysis failed. Please try a different image.")
+        case 429:
+            if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                throw APIError.rateLimited(errorResponse.detail ?? "Daily screenshot limit reached. Try again tomorrow.")
+            }
+            throw APIError.rateLimited("Daily screenshot limit reached. Try again tomorrow.")
+        case 503:
+            if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                throw APIError.serviceUnavailable(errorResponse.detail ?? "Screenshot scanning temporarily unavailable")
+            }
+            throw APIError.serviceUnavailable("Screenshot scanning temporarily unavailable")
         default:
             throw APIError.serverError(httpResponse.statusCode)
         }
@@ -595,6 +621,16 @@ class APIClient {
                 throw APIError.badRequest(errorResponse.detail ?? "Screenshot analysis failed")
             }
             throw APIError.badRequest("Screenshot analysis failed. Please try a different image.")
+        case 429:
+            if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                throw APIError.rateLimited(errorResponse.detail ?? "Daily screenshot limit reached. Try again tomorrow.")
+            }
+            throw APIError.rateLimited("Daily screenshot limit reached. Try again tomorrow.")
+        case 503:
+            if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                throw APIError.serviceUnavailable(errorResponse.detail ?? "Screenshot scanning temporarily unavailable")
+            }
+            throw APIError.serviceUnavailable("Screenshot scanning temporarily unavailable")
         default:
             throw APIError.serverError(httpResponse.statusCode)
         }
@@ -774,6 +810,8 @@ enum APIError: Error, LocalizedError {
     case notFound
     case validationError
     case badRequest(String)
+    case rateLimited(String)
+    case serviceUnavailable(String)
     case serverError(Int)
     case networkError(String)
 
@@ -785,6 +823,8 @@ enum APIError: Error, LocalizedError {
         case .notFound: return "Resource not found"
         case .validationError: return "Invalid data provided. Please check your input."
         case .badRequest(let message): return message
+        case .rateLimited(let message): return message
+        case .serviceUnavailable(let message): return message
         case .serverError(let code): return "Server error: \(code)"
         case .networkError(let message): return message
         }

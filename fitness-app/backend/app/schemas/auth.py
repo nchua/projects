@@ -56,3 +56,8 @@ class RegisterResponse(BaseModel):
     """Schema for registration success response"""
     message: str
     user: UserResponse
+
+
+class DeleteAccountRequest(BaseModel):
+    """Schema for account deletion confirmation"""
+    password: str

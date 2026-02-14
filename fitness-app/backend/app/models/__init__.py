@@ -20,6 +20,7 @@ from app.models.mission import (
     Goal, GoalProgressSnapshot, WeeklyMission, MissionWorkout, ExercisePrescription, MissionGoal,
     GoalStatus, MissionStatus, MissionWorkoutStatus, TrainingSplit
 )
+from app.models.screenshot_usage import ScreenshotUsage
 
 __all__ = [
     "User",
@@ -65,4 +66,5 @@ __all__ = [
     "MissionStatus",
     "MissionWorkoutStatus",
     "TrainingSplit",
+    "ScreenshotUsage",
 ]

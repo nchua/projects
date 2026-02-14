@@ -6,13 +6,20 @@ import logging
 import traceback
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from app.core.database import get_db
+from app.core.config import settings
 from app.core.dependencies import get_current_user
 from app.models.user import User
+from app.models.screenshot_usage import ScreenshotUsage
 
 logger = logging.getLogger(__name__)
+
+# Rate limiting constants
+DAILY_SCREENSHOT_LIMIT = 20
+COOLDOWN_SECONDS = 10
 from app.schemas.screenshot import (
     ScreenshotProcessResponse, ScreenshotBatchResponse,
     ExtractedExercise, ExtractedSet, HeartRateZone
@@ -25,6 +32,51 @@ from app.services.screenshot_service import (
 )
 
 router = APIRouter()
+
+
+def _check_screenshot_rate_limit(db: Session, user_id: str, screenshot_count: int = 1) -> None:
+    """Check rate limits for screenshot processing. Raises HTTPException if exceeded."""
+    if not settings.SCREENSHOT_PROCESSING_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Screenshot scanning temporarily unavailable"
+        )
+
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # Check daily limit
+    today_usage = db.query(func.sum(ScreenshotUsage.screenshots_count)).filter(
+        ScreenshotUsage.user_id == user_id,
+        ScreenshotUsage.created_at >= today_start
+    ).scalar() or 0
+
+    if today_usage + screenshot_count > DAILY_SCREENSHOT_LIMIT:
+        resets_at = today_start + timedelta(days=1)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Daily limit reached. You've used {today_usage}/{DAILY_SCREENSHOT_LIMIT} screenshots today.",
+            headers={"Retry-After": str(int((resets_at - datetime.utcnow()).total_seconds()))}
+        )
+
+    # Check cooldown (10 seconds between requests)
+    last_usage = db.query(ScreenshotUsage).filter(
+        ScreenshotUsage.user_id == user_id
+    ).order_by(ScreenshotUsage.created_at.desc()).first()
+
+    if last_usage and (datetime.utcnow() - last_usage.created_at).total_seconds() < COOLDOWN_SECONDS:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Please wait a few seconds between screenshot requests.",
+            headers={"Retry-After": str(COOLDOWN_SECONDS)}
+        )
+
+
+def _record_screenshot_usage(db: Session, user_id: str, count: int = 1) -> None:
+    """Record screenshot usage for rate limiting."""
+    usage = ScreenshotUsage(user_id=user_id, screenshots_count=count)
+    db.add(usage)
+    db.commit()
+
 
 # Allowed image types
 ALLOWED_CONTENT_TYPES = {
@@ -69,6 +121,9 @@ async def process_screenshot(
     Raises:
         HTTPException: If file type is invalid, file is too large, or processing fails
     """
+    # Rate limiting check
+    _check_screenshot_rate_limit(db, current_user.id, screenshot_count=1)
+
     import sys
     # Read first few bytes to check actual file format
     first_bytes = await file.read(16)
@@ -107,6 +162,7 @@ async def process_screenshot(
             user_id=current_user.id
         )
         logger.info(f"Extraction complete, screenshot_type: {result.get('screenshot_type')}")
+        _record_screenshot_usage(db, current_user.id, count=1)
     except ValueError as e:
         logger.error(f"ValueError during extraction: {e}")
         raise HTTPException(
@@ -267,6 +323,9 @@ async def process_screenshots_batch(
             detail="No files provided"
         )
 
+    # Rate limiting check
+    _check_screenshot_rate_limit(db, current_user.id, screenshot_count=len(files))
+
     if len(files) > 10:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -310,6 +369,9 @@ async def process_screenshots_batch(
 
     # Merge all extractions
     merged = merge_extractions(extractions)
+
+    # Record usage after successful processing
+    _record_screenshot_usage(db, current_user.id, count=len(files))
 
     # Get screenshot type
     screenshot_type = merged.get("screenshot_type", "gym_workout")
