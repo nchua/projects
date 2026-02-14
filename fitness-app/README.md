@@ -40,9 +40,18 @@ A gamified iOS fitness tracking app inspired by *Solo Leveling*, with a FastAPI 
 - Friend system with requests and hunter profiles
 - Competitive stats (XP, level, rank, recent workouts)
 
+### Security & Privacy
+- Account deletion with 30-day soft-delete and password confirmation
+- Screenshot processing rate limiting (20/day per user, 10s cooldown)
+- JWT access tokens expire in 1 hour (refresh tokens: 7 days)
+- Debug endpoints and middleware gated behind `DEBUG` flag
+- Production error messages sanitized (no stack traces)
+- PrivacyInfo.xcprivacy manifest for App Store compliance
+- Privacy policy served at `/privacy`
+
 ### Architecture
 - Offline-first with local SwiftData storage and background sync
-- JWT authentication with token refresh
+- JWT authentication with token refresh and session expiry handling
 - Deployed on Railway with auto-deploy from `main`
 
 ## Screenshots
@@ -59,6 +68,8 @@ Interactive HTML mockups of each screen: **[View all mockups](https://nickchua.m
 | [History](https://nickchua.me/projects/fitness-app/history.html) | Calendar view with workout details |
 | [Dungeons](https://nickchua.me/projects/fitness-app/dungeons.html) | Gate board with objectives and rewards |
 | [Friends](https://nickchua.me/projects/fitness-app/friends.html) | Hunter network with rank and streaks |
+| [Profile Security](ios/mockups/profile-security.html) | Account deletion, privacy policy |
+| [Rate Limiting](ios/mockups/rate-limiting.html) | Screenshot usage limits and error states |
 
 ## Tech Stack
 
@@ -106,12 +117,12 @@ fitness-app/
 
 | Group | Endpoints | Description |
 |-------|-----------|-------------|
-| Auth | `/auth/register`, `/auth/login`, `/auth/refresh` | Account creation and JWT tokens |
+| Auth | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/account` | Account creation, JWT tokens, account deletion |
 | Password Reset | `/password-reset/request`, `/password-reset/reset` | Email-based password reset |
 | Workouts | CRUD on `/workouts` | Workout sessions with exercises and sets |
 | Exercises | `/exercises`, `/exercises/search` | Exercise library with search and filtering |
 | Analytics | `/analytics/*` | e1RM trends, strength percentiles, PRs, weekly reviews, insights |
-| Screenshots | `/screenshot/process`, `/screenshot/batch` | Claude Vision workout extraction |
+| Screenshots | `/screenshot/process`, `/screenshot/batch` | Claude Vision workout extraction (rate limited: 20/day) |
 | Goals | `/goals`, `/goals/{id}` | Strength PR goals CRUD (up to 5 active) |
 | Missions | `/missions/current`, `/missions/{id}/accept` | Weekly workout prescriptions from goals |
 | Quests | `/quests`, `/quests/{id}/claim` | Daily quest generation and claiming |
@@ -124,7 +135,7 @@ fitness-app/
 ## Database Schema
 
 ### Core
-`users`, `user_profiles`, `exercises`, `workout_sessions`, `workout_exercises`, `sets`, `bodyweight_entries`, `prs`
+`users`, `user_profiles`, `exercises`, `workout_sessions`, `workout_exercises`, `sets`, `bodyweight_entries`, `prs`, `screenshot_usage`
 
 ### Coaching
 `goals`, `weekly_missions`, `mission_workouts`, `mission_exercises`, `mission_goals`

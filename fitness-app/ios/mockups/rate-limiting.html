@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Screenshot Rate Limiting — ARISE App Store Phase 1</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --void-black: #050508;
+    --void-dark: #0a0a12;
+    --void-medium: #0f1018;
+    --void-light: #1a1a2e;
+    --cyan: #00D4FF;
+    --cyan-dim: #00A8CC;
+    --cyan-subtle: rgba(0,212,255,0.1);
+    --cyan-glow: rgba(0,212,255,0.25);
+    --gold: #FFD700;
+    --red: #FF4757;
+    --green: #33FF88;
+    --orange: #FF9F43;
+    --text-primary: #FFFFFF;
+    --text-secondary: #A0A0B0;
+    --text-muted: #555B6E;
+    --arise-border: #1a1a2e;
+  }
+
+  body {
+    background: #020204;
+    font-family: 'Inter', -apple-system, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    gap: 32px;
+  }
+
+  h1.page-title {
+    font-family: 'Rajdhani', sans-serif;
+    color: var(--text-primary);
+    font-size: 24px;
+    text-align: center;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+
+  .page-subtitle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  /* Tab controls */
+  .tab-bar {
+    display: flex;
+    gap: 0;
+    background: var(--void-medium);
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--arise-border);
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .tab-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .tab-btn.active {
+    color: var(--void-black);
+    background: var(--cyan);
+    box-shadow: 0 0 12px var(--cyan-glow);
+  }
+
+  .tab-btn:hover:not(.active) {
+    color: var(--text-secondary);
+    background: var(--void-light);
+  }
+
+  .phone-frame {
+    width: 390px;
+    background: var(--void-black);
+    border-radius: 40px;
+    border: 2px solid #222;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 28px 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  /* Nav bar */
+  .nav-bar {
+    display: flex;
+    align-items: center;
+    padding: 8px 20px 12px;
+    gap: 8px;
+  }
+
+  .nav-back {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .screen {
+    padding: 0 0 30px;
+    min-height: 680px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Tab panel visibility */
+  .tab-panel {
+    display: none;
+  }
+
+  .tab-panel.active {
+    display: block;
+  }
+
+  .mockup-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    justify-content: center;
+  }
+
+  .mockup-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .variant-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 1.5px;
+    text-align: center;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  /* Annotation */
+  .annotation {
+    margin: 8px 20px;
+    padding: 10px 14px;
+    background: rgba(0,212,255,0.08);
+    border: 1px dashed rgba(0,212,255,0.3);
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--cyan);
+    text-align: center;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  .annotation.new {
+    border-color: rgba(255,215,0,0.3);
+    background: rgba(255,215,0,0.06);
+    color: var(--gold);
+  }
+
+  /* ================================ */
+  /* Processing / Center content      */
+  /* ================================ */
+  .center-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 32px;
+    gap: 24px;
+  }
+
+  /* Spinning circle */
+  .spinner-ring {
+    width: 80px;
+    height: 80px;
+    position: relative;
+  }
+
+  .spinner-ring .ring-bg {
+    position: absolute;
+    inset: 0;
+    border: 3px solid rgba(0,212,255,0.1);
+    border-radius: 50%;
+  }
+
+  .spinner-ring .ring-fg {
+    position: absolute;
+    inset: 0;
+    border: 3px solid transparent;
+    border-top-color: var(--cyan);
+    border-right-color: var(--cyan);
+    border-radius: 50%;
+    animation: spin 1.2s linear infinite;
+  }
+
+  .spinner-ring .ring-icon {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: var(--cyan);
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .processing-text {
+    text-align: center;
+  }
+
+  .processing-text .sys-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--cyan);
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+
+  .processing-text .main-text {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+
+  .processing-text .sub-text {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+
+  /* ================================ */
+  /* Usage Counter                    */
+  /* ================================ */
+  .usage-counter {
+    width: 100%;
+    margin: 0 20px;
+    padding: 16px 20px;
+    background: var(--void-medium);
+    border-radius: 8px;
+    border: 1px solid var(--arise-border);
+  }
+
+  .usage-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .usage-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  .usage-count {
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .usage-count.normal { color: var(--cyan); }
+  .usage-count.warning { color: var(--orange); }
+  .usage-count.limit { color: var(--red); }
+
+  .usage-bar-bg {
+    height: 6px;
+    background: var(--void-light);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+
+  .usage-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.6s ease;
+  }
+
+  .usage-bar-fill.normal {
+    background: linear-gradient(90deg, var(--cyan-dim), var(--cyan));
+    box-shadow: 0 0 8px var(--cyan-glow);
+  }
+
+  .usage-bar-fill.warning {
+    background: linear-gradient(90deg, var(--orange), #FFB74D);
+    box-shadow: 0 0 8px rgba(255,159,67,0.3);
+  }
+
+  .usage-bar-fill.limit {
+    background: linear-gradient(90deg, var(--red), #FF6B81);
+    box-shadow: 0 0 8px rgba(255,71,87,0.3);
+  }
+
+  .usage-segments {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .usage-segment-mark {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--text-muted);
+  }
+
+  /* ================================ */
+  /* Error / Rate Limit States        */
+  /* ================================ */
+  .error-icon-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+  }
+
+  .error-icon-circle.rate-limited {
+    background: rgba(255,159,67,0.1);
+    color: var(--orange);
+    border: 2px solid rgba(255,159,67,0.2);
+  }
+
+  .error-icon-circle.unavailable {
+    background: rgba(255,71,87,0.1);
+    color: var(--red);
+    border: 2px solid rgba(255,71,87,0.2);
+  }
+
+  .error-text {
+    text-align: center;
+  }
+
+  .error-text .sys-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+
+  .error-text .sys-label.orange { color: var(--orange); }
+  .error-text .sys-label.red { color: var(--red); }
+
+  .error-text .main-text {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+
+  .error-text .sub-text {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  /* Action buttons */
+  .action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    height: 48px;
+    background: var(--void-medium);
+    border: 1px solid var(--arise-border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .action-btn.primary {
+    background: var(--cyan);
+    color: var(--void-black);
+    border: 2px solid var(--cyan);
+    box-shadow: 0 0 15px var(--cyan-glow);
+  }
+
+  .action-btn + .action-btn {
+    margin-top: 8px;
+  }
+
+  /* Remaining count badge */
+  .remaining-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 100px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .remaining-badge.normal {
+    background: rgba(0,212,255,0.1);
+    color: var(--cyan);
+  }
+
+  .remaining-badge.warning {
+    background: rgba(255,159,67,0.1);
+    color: var(--orange);
+  }
+
+  .remaining-badge.limit {
+    background: rgba(255,71,87,0.1);
+    color: var(--red);
+  }
+
+  /* Reset timer */
+  .reset-timer {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: center;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+  }
+
+  /* Grid icon */
+  .grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.02) 1px, transparent 1px);
+    background-size: 30px 30px;
+    pointer-events: none;
+  }
+
+  /* Bottom padding area for buttons */
+  .bottom-actions {
+    padding: 16px 24px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+</style>
+</head>
+<body>
+
+<div>
+  <h1 class="page-title">Screenshot Rate Limiting</h1>
+  <p class="page-subtitle">ARISE Phase 1 -- Usage Caps & Error States</p>
+</div>
+
+<!-- Tab Navigation -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="showTab('processing')">Processing</button>
+  <button class="tab-btn" onclick="showTab('usage')">Usage Counter</button>
+  <button class="tab-btn" onclick="showTab('rate429')">429 Rate Limited</button>
+  <button class="tab-btn" onclick="showTab('error503')">503 Unavailable</button>
+</div>
+
+<!-- ============================= -->
+<!-- TAB 1: Normal Processing      -->
+<!-- ============================= -->
+<div id="tab-processing" class="tab-panel active">
+  <div class="mockup-container">
+    <div class="mockup-column">
+      <div class="variant-label">Normal State: Analyzing Screenshot</div>
+      <div class="phone-frame">
+        <div class="status-bar">
+          <span>9:41</span>
+          <span style="font-size:10px;">&#9679;&#9679;&#9679; WiFi &#128267;</span>
+        </div>
+
+        <!-- Nav bar -->
+        <div class="nav-bar">
+          <span class="nav-back">&#10005; CANCEL</span>
+        </div>
+
+        <div class="screen" style="position:relative;">
+          <div class="grid-bg"></div>
+
+          <div class="center-content">
+            <!-- Spinner -->
+            <div class="spinner-ring">
+              <div class="ring-bg"></div>
+              <div class="ring-fg"></div>
+              <div class="ring-icon">&#10024;</div>
+            </div>
+
+            <div class="processing-text">
+              <div class="sys-label">[ SYSTEM ANALYZING ]</div>
+              <div class="main-text">Extracting Workout Data</div>
+              <div class="sub-text">The System is reading your quest log...</div>
+            </div>
+
+            <!-- Usage indicator during processing -->
+            <div class="remaining-badge normal">
+              &#9679; 3 SCREENSHOTS REMAINING TODAY
+            </div>
+          </div>
+
+          <div class="annotation new" style="position:relative; margin-top:auto;">
+            Usage counter visible during analysis so users know their remaining quota
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= -->
+<!-- TAB 2: Usage Counter Detail   -->
+<!-- ============================= -->
+<div id="tab-usage" class="tab-panel">
+  <div class="mockup-container">
+
+    <!-- Low Usage (17/20) -->
+    <div class="mockup-column">
+      <div class="variant-label">17 / 20 Used (Warning Zone)</div>
+      <div class="phone-frame">
+        <div class="status-bar">
+          <span>9:41</span>
+          <span style="font-size:10px;">&#9679;&#9679;&#9679; WiFi &#128267;</span>
+        </div>
+        <div class="nav-bar">
+          <span class="nav-back">&#10005; CANCEL</span>
+        </div>
+        <div class="screen" style="position:relative;">
+          <div class="grid-bg"></div>
+
+          <div class="center-content">
+            <!-- Spinner -->
+            <div class="spinner-ring">
+              <div class="ring-bg"></div>
+              <div class="ring-fg"></div>
+              <div class="ring-icon">&#10024;</div>
+            </div>
+
+            <div class="processing-text">
+              <div class="sys-label">[ SYSTEM ANALYZING ]</div>
+              <div class="main-text">Extracting Workout Data</div>
+              <div class="sub-text">The System is reading your quest log...</div>
+            </div>
+
+            <!-- Usage Counter Card -->
+            <div class="usage-counter">
+              <div class="usage-header">
+                <span class="usage-label">Daily Screenshot Usage</span>
+                <span class="usage-count warning">17/20</span>
+              </div>
+              <div class="usage-bar-bg">
+                <div class="usage-bar-fill warning" style="width: 85%;"></div>
+              </div>
+              <div class="usage-segments">
+                <span class="usage-segment-mark">0</span>
+                <span class="usage-segment-mark">5</span>
+                <span class="usage-segment-mark">10</span>
+                <span class="usage-segment-mark">15</span>
+                <span class="usage-segment-mark">20</span>
+              </div>
+            </div>
+
+            <div class="remaining-badge warning">
+              &#9888; 3 SCREENSHOTS REMAINING
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Full Usage (20/20) -->
+    <div class="mockup-column">
+      <div class="variant-label">20 / 20 Used (Limit Reached)</div>
+      <div class="phone-frame">
+        <div class="status-bar">
+          <span>9:41</span>
+          <span style="font-size:10px;">&#9679;&#9679;&#9679; WiFi &#128267;</span>
+        </div>
+        <div class="nav-bar">
+          <span class="nav-back">&#10005; CANCEL</span>
+        </div>
+        <div class="screen" style="position:relative;">
+          <div class="grid-bg"></div>
+
+          <div class="center-content">
+            <!-- Usage Counter Card -->
+            <div class="usage-counter" style="border-color: rgba(255,71,87,0.3);">
+              <div class="usage-header">
+                <span class="usage-label">Daily Screenshot Usage</span>
+                <span class="usage-count limit">20/20</span>
+              </div>
+              <div class="usage-bar-bg">
+                <div class="usage-bar-fill limit" style="width: 100%;"></div>
+              </div>
+              <div class="usage-segments">
+                <span class="usage-segment-mark">0</span>
+                <span class="usage-segment-mark">5</span>
+                <span class="usage-segment-mark">10</span>
+                <span class="usage-segment-mark">15</span>
+                <span class="usage-segment-mark">20</span>
+              </div>
+            </div>
+
+            <div class="remaining-badge limit">
+              &#9679; DAILY LIMIT REACHED
+            </div>
+
+            <div class="reset-timer">Resets in 14h 23m</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================= -->
+<!-- TAB 3: 429 Rate Limited       -->
+<!-- ============================= -->
+<div id="tab-rate429" class="tab-panel">
+  <div class="mockup-container">
+    <div class="mockup-column">
+      <div class="variant-label">429 -- Daily Limit Reached</div>
+      <div class="phone-frame">
+        <div class="status-bar">
+          <span>9:41</span>
+          <span style="font-size:10px;">&#9679;&#9679;&#9679; WiFi &#128267;</span>
+        </div>
+        <div class="nav-bar">
+          <span class="nav-back">&#10005; CANCEL</span>
+        </div>
+        <div class="screen" style="position:relative;">
+          <div class="grid-bg"></div>
+
+          <div class="center-content">
+            <!-- Error icon -->
+            <div class="error-icon-circle rate-limited">
+              &#9201;
+            </div>
+
+            <div class="error-text">
+              <div class="sys-label orange">[ DAILY LIMIT REACHED ]</div>
+              <div class="main-text">Screenshots Exhausted</div>
+              <div class="sub-text">You've used all 20 screenshots today. Try again tomorrow or log your workout manually.</div>
+            </div>
+
+            <!-- Usage bar at limit -->
+            <div class="usage-counter" style="border-color: rgba(255,71,87,0.3);">
+              <div class="usage-header">
+                <span class="usage-label">Daily Screenshot Usage</span>
+                <span class="usage-count limit">20/20</span>
+              </div>
+              <div class="usage-bar-bg">
+                <div class="usage-bar-fill limit" style="width: 100%;"></div>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-top:6px;">
+                <span class="remaining-badge limit" style="font-size:9px; padding:4px 8px;">LIMIT REACHED</span>
+                <span class="reset-timer" style="margin:0;">Resets in 14h 23m</span>
+              </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div style="width:100%; display:flex; flex-direction:column; gap:8px;">
+              <button class="action-btn primary">
+                &#9998; LOG MANUALLY
+              </button>
+              <button class="action-btn">
+                &#8634; TRY AGAIN LATER
+              </button>
+            </div>
+          </div>
+
+          <div class="annotation new" style="position:relative; margin-top:auto;">
+            APIError.rateLimited -- catches HTTP 429 from backend<br>
+            Message: "Daily screenshot limit reached. Try again tomorrow."
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= -->
+<!-- TAB 4: 503 Service Unavailable -->
+<!-- ============================= -->
+<div id="tab-error503" class="tab-panel">
+  <div class="mockup-container">
+    <div class="mockup-column">
+      <div class="variant-label">503 -- Service Unavailable</div>
+      <div class="phone-frame">
+        <div class="status-bar">
+          <span>9:41</span>
+          <span style="font-size:10px;">&#9679;&#9679;&#9679; WiFi &#128267;</span>
+        </div>
+        <div class="nav-bar">
+          <span class="nav-back">&#10005; CANCEL</span>
+        </div>
+        <div class="screen" style="position:relative;">
+          <div class="grid-bg"></div>
+
+          <div class="center-content">
+            <!-- Error icon -->
+            <div class="error-icon-circle unavailable">
+              &#9888;
+            </div>
+
+            <div class="error-text">
+              <div class="sys-label red">[ SYSTEM ERROR ]</div>
+              <div class="main-text">Service Unavailable</div>
+              <div class="sub-text">Screenshot scanning temporarily unavailable. The System is undergoing maintenance. Please try again later or log your workout manually.</div>
+            </div>
+
+            <!-- Status info card -->
+            <div class="usage-counter" style="border-color: rgba(255,71,87,0.2);">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <div style="width:10px; height:10px; border-radius:50%; background:var(--red); flex-shrink:0; animation: pulse-red 2s ease-in-out infinite;"></div>
+                <div>
+                  <div style="font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:var(--red); letter-spacing:0.5px;">SCREENSHOT SERVICE OFFLINE</div>
+                  <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-muted); margin-top:3px;">Claude Vision API temporarily down</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div style="width:100%; display:flex; flex-direction:column; gap:8px;">
+              <button class="action-btn">
+                &#8634; TRY AGAIN
+              </button>
+              <button class="action-btn primary">
+                &#9998; LOG MANUALLY
+              </button>
+            </div>
+          </div>
+
+          <div class="annotation new" style="position:relative; margin-top:auto;">
+            APIError.serviceUnavailable -- catches HTTP 503 from backend<br>
+            Message: "Screenshot scanning temporarily unavailable"
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Flow Diagram -->
+<div style="margin-top: 16px; max-width: 700px; width: 100%;">
+  <div class="annotation" style="margin: 0; text-align: left; line-height: 1.8; padding: 16px 20px;">
+    <div style="text-align:center; margin-bottom:8px; font-weight:700; letter-spacing:2px;">SCREENSHOT RATE LIMITING FLOW</div>
+    <div style="font-size:10px; color: var(--text-secondary);">
+      <span style="color:var(--cyan);">1.</span> User selects screenshot(s) and taps ANALYZE<br>
+      <span style="color:var(--cyan);">2.</span> Request sent to <span style="color:var(--text-primary);">POST /api/screenshot/process</span><br>
+      <span style="color:var(--cyan);">3a.</span> <span style="color:var(--green);">200 OK</span> &rarr; show extracted workout data &rarr; save<br>
+      <span style="color:var(--cyan);">3b.</span> <span style="color:var(--orange);">429 Too Many Requests</span> &rarr; "Daily screenshot limit reached"<br>
+      <span style="color:var(--cyan);">&nbsp;&nbsp;&nbsp;&nbsp;</span> Caught by <span style="color:var(--text-primary);">APIError.rateLimited</span> in ScreenshotProcessingViewModel<br>
+      <span style="color:var(--cyan);">3c.</span> <span style="color:var(--red);">503 Service Unavailable</span> &rarr; "Screenshot scanning temporarily unavailable"<br>
+      <span style="color:var(--cyan);">&nbsp;&nbsp;&nbsp;&nbsp;</span> Caught by <span style="color:var(--text-primary);">APIError.serviceUnavailable</span> in ScreenshotProcessingViewModel<br>
+      <span style="color:var(--cyan);">4.</span> Both error states offer <span style="color:var(--text-primary);">LOG MANUALLY</span> as fallback
+    </div>
+  </div>
+</div>
+
+<style>
+  @keyframes pulse-red {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+</style>
+
+<script>
+  function showTab(name) {
+    // Hide all panels
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+
+    // Show selected
+    document.getElementById('tab-' + name).classList.add('active');
+
+    // Activate button
+    const tabs = { 'processing': 0, 'usage': 1, 'rate429': 2, 'error503': 3 };
+    document.querySelectorAll('.tab-btn')[tabs[name]].classList.add('active');
+  }
+</script>
+
+</body>
+</html>

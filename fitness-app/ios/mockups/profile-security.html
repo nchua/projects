@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile Security — ARISE App Store Phase 1</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --void-black: #050508;
+    --void-dark: #0a0a12;
+    --void-medium: #0f1018;
+    --void-light: #1a1a2e;
+    --cyan: #00D4FF;
+    --cyan-dim: #00A8CC;
+    --cyan-subtle: rgba(0,212,255,0.1);
+    --cyan-glow: rgba(0,212,255,0.25);
+    --gold: #FFD700;
+    --red: #FF4757;
+    --green: #33FF88;
+    --text-primary: #FFFFFF;
+    --text-secondary: #A0A0B0;
+    --text-muted: #555B6E;
+    --arise-border: #1a1a2e;
+  }
+
+  body {
+    background: #020204;
+    font-family: 'Inter', -apple-system, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    gap: 32px;
+  }
+
+  h1.page-title {
+    font-family: 'Rajdhani', sans-serif;
+    color: var(--text-primary);
+    font-size: 24px;
+    text-align: center;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+
+  .page-subtitle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  /* Tab controls */
+  .tab-bar {
+    display: flex;
+    gap: 0;
+    background: var(--void-medium);
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--arise-border);
+    margin-bottom: 12px;
+  }
+
+  .tab-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .tab-btn.active {
+    color: var(--void-black);
+    background: var(--cyan);
+    box-shadow: 0 0 12px var(--cyan-glow);
+  }
+
+  .tab-btn:hover:not(.active) {
+    color: var(--text-secondary);
+    background: var(--void-light);
+  }
+
+  .phone-frame {
+    width: 390px;
+    background: var(--void-black);
+    border-radius: 40px;
+    border: 2px solid #222;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 28px 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .screen {
+    padding: 0 0 30px;
+    min-height: 600px;
+  }
+
+  /* Section header */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 20px 8px;
+  }
+
+  .section-header .line {
+    flex: 0 0 3px;
+    height: 14px;
+    background: var(--cyan);
+    border-radius: 2px;
+  }
+
+  .section-header .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+
+  /* Settings card container */
+  .settings-card {
+    margin: 0 20px;
+    background: var(--void-medium);
+    border-radius: 4px;
+    border: 1px solid var(--arise-border);
+    overflow: hidden;
+  }
+
+  /* Settings row */
+  .settings-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+  }
+
+  .settings-row .icon-box {
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .settings-row .row-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    flex: 1;
+  }
+
+  .settings-row .row-trailing {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .row-divider {
+    height: 1px;
+    background: var(--arise-border);
+    margin: 0 16px;
+  }
+
+  /* Specific icon backgrounds */
+  .icon-box.secondary {
+    background: rgba(160,160,176,0.1);
+    color: var(--text-secondary);
+  }
+
+  .icon-box.cyan {
+    background: rgba(0,212,255,0.1);
+    color: var(--cyan);
+  }
+
+  .icon-box.red {
+    background: rgba(255,71,87,0.1);
+    color: var(--red);
+  }
+
+  .icon-box.gold {
+    background: rgba(255,215,0,0.1);
+    color: var(--gold);
+  }
+
+  .icon-box.green-status {
+    background: rgba(51,255,136,0.1);
+    color: var(--green);
+  }
+
+  /* Connected status */
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    display: inline-block;
+  }
+
+  .connected-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--green);
+    letter-spacing: 0.5px;
+  }
+
+  /* Picker style trailing */
+  .picker-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  /* Privacy Policy row - new for Phase 1 */
+  .privacy-row {
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .privacy-row:hover {
+    background: var(--void-light);
+  }
+
+  .external-link-icon {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* Annotation callout */
+  .annotation {
+    margin: 8px 20px;
+    padding: 10px 14px;
+    background: rgba(0,212,255,0.08);
+    border: 1px dashed rgba(0,212,255,0.3);
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--cyan);
+    text-align: center;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  .annotation.new {
+    border-color: rgba(255,215,0,0.3);
+    background: rgba(255,215,0,0.06);
+    color: var(--gold);
+  }
+
+  /* Buttons section */
+  .button-area {
+    padding: 16px 20px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* Save button */
+  .btn-save {
+    width: 100%;
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--cyan);
+    color: var(--void-black);
+    border: 2px solid var(--cyan);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 0 15px var(--cyan-glow);
+  }
+
+  /* Disconnect button */
+  .btn-disconnect {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px 0;
+  }
+
+  .btn-disconnect span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--red);
+    letter-spacing: 1px;
+  }
+
+  .btn-disconnect .icon {
+    font-size: 12px;
+    color: var(--red);
+  }
+
+  /* Delete account button */
+  .btn-delete {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 0;
+  }
+
+  .btn-delete span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255,71,87,0.7);
+    letter-spacing: 1px;
+  }
+
+  .btn-delete .icon {
+    font-size: 12px;
+    color: rgba(255,71,87,0.7);
+  }
+
+  /* iOS Alert Dialog */
+  .alert-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .alert-dialog {
+    width: 290px;
+    background: #1c1c1e;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  }
+
+  .alert-body {
+    padding: 20px 16px 16px;
+    text-align: center;
+  }
+
+  .alert-title {
+    font-family: -apple-system, sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+
+  .alert-message {
+    font-family: -apple-system, sans-serif;
+    font-size: 13px;
+    color: #98989e;
+    line-height: 1.4;
+  }
+
+  .alert-actions {
+    border-top: 0.5px solid #38383a;
+    display: flex;
+  }
+
+  .alert-actions.stacked {
+    flex-direction: column;
+  }
+
+  .alert-btn {
+    flex: 1;
+    padding: 11px 8px;
+    text-align: center;
+    font-family: -apple-system, sans-serif;
+    font-size: 17px;
+    color: #0a84ff;
+    border: none;
+    background: none;
+    cursor: pointer;
+  }
+
+  .alert-btn + .alert-btn {
+    border-left: 0.5px solid #38383a;
+  }
+
+  .alert-actions.stacked .alert-btn + .alert-btn {
+    border-left: none;
+    border-top: 0.5px solid #38383a;
+  }
+
+  .alert-btn.destructive {
+    color: #ff453a;
+    font-weight: 600;
+  }
+
+  .alert-btn.cancel {
+    font-weight: 600;
+  }
+
+  /* Password input in alert */
+  .alert-input {
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: #2c2c2e;
+    border: none;
+    border-radius: 8px;
+    font-family: -apple-system, sans-serif;
+    font-size: 15px;
+    color: #fff;
+    outline: none;
+  }
+
+  .alert-input::placeholder {
+    color: #636366;
+  }
+
+  /* Error alert styling */
+  .alert-error-icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+
+  /* Collapsed context sections */
+  .collapsed-section {
+    margin: 0 20px 4px;
+    padding: 12px 16px;
+    background: var(--void-medium);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    opacity: 0.3;
+    border: 1px solid var(--arise-border);
+  }
+
+  .collapsed-section .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .collapsed-section .dots {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+
+  /* Tab panel visibility */
+  .tab-panel {
+    display: none;
+  }
+
+  .tab-panel.active {
+    display: block;
+  }
+
+  /* Layout container for side-by-side in wide screens */
+  .mockup-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    justify-content: center;
+  }
+
+  .mockup-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .variant-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 1.5px;
+    text-align: center;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div>
+  <h1 class="page-title">Profile & Security</h1>
+  <p class="page-subtitle">ARISE Phase 1 -- App Store Compliance</p>
+</div>
+
+<!-- Tab Navigation -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="showTab('settings')">System Settings</button>
+  <button class="tab-btn" onclick="showTab('confirm1')">Delete: Alert 1</button>
+  <button class="tab-btn" onclick="showTab('confirm2')">Delete: Password</button>
+  <button class="tab-btn" onclick="showTab('error')">Delete: Error</button>
+</div>
+
+<!-- ======================= -->
+<!-- TAB 1: System Settings  -->
+<!-- ======================= -->
+<div id="tab-settings" class="tab-panel active">
+  <div class="mockup-container">
+    <div class="mockup-column">
+      <div class="phone-frame">
+        <div class="status-bar">
+          <span>9:41</span>
+          <span style="font-size:10px;">&#9679;&#9679;&#9679; WiFi &#128267;</span>
+        </div>
+        <div class="screen">
+
+          <!-- Collapsed context: Hunter Attributes above -->
+          <div style="padding: 8px 20px 2px;">
+            <span style="font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--text-muted); letter-spacing:1px; opacity:0.5;">HUNTER ATTRIBUTES, IDENTITY, VESSEL above...</span>
+          </div>
+
+          <!-- System Settings Section -->
+          <div class="section-header">
+            <div class="line"></div>
+            <span class="label">System Settings</span>
+          </div>
+
+          <div class="settings-card">
+            <!-- Weight Unit -->
+            <div class="settings-row">
+              <div class="icon-box secondary">&#9878;</div>
+              <span class="row-title">Weight Unit</span>
+              <span class="picker-value">LB &#9662;</span>
+            </div>
+
+            <div class="row-divider"></div>
+
+            <!-- e1RM Formula -->
+            <div class="settings-row">
+              <div class="icon-box cyan">&#402;</div>
+              <span class="row-title">e1RM Formula</span>
+              <span class="picker-value">EPLEY &#9662;</span>
+            </div>
+
+            <div class="row-divider"></div>
+
+            <!-- Health Sync -->
+            <div class="settings-row">
+              <div class="icon-box red">&#9829;</div>
+              <span class="row-title">Health Sync</span>
+              <span class="row-trailing">
+                <span class="status-dot"></span>
+                <span class="connected-text">CONNECTED</span>
+              </span>
+            </div>
+
+            <div class="row-divider"></div>
+
+            <!-- NEW: Privacy Policy row -->
+            <div class="settings-row privacy-row" title="Opens external link to privacy policy">
+              <div class="icon-box secondary">&#128196;</div>
+              <span class="row-title">Privacy Policy</span>
+              <span class="row-trailing">
+                <span class="external-link-icon">&#8599;</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="annotation new">NEW -- Privacy Policy row (doc.text.fill icon, opens external link)</div>
+
+          <!-- Save Button -->
+          <div class="button-area">
+            <button class="btn-save">
+              <span>&#10003;</span>
+              SAVE CHANGES
+            </button>
+
+            <!-- Disconnect -->
+            <button class="btn-disconnect">
+              <span class="icon">&#9654;</span>
+              <span>DISCONNECT</span>
+            </button>
+
+            <!-- Delete Account -->
+            <button class="btn-delete" title="Triggers two-stage confirmation flow">
+              <span class="icon">&#128465;</span>
+              <span>DELETE ACCOUNT</span>
+            </button>
+          </div>
+
+          <div class="annotation new" style="margin-top: 16px;">
+            NEW -- Delete Account button (trash.fill icon, red destructive styling)<br>
+            Triggers two-stage confirmation: Alert 1 then Password Entry
+          </div>
+
+          <div style="height: 20px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= -->
+<!-- TAB 2: Delete Alert 1   -->
+<!-- ======================= -->
+<div id="tab-confirm1" class="tab-panel">
+  <div class="mockup-container">
+    <div class="mockup-column">
+      <div class="variant-label">Stage 1: Confirmation Alert</div>
+      <div class="phone-frame" style="position:relative;">
+        <div class="status-bar">
+          <span>9:41</span>
+          <span style="font-size:10px;">&#9679;&#9679;&#9679; WiFi &#128267;</span>
+        </div>
+        <div class="screen" style="filter: blur(1px); opacity: 0.4; min-height: 600px;">
+          <!-- Blurred background representing profile -->
+          <div class="section-header">
+            <div class="line"></div>
+            <span class="label">System Settings</span>
+          </div>
+          <div class="settings-card">
+            <div class="settings-row">
+              <div class="icon-box secondary">&#9878;</div>
+              <span class="row-title">Weight Unit</span>
+              <span class="picker-value">LB</span>
+            </div>
+            <div class="row-divider"></div>
+            <div class="settings-row">
+              <div class="icon-box cyan">&#402;</div>
+              <span class="row-title">e1RM Formula</span>
+              <span class="picker-value">EPLEY</span>
+            </div>
+            <div class="row-divider"></div>
+            <div class="settings-row">
+              <div class="icon-box red">&#9829;</div>
+              <span class="row-title">Health Sync</span>
+              <span class="row-trailing"><span class="status-dot"></span><span class="connected-text">CONNECTED</span></span>
+            </div>
+            <div class="row-divider"></div>
+            <div class="settings-row">
+              <div class="icon-box secondary">&#128196;</div>
+              <span class="row-title">Privacy Policy</span>
+              <span class="row-trailing"><span class="external-link-icon">&#8599;</span></span>
+            </div>
+          </div>
+          <div class="button-area">
+            <button class="btn-save">SAVE CHANGES</button>
+            <button class="btn-disconnect"><span class="icon">&#9654;</span><span>DISCONNECT</span></button>
+            <button class="btn-delete"><span class="icon">&#128465;</span><span>DELETE ACCOUNT</span></button>
+          </div>
+        </div>
+
+        <!-- Alert overlay -->
+        <div class="alert-overlay">
+          <div class="alert-dialog">
+            <div class="alert-body">
+              <div class="alert-title">Delete Account?</div>
+              <div class="alert-message">Your account will be permanently deleted after 30 days. This action cannot be undone.</div>
+            </div>
+            <div class="alert-actions">
+              <button class="alert-btn cancel">Cancel</button>
+              <button class="alert-btn destructive">Delete Account</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== -->
+<!-- TAB 3: Delete Password Entry   -->
+<!-- ============================== -->
+<div id="tab-confirm2" class="tab-panel">
+  <div class="mockup-container">
+    <div class="mockup-column">
+      <div class="variant-label">Stage 2: Password Confirmation</div>
+      <div class="phone-frame" style="position:relative;">
+        <div class="status-bar">
+          <span>9:41</span>
+          <span style="font-size:10px;">&#9679;&#9679;&#9679; WiFi &#128267;</span>
+        </div>
+        <div class="screen" style="filter: blur(1px); opacity: 0.4; min-height: 600px;">
+          <div class="section-header">
+            <div class="line"></div>
+            <span class="label">System Settings</span>
+          </div>
+          <div class="settings-card">
+            <div class="settings-row">
+              <div class="icon-box secondary">&#9878;</div>
+              <span class="row-title">Weight Unit</span>
+              <span class="picker-value">LB</span>
+            </div>
+            <div class="row-divider"></div>
+            <div class="settings-row">
+              <div class="icon-box cyan">&#402;</div>
+              <span class="row-title">e1RM Formula</span>
+              <span class="picker-value">EPLEY</span>
+            </div>
+            <div class="row-divider"></div>
+            <div class="settings-row">
+              <div class="icon-box red">&#9829;</div>
+              <span class="row-title">Health Sync</span>
+              <span class="row-trailing"><span class="status-dot"></span><span class="connected-text">CONNECTED</span></span>
+            </div>
+            <div class="row-divider"></div>
+            <div class="settings-row">
+              <div class="icon-box secondary">&#128196;</div>
+              <span class="row-title">Privacy Policy</span>
+              <span class="row-trailing"><span class="external-link-icon">&#8599;</span></span>
+            </div>
+          </div>
+          <div class="button-area">
+            <button class="btn-save">SAVE CHANGES</button>
+            <button class="btn-disconnect"><span class="icon">&#9654;</span><span>DISCONNECT</span></button>
+            <button class="btn-delete"><span class="icon">&#128465;</span><span>DELETE ACCOUNT</span></button>
+          </div>
+        </div>
+
+        <!-- Password confirmation alert -->
+        <div class="alert-overlay">
+          <div class="alert-dialog">
+            <div class="alert-body">
+              <div class="alert-title">Confirm Password</div>
+              <div class="alert-message">Enter your password to confirm account deletion.</div>
+              <input type="password" class="alert-input" placeholder="Password" value="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;">
+            </div>
+            <div class="alert-actions">
+              <button class="alert-btn cancel">Cancel</button>
+              <button class="alert-btn destructive">Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== -->
+<!-- TAB 4: Deletion Failed   -->
+<!-- ======================== -->
+<div id="tab-error" class="tab-panel">
+  <div class="mockup-container">
+    <div class="mockup-column">
+      <div class="variant-label">Error State: Deletion Failed</div>
+      <div class="phone-frame" style="position:relative;">
+        <div class="status-bar">
+          <span>9:41</span>
+          <span style="font-size:10px;">&#9679;&#9679;&#9679; WiFi &#128267;</span>
+        </div>
+        <div class="screen" style="filter: blur(1px); opacity: 0.4; min-height: 600px;">
+          <div class="section-header">
+            <div class="line"></div>
+            <span class="label">System Settings</span>
+          </div>
+          <div class="settings-card">
+            <div class="settings-row">
+              <div class="icon-box secondary">&#9878;</div>
+              <span class="row-title">Weight Unit</span>
+              <span class="picker-value">LB</span>
+            </div>
+            <div class="row-divider"></div>
+            <div class="settings-row">
+              <div class="icon-box cyan">&#402;</div>
+              <span class="row-title">e1RM Formula</span>
+              <span class="picker-value">EPLEY</span>
+            </div>
+            <div class="row-divider"></div>
+            <div class="settings-row">
+              <div class="icon-box red">&#9829;</div>
+              <span class="row-title">Health Sync</span>
+              <span class="row-trailing"><span class="status-dot"></span><span class="connected-text">CONNECTED</span></span>
+            </div>
+            <div class="row-divider"></div>
+            <div class="settings-row">
+              <div class="icon-box secondary">&#128196;</div>
+              <span class="row-title">Privacy Policy</span>
+              <span class="row-trailing"><span class="external-link-icon">&#8599;</span></span>
+            </div>
+          </div>
+          <div class="button-area">
+            <button class="btn-save">SAVE CHANGES</button>
+            <button class="btn-disconnect"><span class="icon">&#9654;</span><span>DISCONNECT</span></button>
+            <button class="btn-delete"><span class="icon">&#128465;</span><span>DELETE ACCOUNT</span></button>
+          </div>
+        </div>
+
+        <!-- Error alert -->
+        <div class="alert-overlay">
+          <div class="alert-dialog">
+            <div class="alert-body">
+              <div class="alert-title">Deletion Failed</div>
+              <div class="alert-message">Incorrect password. Please try again or reset your password.</div>
+            </div>
+            <div class="alert-actions stacked">
+              <button class="alert-btn cancel">OK</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Flow Diagram -->
+<div style="margin-top: 16px; max-width: 700px; width: 100%;">
+  <div class="annotation" style="margin: 0; text-align: left; line-height: 1.8; padding: 16px 20px;">
+    <div style="text-align:center; margin-bottom:8px; font-weight:700; letter-spacing:2px;">DELETE ACCOUNT FLOW</div>
+    <div style="font-size:10px; color: var(--text-secondary);">
+      <span style="color:var(--cyan);">1.</span> User taps <span style="color:var(--red);">DELETE ACCOUNT</span> button<br>
+      <span style="color:var(--cyan);">2.</span> Alert 1: "Your account will be permanently deleted after 30 days"<br>
+      <span style="color:var(--cyan);">&nbsp;&nbsp;&nbsp;</span> <span style="color:var(--text-muted);">Cancel</span> &rarr; dismiss &nbsp;|&nbsp; <span style="color:var(--red);">Delete Account</span> &rarr; step 3<br>
+      <span style="color:var(--cyan);">3.</span> Alert 2: SecureField password entry<br>
+      <span style="color:var(--cyan);">&nbsp;&nbsp;&nbsp;</span> <span style="color:var(--text-muted);">Cancel</span> &rarr; dismiss &nbsp;|&nbsp; <span style="color:var(--red);">Delete</span> &rarr; API call<br>
+      <span style="color:var(--cyan);">4a.</span> <span style="color:var(--green);">Success</span>: authManager.logout() &rarr; return to login<br>
+      <span style="color:var(--cyan);">4b.</span> <span style="color:var(--red);">Failure</span>: "Deletion Failed" error alert with OK button
+    </div>
+  </div>
+</div>
+
+<script>
+  function showTab(name) {
+    // Hide all panels
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+
+    // Show selected
+    document.getElementById('tab-' + name).classList.add('active');
+
+    // Activate button
+    const tabs = { 'settings': 0, 'confirm1': 1, 'confirm2': 2, 'error': 3 };
+    document.querySelectorAll('.tab-btn')[tabs[name]].classList.add('active');
+  }
+</script>
+
+</body>
+</html>
