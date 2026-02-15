@@ -24,6 +24,10 @@ from app.services.quest_service import update_quest_progress
 from app.services.dungeon_service import update_dungeon_progress, maybe_spawn_dungeon
 from app.services.mission_service import update_goal_progress
 from app.models.pr import PR, PRType
+from app.services.notification_service import (
+    notify_achievement_unlocked, notify_level_up,
+    notify_rank_promotion, notify_dungeon_spawned,
+)
 
 router = APIRouter()
 
@@ -266,6 +270,34 @@ async def _create_workout_impl(
     dungeon_spawn_result = maybe_spawn_dungeon(db, current_user.id)
 
     db.commit()
+
+    # ── Send push notifications for triggered events ──
+    import asyncio
+
+    # Notify for each unlocked achievement
+    for ach in newly_unlocked:
+        asyncio.ensure_future(notify_achievement_unlocked(
+            db, current_user.id, ach["name"], ach["description"]
+        ))
+
+    # Notify level up
+    if xp_award["leveled_up"]:
+        asyncio.ensure_future(notify_level_up(
+            db, current_user.id, xp_award["new_level"]
+        ))
+
+    # Notify rank promotion
+    if xp_award["rank_changed"]:
+        asyncio.ensure_future(notify_rank_promotion(
+            db, current_user.id, xp_award["new_rank"]
+        ))
+
+    # Notify dungeon spawned
+    if dungeon_spawn_result and dungeon_spawn_result.get("spawned"):
+        d = dungeon_spawn_result["dungeon"]
+        asyncio.ensure_future(notify_dungeon_spawned(
+            db, current_user.id, d["name"], d["rank"]
+        ))
 
     # Build workout response
     workout_response = _build_workout_response(workout)

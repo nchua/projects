@@ -26,6 +26,7 @@ from app.schemas.mission import (
     WeeklyMissionSummary,
     MissionWorkoutSummary
 )
+from app.services.notification_service import notify_mission_offered
 
 router = APIRouter()
 
@@ -53,6 +54,11 @@ async def get_current_mission(
     try:
         result = get_or_create_current_mission(db, current_user.id)
         db.commit()
+
+        # Notify user if a new mission was just generated
+        if result.get("newly_generated"):
+            import asyncio
+            asyncio.ensure_future(notify_mission_offered(db, current_user.id))
     except Exception as e:
         # Log the error and return empty state so app doesn't break
         import logging

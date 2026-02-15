@@ -476,6 +476,37 @@ class APIClient {
         return try await post("/scan-balance/restore-purchases", body: EmptyBody())
     }
 
+    // MARK: - Notifications
+
+    func registerDeviceToken(_ token: String) async throws {
+        struct TokenBody: Encodable {
+            let token: String
+            let platform: String
+        }
+        let body = TokenBody(token: token, platform: "ios")
+        let _: DeviceTokenResponse = try await post("/notifications/device-token", body: body)
+    }
+
+    func deactivateDeviceToken(_ token: String) async throws {
+        struct TokenBody: Encodable {
+            let token: String
+            let platform: String
+        }
+        let body = TokenBody(token: token, platform: "ios")
+        let _: DeviceTokenResponse = try await request(method: "DELETE", path: "/notifications/device-token", body: body)
+    }
+
+    func getNotificationPreferences() async throws -> NotificationPreferencesResponse {
+        return try await get("/notifications/preferences")
+    }
+
+    func updateNotificationPreferences(_ preferences: [NotificationPreferenceUpdate]) async throws -> NotificationPreferencesResponse {
+        struct BulkUpdate: Encodable {
+            let preferences: [NotificationPreferenceUpdate]
+        }
+        return try await put("/notifications/preferences", body: BulkUpdate(preferences: preferences))
+    }
+
     // MARK: - Screenshot Processing
 
     func processScreenshot(imageData: Data, filename: String, sessionDate: Date? = nil) async throws -> ScreenshotProcessResponse {

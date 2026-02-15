@@ -1079,6 +1079,23 @@ struct SystemSettingsSection: View {
                 .padding(.horizontal)
 
             VStack(spacing: 0) {
+                NavigationLink {
+                    NotificationSettingsView()
+                } label: {
+                    AriseSettingsRow(
+                        icon: "bell.fill",
+                        iconColor: .xpGold,
+                        title: "Notifications",
+                        trailing: {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.textMuted)
+                        }
+                    )
+                }
+
+                AriseDivider()
+
                 AriseSettingsRow(
                     icon: "scalemass.fill",
                     iconColor: .textSecondary,

@@ -22,6 +22,7 @@ from app.models.mission import (
 )
 from app.models.screenshot_usage import ScreenshotUsage
 from app.models.scan_balance import ScanBalance, PurchaseRecord
+from app.models.notification import DeviceToken, NotificationPreference, NotificationType
 
 __all__ = [
     "User",
@@ -70,4 +71,7 @@ __all__ = [
     "ScreenshotUsage",
     "ScanBalance",
     "PurchaseRecord",
+    "DeviceToken",
+    "NotificationPreference",
+    "NotificationType",
 ]

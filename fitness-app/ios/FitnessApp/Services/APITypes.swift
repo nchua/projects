@@ -983,6 +983,36 @@ struct LastSyncResponse: Decodable {
     }
 }
 
+// MARK: - Notifications
+
+struct DeviceTokenResponse: Decodable {
+    let message: String
+}
+
+struct NotificationPreferenceResponse: Decodable {
+    let notificationType: String
+    let enabled: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case notificationType = "notification_type"
+        case enabled
+    }
+}
+
+struct NotificationPreferencesResponse: Decodable {
+    let preferences: [NotificationPreferenceResponse]
+}
+
+struct NotificationPreferenceUpdate: Encodable {
+    let notificationType: String
+    let enabled: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case notificationType = "notification_type"
+        case enabled
+    }
+}
+
 // MARK: - Scan Balance
 
 struct ScanBalanceResponse: Decodable {

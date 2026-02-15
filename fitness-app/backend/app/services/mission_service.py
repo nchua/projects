@@ -864,10 +864,12 @@ def get_or_create_current_mission(db: Session, user_id: str) -> Dict[str, Any]:
     primary_goal_summary = goals_summary[0] if goals_summary else None
 
     # If no mission exists and it's Sunday or Monday, create one
+    newly_generated = False
     if not mission:
         # Only auto-generate on Sunday (6) or Monday (0)
         if today.weekday() in [0, 6]:
             mission = generate_multi_goal_mission(db, user_id, active_goals, week_start, week_end)
+            newly_generated = True
         else:
             # Mid-week with no mission - they can still create goals
             return {
@@ -891,7 +893,8 @@ def get_or_create_current_mission(db: Session, user_id: str) -> Dict[str, Any]:
         "goals": goals_summary,
         "mission": mission_to_summary(mission) if mission else None,
         "needs_goal_setup": False,
-        "can_add_more_goals": len(active_goals) < MAX_ACTIVE_GOALS
+        "can_add_more_goals": len(active_goals) < MAX_ACTIVE_GOALS,
+        "newly_generated": newly_generated,
     }
 
 

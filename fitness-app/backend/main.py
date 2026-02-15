@@ -223,7 +223,7 @@ if settings.DEBUG:
             db.close()
 
 # Import and include API routers
-from app.api import auth, profile, exercises, workouts, bodyweight, analytics, sync, progress, quests, screenshot, activity, dungeons, users, friends, password_reset, goals, missions, weekly_report, scan_balance
+from app.api import auth, profile, exercises, workouts, bodyweight, analytics, sync, progress, quests, screenshot, activity, dungeons, users, friends, password_reset, goals, missions, weekly_report, scan_balance, notifications
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(password_reset.router, prefix="/auth/password-reset", tags=["Password Reset"])
 app.include_router(profile.router, prefix="/profile", tags=["Profile"])
@@ -243,6 +243,7 @@ app.include_router(goals.router, prefix="/goals", tags=["Goals"])
 app.include_router(missions.router, prefix="/missions", tags=["Missions"])
 app.include_router(weekly_report.router, prefix="/progress", tags=["Progress"])
 app.include_router(scan_balance.router, prefix="/scan-balance", tags=["Scan Balance"])
+app.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
 
 if __name__ == "__main__":
     import uvicorn

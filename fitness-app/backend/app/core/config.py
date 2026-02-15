@@ -26,6 +26,13 @@ class Settings(BaseSettings):
     # Scan balance (screenshot scanner monetization)
     FREE_MONTHLY_SCANS: int = Field(default=3)
 
+    # APNs push notifications
+    APNS_KEY_ID: str = Field(default="")
+    APNS_TEAM_ID: str = Field(default="")
+    APNS_AUTH_KEY_PATH: str = Field(default="")
+    APNS_TOPIC: str = Field(default="com.nickchua.fitnessapp")
+    APNS_USE_SANDBOX: bool = Field(default=True)
+
     class Config:
         env_file = ".env"
         case_sensitive = True

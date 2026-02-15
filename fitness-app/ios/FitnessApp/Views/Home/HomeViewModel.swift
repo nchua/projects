@@ -34,6 +34,7 @@ class HomeViewModel: ObservableObject {
     @Published var currentMission: CurrentMissionResponse?
     @Published var missionLoadError: String?
     @Published var goalForEdit: GoalResponse?
+    @Published var weeklyProgressReport: WeeklyProgressReportResponse?
     @Published var isLoading = false
     @Published var error: String?
 
@@ -54,6 +55,23 @@ class HomeViewModel: ObservableObject {
     @Published var weeklyCalories: Int = 0
     @Published var weeklyExerciseMinutes: Int = 0
     @Published var weeklyAvgSteps: Int = 0
+
+    // Weekly Report computed properties for card display
+    var weeklyReportDateRange: String {
+        guard let report = weeklyProgressReport else { return "" }
+        let start = report.weekStart.parseISO8601Date() ?? Date()
+        let end = report.weekEnd.parseISO8601Date() ?? Date()
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        return "\(formatter.string(from: start)) – \(formatter.string(from: end))"
+    }
+
+    var weeklyReportStatus: String {
+        guard let report = weeklyProgressReport, !report.goalReports.isEmpty else { return "on_track" }
+        if report.goalReports.contains(where: { $0.status == "behind" }) { return "behind" }
+        if report.goalReports.contains(where: { $0.status == "ahead" }) { return "ahead" }
+        return "on_track"
+    }
 
     // Computed properties for easier access
     var hunterLevel: Int { userProgress?.level ?? 1 }
@@ -257,6 +275,14 @@ class HomeViewModel: ObservableObject {
                     self.missionLoadError = error.localizedDescription
                 }
             }
+
+            group.addTask { @MainActor in
+                do {
+                    self.weeklyProgressReport = try await APIClient.shared.getWeeklyProgressReport()
+                } catch {
+                    print("DEBUG: Failed to load weekly progress report: \(error)")
+                }
+            }
         }
 
         // Load Big Three trends after exercises are loaded
@@ -283,8 +309,43 @@ class HomeViewModel: ObservableObject {
 
         isLoading = false
 
+        // Schedule local notifications based on loaded data
+        scheduleLocalNotifications()
+
         // Load HealthKit data after main data
         await loadHealthKitData()
+    }
+
+    private func scheduleLocalNotifications() {
+        let nm = NotificationManager.shared
+
+        // Schedule streak-at-risk if user has an active streak
+        if let streak = userProgress?.currentStreak, streak > 0 {
+            // Only schedule if no workout logged today
+            let hasWorkoutToday: Bool
+            if let recent = recentWorkout?.date {
+                let recentDate = recent.parseISO8601Date() ?? Date.distantPast
+                hasWorkoutToday = Calendar.current.isDateInToday(recentDate)
+            } else {
+                hasWorkoutToday = false
+            }
+
+            if !hasWorkoutToday {
+                nm.scheduleStreakAtRiskNotification(currentStreak: streak)
+            } else {
+                nm.cancelStreakReminder()
+            }
+        }
+
+        // Schedule daily quest reset notification
+        nm.scheduleQuestResetNotification()
+
+        // Schedule mission expiring if mission is active
+        if let mission = currentMission?.mission {
+            if let weekEnd = mission.weekEnd.parseISO8601Date() {
+                nm.scheduleMissionExpiringNotification(weekEnd: weekEnd)
+            }
+        }
     }
 
     // MARK: - HealthKit
@@ -414,6 +475,42 @@ class HomeViewModel: ObservableObject {
             self.dailyQuests = try await APIClient.shared.getDailyQuests()
         } catch {
             print("DEBUG: Failed to abandon goal: \(error)")
+            self.error = error.localizedDescription
+        }
+    }
+
+    /// Delete a specific goal by ID (used by GoalsListSheet swipe-to-delete)
+    func deleteGoal(id: String) async {
+        do {
+            try await APIClient.shared.deleteGoal(id: id)
+            // Reload mission data
+            self.currentMission = try await APIClient.shared.getCurrentMission()
+            // Also reload quests
+            self.dailyQuests = try await APIClient.shared.getDailyQuests()
+        } catch {
+            print("DEBUG: Failed to delete goal: \(error)")
+            self.error = error.localizedDescription
+        }
+    }
+
+    /// Delete all goals (used by GoalsListSheet menu)
+    func deleteAllGoals() async {
+        guard let goals = currentMission?.goals else { return }
+
+        for goal in goals {
+            do {
+                try await APIClient.shared.deleteGoal(id: goal.id)
+            } catch {
+                print("DEBUG: Failed to delete goal \(goal.id): \(error)")
+            }
+        }
+
+        // Reload mission data after all deletions
+        do {
+            self.currentMission = try await APIClient.shared.getCurrentMission()
+            self.dailyQuests = try await APIClient.shared.getDailyQuests()
+        } catch {
+            print("DEBUG: Failed to reload data after deleting all goals: \(error)")
             self.error = error.localizedDescription
         }
     }

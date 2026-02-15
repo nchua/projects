@@ -60,6 +60,12 @@ class AuthManager: ObservableObject {
     }
 
     func logout() {
+        // Deactivate device token and cancel notifications
+        Task {
+            await NotificationManager.shared.deactivateDeviceToken()
+        }
+        NotificationManager.shared.cancelAllPendingNotifications()
+
         APIClient.shared.logout()
         isAuthenticated = false
         currentUserId = nil

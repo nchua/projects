@@ -21,6 +21,10 @@ from app.schemas.friend import (
     FriendProfileResponse,
     RecentWorkoutResponse
 )
+from app.services.notification_service import (
+    notify_friend_request_received,
+    notify_friend_request_accepted,
+)
 
 router = APIRouter()
 
@@ -208,6 +212,13 @@ async def send_friend_request(
     db.commit()
     db.refresh(new_request)
 
+    # Notify receiver of friend request
+    import asyncio
+    sender_name = current_user.username or current_user.email or "A hunter"
+    asyncio.ensure_future(notify_friend_request_received(
+        db, request_data.receiver_id, sender_name
+    ))
+
     return build_friend_request_response(new_request, db)
 
 
@@ -248,6 +259,13 @@ async def accept_friend_request(
     db.add(friendship2)
     db.commit()
     db.refresh(friendship1)
+
+    # Notify original sender that their request was accepted
+    import asyncio
+    accepter_name = current_user.username or current_user.email or "A hunter"
+    asyncio.ensure_future(notify_friend_request_accepted(
+        db, friend_request.sender_id, accepter_name
+    ))
 
     return build_friend_response(friendship1, db)
 

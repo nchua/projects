@@ -18,3 +18,4 @@ anthropic>=0.40.0
 rapidfuzz>=3.0.0
 Pillow>=10.0.0
 sendgrid>=6.9.0
+aioapns>=3.0

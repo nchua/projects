@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARISE 2.0 — Notification Settings</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --void-black: #050508;
+    --void-dark: #0a0a12;
+    --void-medium: #0f1018;
+    --void-light: #1a1a2e;
+    --arise-border: rgba(255,255,255,0.06);
+    --cyan: #00D4FF;
+    --cyan-dim: #00A8CC;
+    --cyan-glow: rgba(0,212,255,0.25);
+    --gold: #FFD700;
+    --gold-dim: #C9A800;
+    --green: #33FF88;
+    --red: #FF3333;
+    --text-primary: #FFFFFF;
+    --text-secondary: #A0A0B0;
+    --text-muted: #606070;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0d0d12;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px 64px;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .page-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--cyan);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 4px;
+  }
+
+  .page-subtitle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 1.5px;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  /* Tab bar */
+  .tab-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .tab-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    padding: 8px 16px;
+    background: var(--void-medium);
+    color: var(--text-muted);
+    border: 1px solid var(--arise-border);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .tab-btn.active {
+    color: var(--cyan);
+    border-color: var(--cyan);
+    background: rgba(0,212,255,0.06);
+    box-shadow: 0 0 12px var(--cyan-glow);
+  }
+
+  .tab-btn:hover:not(.active) {
+    color: var(--text-secondary);
+    border-color: rgba(255,255,255,0.12);
+  }
+
+  /* Phone frame */
+  .phone-frame {
+    width: 390px;
+    min-height: 780px;
+    background: var(--void-black);
+    border-radius: 40px;
+    border: 3px solid #222;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
+  }
+
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 28px 8px;
+    font-family: -apple-system, sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .dynamic-island {
+    width: 120px;
+    height: 34px;
+    background: #000;
+    border-radius: 20px;
+    margin: 0 auto;
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .screen {
+    padding: 4px 0 32px;
+    overflow-y: auto;
+    max-height: 700px;
+  }
+
+  /* Nav bar */
+  .nav-bar {
+    display: flex;
+    align-items: center;
+    padding: 4px 16px 12px;
+    gap: 8px;
+  }
+
+  .nav-back {
+    font-size: 20px;
+    color: var(--cyan);
+    font-weight: 300;
+  }
+
+  .nav-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 1px;
+  }
+
+  /* Master toggle card */
+  .master-toggle {
+    margin: 0 20px 16px;
+    padding: 16px;
+    background: var(--void-medium);
+    border-radius: 4px;
+    border: 1px solid var(--arise-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .master-toggle-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .master-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    background: rgba(0,212,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: var(--cyan);
+  }
+
+  .master-label {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 0.5px;
+  }
+
+  .master-sublabel {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+  }
+
+  /* iOS toggle */
+  .toggle {
+    width: 51px;
+    height: 31px;
+    border-radius: 16px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.3s;
+    flex-shrink: 0;
+  }
+
+  .toggle.on {
+    background: var(--cyan);
+    box-shadow: 0 0 10px var(--cyan-glow);
+  }
+
+  .toggle.off {
+    background: #39393D;
+  }
+
+  .toggle .knob {
+    width: 27px;
+    height: 27px;
+    border-radius: 50%;
+    background: #fff;
+    position: absolute;
+    top: 2px;
+    transition: left 0.3s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  .toggle.on .knob { left: 22px; }
+  .toggle.off .knob { left: 2px; }
+
+  /* Section header */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px 8px;
+  }
+
+  .section-header .line {
+    flex: 1;
+    height: 1px;
+  }
+
+  .section-header .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .section-header.cyan .line { background: rgba(0,212,255,0.2); }
+  .section-header.cyan .label { color: var(--cyan); }
+
+  .section-header.gold .line { background: rgba(255,215,0,0.2); }
+  .section-header.gold .label { color: var(--gold); }
+
+  .section-header.green .line { background: rgba(51,255,136,0.2); }
+  .section-header.green .label { color: var(--green); }
+
+  /* Settings card */
+  .settings-card {
+    margin: 0 20px 4px;
+    background: var(--void-medium);
+    border-radius: 4px;
+    border: 1px solid var(--arise-border);
+    overflow: hidden;
+  }
+
+  /* Settings row */
+  .settings-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    gap: 12px;
+  }
+
+  .icon-box {
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .icon-box.cyan { background: rgba(0,212,255,0.1); color: var(--cyan); }
+  .icon-box.gold { background: rgba(255,215,0,0.1); color: var(--gold); }
+  .icon-box.green { background: rgba(51,255,136,0.1); color: var(--green); }
+  .icon-box.red { background: rgba(255,51,51,0.1); color: var(--red); }
+
+  .row-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    flex: 1;
+  }
+
+  .row-divider {
+    height: 1px;
+    background: var(--arise-border);
+    margin-left: 64px;
+  }
+
+  /* Small toggle */
+  .toggle-sm {
+    width: 44px;
+    height: 26px;
+    border-radius: 13px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.3s;
+    flex-shrink: 0;
+  }
+
+  .toggle-sm.on { background: var(--cyan); }
+  .toggle-sm.off { background: #39393D; }
+
+  .toggle-sm .knob {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #fff;
+    position: absolute;
+    top: 2px;
+    transition: left 0.3s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+
+  .toggle-sm.on .knob { left: 20px; }
+  .toggle-sm.off .knob { left: 2px; }
+
+  /* System notification disabled banner */
+  .system-banner {
+    margin: 12px 20px;
+    padding: 14px 16px;
+    background: rgba(255,215,0,0.06);
+    border: 1px solid rgba(255,215,0,0.2);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .system-banner-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .system-banner-text {
+    flex: 1;
+  }
+
+  .system-banner-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gold);
+    letter-spacing: 0.5px;
+  }
+
+  .system-banner-body {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+    line-height: 1.4;
+  }
+
+  .btn-open-settings {
+    padding: 6px 12px;
+    background: rgba(255,215,0,0.15);
+    border: 1px solid rgba(255,215,0,0.3);
+    color: var(--gold);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  /* Annotation */
+  .annotation {
+    margin: 8px 20px;
+    padding: 10px 14px;
+    background: rgba(0,212,255,0.08);
+    border: 1px dashed rgba(0,212,255,0.3);
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--cyan);
+    text-align: center;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  .annotation.gold {
+    border-color: rgba(255,215,0,0.3);
+    background: rgba(255,215,0,0.06);
+    color: var(--gold);
+  }
+
+  .annotation.green {
+    border-color: rgba(51,255,136,0.3);
+    background: rgba(51,255,136,0.06);
+    color: var(--green);
+  }
+
+  /* ========== Tab 2: Notification Previews ========== */
+
+  .preview-container {
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .preview-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    text-align: center;
+    margin: 8px 0 4px;
+  }
+
+  /* iOS notification banner */
+  .notif-banner {
+    background: rgba(30, 30, 34, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 16px;
+    padding: 14px;
+    display: flex;
+    gap: 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .notif-banner::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+  }
+
+  .notif-banner.cyan-accent::before { background: var(--cyan); }
+  .notif-banner.gold-accent::before { background: var(--gold); }
+  .notif-banner.green-accent::before { background: var(--green); }
+  .notif-banner.red-accent::before { background: var(--red); }
+
+  .notif-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #0a0a12 0%, #1a1a2e 100%);
+    border: 1px solid rgba(0,212,255,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 16px;
+    color: var(--cyan);
+    position: relative;
+  }
+
+  .notif-icon .app-initial {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--cyan);
+  }
+
+  .notif-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .notif-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 3px;
+  }
+
+  .notif-app-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+
+  .notif-time {
+    font-family: -apple-system, sans-serif;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .notif-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+
+  .notif-title.cyan { color: var(--cyan); }
+  .notif-title.gold { color: var(--gold); }
+  .notif-title.green { color: var(--green); }
+  .notif-title.red { color: var(--red); }
+
+  .notif-body {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+
+  /* Home indicator */
+  .home-indicator {
+    width: 134px;
+    height: 5px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 3px;
+    margin: 16px auto 8px;
+  }
+
+  /* Tab panel visibility */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Layout */
+  .mockup-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    justify-content: center;
+  }
+
+  .mockup-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Lock screen wallpaper for preview tab */
+  .lock-screen-bg {
+    background: linear-gradient(180deg, #0a0a14 0%, #0f1020 50%, #050510 100%);
+    position: relative;
+  }
+
+  .lock-screen-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 30% 20%, rgba(0,212,255,0.03) 0%, transparent 60%),
+      radial-gradient(ellipse at 70% 80%, rgba(51,255,136,0.02) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .lock-time {
+    text-align: center;
+    padding: 20px 0 8px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .lock-time .time {
+    font-family: -apple-system, sans-serif;
+    font-size: 64px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -2px;
+  }
+
+  .lock-time .date {
+    font-family: -apple-system, sans-serif;
+    font-size: 16px;
+    color: var(--text-secondary);
+    margin-top: -4px;
+  }
+
+  .notif-stack {
+    position: relative;
+    z-index: 1;
+    padding: 16px 14px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+</style>
+</head>
+<body>
+
+<div>
+  <h1 class="page-title">Notification Settings</h1>
+  <p class="page-subtitle">ARISE Phase 3 -- Push Notifications</p>
+</div>
+
+<!-- Tab Navigation -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="showTab('settings')">Settings Screen</button>
+  <button class="tab-btn" onclick="showTab('previews')">Preview Cards</button>
+</div>
+
+<!-- ================================= -->
+<!-- TAB 1: Notification Settings      -->
+<!-- ================================= -->
+<div id="tab-settings" class="tab-panel active">
+  <div class="mockup-container">
+    <div class="mockup-column">
+      <div class="phone-frame">
+        <div class="dynamic-island"></div>
+        <div class="status-bar">
+          <span>9:41</span>
+          <span style="font-size:11px;">&#9679;&#9679;&#9679;&nbsp;&nbsp;&#9681;</span>
+        </div>
+        <div class="screen">
+
+          <!-- Nav bar -->
+          <div class="nav-bar">
+            <span class="nav-back">&#10094;</span>
+            <span class="nav-title">Notifications</span>
+          </div>
+
+          <!-- Master Toggle -->
+          <div class="master-toggle">
+            <div class="master-toggle-left">
+              <div class="master-icon">&#128276;</div>
+              <div>
+                <div class="master-label">All Notifications</div>
+                <div class="master-sublabel">13 types enabled</div>
+              </div>
+            </div>
+            <div class="toggle on">
+              <div class="knob"></div>
+            </div>
+          </div>
+
+          <!-- ===== SOCIAL Section ===== -->
+          <div class="section-header cyan">
+            <div class="line"></div>
+            <span class="label">Social</span>
+            <div class="line"></div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-row">
+              <div class="icon-box cyan">&#128100;</div>
+              <span class="row-title">Friend Request Received</span>
+              <div class="toggle-sm on"><div class="knob"></div></div>
+            </div>
+            <div class="row-divider"></div>
+            <div class="settings-row">
+              <div class="icon-box cyan">&#128101;</div>
+              <span class="row-title">Friend Request Accepted</span>
+              <div class="toggle-sm on"><div class="knob"></div></div>
+            </div>
+          </div>
+
+          <div class="annotation">SF Symbols: person.fill, person.2.fill<br>Backend: server-sent via APNs</div>
+
+          <!-- ===== PROGRESSION Section ===== -->
+          <div class="section-header gold">
+            <div class="line"></div>
+            <span class="label">Progression</span>
+            <div class="line"></div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-row">
+              <div class="icon-box gold">&#127942;</div>
+              <span class="row-title">Achievement Unlocked</span>
+              <div class="toggle-sm on"><div class="knob"></div></div>
+            </div>
+            <div class="row-divider"></div>
+            <div class="settings-row">
+              <div class="icon-box gold">&#11014;</div>
+              <span class="row-title">Level Up</span>
+              <div class="toggle-sm on"><div class="knob"></div></div>
+            </div>
+            <div class="row-divider"></div>
+            <div class="settings-row">
+              <div class="icon-box gold">&#127895;</div>
+              <span class="row-title">Rank Promotion</span>
+              <div class="toggle-sm on"><div class="knob"></div></div>
+            </div>
+            <div class="row-divider"></div>
+            <div class="settings-row">
+              <div class="icon-box gold">&#9989;</div>
+              <span class="row-title">Quest Completed</span>
+              <div class="toggle-sm on"><div class="knob"></div></div>
+            </div>
+          </div>
+
+          <div class="annotation gold">SF Symbols: trophy.fill, arrow.up.circle.fill, shield.lefthalf.filled, checkmark.seal.fill<br>Backend: server-sent (achievement, level, rank) + local (quest)</div>
+
+          <!-- ===== MISSIONS & DUNGEONS Section ===== -->
+          <div class="section-header green">
+            <div class="line"></div>
+            <span class="label">Missions &amp; Dungeons</span>
+            <div class="line"></div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-row">
+              <div class="icon-box green">&#128682;</div>
+              <span class="row-title">Dungeon Spawned</span>
+              <div class="toggle-sm on"><div class="knob"></div></div>
+            </div>
+            <div class="row-divider"></div>
+            <div class="settings-row">
+              <div class="icon-box green">&#128202;</div>
+              <span class="row-title">Weekly Report Ready</span>
+              <div class="toggle-sm on"><div class="knob"></div></div>
+            </div>
+            <div class="row-divider"></div>
+            <div class="settings-row">
+              <div class="icon-box green">&#128220;</div>
+              <span class="row-title">Mission Offered</span>
+              <div class="toggle-sm on"><div class="knob"></div></div>
+            </div>
+            <div class="row-divider"></div>
+            <div class="settings-row">
+              <div class="icon-box red">&#128293;</div>
+              <span class="row-title">Streak at Risk</span>
+              <div class="toggle-sm on"><div class="knob"></div></div>
+            </div>
+            <div class="row-divider"></div>
+            <div class="settings-row">
+              <div class="icon-box green" style="opacity:0.6;">&#128260;</div>
+              <span class="row-title" style="color:var(--text-secondary);">Quest Reset</span>
+              <div class="toggle-sm on"><div class="knob"></div></div>
+            </div>
+            <div class="row-divider"></div>
+            <div class="settings-row">
+              <div class="icon-box green">&#9200;</div>
+              <span class="row-title">Dungeon Expiring</span>
+              <div class="toggle-sm on"><div class="knob"></div></div>
+            </div>
+            <div class="row-divider"></div>
+            <div class="settings-row">
+              <div class="icon-box green">&#128197;</div>
+              <span class="row-title">Mission Expiring</span>
+              <div class="toggle-sm on"><div class="knob"></div></div>
+            </div>
+          </div>
+
+          <div class="annotation green">SF Symbols: door.left.hand.open, chart.bar.fill, scroll.fill, flame.fill,<br>arrow.clockwise, clock.badge.exclamationmark, calendar.badge.clock<br>Streak at Risk + Quest Reset + Dungeon/Mission Expiring = local notifications</div>
+
+          <!-- System notification disabled banner (shown when iOS permissions off) -->
+          <div class="system-banner">
+            <div class="system-banner-icon">&#9888;&#65039;</div>
+            <div class="system-banner-text">
+              <div class="system-banner-title">System Notifications Disabled</div>
+              <div class="system-banner-body">Enable notifications in iOS Settings to receive alerts.</div>
+            </div>
+            <button class="btn-open-settings">OPEN</button>
+          </div>
+
+          <div class="annotation gold" style="margin-top:4px;">
+            Banner only visible when UNUserNotificationCenter<br>authorization status == .denied
+          </div>
+
+          <div class="home-indicator"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================= -->
+<!-- TAB 2: Notification Previews      -->
+<!-- ================================= -->
+<div id="tab-previews" class="tab-panel">
+  <div class="mockup-container">
+    <div class="mockup-column">
+      <div class="preview-label">iOS Lock Screen Notifications</div>
+      <div class="phone-frame">
+        <div class="dynamic-island"></div>
+        <div class="status-bar">
+          <span>9:41</span>
+          <span style="font-size:11px;">&#9679;&#9679;&#9679;&nbsp;&nbsp;&#9681;</span>
+        </div>
+        <div class="screen lock-screen-bg">
+
+          <!-- Lock screen time -->
+          <div class="lock-time">
+            <div class="time">9:41</div>
+            <div class="date">Saturday, February 15</div>
+          </div>
+
+          <!-- Notification stack -->
+          <div class="notif-stack">
+
+            <!-- 1: Rank Up -->
+            <div class="notif-banner cyan-accent">
+              <div class="notif-icon">
+                <span class="app-initial">A</span>
+              </div>
+              <div class="notif-content">
+                <div class="notif-header">
+                  <span class="notif-app-name">ARISE</span>
+                  <span class="notif-time">now</span>
+                </div>
+                <div class="notif-title cyan">RANK UP!</div>
+                <div class="notif-body">You've been promoted to C-Rank Warrior. New abilities unlocked.</div>
+              </div>
+            </div>
+
+            <!-- 2: Gate Detected -->
+            <div class="notif-banner green-accent">
+              <div class="notif-icon">
+                <span class="app-initial">A</span>
+              </div>
+              <div class="notif-content">
+                <div class="notif-header">
+                  <span class="notif-app-name">ARISE</span>
+                  <span class="notif-time">2m ago</span>
+                </div>
+                <div class="notif-title green">GATE DETECTED</div>
+                <div class="notif-body">B-Rank Dungeon "Iron Fortress" has appeared. 7 days to conquer it.</div>
+              </div>
+            </div>
+
+            <!-- 3: Streak Warning -->
+            <div class="notif-banner red-accent">
+              <div class="notif-icon">
+                <span class="app-initial">A</span>
+              </div>
+              <div class="notif-content">
+                <div class="notif-header">
+                  <span class="notif-app-name">ARISE</span>
+                  <span class="notif-time">5m ago</span>
+                </div>
+                <div class="notif-title red">STREAK WARNING</div>
+                <div class="notif-body">Complete a quest today to maintain your 14-day streak!</div>
+              </div>
+            </div>
+
+            <!-- 4: New Mission -->
+            <div class="notif-banner gold-accent">
+              <div class="notif-icon">
+                <span class="app-initial">A</span>
+              </div>
+              <div class="notif-content">
+                <div class="notif-header">
+                  <span class="notif-app-name">ARISE</span>
+                  <span class="notif-time">12m ago</span>
+                </div>
+                <div class="notif-title gold">NEW MISSION</div>
+                <div class="notif-body">This week's training mission is ready. Accept it to continue your journey.</div>
+              </div>
+            </div>
+
+            <!-- 5: Achievement Unlocked -->
+            <div class="notif-banner gold-accent">
+              <div class="notif-icon">
+                <span class="app-initial">A</span>
+              </div>
+              <div class="notif-content">
+                <div class="notif-header">
+                  <span class="notif-app-name">ARISE</span>
+                  <span class="notif-time">1h ago</span>
+                </div>
+                <div class="notif-title gold">ACHIEVEMENT UNLOCKED</div>
+                <div class="notif-body">Centurion &#8212; Bench press 225 lbs achieved!</div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="home-indicator"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Implementation notes -->
+<div style="margin-top: 24px; max-width: 700px; width: 100%;">
+  <div class="annotation" style="margin: 0; text-align: left; line-height: 1.8; padding: 16px 20px;">
+    <div style="text-align:center; margin-bottom:8px; font-weight:700; letter-spacing:2px;">NOTIFICATION ARCHITECTURE</div>
+    <div style="font-size:10px; color: var(--text-secondary);">
+      <span style="color:var(--cyan);">SERVER-SENT</span> (via APNs):<br>
+      &nbsp;&nbsp;Friend Request Received, Friend Request Accepted,<br>
+      &nbsp;&nbsp;Achievement Unlocked, Level Up, Rank Promotion,<br>
+      &nbsp;&nbsp;Dungeon Spawned, Weekly Report Ready, Mission Offered<br><br>
+      <span style="color:var(--green);">LOCAL</span> (on-device scheduling):<br>
+      &nbsp;&nbsp;Streak at Risk (8 PM daily if no workout),<br>
+      &nbsp;&nbsp;Quest Reset (7 AM daily),<br>
+      &nbsp;&nbsp;Quest Completed (immediate),<br>
+      &nbsp;&nbsp;Dungeon Expiring (6h before expiry),<br>
+      &nbsp;&nbsp;Mission Expiring (1 day before week end)
+    </div>
+  </div>
+</div>
+
+<script>
+  function showTab(name) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    const tabs = { 'settings': 0, 'previews': 1 };
+    document.querySelectorAll('.tab-btn')[tabs[name]].classList.add('active');
+  }
+</script>
+
+</body>
+</html>

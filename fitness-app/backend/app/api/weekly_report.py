@@ -11,6 +11,7 @@ from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.weekly_report import WeeklyProgressReportResponse
 from app.services.weekly_report_service import generate_weekly_report
+from app.services.notification_service import notify_weekly_report_ready
 
 router = APIRouter()
 
@@ -33,4 +34,9 @@ async def get_weekly_progress_report(
         parsed_start = date.fromisoformat(week_start)
 
     report = generate_weekly_report(db, current_user.id, parsed_start)
+
+    # Notify user that weekly report is ready (fire-and-forget)
+    import asyncio
+    asyncio.ensure_future(notify_weekly_report_ready(db, current_user.id))
+
     return report

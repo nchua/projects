@@ -43,9 +43,11 @@ targets:
       properties:
         com.apple.developer.healthkit: true
         com.apple.developer.in-app-payments: true
+        aps-environment: development
     capabilities:
       HealthKit: true
       InAppPurchase: true
+      PushNotifications: true
     info:
       path: FitnessApp/Info.plist
       properties:
@@ -60,6 +62,7 @@ targets:
         UIBackgroundModes:
           - fetch
           - processing
+          - remote-notification
 
   FitnessAppTests:
     type: bundle.unit-test
