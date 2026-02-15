@@ -739,7 +739,6 @@ struct ExerciseDetailView: View {
             }
         }
         .navigationBarHidden(true)
-        .swipeBackGesture()
         .navigationDestination(item: $selectedWorkoutId) { workoutId in
             QuestDetailView(
                 workoutId: workoutId,

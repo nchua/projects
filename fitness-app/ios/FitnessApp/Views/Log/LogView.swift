@@ -35,224 +35,221 @@ struct LogView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                VoidBackground(showGrid: true, glowIntensity: 0.05)
+        ZStack {
+            VoidBackground(showGrid: true, glowIntensity: 0.05)
 
-                if !isSessionActive {
-                    // Idle State - No active quest
-                    IdleQuestView(
-                        onStartQuest: {
-                            withAnimation(.smoothSpring) {
-                                isSessionActive = true
-                            }
-                        },
-                        onScanQuestLog: {
-                            showScreenshotPicker = true
-                        },
-                        showCloseButton: true,
-                        onClose: { dismiss() }
-                    )
-                    .swipeBackGesture()
-                    #if DEBUG
-                    .onLongPressGesture(minimumDuration: 2.0) {
-                        // Debug: Trigger rank-up celebration for testing
-                        showDebugCelebration = true
+            if !isSessionActive {
+                // Idle State - No active quest
+                IdleQuestView(
+                    onStartQuest: {
+                        withAnimation(.smoothSpring) {
+                            isSessionActive = true
+                        }
+                    },
+                    onScanQuestLog: {
+                        showScreenshotPicker = true
+                    },
+                    showCloseButton: true,
+                    onClose: { dismiss() }
+                )
+                #if DEBUG
+                .onLongPressGesture(minimumDuration: 2.0) {
+                    // Debug: Trigger rank-up celebration for testing
+                    showDebugCelebration = true
+                }
+                #endif
+            } else {
+                // Active Quest Session
+                ActiveQuestView(
+                    viewModel: viewModel,
+                    showDatePicker: $showDatePicker,
+                    onCancel: { showCancelConfirmation = true },
+                    onQuestComplete: {
+                        withAnimation(.smoothSpring) {
+                            isSessionActive = false
+                            viewModel.resetWorkout()
+                        }
                     }
-                    #endif
-                } else {
-                    // Active Quest Session
-                    ActiveQuestView(
-                        viewModel: viewModel,
-                        showDatePicker: $showDatePicker,
-                        onCancel: { showCancelConfirmation = true },
-                        onQuestComplete: {
-                            withAnimation(.smoothSpring) {
-                                isSessionActive = false
-                                viewModel.resetWorkout()
-                            }
-                        }
-                    )
+                )
+            }
+        }
+        .navigationBarHidden(true)
+        .onTapGesture {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
+                .font(.ariseMono(size: 14, weight: .semibold))
+                .foregroundColor(.systemPrimary)
             }
-            .navigationBarHidden(true)
-            .onTapGesture {
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            }
-            .toolbar {
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Done") {
-                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                    }
-                    .font(.ariseMono(size: 14, weight: .semibold))
-                    .foregroundColor(.systemPrimary)
-                }
-            }
-            .sheet(isPresented: $viewModel.showExercisePicker) {
-                ExercisePickerView(viewModel: viewModel)
-            }
-            // PR Celebration (shows first if PRs achieved)
-            .fullScreenCover(isPresented: $showPRCelebration) {
-                if currentPRIndex < prQueue.count {
-                    let pr = prQueue[currentPRIndex]
-                    PRCelebrationView(
-                        exerciseName: pr.exerciseName,
-                        prType: pr.prType == "e1rm" ? .e1rm : .repPR,
-                        value: pr.value,
-                        onDismiss: {
-                            handlePRDismiss()
-                        },
-                        currentIndex: currentPRIndex + 1,
-                        totalCount: prQueue.count
-                    )
-                    .id(currentPRIndex)  // Force new view instance when index changes to reset @State
-                } else {
-                    // Safety fallback: return to idle instead of showing Color.clear
-                    Color.clear
-                        .onAppear {
-                            // Emergency cleanup - shouldn't normally reach here
-                            prQueue = []
-                            currentPRIndex = 0
-                            showPRCelebration = false
-                            withAnimation(.smoothSpring) {
-                                isSessionActive = false
-                            }
-                        }
-                }
-            }
-            // Rank-Up Celebration (shows after PRs if rank changed)
-            .fullScreenCover(isPresented: $showRankUpCelebration) {
-                if let data = rankUpData {
-                    RankUpCelebrationView(
-                        previousRank: data.previousRank,
-                        newRank: data.newRank,
-                        newLevel: data.newLevel,
-                        onContinue: {
-                            showRankUpCelebration = false
-                            // Now show the XP reward
-                            // NOTE: Don't clear pendingXPResponse here - the .onChange handler will clear it
-                            // when it detects this is an already-processed response
-                            if let response = pendingXPResponse {
-                                viewModel.xpRewardResponse = response
-                            }
-                        }
-                    )
-                } else {
-                    // Safety fallback: immediately dismiss if rankUpData is nil (prevents black screen)
-                    Color.clear
-                        .onAppear {
-                            showRankUpCelebration = false
-                            // Proceed to XP view if available
-                            // NOTE: Don't clear pendingXPResponse here - the .onChange handler will clear it
-                            if let response = pendingXPResponse {
-                                viewModel.xpRewardResponse = response
-                            }
-                        }
-                }
-            }
-            // XP Reward View (shows after rank-up celebration, or directly if no rank change)
-            .fullScreenCover(item: $viewModel.xpRewardResponse) { response in
-                XPRewardView(
-                    xpEarned: response.xpEarned,
-                    xpBreakdown: response.xpBreakdown,
-                    leveledUp: response.leveledUp,
-                    newLevel: response.newLevel,
-                    rankChanged: response.rankChanged,
-                    newRank: response.newRank,
-                    achievementsUnlocked: response.achievementsUnlocked,
+        }
+        .sheet(isPresented: $viewModel.showExercisePicker) {
+            ExercisePickerView(viewModel: viewModel)
+        }
+        // PR Celebration (shows first if PRs achieved)
+        .fullScreenCover(isPresented: $showPRCelebration) {
+            if currentPRIndex < prQueue.count {
+                let pr = prQueue[currentPRIndex]
+                PRCelebrationView(
+                    exerciseName: pr.exerciseName,
+                    prType: pr.prType == "e1rm" ? .e1rm : .repPR,
+                    value: pr.value,
                     onDismiss: {
-                        viewModel.dismissXPReward()
+                        handlePRDismiss()
+                    },
+                    currentIndex: currentPRIndex + 1,
+                    totalCount: prQueue.count
+                )
+                .id(currentPRIndex)  // Force new view instance when index changes to reset @State
+            } else {
+                // Safety fallback: return to idle instead of showing Color.clear
+                Color.clear
+                    .onAppear {
+                        // Emergency cleanup - shouldn't normally reach here
+                        prQueue = []
+                        currentPRIndex = 0
+                        showPRCelebration = false
                         withAnimation(.smoothSpring) {
                             isSessionActive = false
                         }
                     }
-                )
             }
-            // Debug celebration for testing (long-press idle view for 2 seconds)
-            #if DEBUG
-            .fullScreenCover(isPresented: $showDebugCelebration) {
+        }
+        // Rank-Up Celebration (shows after PRs if rank changed)
+        .fullScreenCover(isPresented: $showRankUpCelebration) {
+            if let data = rankUpData {
                 RankUpCelebrationView(
-                    previousRank: .c,
-                    newRank: .b,
-                    newLevel: 46,
+                    previousRank: data.previousRank,
+                    newRank: data.newRank,
+                    newLevel: data.newLevel,
                     onContinue: {
-                        showDebugCelebration = false
+                        showRankUpCelebration = false
+                        // Now show the XP reward
+                        // NOTE: Don't clear pendingXPResponse here - the .onChange handler will clear it
+                        // when it detects this is an already-processed response
+                        if let response = pendingXPResponse {
+                            viewModel.xpRewardResponse = response
+                        }
                     }
                 )
+            } else {
+                // Safety fallback: immediately dismiss if rankUpData is nil (prevents black screen)
+                Color.clear
+                    .onAppear {
+                        showRankUpCelebration = false
+                        // Proceed to XP view if available
+                        // NOTE: Don't clear pendingXPResponse here - the .onChange handler will clear it
+                        if let response = pendingXPResponse {
+                            viewModel.xpRewardResponse = response
+                        }
+                    }
             }
-            #endif
-            // Intercept workout response to check for PRs and rank change
-            .onChange(of: viewModel.xpRewardResponse?.id) { oldValue, newValue in
-                guard let response = viewModel.xpRewardResponse else { return }
-
-                // IMPORTANT: Skip if this response was already processed (coming back from PR/rank-up flow)
-                // This prevents infinite loops where setting xpRewardResponse triggers onChange again
-                if let pending = pendingXPResponse, pending.id == response.id {
-                    // Already processed this response - let the XP view show directly
-                    pendingXPResponse = nil
-                    return
-                }
-
-                // Check for PRs first (they show before rank-up)
-                if !response.prsAchieved.isEmpty {
-                    prQueue = response.prsAchieved
-                    currentPRIndex = 0
-                    pendingXPResponse = response
-                    viewModel.xpRewardResponse = nil  // Clear to prevent showing XP view yet
-                    showPRCelebration = true
-                    return
-                }
-
-                // No PRs, check for rank change
-                guard response.rankChanged,
-                      let newRankStr = response.newRank else { return }
-
-                // Rank changed! Show celebration first
-                let newRank = HunterRank(rawValue: newRankStr) ?? .e
-                let previousRank = getPreviousRank(from: newRank)
-                let newLevel = response.newLevel ?? response.level
-
-                rankUpData = (previousRank, newRank, newLevel)
-                pendingXPResponse = response
-                viewModel.xpRewardResponse = nil  // Clear to prevent showing XP view yet
-                showRankUpCelebration = true
-            }
-            .alert("System Error", isPresented: .constant(viewModel.error != nil)) {
-                Button("DISMISS", role: .cancel) {
-                    viewModel.error = nil
-                }
-            } message: {
-                Text(viewModel.error ?? "")
-            }
-            .alert("Abandon Quest?", isPresented: $showCancelConfirmation) {
-                Button("Continue Training", role: .cancel) {}
-                Button("Abandon", role: .destructive) {
+        }
+        // XP Reward View (shows after rank-up celebration, or directly if no rank change)
+        .fullScreenCover(item: $viewModel.xpRewardResponse) { response in
+            XPRewardView(
+                xpEarned: response.xpEarned,
+                xpBreakdown: response.xpBreakdown,
+                leveledUp: response.leveledUp,
+                newLevel: response.newLevel,
+                rankChanged: response.rankChanged,
+                newRank: response.newRank,
+                achievementsUnlocked: response.achievementsUnlocked,
+                onDismiss: {
+                    viewModel.dismissXPReward()
                     withAnimation(.smoothSpring) {
                         isSessionActive = false
-                        viewModel.resetWorkout()
                     }
                 }
-            } message: {
-                Text("Warning: All progress will be lost. The System does not forgive weakness.")
+            )
+        }
+        // Debug celebration for testing (long-press idle view for 2 seconds)
+        #if DEBUG
+        .fullScreenCover(isPresented: $showDebugCelebration) {
+            RankUpCelebrationView(
+                previousRank: .c,
+                newRank: .b,
+                newLevel: 46,
+                onContinue: {
+                    showDebugCelebration = false
+                }
+            )
+        }
+        #endif
+        // Intercept workout response to check for PRs and rank change
+        .onChange(of: viewModel.xpRewardResponse?.id) { oldValue, newValue in
+            guard let response = viewModel.xpRewardResponse else { return }
+
+            // IMPORTANT: Skip if this response was already processed (coming back from PR/rank-up flow)
+            // This prevents infinite loops where setting xpRewardResponse triggers onChange again
+            if let pending = pendingXPResponse, pending.id == response.id {
+                // Already processed this response - let the XP view show directly
+                pendingXPResponse = nil
+                return
             }
-            .sheet(isPresented: $showScreenshotPicker) {
-                ScreenshotPickerView(isPresented: $showScreenshotPicker) { imagesData in
-                    screenshotViewModel.selectedImagesData = imagesData
-                    showScreenshotPreview = true
+
+            // Check for PRs first (they show before rank-up)
+            if !response.prsAchieved.isEmpty {
+                prQueue = response.prsAchieved
+                currentPRIndex = 0
+                pendingXPResponse = response
+                viewModel.xpRewardResponse = nil  // Clear to prevent showing XP view yet
+                showPRCelebration = true
+                return
+            }
+
+            // No PRs, check for rank change
+            guard response.rankChanged,
+                  let newRankStr = response.newRank else { return }
+
+            // Rank changed! Show celebration first
+            let newRank = HunterRank(rawValue: newRankStr) ?? .e
+            let previousRank = getPreviousRank(from: newRank)
+            let newLevel = response.newLevel ?? response.level
+
+            rankUpData = (previousRank, newRank, newLevel)
+            pendingXPResponse = response
+            viewModel.xpRewardResponse = nil  // Clear to prevent showing XP view yet
+            showRankUpCelebration = true
+        }
+        .alert("System Error", isPresented: .constant(viewModel.error != nil)) {
+            Button("DISMISS", role: .cancel) {
+                viewModel.error = nil
+            }
+        } message: {
+            Text(viewModel.error ?? "")
+        }
+        .alert("Abandon Quest?", isPresented: $showCancelConfirmation) {
+            Button("Continue Training", role: .cancel) {}
+            Button("Abandon", role: .destructive) {
+                withAnimation(.smoothSpring) {
+                    isSessionActive = false
+                    viewModel.resetWorkout()
                 }
             }
-            .sheet(isPresented: $showScreenshotPreview) {
-                ScreenshotPreviewView(
-                    viewModel: screenshotViewModel,
-                    isPresented: $showScreenshotPreview
-                ) { exercises in
-                    // Populate the log view model with extracted exercises
-                    viewModel.selectedExercises = exercises
-                    // Start the session with pre-populated exercises
-                    withAnimation(.smoothSpring) {
-                        isSessionActive = true
-                    }
+        } message: {
+            Text("Warning: All progress will be lost. The System does not forgive weakness.")
+        }
+        .sheet(isPresented: $showScreenshotPicker) {
+            ScreenshotPickerView(isPresented: $showScreenshotPicker) { imagesData in
+                screenshotViewModel.selectedImagesData = imagesData
+                showScreenshotPreview = true
+            }
+        }
+        .sheet(isPresented: $showScreenshotPreview) {
+            ScreenshotPreviewView(
+                viewModel: screenshotViewModel,
+                isPresented: $showScreenshotPreview
+            ) { exercises in
+                // Populate the log view model with extracted exercises
+                viewModel.selectedExercises = exercises
+                // Start the session with pre-populated exercises
+                withAnimation(.smoothSpring) {
+                    isSessionActive = true
                 }
             }
         }
