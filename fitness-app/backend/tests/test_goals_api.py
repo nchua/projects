@@ -29,10 +29,6 @@ class TestMaxGoalsLimit:
     Users can have at most 5 active goals at any time.
     """
 
-    def test_max_goals_constant_is_5(self):
-        """Verify MAX_ACTIVE_GOALS is set to 5"""
-        assert MAX_ACTIVE_GOALS == 5
-
     def test_single_goal_creation_allowed_when_under_limit(self, sample_goals, test_user_id):
         """
         Should allow creating a single goal when user has < 5 active goals.
@@ -134,16 +130,6 @@ class TestBatchGoalCreation:
 
         assert missing_ids == {invalid_id}
         # Expected error: "Exercises not found: {missing_ids}"
-
-    def test_batch_creation_is_atomic(self, test_user_id):
-        """
-        Batch creation should be atomic - all succeed or all fail.
-
-        If validation fails for any goal, no goals should be created.
-        """
-        # This is a design requirement verified by checking the endpoint
-        # uses a single transaction and calls db.commit() only after all goals are created
-        pass
 
     def test_batch_returns_all_created_goals(self, sample_goals):
         """

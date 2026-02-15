@@ -276,16 +276,6 @@ class TestQuestPersistence:
         assert len(todays_quests) == 2
         assert all(q["assigned_date"] == today for q in todays_quests)
 
-    def test_three_quests_per_day(self):
-        """
-        Each day should have exactly 3 quests (one per difficulty).
-        """
-        difficulties = ["easy", "normal", "hard"]
-        quest_count = len(difficulties)
-
-        assert quest_count == 3
-
-
 class TestRelationshipLoadingContract:
     """
     Tests that document the relationship loading contract.
@@ -296,23 +286,6 @@ class TestRelationshipLoadingContract:
     2. workout_exercise.sets is loaded for each exercise
     3. workout_exercise.exercise is loaded for each exercise
     """
-
-    def test_relationship_loading_documentation(self):
-        """
-        Document the required joinedload pattern for quest progress.
-
-        Before calling update_quest_progress(db, user_id, workout),
-        the workout MUST be loaded with:
-
-        workout = db.query(WorkoutSession).options(
-            joinedload(WorkoutSession.workout_exercises)
-            .joinedload(WorkoutExercise.sets),
-            joinedload(WorkoutSession.workout_exercises)
-            .joinedload(WorkoutExercise.exercise)
-        ).filter(WorkoutSession.id == workout_id).first()
-        """
-        # This test is documentation - the assertion is that we have this test
-        assert True
 
     def test_lazy_loading_pitfall(self):
         """

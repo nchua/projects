@@ -2,15 +2,147 @@
 Pytest fixtures for fitness app backend tests.
 
 Provides shared fixtures for:
-- In-memory SQLite database
+- In-memory SQLite database (mock models for unit tests)
+- Integration test database (real SQLAlchemy models + TestClient)
 - Test users
 - Test exercises (Big Three + variations)
 """
+import os
 import pytest
 from datetime import date, datetime, timedelta
-from typing import List
+from typing import List, Tuple
 from unittest.mock import Mock, MagicMock
 import uuid
+
+# Set test environment variables BEFORE any app imports
+_TEST_DB_PATH = os.path.join(os.path.dirname(__file__), ".test.db")
+os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB_PATH}"
+os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
+
+from sqlalchemy import event
+from sqlalchemy.orm import Session
+from fastapi.testclient import TestClient
+from app.core.database import Base, get_db, engine, SessionLocal
+from app.core.security import hash_password, create_access_token
+from app import models  # noqa: F401 — register all models with Base.metadata
+
+# Import app once at module level; main.py runs migrations on import.
+# Since DATABASE_URL points to a file-based SQLite, alembic may warn/fail
+# but the fallback create_all(bind=engine) ensures tables exist.
+from main import app as _app
+
+
+# ============ Integration Test Infrastructure ============
+
+# Enable foreign key support for SQLite on the app's engine
+@event.listens_for(engine, "connect")
+def _set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
+
+@pytest.fixture
+def db():
+    """
+    Create a fresh test database for each test.
+
+    Drops and recreates all tables for isolation, yields a session.
+    """
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+
+
+@pytest.fixture
+def client(db: Session):
+    """
+    FastAPI TestClient wired to the test database session.
+
+    Overrides the get_db dependency so all endpoints share the same
+    session (and thus the same transaction) as the test.
+    """
+    def _override_get_db():
+        try:
+            yield db
+        finally:
+            pass  # session lifecycle managed by the db fixture
+
+    _app.dependency_overrides[get_db] = _override_get_db
+    with TestClient(_app, raise_server_exceptions=False) as c:
+        yield c
+    _app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def create_test_user(db: Session):
+    """
+    Factory fixture that creates a real User in the test DB.
+
+    Returns (user, plain_password) tuple.
+    """
+    from app.models.user import User, UserProfile
+
+    def _create(email: str = "hunter@example.com", password: str = "TestPass123!") -> Tuple:
+        user = User(
+            email=email,
+            password_hash=hash_password(password),
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        # Create default profile
+        profile = UserProfile(user_id=user.id)
+        db.add(profile)
+        db.commit()
+
+        return user, password
+
+    return _create
+
+
+@pytest.fixture
+def auth_headers(client: TestClient, create_test_user):
+    """
+    Factory fixture that creates a user, logs in, and returns auth headers.
+
+    Returns (headers_dict, user) tuple.
+    """
+    def _auth(email: str = "hunter@example.com", password: str = "TestPass123!") -> Tuple:
+        user, pwd = create_test_user(email=email, password=password)
+        response = client.post("/auth/login", json={"email": email, "password": pwd})
+        assert response.status_code == 200, f"Login failed: {response.json()}"
+        token = response.json()["access_token"]
+        return {"Authorization": f"Bearer {token}"}, user
+
+    return _auth
+
+
+@pytest.fixture
+def deleted_user(db: Session):
+    """Create a user with is_deleted=True."""
+    from app.models.user import User, UserProfile
+
+    user = User(
+        email="deleted@example.com",
+        password_hash=hash_password("TestPass123!"),
+        is_deleted=True,
+        deleted_at=datetime.utcnow(),
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    profile = UserProfile(user_id=user.id)
+    db.add(profile)
+    db.commit()
+
+    return user
 
 
 # ============ Mock Models ============

@@ -34,24 +34,18 @@ class TestToIso8601Utc:
 
     def test_midnight_datetime_returns_date_string(self):
         """
-        Midnight datetime should return date-only string.
-        This is the KEY FIX for the timezone bug.
+        Midnight datetime (with or without explicit zero microseconds) should
+        return date-only string. This is the KEY FIX for the timezone bug.
 
         Workout dates are stored as midnight datetime but represent LOCAL dates,
         not UTC timestamps. Returning "2026-02-01" instead of "2026-02-01T00:00:00Z"
         prevents iOS from incorrectly converting UTC midnight to local time.
         """
-        dt = datetime(2026, 2, 1, 0, 0, 0)
-        result = to_iso8601_utc(dt)
-        assert result == "2026-02-01"
-        assert "T" not in result
-        assert "Z" not in result
-
-    def test_midnight_with_zero_microseconds(self):
-        """Midnight with explicit zero microseconds should still be date-only."""
-        dt = datetime(2026, 2, 1, 0, 0, 0, 0)
-        result = to_iso8601_utc(dt)
-        assert result == "2026-02-01"
+        for dt in [datetime(2026, 2, 1, 0, 0, 0), datetime(2026, 2, 1, 0, 0, 0, 0)]:
+            result = to_iso8601_utc(dt)
+            assert result == "2026-02-01"
+            assert "T" not in result
+            assert "Z" not in result
 
     # === Actual timestamps (created_at, updated_at, etc.) ===
 
