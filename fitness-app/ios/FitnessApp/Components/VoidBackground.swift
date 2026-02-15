@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// ARISE void background with radial glow and optional grid pattern
+/// ARISE void background with radial glow
 struct VoidBackground: View {
-    var showGrid: Bool = true
+    var showGrid: Bool = false
     var showRadialGlow: Bool = true
-    var glowIntensity: Double = 0.03
+    var glowIntensity: Double = 0.02
 
     var body: some View {
         ZStack {
@@ -34,37 +34,8 @@ struct VoidBackground: View {
                     endRadius: UIScreen.main.bounds.height * 0.4
                 )
             }
-
-            // Grid overlay
-            if showGrid {
-                GridPattern(spacing: 50)
-                    .stroke(Color.systemPrimary.opacity(0.03), lineWidth: 1)
-            }
         }
         .ignoresSafeArea()
-    }
-}
-
-/// Grid pattern shape for ARISE background
-struct GridPattern: Shape {
-    let spacing: CGFloat
-
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-
-        // Vertical lines
-        for x in stride(from: 0, through: rect.width, by: spacing) {
-            path.move(to: CGPoint(x: x, y: 0))
-            path.addLine(to: CGPoint(x: x, y: rect.height))
-        }
-
-        // Horizontal lines
-        for y in stride(from: 0, through: rect.height, by: spacing) {
-            path.move(to: CGPoint(x: 0, y: y))
-            path.addLine(to: CGPoint(x: rect.width, y: y))
-        }
-
-        return path
     }
 }
 

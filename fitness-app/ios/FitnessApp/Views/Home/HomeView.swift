@@ -15,12 +15,13 @@ struct HomeView: View {
     @State private var showAbandonConfirmation = false
     @State private var showGoalsList = false
     @State private var goalToEditFromList: GoalSummaryResponse?
+    @State private var showWeeklyReport = false
 
     var body: some View {
         NavigationStack {
             ZStack {
                 // ARISE void background
-                VoidBackground(showGrid: true, glowIntensity: 0.03)
+                VoidBackground(glowIntensity: 0.02)
 
                 ScrollView {
                     VStack(spacing: 16) {
@@ -38,18 +39,15 @@ struct HomeView: View {
                         )
                         // No .padding(.horizontal) - full-width gradient header
 
-                        // 2. Stats Scroll (Edge Flow - replaces Weekly Quest Card)
-                        StatsScrollSection(
+                        // 2. Dashboard Card (weekly progress + CTA)
+                        DashboardCard(
                             workouts: viewModel.weeklyReview?.totalWorkouts ?? 0,
                             workoutsGoal: viewModel.weeklyStats.workoutsGoal,
-                            volume: viewModel.weeklyStats.totalVolume,
-                            activeMinutes: viewModel.weeklyStats.activeMinutes
+                            totalVolume: viewModel.weeklyStats.totalVolume,
+                            activeMinutes: viewModel.weeklyStats.activeMinutes,
+                            prsCount: viewModel.recentPRs.count
                         )
-                        // No .padding(.horizontal) - built into scroll view
-
-                        // 3. Quick Actions
-                        QuickActionsRow()
-                            .padding(.horizontal)
+                        .padding(.horizontal, 20)
 
                         // 4. Weekly Mission Card (if coaching feature enabled)
                         MissionCard(
@@ -108,6 +106,17 @@ struct HomeView: View {
                         PowerLevelsSection(lifts: viewModel.bigThreeLifts, selectedTab: $selectedTab)
                         // No .padding(.horizontal) - built into section
 
+                        // 7.5. Weekly Report Card
+                        if viewModel.weeklyProgressReport != nil {
+                            WeeklyReportCard(
+                                totalWorkouts: viewModel.weeklyProgressReport?.totalWorkouts ?? 0,
+                                weekDateRange: viewModel.weeklyReportDateRange,
+                                overallStatus: viewModel.weeklyReportStatus,
+                                onTap: { showWeeklyReport = true }
+                            )
+                            .padding(.horizontal, 20)
+                        }
+
                         // 8. Recovery Status (Edge Flow - horizontal pills)
                         RecoveryStatusSection(cooldownData: viewModel.cooldownStatus)
                         // No .padding(.horizontal) - built into section
@@ -138,6 +147,9 @@ struct HomeView: View {
         }
         .task {
             await viewModel.loadData()
+        }
+        .sheet(isPresented: $showWeeklyReport) {
+            WeeklyReportView()
         }
         .sheet(isPresented: $showProfile) {
             ProfileView()
@@ -284,14 +296,14 @@ struct HunterStatusHeader: View {
     }
 
     var body: some View {
-        VStack(spacing: 16) {
-            // Top row: Avatar + Name + Level + Streak
-            HStack(spacing: 14) {
-                // Hunter Avatar with glow - Tappable for profile
+        VStack(spacing: 10) {
+            // Top row: Avatar + Name + Level + Streak + XP
+            HStack(spacing: 12) {
+                // Hunter Avatar - Tappable for profile
                 Button {
                     onProfileTap?()
                 } label: {
-                    EdgeFlowAvatar(initial: avatarInitials, rank: rank, size: 50)
+                    EdgeFlowAvatar(initial: avatarInitials, rank: rank, size: 40)
                 }
                 .buttonStyle(PlainButtonStyle())
 
@@ -299,31 +311,31 @@ struct HunterStatusHeader: View {
                 Button {
                     onProfileTap?()
                 } label: {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 3) {
                         Text(name)
-                            .font(.system(size: 22, weight: .bold))
+                            .font(.system(size: 20, weight: .bold))
                             .foregroundColor(Color(hex: "88DDFF"))
-                            .shadow(color: Color.systemPrimary.opacity(0.3), radius: 10, x: 0, y: 0)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
 
-                        HStack(spacing: 12) {
+                        HStack(spacing: 10) {
                             Text("\(rank.rawValue)-Rank")
                                 .foregroundColor(.systemPrimary)
                                 .fontWeight(.semibold)
 
-                            Text("Level \(level)")
+                            Text("Lv. \(level)")
                                 .foregroundColor(.textSecondary)
 
                             if streakDays > 0 {
-                                HStack(spacing: 4) {
-                                    Text("\u{1F525}")
+                                HStack(spacing: 3) {
+                                    Image(systemName: "flame.fill")
+                                        .foregroundColor(Color(hex: "FF9500"))
                                     Text("\(streakDays)")
                                 }
                                 .foregroundColor(Color(hex: "FF9500"))
                             }
                         }
-                        .font(.system(size: 13))
+                        .font(.system(size: 12))
                     }
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -331,7 +343,7 @@ struct HunterStatusHeader: View {
                 Spacer()
             }
 
-            // Slim XP Bar
+            // Inline XP Bar
             EdgeFlowXPBar(
                 currentXP: currentXP,
                 xpToNextLevel: xpToNextLevel,
@@ -339,24 +351,15 @@ struct HunterStatusHeader: View {
                 level: level
             )
         }
-        .padding(20)
-        .padding(.top, 40)  // Extra top padding for notch
+        .padding(.horizontal, 20)
+        .padding(.top, 50)  // Notch
+        .padding(.bottom, 12)
         .background(
             LinearGradient(
                 colors: [Color(hex: "141520"), Color(hex: "050508")],
                 startPoint: .top,
                 endPoint: .bottom
             )
-        )
-        .overlay(
-            // Subtle glow effect at top
-            RadialGradient(
-                colors: [Color.systemPrimary.opacity(0.05), Color.clear],
-                center: .top,
-                startRadius: 0,
-                endRadius: 200
-            )
-            .allowsHitTesting(false)
         )
     }
 }
@@ -372,7 +375,7 @@ struct EdgeFlowAvatar: View {
         ZStack(alignment: .bottomTrailing) {
             // Avatar background
             ZStack {
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: 12)
                     .fill(
                         LinearGradient(
                             colors: [Color(hex: "141520"), Color(hex: "0f1018")],
@@ -381,12 +384,13 @@ struct EdgeFlowAvatar: View {
                         )
                     )
 
-                Text("\u{1F3CB}")  // Weight lifter
-                    .font(.system(size: size * 0.44))
+                Image(systemName: "figure.strengthtraining.traditional")
+                    .font(.system(size: size * 0.4))
+                    .foregroundColor(.systemPrimary)
             }
             .frame(width: size, height: size)
             .overlay(
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: 12)
                     .stroke(Color.systemPrimary.opacity(0.2), lineWidth: 1)
             )
             .shadow(color: Color.systemPrimary.opacity(0.3), radius: 10, x: 0, y: 0)
@@ -459,7 +463,7 @@ struct QuickActionsRow: View {
             // Start Workout Button - primary pill
             NavigationLink(destination: LogView()) {
                 HStack(spacing: 8) {
-                    Text("\u{26A1}")  // Lightning bolt
+                    Image(systemName: "bolt.fill")
                         .font(.system(size: 14))
                     Text("Start Workout")
                         .font(.system(size: 14, weight: .semibold))
@@ -537,15 +541,6 @@ struct PowerLevelsSection: View {
 struct PowerLevelCard: View {
     let lift: BigThreeLift
 
-    var liftEmoji: String {
-        switch lift.shortName.lowercased() {
-        case "squat": return "\u{1F9B5}"  // Leg
-        case "bench": return "\u{1F3CB}"  // Weight lifter
-        case "deadlift": return "\u{1F531}"  // Trident
-        default: return "\u{1F4AA}"  // Flexed bicep
-        }
-    }
-
     var liftColor: Color {
         switch lift.shortName.lowercased() {
         case "squat": return Color(hex: "FF6B6B")      // Red
@@ -557,10 +552,15 @@ struct PowerLevelCard: View {
 
     var body: some View {
         VStack(alignment: .center, spacing: 6) {
-            // Label with emoji
-            Text("\(liftEmoji) \(lift.shortName)")
-                .font(.system(size: 11))
-                .foregroundColor(.textSecondary)
+            // Label with color indicator
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(liftColor)
+                    .frame(width: 6, height: 6)
+                Text(lift.shortName)
+                    .font(.system(size: 11))
+                    .foregroundColor(.textSecondary)
+            }
 
             // Value
             HStack(alignment: .lastTextBaseline, spacing: 2) {
@@ -696,8 +696,8 @@ struct WeeklyQuestCard: View {
 
             // Stats row
             HStack(spacing: 24) {
-                QuestStatItem(icon: "\u{1F4AA}", value: volume.formattedVolume, label: "Volume")
-                QuestStatItem(icon: "\u{23F1}", value: "\(activeMinutes)", label: "Minutes")
+                QuestStatItem(icon: "dumbbell.fill", value: volume.formattedVolume, label: "Volume")
+                QuestStatItem(icon: "timer", value: "\(activeMinutes)", label: "Minutes")
 
                 Spacer()
 
@@ -724,8 +724,9 @@ struct QuestStatItem: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Text(icon)
+            Image(systemName: icon)
                 .font(.system(size: 14))
+                .foregroundColor(.textMuted)
 
             VStack(alignment: .leading, spacing: 0) {
                 Text(value)
@@ -866,8 +867,9 @@ struct EmptyQuestCard: View {
                     .fill(Color.voidLight)
                     .frame(width: 64, height: 64)
 
-                Text("\u{2694}") // Crossed swords emoji
+                Image(systemName: "figure.fencing")
                     .font(.system(size: 28))
+                    .foregroundColor(.textMuted)
             }
 
             Text("No Active Quests")
@@ -904,7 +906,7 @@ struct HunterStatsGrid: View {
     var body: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
             HunterStatCard(
-                icon: "\u{2694}", // Crossed swords
+                icon: "figure.fencing",
                 value: "\(workouts)",
                 label: "Quests",
                 change: "+1",
@@ -913,7 +915,7 @@ struct HunterStatsGrid: View {
             .fadeIn(delay: 0.0)
 
             HunterStatCard(
-                icon: "\u{1F4AA}", // Flexed bicep
+                icon: "dumbbell.fill",
                 value: volume.formattedVolume,
                 label: "Volume",
                 change: "+8%",
@@ -922,7 +924,7 @@ struct HunterStatsGrid: View {
             .fadeIn(delay: 0.1)
 
             HunterStatCard(
-                icon: "\u{23F1}", // Stopwatch
+                icon: "timer",
                 value: formatActiveTime(activeTime),
                 label: "Time",
                 change: "+23m",
@@ -931,7 +933,7 @@ struct HunterStatsGrid: View {
             .fadeIn(delay: 0.2)
 
             HunterStatCard(
-                icon: "\u{1F3C6}", // Trophy
+                icon: "trophy.fill",
                 value: "\(prs)",
                 label: "PRs",
                 change: "NEW!",
@@ -961,8 +963,9 @@ struct HunterStatCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Icon
-            Text(icon)
-                .font(.system(size: 20))
+            Image(systemName: icon)
+                .font(.system(size: 18))
+                .foregroundColor(.textMuted)
 
             // Value
             Text(value)
@@ -1059,8 +1062,9 @@ struct EdgeFlowAchievementCard: View {
     var body: some View {
         HStack(spacing: 14) {
             // Trophy icon
-            Text("\u{1F3C6}")
-                .font(.system(size: 28))
+            Image(systemName: "trophy.fill")
+                .font(.system(size: 24))
+                .foregroundColor(.gold)
 
             // Info
             VStack(alignment: .leading, spacing: 2) {
@@ -1096,15 +1100,10 @@ struct EdgeFlowAchievementCard: View {
         .padding(16)
         .padding(.horizontal, 2)
         .background(Color.voidMedium)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
         .overlay(
-            // Left accent bar (gold)
-            HStack {
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(Color.gold)
-                    .frame(width: 3)
-                Spacer()
-            }
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color.glassBorder, lineWidth: 1)
         )
         .shadow(color: Color.gold.opacity(0.05), radius: 15, x: 0, y: 0)
     }
@@ -1131,8 +1130,9 @@ struct AchievementCard: View {
                 .frame(width: 3)
 
             // Trophy icon
-            Text("\u{1F3C6}")
-                .font(.system(size: 24))
+            Image(systemName: "trophy.fill")
+                .font(.system(size: 22))
+                .foregroundColor(.gold)
 
             // Info
             VStack(alignment: .leading, spacing: 2) {
@@ -2216,6 +2216,72 @@ struct HealthKitConnectCard: View {
         }
         .padding(16)
         .systemPanelStyle()
+    }
+}
+
+// MARK: - Weekly Report Card
+
+struct WeeklyReportCard: View {
+    let totalWorkouts: Int
+    let weekDateRange: String
+    let overallStatus: String  // "on_track" | "ahead" | "behind"
+    let onTap: () -> Void
+
+    private var statusLabel: String {
+        switch overallStatus {
+        case "ahead": return "AHEAD"
+        case "behind": return "BEHIND"
+        default: return "ON TRACK"
+        }
+    }
+
+    private var statusColor: Color {
+        switch overallStatus {
+        case "ahead": return .gold
+        case "behind": return .warningRed
+        default: return .systemPrimary
+        }
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 14) {
+                // Icon
+                Image(systemName: "chart.line.uptrend.xyaxis")
+                    .font(.system(size: 20))
+                    .foregroundColor(.systemPrimary)
+                    .frame(width: 36, height: 36)
+                    .background(Color.systemPrimary.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Weekly Report")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.textPrimary)
+                    Text(weekDateRange)
+                        .font(.system(size: 12))
+                        .foregroundColor(.textSecondary)
+                }
+
+                Spacer()
+
+                // Status badge
+                Text(statusLabel)
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundColor(statusColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(statusColor.opacity(0.15))
+                    .clipShape(Capsule())
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12))
+                    .foregroundColor(.textMuted)
+            }
+            .padding(14)
+            .edgeFlowCard(accent: statusColor)
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 

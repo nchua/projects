@@ -66,6 +66,7 @@ extension Color {
     // ============================================
     static let ariseBorder = Color(hex: "00D4FF").opacity(0.2)   // Panel borders
     static let ariseBorderLight = Color(hex: "00D4FF").opacity(0.1) // Subtle borders
+    static let glassBorder = Color.white.opacity(0.04)             // Glass-style border
 
     // ============================================
     // EXERCISE TYPE COLORS (Lift-specific)

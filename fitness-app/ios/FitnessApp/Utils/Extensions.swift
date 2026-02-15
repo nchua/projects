@@ -8,25 +8,16 @@ extension View {
     // ARISE SYSTEM PANEL STYLES
     // ============================================
 
-    /// ARISE system panel with gradient background and glow border
+    /// ARISE system panel with gradient background and glass border
     func systemPanelStyle(hasGlow: Bool = false) -> some View {
         self
             .padding(16)
             .background(Color.gradientVoid)
-            .cornerRadius(4) // ARISE uses sharper corners
+            .cornerRadius(20)
             .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(Color.ariseBorder, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(Color.glassBorder, lineWidth: 1)
             )
-            .overlay(alignment: .top) {
-                // Top gradient glow line (ARISE signature)
-                LinearGradient(
-                    colors: [.clear, .systemPrimary.opacity(0.6), .clear],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(height: 1)
-            }
             .modifier(ConditionalGlow(hasGlow: hasGlow))
     }
 

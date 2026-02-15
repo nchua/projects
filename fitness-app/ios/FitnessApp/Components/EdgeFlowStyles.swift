@@ -6,7 +6,7 @@ import SwiftUI
 struct EdgeFlowCardStyle: ViewModifier {
     var accentColor: Color = .clear
     var hasGlow: Bool = false
-    var cornerRadius: CGFloat = 14
+    var cornerRadius: CGFloat = 20
 
     func body(content: Content) -> some View {
         content
@@ -94,7 +94,7 @@ struct EdgeFlowStatCard: View {
 
 extension View {
     /// Apply Edge Flow card styling with optional left accent bar and glow
-    func edgeFlowCard(accent: Color = .clear, glow: Bool = false, cornerRadius: CGFloat = 14) -> some View {
+    func edgeFlowCard(accent: Color = .clear, glow: Bool = false, cornerRadius: CGFloat = 20) -> some View {
         modifier(EdgeFlowCardStyle(accentColor: accent, hasGlow: glow, cornerRadius: cornerRadius))
     }
 
