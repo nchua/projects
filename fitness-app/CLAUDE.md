@@ -315,6 +315,21 @@ Tips from the creator of Claude Code for effective usage. Run `/best-practices` 
 - `GET /api/progress/summary` - Overall stats
 - `GET /api/progress/prs` - Personal records
 
+### Notifications
+- `POST /notifications/device-token` - Register APNs device token
+- `DELETE /notifications/device-token` - Deactivate token (on logout)
+- `GET /notifications/preferences` - Get all preferences (defaults enabled)
+- `PUT /notifications/preferences` - Bulk update preferences
+
 ### Screenshot Processing
 - `POST /api/screenshot/process` - Process single screenshot
 - `POST /api/screenshot/batch` - Process multiple screenshots
+
+---
+
+## Open Decisions
+
+### When to request notification permission (Phase 3)
+`NotificationManager.requestAuthorization()` exists but is not called anywhere yet.
+Decide when to prompt — options: after first workout, on first launch, from settings screen, or after onboarding.
+Files: `ios/FitnessApp/Services/NotificationManager.swift`, wherever the trigger is added.

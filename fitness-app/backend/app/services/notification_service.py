@@ -16,13 +16,34 @@ from app.models.notification import (
 logger = logging.getLogger(__name__)
 
 
+def _resolve_apns_key() -> str | None:
+    """
+    Resolve the APNs .p8 key to a file path.
+
+    Supports two modes:
+    - APNS_AUTH_KEY: The .p8 key content pasted directly as an env var (for Railway/cloud)
+    - APNS_AUTH_KEY_PATH: Path to a .p8 file on disk (for local dev)
+    """
+    # Prefer inline key content (Railway)
+    key_content = os.environ.get("APNS_AUTH_KEY", "").strip()
+    if key_content:
+        import tempfile
+        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".p8", delete=False)
+        tmp.write(key_content)
+        tmp.close()
+        return tmp.name
+
+    # Fall back to file path (local dev)
+    return os.environ.get("APNS_AUTH_KEY_PATH")
+
+
 def get_apns_client():
     """Lazy-initialize the APNs client. Returns None if not configured."""
     key_id = os.environ.get("APNS_KEY_ID")
     team_id = os.environ.get("APNS_TEAM_ID")
-    auth_key_path = os.environ.get("APNS_AUTH_KEY_PATH")
+    key_path = _resolve_apns_key()
 
-    if not all([key_id, team_id, auth_key_path]):
+    if not all([key_id, team_id, key_path]):
         logger.debug("APNs not configured — skipping push notification")
         return None
 
@@ -30,7 +51,7 @@ def get_apns_client():
         from aioapns import APNs, NotificationRequest
         use_sandbox = os.environ.get("APNS_USE_SANDBOX", "true").lower() == "true"
         client = APNs(
-            key=auth_key_path,
+            key=key_path,
             key_id=key_id,
             team_id=team_id,
             topic=os.environ.get("APNS_TOPIC", "com.nickchua.fitnessapp"),
