@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.models.screenshot_usage import ScreenshotUsage
+from app.models.scan_balance import ScanBalance
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,42 @@ from app.services.screenshot_service import (
 router = APIRouter()
 
 
+def _get_or_create_balance(db: Session, user_id: str) -> ScanBalance:
+    """Get existing scan balance or create a new one with default free credits."""
+    balance = db.query(ScanBalance).filter(ScanBalance.user_id == user_id).first()
+    if not balance:
+        balance = ScanBalance(
+            user_id=user_id,
+            scan_credits=settings.FREE_MONTHLY_SCANS,
+            has_unlimited=False,
+            free_scans_reset_at=datetime.utcnow() + timedelta(days=30),
+        )
+        db.add(balance)
+        db.commit()
+        db.refresh(balance)
+    return balance
+
+
+def _check_monthly_reset(db: Session, balance: ScanBalance) -> ScanBalance:
+    """If free scans reset period passed, add free credits and advance reset date."""
+    now = datetime.utcnow()
+    if balance.free_scans_reset_at and now >= balance.free_scans_reset_at:
+        balance.scan_credits += settings.FREE_MONTHLY_SCANS
+        while balance.free_scans_reset_at <= now:
+            balance.free_scans_reset_at += timedelta(days=30)
+        db.commit()
+        db.refresh(balance)
+    return balance
+
+
+def _deduct_scan_credits(db: Session, user_id: str, count: int = 1) -> None:
+    """Deduct scan credits after successful processing. Skipped for unlimited users."""
+    balance = db.query(ScanBalance).filter(ScanBalance.user_id == user_id).first()
+    if balance and not balance.has_unlimited:
+        balance.scan_credits = max(0, balance.scan_credits - count)
+        db.commit()
+
+
 def _check_screenshot_rate_limit(db: Session, user_id: str, screenshot_count: int = 1) -> None:
     """Check rate limits for screenshot processing. Raises HTTPException if exceeded."""
     if not settings.SCREENSHOT_PROCESSING_ENABLED:
@@ -44,7 +81,7 @@ def _check_screenshot_rate_limit(db: Session, user_id: str, screenshot_count: in
 
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # Check daily limit
+    # Check daily abuse limit (hard cap regardless of payment)
     today_usage = db.query(func.sum(ScreenshotUsage.screenshots_count)).filter(
         ScreenshotUsage.user_id == user_id,
         ScreenshotUsage.created_at >= today_start
@@ -68,6 +105,16 @@ def _check_screenshot_rate_limit(db: Session, user_id: str, screenshot_count: in
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Please wait a few seconds between screenshot requests.",
             headers={"Retry-After": str(COOLDOWN_SECONDS)}
+        )
+
+    # Check scan balance (monetization gate)
+    balance = _get_or_create_balance(db, user_id)
+    balance = _check_monthly_reset(db, balance)
+
+    if not balance.has_unlimited and balance.scan_credits < screenshot_count:
+        raise HTTPException(
+            status_code=402,  # Payment Required
+            detail="Insufficient scan credits. Purchase a scan pack to continue.",
         )
 
 
@@ -163,6 +210,7 @@ async def process_screenshot(
         )
         logger.info(f"Extraction complete, screenshot_type: {result.get('screenshot_type')}")
         _record_screenshot_usage(db, current_user.id, count=1)
+        _deduct_scan_credits(db, current_user.id, count=1)
     except ValueError as e:
         logger.error(f"ValueError during extraction: {e}")
         raise HTTPException(
@@ -372,6 +420,7 @@ async def process_screenshots_batch(
 
     # Record usage after successful processing
     _record_screenshot_usage(db, current_user.id, count=len(files))
+    _deduct_scan_credits(db, current_user.id, count=len(files))
 
     # Get screenshot type
     screenshot_type = merged.get("screenshot_type", "gym_workout")

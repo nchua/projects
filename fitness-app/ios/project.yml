@@ -42,8 +42,10 @@ targets:
       path: FitnessApp/FitnessApp.entitlements
       properties:
         com.apple.developer.healthkit: true
+        com.apple.developer.in-app-payments: true
     capabilities:
       HealthKit: true
+      InAppPurchase: true
     info:
       path: FitnessApp/Info.plist
       properties:

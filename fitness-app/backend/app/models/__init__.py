@@ -21,6 +21,7 @@ from app.models.mission import (
     GoalStatus, MissionStatus, MissionWorkoutStatus, TrainingSplit
 )
 from app.models.screenshot_usage import ScreenshotUsage
+from app.models.scan_balance import ScanBalance, PurchaseRecord
 
 __all__ = [
     "User",
@@ -67,4 +68,6 @@ __all__ = [
     "MissionWorkoutStatus",
     "TrainingSplit",
     "ScreenshotUsage",
+    "ScanBalance",
+    "PurchaseRecord",
 ]

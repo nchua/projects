@@ -983,6 +983,34 @@ struct LastSyncResponse: Decodable {
     }
 }
 
+// MARK: - Scan Balance
+
+struct ScanBalanceResponse: Decodable {
+    let scanCredits: Int
+    let hasUnlimited: Bool
+    let freeScansResetAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case scanCredits = "scan_credits"
+        case hasUnlimited = "has_unlimited"
+        case freeScansResetAt = "free_scans_reset_at"
+    }
+}
+
+struct PurchaseVerifyResponse: Decodable {
+    let success: Bool
+    let creditsAdded: Int
+    let newBalance: Int
+    let hasUnlimited: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case success
+        case creditsAdded = "credits_added"
+        case newBalance = "new_balance"
+        case hasUnlimited = "has_unlimited"
+    }
+}
+
 // MARK: - Screenshot Processing
 
 struct ExtractedSet: Decodable {

@@ -8,11 +8,13 @@ struct LogView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = LogViewModel()
     @StateObject private var screenshotViewModel = ScreenshotProcessingViewModel()
+    @StateObject private var storeKitManager = StoreKitManager.shared
     @State private var showDatePicker = false
     @State private var isSessionActive = false
     @State private var showCancelConfirmation = false
     @State private var showScreenshotPicker = false
     @State private var showScreenshotPreview = false
+    @State private var showPaywall = false
     @State private var hasLoadedInitialScreenshots = false
 
     // Celebration states
@@ -47,7 +49,14 @@ struct LogView: View {
                         }
                     },
                     onScanQuestLog: {
-                        showScreenshotPicker = true
+                        Task {
+                            await storeKitManager.fetchBalance()
+                            if storeKitManager.canScan {
+                                showScreenshotPicker = true
+                            } else {
+                                showPaywall = true
+                            }
+                        }
                     },
                     showCloseButton: true,
                     onClose: { dismiss() }
@@ -251,6 +260,12 @@ struct LogView: View {
                 withAnimation(.smoothSpring) {
                     isSessionActive = true
                 }
+            }
+        }
+        .fullScreenCover(isPresented: $showPaywall) {
+            ScanPaywallView(storeKitManager: storeKitManager) {
+                // On purchase complete, open screenshot picker
+                showScreenshotPicker = true
             }
         }
         .task {

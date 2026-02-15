@@ -446,6 +446,36 @@ class APIClient {
         return try await get("/activity/last-sync?source=\(source)")
     }
 
+    // MARK: - Scan Balance
+
+    func getScanBalance() async throws -> ScanBalanceResponse {
+        return try await get("/scan-balance")
+    }
+
+    func verifyPurchase(transactionId: String, productId: String, signedTransaction: String?) async throws -> PurchaseVerifyResponse {
+        struct VerifyRequest: Encodable {
+            let transactionId: String
+            let productId: String
+            let signedTransaction: String?
+
+            enum CodingKeys: String, CodingKey {
+                case transactionId = "transaction_id"
+                case productId = "product_id"
+                case signedTransaction = "signed_transaction"
+            }
+        }
+        let body = VerifyRequest(
+            transactionId: transactionId,
+            productId: productId,
+            signedTransaction: signedTransaction
+        )
+        return try await post("/scan-balance/verify-purchase", body: body)
+    }
+
+    func restoreScanPurchases() async throws -> ScanBalanceResponse {
+        return try await post("/scan-balance/restore-purchases", body: EmptyBody())
+    }
+
     // MARK: - Screenshot Processing
 
     func processScreenshot(imageData: Data, filename: String, sessionDate: Date? = nil) async throws -> ScreenshotProcessResponse {
@@ -518,6 +548,11 @@ class APIClient {
             return try JSONDecoder().decode(ScreenshotProcessResponse.self, from: data)
         case 401:
             throw APIError.unauthorized
+        case 402:
+            if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                throw APIError.paymentRequired(errorResponse.detail ?? "Insufficient scan credits.")
+            }
+            throw APIError.paymentRequired("Insufficient scan credits. Purchase a scan pack to continue.")
         case 422:
             // Extract actual error detail from response
             if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
@@ -615,6 +650,11 @@ class APIClient {
             return try JSONDecoder().decode(ScreenshotBatchResponse.self, from: data)
         case 401:
             throw APIError.unauthorized
+        case 402:
+            if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                throw APIError.paymentRequired(errorResponse.detail ?? "Insufficient scan credits.")
+            }
+            throw APIError.paymentRequired("Insufficient scan credits. Purchase a scan pack to continue.")
         case 422:
             // Extract actual error detail from response
             if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
@@ -810,6 +850,7 @@ enum APIError: Error, LocalizedError {
     case notFound
     case validationError
     case badRequest(String)
+    case paymentRequired(String)
     case rateLimited(String)
     case serviceUnavailable(String)
     case serverError(Int)
@@ -823,6 +864,7 @@ enum APIError: Error, LocalizedError {
         case .notFound: return "Resource not found"
         case .validationError: return "Invalid data provided. Please check your input."
         case .badRequest(let message): return message
+        case .paymentRequired(let message): return message
         case .rateLimited(let message): return message
         case .serviceUnavailable(let message): return message
         case .serverError(let code): return "Server error: \(code)"

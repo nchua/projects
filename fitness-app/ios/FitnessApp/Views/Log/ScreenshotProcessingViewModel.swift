@@ -14,6 +14,7 @@ class ScreenshotProcessingViewModel: ObservableObject {
     @Published var activitySaved = false
     @Published var savedActivityId: String?
     @Published var selectedDate: Date = Date()  // User-selectable date for the workout
+    @Published var needsPaywall = false  // Set when 402 received
 
     var isBatchMode: Bool {
         selectedImagesData.count > 1
@@ -56,6 +57,9 @@ class ScreenshotProcessingViewModel: ObservableObject {
                     activitySaved = data.activitySaved
                     savedActivityId = data.activityId
                 }
+            } catch APIError.paymentRequired(_) {
+                self.needsPaywall = true
+                self.error = "Insufficient scan credits. Purchase a scan pack to continue."
             } catch APIError.rateLimited(let message) {
                 self.error = message
             } catch APIError.serviceUnavailable(let message) {
@@ -88,6 +92,9 @@ class ScreenshotProcessingViewModel: ObservableObject {
                 }
 
                 processingProgress = "Complete! Processed \(batchData?.screenshotsProcessed ?? 0) screenshots."
+            } catch APIError.paymentRequired(_) {
+                self.needsPaywall = true
+                self.error = "Insufficient scan credits. Purchase a scan pack to continue."
             } catch APIError.rateLimited(let message) {
                 self.error = message
             } catch APIError.serviceUnavailable(let message) {
@@ -178,6 +185,7 @@ class ScreenshotProcessingViewModel: ObservableObject {
         activitySaved = false
         savedActivityId = nil
         selectedDate = Date()
+        needsPaywall = false
     }
 
     var formattedSelectedDate: String {

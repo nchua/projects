@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # Screenshot processing
     SCREENSHOT_PROCESSING_ENABLED: bool = Field(default=True)
 
+    # Scan balance (screenshot scanner monetization)
+    FREE_MONTHLY_SCANS: int = Field(default=3)
+
     class Config:
         env_file = ".env"
         case_sensitive = True
