@@ -1084,7 +1084,7 @@ struct SystemSettingsSection: View {
                 } label: {
                     AriseSettingsRow(
                         icon: "bell.fill",
-                        iconColor: .xpGold,
+                        iconColor: .gold,
                         title: "Notifications",
                         trailing: {
                             Image(systemName: "chevron.right")

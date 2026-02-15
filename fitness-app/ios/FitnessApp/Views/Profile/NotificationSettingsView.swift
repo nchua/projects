@@ -24,7 +24,7 @@ struct NotificationSettingsView: View {
                 // Progression section
                 notificationSection(
                     title: "Progression",
-                    accent: .xpGold,
+                    accent: .gold,
                     types: NotificationSettingsViewModel.progressionTypes
                 )
 
@@ -94,12 +94,12 @@ struct NotificationSettingsView: View {
         HStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 20))
-                .foregroundColor(.xpGold)
+                .foregroundColor(.gold)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("System Notifications Disabled")
                     .font(.ariseHeader(size: 13, weight: .semibold))
-                    .foregroundColor(.xpGold)
+                    .foregroundColor(.gold)
 
                 Text("Enable notifications in iOS Settings to receive alerts.")
                     .font(.ariseBody(size: 11))
@@ -115,23 +115,23 @@ struct NotificationSettingsView: View {
             } label: {
                 Text("OPEN")
                     .font(.ariseMono(size: 10, weight: .bold))
-                    .foregroundColor(.xpGold)
+                    .foregroundColor(.gold)
                     .tracking(1)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Color.xpGold.opacity(0.15))
+                    .background(Color.gold.opacity(0.15))
                     .overlay(
                         RoundedRectangle(cornerRadius: 2)
-                            .stroke(Color.xpGold.opacity(0.3), lineWidth: 1)
+                            .stroke(Color.gold.opacity(0.3), lineWidth: 1)
                     )
             }
         }
         .padding(14)
-        .background(Color.xpGold.opacity(0.06))
+        .background(Color.gold.opacity(0.06))
         .cornerRadius(4)
         .overlay(
             RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.xpGold.opacity(0.2), lineWidth: 1)
+                .stroke(Color.gold.opacity(0.2), lineWidth: 1)
         )
         .padding(.horizontal)
     }

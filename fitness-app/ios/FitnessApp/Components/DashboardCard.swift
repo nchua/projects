@@ -98,11 +98,11 @@ struct DashboardCard: View {
 
             // Supporting stats row
             HStack(spacing: 0) {
-                StatPill(icon: "dumbbell.fill", value: totalVolume.formattedVolume, label: "Volume")
+                DashboardStatPill(icon: "dumbbell.fill", value: totalVolume.formattedVolume, label: "Volume")
                 Spacer()
-                StatPill(icon: "timer", value: "\(activeMinutes)", label: "Minutes")
+                DashboardStatPill(icon: "timer", value: "\(activeMinutes)", label: "Minutes")
                 Spacer()
-                StatPill(icon: "trophy.fill", value: "\(prsCount)", label: "PRs")
+                DashboardStatPill(icon: "trophy.fill", value: "\(prsCount)", label: "PRs")
             }
         }
     }
@@ -170,9 +170,9 @@ struct DashboardCard: View {
     }
 }
 
-// MARK: - Stat Pill
+// MARK: - Dashboard Stat Pill
 
-private struct StatPill: View {
+private struct DashboardStatPill: View {
     let icon: String
     let value: String
     let label: String
