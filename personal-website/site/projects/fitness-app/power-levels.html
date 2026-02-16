@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Power Levels — Arise Fitness Tracker</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  :root {
+    --void: #050508;
+    --card: #0f1018;
+    --elevated: #141520;
+    --card-medium: #1a1a24;
+    --card-light: #252530;
+    --cyan: #00D4FF;
+    --success: #00FF88;
+    --gold: #FFD700;
+    --danger: #FF4757;
+    --squat: #FF6B6B;
+    --bench: #00D4FF;
+    --deadlift: #7B61FF;
+    --text-primary: #FFFFFF;
+    --text-secondary: #A0A0B0;
+    --text-muted: #606070;
+    --border: rgba(255, 255, 255, 0.06);
+    --radius: 20px;
+  }
+
+  body {
+    background: #111;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Inter', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* iPhone 15 Pro Frame */
+  .phone-frame {
+    width: 430px;
+    background: #1a1a1a;
+    border-radius: 50px;
+    padding: 20px;
+    position: relative;
+    box-shadow:
+      0 0 0 2px #333,
+      0 20px 60px rgba(0, 0, 0, 0.6),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+
+  .phone-screen {
+    width: 390px;
+    height: 844px;
+    background: var(--void);
+    border-radius: 36px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .dynamic-island {
+    width: 126px;
+    height: 37px;
+    background: #000;
+    border-radius: 20px;
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+  }
+
+  .home-indicator {
+    width: 134px;
+    height: 5px;
+    background: #606070;
+    border-radius: 3px;
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+  }
+
+  .screen-content {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 30px;
+    scrollbar-width: none;
+  }
+  .screen-content::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Header */
+  .header {
+    padding: 60px 20px 16px;
+    background: var(--elevated);
+  }
+
+  .header-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+
+  .header-subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  /* Section header */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 20px 12px;
+  }
+
+  .section-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .section-link {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--cyan);
+  }
+
+  /* Consolidated Power Card */
+  .power-card {
+    margin: 0 20px 16px;
+    padding: 20px;
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+
+  .lifts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    position: relative;
+  }
+
+  .lift-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+    position: relative;
+  }
+
+  .lift-column:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 4px;
+    bottom: 4px;
+    width: 1px;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .lift-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .lift-label .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  .lift-label .name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .lift-value {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+  }
+
+  .lift-value .number {
+    font-family: 'Orbitron', monospace;
+    font-size: 24px;
+    font-weight: 700;
+  }
+
+  .lift-value .unit {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .progress-bar-container {
+    width: 64px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+  }
+
+  .trend {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .trend.up { color: var(--success); }
+  .trend.stable { color: var(--text-muted); }
+
+  /* Detail cards */
+  .lift-detail-card {
+    margin: 0 20px 12px;
+    padding: 16px;
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .lift-detail-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    border-radius: var(--radius) 0 0 var(--radius);
+  }
+
+  .lift-detail-card.squat::before { background: var(--squat); }
+  .lift-detail-card.bench::before { background: var(--bench); }
+  .lift-detail-card.deadlift::before { background: var(--deadlift); }
+
+  .detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+
+  .detail-lift-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .detail-e1rm {
+    font-family: 'Orbitron', monospace;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  /* Mini chart placeholder */
+  .mini-chart {
+    height: 60px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    padding: 0 8px 4px;
+    gap: 3px;
+  }
+
+  .chart-bar {
+    flex: 1;
+    border-radius: 2px 2px 0 0;
+    min-height: 4px;
+    opacity: 0.7;
+  }
+
+  /* Stats row */
+  .detail-stats {
+    display: flex;
+    gap: 16px;
+  }
+
+  .detail-stat-label {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .detail-stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  .detail-stat-value.green { color: var(--success); }
+</style>
+</head>
+<body>
+
+<div class="phone-frame">
+  <div class="phone-screen">
+    <div class="dynamic-island"></div>
+
+    <div class="screen-content">
+
+      <!-- Header -->
+      <div class="header">
+        <div class="header-title">Power Levels</div>
+        <div class="header-subtitle">Estimated 1-rep max for your Big Three lifts</div>
+      </div>
+
+      <!-- Consolidated Card -->
+      <div class="section-header">
+        <span class="section-title">Overview</span>
+        <span class="section-link">12-week trend</span>
+      </div>
+
+      <div class="power-card">
+        <div class="lifts-grid">
+          <!-- Squat -->
+          <div class="lift-column">
+            <div class="lift-label">
+              <div class="dot" style="background: var(--squat);"></div>
+              <span class="name">Squat</span>
+            </div>
+            <div class="lift-value">
+              <span class="number" style="color: var(--squat);">315</span>
+              <span class="unit">lbs</span>
+            </div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill" style="width: 88%; background: var(--squat);"></div>
+            </div>
+            <div class="trend up">&#9650; +4.2%</div>
+          </div>
+
+          <!-- Bench -->
+          <div class="lift-column">
+            <div class="lift-label">
+              <div class="dot" style="background: var(--bench);"></div>
+              <span class="name">Bench</span>
+            </div>
+            <div class="lift-value">
+              <span class="number" style="color: var(--bench);">225</span>
+              <span class="unit">lbs</span>
+            </div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill" style="width: 72%; background: var(--bench);"></div>
+            </div>
+            <div class="trend up">&#9650; +2.1%</div>
+          </div>
+
+          <!-- Deadlift -->
+          <div class="lift-column">
+            <div class="lift-label">
+              <div class="dot" style="background: var(--deadlift);"></div>
+              <span class="name">Deadlift</span>
+            </div>
+            <div class="lift-value">
+              <span class="number" style="color: var(--deadlift);">405</span>
+              <span class="unit">lbs</span>
+            </div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill" style="width: 95%; background: var(--deadlift);"></div>
+            </div>
+            <div class="trend stable">&#9644; 0.0%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lift Details -->
+      <div class="section-header">
+        <span class="section-title">Lift Details</span>
+      </div>
+
+      <!-- Squat Detail -->
+      <div class="lift-detail-card squat">
+        <div class="detail-header">
+          <div class="detail-lift-name">Barbell Back Squat</div>
+          <div class="detail-e1rm" style="color: var(--squat);">315 lb</div>
+        </div>
+        <div class="mini-chart">
+          <div class="chart-bar" style="height: 55%; background: var(--squat);"></div>
+          <div class="chart-bar" style="height: 58%; background: var(--squat);"></div>
+          <div class="chart-bar" style="height: 60%; background: var(--squat);"></div>
+          <div class="chart-bar" style="height: 62%; background: var(--squat);"></div>
+          <div class="chart-bar" style="height: 58%; background: var(--squat);"></div>
+          <div class="chart-bar" style="height: 65%; background: var(--squat);"></div>
+          <div class="chart-bar" style="height: 70%; background: var(--squat);"></div>
+          <div class="chart-bar" style="height: 72%; background: var(--squat);"></div>
+          <div class="chart-bar" style="height: 75%; background: var(--squat);"></div>
+          <div class="chart-bar" style="height: 78%; background: var(--squat);"></div>
+          <div class="chart-bar" style="height: 82%; background: var(--squat);"></div>
+          <div class="chart-bar" style="height: 88%; background: var(--squat);"></div>
+        </div>
+        <div class="detail-stats">
+          <div>
+            <div class="detail-stat-label">All-time PR</div>
+            <div class="detail-stat-value">315 lb</div>
+          </div>
+          <div>
+            <div class="detail-stat-label">12-week change</div>
+            <div class="detail-stat-value green">+28 lb</div>
+          </div>
+          <div>
+            <div class="detail-stat-label">Percentile</div>
+            <div class="detail-stat-value">78th</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bench Detail -->
+      <div class="lift-detail-card bench">
+        <div class="detail-header">
+          <div class="detail-lift-name">Barbell Bench Press</div>
+          <div class="detail-e1rm" style="color: var(--bench);">225 lb</div>
+        </div>
+        <div class="mini-chart">
+          <div class="chart-bar" style="height: 50%; background: var(--bench);"></div>
+          <div class="chart-bar" style="height: 52%; background: var(--bench);"></div>
+          <div class="chart-bar" style="height: 54%; background: var(--bench);"></div>
+          <div class="chart-bar" style="height: 56%; background: var(--bench);"></div>
+          <div class="chart-bar" style="height: 55%; background: var(--bench);"></div>
+          <div class="chart-bar" style="height: 58%; background: var(--bench);"></div>
+          <div class="chart-bar" style="height: 60%; background: var(--bench);"></div>
+          <div class="chart-bar" style="height: 62%; background: var(--bench);"></div>
+          <div class="chart-bar" style="height: 65%; background: var(--bench);"></div>
+          <div class="chart-bar" style="height: 67%; background: var(--bench);"></div>
+          <div class="chart-bar" style="height: 70%; background: var(--bench);"></div>
+          <div class="chart-bar" style="height: 72%; background: var(--bench);"></div>
+        </div>
+        <div class="detail-stats">
+          <div>
+            <div class="detail-stat-label">All-time PR</div>
+            <div class="detail-stat-value">225 lb</div>
+          </div>
+          <div>
+            <div class="detail-stat-label">12-week change</div>
+            <div class="detail-stat-value green">+15 lb</div>
+          </div>
+          <div>
+            <div class="detail-stat-label">Percentile</div>
+            <div class="detail-stat-value">65th</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deadlift Detail -->
+      <div class="lift-detail-card deadlift">
+        <div class="detail-header">
+          <div class="detail-lift-name">Conventional Deadlift</div>
+          <div class="detail-e1rm" style="color: var(--deadlift);">405 lb</div>
+        </div>
+        <div class="mini-chart">
+          <div class="chart-bar" style="height: 88%; background: var(--deadlift);"></div>
+          <div class="chart-bar" style="height: 90%; background: var(--deadlift);"></div>
+          <div class="chart-bar" style="height: 88%; background: var(--deadlift);"></div>
+          <div class="chart-bar" style="height: 92%; background: var(--deadlift);"></div>
+          <div class="chart-bar" style="height: 90%; background: var(--deadlift);"></div>
+          <div class="chart-bar" style="height: 91%; background: var(--deadlift);"></div>
+          <div class="chart-bar" style="height: 93%; background: var(--deadlift);"></div>
+          <div class="chart-bar" style="height: 92%; background: var(--deadlift);"></div>
+          <div class="chart-bar" style="height: 94%; background: var(--deadlift);"></div>
+          <div class="chart-bar" style="height: 93%; background: var(--deadlift);"></div>
+          <div class="chart-bar" style="height: 95%; background: var(--deadlift);"></div>
+          <div class="chart-bar" style="height: 95%; background: var(--deadlift);"></div>
+        </div>
+        <div class="detail-stats">
+          <div>
+            <div class="detail-stat-label">All-time PR</div>
+            <div class="detail-stat-value">405 lb</div>
+          </div>
+          <div>
+            <div class="detail-stat-label">12-week change</div>
+            <div class="detail-stat-value">+0 lb</div>
+          </div>
+          <div>
+            <div class="detail-stat-label">Percentile</div>
+            <div class="detail-stat-value">82nd</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="home-indicator"></div>
+  </div>
+</div>
+
+</body>
+</html>

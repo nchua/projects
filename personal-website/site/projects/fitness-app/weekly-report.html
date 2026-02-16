@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weekly Report — Arise Fitness Tracker</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  :root {
+    --void: #050508;
+    --card: #0f1018;
+    --elevated: #141520;
+    --card-medium: #1a1a24;
+    --card-light: #252530;
+    --cyan: #00D4FF;
+    --cyan-dim: #00A8CC;
+    --success: #00FF88;
+    --gold: #FFD700;
+    --danger: #FF4757;
+    --red: #FF3333;
+    --green: #33FF88;
+    --text-primary: #FFFFFF;
+    --text-secondary: #A0A0B0;
+    --text-muted: #606070;
+    --border: rgba(255, 255, 255, 0.06);
+    --radius: 20px;
+  }
+
+  body {
+    background: #111;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Inter', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* iPhone 15 Pro Frame */
+  .phone-frame {
+    width: 430px;
+    background: #1a1a1a;
+    border-radius: 50px;
+    padding: 20px;
+    position: relative;
+    box-shadow:
+      0 0 0 2px #333,
+      0 20px 60px rgba(0, 0, 0, 0.6),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+
+  .phone-screen {
+    width: 390px;
+    height: 844px;
+    background: var(--void);
+    border-radius: 36px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .dynamic-island {
+    width: 126px;
+    height: 37px;
+    background: #000;
+    border-radius: 20px;
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+  }
+
+  .home-indicator {
+    width: 134px;
+    height: 5px;
+    background: #606070;
+    border-radius: 3px;
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+  }
+
+  .screen-content {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 30px;
+    scrollbar-width: none;
+  }
+  .screen-content::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Nav bar */
+  .nav-bar {
+    padding: 60px 20px 12px;
+    background: var(--elevated);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .nav-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--cyan);
+    letter-spacing: 2px;
+  }
+
+  .nav-close {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--card-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+
+  /* Header */
+  .report-header {
+    padding: 16px 20px;
+  }
+
+  .week-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  /* Stats scroll */
+  .stats-scroll {
+    display: flex;
+    gap: 10px;
+    padding: 0 20px 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .stats-scroll::-webkit-scrollbar { display: none; }
+
+  .stat-card {
+    min-width: 90px;
+    padding: 14px;
+    background: var(--card-medium);
+    border-radius: var(--radius);
+    text-align: center;
+  }
+
+  .stat-card .value {
+    font-family: 'Orbitron', monospace;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--cyan);
+  }
+
+  .stat-card.gold .value { color: var(--gold); }
+
+  .stat-card .label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-top: 4px;
+    letter-spacing: 0.3px;
+  }
+
+  /* Pace Status Card */
+  .pace-card {
+    margin: 0 20px 16px;
+    padding: 16px;
+    background: var(--card-medium);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.1);
+  }
+
+  .pace-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    border-radius: var(--radius) 0 0 var(--radius);
+    background: var(--cyan);
+  }
+
+  .pace-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  .pace-status {
+    font-family: 'Orbitron', monospace;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--cyan);
+    margin-top: 2px;
+  }
+
+  .vol-change {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--green);
+  }
+
+  .vol-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    text-align: right;
+  }
+
+  /* Section headers */
+  .section-header {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text-primary);
+    padding: 8px 20px 10px;
+  }
+
+  /* Goal Cards */
+  .goal-card {
+    margin: 0 20px 12px;
+    padding: 16px;
+    background: var(--card-medium);
+    border-radius: var(--radius);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .goal-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    border-radius: var(--radius) 0 0 var(--radius);
+  }
+
+  .goal-card.on-track::before { background: var(--cyan); }
+  .goal-card.ahead::before { background: var(--gold); }
+
+  .goal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .goal-exercise {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .goal-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 100px;
+  }
+
+  .goal-badge.on-track { color: var(--cyan); background: rgba(0, 212, 255, 0.15); }
+  .goal-badge.ahead { color: var(--gold); background: rgba(255, 215, 0, 0.15); }
+
+  .goal-e1rm-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+
+  .e1rm-label {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .e1rm-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .e1rm-value.target { color: var(--gold); }
+
+  .progress-track {
+    height: 6px;
+    background: var(--card-light);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 3px;
+  }
+
+  .progress-fill.on-track { background: var(--cyan); }
+  .progress-fill.ahead { background: var(--gold); }
+
+  .progress-meta {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .progress-pct {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  .progress-remaining {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .pace-details {
+    display: flex;
+    gap: 16px;
+    margin-top: 10px;
+  }
+
+  .pd-label {
+    font-size: 9px;
+    color: var(--text-muted);
+  }
+
+  .pd-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  /* Suggestion cards */
+  .suggestion-card {
+    margin: 0 20px 8px;
+    padding: 14px;
+    background: var(--card-medium);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .suggestion-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    border-radius: var(--radius) 0 0 var(--radius);
+    background: var(--cyan);
+  }
+
+  .suggestion-icon {
+    font-size: 14px;
+    padding-top: 1px;
+    flex-shrink: 0;
+  }
+
+  .s-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .s-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 3px;
+    line-height: 1.4;
+  }
+</style>
+</head>
+<body>
+
+<div class="phone-frame">
+  <div class="phone-screen">
+    <div class="dynamic-island"></div>
+
+    <div class="screen-content">
+      <!-- Nav bar -->
+      <div class="nav-bar">
+        <div></div>
+        <div class="nav-title">WEEKLY REPORT</div>
+        <div class="nav-close">&#x2715;</div>
+      </div>
+
+      <!-- Header -->
+      <div class="report-header">
+        <div class="week-title">Week of Feb 3 &#x2013; Feb 9</div>
+      </div>
+
+      <!-- Stats scroll -->
+      <div class="stats-scroll">
+        <div class="stat-card">
+          <div class="value">4</div>
+          <div class="label">Workouts</div>
+        </div>
+        <div class="stat-card">
+          <div class="value">32k</div>
+          <div class="label">Volume</div>
+        </div>
+        <div class="stat-card">
+          <div class="value">68</div>
+          <div class="label">Sets</div>
+        </div>
+        <div class="stat-card gold">
+          <div class="value">2</div>
+          <div class="label">PRs</div>
+        </div>
+      </div>
+
+      <!-- Pace Card -->
+      <div class="pace-card">
+        <div>
+          <div class="pace-label">Overall Pace</div>
+          <div class="pace-status">ON TRACK</div>
+        </div>
+        <div style="text-align: right;">
+          <div class="vol-change">+12%</div>
+          <div class="vol-label">vs last week</div>
+        </div>
+      </div>
+
+      <!-- Goal Progress -->
+      <div class="section-header">Goal Progress</div>
+
+      <!-- Goal 1: Bench — on track -->
+      <div class="goal-card on-track">
+        <div class="goal-header">
+          <div class="goal-exercise">Bench Press</div>
+          <div class="goal-badge on-track">ON TRACK</div>
+        </div>
+        <div class="goal-e1rm-row">
+          <div>
+            <div class="e1rm-label">Current</div>
+            <div class="e1rm-value">218 lb</div>
+          </div>
+          <div>
+            <div class="e1rm-label">Target</div>
+            <div class="e1rm-value target">245 lb</div>
+          </div>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill on-track" style="width: 67%;"></div>
+        </div>
+        <div class="progress-meta">
+          <div class="progress-pct">67%</div>
+          <div class="progress-remaining">8w remaining</div>
+        </div>
+        <div class="pace-details">
+          <div>
+            <div class="pd-label">Need</div>
+            <div class="pd-value">+3.4/wk</div>
+          </div>
+          <div>
+            <div class="pd-label">Actual</div>
+            <div class="pd-value">+3.1/wk</div>
+          </div>
+          <div>
+            <div class="pd-label">Projected</div>
+            <div class="pd-value">Apr 2</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Goal 2: Squat — ahead -->
+      <div class="goal-card ahead">
+        <div class="goal-header">
+          <div class="goal-exercise">Back Squat</div>
+          <div class="goal-badge ahead">AHEAD</div>
+        </div>
+        <div class="goal-e1rm-row">
+          <div>
+            <div class="e1rm-label">Current</div>
+            <div class="e1rm-value">302 lb</div>
+          </div>
+          <div>
+            <div class="e1rm-label">Target</div>
+            <div class="e1rm-value target">315 lb</div>
+          </div>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill ahead" style="width: 85%;"></div>
+        </div>
+        <div class="progress-meta">
+          <div class="progress-pct">85%</div>
+          <div class="progress-remaining">10w remaining</div>
+        </div>
+        <div class="pace-details">
+          <div>
+            <div class="pd-label">Need</div>
+            <div class="pd-value">+1.3/wk</div>
+          </div>
+          <div>
+            <div class="pd-label">Actual</div>
+            <div class="pd-value">+2.8/wk</div>
+          </div>
+          <div>
+            <div class="pd-label">Projected</div>
+            <div class="pd-value">Feb 28</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Coaching Suggestions -->
+      <div class="section-header">Coaching</div>
+
+      <div class="suggestion-card">
+        <div class="suggestion-icon">&#x2B50;</div>
+        <div>
+          <div class="s-title">Great progress on Back Squat!</div>
+          <div class="s-desc">You're ahead of pace &#x2014; keep it up!</div>
+        </div>
+      </div>
+
+      <div class="suggestion-card">
+        <div class="suggestion-icon">&#x1F422;</div>
+        <div>
+          <div class="s-title">Approaching Back Squat target</div>
+          <div class="s-desc">Progress may slow as you get closer &#x2014; this is normal. Stay consistent.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="home-indicator"></div>
+  </div>
+</div>
+
+</body>
+</html>

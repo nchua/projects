@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Muscle Groups — Arise Fitness Tracker</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  :root {
+    --void: #050508;
+    --card: #0f1018;
+    --elevated: #141520;
+    --card-medium: #1a1a24;
+    --card-light: #252530;
+    --cyan: #00D4FF;
+    --success: #00FF88;
+    --gold: #FFD700;
+    --danger: #FF4757;
+    --text-primary: #FFFFFF;
+    --text-secondary: #A0A0B0;
+    --text-muted: #606070;
+    --border: rgba(255, 255, 255, 0.06);
+    --radius: 20px;
+
+    /* Muscle group colors */
+    --muscle-chest: #EF4444;
+    --muscle-shoulders: #EC4899;
+    --muscle-triceps: #A855F7;
+    --muscle-back: #22C55E;
+    --muscle-lats: #F59E0B;
+    --muscle-biceps: #8B5CF6;
+    --muscle-quads: #3B82F6;
+    --muscle-hamstrings: #00D4FF;
+    --muscle-glutes: #F97316;
+    --muscle-calves: #10B981;
+  }
+
+  body {
+    background: #111;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Inter', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* iPhone 15 Pro Frame */
+  .phone-frame {
+    width: 430px;
+    background: #1a1a1a;
+    border-radius: 50px;
+    padding: 20px;
+    position: relative;
+    box-shadow:
+      0 0 0 2px #333,
+      0 20px 60px rgba(0, 0, 0, 0.6),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+
+  .phone-screen {
+    width: 390px;
+    height: 844px;
+    background: var(--void);
+    border-radius: 36px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .dynamic-island {
+    width: 126px;
+    height: 37px;
+    background: #000;
+    border-radius: 20px;
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+  }
+
+  .home-indicator {
+    width: 134px;
+    height: 5px;
+    background: #606070;
+    border-radius: 3px;
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+  }
+
+  .screen-content {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 90px;
+    scrollbar-width: none;
+  }
+  .screen-content::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Header */
+  .header {
+    padding: 60px 20px 16px;
+    background: var(--elevated);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .back-btn {
+    width: 32px;
+    height: 32px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    font-size: 16px;
+  }
+
+  .header-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  /* Screen tag */
+  .screen-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--cyan);
+    letter-spacing: 2px;
+    padding: 12px 20px 4px;
+  }
+
+  .screen-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    padding: 0 20px 12px;
+  }
+
+  /* Workout rows */
+  .workout-row {
+    display: flex;
+    align-items: flex-start;
+    padding: 14px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    gap: 12px;
+  }
+
+  .row-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .row-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 3px;
+  }
+
+  .row-date {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--success);
+    background: rgba(51, 255, 136, 0.1);
+  }
+
+  .row-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  /* Muscle group pills */
+  .muscle-pills {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+
+  .muscle-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    background: var(--card-medium);
+    border-radius: 100px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.85);
+    white-space: nowrap;
+  }
+
+  .muscle-pill .dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .muscle-pill-overflow {
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .row-chevron {
+    color: var(--text-muted);
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+
+  /* Tab bar */
+  .tab-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 0 24px;
+    z-index: 50;
+  }
+
+  .tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 50px;
+  }
+
+  .tab-icon {
+    font-size: 20px;
+    line-height: 1.2;
+  }
+
+  .tab-icon.large { font-size: 26px; }
+
+  .tab-label {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .tab-item.active .tab-label {
+    color: var(--cyan);
+  }
+</style>
+</head>
+<body>
+
+<div class="phone-frame">
+  <div class="phone-screen">
+    <div class="dynamic-island"></div>
+
+    <div class="screen-content">
+
+      <!-- Header -->
+      <div class="header">
+        <div class="back-btn">&#x2039;</div>
+        <div class="header-title">Quest Archive</div>
+      </div>
+
+      <div class="screen-tag">[ ARCHIVE ]</div>
+      <div class="screen-title">Quest Log</div>
+
+      <!-- Row 1: Push Day -->
+      <div class="workout-row">
+        <div class="row-content">
+          <div class="row-top">
+            <span class="row-date">Feb 15</span>
+            <span class="status-badge">&#x2713; COMPLETE</span>
+          </div>
+          <div class="row-meta">3 exercises &#xB7; 12 sets</div>
+          <div class="muscle-pills">
+            <span class="muscle-pill">
+              <span class="dot" style="background: var(--muscle-chest);"></span>
+              Chest
+            </span>
+            <span class="muscle-pill">
+              <span class="dot" style="background: var(--muscle-shoulders);"></span>
+              Shoulders
+            </span>
+            <span class="muscle-pill">
+              <span class="dot" style="background: var(--muscle-triceps);"></span>
+              Triceps
+            </span>
+          </div>
+        </div>
+        <span class="row-chevron">&#x203A;</span>
+      </div>
+
+      <!-- Row 2: Pull Day -->
+      <div class="workout-row">
+        <div class="row-content">
+          <div class="row-top">
+            <span class="row-date">Feb 14</span>
+            <span class="status-badge">&#x2713; COMPLETE</span>
+          </div>
+          <div class="row-meta">3 exercises &#xB7; 11 sets</div>
+          <div class="muscle-pills">
+            <span class="muscle-pill">
+              <span class="dot" style="background: var(--muscle-back);"></span>
+              Back
+            </span>
+            <span class="muscle-pill">
+              <span class="dot" style="background: var(--muscle-lats);"></span>
+              Lats
+            </span>
+            <span class="muscle-pill">
+              <span class="dot" style="background: var(--muscle-biceps);"></span>
+              Biceps
+            </span>
+          </div>
+        </div>
+        <span class="row-chevron">&#x203A;</span>
+      </div>
+
+      <!-- Row 3: Leg Day -->
+      <div class="workout-row">
+        <div class="row-content">
+          <div class="row-top">
+            <span class="row-date">Feb 12</span>
+            <span class="status-badge">&#x2713; COMPLETE</span>
+          </div>
+          <div class="row-meta">4 exercises &#xB7; 16 sets</div>
+          <div class="muscle-pills">
+            <span class="muscle-pill">
+              <span class="dot" style="background: var(--muscle-quads);"></span>
+              Quads
+            </span>
+            <span class="muscle-pill">
+              <span class="dot" style="background: var(--muscle-hamstrings);"></span>
+              Hams
+            </span>
+            <span class="muscle-pill">
+              <span class="dot" style="background: var(--muscle-glutes);"></span>
+              Glutes
+            </span>
+            <span class="muscle-pill muscle-pill-overflow">+1</span>
+          </div>
+        </div>
+        <span class="row-chevron">&#x203A;</span>
+      </div>
+
+      <!-- Row 4: Full Body -->
+      <div class="workout-row">
+        <div class="row-content">
+          <div class="row-top">
+            <span class="row-date">Feb 10</span>
+            <span class="status-badge">&#x2713; COMPLETE</span>
+          </div>
+          <div class="row-meta">4 exercises &#xB7; 14 sets</div>
+          <div class="muscle-pills">
+            <span class="muscle-pill">
+              <span class="dot" style="background: var(--muscle-back);"></span>
+              Back
+            </span>
+            <span class="muscle-pill">
+              <span class="dot" style="background: var(--muscle-chest);"></span>
+              Chest
+            </span>
+            <span class="muscle-pill">
+              <span class="dot" style="background: var(--muscle-lats);"></span>
+              Lats
+            </span>
+            <span class="muscle-pill muscle-pill-overflow">+1</span>
+          </div>
+        </div>
+        <span class="row-chevron">&#x203A;</span>
+      </div>
+
+      <!-- Row 5: Another Push -->
+      <div class="workout-row">
+        <div class="row-content">
+          <div class="row-top">
+            <span class="row-date">Feb 8</span>
+            <span class="status-badge">&#x2713; COMPLETE</span>
+          </div>
+          <div class="row-meta">3 exercises &#xB7; 10 sets</div>
+          <div class="muscle-pills">
+            <span class="muscle-pill">
+              <span class="dot" style="background: var(--muscle-chest);"></span>
+              Chest
+            </span>
+            <span class="muscle-pill">
+              <span class="dot" style="background: var(--muscle-triceps);"></span>
+              Triceps
+            </span>
+            <span class="muscle-pill">
+              <span class="dot" style="background: var(--muscle-shoulders);"></span>
+              Delts
+            </span>
+          </div>
+        </div>
+        <span class="row-chevron">&#x203A;</span>
+      </div>
+
+      <!-- Row 6: Back Day -->
+      <div class="workout-row">
+        <div class="row-content">
+          <div class="row-top">
+            <span class="row-date">Feb 7</span>
+            <span class="status-badge">&#x2713; COMPLETE</span>
+          </div>
+          <div class="row-meta">4 exercises &#xB7; 13 sets</div>
+          <div class="muscle-pills">
+            <span class="muscle-pill">
+              <span class="dot" style="background: var(--muscle-back);"></span>
+              Back
+            </span>
+            <span class="muscle-pill">
+              <span class="dot" style="background: var(--muscle-biceps);"></span>
+              Biceps
+            </span>
+          </div>
+        </div>
+        <span class="row-chevron">&#x203A;</span>
+      </div>
+
+    </div>
+
+    <!-- Tab bar -->
+    <div class="tab-bar">
+      <div class="tab-item">
+        <span class="tab-icon">&#x1F3E0;</span>
+        <span class="tab-label">Home</span>
+      </div>
+      <div class="tab-item active">
+        <span class="tab-icon">&#x1F4DC;</span>
+        <span class="tab-label">Quests</span>
+      </div>
+      <div class="tab-item">
+        <span class="tab-icon large">&#x2295;</span>
+        <span class="tab-label">Log</span>
+      </div>
+      <div class="tab-item">
+        <span class="tab-icon">&#x1F4CA;</span>
+        <span class="tab-label">Stats</span>
+      </div>
+      <div class="tab-item">
+        <span class="tab-icon">&#x1F464;</span>
+        <span class="tab-label">Profile</span>
+      </div>
+    </div>
+
+    <div class="home-indicator"></div>
+  </div>
+</div>
+
+</body>
+</html>

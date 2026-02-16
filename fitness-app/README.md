@@ -1,169 +1,79 @@
-# Solo Leveling Themed Fitness App
+# Arise Fitness Tracker
 
-A gamified iOS fitness tracking app inspired by *Solo Leveling*, with a FastAPI backend and Claude Vision AI integration for screenshot-based workout logging.
+A gamified iOS fitness app inspired by *Solo Leveling* — with AI-powered workout logging, personalized coaching, and strength analytics.
+
+![SwiftUI](https://img.shields.io/badge/SwiftUI-iOS_17+-007AFF?style=flat-square&logo=swift&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-Python_3.11+-009688?style=flat-square&logo=fastapi&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![Claude Vision](https://img.shields.io/badge/Claude_Vision-AI-D97706?style=flat-square&logo=anthropic&logoColor=white)
+
+**[View interactive mockups &rarr;](https://nickchua.me/projects/fitness-app/)**
+
+---
 
 ## Features
 
-### Workout Tracking
-- Manual workout logging with weight, reps, RPE, and RIR
-- AI screenshot processing — snap a photo of your gym app and Claude Vision extracts the workout data
-- WHOOP activity screenshot support (strain, HR zones, calories)
-- 50+ pre-populated exercises with custom exercise creation
-- Estimated 1RM calculation using the Epley formula
-- Superset support for paired exercises
-- Workout prescriptions from missions pre-filled with target weights
+### AI Screenshot Processing
+Snap a photo of your gym app and Claude Vision extracts the full workout — exercises, sets, weights, and reps — in seconds. Supports both workout tracker screenshots and WHOOP activity data (strain, HR zones, calories). The extraction pipeline handles messy real-world screenshots with fuzzy exercise matching against a 50+ exercise library, then saves structured data to the backend in a single flow.
 
-### AI Coaching
-- Set up to 5 concurrent strength goals (e.g., "bench 225 lbs by March 15")
-- Weekly missions with personalized workout prescriptions based on goals
-- Auto-detect training split (Push/Pull/Legs, Upper/Lower, Full Body)
-- Weighted exercise prescriptions calculated from your current e1RM
-- Progress tracking with completion percentages toward each goal
+### Coaching & Goals
+Set up to 5 concurrent strength goals (e.g., "bench 225 lbs by March 15") and receive weekly missions with personalized workout prescriptions. The system auto-detects your training split (Push/Pull/Legs, Upper/Lower, Full Body), calculates target weights from your current estimated 1RM, and tracks pace toward each goal with weekly progress reports and AI-generated coaching insights.
 
 ### Gamification
-- XP system with level progression (100 x level^1.5 per level)
-- Hunter rank badges from E-rank to S-rank
-- Daily quests — 5 quest types generated each day based on training history
-- Dungeon gates — multi-day challenges with objectives, time limits, and difficulty ranks
-- Streak tracking, achievements, and PR celebration animations
-- Mission completion rewards tied to XP system
+A full RPG progression system layered on top of real training data. Earn XP for logging workouts, hitting PRs, and completing quests. Level up through hunter ranks from E-rank to S-rank. Daily quests rotate based on your training history, and multi-day dungeon challenges push you toward specific objectives with time limits, difficulty tiers, and ranked rewards.
 
-### Analytics
-- e1RM progression charts (Swift Charts)
-- Strength percentile comparisons for 20+ exercises against population standards
-- Trend analysis — improving, stable, or regressing per lift
-- Automatic personal record detection across rep ranges
-- Weekly review summaries with volume and exercise variety stats
-- AI-generated training insights
+### Strength Analytics
+Estimated 1RM progression charts (Swift Charts) for every lift, with trend analysis showing whether you're improving, stable, or regressing. Strength percentile rankings compare your numbers against population standards for 20+ exercises. Automatic PR detection fires across all rep ranges, and weekly review summaries break down volume, exercise variety, and training insights.
 
-### Social
-- Friend system with requests and hunter profiles
-- Competitive stats (XP, level, rank, recent workouts)
+---
 
-### Security & Privacy
-- Account deletion with 30-day soft-delete and password confirmation
-- Screenshot processing rate limiting (20/day per user, 10s cooldown)
-- JWT access tokens expire in 1 hour (refresh tokens: 7 days)
-- Debug endpoints and middleware gated behind `DEBUG` flag
-- Production error messages sanitized (no stack traces)
-- PrivacyInfo.xcprivacy manifest for App Store compliance
-- Privacy policy served at `/privacy`
+## Architecture & Tech Decisions
 
-### Architecture
-- Offline-first with local SwiftData storage and background sync
-- JWT authentication with token refresh and session expiry handling
-- Deployed on Railway with auto-deploy from `main`
+**SwiftUI + MVVM** — The entire iOS app is built in SwiftUI targeting iOS 17+. SwiftData provides offline-first local storage with background sync, so workouts are never lost to network issues. Swift Charts powers the analytics views.
 
-## Screenshots
+**FastAPI + SQLAlchemy** — Python was chosen for the backend to leverage the Anthropic SDK for screenshot processing. FastAPI gives async endpoint handling with automatic OpenAPI docs. SQLAlchemy 2.0 with Alembic migrations manages a PostgreSQL database with 20+ models.
 
-Interactive HTML mockups of each screen: **[View all mockups](https://nickchua.me/projects/fitness-app/)**
+**Claude Vision for OCR** — Rather than building a custom ML pipeline for screenshot extraction, the app sends gym app screenshots to Claude Vision and parses the structured response. This handles the long tail of different gym apps, layouts, and edge cases far better than traditional OCR. Rate limited to 20 screenshots/day per user with a 10-second cooldown.
 
-| Screen | Description |
-|--------|-------------|
-| [Home](https://nickchua.me/projects/fitness-app/home.html) | Hunter status, daily quests, power levels |
-| [Coaching](https://nickchua.me/projects/fitness-app/coaching.html) | Goal setup, weekly missions, workout prescriptions |
-| [Quests](https://nickchua.me/projects/fitness-app/quests.html) | Quest center with calendar and archive |
-| [Workout Log](https://nickchua.me/projects/fitness-app/log.html) | Active session with exercise tracking |
-| [Stats](https://nickchua.me/projects/fitness-app/stats.html) | e1RM charts, percentiles, trends |
-| [History](https://nickchua.me/projects/fitness-app/history.html) | Calendar view with workout details |
-| [Dungeons](https://nickchua.me/projects/fitness-app/dungeons.html) | Gate board with objectives and rewards |
-| [Friends](https://nickchua.me/projects/fitness-app/friends.html) | Hunter network with rank and streaks |
-| [Profile Security](ios/mockups/profile-security.html) | Account deletion, privacy policy |
-| [Rate Limiting](ios/mockups/rate-limiting.html) | Screenshot usage limits and error states |
+**JWT Auth with Refresh Tokens** — Access tokens expire in 1 hour, refresh tokens in 7 days. The iOS client handles automatic token refresh and session expiry gracefully.
 
-## Tech Stack
+---
 
-| Layer | Technology |
-|-------|-----------|
-| iOS | SwiftUI (iOS 17+), SwiftData, Swift Charts, MVVM |
-| Backend | Python 3.11+, FastAPI, SQLAlchemy 2.0, Alembic |
-| Database | PostgreSQL (production), SQLite (development) |
-| AI | Anthropic Claude Vision API |
-| Auth | JWT (python-jose, bcrypt) |
-| Deployment | Railway (auto-deploy from `main`) |
+## Technical Highlights
 
-## Project Structure
+- **e1RM engine** — Epley formula (`weight * (1 + reps/30)`) calculated server-side on every set, driving PR detection, percentile rankings, and goal progress tracking
+- **AI coaching pipeline** — Goals feed into a mission generator that produces weekly workout prescriptions with target weights calculated from current e1RM, then tracks pace (ahead/on-track/behind) with projected completion dates
+- **Gamification math** — XP curve uses `100 * level^1.5` per level, with 5 quest types generated daily based on training history and current capabilities
+- **Offline-first sync** — SwiftData local storage with background sync ensures workouts are saved immediately, then reconciled with the server
+- **Screenshot extraction** — Claude Vision processes gym app screenshots into structured workout data with fuzzy exercise matching against the canonical exercise library
+- **Dungeon system** — Multi-day challenges with objectives, time limits, difficulty ranks (E through S), and XP rewards tied to completion percentage
 
-```
-fitness-app/
-├── backend/                    # FastAPI backend
-│   ├── app/
-│   │   ├── api/               # Endpoints (auth, workouts, exercises,
-│   │   │                      #   analytics, quests, dungeons, friends,
-│   │   │                      #   screenshot, sync, profile, bodyweight)
-│   │   ├── core/              # Config, security, database, e1RM engine
-│   │   ├── models/            # SQLAlchemy models
-│   │   ├── schemas/           # Pydantic request/response schemas
-│   │   └── services/          # Screenshot processing, quest generation
-│   ├── alembic/               # Database migrations
-│   └── main.py
-├── ios/                        # iOS SwiftUI app
-│   └── FitnessApp/
-│       ├── Views/             # SwiftUI views (Home, Log, Quests, Coaching,
-│       │                      #   History, Stats, Profile, Dungeons, Friends)
-│       ├── Services/          # APIClient, AuthManager, HealthKitManager
-│       ├── Models/            # Data models and SwiftData schemas
-│       ├── Components/        # Reusable UI (XPBar, RankBadge, PRCelebration)
-│       └── Utils/             # Colors, Fonts, Extensions
-├── mockups/                    # Interactive HTML screen mockups
-├── docs/                       # Technical documentation
-│   ├── screenshot-processing.md
-│   ├── healthkit-integration.md
-│   └── development/           # Session notes and progress logs
-└── init.sh                     # Setup script
-```
+---
 
-## API Overview
+## Project Scale
 
-| Group | Endpoints | Description |
-|-------|-----------|-------------|
-| Auth | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/account` | Account creation, JWT tokens, account deletion |
-| Password Reset | `/password-reset/request`, `/password-reset/reset` | Email-based password reset |
-| Workouts | CRUD on `/workouts` | Workout sessions with exercises and sets |
-| Exercises | `/exercises`, `/exercises/search` | Exercise library with search and filtering |
-| Analytics | `/analytics/*` | e1RM trends, strength percentiles, PRs, weekly reviews, insights |
-| Screenshots | `/screenshot/process`, `/screenshot/batch` | Claude Vision workout extraction (rate limited: 20/day) |
-| Goals | `/goals`, `/goals/{id}` | Strength PR goals CRUD (up to 5 active) |
-| Missions | `/missions/current`, `/missions/{id}/accept` | Weekly workout prescriptions from goals |
-| Quests | `/quests`, `/quests/{id}/claim` | Daily quest generation and claiming |
-| Dungeons | `/dungeons/*` | Gate system — accept, progress, claim rewards |
-| Friends | `/friends/*` | Friend requests, profiles, competitive data |
-| Profile | `/profile` | User settings, bodyweight, XP and rank |
-| Sync | `/sync` | Offline-first bulk sync |
-| Bodyweight | `/bodyweight` | Bodyweight logging and history |
+- **20+ API endpoints** across auth, workouts, exercises, analytics, coaching, quests, dungeons, friends, screenshots, and sync
+- **20+ database models** spanning core workout tracking, coaching, gamification, and social features
+- **50+ exercises** pre-populated with muscle groups, equipment, and aliases for fuzzy matching
+- **iOS 17+** with SwiftUI, SwiftData, Swift Charts, and MVVM architecture
+- **Deployed on Railway** with auto-deploy from `main`
 
-## Database Schema
+---
 
-### Core
-`users`, `user_profiles`, `exercises`, `workout_sessions`, `workout_exercises`, `sets`, `bodyweight_entries`, `prs`, `screenshot_usage`
-
-### Coaching
-`goals`, `weekly_missions`, `mission_workouts`, `mission_exercises`, `mission_goals`
-
-### Gamification
-`quest_definitions`, `user_quests`, `dungeon_definitions`, `user_dungeons`, `user_dungeon_objectives`, `achievements`, `user_achievements`
-
-### Social
-`friends`, `friend_requests`
-
-## Quick Start
+<details>
+<summary><strong>Quick Start</strong></summary>
 
 ### Prerequisites
 - macOS with Xcode 15+
 - Python 3.11+
 - PostgreSQL (optional — SQLite used for development)
 
-### Setup
-
-```bash
-./init.sh
-```
-
 ### Backend
 
 ```bash
 cd backend
-source venv/bin/activate
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
 python main.py
 ```
 
@@ -178,9 +88,20 @@ open FitnessApp.xcodeproj
 # Build and run with Cmd+R
 ```
 
-## Design System
+### Environment Variables
 
-The app uses the **Edge Flow** design language — a dark, high-contrast aesthetic built for readability during workouts.
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `JWT_SECRET_KEY` | JWT signing key |
+| `ANTHROPIC_API_KEY` | Claude Vision API key |
+
+</details>
+
+<details>
+<summary><strong>Design System — Edge Flow</strong></summary>
+
+A dark, high-contrast aesthetic built for readability during workouts.
 
 | Token | Hex | Usage |
 |-------|-----|-------|
@@ -192,4 +113,8 @@ The app uses the **Edge Flow** design language — a dark, high-contrast aesthet
 | Gold | `#FFD700` | Achievements, A-rank |
 | Danger | `#FF4757` | Warnings, S-rank |
 
-Typography uses four font families: **Orbitron** (display), **Rajdhani** (headers), **Inter** (body), and **JetBrains Mono** (system/metrics).
+Typography: **Orbitron** (display), **Rajdhani** (headers), **Inter** (body), **JetBrains Mono** (metrics).
+
+All card corners use 20px radius. Full-bleed gradient headers on primary screens.
+
+</details>
