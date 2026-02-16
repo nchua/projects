@@ -599,6 +599,36 @@ struct EdgeFlowWorkoutRow: View {
                             }
                         }
                     }
+
+                    // Muscle group pills
+                    if let muscles = workout.primaryMuscles, !muscles.isEmpty {
+                        HStack(spacing: 6) {
+                            ForEach(muscles.prefix(3), id: \.self) { muscle in
+                                HStack(spacing: 4) {
+                                    Circle()
+                                        .fill(muscleColor(for: muscle))
+                                        .frame(width: 6, height: 6)
+                                    Text(muscle)
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(.textSecondary)
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(Color.voidLight)
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                            }
+
+                            if muscles.count > 3 {
+                                Text("+\(muscles.count - 3)")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.textMuted)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(Color.voidLight)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                            }
+                        }
+                    }
                 }
             }
 
@@ -614,6 +644,23 @@ struct EdgeFlowWorkoutRow: View {
 
     private func formatDate(_ dateString: String) -> String {
         dateString.parseISO8601Date()?.formattedMedium ?? dateString
+    }
+
+    private func muscleColor(for muscle: String) -> Color {
+        switch muscle.lowercased() {
+        case "chest":       return .liftBench
+        case "back":        return .liftRow
+        case "quads":       return .liftSquat
+        case "hamstrings":  return .orange
+        case "shoulders":   return .gold
+        case "biceps":      return .systemPrimary
+        case "triceps":     return .purple
+        case "glutes":      return .pink
+        case "core", "abs": return .mint
+        case "calves":      return .teal
+        case "forearms":    return .brown
+        default:            return .textSecondary
+        }
     }
 }
 
