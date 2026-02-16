@@ -712,12 +712,19 @@ async def get_insights(
 @router.get("/weekly-review", response_model=WeeklyReviewResponse)
 async def get_weekly_review(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    client_date: Optional[str] = Query(None, description="Client's local date (YYYY-MM-DD) to avoid timezone mismatch")
 ):
     """
     Generate comprehensive weekly summary
     """
-    today = date.today()
+    if client_date:
+        try:
+            today = date.fromisoformat(client_date)
+        except ValueError:
+            today = date.today()
+    else:
+        today = date.today()
     week_start = today - timedelta(days=today.weekday())
     week_end = week_start + timedelta(days=6)
     prev_week_start = week_start - timedelta(days=7)

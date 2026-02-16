@@ -179,7 +179,10 @@ class APIClient {
     }
 
     func getWeeklyReview() async throws -> WeeklyReviewResponse {
-        return try await get("/analytics/weekly-review")
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let today = formatter.string(from: Date())
+        return try await get("/analytics/weekly-review?client_date=\(today)")
     }
 
     func getCooldownStatus() async throws -> CooldownResponse {
