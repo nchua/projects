@@ -1,9 +1,5 @@
 # CLAUDE.md - Fitness App
 
-Project instructions for Claude Code when working with this codebase.
-
-## Project Overview
-
 Solo Leveling-inspired fitness tracking app with iOS frontend and Python/FastAPI backend deployed on Railway.
 
 ## Architecture
@@ -53,47 +49,49 @@ node test-exercises.js            # Test exercise endpoints
 
 ---
 
-## iOS Development Guidelines
+## Build & Validation
 
-### IMPORTANT: Rebuild After iOS Changes
+**IMPORTANT: After every iOS code change, run the build check. Fix all errors before committing.**
 
-After modifying any iOS Swift files, the user must rebuild the app in Xcode for changes to take effect on their device.
-
-**After committing iOS changes, always remind the user:**
-> "iOS changes committed. To see them on your device, rebuild in Xcode (Cmd+R) or run:
-> ```bash
-> cd ios && xcodegen generate && open FitnessApp.xcodeproj
-> ```
-> Then build and run (Cmd+R)."
-
-**If adding new Swift files:**
-1. Run `xcodegen generate` to update the Xcode project
-2. Open in Xcode and build (Cmd+R)
-
-**Quick rebuild command:**
 ```bash
-cd /Users/nickchua/Desktop/AI/Fitness\ App/fitness-app/fitness-app/ios && xcodegen generate && open FitnessApp.xcodeproj
+# 1. Regenerate project (if new files added)
+cd ios && xcodegen generate
+
+# 2. Build check (simulator, no signing needed)
+xcodebuild -project ios/FitnessApp.xcodeproj -scheme FitnessApp \
+  -destination 'generic/platform=iOS Simulator' build 2>&1 | tail -30
+
+# 3. Quick error grep
+xcodebuild -project ios/FitnessApp.xcodeproj -scheme FitnessApp \
+  -destination 'generic/platform=iOS Simulator' build 2>&1 | grep "error:"
+
+# 4. Lint entitlements
+bash ios/scripts/lint-entitlements.sh
 ```
 
-### Backend-Only Changes: When Rebuild Is NOT Needed
+After committing iOS changes, remind the user to rebuild in Xcode (Cmd+R).
+Backend-only changes don't need an Xcode rebuild — just push to Railway or restart the local server.
 
-If changes are **backend-only** (FastAPI/services/schemas) and **no iOS Swift files changed**, the app **does not need an Xcode rebuild**.
+---
 
-**What the user needs to do instead:**
-- **Using Railway/production backend**: Push to `main` and wait for deploy, then **re-open the app or refresh** the relevant screen.
-- **Using local backend**: Restart the backend (`python main.py`) and then **re-open or refresh** the app screen.
-
-**Rule of thumb for responses**:
-- If any Swift files changed → remind to rebuild in Xcode.
-- If only backend changed → say pushing/restarting backend is sufficient.
+## iOS Rules
 
 ### Entitlements: No Apple Pay
+`com.apple.developer.in-app-payments` must NEVER be in `project.yml` or `.entitlements`.
+StoreKit 2 IAPs only need `InAppPurchase` — not the Apple Pay entitlement.
 
-`com.apple.developer.in-app-payments` (Apple Pay) must NEVER be in `project.yml` or `.entitlements`.
-StoreKit 2 IAPs only need the `InAppPurchase` capability — not the Apple Pay entitlement.
-Adding it causes "Provisioning profile doesn't match" build failures.
+### fullScreenCover: Always use .id() when iterating through items
+- Prevents black screens from stale `@State`
+- Always include else branch that cleans up all state
+- Guard double dismissal with `isDismissed` flag
 
-**Lint:** `ios/scripts/lint-entitlements.sh` — run after modifying `project.yml` or entitlements.
+### .onChange: Guard against infinite loops
+- Track processed response IDs to detect re-entry
+- Clear tracking flag in skip branch
+
+### View Naming: Use {DesignSystem}{DataType}{ComponentType}
+- Prevents duplicate struct name build errors
+- Search before creating: `grep -r "struct YourStructName" ios/`
 
 ---
 
@@ -101,11 +99,7 @@ Adding it causes "Provisioning profile doesn't match" build failures.
 
 - **Backend**: Railway (https://backend-production-e316.up.railway.app)
 - **Git**: https://github.com/nchua/projects.git
-- **Branch**: `main` (Railway watches this branch for auto-deploy)
-
-```bash
-git push origin main              # Deploy to Railway
-```
+- **Branch**: `main` (auto-deploys on push)
 
 ## Environment Variables
 
@@ -116,68 +110,19 @@ git push origin main              # Deploy to Railway
 
 ### Local Scripts
 - `API_BASE_URL` - Backend URL (default: localhost:8000)
-- `SEED_USER_EMAIL` - Email for seed scripts
-- `SEED_USER_PASSWORD` - Password for seed scripts
+- `SEED_USER_EMAIL` / `SEED_USER_PASSWORD` - For seed scripts
 
 ---
 
-## Git Safety Guidelines
+## Git Safety
 
-### Before Destructive Operations
-
-**ALWAYS check the current branch before:**
-- Deleting files or large sections of code
-- Resetting or reverting commits
-- Force pushing
-- Major refactors that touch many files
-
-```bash
-git branch                    # Check current branch
-git status                    # Check for uncommitted changes
-git log --oneline -5          # Verify recent commit history
-```
-
-### Recovering Lost Work
-
-If code is missing or needs recovery:
-1. **Check GitHub first** - The remote repo may have commits not in local
-   ```bash
-   git fetch origin
-   git log origin/main --oneline -10    # See remote commits
-   git diff main origin/main            # Compare local vs remote
-   ```
-2. **Pull from remote** if behind:
-   ```bash
-   git pull origin main
-   ```
-3. **Check reflog** for recently deleted local commits:
-   ```bash
-   git reflog                           # Shows all recent HEAD positions
-   git checkout <commit-hash>           # Recover specific commit
-   ```
+**ALWAYS check branch and status before destructive operations** (deleting files, resetting commits, force pushing, major refactors).
 
 ---
 
-## Security Guidelines
+## Security
 
-### NEVER Commit Credentials
-
-1. **NEVER hardcode credentials** in any file that will be committed
-   - No real emails, passwords, API keys, or tokens
-   - Use environment variables: `os.environ.get("VAR_NAME")`
-   - Use placeholder values: `test@example.com`, `TestPass123!`
-
-2. **Check before committing** seed scripts, test files, or config files for:
-   - Real email addresses (especially `@gmail.com`)
-   - Passwords that look real (not obvious test passwords)
-   - API keys or tokens
-
-3. **Use .env files** for local development (already in .gitignore)
-
-4. **Sensitive files to watch**:
-   - `backend/seed_user_data.py` - uses env vars
-   - `import_workouts.py` - uses env vars
-   - Any new seed/test scripts
+NEVER hardcode credentials. Use `os.environ.get("VAR_NAME")` and placeholder values (`test@example.com`, `TestPass123!`).
 
 ---
 
@@ -189,158 +134,17 @@ After `db.commit()` + `db.refresh()`, relationship collections are **empty**. Al
 
 ## Workout Data Display Guidelines
 
-### IMPORTANT: When Changing Workout Data Sources
+When modifying how workout data is fetched, stored, or structured, update ALL display locations:
 
-When modifying how workout data is fetched, stored, or structured, you MUST update ALL places that display workout information:
-
-**Backend data flow:**
-1. `backend/app/schemas/workout.py` - `WorkoutSummary` and `WorkoutResponse` schemas
-2. `backend/app/api/workouts.py` - `/workouts` list endpoint and `/workouts/{id}` detail endpoint
-3. `backend/app/services/screenshot_service.py` - Screenshot extraction and processing
-
-**iOS display locations:**
-1. `ios/.../Views/Home/HomeView.swift` - `LastQuestCard` shows recent workout summary
-2. `ios/.../Views/History/HistoryView.swift` - `CompletedQuestRow` and `QuestDetailView`
-3. `ios/.../Services/APITypes.swift` - `WorkoutSummaryResponse`, `WorkoutResponse`, `ScreenshotProcessResponse`
+**Backend:** `schemas/workout.py` → `api/workouts.py` → `services/screenshot_service.py`
+**iOS:** `APITypes.swift` → `HomeView.swift` → `HistoryView.swift`
 
 ### Checklist When Adding New Workout Fields
-
 - [ ] Add field to backend Pydantic schema (`schemas/workout.py`)
-- [ ] Update backend API endpoint to populate the field (`api/workouts.py`)
+- [ ] Update backend API endpoint (`api/workouts.py`)
 - [ ] Add field to iOS Decodable struct (`APITypes.swift`)
-- [ ] Update iOS views that display workout data (`HomeView.swift`, `HistoryView.swift`)
+- [ ] Update iOS views (`HomeView.swift`, `HistoryView.swift`)
 - [ ] If screenshot-related, update `screenshot_service.py` and `schemas/screenshot.py`
-
----
-
-## Problem-Solving Guidelines
-
-### When Automatic Fixes Fail, Consider Manual User Controls
-
-Instead of debugging complex automatic behavior, add a **manual override option** that gives users direct control.
-
-**When to consider manual controls**:
-1. **Timezone/date issues** - Let users pick the date instead of auto-detecting
-2. **Data extraction errors** - Let users edit/correct extracted data
-3. **Ambiguous inputs** - Ask users to clarify rather than guessing
-4. **Environment-dependent behavior** - Server vs client differences
-
-**Implementation pattern**:
-```
-Before: Auto-process → Save with auto-detected values → User sees wrong result
-After:  Show preview → User adjusts values → Process with user's values → Correct result
-```
-
----
-
-## SwiftUI Rules (Quick Reference)
-
-### fullScreenCover: Always use .id() when iterating through items
-- Prevents black screens from stale `@State`
-- Always include else branch that cleans up all state
-- Guard double dismissal with `isDismissed` flag
-- Lint: `ios/scripts/lint-fullscreen-cover.sh`
-
-### .onChange: Guard against infinite loops
-- Track processed response IDs to detect re-entry
-- Clear tracking flag in skip branch
-- Test full multi-step flows end-to-end
-
-### View Naming: Use {DesignSystem}{DataType}{ComponentType}
-- Prevents duplicate struct name build errors
-- Search before creating: `grep -r "struct YourStructName" ios/`
-
----
-
-## Claude Code Best Practices (Boris Cherny)
-
-Tips from the creator of Claude Code for effective usage. Run `/best-practices` to review.
-
-### 1. Start Complex Tasks in Plan Mode
-- Pour energy into the plan so Claude can 1-shot the implementation
-- Use `/plan` or ask Claude to plan before implementing
-- Switch back to planning when issues arise rather than continuing forward
-
-### 2. Invest in CLAUDE.md
-- After each correction, instruct Claude to update CLAUDE.md to prevent recurring mistakes
-- Maintain a notes directory for every task and reference it in documentation
-- This file is your persistent memory across sessions
-
-### 3. Create Reusable Skills
-- Build custom skills and commit them to git
-- Automate repetitive tasks (performed multiple times daily) with slash commands
-- Include tech debt cleanup and context synchronization tools
-
-### 4. Let Claude Fix Bugs Independently
-- Use high-level instructions like "fix" or "Go fix the failing CI tests"
-- Don't micromanage implementation details
-- Enable MCP integrations to paste bug threads directly
-
-### 5. Level Up Your Prompting
-- Challenge Claude as a reviewer
-- Ask it to implement "the elegant solution"
-- Provide detailed specifications upfront to reduce ambiguity
-
-### 6. Optimize Terminal & Environment
-- Use a performant terminal (Ghostty recommended)
-- Customize status bars with `/statusline`
-- Color-code terminal tabs for different worktrees
-- Use voice dictation for more detailed prompts
-
-### 7. Use Subagents
-- Append "use subagents" for compute-intensive requests
-- Offload tasks to keep your main agent's context focused
-
-### 8. Use Claude for Data & Analytics
-- Leverage CLI tools like BigQuery within Claude Code
-- Build reusable skills for analytics queries instead of writing SQL manually
-
-### 9. Learning with Claude
-- Enable "Explanatory" or "Learning" output styles in `/config`
-- Request HTML presentations, ASCII diagrams for complex concepts
-- Build spaced-repetition learning skills
-
----
-
-## API Endpoints Reference
-
-### Authentication
-- `POST /api/auth/register` - Create account
-- `POST /api/auth/login` - Get JWT token
-
-### Workouts
-- `GET /api/workouts` - List user workouts
-- `POST /api/workouts` - Create workout session
-- `GET /api/workouts/{id}` - Get workout details
-- `PUT /api/workouts/{id}` - Update workout
-- `DELETE /api/workouts/{id}` - Soft delete workout
-
-### Exercises
-- `GET /api/exercises` - List all exercises
-- `GET /api/exercises/search?q=` - Search exercises
-
-### Progress
-- `GET /api/progress/summary` - Overall stats
-- `GET /api/progress/prs` - Personal records
-
-### Notifications
-- `POST /notifications/device-token` - Register APNs device token
-- `DELETE /notifications/device-token` - Deactivate token (on logout)
-- `GET /notifications/preferences` - Get all preferences (defaults enabled)
-- `PUT /notifications/preferences` - Bulk update preferences
-
-### Screenshot Processing
-- `POST /api/screenshot/process` - Process single screenshot
-- `POST /api/screenshot/batch` - Process multiple screenshots
-
----
-
-## Session Management
-
-- Before ending a session or when context is getting large, run `/handoff` to save state
-- When resuming, prefer `claude -c` (last session) or `claude -r` (pick a session)
-- Use `/rename` to give sessions descriptive names for easy recall
-- Session state is auto-loaded from memory via `session-state.md`
 
 ---
 
