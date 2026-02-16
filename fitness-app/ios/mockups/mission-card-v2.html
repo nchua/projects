@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mission Card V2 — ARISE 2.0</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap');
+
+  :root {
+    --void: #0A0A0F;
+    --card: #1A1A2E;
+    --cyan: #00D4FF;
+    --gold: #FFD700;
+    --green: #00FF88;
+    --white: #FFFFFF;
+    --muted: #A0A0B0;
+    --border: rgba(255,255,255,0.05);
+    --radius: 20px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #08080C;
+    color: var(--white);
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 60px 40px 100px;
+  }
+
+  /* ── Layout ── */
+  .layout {
+    display: flex;
+    gap: 80px;
+    align-items: flex-start;
+    max-width: 1200px;
+  }
+
+  /* ── Left Panel: Changes ── */
+  .changes-panel {
+    width: 340px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 60px;
+  }
+
+  .page-title {
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+  .page-title span {
+    background: linear-gradient(135deg, var(--cyan), var(--green));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .page-subtitle {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 48px;
+    letter-spacing: 0.5px;
+  }
+
+  .change-section {
+    margin-bottom: 36px;
+  }
+  .change-section h3 {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--cyan);
+    margin-bottom: 16px;
+    opacity: 0.8;
+  }
+
+  .change-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: rgba(255,255,255,0.7);
+  }
+  .change-item .arrow {
+    color: var(--cyan);
+    font-weight: 600;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .change-item .old {
+    text-decoration: line-through;
+    opacity: 0.4;
+  }
+  .change-item .new {
+    color: var(--white);
+    font-weight: 500;
+  }
+
+  .shape-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    padding: 4px 10px;
+    border-radius: 100px;
+    margin-right: 6px;
+  }
+  .shape-cta {
+    background: rgba(0, 212, 255, 0.12);
+    color: var(--cyan);
+  }
+  .shape-info {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--muted);
+  }
+
+  .shapes-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .shapes-legend .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+  }
+
+  /* ── Right Panel: Phone ── */
+  .phone-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .phone {
+    width: 375px;
+    height: 812px;
+    background: var(--void);
+    border-radius: 48px;
+    border: 3px solid #2A2A35;
+    overflow: hidden;
+    position: relative;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.03),
+      0 40px 100px rgba(0,0,0,0.6),
+      0 0 80px rgba(0, 212, 255, 0.03);
+  }
+  .phone::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 126px;
+    height: 34px;
+    background: #000;
+    border-radius: 0 0 20px 20px;
+    z-index: 100;
+  }
+
+  .screen {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    padding: 60px 0 40px;
+    scrollbar-width: none;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* ── State Labels (inside phone) ── */
+  .state-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 20px;
+    margin-bottom: 12px;
+    margin-top: 32px;
+  }
+  .state-label:first-child {
+    margin-top: 0;
+  }
+  .state-label .tag {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .state-label .tag-cta {
+    background: rgba(0, 212, 255, 0.15);
+    color: var(--cyan);
+  }
+  .state-label .tag-info {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--muted);
+  }
+  .state-label .name {
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Section Header ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--white);
+  }
+  .goals-badge {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--cyan);
+    padding: 4px 10px;
+    background: rgba(0, 212, 255, 0.12);
+    border-radius: 100px;
+  }
+
+  /* ── Card Base ── */
+  .card {
+    margin: 0 20px;
+    padding: 20px;
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+
+  /* ── State 1: Empty ── */
+  .card-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 28px 20px;
+    border: 1.5px dashed rgba(0, 212, 255, 0.2);
+    background: var(--card);
+  }
+
+  .empty-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(0, 212, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  .empty-icon svg {
+    width: 36px;
+    height: 36px;
+    color: var(--cyan);
+  }
+
+  .empty-heading {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 8px;
+  }
+  .empty-subtext {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.5;
+    max-width: 260px;
+    margin-bottom: 20px;
+  }
+
+  .btn-create {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #000;
+    background: var(--cyan);
+    padding: 12px 24px;
+    border-radius: 100px;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .btn-create:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(0, 212, 255, 0.3);
+  }
+  .btn-create svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* ── State 2: Ready ── */
+  .card-ready {
+    border: 1px solid rgba(0, 212, 255, 0.25);
+    box-shadow: 0 0 30px rgba(0, 212, 255, 0.06);
+  }
+
+  .ready-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .ready-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--cyan);
+  }
+  .ready-status svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .ready-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .xp-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gold);
+    padding: 5px 12px;
+    background: rgba(255, 215, 0, 0.12);
+    border-radius: 100px;
+  }
+  .xp-badge svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .menu-dots {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.15s;
+  }
+  .menu-dots:hover {
+    background: rgba(255,255,255,0.05);
+  }
+  .menu-dots svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .ready-subtitle {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ready-subtitle .split {
+    font-weight: 500;
+    color: var(--cyan);
+  }
+
+  /* ── Goal Chips (shared) ── */
+  .goal-chips {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .goal-chips::-webkit-scrollbar { display: none; }
+
+  .goal-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 100px;
+    border: 1px solid rgba(255,255,255,0.08);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .goal-chip .name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--white);
+  }
+  .goal-chip .target {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--cyan);
+  }
+  .goal-chip .pct {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+  }
+
+  /* ── Workout Day Badges (shared) ── */
+  .day-badges {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .day-badge {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 6px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+  .day-badge .day-num {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+  }
+  .day-badge .day-content {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .day-badge .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+  }
+  .day-badge .focus {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--white);
+  }
+
+  .day-badge.completed {
+    background: rgba(0, 255, 136, 0.06);
+    border-color: rgba(0, 255, 136, 0.15);
+  }
+  .day-badge.completed .dot {
+    background: none;
+  }
+  .day-badge.completed .check-icon {
+    color: var(--green);
+  }
+  .day-badge.completed .check-icon svg {
+    width: 12px;
+    height: 12px;
+  }
+  .day-badge.completed .focus {
+    color: var(--green);
+  }
+
+  /* ── Accept Button ── */
+  .btn-accept {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #000;
+    background: linear-gradient(135deg, var(--cyan), var(--green));
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .btn-accept:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(0, 212, 255, 0.25);
+  }
+  .btn-accept svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* ── State 3: Active ── */
+  .active-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .active-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 4px;
+  }
+  .active-subtitle {
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .active-subtitle .goals-count {
+    font-weight: 500;
+    color: var(--cyan);
+  }
+
+  /* Progress Ring */
+  .progress-ring {
+    width: 44px;
+    height: 44px;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .progress-ring svg {
+    width: 44px;
+    height: 44px;
+    transform: rotate(-90deg);
+  }
+  .progress-ring .ring-bg {
+    fill: none;
+    stroke: rgba(255,255,255,0.08);
+    stroke-width: 4;
+  }
+  .progress-ring .ring-fill {
+    fill: none;
+    stroke: var(--cyan);
+    stroke-width: 4;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.6s ease;
+  }
+  .progress-ring .ring-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--white);
+  }
+
+  /* View Details */
+  .view-details {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--cyan);
+    cursor: pointer;
+    padding-top: 2px;
+  }
+  .view-details .text {
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .view-details svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  /* ── State 4: Mid-Week ── */
+  .midweek-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .midweek-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 4px;
+  }
+  .midweek-subtitle {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  .midweek-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .midweek-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .midweek-info svg {
+    width: 14px;
+    height: 14px;
+    color: var(--cyan);
+  }
+
+  .btn-add-goal {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--cyan);
+    padding: 6px 12px;
+    background: rgba(0, 212, 255, 0.12);
+    border-radius: 100px;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .btn-add-goal:hover {
+    background: rgba(0, 212, 255, 0.2);
+  }
+  .btn-add-goal svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  /* ── Divider between states ── */
+  .state-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+    margin: 28px 20px;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 860px) {
+    .layout {
+      flex-direction: column;
+      align-items: center;
+    }
+    .changes-panel {
+      position: static;
+      width: 100%;
+      max-width: 375px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- Left: Changes Summary -->
+  <div class="changes-panel">
+    <h1 class="page-title">Mission Card <span>V2</span></h1>
+    <p class="page-subtitle">4 States &middot; 2 Visual Shapes</p>
+
+    <div class="change-section">
+      <h3>What Changed</h3>
+      <div class="change-item">
+        <span class="arrow">&rarr;</span>
+        <span>Corners: <span class="old">16px</span> <span class="new">20px</span></span>
+      </div>
+      <div class="change-item">
+        <span class="arrow">&rarr;</span>
+        <span>States: <span class="old">6 sub-views</span> <span class="new">4 states</span> (loading/error merged inline)</span>
+      </div>
+      <div class="change-item">
+        <span class="arrow">&rarr;</span>
+        <span><span class="old">Left accent bars</span> <span class="new">removed</span></span>
+      </div>
+      <div class="change-item">
+        <span class="arrow">&rarr;</span>
+        <span><span class="old">Emoji icons</span> <span class="new">SF Symbols</span></span>
+      </div>
+      <div class="change-item">
+        <span class="arrow">&rarr;</span>
+        <span>Empty state: <span class="old">solid border</span> <span class="new">dashed border</span></span>
+      </div>
+    </div>
+
+    <div class="change-section">
+      <h3>Visual Shapes</h3>
+      <div class="shapes-legend">
+        <div class="row">
+          <span class="shape-tag shape-cta">CTA</span>
+          <span>Empty, Ready &mdash; prominent action</span>
+        </div>
+        <div class="row">
+          <span class="shape-tag shape-info">Info</span>
+          <span>Active, Mid-Week &mdash; status display</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="change-section">
+      <h3>Line Count Target</h3>
+      <div class="change-item">
+        <span class="arrow">&rarr;</span>
+        <span><span class="old">764 lines / 6 structs</span> <span class="new">~400 lines / 4 structs</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Phone Mockup -->
+  <div class="phone-column">
+    <div class="phone">
+      <div class="screen">
+
+        <!-- ═══════ STATE 1: EMPTY ═══════ -->
+        <div class="state-label">
+          <span class="tag tag-cta">CTA</span>
+          <span class="name">State 1: Empty</span>
+        </div>
+
+        <div class="section-header">
+          <span class="section-title">Weekly Mission</span>
+        </div>
+
+        <div class="card card-empty">
+          <div class="empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <circle cx="12" cy="12" r="6"/>
+              <circle cx="12" cy="12" r="2"/>
+            </svg>
+          </div>
+          <div class="empty-heading">No Active Goal</div>
+          <div class="empty-subtext">Set a strength goal to receive personalized weekly training missions.</div>
+          <button class="btn-create">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+            Create Goal
+          </button>
+        </div>
+
+        <div class="state-divider"></div>
+
+        <!-- ═══════ STATE 2: READY ═══════ -->
+        <div class="state-label">
+          <span class="tag tag-cta">CTA</span>
+          <span class="name">State 2: Ready</span>
+        </div>
+
+        <div class="section-header">
+          <span class="section-title">Weekly Mission</span>
+          <span class="goals-badge">2 Goals</span>
+        </div>
+
+        <div class="card card-ready">
+          <div class="ready-header">
+            <div class="ready-status">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/><circle cx="18" cy="8" r="4" fill="currentColor"/></svg>
+              Mission Ready
+            </div>
+            <div class="ready-right">
+              <div class="xp-badge">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+                +200
+              </div>
+              <div class="menu-dots">
+                <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="ready-subtitle">
+            3 workouts <span style="margin: 0 2px">&bull;</span> <span class="split">Push/Pull/Legs</span>
+          </div>
+
+          <div class="goal-chips">
+            <div class="goal-chip">
+              <span class="name">Bench</span>
+              <span class="target">225lb</span>
+              <span class="pct">82%</span>
+            </div>
+            <div class="goal-chip">
+              <span class="name">Squat</span>
+              <span class="target">315lb</span>
+              <span class="pct">65%</span>
+            </div>
+          </div>
+
+          <div class="day-badges">
+            <div class="day-badge">
+              <span class="day-num">Day 1</span>
+              <div class="day-content">
+                <span class="dot"></span>
+                <span class="focus">Push</span>
+              </div>
+            </div>
+            <div class="day-badge">
+              <span class="day-num">Day 2</span>
+              <div class="day-content">
+                <span class="dot"></span>
+                <span class="focus">Pull</span>
+              </div>
+            </div>
+            <div class="day-badge">
+              <span class="day-num">Day 3</span>
+              <div class="day-content">
+                <span class="dot"></span>
+                <span class="focus">Legs</span>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn-accept">
+            Accept Mission
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+          </button>
+        </div>
+
+        <div class="state-divider"></div>
+
+        <!-- ═══════ STATE 3: ACTIVE ═══════ -->
+        <div class="state-label">
+          <span class="tag tag-info">Info</span>
+          <span class="name">State 3: Active</span>
+        </div>
+
+        <div class="section-header">
+          <span class="section-title">Weekly Mission</span>
+          <span class="goals-badge">2 Goals</span>
+        </div>
+
+        <div class="card">
+          <div class="active-header">
+            <div>
+              <div class="active-title">Push/Pull/Legs</div>
+              <div class="active-subtitle">
+                5 days remaining <span style="margin: 0 2px">&bull;</span> <span class="goals-count">2 goals</span>
+              </div>
+            </div>
+            <div class="progress-ring">
+              <svg viewBox="0 0 44 44">
+                <circle class="ring-bg" cx="22" cy="22" r="18"/>
+                <circle class="ring-fill" cx="22" cy="22" r="18"
+                  stroke-dasharray="113.1"
+                  stroke-dashoffset="75.4"/>
+              </svg>
+              <div class="ring-text">1/3</div>
+            </div>
+          </div>
+
+          <div class="goal-chips">
+            <div class="goal-chip">
+              <span class="name">Bench</span>
+              <span class="target">225lb</span>
+              <span class="pct">82%</span>
+            </div>
+            <div class="goal-chip">
+              <span class="name">Squat</span>
+              <span class="target">315lb</span>
+              <span class="pct">65%</span>
+            </div>
+          </div>
+
+          <div class="day-badges">
+            <div class="day-badge completed">
+              <span class="day-num">Day 1</span>
+              <div class="day-content">
+                <span class="check-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></span>
+                <span class="focus">Push</span>
+              </div>
+            </div>
+            <div class="day-badge">
+              <span class="day-num">Day 2</span>
+              <div class="day-content">
+                <span class="dot"></span>
+                <span class="focus">Pull</span>
+              </div>
+            </div>
+            <div class="day-badge">
+              <span class="day-num">Day 3</span>
+              <div class="day-content">
+                <span class="dot"></span>
+                <span class="focus">Legs</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="view-details">
+            <span class="text">View Mission Details</span>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+          </div>
+        </div>
+
+        <div class="state-divider"></div>
+
+        <!-- ═══════ STATE 4: MID-WEEK ═══════ -->
+        <div class="state-label">
+          <span class="tag tag-info">Info</span>
+          <span class="name">State 4: Mid-Week</span>
+        </div>
+
+        <div class="section-header">
+          <span class="section-title">Weekly Mission</span>
+          <span class="goals-badge">2 Goals</span>
+        </div>
+
+        <div class="card">
+          <div class="midweek-header">
+            <div>
+              <div class="midweek-title">2 Active Goals</div>
+              <div class="midweek-subtitle">Bench 225lb &middot; Squat 315lb</div>
+            </div>
+            <div class="progress-ring">
+              <svg viewBox="0 0 44 44">
+                <circle class="ring-bg" cx="22" cy="22" r="18"/>
+                <circle class="ring-fill" cx="22" cy="22" r="18"
+                  stroke-dasharray="113.1"
+                  stroke-dashoffset="30"/>
+              </svg>
+              <div class="ring-text">74%</div>
+            </div>
+          </div>
+
+          <div class="goal-chips">
+            <div class="goal-chip">
+              <span class="name">Bench</span>
+              <span class="target">225lb</span>
+              <span class="pct">82%</span>
+            </div>
+            <div class="goal-chip">
+              <span class="name">Squat</span>
+              <span class="target">315lb</span>
+              <span class="pct">65%</span>
+            </div>
+          </div>
+
+          <div class="midweek-footer">
+            <div class="midweek-info">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/></svg>
+              New mission available Sunday
+            </div>
+            <button class="btn-add-goal">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+              Add Goal
+            </button>
+          </div>
+        </div>
+
+        <!-- Bottom spacer -->
+        <div style="height: 40px;"></div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
