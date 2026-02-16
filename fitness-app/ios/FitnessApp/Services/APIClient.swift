@@ -190,9 +190,12 @@ class APIClient {
     }
 
     func getWeeklyProgressReport(weekStart: String? = nil) async throws -> WeeklyProgressReportResponse {
-        var path = "/progress/weekly-report"
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let today = formatter.string(from: Date())
+        var path = "/progress/weekly-report?client_date=\(today)"
         if let weekStart = weekStart {
-            path += "?week_start=\(weekStart)"
+            path += "&week_start=\(weekStart)"
         }
         return try await get(path)
     }

@@ -31,11 +31,14 @@ def generate_weekly_report(
     db: Session,
     user_id: str,
     week_start: Optional[date] = None,
+    client_date: Optional[date] = None,
 ) -> WeeklyProgressReportResponse:
     """Generate the full weekly progress report."""
-    today = date.today()
+    today = client_date or date.today()
     if week_start is None:
-        week_start = today - timedelta(days=today.weekday())  # Monday
+        # Default to the most recently completed week (last Monday–Sunday)
+        this_monday = today - timedelta(days=today.weekday())
+        week_start = this_monday - timedelta(days=7)
     week_end = week_start + timedelta(days=6)
     prev_week_start = week_start - timedelta(days=7)
     prev_week_end = week_start - timedelta(days=1)
