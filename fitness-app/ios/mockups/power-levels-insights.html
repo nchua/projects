@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Power Levels Card — ARISE 2.0</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap');
+
+  :root {
+    --void: #0A0A0F;
+    --card: #1A1A2E;
+    --cyan: #00D4FF;
+    --gold: #FFD700;
+    --green: #00FF88;
+    --white: #FFFFFF;
+    --muted: #A0A0B0;
+    --border: rgba(255,255,255,0.05);
+    --radius: 20px;
+    --squat: #FF6B6B;
+    --bench: #00D4FF;
+    --deadlift: #7B61FF;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #08080C;
+    color: var(--white);
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 60px 40px 100px;
+  }
+
+  /* ── Layout ── */
+  .layout {
+    display: flex;
+    gap: 80px;
+    align-items: flex-start;
+    max-width: 1200px;
+  }
+
+  /* ── Left Panel ── */
+  .changes-panel {
+    width: 340px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 60px;
+  }
+
+  .page-title {
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+  .page-title span {
+    background: linear-gradient(135deg, var(--squat), var(--bench), var(--deadlift));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .page-subtitle {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 48px;
+    letter-spacing: 0.5px;
+  }
+
+  .change-section {
+    margin-bottom: 36px;
+  }
+  .change-section h3 {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--cyan);
+    margin-bottom: 16px;
+    opacity: 0.8;
+  }
+
+  .change-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: rgba(255,255,255,0.7);
+  }
+  .change-item .arrow {
+    color: var(--cyan);
+    font-weight: 600;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .change-item .old {
+    text-decoration: line-through;
+    opacity: 0.4;
+  }
+  .change-item .new {
+    color: var(--white);
+    font-weight: 500;
+  }
+
+  .color-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+
+  /* ── Right Panel: Phones ── */
+  .phone-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 48px;
+  }
+
+  .comparison-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--muted);
+    text-align: center;
+    margin-bottom: -36px;
+  }
+
+  .phone {
+    width: 375px;
+    height: 460px;
+    background: var(--void);
+    border-radius: 48px;
+    border: 3px solid #2A2A35;
+    overflow: hidden;
+    position: relative;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.03),
+      0 40px 100px rgba(0,0,0,0.6),
+      0 0 80px rgba(0, 212, 255, 0.03);
+  }
+  .phone::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 126px;
+    height: 34px;
+    background: #000;
+    border-radius: 0 0 20px 20px;
+    z-index: 100;
+  }
+
+  .screen {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    padding: 60px 0 40px;
+    scrollbar-width: none;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* ── Section Header ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--white);
+  }
+  .details-btn {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--cyan);
+    cursor: pointer;
+  }
+
+  /* ── Card Base ── */
+  .card {
+    margin: 0 20px;
+    padding: 20px;
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+
+  /* ═══ BEFORE: Horizontal Scroll Cards ═══ */
+  .old-scroll {
+    display: flex;
+    gap: 8px;
+    padding: 0 20px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .old-scroll::-webkit-scrollbar { display: none; }
+
+  .old-card {
+    min-width: 110px;
+    padding: 16px;
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .old-card .label-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .old-card .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+  .old-card .lift-name {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .old-card .value-row {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+  }
+  .old-card .value {
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .old-card .unit {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* ═══ AFTER: Consolidated Card ═══ */
+  .power-card {
+    margin: 0 20px;
+    padding: 20px;
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+
+  .lifts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    position: relative;
+  }
+
+  .lift-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+  }
+
+  /* Vertical dividers between columns */
+  .lift-column:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    width: 1px;
+    background: rgba(255,255,255,0.06);
+  }
+  .lift-column:nth-child(1)::after {
+    right: 66.66%;
+  }
+  .lift-column:nth-child(2)::after {
+    right: 33.33%;
+  }
+
+  .lift-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .lift-label .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+  .lift-label .name {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .lift-value {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+  }
+  .lift-value .number {
+    font-size: 24px;
+    font-weight: 700;
+  }
+  .lift-value .unit {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* Mini Progress Bar */
+  .progress-bar-container {
+    width: 64px;
+    height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.6s ease;
+  }
+
+  /* Trend */
+  .trend {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .trend.up { color: var(--green); }
+  .trend.down { color: var(--squat); }
+  .trend.stable { color: var(--muted); }
+
+  .trend svg {
+    width: 10px;
+    height: 10px;
+  }
+
+  /* ── Empty State ── */
+  .card-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 28px 20px;
+    border: 1.5px dashed rgba(255,255,255,0.08);
+    background: var(--card);
+    margin: 0 20px;
+    border-radius: var(--radius);
+  }
+
+  .empty-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+  }
+  .empty-icon svg {
+    width: 24px;
+    height: 24px;
+    color: var(--muted);
+  }
+
+  .empty-text {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+    max-width: 240px;
+  }
+
+  /* ── State Labels ── */
+  .state-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 20px;
+    margin-bottom: 12px;
+    margin-top: 32px;
+  }
+  .state-label:first-child {
+    margin-top: 0;
+  }
+  .state-label .tag {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .state-label .tag-before {
+    background: rgba(255, 107, 107, 0.15);
+    color: var(--squat);
+  }
+  .state-label .tag-after {
+    background: rgba(0, 212, 255, 0.15);
+    color: var(--cyan);
+  }
+  .state-label .label-name {
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 0.5px;
+  }
+
+  .state-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+    margin: 28px 20px;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 860px) {
+    .layout {
+      flex-direction: column;
+      align-items: center;
+    }
+    .changes-panel {
+      position: static;
+      width: 100%;
+      max-width: 375px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- Left: Changes Summary -->
+  <div class="changes-panel">
+    <h1 class="page-title">Power Levels <span>V2</span></h1>
+    <p class="page-subtitle">Phase 4 &middot; Consolidated Card</p>
+
+    <div class="change-section">
+      <h3>What Changed</h3>
+      <div class="change-item">
+        <span class="arrow">&rarr;</span>
+        <span>Layout: <span class="old">3 horizontal scroll cards</span> <span class="new">1 card, 3-column grid</span></span>
+      </div>
+      <div class="change-item">
+        <span class="arrow">&rarr;</span>
+        <span><span class="old">e1RM value only</span> <span class="new">e1RM + progress bar + trend arrow</span></span>
+      </div>
+      <div class="change-item">
+        <span class="arrow">&rarr;</span>
+        <span>Corners: <span class="old">varies</span> <span class="new">20px</span> (consistent)</span>
+      </div>
+      <div class="change-item">
+        <span class="arrow">&rarr;</span>
+        <span>File: <span class="old">inline in HomeView</span> <span class="new">PowerLevelsCard.swift</span></span>
+      </div>
+    </div>
+
+    <div class="change-section">
+      <h3>Data Per Column</h3>
+      <div class="change-item">
+        <span class="arrow">&rarr;</span>
+        <span>Exercise label with <span class="new">color dot</span></span>
+      </div>
+      <div class="change-item">
+        <span class="arrow">&rarr;</span>
+        <span>Current <span class="new">e1RM value</span> (bold, color-coded)</span>
+      </div>
+      <div class="change-item">
+        <span class="arrow">&rarr;</span>
+        <span><span class="new">Mini progress bar</span> — % of bodyweight goal</span>
+      </div>
+      <div class="change-item">
+        <span class="arrow">&rarr;</span>
+        <span><span class="new">Trend arrow + %</span> (12-week trend)</span>
+      </div>
+    </div>
+
+    <div class="change-section">
+      <h3>Color Coding</h3>
+      <div class="change-item">
+        <span class="arrow">&rarr;</span>
+        <span><span class="color-swatch" style="background: var(--squat);"></span> Squat — #FF6B6B</span>
+      </div>
+      <div class="change-item">
+        <span class="arrow">&rarr;</span>
+        <span><span class="color-swatch" style="background: var(--bench);"></span> Bench — #00D4FF</span>
+      </div>
+      <div class="change-item">
+        <span class="arrow">&rarr;</span>
+        <span><span class="color-swatch" style="background: var(--deadlift);"></span> Deadlift — #7B61FF</span>
+      </div>
+    </div>
+
+    <div class="change-section">
+      <h3>Progress Bar Logic</h3>
+      <div class="change-item">
+        <span class="arrow">&rarr;</span>
+        <span>Fill = <span class="new">currentE1RM / maxE1RM</span> (personal best as ceiling), min 10%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Phone Mockups -->
+  <div class="phone-column">
+
+    <!-- ═══ BEFORE ═══ -->
+    <p class="comparison-label">Before — Horizontal Scroll</p>
+    <div class="phone">
+      <div class="screen">
+        <div class="state-label" style="margin-top: 0;">
+          <span class="tag tag-before">Old</span>
+          <span class="label-name">3 Separate Cards</span>
+        </div>
+
+        <div class="section-header">
+          <span class="section-title">Power Levels</span>
+          <span class="details-btn">Details</span>
+        </div>
+
+        <div class="old-scroll">
+          <div class="old-card">
+            <div class="label-row">
+              <div class="dot" style="background: var(--squat);"></div>
+              <span class="lift-name">Squat</span>
+            </div>
+            <div class="value-row">
+              <span class="value" style="color: var(--squat);">315</span>
+              <span class="unit">lbs</span>
+            </div>
+          </div>
+          <div class="old-card">
+            <div class="label-row">
+              <div class="dot" style="background: var(--bench);"></div>
+              <span class="lift-name">Bench</span>
+            </div>
+            <div class="value-row">
+              <span class="value" style="color: var(--bench);">225</span>
+              <span class="unit">lbs</span>
+            </div>
+          </div>
+          <div class="old-card">
+            <div class="label-row">
+              <div class="dot" style="background: var(--deadlift);"></div>
+              <span class="lift-name">Deadlift</span>
+            </div>
+            <div class="value-row">
+              <span class="value" style="color: var(--deadlift);">405</span>
+              <span class="unit">lbs</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="state-divider"></div>
+
+        <!-- Empty state before -->
+        <div class="state-label">
+          <span class="tag tag-before">Old</span>
+          <span class="label-name">Empty State</span>
+        </div>
+
+        <div class="section-header">
+          <span class="section-title">Power Levels</span>
+          <span class="details-btn">Details</span>
+        </div>
+
+        <div class="old-scroll">
+          <div class="old-card" style="opacity: 0.5;">
+            <div class="label-row">
+              <div class="dot" style="background: var(--squat);"></div>
+              <span class="lift-name">Squat</span>
+            </div>
+            <div class="value-row">
+              <span class="value" style="color: var(--muted);">—</span>
+            </div>
+          </div>
+          <div class="old-card" style="opacity: 0.5;">
+            <div class="label-row">
+              <div class="dot" style="background: var(--bench);"></div>
+              <span class="lift-name">Bench</span>
+            </div>
+            <div class="value-row">
+              <span class="value" style="color: var(--muted);">—</span>
+            </div>
+          </div>
+          <div class="old-card" style="opacity: 0.5;">
+            <div class="label-row">
+              <div class="dot" style="background: var(--deadlift);"></div>
+              <span class="lift-name">Deadlift</span>
+            </div>
+            <div class="value-row">
+              <span class="value" style="color: var(--muted);">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ AFTER ═══ -->
+    <p class="comparison-label">After — Consolidated Card</p>
+    <div class="phone">
+      <div class="screen">
+        <div class="state-label" style="margin-top: 0;">
+          <span class="tag tag-after">New</span>
+          <span class="label-name">With Data</span>
+        </div>
+
+        <div class="section-header">
+          <span class="section-title">Power Levels</span>
+          <span class="details-btn">Details</span>
+        </div>
+
+        <div class="power-card">
+          <div class="lifts-grid">
+            <!-- Squat -->
+            <div class="lift-column">
+              <div class="lift-label">
+                <div class="dot" style="background: var(--squat);"></div>
+                <span class="name">Squat</span>
+              </div>
+              <div class="lift-value">
+                <span class="number" style="color: var(--squat);">315</span>
+                <span class="unit">lbs</span>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-bar-fill" style="width: 88%; background: var(--squat);"></div>
+              </div>
+              <div class="trend up">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                +4.2%
+              </div>
+            </div>
+
+            <!-- Bench -->
+            <div class="lift-column">
+              <div class="lift-label">
+                <div class="dot" style="background: var(--bench);"></div>
+                <span class="name">Bench</span>
+              </div>
+              <div class="lift-value">
+                <span class="number" style="color: var(--bench);">225</span>
+                <span class="unit">lbs</span>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-bar-fill" style="width: 72%; background: var(--bench);"></div>
+              </div>
+              <div class="trend up">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                +2.1%
+              </div>
+            </div>
+
+            <!-- Deadlift -->
+            <div class="lift-column">
+              <div class="lift-label">
+                <div class="dot" style="background: var(--deadlift);"></div>
+                <span class="name">Deadlift</span>
+              </div>
+              <div class="lift-value">
+                <span class="number" style="color: var(--deadlift);">405</span>
+                <span class="unit">lbs</span>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-bar-fill" style="width: 95%; background: var(--deadlift);"></div>
+              </div>
+              <div class="trend stable">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 12h10v1H7z"/></svg>
+                0.0%
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="state-divider"></div>
+
+        <!-- Empty State -->
+        <div class="state-label">
+          <span class="tag tag-after">New</span>
+          <span class="label-name">Empty State</span>
+        </div>
+
+        <div class="section-header">
+          <span class="section-title">Power Levels</span>
+        </div>
+
+        <div class="card-empty">
+          <div class="empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6.5 6.5h11v11h-11z"/>
+              <path d="M9 9v6"/>
+              <path d="M12 11v4"/>
+              <path d="M15 8v7"/>
+            </svg>
+          </div>
+          <div class="empty-text">Log workouts with Squat, Bench, or Deadlift to see your power levels.</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+</body>
+</html>

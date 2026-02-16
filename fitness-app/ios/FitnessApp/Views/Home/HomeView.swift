@@ -102,9 +102,8 @@ struct HomeView: View {
                             // No .padding(.horizontal) - built into section
                         }
 
-                        // 7. Power Levels (Edge Flow - horizontal scroll)
-                        PowerLevelsSection(lifts: viewModel.bigThreeLifts, selectedTab: $selectedTab)
-                        // No .padding(.horizontal) - built into section
+                        // 7. Power Levels (consolidated card)
+                        PowerLevelsCard(lifts: viewModel.bigThreeLifts, selectedTab: $selectedTab)
 
                         // 7.5. Weekly Report Card
                         if viewModel.weeklyProgressReport != nil {
@@ -481,118 +480,6 @@ struct QuickActionsRow: View {
                 }
                 .edgeFlowPillButton(isPrimary: false)
             }
-        }
-    }
-}
-
-// MARK: - Power Levels Section (Edge Flow)
-
-struct PowerLevelsSection: View {
-    let lifts: [BigThreeLift]
-    @Binding var selectedTab: Int
-
-    var hasData: Bool {
-        lifts.contains { $0.e1rm > 0 }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // Section Header
-            HStack {
-                Text("Power Levels")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.textPrimary)
-
-                Spacer()
-
-                Button {
-                    selectedTab = 4
-                } label: {
-                    Text("Details")
-                        .font(.system(size: 13))
-                        .foregroundColor(.systemPrimary)
-                }
-            }
-            .padding(.horizontal, 20)
-
-            // Lift Cards Scroll
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(lifts) { lift in
-                        PowerLevelCard(lift: lift)
-                    }
-                }
-                .padding(.horizontal, 20)
-            }
-
-            // Empty state message
-            if !hasData {
-                Text("Log workouts with Squat, Bench, or Deadlift to see your power levels")
-                    .font(.system(size: 11))
-                    .foregroundColor(.textMuted)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 20)
-            }
-        }
-    }
-}
-
-struct PowerLevelCard: View {
-    let lift: BigThreeLift
-
-    var liftColor: Color {
-        switch lift.shortName.lowercased() {
-        case "squat": return Color(hex: "FF6B6B")      // Red
-        case "bench": return Color.systemPrimary       // Cyan
-        case "deadlift": return Color(hex: "7B61FF")   // Purple
-        default: return .systemPrimary
-        }
-    }
-
-    var body: some View {
-        VStack(alignment: .center, spacing: 6) {
-            // Label with color indicator
-            HStack(spacing: 5) {
-                Circle()
-                    .fill(liftColor)
-                    .frame(width: 6, height: 6)
-                Text(lift.shortName)
-                    .font(.system(size: 11))
-                    .foregroundColor(.textSecondary)
-            }
-
-            // Value
-            HStack(alignment: .lastTextBaseline, spacing: 2) {
-                Text(lift.e1rm.formattedWeight)
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundColor(liftColor)
-
-                Text("lbs")
-                    .font(.system(size: 12))
-                    .foregroundColor(.textMuted)
-            }
-        }
-        .frame(minWidth: 110)
-        .padding(16)
-        .edgeFlowCard(accent: liftColor)
-    }
-}
-
-// MARK: - Big Three Lift Model
-
-struct BigThreeLift: Identifiable {
-    let id = UUID()
-    let name: String
-    let e1rm: Double
-    let trendPercent: Double?
-
-    var shortName: String {
-        switch name.lowercased() {
-        case "barbell back squat", "squat": return "Squat"
-        case "barbell bench press", "bench press", "bench": return "Bench"
-        case "conventional deadlift", "deadlift": return "Deadlift"
-        default: return name
         }
     }
 }
