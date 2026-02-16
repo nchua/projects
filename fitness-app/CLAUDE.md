@@ -87,6 +87,14 @@ If changes are **backend-only** (FastAPI/services/schemas) and **no iOS Swift fi
 - If any Swift files changed → remind to rebuild in Xcode.
 - If only backend changed → say pushing/restarting backend is sufficient.
 
+### Entitlements: No Apple Pay
+
+`com.apple.developer.in-app-payments` (Apple Pay) must NEVER be in `project.yml` or `.entitlements`.
+StoreKit 2 IAPs only need the `InAppPurchase` capability — not the Apple Pay entitlement.
+Adding it causes "Provisioning profile doesn't match" build failures.
+
+**Lint:** `ios/scripts/lint-entitlements.sh` — run after modifying `project.yml` or entitlements.
+
 ---
 
 ## Deployment
@@ -324,6 +332,15 @@ Tips from the creator of Claude Code for effective usage. Run `/best-practices` 
 ### Screenshot Processing
 - `POST /api/screenshot/process` - Process single screenshot
 - `POST /api/screenshot/batch` - Process multiple screenshots
+
+---
+
+## Session Management
+
+- Before ending a session or when context is getting large, run `/handoff` to save state
+- When resuming, prefer `claude -c` (last session) or `claude -r` (pick a session)
+- Use `/rename` to give sessions descriptive names for easy recall
+- Session state is auto-loaded from memory via `session-state.md`
 
 ---
 
