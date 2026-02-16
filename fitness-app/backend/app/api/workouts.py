@@ -418,6 +418,16 @@ async def list_workouts(
         sorted_exercises = sorted(workout.workout_exercises, key=lambda we: we.order_index)
         exercise_names = [we.exercise.name for we in sorted_exercises if we.exercise]
 
+        # Aggregate primary muscles in exercise order (deduplicated)
+        seen_muscles = set()
+        primary_muscles = []
+        for we in sorted_exercises:
+            if we.exercise and we.exercise.primary_muscle:
+                m = we.exercise.primary_muscle
+                if m not in seen_muscles:
+                    seen_muscles.add(m)
+                    primary_muscles.append(m)
+
         # Parse WHOOP activity data from notes
         whoop_data = parse_whoop_notes(workout.notes)
 
@@ -431,6 +441,7 @@ async def list_workouts(
             exercise_count=exercise_count,
             total_sets=total_sets,
             exercise_names=exercise_names,
+            primary_muscles=primary_muscles,
             created_at=to_iso8601_utc(workout.created_at),
             updated_at=to_iso8601_utc(workout.updated_at),
             # WHOOP fields

@@ -177,6 +177,7 @@ struct WorkoutSummaryResponse: Decodable, Identifiable {
     let exerciseCount: Int
     let totalSets: Int
     let exerciseNames: [String]?
+    let primaryMuscles: [String]?
     let createdAt: String
     let updatedAt: String
     // WHOOP activity fields
@@ -193,6 +194,7 @@ struct WorkoutSummaryResponse: Decodable, Identifiable {
         case exerciseCount = "exercise_count"
         case totalSets = "total_sets"
         case exerciseNames = "exercise_names"
+        case primaryMuscles = "primary_muscles"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case isWhoopActivity = "is_whoop_activity"

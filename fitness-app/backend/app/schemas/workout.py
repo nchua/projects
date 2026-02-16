@@ -208,6 +208,7 @@ class WorkoutSummary(BaseModel):
     exercise_count: int
     total_sets: int
     exercise_names: List[str] = []
+    primary_muscles: List[str] = []
     created_at: str
     updated_at: str
     # WHOOP activity fields (parsed from notes)
