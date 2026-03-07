@@ -13,6 +13,7 @@
 		077A12A6D80055A6EAC3D126 /* QuestsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4128710ABFA3560ADAB30574 /* QuestsViewModel.swift */; };
 		128C3BEF27F1FADEE9533255 /* Workout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30B6448810F2D9AE2EB9E6E7 /* Workout.swift */; };
 		19BEF26C39177C374BE4D396 /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08CCA5CC781543F5685156FC /* HomeViewModel.swift */; };
+		1B83AA75E3307282354D38E2 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13F99BA4A73BE646FEA4B710 /* KeychainManager.swift */; };
 		1E542F4637936431BFBCFDBD /* GoalFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E4ADEB0E394BC571F04D699 /* GoalFixtures.swift */; };
 		1F532B40ED407972379FEE02 /* DungeonSpawnOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = C39F3A4A40C528C138FC2D0A /* DungeonSpawnOverlay.swift */; };
 		2943518C9A7FAF40CC41308F /* JetBrainsMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D56976681220CBFB0C3BCDA6 /* JetBrainsMono-Medium.ttf */; };
@@ -135,6 +136,7 @@
 		0ED58B7E30BB84AE9A98C885 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
 		0EE3DE6119CAF129687F65FF /* RankUpCelebrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RankUpCelebrationView.swift; sourceTree = "<group>"; };
 		0FCA59D77C62E3D316AC25A2 /* Orbitron-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Orbitron-Variable.ttf"; sourceTree = "<group>"; };
+		13F99BA4A73BE646FEA4B710 /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
 		17E1E2C6490F31EE347BF51F /* FitnessApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = FitnessApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1E202C43D8779CC3093A43BB /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		1E86F962F47309074191381A /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
@@ -398,6 +400,7 @@
 				73EABAB81740F48B4949E1E4 /* APITypes.swift */,
 				2C8BACBC256288400263DD74 /* AuthManager.swift */,
 				9EF4A80D3AD89CA1BC4434F2 /* HealthKitManager.swift */,
+				13F99BA4A73BE646FEA4B710 /* KeychainManager.swift */,
 				1E202C43D8779CC3093A43BB /* NotificationManager.swift */,
 				2D3A78AF107F503A35A1AA2A /* StoreKitManager.swift */,
 			);
@@ -709,6 +712,7 @@
 				37C277D7FC126549A9FDDCE5 /* HomeView.swift in Sources */,
 				19BEF26C39177C374BE4D396 /* HomeViewModel.swift in Sources */,
 				A51CF032536CBB2495847C34 /* ImagePicker.swift in Sources */,
+				1B83AA75E3307282354D38E2 /* KeychainManager.swift in Sources */,
 				CD752F70C89E9DE3FBC74FC4 /* LogView.swift in Sources */,
 				01B20D78A6832D2DE5301BAD /* LogViewModel.swift in Sources */,
 				51B44446B1720DFD9BF1EEAE /* MissionCard.swift in Sources */,

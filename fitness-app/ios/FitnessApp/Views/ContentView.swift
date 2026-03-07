@@ -12,7 +12,9 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if authManager.isAuthenticated {
+            if authManager.isValidatingSession {
+                SessionValidationView()
+            } else if authManager.isAuthenticated {
                 MainTabView(selectedTab: $selectedTab)
             } else {
                 AuthView()
@@ -395,6 +397,37 @@ struct AppTextFieldStyle: TextFieldStyle {
                 RoundedRectangle(cornerRadius: 4)
                     .stroke(Color.ariseBorder, lineWidth: 1)
             )
+    }
+}
+
+struct SessionValidationView: View {
+    @State private var showTitle = false
+
+    var body: some View {
+        ZStack {
+            VoidBackground(showGrid: true, glowIntensity: 0.05)
+
+            VStack(spacing: 24) {
+                Text("ARISE")
+                    .font(.ariseDisplay(size: 48, weight: .bold))
+                    .foregroundColor(.textPrimary)
+                    .tracking(8)
+                    .shadow(color: .systemPrimaryGlow, radius: 20, x: 0, y: 0)
+                    .shadow(color: .systemPrimaryGlow, radius: 40, x: 0, y: 0)
+                    .scaleEffect(showTitle ? 1 : 0.8)
+                    .opacity(showTitle ? 1 : 0)
+
+                ProgressView()
+                    .tint(.systemPrimary)
+                    .scaleEffect(1.2)
+                    .opacity(showTitle ? 1 : 0)
+            }
+            .onAppear {
+                withAnimation(.easeOut(duration: 0.5)) {
+                    showTitle = true
+                }
+            }
+        }
     }
 }
 

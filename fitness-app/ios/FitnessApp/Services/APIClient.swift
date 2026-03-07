@@ -12,13 +12,25 @@ class APIClient {
     #endif
 
     private var accessToken: String? {
-        get { UserDefaults.standard.string(forKey: "accessToken") }
-        set { UserDefaults.standard.set(newValue, forKey: "accessToken") }
+        get { KeychainManager.shared.get(forKey: "accessToken") }
+        set {
+            if let newValue = newValue {
+                KeychainManager.shared.set(newValue, forKey: "accessToken")
+            } else {
+                KeychainManager.shared.delete(forKey: "accessToken")
+            }
+        }
     }
 
     private var refreshToken: String? {
-        get { UserDefaults.standard.string(forKey: "refreshToken") }
-        set { UserDefaults.standard.set(newValue, forKey: "refreshToken") }
+        get { KeychainManager.shared.get(forKey: "refreshToken") }
+        set {
+            if let newValue = newValue {
+                KeychainManager.shared.set(newValue, forKey: "refreshToken")
+            } else {
+                KeychainManager.shared.delete(forKey: "refreshToken")
+            }
+        }
     }
 
     /// Callback for when session expires and user needs to re-authenticate
@@ -46,7 +58,9 @@ class APIClient {
             throw APIError.unauthorized
         }
         let body = ["refresh_token": refreshToken]
-        let response: AuthResponse = try await post("/auth/refresh", body: body)
+        // Use isRetry: true to prevent infinite recursion — a failed refresh
+        // must NOT trigger another refresh attempt
+        let response: AuthResponse = try await request(method: "POST", path: "/auth/refresh", body: body, isRetry: true)
         self.accessToken = response.accessToken
         self.refreshToken = response.refreshToken
         return response
