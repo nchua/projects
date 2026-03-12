@@ -43,6 +43,12 @@ class LogViewModel: ObservableObject {
         }
     }
 
+    var totalCompletedSets: Int {
+        selectedExercises.reduce(0) { total, exercise in
+            total + exercise.sets.filter { ($0.isBodyweight || $0.weight > 0) && $0.reps > 0 }.count
+        }
+    }
+
     func loadExercises() async {
         isLoading = true
         error = nil

@@ -508,7 +508,7 @@ struct ActiveQuestView: View {
                     .fadeIn(delay: 0)
 
                 // Quest Timer Card
-                QuestTimerCard()
+                QuestTimerCard(totalCompletedSets: viewModel.totalCompletedSets)
                     .padding(.horizontal)
                     .fadeIn(delay: 0.1)
 
@@ -787,6 +787,8 @@ struct ActiveQuestHeader: View {
 // MARK: - Quest Timer Card
 
 struct QuestTimerCard: View {
+    var totalCompletedSets: Int
+
     // Track actual start time - timer continues even when app is backgrounded
     @State private var workoutStartTime: Date = Date()
     @State private var pausedDuration: TimeInterval = 0  // Total time spent paused
@@ -794,6 +796,10 @@ struct QuestTimerCard: View {
     @State private var isRunning = true
     @State private var displayTimer: Timer?  // Only for UI updates, not time tracking
     @State private var currentTime = Date()  // Triggers UI refresh
+
+    // Rest timer state
+    @State private var lastSetCompletedTime: Date?
+    @State private var peakCompletedSets: Int = 0
 
     var elapsedTime: TimeInterval {
         let totalElapsed = currentTime.timeIntervalSince(workoutStartTime)
@@ -810,6 +816,18 @@ struct QuestTimerCard: View {
             return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
         }
         return String(format: "%02d:%02d", minutes, seconds)
+    }
+
+    var showRestTimer: Bool {
+        lastSetCompletedTime != nil
+    }
+
+    var restTimeString: String {
+        guard let lastTime = lastSetCompletedTime else { return "0:00" }
+        let elapsed = Int(currentTime.timeIntervalSince(lastTime))
+        let minutes = elapsed / 60
+        let seconds = elapsed % 60
+        return "\(minutes):\(String(format: "%02d", seconds))"
     }
 
     var body: some View {
@@ -829,6 +847,26 @@ struct QuestTimerCard: View {
                         .font(.ariseMono(size: 10, weight: .medium))
                         .foregroundColor(isRunning ? .textMuted : .gold)
                         .tracking(1)
+                }
+
+                // Rest Timer
+                if showRestTimer {
+                    HStack(spacing: 6) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 10))
+                            .foregroundColor(.textMuted)
+                            .opacity(0.5)
+
+                        Text("REST")
+                            .font(.ariseMono(size: 10, weight: .medium))
+                            .foregroundColor(.textMuted)
+                            .tracking(1)
+
+                        Text(restTimeString)
+                            .font(.ariseMono(size: 13, weight: .semibold))
+                            .foregroundColor(.systemPrimary)
+                    }
+                    .transition(.opacity)
                 }
             }
 
@@ -877,9 +915,19 @@ struct QuestTimerCard: View {
         .cornerRadius(4)
         .onAppear {
             startDisplayTimer()
+            // Initialize peak to current count so pre-filled sets (e.g. screenshot imports) don't trigger rest timer
+            peakCompletedSets = totalCompletedSets
         }
         .onDisappear {
             displayTimer?.invalidate()
+        }
+        .onChange(of: totalCompletedSets) { newCount in
+            if newCount > peakCompletedSets {
+                peakCompletedSets = newCount
+                withAnimation(.easeOut(duration: 0.3)) {
+                    lastSetCompletedTime = Date()
+                }
+            }
         }
     }
 
