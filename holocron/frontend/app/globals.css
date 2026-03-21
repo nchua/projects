@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+:root {
+  --background: #06060b;
+  --foreground: #f0f0f5;
+  --surface: #111118;
+  --surface-hover: #1a1a24;
+  --border: #2a2a3a;
+  --muted: #8888a0;
+  --amber: #f59e0b;
+  --amber-dim: #92640d;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-amber: var(--amber);
+  --color-amber-dim: var(--amber-dim);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans, system-ui, sans-serif);
+}
+
+/* Card reveal animation */
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-reveal {
+  animation: fadeSlideIn 0.3s ease-out;
+}
