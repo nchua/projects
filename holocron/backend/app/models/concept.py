@@ -38,9 +38,9 @@ class Concept(Base):
     )
 
     topic: Mapped["Topic"] = relationship(back_populates="concepts")  # noqa: F821
-    learning_units: Mapped[list["LearningUnit"]] = relationship(
+    learning_units: Mapped[list["LearningUnit"]] = relationship(  # noqa: F821
         back_populates="concept"
-    )  # noqa: F821
+    )
 
 
 class ConceptRelationship(Base):
