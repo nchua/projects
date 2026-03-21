@@ -64,7 +64,9 @@ def get_topic(
     db: Session = Depends(get_db),
 ):
     """Get a single topic."""
-    topic = db.query(Topic).filter(Topic.id == topic_id, Topic.user_id == user.id).first()
+    topic = (
+        db.query(Topic).filter(Topic.id == topic_id, Topic.user_id == user.id).first()
+    )
     if not topic:
         raise HTTPException(status_code=404, detail="Topic not found")
     return _enrich(topic, db)
@@ -78,7 +80,9 @@ def update_topic(
     db: Session = Depends(get_db),
 ):
     """Update a topic."""
-    topic = db.query(Topic).filter(Topic.id == topic_id, Topic.user_id == user.id).first()
+    topic = (
+        db.query(Topic).filter(Topic.id == topic_id, Topic.user_id == user.id).first()
+    )
     if not topic:
         raise HTTPException(status_code=404, detail="Topic not found")
 
@@ -97,7 +101,9 @@ def delete_topic(
     db: Session = Depends(get_db),
 ):
     """Delete a topic and its concepts/cards."""
-    topic = db.query(Topic).filter(Topic.id == topic_id, Topic.user_id == user.id).first()
+    topic = (
+        db.query(Topic).filter(Topic.id == topic_id, Topic.user_id == user.id).first()
+    )
     if not topic:
         raise HTTPException(status_code=404, detail="Topic not found")
     db.delete(topic)

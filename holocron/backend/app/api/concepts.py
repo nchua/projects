@@ -15,9 +15,11 @@ router = APIRouter(prefix="/concepts", tags=["concepts"])
 
 def _enrich(concept: Concept, db: Session) -> ConceptResponse:
     """Add unit_count to concept response."""
-    count = db.query(func.count(LearningUnit.id)).filter(
-        LearningUnit.concept_id == concept.id
-    ).scalar()
+    count = (
+        db.query(func.count(LearningUnit.id))
+        .filter(LearningUnit.concept_id == concept.id)
+        .scalar()
+    )
     return ConceptResponse(
         id=concept.id,
         topic_id=concept.topic_id,
@@ -37,11 +39,7 @@ def list_concepts(
     db: Session = Depends(get_db),
 ):
     """List concepts, optionally filtered by topic."""
-    query = (
-        db.query(Concept)
-        .join(Topic)
-        .filter(Topic.user_id == user.id)
-    )
+    query = db.query(Concept).join(Topic).filter(Topic.user_id == user.id)
     if topic_id is not None:
         query = query.filter(Concept.topic_id == topic_id)
     concepts = query.all()
@@ -55,9 +53,11 @@ def create_concept(
     db: Session = Depends(get_db),
 ):
     """Create a new concept under a topic."""
-    topic = db.query(Topic).filter(
-        Topic.id == req.topic_id, Topic.user_id == user.id
-    ).first()
+    topic = (
+        db.query(Topic)
+        .filter(Topic.id == req.topic_id, Topic.user_id == user.id)
+        .first()
+    )
     if not topic:
         raise HTTPException(status_code=404, detail="Topic not found")
 

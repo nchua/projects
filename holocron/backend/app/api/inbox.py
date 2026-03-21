@@ -29,7 +29,11 @@ def list_inbox(
 
     results = []
     for item in items:
-        unit = db.query(LearningUnit).filter(LearningUnit.id == item.learning_unit_id).first()
+        unit = (
+            db.query(LearningUnit)
+            .filter(LearningUnit.id == item.learning_unit_id)
+            .first()
+        )
         if not unit:
             continue
 
@@ -73,7 +77,9 @@ def action_inbox_item(
 
     item.status = req.status
 
-    unit = db.query(LearningUnit).filter(LearningUnit.id == item.learning_unit_id).first()
+    unit = (
+        db.query(LearningUnit).filter(LearningUnit.id == item.learning_unit_id).first()
+    )
 
     if req.status == InboxStatus.ACCEPTED and unit:
         unit.auto_accepted = True

@@ -179,14 +179,16 @@ def session_summary(
     topic_performance = []
     for name, stats in topic_stats.items():
         accuracy = stats["recalled"] / stats["total"] if stats["total"] > 0 else 0.0
-        topic_performance.append(TopicPerformance(
-            topic_name=name,
-            total=stats["total"],
-            recalled=stats["recalled"],
-            struggled=stats["struggled"],
-            forgot=stats["forgot"],
-            accuracy=round(accuracy, 2),
-        ))
+        topic_performance.append(
+            TopicPerformance(
+                topic_name=name,
+                total=stats["total"],
+                recalled=stats["recalled"],
+                struggled=stats["struggled"],
+                forgot=stats["forgot"],
+                accuracy=round(accuracy, 2),
+            )
+        )
 
     # Sort by accuracy to find strongest/weakest
     topic_performance.sort(key=lambda t: t.accuracy, reverse=True)

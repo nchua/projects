@@ -23,12 +23,12 @@ class SessionStartResponse(BaseModel):
     """Response when starting a review session."""
 
     cards: list[SessionCard]
-    total_due: int          # total cards due (may exceed session size)
-    session_size: int       # cards in this session
+    total_due: int  # total cards due (may exceed session size)
+    session_size: int  # cards in this session
     estimated_minutes: int  # estimated session duration
-    topics: list[str]       # topics covered in this session
-    reviews_today: int      # reviews already completed today
-    daily_cap: int          # daily review cap
+    topics: list[str]  # topics covered in this session
+    reviews_today: int  # reviews already completed today
+    daily_cap: int  # daily review cap
     mode: SessionMode
 
 

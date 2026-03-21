@@ -19,18 +19,18 @@ from app.models.review import Rating
 # Default FSRS-4.5 parameters (optimized on large review datasets)
 FSRS_PARAMS = {
     # Initial stability values per first rating [forgot, struggled, got_it, easy]
-    "w0": 0.4,    # forgot → very short
-    "w1": 0.6,    # struggled
-    "w2": 2.4,    # got_it
-    "w3": 5.8,    # easy
+    "w0": 0.4,  # forgot → very short
+    "w1": 0.6,  # struggled
+    "w2": 2.4,  # got_it
+    "w3": 5.8,  # easy
     # Difficulty
-    "w4": 4.93,   # initial difficulty mean
-    "w5": 0.94,   # initial difficulty modifier
-    "w6": 0.86,   # difficulty reversion toward mean
-    "w7": 0.01,   # difficulty penalty for forgot
+    "w4": 4.93,  # initial difficulty mean
+    "w5": 0.94,  # initial difficulty modifier
+    "w6": 0.86,  # difficulty reversion toward mean
+    "w7": 0.01,  # difficulty penalty for forgot
     # Stability after success
-    "w8": 1.49,   # stability growth base
-    "w9": 0.14,   # difficulty effect on growth
+    "w8": 1.49,  # stability growth base
+    "w9": 0.14,  # difficulty effect on growth
     "w10": 0.94,  # stability effect on growth
     "w11": 2.18,  # retrievability effect on growth
     # Stability after failure (lapse)
@@ -38,10 +38,11 @@ FSRS_PARAMS = {
     "w13": 0.34,  # difficulty effect on lapse
     "w14": 1.26,  # stability effect on lapse
     "w15": 0.29,  # retrievability effect on lapse
-    "w16": 0.2,   # minimum stability floor
+    "w16": 0.2,  # minimum stability floor
 }
 
-# Map ratings to numeric grades (FSRS convention: 1=forgot, 2=struggled, 3=got_it, 4=easy)
+# Map ratings to numeric grades
+# (FSRS convention: 1=forgot, 2=struggled, 3=got_it, 4=easy)
 RATING_TO_GRADE = {
     Rating.FORGOT: 1,
     Rating.STRUGGLED: 2,
@@ -118,7 +119,8 @@ def next_difficulty(d: float, grade: int) -> float:
 def next_stability_success(s: float, d: float, r: float, grade: int) -> float:
     """Calculate new stability after a successful recall (grade >= 2).
 
-    S'_success = S * (e^(w8) * (11 - D) * S^(-w10) * (e^(w11 * (1 - R)) - 1) * hard_factor + 1)
+    S'_success = S * (e^(w8) * (11 - D) * S^(-w10)
+                      * (e^(w11*(1-R)) - 1) * hard + 1)
 
     Where hard_factor = w9 if grade == 2, else 1.
     """

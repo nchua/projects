@@ -22,7 +22,9 @@ class Review(Base):
         ForeignKey("learning_units.id"), index=True
     )
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    rating: Mapped[Rating] = mapped_column(Enum(Rating, values_callable=lambda x: [e.value for e in x]))
+    rating: Mapped[Rating] = mapped_column(
+        Enum(Rating, values_callable=lambda x: [e.value for e in x])
+    )
     time_to_reveal_ms: Mapped[int | None] = mapped_column(Integer)
     time_reading_ms: Mapped[int | None] = mapped_column(Integer)
     reviewed_at: Mapped[datetime] = mapped_column(

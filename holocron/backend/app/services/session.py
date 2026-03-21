@@ -22,9 +22,9 @@ from app.core.fsrs import calculate_retrievability
 
 
 class SessionMode(str, Enum):
-    QUICK = "quick"      # ~5 min, 5-8 cards
-    FULL = "full"        # ~10 min, 15-20 cards
-    DEEP_DIVE = "deep"   # ~20 min, 25-30 cards
+    QUICK = "quick"  # ~5 min, 5-8 cards
+    FULL = "full"  # ~10 min, 15-20 cards
+    DEEP_DIVE = "deep"  # ~20 min, 25-30 cards
 
 
 SESSION_CARD_LIMITS = {
@@ -41,9 +41,9 @@ class ScoredCard:
     unit: LearningUnit
     topic_name: str
     source_name: str | None
-    priority: float       # higher = more urgent
-    phase: str            # "warmup", "core", "challenge", "cooldown"
-    overdue_days: float   # how many days past due
+    priority: float  # higher = more urgent
+    phase: str  # "warmup", "core", "challenge", "cooldown"
+    overdue_days: float  # how many days past due
 
 
 def get_session_cards(
@@ -173,14 +173,16 @@ def _score_cards(
         if unit.review_count == 0:
             priority = 1.5
 
-        scored.append(ScoredCard(
-            unit=unit,
-            topic_name=topic_name,
-            source_name=source_name,
-            priority=priority,
-            phase="core",  # default, reassigned later
-            overdue_days=overdue_days,
-        ))
+        scored.append(
+            ScoredCard(
+                unit=unit,
+                topic_name=topic_name,
+                source_name=source_name,
+                priority=priority,
+                phase="core",  # default, reassigned later
+                overdue_days=overdue_days,
+            )
+        )
 
     scored.sort(key=lambda c: c.priority, reverse=True)
     return scored
@@ -233,10 +235,11 @@ def _assign_phases(
 
     # Separate new cards (challenge candidates) from reviewed cards
     new_cards = [c for c in scored if c.unit.review_count == 0]
-    lapsed_cards = [c for c in scored if c.unit.review_count > 0 and c.unit.lapse_count > 0]
+    lapsed_cards = [
+        c for c in scored if c.unit.review_count > 0 and c.unit.lapse_count > 0
+    ]
     regular_cards = [
-        c for c in scored
-        if c.unit.review_count > 0 and c.unit.lapse_count == 0
+        c for c in scored if c.unit.review_count > 0 and c.unit.lapse_count == 0
     ]
 
     # Sort regular by priority ascending (easiest first for warm-up picks)

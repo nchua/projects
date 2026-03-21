@@ -30,14 +30,17 @@ class Concept(Base):
     description: Mapped[str | None] = mapped_column(String(2000))
     mastery_score: Mapped[float] = mapped_column(Float, default=0.0)
     tier: Mapped[ConceptTier] = mapped_column(
-        Enum(ConceptTier, values_callable=lambda x: [e.value for e in x]), default=ConceptTier.NEW
+        Enum(ConceptTier, values_callable=lambda x: [e.value for e in x]),
+        default=ConceptTier.NEW,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
 
     topic: Mapped["Topic"] = relationship(back_populates="concepts")  # noqa: F821
-    learning_units: Mapped[list["LearningUnit"]] = relationship(back_populates="concept")  # noqa: F821
+    learning_units: Mapped[list["LearningUnit"]] = relationship(
+        back_populates="concept"
+    )  # noqa: F821
 
 
 class ConceptRelationship(Base):
@@ -50,7 +53,9 @@ class ConceptRelationship(Base):
     target_concept_id: Mapped[int] = mapped_column(
         ForeignKey("concepts.id"), index=True
     )
-    edge_type: Mapped[EdgeType] = mapped_column(Enum(EdgeType, values_callable=lambda x: [e.value for e in x]))
+    edge_type: Mapped[EdgeType] = mapped_column(
+        Enum(EdgeType, values_callable=lambda x: [e.value for e in x])
+    )
 
     source: Mapped["Concept"] = relationship(foreign_keys=[source_concept_id])
     target: Mapped["Concept"] = relationship(foreign_keys=[target_concept_id])

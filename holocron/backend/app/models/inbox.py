@@ -23,7 +23,8 @@ class InboxItem(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     confidence_score: Mapped[float] = mapped_column(Float)
     status: Mapped[InboxStatus] = mapped_column(
-        Enum(InboxStatus, values_callable=lambda x: [e.value for e in x]), default=InboxStatus.PENDING
+        Enum(InboxStatus, values_callable=lambda x: [e.value for e in x]),
+        default=InboxStatus.PENDING,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

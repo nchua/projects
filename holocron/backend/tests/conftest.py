@@ -69,9 +69,12 @@ def auth_headers(client, db):
     db.add(user)
     db.commit()
 
-    resp = client.post("/api/v1/auth/login", json={
-        "email": "test@example.com",
-        "password": "TestPass123!",
-    })
+    resp = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "test@example.com",
+            "password": "TestPass123!",
+        },
+    )
     token = resp.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}

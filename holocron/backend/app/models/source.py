@@ -21,7 +21,9 @@ class Source(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    type: Mapped[SourceType] = mapped_column(Enum(SourceType, values_callable=lambda x: [e.value for e in x]))
+    type: Mapped[SourceType] = mapped_column(
+        Enum(SourceType, values_callable=lambda x: [e.value for e in x])
+    )
     uri: Mapped[str | None] = mapped_column(String(2000))
     name: Mapped[str] = mapped_column(String(300))
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

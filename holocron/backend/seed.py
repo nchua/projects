@@ -55,16 +55,38 @@ def seed() -> None:
         ai_concepts = [
             {
                 "name": "Chain of Thought Prompting",
-                "description": "Breaking complex reasoning into step-by-step intermediate results",
+                "description": (
+                    "Breaking complex reasoning into"
+                    " step-by-step intermediate results"
+                ),
                 "cards": [
                     {
                         "type": UnitType.CONCEPT,
-                        "front": "What is chain-of-thought (CoT) prompting and why does it improve LLM performance?",
-                        "back": "CoT prompting breaks complex reasoning into intermediate steps. It works because it forces the model to show its work, allocating more compute to each step and reducing compounding errors.",
+                        "front": (
+                            "What is chain-of-thought (CoT)"
+                            " prompting and why does it"
+                            " improve LLM performance?"
+                        ),
+                        "back": (
+                            "CoT prompting breaks complex"
+                            " reasoning into intermediate"
+                            " steps. It works because it"
+                            " forces the model to show its"
+                            " work, allocating more compute"
+                            " to each step and reducing"
+                            " compounding errors."
+                        ),
                     },
                     {
                         "type": UnitType.CLOZE,
-                        "front": "Chain-of-thought prompting improves LLM performance by forcing the model to {{blank}} its reasoning into intermediate steps, which allocates more {{blank}} to each step.",
+                        "front": (
+                            "Chain-of-thought prompting"
+                            " improves LLM performance by"
+                            " forcing the model to {{blank}}"
+                            " its reasoning into intermediate"
+                            " steps, which allocates more"
+                            " {{blank}} to each step."
+                        ),
                         "back": "break down; compute",
                     },
                 ],
@@ -76,11 +98,27 @@ def seed() -> None:
                     {
                         "type": UnitType.CONCEPT,
                         "front": "What is RAG and what problem does it solve?",
-                        "back": "RAG (Retrieval-Augmented Generation) combines a retrieval system with a generative model. It solves the knowledge cutoff problem by grounding generation in retrieved, up-to-date documents rather than relying solely on training data.",
+                        "back": (
+                            "RAG (Retrieval-Augmented"
+                            " Generation) combines a"
+                            " retrieval system with a"
+                            " generative model. It solves"
+                            " the knowledge cutoff problem"
+                            " by grounding generation in"
+                            " retrieved, up-to-date documents"
+                            " rather than relying solely on"
+                            " training data."
+                        ),
                     },
                     {
                         "type": UnitType.CLOZE,
-                        "front": "RAG solves the {{blank}} problem by grounding generation in {{blank}} documents rather than relying solely on {{blank}} data.",
+                        "front": (
+                            "RAG solves the {{blank}}"
+                            " problem by grounding"
+                            " generation in {{blank}}"
+                            " documents rather than relying"
+                            " solely on {{blank}} data."
+                        ),
                         "back": "knowledge cutoff; retrieved, up-to-date; training",
                     },
                 ],
@@ -91,8 +129,22 @@ def seed() -> None:
                 "cards": [
                     {
                         "type": UnitType.CONCEPT,
-                        "front": "How does function calling (tool use) work in modern LLMs?",
-                        "back": "The model is given function schemas as part of its context. When it determines a function is needed, it outputs a structured JSON call instead of text. The system executes the function and returns results for the model to incorporate.",
+                        "front": (
+                            "How does function calling"
+                            " (tool use) work in"
+                            " modern LLMs?"
+                        ),
+                        "back": (
+                            "The model is given function"
+                            " schemas as part of its"
+                            " context. When it determines a"
+                            " function is needed, it outputs"
+                            " a structured JSON call instead"
+                            " of text. The system executes"
+                            " the function and returns"
+                            " results for the model to"
+                            " incorporate."
+                        ),
                     },
                 ],
             },
@@ -135,23 +187,57 @@ def seed() -> None:
                 "cards": [
                     {
                         "type": UnitType.CONCEPT,
-                        "front": "What is Aggregation Theory and what are its three key characteristics?",
-                        "back": "Aggregation Theory (Ben Thompson / Stratechery) explains how platforms win by aggregating demand. Three characteristics: (1) direct relationship with users, (2) zero marginal cost to serve, (3) network effects from supplier aggregation.",
+                        "front": (
+                            "What is Aggregation Theory"
+                            " and what are its three key"
+                            " characteristics?"
+                        ),
+                        "back": (
+                            "Aggregation Theory (Ben"
+                            " Thompson / Stratechery)"
+                            " explains how platforms win by"
+                            " aggregating demand. Three"
+                            " characteristics: (1) direct"
+                            " relationship with users,"
+                            " (2) zero marginal cost to"
+                            " serve, (3) network effects"
+                            " from supplier aggregation."
+                        ),
                     },
                 ],
             },
             {
                 "name": "Jobs to Be Done",
-                "description": "Clayton Christensen's framework for understanding customer motivation",
+                "description": (
+                    "Clayton Christensen's framework for"
+                    " understanding customer motivation"
+                ),
                 "cards": [
                     {
                         "type": UnitType.CONCEPT,
                         "front": "What is the 'Jobs to Be Done' framework?",
-                        "back": "JTBD (Clayton Christensen) says customers don't buy products — they 'hire' them to do a job. Understanding the functional, social, and emotional dimensions of the job reveals real competitive alternatives and innovation opportunities.",
+                        "back": (
+                            "JTBD (Clayton Christensen)"
+                            " says customers don't buy"
+                            " products — they 'hire' them"
+                            " to do a job. Understanding"
+                            " the functional, social, and"
+                            " emotional dimensions of the"
+                            " job reveals real competitive"
+                            " alternatives and innovation"
+                            " opportunities."
+                        ),
                     },
                     {
                         "type": UnitType.CLOZE,
-                        "front": "The Jobs to Be Done framework says customers {{blank}} products to do a {{blank}}. The three dimensions are {{blank}}, {{blank}}, and {{blank}}.",
+                        "front": (
+                            "The Jobs to Be Done framework"
+                            " says customers {{blank}}"
+                            " products to do a {{blank}}."
+                            " The three dimensions are"
+                            " {{blank}}, {{blank}},"
+                            " and {{blank}}."
+                        ),
                         "back": "hire; job; functional, social, emotional",
                     },
                 ],
@@ -180,7 +266,11 @@ def seed() -> None:
                 db.add(unit)
 
         db.commit()
-        print(f"Seeded: 2 topics, {len(ai_concepts) + len(biz_concepts)} concepts, cards created")
+        print(
+            f"Seeded: 2 topics, "
+            f"{len(ai_concepts) + len(biz_concepts)}"
+            " concepts, cards created"
+        )
 
     finally:
         db.close()

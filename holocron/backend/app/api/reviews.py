@@ -138,7 +138,9 @@ def review_history(
     )
     results = []
     for r in reviews:
-        unit = db.query(LearningUnit).filter(LearningUnit.id == r.learning_unit_id).first()
+        unit = (
+            db.query(LearningUnit).filter(LearningUnit.id == r.learning_unit_id).first()
+        )
         results.append(
             ReviewResponse(
                 id=r.id,
@@ -160,7 +162,9 @@ def session_summary(
     db: Session = Depends(get_db),
 ):
     """Get summary stats for the current review session."""
-    cutoff = datetime.now(timezone.utc) - __import__("datetime").timedelta(minutes=since_minutes)
+    cutoff = datetime.now(timezone.utc) - __import__("datetime").timedelta(
+        minutes=since_minutes
+    )
 
     reviews = (
         db.query(Review)

@@ -21,7 +21,9 @@ class LearningUnit(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     concept_id: Mapped[int] = mapped_column(ForeignKey("concepts.id"), index=True)
-    type: Mapped[UnitType] = mapped_column(Enum(UnitType, values_callable=lambda x: [e.value for e in x]))
+    type: Mapped[UnitType] = mapped_column(
+        Enum(UnitType, values_callable=lambda x: [e.value for e in x])
+    )
     front_content: Mapped[str] = mapped_column(Text)
     back_content: Mapped[str] = mapped_column(Text)
 
