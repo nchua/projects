@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.core.config import settings
 from app.models.user import User
 from app.models.topic import Topic
 from app.models.concept import Concept

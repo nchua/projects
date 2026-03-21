@@ -21,7 +21,6 @@ from app.schemas.session import (
 from app.services.session import (
     SessionMode,
     get_session_cards,
-    SESSION_CARD_LIMITS,
 )
 from app.core.config import settings
 

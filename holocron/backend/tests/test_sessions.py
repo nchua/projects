@@ -1,6 +1,5 @@
 """Tests for Phase 3: sessions, interleaving, pacing, anti-guilt, and enhanced summary."""
 
-from datetime import datetime, timedelta, timezone
 
 
 def _setup_topic_with_cards(client, auth_headers, topic_name, cards, db=None):
@@ -96,7 +95,6 @@ def test_interleaving_mixes_topics(client, auth_headers, db):
 
 def test_daily_cap_enforced(client, auth_headers, db):
     """After reaching the daily cap, no more cards are returned."""
-    from app.core.config import settings
 
     # Create more cards than the cap
     _setup_topic_with_cards(client, auth_headers, "AI", [

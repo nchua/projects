@@ -6,17 +6,17 @@ Handles the logic for presenting cards in an optimal review session:
   - Anti-guilt: spread overdue cards across days, enforce daily caps
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from enum import Enum
 from collections import defaultdict
 
 from sqlalchemy.orm import Session
 
-from app.models.learning_unit import LearningUnit, UnitType
+from app.models.learning_unit import LearningUnit
 from app.models.concept import Concept
 from app.models.topic import Topic
-from app.models.review import Review, Rating
+from app.models.review import Review
 from app.core.config import settings
 from app.core.fsrs import calculate_retrievability
 
