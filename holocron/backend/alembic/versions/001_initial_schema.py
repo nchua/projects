@@ -25,13 +25,20 @@ def upgrade() -> None:
         sa.Column("email", sa.String(255), unique=True, nullable=False, index=True),
         sa.Column("hashed_password", sa.String(255), nullable=False),
         sa.Column("display_name", sa.String(100)),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+        ),
     )
 
     op.create_table(
         "topics",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False, index=True),
+        sa.Column(
+            "user_id", sa.Integer(),
+            sa.ForeignKey("users.id"),
+            nullable=False, index=True,
+        ),
         sa.Column("name", sa.String(200), nullable=False),
         sa.Column("description", sa.String(1000)),
         sa.Column("target_retention", sa.Float(), server_default="0.9"),
