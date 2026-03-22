@@ -1,0 +1,23 @@
+{
+  "routes": [
+    {
+      "distanceMeters": 77249,
+      "duration": "4200s",
+      "staticDuration": "2100s",
+      "travelAdvisory": {
+        "speedReadingIntervals": [
+          {
+            "startPolylinePointIndex": 0,
+            "endPolylinePointIndex": 30,
+            "speed": "TRAFFIC_JAM"
+          },
+          {
+            "startPolylinePointIndex": 30,
+            "endPolylinePointIndex": 78,
+            "speed": "SLOW"
+          }
+        ]
+      }
+    }
+  ]
+}
