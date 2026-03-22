@@ -3,18 +3,22 @@ import UserNotifications
 
 /// UIApplicationDelegate for push notification registration, background tasks,
 /// and UNUserNotificationCenter delegation.
-/// Firebase configuration will be added in Phase C.
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        // Set notification delegate
+        // 1. Set notification delegate
         UNUserNotificationCenter.current().delegate = self
 
-        // Register for remote notifications
+        // 2. Register notification categories (Navigate, Snooze, I've Left)
+        NotificationManager.shared.configure()
+
+        // 3. Register for remote notifications
         application.registerForRemoteNotifications()
+
+        // Phase C TODO: FirebaseApp.configure() and Messaging.messaging().delegate setup
 
         return true
     }
@@ -25,9 +29,19 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         _ application: UIApplication,
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
     ) {
-        // Phase C: Forward to Firebase Messaging, then register FCM token with backend
+        // Phase C TODO: Forward APNs token to Firebase Messaging:
+        //   Messaging.messaging().apnsToken = deviceToken
+        // Then use FCM token (Messaging.messaging().token()) to register with backend.
+        //
+        // For now, log the raw APNs token:
         let tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
         print("[AppDelegate] APNs device token: \(tokenString.prefix(20))...")
+
+        // Register with backend using the APNs token as a placeholder
+        // (will switch to FCM token in Phase C when Firebase is integrated)
+        Task {
+            try? await APIClient.shared.registerDeviceToken(tokenString)
+        }
     }
 
     func application(
@@ -60,34 +74,38 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let userInfo = response.notification.request.content.userInfo
+        let actionId = response.actionIdentifier
 
-        switch response.actionIdentifier {
-        case UNNotificationDefaultActionIdentifier:
-            // Tap — deep link to trip detail
+        // Default tap — deep link to trip detail
+        if actionId == UNNotificationDefaultActionIdentifier {
             if let destination = DeepLinkHandler.destination(from: userInfo) {
                 DispatchQueue.main.async {
-                    // Will be consumed by DepartApp via AppState.pendingDeepLink
                     NotificationCenter.default.post(
                         name: .handleDeepLink,
                         object: destination
                     )
                 }
             }
+            completionHandler()
+            return
+        }
 
-        case "NAVIGATE":
-            // Open Maps — handled in Phase C
-            break
+        // Action buttons — delegate to NotificationManager
+        NotificationManager.shared.handleNotificationAction(
+            response: response,
+            apiClient: APIClient.shared
+        )
 
-        case "SNOOZE":
-            // Snooze 5 min — handled in Phase C
-            break
-
-        case "DEPARTED":
-            // Mark as departed — handled in Phase C
-            break
-
-        default:
-            break
+        // Deep link after action if it opens the app
+        if actionId == NotificationManager.navigateAction {
+            // Navigate already opens Maps, no deep link needed
+        } else if let destination = DeepLinkHandler.destination(from: userInfo) {
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(
+                    name: .handleDeepLink,
+                    object: destination
+                )
+            }
         }
 
         completionHandler()
@@ -100,9 +118,31 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         didReceiveRemoteNotification userInfo: [AnyHashable: Any],
         fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
     ) {
-        // Phase C: Parse recommended_departure, schedule local notification as failsafe
-        print("[AppDelegate] Received silent push")
-        completionHandler(.newData)
+        // Parse server push data and schedule local notification as failsafe.
+        // Backend push payload keys: trip_id, tier, recommended_departure, eta_seconds
+        guard let tripIdString = userInfo["trip_id"] as? String,
+              let tripId = UUID(uuidString: tripIdString),
+              let departureStr = userInfo["recommended_departure"] as? String
+        else {
+            completionHandler(.noData)
+            return
+        }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let fireDate = formatter.date(from: departureStr) ?? Date()
+        let tier = (userInfo["tier"] as? String).flatMap(NotificationType.init(rawValue:)) ?? .leaveNow
+
+        Task {
+            await NotificationManager.shared.scheduleLocalNotification(
+                tripId: tripId,
+                title: "Time to leave",
+                body: "Leave now to arrive on time.",
+                fireDate: fireDate,
+                tier: tier
+            )
+            completionHandler(.newData)
+        }
     }
 }
 

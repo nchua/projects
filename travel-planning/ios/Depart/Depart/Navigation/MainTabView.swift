@@ -11,7 +11,7 @@ struct MainTabView: View {
                     .navigationDestination(for: DeepLinkDestination.self) { destination in
                         switch destination {
                         case .tripDetail(let tripId):
-                            TripDetailPlaceholder(tripId: tripId)
+                            TripDetailView(tripId: tripId)
                         default:
                             EmptyView()
                         }
