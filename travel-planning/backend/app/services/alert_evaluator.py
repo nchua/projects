@@ -9,13 +9,13 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, time, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select, update
+from sqlalchemy import select
 
-from app.models.enums import DeliveryStatus, NotificationType, TripStatus
+from app.models.enums import DeliveryStatus, NotificationType
 from app.models.notification_log import NotificationLog
 from app.models.trip import Trip
 from app.models.user import User

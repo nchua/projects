@@ -9,10 +9,8 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
-from uuid import UUID
 
 from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.enums import MonitoringPhase, TripStatus
 from app.models.trip import Trip

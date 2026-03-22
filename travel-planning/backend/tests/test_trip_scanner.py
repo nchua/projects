@@ -9,12 +9,10 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key")
 
 from datetime import datetime, timedelta, timezone
 
-import pytest
 from freezegun import freeze_time
 
 from app.models.enums import MonitoringPhase
 from app.services.trip_scanner import (
-    PHASE_INTERVALS,
     determine_phase,
     estimate_rough_eta_seconds,
     should_check_now,

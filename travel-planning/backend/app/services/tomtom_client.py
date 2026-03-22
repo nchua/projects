@@ -7,7 +7,6 @@ Cost: $0.75/1k requests vs Google's $10/1k.
 from __future__ import annotations
 
 import logging
-import re
 from datetime import datetime, timezone
 
 import httpx

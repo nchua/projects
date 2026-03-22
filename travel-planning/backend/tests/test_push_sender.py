@@ -7,10 +7,9 @@ import os
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost/test")
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
-import pytest
 from freezegun import freeze_time
 
 from app.services.push_sender import (

@@ -10,12 +10,10 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key")
 from datetime import datetime, time, timedelta, timezone
 from unittest.mock import MagicMock
 
-import pytest
 from freezegun import freeze_time
 
 from app.models.enums import DeliveryStatus, NotificationType
 from app.services.alert_evaluator import (
-    AlertDecision,
     determine_alert_tier,
     evaluate_decision,
     get_change_direction,
