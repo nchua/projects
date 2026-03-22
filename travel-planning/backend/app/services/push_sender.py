@@ -89,7 +89,11 @@ def build_notification(
     tz = user.timezone or "America/Los_Angeles"
     departure_str = _format_time(departure_time, tz)
     arrival_str = _format_time(trip.arrival_time, tz)
-    dest_name = trip.name or trip.dest_address[:30] if trip.dest_address else "destination"
+    dest_name = (
+        trip.name or trip.dest_address[:30]
+        if trip.dest_address
+        else "destination"
+    )
     eta_minutes = round((trip.last_eta_seconds or 0) / 60)
 
     if tier == "heads_up":
@@ -220,7 +224,11 @@ async def send_push_notification(
     """
     session_factory = ctx["db_session"]
 
-    departure_time = datetime.fromisoformat(departure_time_iso) if departure_time_iso else datetime.now(timezone.utc)
+    departure_time = (
+        datetime.fromisoformat(departure_time_iso)
+        if departure_time_iso
+        else datetime.now(timezone.utc)
+    )
 
     # Step 1: Load trip + user
     async with session_factory() as session:

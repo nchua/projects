@@ -137,7 +137,8 @@ class TestIsSignificantChange:
 
     def test_no_baseline_falls_back_to_new_eta(self) -> None:
         # No baseline -> uses new_eta as baseline
-        assert is_significant_change(3000, 2600, None) is True  # delta=400, threshold=max(300,300)=300
+        # delta=400, threshold=max(300,300)=300
+        assert is_significant_change(3000, 2600, None) is True
 
     def test_symmetric_for_improvements(self) -> None:
         # Abs delta, so improvement is same as worsening
@@ -171,14 +172,20 @@ class TestPassesAntiSpam:
 
     def test_max_4_updates_blocks(self) -> None:
         notifs = [
-            _make_notification(NotificationType.prepare, sent_at=datetime.now(timezone.utc) - timedelta(minutes=i * 15))
+            _make_notification(
+                NotificationType.prepare,
+                sent_at=datetime.now(timezone.utc) - timedelta(minutes=i * 15),
+            )
             for i in range(4)
         ]
         assert passes_anti_spam(notifs, NotificationType.prepare) is False
 
     def test_max_4_updates_does_not_block_leave_now(self) -> None:
         notifs = [
-            _make_notification(NotificationType.prepare, sent_at=datetime.now(timezone.utc) - timedelta(minutes=i * 15))
+            _make_notification(
+                NotificationType.prepare,
+                sent_at=datetime.now(timezone.utc) - timedelta(minutes=i * 15),
+            )
             for i in range(4)
         ]
         # leave_now is exempt from the 4-update limit
@@ -317,7 +324,10 @@ class TestEvaluateDecision:
         )
         user = _make_user()
         existing = [
-            _make_notification(NotificationType.leave_now, sent_at=now - timedelta(minutes=2))
+            _make_notification(
+                NotificationType.leave_now,
+                sent_at=now - timedelta(minutes=2),
+            )
         ]
 
         decision = evaluate_decision(trip, user, 1800, existing)
@@ -431,7 +441,8 @@ class TestEvaluateDecision:
     @freeze_time("2026-03-22T12:00:00Z")
     def test_leave_now_bypasses_anti_spam(self) -> None:
         now = datetime.now(timezone.utc)
-        # departure = arrival - eta(1800s=30min) - buffer(15min) = now+48-30-15 = now+3min -> leave_now
+        # departure = arrival - eta(30min) - buffer(15min)
+        # = now+48-30-15 = now+3min -> leave_now
         trip = _make_trip(
             arrival_time=now + timedelta(minutes=48),
             last_eta_seconds=1800,

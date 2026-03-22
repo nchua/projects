@@ -173,7 +173,8 @@ class GoogleRoutesClient:
             )
         if response.status_code >= 500:
             raise GoogleRoutesError(
-                f"Server error: {response.status_code}", status_code=response.status_code
+                f"Server error: {response.status_code}",
+                status_code=response.status_code,
             )
 
         try:
