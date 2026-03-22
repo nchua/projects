@@ -21,7 +21,10 @@ class User(Base):
     wake_time = Column(Time, nullable=True)
     sleep_time = Column(Time, nullable=True)
     is_deleted = Column(Boolean, default=False, nullable=False, server_default="false")
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True), nullable=False,
+        server_default=func.now(),
+    )
     updated_at = Column(
         DateTime(timezone=True),
         nullable=False,

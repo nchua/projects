@@ -27,7 +27,10 @@ class DeviceToken(Base):
     token = Column(String, nullable=False)
     platform = Column(String, nullable=True, default="ios")
 
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True), nullable=False,
+        server_default=func.now(),
+    )
     updated_at = Column(
         DateTime(timezone=True),
         nullable=False,
@@ -64,7 +67,10 @@ class NotificationLog(Base):
     delivered_at = Column(DateTime(timezone=True), nullable=True)
     opened_at = Column(DateTime(timezone=True), nullable=True)
 
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True), nullable=False,
+        server_default=func.now(),
+    )
 
     # Relationships
     user = relationship("User", back_populates="notification_logs")

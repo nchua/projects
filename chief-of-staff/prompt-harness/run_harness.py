@@ -301,7 +301,7 @@ def print_scorecard(results: list[FixtureResult]) -> dict:
     triage_precision = triage_tp / (triage_tp + triage_fp) if (triage_tp + triage_fp) > 0 else 0
     triage_recall = triage_tp / (triage_tp + triage_fn) if (triage_tp + triage_fn) > 0 else 0
 
-    print(f"\n--- Triage (Haiku) ---")
+    print("\n--- Triage (Haiku) ---")
     pct = triage_correct / triage_total * 100 if triage_total > 0 else 0
     print(f"Accuracy:  {triage_correct}/{triage_total} ({pct:.0f}%)")
     print(f"Precision: {triage_precision:.1%} (TP={triage_tp}, FP={triage_fp})")
@@ -318,7 +318,7 @@ def print_scorecard(results: list[FixtureResult]) -> dict:
     ext_recall = total_matched / (total_matched + total_missed) if (total_matched + total_missed) > 0 else 0
     fp_rate = total_fp / (total_matched + total_fp) if (total_matched + total_fp) > 0 else 0
 
-    print(f"\n--- Extraction (Sonnet) ---")
+    print("\n--- Extraction (Sonnet) ---")
     print(f"Expected items:  {total_expected}")
     print(f"Matched:         {total_matched}")
     print(f"False positives: {total_fp}")
@@ -332,13 +332,13 @@ def print_scorecard(results: list[FixtureResult]) -> dict:
     total_extraction_cost = sum(r.extraction_cost for r in results)
     total_cost = total_triage_cost + total_extraction_cost
 
-    print(f"\n--- Cost ---")
+    print("\n--- Cost ---")
     print(f"Triage (Haiku):     ${total_triage_cost:.4f}")
     print(f"Extraction (Sonnet): ${total_extraction_cost:.4f}")
     print(f"Total:              ${total_cost:.4f}")
 
     # Thresholds
-    print(f"\n--- Threshold Check ---")
+    print("\n--- Threshold Check ---")
     thresholds = {
         "Triage precision > 90%": triage_precision > 0.90,
         "Extraction recall > 80%": ext_recall > 0.80,

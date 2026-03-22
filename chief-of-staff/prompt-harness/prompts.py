@@ -19,7 +19,10 @@ _RE_HTML_TAGS = re.compile(r"<[^>]+>")
 _RE_QUOTED_REPLY = re.compile(r"^On\s.+wrote:\s*$")
 _RE_SIG_PATTERNS = [
     re.compile(r"\n--\s*\n.*", re.DOTALL | re.IGNORECASE),
-    re.compile(r"\nSent from my (?:iPhone|iPad|Galaxy|Pixel).*", re.DOTALL | re.IGNORECASE),
+    re.compile(
+        r"\nSent from my (?:iPhone|iPad|Galaxy|Pixel).*",
+        re.DOTALL | re.IGNORECASE,
+    ),
     re.compile(r"\nGet Outlook for (?:iOS|Android).*", re.DOTALL | re.IGNORECASE),
 ]
 _RE_FOOTER_PATTERNS = [
@@ -221,7 +224,11 @@ def _format_user_prompt(
     preprocessed_body: str | None = None,
 ) -> str:
     """Shared formatter — avoids duplicate preprocessing across triage/extraction."""
-    body = preprocessed_body if preprocessed_body is not None else preprocess_body(fixture["raw_text"])
+    body = (
+        preprocessed_body
+        if preprocessed_body is not None
+        else preprocess_body(fixture["raw_text"])
+    )
     return _USER_TEMPLATE.format(
         source=fixture["source"],
         subject=fixture["subject"],
@@ -232,24 +239,36 @@ def _format_user_prompt(
 
 
 def format_triage_prompt(
-    fixture: dict, user_name: str = DEFAULT_USER_NAME, preprocessed_body: str | None = None
+    fixture: dict,
+    user_name: str = DEFAULT_USER_NAME,
+    preprocessed_body: str | None = None,
 ) -> str:
     """Format a test fixture into the triage user prompt."""
+    instruction = (
+        "Does this message contain action items for"
+        " {user_name}? Respond with JSON only."
+    )
     return _format_user_prompt(
         fixture,
-        "Does this message contain action items for {user_name}? Respond with JSON only.",
+        instruction,
         user_name,
         preprocessed_body,
     )
 
 
 def format_extraction_prompt(
-    fixture: dict, user_name: str = DEFAULT_USER_NAME, preprocessed_body: str | None = None
+    fixture: dict,
+    user_name: str = DEFAULT_USER_NAME,
+    preprocessed_body: str | None = None,
 ) -> str:
     """Format a test fixture into the extraction user prompt."""
+    instruction = (
+        "Extract all action items for {user_name}"
+        " from this message. Respond with JSON only."
+    )
     return _format_user_prompt(
         fixture,
-        "Extract all action items for {user_name} from this message. Respond with JSON only.",
+        instruction,
         user_name,
         preprocessed_body,
     )

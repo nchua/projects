@@ -23,7 +23,7 @@ class OneOffReminder(Base):
 
     # Trigger
     trigger_type = Column(String, nullable=False)  # TriggerType enum
-    trigger_config = Column(JSONB, nullable=True)   # time, coordinates, person_id, email_id
+    trigger_config = Column(JSONB, nullable=True)
 
     # Optional link back to AI-extracted action item
     source_action_item_id = Column(
@@ -33,7 +33,10 @@ class OneOffReminder(Base):
     # Status
     status = Column(String, nullable=False, default="pending")  # ReminderStatus
 
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True), nullable=False,
+        server_default=func.now(),
+    )
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships

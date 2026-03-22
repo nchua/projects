@@ -31,7 +31,10 @@ class Briefing(Base):
     generated_at = Column(DateTime(timezone=True), nullable=True)
     viewed_at = Column(DateTime(timezone=True), nullable=True)
 
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True), nullable=False,
+        server_default=func.now(),
+    )
 
     # Relationships
     user = relationship("User", back_populates="briefings")

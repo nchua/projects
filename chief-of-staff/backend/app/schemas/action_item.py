@@ -8,7 +8,6 @@ from pydantic import BaseModel
 from app.models.enums import (
     ActionItemSource,
     ActionItemPriority,
-    ActionItemStatus,
     DismissReason,
 )
 

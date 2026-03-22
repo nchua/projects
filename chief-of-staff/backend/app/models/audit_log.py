@@ -28,4 +28,7 @@ class AuditLog(Base):
     # Structured metadata (never includes token values)
     metadata_ = Column("metadata", JSONB, nullable=True)
 
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True), nullable=False,
+        server_default=func.now(),
+    )

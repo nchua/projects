@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.fernet import Fernet
 
 from app.core.config import get_settings
 
@@ -14,8 +14,9 @@ def _get_fernet() -> Fernet:
     key = settings.token_encryption_key
     if not key:
         raise ValueError(
-            "TOKEN_ENCRYPTION_KEY is not set. "
-            "Generate one with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+            "TOKEN_ENCRYPTION_KEY is not set. Generate one with: "
+            "python -c 'from cryptography.fernet import Fernet; "
+            "print(Fernet.generate_key().decode())'"
         )
     return Fernet(key.encode("utf-8") if isinstance(key, str) else key)
 

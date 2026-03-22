@@ -311,9 +311,9 @@ User
 This app aggregates OAuth tokens for Gmail, Google Calendar, GitHub, Slack, and Notion into a single database. A server compromise would give an attacker read access to all connected services. Security is a first-class architectural concern.
 
 ### Token Encryption
-- OAuth tokens encrypted using **AES-256-GCM** with a dedicated `TOKEN_ENCRYPTION_KEY` environment variable
+- OAuth tokens encrypted using **Fernet (AES-128-CBC + HMAC-SHA256)** with a dedicated `TOKEN_ENCRYPTION_KEY` environment variable
 - `TOKEN_ENCRYPTION_KEY` is separate from `DATABASE_URL` and `SECRET_KEY` — compromise of the database alone does not expose tokens
-- Implementation: `cryptography.fernet` or direct AES-GCM via the `cryptography` library
+- Implementation: `cryptography.fernet.Fernet` — battle-tested, misuse-resistant, includes authenticated encryption
 - Never log token values — ensure logging configuration redacts tokens in request/response bodies and error tracebacks
 - Request minimum OAuth scopes per integration (e.g., `gmail.readonly`, not `mail.google.com`)
 

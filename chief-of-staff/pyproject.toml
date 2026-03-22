@@ -1,0 +1,7 @@
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint.per-file-ignores]
+# Prompt templates, test fixtures, and harness output contain
+# natural language strings that exceed 88 chars by design.
+"prompt-harness/*.py" = ["E501"]

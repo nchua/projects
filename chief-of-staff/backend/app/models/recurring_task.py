@@ -51,7 +51,10 @@ class RecurringTask(Base):
     sort_order = Column(Integer, nullable=False, default=0)
     is_archived = Column(Boolean, nullable=False, default=False)
 
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True), nullable=False,
+        server_default=func.now(),
+    )
     updated_at = Column(
         DateTime(timezone=True),
         nullable=False,
@@ -80,11 +83,17 @@ class TaskCompletion(Base):
     skipped = Column(Boolean, nullable=False, default=False)
     notes = Column(Text, nullable=True)
 
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True), nullable=False,
+        server_default=func.now(),
+    )
 
     # Relationships
     recurring_task = relationship("RecurringTask", back_populates="completions")
 
     __table_args__ = (
-        UniqueConstraint("recurring_task_id", "date", name="uq_task_completion_task_date"),
+        UniqueConstraint(
+            "recurring_task_id", "date",
+            name="uq_task_completion_task_date",
+        ),
     )

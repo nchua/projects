@@ -1,6 +1,5 @@
 """Smoke tests for health, auth flow, and encryption."""
 
-import pytest
 
 
 class TestHealth:

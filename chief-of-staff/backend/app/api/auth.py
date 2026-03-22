@@ -28,8 +28,14 @@ _DUMMY_HASH = hash_password("dummy-timing-attack-mitigation")
 router = APIRouter()
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register(user_data: UserRegister, db: Session = Depends(get_db)) -> UserResponse:
+@router.post(
+    "/register",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def register(
+    user_data: UserRegister, db: Session = Depends(get_db)
+) -> UserResponse:
     """Register a new user account.
 
     Args:

@@ -22,7 +22,7 @@ class SyncState(Base):
     resource_type = Column(String, nullable=False)  # ResourceType enum
 
     # Cursor tracking
-    cursor_value = Column(Text, nullable=True)  # history_id, sync_token, timestamp, etc.
+    cursor_value = Column(Text, nullable=True)
     cursor_type = Column(String, nullable=True)
 
     # Last sync info

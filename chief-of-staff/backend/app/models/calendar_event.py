@@ -44,7 +44,10 @@ class CalendarEvent(Base):
 
     synced_at = Column(DateTime(timezone=True), nullable=True)
 
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True), nullable=False,
+        server_default=func.now(),
+    )
 
     # Relationships
     user = relationship("User", back_populates="calendar_events")
