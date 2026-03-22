@@ -56,17 +56,20 @@ TIER_APNS_CONFIG: dict[str, dict[str, Any]] = {
 }
 
 
-def _format_time(dt: datetime, tz_name: str) -> str:
-    """Format a datetime as a human-readable time string in the user's timezone."""
+def _resolve_timezone(tz_name: str) -> Any:
+    """Resolve a timezone name to a pytz timezone object."""
     try:
         import pytz
 
-        tz = pytz.timezone(tz_name)
-        local_dt = dt.astimezone(tz)
+        return pytz.timezone(tz_name)
     except Exception:
-        local_dt = dt
+        return timezone.utc
 
-    return local_dt.strftime("%-I:%M %p")  # e.g., "2:15 PM"
+
+def _format_time(dt: datetime, tz: Any) -> str:
+    """Format a datetime in the given timezone as '2:15 PM'."""
+    local_dt = dt.astimezone(tz)
+    return local_dt.strftime("%-I:%M %p")
 
 
 def _minutes_until(target: datetime) -> int:
@@ -86,7 +89,7 @@ def build_notification(
 
     Returns (title, body) tuple.
     """
-    tz = user.timezone or "America/Los_Angeles"
+    tz = _resolve_timezone(user.timezone or "America/Los_Angeles")
     departure_str = _format_time(departure_time, tz)
     arrival_str = _format_time(trip.arrival_time, tz)
     dest_name = (
@@ -264,9 +267,9 @@ async def send_push_notification(
         logger.warning(f"No active device tokens for trip {trip_id}")
         return
 
-    # Step 4: Send via FCM
     results = []
     fcm_message_id = None
+    stale_token_ids: list[UUID] = []
 
     try:
         from firebase_admin import messaging
@@ -284,7 +287,9 @@ async def send_push_notification(
 
             message = messaging.Message(
                 token=device_token.token,
-                notification=messaging.Notification(title=title, body=body)
+                notification=messaging.Notification(
+                    title=title, body=body
+                )
                 if not silent
                 else None,
                 data=payload["data"],
@@ -293,7 +298,9 @@ async def send_push_notification(
                     payload=messaging.APNSPayload(
                         aps=messaging.Aps(
                             badge=1,
-                            sound=payload["apns"]["payload"]["aps"].get("sound"),
+                            sound=payload["apns"]["payload"]["aps"].get(
+                                "sound"
+                            ),
                             category="TRIP_ALERT",
                             thread_id=f"trip-{trip.id}",
                             mutable_content=True,
@@ -306,32 +313,34 @@ async def send_push_notification(
             try:
                 response = messaging.send(message)
                 fcm_message_id = response
-                results.append(
-                    {"token": device_token.token, "success": True, "id": response}
-                )
+                results.append({"success": True, "id": response})
             except messaging.UnregisteredError:
                 logger.info(
-                    f"Token {device_token.token[:20]}... is stale — marking inactive"
+                    f"Token {device_token.token[:20]}... stale"
                 )
-                async with session_factory() as session:
-                    await session.execute(
-                        update(DeviceToken)
-                        .where(DeviceToken.id == device_token.id)
-                        .values(is_active=False)
-                    )
-                    await session.commit()
+                stale_token_ids.append(device_token.id)
             except messaging.QuotaExceededError:
                 from arq import Retry
 
                 raise Retry(defer=30)
             except Exception as e:
                 logger.error(f"FCM send error: {e}")
-                results.append(
-                    {"token": device_token.token, "success": False, "error": str(e)}
-                )
+                results.append({"success": False, "error": str(e)})
     except ImportError:
-        logger.warning("Firebase Admin SDK not available — skipping FCM send")
+        logger.warning(
+            "Firebase Admin SDK not available — skipping FCM send"
+        )
         results.append({"success": False, "error": "Firebase not configured"})
+
+    # Batch-deactivate stale tokens
+    if stale_token_ids:
+        async with session_factory() as session:
+            await session.execute(
+                update(DeviceToken)
+                .where(DeviceToken.id.in_(stale_token_ids))
+                .values(is_active=False)
+            )
+            await session.commit()
 
     # Step 5: Log the notification
     delivery_status = (
@@ -362,8 +371,10 @@ async def send_push_notification(
             "updated_at": datetime.now(timezone.utc),
         }
 
-        # Transition to departed on leave_now/running_late
-        if tier in ("leave_now", "running_late"):
+        if notification_type in (
+            NotificationType.leave_now,
+            NotificationType.running_late,
+        ):
             update_values["status"] = TripStatus.departed
 
         await session.execute(

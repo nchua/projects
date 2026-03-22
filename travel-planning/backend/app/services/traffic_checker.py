@@ -87,7 +87,6 @@ async def check_trip_eta(ctx: dict[str, Any], trip_id: str) -> None:
     redis = ctx["redis"]
     routes_client = ctx["routes_client"]
 
-    # Step 1: Load trip
     async with session_factory() as session:
         stmt = select(Trip).where(Trip.id == UUID(trip_id))
         result = await session.execute(stmt)
@@ -104,7 +103,6 @@ async def check_trip_eta(ctx: dict[str, Any], trip_id: str) -> None:
     if trip.is_deleted:
         return
 
-    # Step 2: Check Redis ETA cache
     cache_key = _cache_key(
         trip.origin_lat, trip.origin_lng,
         trip.dest_lat, trip.dest_lng,
@@ -132,7 +130,6 @@ async def check_trip_eta(ctx: dict[str, Any], trip_id: str) -> None:
         except (json.JSONDecodeError, KeyError, ValueError):
             cached = None  # Invalid cache — fetch fresh
 
-    # Step 3: Call Google Routes API if no cache hit
     if eta_result is None:
         try:
             await check_rate_limit(redis, str(trip.user_id))
@@ -162,7 +159,6 @@ async def check_trip_eta(ctx: dict[str, Any], trip_id: str) -> None:
             cache_key, 120, json.dumps(eta_result.to_cache_dict())
         )
 
-    # Step 4: Store ETA snapshot
     async with session_factory() as session:
         snapshot = TripEtaSnapshot(
             trip_id=UUID(trip_id),
@@ -173,7 +169,6 @@ async def check_trip_eta(ctx: dict[str, Any], trip_id: str) -> None:
         )
         session.add(snapshot)
 
-        # Step 5: Update trip record
         new_notify_at = (
             trip.arrival_time
             - timedelta(seconds=eta_result.duration_in_traffic_seconds)
@@ -196,7 +191,6 @@ async def check_trip_eta(ctx: dict[str, Any], trip_id: str) -> None:
         )
         await session.commit()
 
-    # Step 6: Enqueue evaluate_alert
     await redis.enqueue_job(
         "_evaluate_alert",
         trip_id,

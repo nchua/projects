@@ -128,8 +128,10 @@ async def scan_active_trips(ctx: dict[str, Any]) -> None:
         trips = result.scalars().all()
 
     enqueued = 0
+    pending_to_monitoring: list = []
+    timestamp_minute = now.strftime("%Y%m%d%H%M")
+
     for trip in trips:
-        # For never-checked trips, estimate a rough ETA
         eta_seconds = trip.last_eta_seconds
         if eta_seconds is None:
             eta_seconds = estimate_rough_eta_seconds(
@@ -147,21 +149,9 @@ async def scan_active_trips(ctx: dict[str, Any]) -> None:
         if not should_check_now(phase, trip.last_checked_at, now):
             continue
 
-        # Transition from pending to monitoring on first check
         if trip.status == TripStatus.pending:
-            async with session_factory() as session:
-                await session.execute(
-                    update(Trip)
-                    .where(Trip.id == trip.id)
-                    .values(
-                        status=TripStatus.monitoring,
-                        monitoring_started_at=now,
-                    )
-                )
-                await session.commit()
+            pending_to_monitoring.append(trip.id)
 
-        # Enqueue ETA check with dedup key
-        timestamp_minute = now.strftime("%Y%m%d%H%M")
         await redis.enqueue_job(
             "_check_trip_eta",
             str(trip.id),
@@ -169,8 +159,24 @@ async def scan_active_trips(ctx: dict[str, Any]) -> None:
         )
         enqueued += 1
 
+    # Batch transition pending → monitoring
+    if pending_to_monitoring:
+        async with session_factory() as session:
+            await session.execute(
+                update(Trip)
+                .where(Trip.id.in_(pending_to_monitoring))
+                .values(
+                    status=TripStatus.monitoring,
+                    monitoring_started_at=now,
+                )
+            )
+            await session.commit()
+
     if enqueued > 0:
-        logger.info(f"Enqueued {enqueued} ETA checks from {len(trips)} active trips")
+        logger.info(
+            f"Enqueued {enqueued} ETA checks from "
+            f"{len(trips)} active trips"
+        )
 
 
 async def cleanup_expired_trips(ctx: dict[str, Any]) -> None:

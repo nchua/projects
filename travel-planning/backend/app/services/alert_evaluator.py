@@ -97,38 +97,38 @@ def passes_anti_spam(
     3. If user dismissed 2+ alerts, downgrade to silent
     """
     now = datetime.now(timezone.utc)
+    update_types = {NotificationType.prepare, NotificationType.leave_soon}
+    critical_tiers = {
+        NotificationType.leave_now, NotificationType.running_late,
+    }
+
+    # Single pass over notifications
+    update_count = 0
+    dismissed_count = 0
+    last_sent: datetime | None = None
+    for n in notifications_sent:
+        if n.type in update_types:
+            update_count += 1
+        if n.delivery_status == DeliveryStatus.dismissed:
+            dismissed_count += 1
+        sent = n.sent_at
+        if sent.tzinfo is None:
+            sent = sent.replace(tzinfo=timezone.utc)
+        if last_sent is None or sent > last_sent:
+            last_sent = sent
 
     # Rule 1: Max 4 updates
-    update_types = {NotificationType.prepare, NotificationType.leave_soon}
-    update_count = sum(
-        1 for n in notifications_sent if n.type in update_types
-    )
     if update_count >= 4 and current_tier in update_types:
         return False
 
     # Rule 2: Min 10 minutes between updates
-    if notifications_sent:
-        last_sent = max(n.sent_at for n in notifications_sent)
-        if last_sent.tzinfo is None:
-            last_sent = last_sent.replace(tzinfo=timezone.utc)
+    if last_sent is not None:
         elapsed = (now - last_sent).total_seconds()
-        if elapsed < 600:  # 10 minutes
-            # leave_now and running_late bypass the cooldown
-            if current_tier not in (
-                NotificationType.leave_now,
-                NotificationType.running_late,
-            ):
-                return False
+        if elapsed < 600 and current_tier not in critical_tiers:
+            return False
 
     # Rule 3: Dismissed alerts -> silent only
-    dismissed_count = sum(
-        1 for n in notifications_sent
-        if n.delivery_status == DeliveryStatus.dismissed
-    )
-    if dismissed_count >= 2 and current_tier not in (
-        NotificationType.leave_now,
-        NotificationType.running_late,
-    ):
+    if dismissed_count >= 2 and current_tier not in critical_tiers:
         return "silent_only"
 
     return True
