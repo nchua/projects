@@ -61,7 +61,6 @@ class EtaResult(BaseModel):
         """Serialize for Redis cache storage."""
         return {
             "duration": self.duration_seconds,
-            "static_duration": self.duration_seconds,
             "duration_in_traffic": self.duration_in_traffic_seconds,
             "distance_meters": self.distance_meters,
             "congestion": self.congestion_level.value,

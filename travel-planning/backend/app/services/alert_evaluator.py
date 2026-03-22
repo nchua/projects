@@ -148,6 +148,10 @@ def is_quiet_hours(user: User) -> bool:
         tz = pytz.timezone(user.timezone)
         user_local_time = datetime.now(tz).time()
     except Exception:
+        logger.warning(
+            f"Failed to resolve timezone '{user.timezone}', "
+            f"falling back to UTC"
+        )
         user_local_time = datetime.now(timezone.utc).time()
 
     start = user.quiet_hours_start

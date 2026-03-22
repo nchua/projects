@@ -59,11 +59,23 @@ async def _send_alert(ctx: dict[str, Any], message: str) -> None:
         return
 
     try:
-        http_client = ctx.get("http_client") or httpx.AsyncClient()
-        await http_client.post(
-            webhook_url,
-            json={"text": f":warning: Depart Worker Alert: {message}"},
-            timeout=5.0,
-        )
+        http_client = ctx.get("http_client")
+        if http_client is None:
+            async with httpx.AsyncClient() as client:
+                await client.post(
+                    webhook_url,
+                    json={
+                        "text": f":warning: Depart Worker Alert: {message}"
+                    },
+                    timeout=5.0,
+                )
+        else:
+            await http_client.post(
+                webhook_url,
+                json={
+                    "text": f":warning: Depart Worker Alert: {message}"
+                },
+                timeout=5.0,
+            )
     except Exception:
         logger.exception(f"Failed to send Slack alert: {message}")

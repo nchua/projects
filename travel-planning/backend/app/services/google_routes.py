@@ -40,7 +40,7 @@ class GoogleRoutesBadRequest(GoogleRoutesError):
 
 def parse_duration(duration_str: str) -> int:
     """Parse a Google Routes duration string like '2580s' to seconds."""
-    match = re.match(r"(\d+)s", duration_str)
+    match = re.match(r"^(\d+)s$", duration_str)
     if not match:
         raise ValueError(f"Invalid duration format: {duration_str}")
     return int(match.group(1))

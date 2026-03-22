@@ -23,6 +23,7 @@ from app.services.rate_limiter import (
     check_rate_limit,
     increment_cost_counter,
 )
+from app.models.enums import MonitoringPhase
 from app.services.trip_scanner import determine_phase
 
 logger = logging.getLogger(__name__)
@@ -124,7 +125,7 @@ async def check_trip_eta(ctx: dict[str, Any], trip_id: str) -> None:
             if checked_at_str:
                 checked_at = datetime.fromisoformat(checked_at_str)
                 age = (now - checked_at.replace(tzinfo=timezone.utc)).total_seconds()
-                if phase.value == "critical" and age > 90:
+                if phase == MonitoringPhase.critical and age > 90:
                     cached = None  # Force fresh check
                 else:
                     eta_result = EtaResult.from_cache(data)
