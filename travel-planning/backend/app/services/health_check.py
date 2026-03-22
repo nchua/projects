@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 # Alert thresholds
 MAX_DAILY_API_COST_USD = 10.0
-GOOGLE_COST_PER_CALL_USD = 0.01  # $10 per 1000 calls
+MAPKIT_COST_PER_CALL_USD = 0.00  # Apple MapKit Server API — free tier
 HEALTH_KEY = "worker:health"
 HEALTH_TTL = 120  # 2 minutes
 
@@ -33,7 +33,7 @@ async def worker_health_check(ctx: dict[str, Any]) -> None:
     date_str = now.strftime("%Y-%m-%d")
     daily_calls = await redis.get(f"metrics:api_calls:{date_str}")
     if daily_calls:
-        estimated_cost = int(daily_calls) * GOOGLE_COST_PER_CALL_USD
+        estimated_cost = int(daily_calls) * MAPKIT_COST_PER_CALL_USD
         if estimated_cost > MAX_DAILY_API_COST_USD:
             logger.warning(
                 f"Daily API cost estimate: ${estimated_cost:.2f} "

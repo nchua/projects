@@ -1,0 +1,11 @@
+{
+  "routes": [
+    {
+      "distanceMeters": 77249,
+      "expectedTravelTime": 2580,
+      "staticTravelTime": 2100,
+      "name": "US-101 S",
+      "transportType": "Automobile"
+    }
+  ]
+}

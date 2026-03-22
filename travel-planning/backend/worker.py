@@ -5,7 +5,6 @@ Start command: arq backend.worker.WorkerSettings
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 from typing import Any
@@ -39,8 +38,8 @@ async def startup(ctx: dict[str, Any]) -> None:
 
     Called once when the worker process starts. Sets up:
     - Async SQLAlchemy engine + session factory
-    - httpx client for Google Routes API
-    - Firebase Admin SDK
+    - httpx client for Apple MapKit Server API
+    - APNs client for direct push notification delivery
     """
     settings = get_settings()
 
@@ -58,50 +57,49 @@ async def startup(ctx: dict[str, Any]) -> None:
     ctx["db_engine"] = engine
     ctx["db_session"] = session_factory
 
-    # HTTP client for Google Routes API (connection pooling)
+    # HTTP client for Apple MapKit Server API (connection pooling)
     ctx["http_client"] = httpx.AsyncClient(
         timeout=httpx.Timeout(10.0, connect=5.0),
         limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
     )
 
-    # Google Routes client
-    from app.services.google_routes import GoogleRoutesClient
+    # MapKit Server API client
+    from app.services.mapkit_api import MapKitClient
 
-    ctx["routes_client"] = GoogleRoutesClient(
-        api_key=settings.google_routes_api_key,
+    ctx["routes_client"] = MapKitClient(
+        team_id=settings.apple_team_id,
+        key_id=settings.apple_mapkit_key_id,
+        private_key=settings.apple_mapkit_private_key,
         http_client=ctx["http_client"],
     )
 
-    # Firebase Admin SDK
-    _init_firebase(settings)
+    # APNs client for direct push notifications
+    _init_apns(ctx, settings)
 
     logger.info("Worker startup complete")
 
 
-def _init_firebase(settings: Any) -> None:
-    """Initialize Firebase Admin SDK from credentials."""
+def _init_apns(ctx: dict[str, Any], settings: Any) -> None:
+    """Initialize direct APNs client using aioapns."""
+    if not settings.apple_mapkit_private_key or not settings.apns_key_id:
+        logger.warning(
+            "APNs credentials not configured — push notifications disabled"
+        )
+        return
+
     try:
-        import firebase_admin
-        from firebase_admin import credentials
+        from aioapns import APNs
 
-        if firebase_admin._apps:
-            return  # Already initialized
-
-        if settings.firebase_credentials_json:
-            cred_dict = json.loads(settings.firebase_credentials_json)
-            cred = credentials.Certificate(cred_dict)
-        elif settings.firebase_credentials_path:
-            cred = credentials.Certificate(settings.firebase_credentials_path)
-        else:
-            logger.warning(
-                "No Firebase credentials configured — push notifications disabled"
-            )
-            return
-
-        firebase_admin.initialize_app(cred)
-        logger.info("Firebase Admin SDK initialized")
+        ctx["apns_client"] = APNs(
+            key=settings.apple_mapkit_private_key,
+            key_id=settings.apns_key_id,
+            team_id=settings.apple_team_id,
+            topic=settings.apns_bundle_id,
+            use_sandbox=settings.apns_use_sandbox,
+        )
+        logger.info("APNs client initialized (sandbox=%s)", settings.apns_use_sandbox)
     except Exception:
-        logger.exception("Failed to initialize Firebase Admin SDK")
+        logger.exception("Failed to initialize APNs client")
 
 
 async def shutdown(ctx: dict[str, Any]) -> None:
@@ -118,7 +116,7 @@ async def shutdown(ctx: dict[str, Any]) -> None:
 # Import job functions — these are registered after definition
 # to avoid circular imports at module level
 async def _check_trip_eta(ctx: dict[str, Any], trip_id: str) -> None:
-    """Check ETA for a single trip via Google Routes API."""
+    """Check ETA for a single trip via Apple MapKit Server API."""
     from app.services.traffic_checker import check_trip_eta
 
     await check_trip_eta(ctx, trip_id)

@@ -42,8 +42,8 @@ async def check_rate_limit(
 
     Raises RateLimitExceeded if either limit is hit.
     """
-    global_key = "ratelimit:google:global"
-    user_key = f"ratelimit:google:user:{user_id}"
+    global_key = "ratelimit:mapkit:global"
+    user_key = f"ratelimit:mapkit:user:{user_id}"
 
     # Check global limit
     global_count = await redis.eval(
@@ -68,7 +68,7 @@ async def check_rate_limit(
 
 async def increment_cost_counter(
     redis: aioredis.Redis,
-    provider: str = "google",
+    provider: str = "apple_mapkit",
 ) -> None:
     """Track API call counts for cost monitoring."""
     from datetime import datetime, timezone

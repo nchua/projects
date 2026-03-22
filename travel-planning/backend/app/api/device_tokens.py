@@ -24,7 +24,7 @@ async def register_device_token(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> DeviceTokenResponse:
-    """Register or upsert an FCM device token.
+    """Register or upsert an APNs device token.
 
     If the token already exists for this user, reactivates it.
     If it exists for a different user, reassigns it to the current user.

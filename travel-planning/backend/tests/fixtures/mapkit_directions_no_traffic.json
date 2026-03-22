@@ -1,0 +1,11 @@
+{
+  "routes": [
+    {
+      "distanceMeters": 50000,
+      "expectedTravelTime": 1800,
+      "staticTravelTime": 1800,
+      "name": "I-280 S",
+      "transportType": "Automobile"
+    }
+  ]
+}

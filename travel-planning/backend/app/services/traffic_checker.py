@@ -1,6 +1,6 @@
 """Traffic checker — the check_trip_eta ARQ job.
 
-Loads a trip, checks the Redis ETA cache, calls the Google Routes API
+Loads a trip, checks the Redis ETA cache, calls the Apple MapKit Server API
 if needed, stores an ETA snapshot, and enqueues alert evaluation.
 """
 
@@ -44,7 +44,7 @@ def _cache_key(
 
 
 def _compute_api_departure_time(trip: Trip) -> datetime | None:
-    """Determine the departure time to send to the Google Routes API.
+    """Determine the departure time to send to the MapKit Server API.
 
     Uses the current recommended departure time (notify_at), not 'now'.
     Falls back to current time if notify_at is in the past.
@@ -60,7 +60,7 @@ def _compute_api_departure_time(trip: Trip) -> datetime | None:
         )
 
     if candidate is None:
-        return None  # Let Google use current traffic
+        return None  # Let MapKit use current traffic
 
     if candidate < now:
         return now  # Past notify_at — use current time
@@ -77,7 +77,7 @@ async def check_trip_eta(ctx: dict[str, Any], trip_id: str) -> None:
     Steps:
     1. Load trip from DB
     2. Check Redis ETA cache
-    3. Call Google Routes API (if no cache hit)
+    3. Call Apple MapKit Server API (if no cache hit)
     4. Store ETA snapshot
     5. Update trip record
     6. Enqueue evaluate_alert
@@ -148,11 +148,11 @@ async def check_trip_eta(ctx: dict[str, Any], trip_id: str) -> None:
                 departure_time=departure_time,
             )
         except Exception:
-            logger.exception(f"Google Routes API error for trip {trip_id}")
+            logger.exception(f"MapKit API error for trip {trip_id}")
             raise  # Let ARQ retry
 
         # Track API cost
-        await increment_cost_counter(redis, provider="google")
+        await increment_cost_counter(redis, provider="apple_mapkit")
 
         # Cache the result (TTL: 2 minutes)
         await redis.setex(

@@ -26,15 +26,17 @@ class Settings(BaseSettings):
     apple_team_id: str = ""
     apple_client_id: str = ""
 
-    # Google Routes API
-    google_routes_api_key: str = ""
+    # Apple MapKit Server API
+    apple_mapkit_key_id: str = ""
+    apple_mapkit_private_key: str = ""  # PEM-encoded ES256 private key content
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
 
-    # Firebase
-    firebase_credentials_path: str = ""
-    firebase_credentials_json: str = ""  # Raw JSON string (alternative to path)
+    # APNs (direct push notifications)
+    apns_key_id: str = ""  # Same .p8 key ID as MapKit if using a single key
+    apns_bundle_id: str = "com.depart.app"
+    apns_use_sandbox: bool = True  # False for production
 
     # Worker
     worker_db_pool_size: int = 10

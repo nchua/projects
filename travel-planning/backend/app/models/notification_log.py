@@ -62,7 +62,7 @@ class NotificationLog(Base):
         nullable=False,
         default=DeliveryStatus.pending,
     )
-    fcm_message_id: Mapped[str | None] = mapped_column(
+    apns_id: Mapped[str | None] = mapped_column(
         String(255), nullable=True
     )
 

@@ -1,7 +1,6 @@
 """TomTom Routing API client — fallback traffic provider.
 
-Used when Google Routes API is unavailable or rate-limited.
-Cost: $0.75/1k requests vs Google's $10/1k.
+Used when Apple MapKit Server API is unavailable or rate-limited.
 """
 
 from __future__ import annotations

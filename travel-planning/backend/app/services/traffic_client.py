@@ -1,6 +1,6 @@
 """Traffic client protocol and fallback wrapper.
 
-Defines the TrafficClient protocol that both Google and TomTom
+Defines the TrafficClient protocol that both MapKit and TomTom
 implementations follow, plus a FallbackTrafficClient that switches
 to the secondary provider on failure.
 """
@@ -38,7 +38,7 @@ class TrafficClient(Protocol):
 class FallbackTrafficClient:
     """Traffic client that falls back to a secondary provider on failure.
 
-    Wraps a primary provider (Google) and a fallback (TomTom). If the
+    Wraps a primary provider (MapKit) and a fallback (TomTom). If the
     primary raises RateLimitExceeded or ProviderUnavailable, the fallback
     is used instead.
     """

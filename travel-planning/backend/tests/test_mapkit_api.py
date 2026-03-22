@@ -1,4 +1,4 @@
-"""Unit tests for Google Routes API client."""
+"""Unit tests for Apple MapKit Server API client."""
 
 from __future__ import annotations
 
@@ -13,14 +13,12 @@ import os
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost/test")
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
 
-# Install deps if needed
 from app.models.enums import CongestionLevel  # noqa: E402
 from app.schemas.eta import EtaResult  # noqa: E402
-from app.services.google_routes import (  # noqa: E402
-    GoogleRoutesError,
-    parse_duration,
-    parse_routes_response,
-    validate_routes_response,
+from app.services.mapkit_api import (  # noqa: E402
+    MapKitError,
+    parse_directions_response,
+    validate_directions_response,
 )
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -31,92 +29,66 @@ def _load_fixture(name: str) -> dict:
         return json.load(f)
 
 
-# --- parse_duration ---
+# --- validate_directions_response ---
 
 
-class TestParseDuration:
-    def test_normal_duration(self) -> None:
-        assert parse_duration("2580s") == 2580
-
-    def test_short_duration(self) -> None:
-        assert parse_duration("60s") == 60
-
-    def test_long_duration(self) -> None:
-        assert parse_duration("86400s") == 86400
-
-    def test_invalid_format_raises(self) -> None:
-        with pytest.raises(ValueError):
-            parse_duration("25 minutes")
-
-    def test_empty_string_raises(self) -> None:
-        with pytest.raises(ValueError):
-            parse_duration("")
-
-    def test_no_s_suffix_raises(self) -> None:
-        with pytest.raises(ValueError):
-            parse_duration("2580")
-
-
-# --- validate_routes_response ---
-
-
-class TestValidateRoutesResponse:
+class TestValidateDirectionsResponse:
     def test_normal_response_valid(self) -> None:
-        data = _load_fixture("google_routes_normal.json")
-        assert validate_routes_response(data) is True
+        data = _load_fixture("mapkit_directions_normal.json")
+        assert validate_directions_response(data) is True
 
     def test_heavy_traffic_valid(self) -> None:
-        data = _load_fixture("google_routes_heavy_traffic.json")
-        assert validate_routes_response(data) is True
+        data = _load_fixture("mapkit_directions_heavy_traffic.json")
+        assert validate_directions_response(data) is True
 
     def test_no_traffic_valid(self) -> None:
-        data = _load_fixture("google_routes_no_traffic.json")
-        assert validate_routes_response(data) is True
+        data = _load_fixture("mapkit_directions_no_traffic.json")
+        assert validate_directions_response(data) is True
 
     def test_empty_routes_raises(self) -> None:
-        data = _load_fixture("google_routes_empty.json")
-        with pytest.raises(GoogleRoutesError, match="No routes"):
-            validate_routes_response(data)
+        data = _load_fixture("mapkit_directions_empty.json")
+        with pytest.raises(MapKitError, match="No routes"):
+            validate_directions_response(data)
 
     def test_missing_routes_key_raises(self) -> None:
-        with pytest.raises(GoogleRoutesError, match="No routes"):
-            validate_routes_response({"error": "something"})
+        with pytest.raises(MapKitError, match="No routes"):
+            validate_directions_response({"error": "something"})
 
-    def test_missing_duration_raises(self) -> None:
+    def test_missing_travel_time_raises(self) -> None:
         data = {"routes": [{"distanceMeters": 1000}]}
-        with pytest.raises(GoogleRoutesError, match="Missing duration"):
-            validate_routes_response(data)
+        with pytest.raises(MapKitError, match="Missing expectedTravelTime"):
+            validate_directions_response(data)
 
     def test_duration_too_short_raises(self) -> None:
-        data = {"routes": [{"duration": "30s", "staticDuration": "30s"}]}
-        with pytest.raises(GoogleRoutesError, match="outside valid range"):
-            validate_routes_response(data)
+        data = {"routes": [{"expectedTravelTime": 30, "staticTravelTime": 30}]}
+        with pytest.raises(MapKitError, match="outside valid range"):
+            validate_directions_response(data)
 
     def test_duration_too_long_raises(self) -> None:
-        data = {"routes": [{"duration": "100000s", "staticDuration": "100000s"}]}
-        with pytest.raises(GoogleRoutesError, match="outside valid range"):
-            validate_routes_response(data)
+        data = {"routes": [{"expectedTravelTime": 100000, "staticTravelTime": 100000}]}
+        with pytest.raises(MapKitError, match="outside valid range"):
+            validate_directions_response(data)
 
     def test_extreme_traffic_ratio_raises(self) -> None:
         # 6x static — should fail sanity check
-        data = {"routes": [{"duration": "12000s", "staticDuration": "2000s"}]}
-        with pytest.raises(GoogleRoutesError, match="sanity range"):
-            validate_routes_response(data)
+        data = {"routes": [{"expectedTravelTime": 12000, "staticTravelTime": 2000}]}
+        with pytest.raises(MapKitError, match="sanity range"):
+            validate_directions_response(data)
 
     def test_unrealistically_low_traffic_raises(self) -> None:
         # 40% of static — should fail
-        data = {"routes": [{"duration": "400s", "staticDuration": "1000s"}]}
-        with pytest.raises(GoogleRoutesError, match="sanity range"):
-            validate_routes_response(data)
+        data = {"routes": [{"expectedTravelTime": 400, "staticTravelTime": 1000}]}
+        with pytest.raises(MapKitError, match="sanity range"):
+            validate_directions_response(data)
 
 
-# --- parse_routes_response ---
+# --- parse_directions_response ---
 
 
-class TestParseRoutesResponse:
+class TestParseDirectionsResponse:
     def test_normal_traffic(self) -> None:
-        data = _load_fixture("google_routes_normal.json")
-        result = parse_routes_response(data)
+        data = _load_fixture("mapkit_directions_normal.json")
+        result = parse_directions_response(data)
 
         assert result.duration_seconds == 2100
         assert result.duration_in_traffic_seconds == 2580
@@ -126,8 +98,8 @@ class TestParseRoutesResponse:
         assert 1.2 < result.traffic_ratio < 1.3
 
     def test_heavy_traffic(self) -> None:
-        data = _load_fixture("google_routes_heavy_traffic.json")
-        result = parse_routes_response(data)
+        data = _load_fixture("mapkit_directions_heavy_traffic.json")
+        result = parse_directions_response(data)
 
         assert result.duration_seconds == 2100
         assert result.duration_in_traffic_seconds == 4200
@@ -136,8 +108,8 @@ class TestParseRoutesResponse:
         assert result.traffic_ratio == 2.0
 
     def test_no_traffic(self) -> None:
-        data = _load_fixture("google_routes_no_traffic.json")
-        result = parse_routes_response(data)
+        data = _load_fixture("mapkit_directions_no_traffic.json")
+        result = parse_directions_response(data)
 
         assert result.duration_seconds == 1800
         assert result.duration_in_traffic_seconds == 1800
@@ -146,23 +118,23 @@ class TestParseRoutesResponse:
         assert result.congestion_level == CongestionLevel.light
         assert result.traffic_ratio == 1.0
 
-    def test_missing_static_duration_uses_duration(self) -> None:
-        data = {"routes": [{"duration": "1800s", "distanceMeters": 50000}]}
-        result = parse_routes_response(data)
+    def test_missing_static_uses_travel_time(self) -> None:
+        data = {"routes": [{"expectedTravelTime": 1800, "distanceMeters": 50000}]}
+        result = parse_directions_response(data)
 
-        # When staticDuration is missing, duration is used for both
+        # When staticTravelTime is missing, expectedTravelTime is used for both
         assert result.duration_seconds == 1800
         assert result.duration_in_traffic_seconds == 1800
         assert result.traffic_ratio == 1.0
 
     def test_empty_routes_raises(self) -> None:
-        data = _load_fixture("google_routes_empty.json")
-        with pytest.raises(GoogleRoutesError):
-            parse_routes_response(data)
+        data = _load_fixture("mapkit_directions_empty.json")
+        with pytest.raises(MapKitError):
+            parse_directions_response(data)
 
     def test_missing_distance_defaults_to_zero(self) -> None:
-        data = {"routes": [{"duration": "1800s", "staticDuration": "1800s"}]}
-        result = parse_routes_response(data)
+        data = {"routes": [{"expectedTravelTime": 1800, "staticTravelTime": 1800}]}
+        result = parse_directions_response(data)
         assert result.distance_meters == 0
 
 
@@ -171,8 +143,8 @@ class TestParseRoutesResponse:
 
 class TestEtaResultCaching:
     def test_round_trip_cache(self) -> None:
-        data = _load_fixture("google_routes_normal.json")
-        original = parse_routes_response(data)
+        data = _load_fixture("mapkit_directions_normal.json")
+        original = parse_directions_response(data)
 
         cache_dict = original.to_cache_dict()
         restored = type(original).from_cache(cache_dict)
@@ -187,8 +159,8 @@ class TestEtaResultCaching:
         assert restored.traffic_ratio == original.traffic_ratio
 
     def test_cache_dict_has_checked_at(self) -> None:
-        data = _load_fixture("google_routes_normal.json")
-        result = parse_routes_response(data)
+        data = _load_fixture("mapkit_directions_normal.json")
+        result = parse_directions_response(data)
         cache_dict = result.to_cache_dict()
         assert "checked_at" in cache_dict
 

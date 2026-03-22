@@ -12,21 +12,21 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_register_device_token(client, test_user) -> None:
-    """POST /api/v1/device-tokens registers a new FCM token."""
+    """POST /api/v1/device-tokens registers a new APNs device token."""
     resp = await client.post(
         "/api/v1/device-tokens",
-        json={"token": "fcm-test-token-abc123", "platform": "ios"},
+        json={"token": "fake-device-token-for-testing", "platform": "ios"},
     )
     assert resp.status_code == 201
     data = resp.json()
-    assert data["token"] == "fcm-test-token-abc123"
+    assert data["token"] == "fake-device-token-for-testing"
     assert data["is_active"] is True
 
 
 @pytest.mark.asyncio
 async def test_register_device_token_upsert(client, test_user) -> None:
     """Registering the same token twice upserts (no duplicate error)."""
-    payload = {"token": "fcm-token-upsert", "platform": "ios"}
+    payload = {"token": "apns-token-upsert", "platform": "ios"}
     resp1 = await client.post("/api/v1/device-tokens", json=payload)
     assert resp1.status_code == 201
 
@@ -45,13 +45,13 @@ async def test_delete_device_token(client, test_user) -> None:
     # Register first
     await client.post(
         "/api/v1/device-tokens",
-        json={"token": "fcm-token-to-delete", "platform": "ios"},
+        json={"token": "apns-token-to-delete", "platform": "ios"},
     )
 
     # Delete
     resp = await client.request(
         "DELETE",
         "/api/v1/device-tokens",
-        json={"token": "fcm-token-to-delete"},
+        json={"token": "apns-token-to-delete"},
     )
     assert resp.status_code == 204

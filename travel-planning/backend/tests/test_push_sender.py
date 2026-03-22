@@ -1,4 +1,4 @@
-"""Unit tests for push notification sender — content building and payload."""
+"""Unit tests for push notification sender — content building and APNs payload."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from freezegun import freeze_time
 
 from app.services.push_sender import (
     TIER_APNS_CONFIG,
-    build_fcm_payload,
+    build_apns_payload,
     build_notification,
 )
 
@@ -144,14 +144,13 @@ class TestBuildNotification:
         assert "The Mill" in title  # Falls back to dest_address
 
 
-class TestBuildFcmPayload:
+class TestBuildApnsPayload:
     @freeze_time("2026-03-22T17:00:00Z")
     def test_payload_structure(self) -> None:
         trip = _make_trip()
         departure = datetime(2026, 3, 22, 17, 23, tzinfo=timezone.utc)
 
-        payload = build_fcm_payload(
-            token="fake-device-fcm-placeholder",
+        payload = build_apns_payload(
             trip=trip,
             tier="leave_soon",
             title="Leave soon for Brunch",
@@ -159,22 +158,19 @@ class TestBuildFcmPayload:
             departure_time=departure,
         )
 
-        assert payload["token"] == "fake-device-fcm-placeholder"
-        assert payload["title"] == "Leave soon for Brunch"
+        assert "aps" in payload
         assert "data" in payload
         assert payload["data"]["trip_id"] == "test-trip-id"
         assert payload["data"]["tier"] == "leave_soon"
         assert "deep_link" in payload["data"]
-        assert "apns" in payload
-        assert payload["apns"]["headers"]["apns-priority"] == "10"
+        assert payload["headers"]["apns-priority"] == "10"
 
     @freeze_time("2026-03-22T17:00:00Z")
     def test_silent_payload(self) -> None:
         trip = _make_trip()
         departure = datetime(2026, 3, 22, 17, 23, tzinfo=timezone.utc)
 
-        payload = build_fcm_payload(
-            token="fake-device-fcm-placeholder",
+        payload = build_apns_payload(
             trip=trip,
             tier="heads_up",
             title="Title",
@@ -183,10 +179,10 @@ class TestBuildFcmPayload:
             silent=True,
         )
 
-        aps = payload["apns"]["payload"]["aps"]
+        aps = payload["aps"]
         assert aps.get("content-available") == 1
         assert "alert" not in aps
-        assert payload["apns"]["headers"]["apns-push-type"] == "background"
+        assert payload["headers"]["apns-push-type"] == "background"
 
     @freeze_time("2026-03-22T17:00:00Z")
     def test_per_tier_priority(self) -> None:
@@ -194,19 +190,19 @@ class TestBuildFcmPayload:
         departure = datetime(2026, 3, 22, 17, 23, tzinfo=timezone.utc)
 
         for tier, config in TIER_APNS_CONFIG.items():
-            payload = build_fcm_payload(
-                token="fcm-placeholder", trip=trip, tier=tier,
+            payload = build_apns_payload(
+                trip=trip, tier=tier,
                 title="T", body="B", departure_time=departure,
             )
-            assert payload["apns"]["headers"]["apns-priority"] == config["priority"]
+            assert payload["headers"]["apns-priority"] == config["priority"]
 
     @freeze_time("2026-03-22T17:00:00Z")
     def test_data_payload_has_all_fields(self) -> None:
         trip = _make_trip()
         departure = datetime(2026, 3, 22, 17, 23, tzinfo=timezone.utc)
 
-        payload = build_fcm_payload(
-            token="fcm-placeholder", trip=trip, tier="prepare",
+        payload = build_apns_payload(
+            trip=trip, tier="prepare",
             title="T", body="B", departure_time=departure,
         )
 

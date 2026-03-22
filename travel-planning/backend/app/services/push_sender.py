@@ -1,7 +1,8 @@
-"""Push notification sender — builds and dispatches FCM messages.
+"""Push notification sender — builds and dispatches APNs messages directly.
 
 Handles notification content generation for all 5 tiers, per-tier APNs
 configuration, multi-device delivery, and notification logging.
+Uses aioapns for direct Apple Push Notification service delivery.
 """
 
 from __future__ import annotations
@@ -150,8 +151,7 @@ def build_notification(
     return title, body
 
 
-def build_fcm_payload(
-    token: str,
+def build_apns_payload(
     trip: Trip,
     tier: str,
     title: str,
@@ -159,10 +159,13 @@ def build_fcm_payload(
     departure_time: datetime,
     silent: bool = False,
 ) -> dict[str, Any]:
-    """Build a complete FCM message payload with APNs config."""
+    """Build a complete APNs payload dict for direct delivery.
+
+    Returns the full payload that goes inside the APNs notification body.
+    """
     apns_config = TIER_APNS_CONFIG.get(tier, TIER_APNS_CONFIG["prepare"])
 
-    # Data payload (always delivered, even for silent pushes)
+    # Custom data (delivered alongside the notification)
     data_payload = {
         "trip_id": str(trip.id),
         "tier": tier,
@@ -193,16 +196,12 @@ def build_fcm_payload(
         aps["alert"] = {"title": title, "body": body}
 
     return {
-        "token": token,
-        "title": title,
-        "body": body,
+        "aps": aps,
         "data": data_payload,
-        "apns": {
-            "headers": {
-                "apns-priority": apns_config["priority"],
-                "apns-push-type": "alert" if not silent else "background",
-            },
-            "payload": {"aps": aps},
+        "headers": {
+            "apns-priority": apns_config["priority"],
+            "apns-push-type": "alert" if not silent else "background",
+            "apns-topic": "",  # Filled in at send time from config
         },
     }
 
@@ -221,7 +220,7 @@ async def send_push_notification(
     1. Load trip + user
     2. Build notification content
     3. Fetch device tokens
-    4. Send via FCM
+    4. Send via APNs (direct)
     5. Log the notification
     6. Update trip status for leave_now/running_late
     """
@@ -268,69 +267,57 @@ async def send_push_notification(
         return
 
     results = []
-    fcm_message_id = None
+    apns_id = None
     stale_token_ids: list[UUID] = []
 
-    try:
-        from firebase_admin import messaging
+    apns_client = ctx.get("apns_client")
+    if apns_client is None:
+        logger.warning("APNs client not configured — skipping push send")
+        results.append({"success": False, "error": "APNs not configured"})
+    else:
+        from aioapns import NotificationRequest
+
+        payload = build_apns_payload(
+            trip=trip,
+            tier=tier,
+            title=title,
+            body=body,
+            departure_time=departure_time,
+            silent=silent,
+        )
+
+        # Build the APNs notification body (aps + custom data)
+        notification_body = {"aps": payload["aps"], **payload["data"]}
 
         for device_token in tokens:
-            payload = build_fcm_payload(
-                token=device_token.token,
-                trip=trip,
-                tier=tier,
-                title=title,
-                body=body,
-                departure_time=departure_time,
-                silent=silent,
-            )
-
-            message = messaging.Message(
-                token=device_token.token,
-                notification=messaging.Notification(
-                    title=title, body=body
-                )
-                if not silent
-                else None,
-                data=payload["data"],
-                apns=messaging.APNSConfig(
-                    headers=payload["apns"]["headers"],
-                    payload=messaging.APNSPayload(
-                        aps=messaging.Aps(
-                            badge=1,
-                            sound=payload["apns"]["payload"]["aps"].get(
-                                "sound"
-                            ),
-                            category="TRIP_ALERT",
-                            thread_id=f"trip-{trip.id}",
-                            mutable_content=True,
-                            content_available=silent,
-                        )
-                    ),
-                ),
+            request = NotificationRequest(
+                device_token=device_token.token,
+                message=notification_body,
+                priority=int(payload["headers"]["apns-priority"]),
+                push_type=payload["headers"]["apns-push-type"],
             )
 
             try:
-                response = messaging.send(message)
-                fcm_message_id = response
-                results.append({"success": True, "id": response})
-            except messaging.UnregisteredError:
-                logger.info(
-                    f"Token {device_token.token[:20]}... stale"
-                )
-                stale_token_ids.append(device_token.id)
-            except messaging.QuotaExceededError:
-                from arq import Retry
-
-                raise Retry(defer=30)
+                response = await apns_client.send_notification(request)
+                if response.is_successful:
+                    apns_id = response.notification_id
+                    results.append({"success": True, "id": apns_id})
+                elif response.description == "Unregistered":
+                    logger.info(
+                        f"Token {device_token.token[:20]}... stale"
+                    )
+                    stale_token_ids.append(device_token.id)
+                else:
+                    logger.error(
+                        f"APNs error: {response.status} {response.description}"
+                    )
+                    results.append({
+                        "success": False,
+                        "error": response.description,
+                    })
             except Exception as e:
-                logger.error(f"FCM send error: {e}")
+                logger.error(f"APNs send error: {e}")
                 results.append({"success": False, "error": str(e)})
-    except ImportError:
-        logger.warning(
-            "Firebase Admin SDK not available — skipping FCM send"
-        )
-        results.append({"success": False, "error": "Firebase not configured"})
 
     # Batch-deactivate stale tokens
     if stale_token_ids:
@@ -360,7 +347,7 @@ async def send_push_notification(
             eta_at_send_seconds=trip.last_eta_seconds,
             recommended_departure=departure_time,
             delivery_status=delivery_status,
-            fcm_message_id=fcm_message_id,
+            apns_id=apns_id,
         )
         session.add(log_entry)
 
