@@ -17,6 +17,7 @@ final class NavigationRouter {
     enum Tab: Int, CaseIterable {
         case home = 0
         case calendar
+        case alerts
         case settings
     }
 

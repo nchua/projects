@@ -1,6 +1,11 @@
 import UIKit
 import UserNotifications
 
+#if canImport(FirebaseCore)
+import FirebaseCore
+import FirebaseMessaging
+#endif
+
 /// UIApplicationDelegate for push notification registration, background tasks,
 /// and UNUserNotificationCenter delegation.
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
@@ -18,7 +23,14 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         // 3. Register for remote notifications
         application.registerForRemoteNotifications()
 
-        // Phase C TODO: FirebaseApp.configure() and Messaging.messaging().delegate setup
+        // 4. Configure Firebase (requires GoogleService-Info.plist + firebase-ios-sdk)
+        #if canImport(FirebaseCore)
+        FirebaseApp.configure()
+        Messaging.messaging().delegate = self
+        #endif
+
+        // 5. Register background task for ETA monitoring
+        TripMonitor.shared.registerBackgroundTask()
 
         return true
     }
@@ -29,19 +41,17 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         _ application: UIApplication,
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
     ) {
-        // Phase C TODO: Forward APNs token to Firebase Messaging:
-        //   Messaging.messaging().apnsToken = deviceToken
-        // Then use FCM token (Messaging.messaging().token()) to register with backend.
-        //
-        // For now, log the raw APNs token:
+        #if canImport(FirebaseMessaging)
+        // Forward APNs token to Firebase, which will call MessagingDelegate
+        Messaging.messaging().apnsToken = deviceToken
+        #else
+        // Without Firebase, register raw APNs token with backend
         let tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
         print("[AppDelegate] APNs device token: \(tokenString.prefix(20))...")
-
-        // Register with backend using the APNs token as a placeholder
-        // (will switch to FCM token in Phase C when Firebase is integrated)
         Task {
             try? await APIClient.shared.registerDeviceToken(tokenString)
         }
+        #endif
     }
 
     func application(
@@ -145,6 +155,20 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         }
     }
 }
+
+// MARK: - Firebase Messaging Delegate
+
+#if canImport(FirebaseMessaging)
+extension AppDelegate: MessagingDelegate {
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        guard let fcmToken else { return }
+        print("[AppDelegate] FCM token: \(fcmToken.prefix(20))...")
+        Task {
+            try? await APIClient.shared.registerDeviceToken(fcmToken)
+        }
+    }
+}
+#endif
 
 extension Notification.Name {
     static let handleDeepLink = Notification.Name("com.depart.handleDeepLink")

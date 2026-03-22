@@ -168,7 +168,7 @@ final class NotificationManager {
         case Self.departedAction:
             Task {
                 let update = UpdateTripRequest(status: "departed")
-                let _ = try? await apiClient.updateTrip(tripId: tripId, update)
+                _ = try? await apiClient.updateTrip(tripId: tripId, update)
                 cancelNotifications(for: tripId)
             }
 
@@ -205,7 +205,7 @@ final class NotificationManager {
             let detail = try await apiClient.fetchTripDetail(tripId: tripId)
             let newArrival = detail.arrivalTime.addingTimeInterval(5 * 60)
             let update = UpdateTripRequest(arrivalTime: newArrival)
-            let _ = try await apiClient.updateTrip(tripId: tripId, update)
+            _ = try await apiClient.updateTrip(tripId: tripId, update)
         } catch {
             print("[NotificationManager] Snooze failed: \(error)")
         }

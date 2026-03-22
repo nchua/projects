@@ -104,7 +104,7 @@ final class AddTripViewModel {
         )
 
         do {
-            let _ = try await apiClient?.createTrip(request)
+            _ = try await apiClient?.createTrip(request)
             isSaving = false
             return true
         } catch {

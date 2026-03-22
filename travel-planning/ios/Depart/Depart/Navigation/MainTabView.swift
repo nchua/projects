@@ -24,61 +24,38 @@ struct MainTabView: View {
 
             // Calendar Tab
             NavigationStack(path: $router.calendarPath) {
-                CalendarTabPlaceholder()
+                CalendarView()
             }
             .tabItem {
                 Label("Calendar", systemImage: "calendar")
             }
             .tag(NavigationRouter.Tab.calendar)
 
+            // Alerts Tab
+            NavigationStack {
+                AlertsView()
+                    .navigationDestination(for: DeepLinkDestination.self) { destination in
+                        switch destination {
+                        case .tripDetail(let tripId):
+                            TripDetailView(tripId: tripId)
+                        default:
+                            EmptyView()
+                        }
+                    }
+            }
+            .tabItem {
+                Label("Alerts", systemImage: "bell.fill")
+            }
+            .tag(NavigationRouter.Tab.alerts)
+
             // Settings Tab
             NavigationStack {
-                SettingsTabPlaceholder()
+                SettingsView()
             }
             .tabItem {
                 Label("Settings", systemImage: "gearshape.fill")
             }
             .tag(NavigationRouter.Tab.settings)
         }
-    }
-}
-
-// MARK: - Placeholder Views (replaced in Phase B+)
-
-private struct HomeTabPlaceholder: View {
-    var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "car.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
-            Text("Depart")
-                .font(.largeTitle.bold())
-            Text("No upcoming trips")
-                .foregroundStyle(.secondary)
-        }
-        .navigationTitle("Home")
-    }
-}
-
-private struct CalendarTabPlaceholder: View {
-    var body: some View {
-        Text("Calendar")
-            .navigationTitle("Calendar")
-    }
-}
-
-private struct SettingsTabPlaceholder: View {
-    var body: some View {
-        Text("Settings")
-            .navigationTitle("Settings")
-    }
-}
-
-private struct TripDetailPlaceholder: View {
-    let tripId: UUID
-
-    var body: some View {
-        Text("Trip Detail: \(tripId.uuidString.prefix(8))")
-            .navigationTitle("Trip Detail")
     }
 }

@@ -58,6 +58,8 @@ enum Endpoint {
     // Saved Locations
     case savedLocations
     case savedLocation(UUID)
+    case updateSavedLocation(UUID)
+    case deleteSavedLocation(UUID)
 
     // Device Tokens
     case registerDeviceToken
@@ -75,7 +77,8 @@ enum Endpoint {
         case .tripDetail(let id), .updateTrip(let id): return "/trips/\(id)"
         case .deleteTrip(let id): return "/trips/\(id)"
         case .savedLocations: return "/locations"
-        case .savedLocation(let id): return "/locations/\(id)"
+        case .savedLocation(let id), .updateSavedLocation(let id), .deleteSavedLocation(let id):
+            return "/locations/\(id)"
         case .registerDeviceToken, .unregisterDeviceToken: return "/device-tokens"
         }
     }
@@ -88,9 +91,9 @@ enum Endpoint {
         case .userProfile, .trips, .upcomingTrips, .tripDetail,
              .savedLocations, .savedLocation:
             return .get
-        case .updateTrip, .savedLocation: return .put
+        case .updateTrip, .updateSavedLocation: return .put
         case .updateProfile: return .patch
-        case .deleteTrip, .unregisterDeviceToken: return .delete
+        case .deleteTrip, .deleteSavedLocation, .unregisterDeviceToken: return .delete
         }
     }
 
@@ -398,11 +401,11 @@ final class APIClient {
     }
 
     func updateSavedLocation(locationId: UUID, _ update: UpdateSavedLocationRequest) async throws -> SavedLocation {
-        try await request(.savedLocation(locationId), body: update)
+        try await request(.updateSavedLocation(locationId), body: update)
     }
 
     func deleteSavedLocation(locationId: UUID) async throws {
-        try await requestNoContent(.savedLocation(locationId))
+        try await requestNoContent(.deleteSavedLocation(locationId))
     }
 
     // Device Tokens

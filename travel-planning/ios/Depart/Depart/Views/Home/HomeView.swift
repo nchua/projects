@@ -1,3 +1,4 @@
+import MapKit
 import SwiftUI
 
 /// Main home dashboard with hero card, trip sections, and FAB.
@@ -112,6 +113,25 @@ struct HomeView: View {
                             Label("Delete", systemImage: "trash")
                         }
                     }
+                    .contextMenu {
+                        Button {
+                            openInMaps(trip)
+                        } label: {
+                            Label("Navigate", systemImage: "map.fill")
+                        }
+                        Button {
+                            Task { await viewModel.snoozeTrip(trip) }
+                            HapticManager.light()
+                        } label: {
+                            Label("Snooze 10 min", systemImage: "clock.arrow.circlepath")
+                        }
+                        Divider()
+                        Button(role: .destructive) {
+                            Task { await viewModel.deleteTrip(trip) }
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
 
                     if trip.id != trips.last?.id {
                         Divider()
@@ -130,5 +150,15 @@ struct HomeView: View {
         } catch {
             print("[HomeView] Failed to load saved locations: \(error)")
         }
+    }
+
+    private func openInMaps(_ trip: Trip) {
+        let coordinate = CLLocationCoordinate2D(latitude: trip.destLat, longitude: trip.destLng)
+        let placemark = MKPlacemark(coordinate: coordinate)
+        let mapItem = MKMapItem(placemark: placemark)
+        mapItem.name = trip.destAddress
+        mapItem.openInMaps(launchOptions: [
+            MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving,
+        ])
     }
 }

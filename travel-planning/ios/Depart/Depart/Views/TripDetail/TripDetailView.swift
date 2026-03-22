@@ -131,6 +131,7 @@ struct TripDetailView: View {
         VStack(spacing: 10) {
             // Open in Maps
             Button {
+                HapticManager.medium()
                 viewModel.openInMaps()
             } label: {
                 Label("Open in Maps", systemImage: "map.fill")
@@ -145,6 +146,7 @@ struct TripDetailView: View {
             HStack(spacing: 10) {
                 // Snooze
                 Button {
+                    HapticManager.light()
                     Task { await viewModel.snoozeTenMinutes() }
                 } label: {
                     Label("Snooze 10 min", systemImage: "clock.arrow.circlepath")
@@ -157,6 +159,7 @@ struct TripDetailView: View {
 
                 // I've Left
                 Button {
+                    HapticManager.heavy()
                     Task {
                         await viewModel.markDeparted()
                         dismiss()

@@ -42,7 +42,6 @@ final class HomeViewModel {
 
     private func groupTrips(_ trips: [Trip]) {
         let calendar = Calendar.current
-        let now = Date()
 
         // Sort by notify_at (departure time) or arrival_time
         let sorted = trips
@@ -65,6 +64,19 @@ final class HomeViewModel {
     func deleteTrip(_ trip: Trip) async {
         do {
             try await apiClient?.deleteTrip(tripId: trip.id)
+            await loadTrips()
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    func snoozeTrip(_ trip: Trip) async {
+        do {
+            _ = try await apiClient?.snoozeTrip(
+                tripId: trip.id,
+                minutes: 10,
+                currentArrivalTime: trip.arrivalTime
+            )
             await loadTrips()
         } catch {
             self.error = error.localizedDescription

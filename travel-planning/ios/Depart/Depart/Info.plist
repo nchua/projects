@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Background Modes -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+		<string>processing</string>
+	</array>
+
+	<!-- Background Task Identifiers -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.depart.trip-eta-refresh</string>
+	</array>
+
+	<!-- Location Usage -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Depart uses your location to calculate accurate travel times from where you are.</string>
+
+	<!-- Calendar Usage (iOS 17+) -->
+	<key>NSCalendarsUsageDescription</key>
+	<string>Depart imports your calendar events to auto-create monitored trips.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Depart imports your calendar events to auto-create monitored trips.</string>
+
+	<!-- Notifications -->
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>Depart sends timely alerts when it's time to leave for your trips.</string>
+</dict>
+</plist>
