@@ -1,0 +1,677 @@
+{
+  "timestamp": "20260322_223037",
+  "fixture_count": 23,
+  "metrics": {
+    "triage_accuracy": 1.0,
+    "triage_precision": 1.0,
+    "triage_recall": 1.0,
+    "extraction_precision": 0,
+    "extraction_recall": 0,
+    "false_positive_rate": 0,
+    "total_cost": 0.011527200000000001,
+    "all_thresholds_met": false
+  },
+  "results": [
+    {
+      "fixture_id": "commit_01",
+      "source": "gmail",
+      "subject": "Re: Q2 investor deck",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Sarah is directly requesting that Nick send the updated investor deck with specific components by end of day Friday.",
+      "expected_count": 1,
+      "extracted_count": 0,
+      "expected_items": [
+        {
+          "title": "Send updated investor deck to Sarah",
+          "people": [
+            "Sarah"
+          ],
+          "deadline": "Friday",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": "Error code: 404 - {'type': 'error', 'error': {'type': 'not_found_error', 'message': 'model: claude-sonnet-4-6-20250514'}, 'request_id': 'req_011CZJuiBoSrDPTLEt4Q2oCs'}",
+      "triage_cost": 0.0004752,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "commit_02",
+      "source": "gmail",
+      "subject": "Follow up: design review feedback",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Alex is making three direct requests to Nick (update colors, share Figma link, write changelog summary) with a Wednesday deadline.",
+      "expected_count": 3,
+      "extracted_count": 0,
+      "expected_items": [
+        {
+          "title": "Update color palette per brand guidelines",
+          "people": [
+            "Alex"
+          ],
+          "deadline": "Wednesday",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Share Figma link with engineering team",
+          "people": [
+            "Alex"
+          ],
+          "deadline": "Wednesday",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Write changelog summary of design changes",
+          "people": [
+            "Alex"
+          ],
+          "deadline": "Wednesday",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": "Error code: 404 - {'type': 'error', 'error': {'type': 'not_found_error', 'message': 'model: claude-sonnet-4-6-20250514'}, 'request_id': 'req_011CZJuiJAS4cVFANm2UGNpi'}",
+      "triage_cost": 0.0005024000000000001,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "commit_03",
+      "source": "gmail",
+      "subject": "Re: Dinner plans",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Mike is asking Nick to check with Lisa about availability and confirm by Thursday, which is a direct request requiring action.",
+      "expected_count": 1,
+      "extracted_count": 0,
+      "expected_items": [
+        {
+          "title": "Check with Lisa about Saturday dinner and reply to Mike",
+          "people": [
+            "Mike",
+            "Lisa"
+          ],
+          "deadline": "Thursday",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": "Error code: 404 - {'type': 'error', 'error': {'type': 'not_found_error', 'message': 'model: claude-sonnet-4-6-20250514'}, 'request_id': 'req_011CZJuiS7fWn5GTCRbV4j8i'}",
+      "triage_cost": 0.0004752,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "commit_04",
+      "source": "gmail",
+      "subject": "Re: Apartment lease renewal",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "The landlord is directly requesting that Nick review the renewal terms and return the signed document by April 15, which are explicit action items with a deadline.",
+      "expected_count": 1,
+      "extracted_count": 0,
+      "expected_items": [
+        {
+          "title": "Review and sign lease renewal",
+          "people": [
+            "landlord"
+          ],
+          "deadline": "April 15",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": "Error code: 404 - {'type': 'error', 'error': {'type': 'not_found_error', 'message': 'model: claude-sonnet-4-6-20250514'}, 'request_id': 'req_011CZJuibjcT8rGwAeaR1a2w'}",
+      "triage_cost": 0.0005032,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "commit_05",
+      "source": "gmail",
+      "subject": "Re: Mentorship session notes",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Nick made commitments to share resources on system design and introduce Jessica to his friend at Stripe, which Jessica is now referencing and expecting him to follow through on.",
+      "expected_count": 2,
+      "extracted_count": 0,
+      "expected_items": [
+        {
+          "title": "Share system design resources with Jessica",
+          "people": [
+            "Jessica"
+          ],
+          "deadline": null,
+          "commitment_type": "you_committed"
+        },
+        {
+          "title": "Introduce Jessica to Stripe contact",
+          "people": [
+            "Jessica"
+          ],
+          "deadline": null,
+          "commitment_type": "you_committed"
+        }
+      ],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": "Error code: 404 - {'type': 'error', 'error': {'type': 'not_found_error', 'message': 'model: claude-sonnet-4-6-20250514'}, 'request_id': 'req_011CZJuiiSgj2Dr3CZi2UXfp'}",
+      "triage_cost": 0.0005144000000000001,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "implicit_01",
+      "source": "gmail",
+      "subject": "Board meeting prep",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Nick is directly assigned to prepare a specific section (engineering velocity and new feature pipeline) for the board meeting with a Monday EOD deadline.",
+      "expected_count": 1,
+      "extracted_count": 0,
+      "expected_items": [
+        {
+          "title": "Prepare engineering velocity and feature pipeline update for board meeting",
+          "people": [
+            "David"
+          ],
+          "deadline": "Monday",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": "Error code: 404 - {'type': 'error', 'error': {'type': 'not_found_error', 'message': 'model: claude-sonnet-4-6-20250514'}, 'request_id': 'req_011CZJuiqUr95DRRCYordSQX'}",
+      "triage_cost": 0.0004896,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "implicit_02",
+      "source": "slack",
+      "subject": "#engineering channel",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Chen is directly requesting Nick's help to investigate a flaky CI pipeline issue ('Could really use a second pair of eyes'), which is an actionable request that requires Nick's response and involvement.",
+      "expected_count": 1,
+      "extracted_count": 0,
+      "expected_items": [
+        {
+          "title": "Look into flaky CI pipeline race condition",
+          "people": [
+            "Chen"
+          ],
+          "deadline": null,
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": "Error code: 404 - {'type': 'error', 'error': {'type': 'not_found_error', 'message': 'model: claude-sonnet-4-6-20250514'}, 'request_id': 'req_011CZJuixuavAuf7x8rcgF6h'}",
+      "triage_cost": 0.0005367999999999999,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "implicit_03",
+      "source": "gmail",
+      "subject": "Quick question about API rate limits",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Ryan is asking Nick a direct question that requires a response and guidance on how to proceed with solving a technical problem.",
+      "expected_count": 1,
+      "extracted_count": 0,
+      "expected_items": [
+        {
+          "title": "Respond to Ryan about API rate limit issue and recommend approach",
+          "people": [
+            "Ryan"
+          ],
+          "deadline": null,
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": "Error code: 404 - {'type': 'error', 'error': {'type': 'not_found_error', 'message': 'model: claude-sonnet-4-6-20250514'}, 'request_id': 'req_011CZJuj5mLVWFwAK1Gdwh1h'}",
+      "triage_cost": 0.0004776,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "implicit_04",
+      "source": "slack",
+      "subject": "DM from product manager",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Nick is being asked to deploy the new onboarding flow to staging by Wednesday night, with a direct request for confirmation ('Let me know if that's doable').",
+      "expected_count": 1,
+      "extracted_count": 0,
+      "expected_items": [
+        {
+          "title": "Deploy onboarding flow to staging before Thursday demo",
+          "people": [
+            "Olivia"
+          ],
+          "deadline": "Wednesday",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": "Error code: 404 - {'type': 'error', 'error': {'type': 'not_found_error', 'message': 'model: claude-sonnet-4-6-20250514'}, 'request_id': 'req_011CZJujDJGRDkEas2JMjwBD'}",
+      "triage_cost": 0.0005128,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "implicit_05",
+      "source": "gmail",
+      "subject": "Fwd: Conference speaker slot",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Nick is directly requested to confirm availability and submit a talk abstract by May 1st for a conference speaking slot.",
+      "expected_count": 1,
+      "extracted_count": 0,
+      "expected_items": [
+        {
+          "title": "Confirm availability and send talk abstract for TechConf",
+          "people": [
+            "TechConf Team"
+          ],
+          "deadline": "May 1",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": "Error code: 404 - {'type': 'error', 'error': {'type': 'not_found_error', 'message': 'model: claude-sonnet-4-6-20250514'}, 'request_id': 'req_011CZJujKDiB3zBGKyBgFYfJ'}",
+      "triage_cost": 0.0004928,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "non_action_01",
+      "source": "gmail",
+      "subject": "Your weekly digest from Medium",
+      "triage_expected": false,
+      "triage_actual": false,
+      "triage_correct": true,
+      "triage_reasoning": "This is a newsletter digest from Medium with curated story recommendations and no direct requests, assignments, or questions requiring a response from Nick.",
+      "expected_count": 0,
+      "extracted_count": 0,
+      "expected_items": [],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0005064000000000001,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "non_action_02",
+      "source": "gmail",
+      "subject": "Your Uber receipt",
+      "triage_expected": false,
+      "triage_actual": false,
+      "triage_correct": true,
+      "triage_reasoning": "This is an automated receipt confirmation from Uber, which is purely informational and requires no action from Nick.",
+      "expected_count": 0,
+      "extracted_count": 0,
+      "expected_items": [],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0004936000000000001,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "non_action_03",
+      "source": "gmail",
+      "subject": "GitHub Actions: Build succeeded",
+      "triage_expected": false,
+      "triage_actual": false,
+      "triage_correct": true,
+      "triage_reasoning": "This is an automated notification that a build succeeded; it is purely informational with no action required from Nick.",
+      "expected_count": 0,
+      "extracted_count": 0,
+      "expected_items": [],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.00047840000000000003,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "non_action_04",
+      "source": "gmail",
+      "subject": "Your order has shipped!",
+      "triage_expected": false,
+      "triage_actual": false,
+      "triage_correct": true,
+      "triage_reasoning": "This is an automated shipping confirmation notification that is purely informational; it requires no action from Nick.",
+      "expected_count": 0,
+      "extracted_count": 0,
+      "expected_items": [],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.00048,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "non_action_05",
+      "source": "slack",
+      "subject": "#general channel",
+      "triage_expected": false,
+      "triage_actual": false,
+      "triage_correct": true,
+      "triage_reasoning": "This is a general announcement about office closure that applies to all employees with no specific action required from Nick.",
+      "expected_count": 0,
+      "extracted_count": 0,
+      "expected_items": [],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0004376,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "github_01",
+      "source": "github",
+      "subject": "PR #42: Add REST API rate limiting",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Chen explicitly requested Nick's review on PR #42, which is a direct actionable item requiring Nick to review the pull request.",
+      "expected_count": 1,
+      "extracted_count": 0,
+      "expected_items": [
+        {
+          "title": "Review PR #42: Add REST API rate limiting",
+          "people": [
+            "Chen"
+          ],
+          "deadline": null,
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": "Error code: 404 - {'type': 'error', 'error': {'type': 'not_found_error', 'message': 'model: claude-sonnet-4-6-20250514'}, 'request_id': 'req_011CZJuk8BDqgVfh2ZcsBimL'}",
+      "triage_cost": 0.0005008,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "github_02",
+      "source": "github",
+      "subject": "Issue #87: Database connection pool exhaustion in production",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Nick was directly assigned to Issue #87, which is a high-severity production incident requiring investigation and resolution.",
+      "expected_count": 1,
+      "extracted_count": 0,
+      "expected_items": [
+        {
+          "title": "Investigate and fix database connection pool exhaustion (Issue #87)",
+          "people": [],
+          "deadline": null,
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": "Error code: 404 - {'type': 'error', 'error': {'type': 'not_found_error', 'message': 'model: claude-sonnet-4-6-20250514'}, 'request_id': 'req_011CZJukEcRQBV9A3MkrPpZz'}",
+      "triage_cost": 0.0004976000000000001,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "github_03",
+      "source": "github",
+      "subject": "CI failed: main branch",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Nick authored the commit that caused the CI failure and needs to fix the failing test before merging to main.",
+      "expected_count": 1,
+      "extracted_count": 0,
+      "expected_items": [
+        {
+          "title": "Fix failing CI on main branch (test_integration)",
+          "people": [],
+          "deadline": null,
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": "Error code: 404 - {'type': 'error', 'error': {'type': 'not_found_error', 'message': 'model: claude-sonnet-4-6-20250514'}, 'request_id': 'req_011CZJukNp3Fawsuw36sq9hV'}",
+      "triage_cost": 0.00048,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "ambiguous_01",
+      "source": "gmail",
+      "subject": "Re: Team offsite planning",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Nick is directly requested to put together a presentation on Q1 wins, and there is also an implicit action item for Nick to fill out the dietary preferences form by Friday.",
+      "expected_count": 2,
+      "extracted_count": 0,
+      "expected_items": [
+        {
+          "title": "Prepare Q1 wins presentation for team offsite",
+          "people": [
+            "Laura"
+          ],
+          "deadline": null,
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Fill out dietary preferences form for offsite",
+          "people": [
+            "Laura"
+          ],
+          "deadline": "Friday",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": "Error code: 404 - {'type': 'error', 'error': {'type': 'not_found_error', 'message': 'model: claude-sonnet-4-6-20250514'}, 'request_id': 'req_011CZJukW5LsUsFFqZimg43B'}",
+      "triage_cost": 0.0005407999999999999,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "ambiguous_02",
+      "source": "gmail",
+      "subject": "Fwd: Meeting notes from product sync",
+      "triage_expected": false,
+      "triage_actual": false,
+      "triage_correct": true,
+      "triage_reasoning": "The sender explicitly states 'No action needed' and the API batch operations question is phrased as a suggestion ('might be worth checking') rather than a direct request to Nick.",
+      "expected_count": 0,
+      "extracted_count": 0,
+      "expected_items": [],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0005616,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "ambiguous_03",
+      "source": "slack",
+      "subject": "DM from CEO",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "The CEO is proposing a meeting ('Let's grab coffee this week') which requires Nick to coordinate timing and confirm availability.",
+      "expected_count": 1,
+      "extracted_count": 0,
+      "expected_items": [
+        {
+          "title": "Schedule coffee with David to discuss fundraise next steps",
+          "people": [
+            "David"
+          ],
+          "deadline": "this week",
+          "commitment_type": "mutual"
+        }
+      ],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": "Error code: 404 - {'type': 'error', 'error': {'type': 'not_found_error', 'message': 'model: claude-sonnet-4-6-20250514'}, 'request_id': 'req_011CZJukjgA8BeYfo3J43o2v'}",
+      "triage_cost": 0.000464,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "multi_01",
+      "source": "gmail",
+      "subject": "Before you leave for vacation",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "The message contains four direct requests from Nick's manager that require completion before his vacation: handing off the API migration, updating documentation, setting status messages, and sending a summary.",
+      "expected_count": 4,
+      "extracted_count": 0,
+      "expected_items": [
+        {
+          "title": "Hand off API migration to Ryan with staging access and walkthrough",
+          "people": [
+            "Karen",
+            "Ryan"
+          ],
+          "deadline": "Thursday",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Update on-call runbook with new alerting thresholds",
+          "people": [
+            "Karen"
+          ],
+          "deadline": "Thursday",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Set Slack status and email auto-responder for PTO",
+          "people": [
+            "Karen"
+          ],
+          "deadline": "Thursday",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Send status summary to Karen before PTO",
+          "people": [
+            "Karen"
+          ],
+          "deadline": "Thursday",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": "Error code: 404 - {'type': 'error', 'error': {'type': 'not_found_error', 'message': 'model: claude-sonnet-4-6-20250514'}, 'request_id': 'req_011CZJuktpKfiF3ygJ16LUUf'}",
+      "triage_cost": 0.0005632,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "multi_02",
+      "source": "gmail",
+      "subject": "Action items from Monday standup",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "The message explicitly lists three action items assigned to Nick: investigate the memory leak, pair with Jessica on OAuth integration, and update the deployment docs.",
+      "expected_count": 3,
+      "extracted_count": 0,
+      "expected_items": [
+        {
+          "title": "Investigate memory leak in worker process",
+          "people": [
+            "Tom"
+          ],
+          "deadline": "Thursday",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Pair with Jessica on OAuth integration",
+          "people": [
+            "Tom",
+            "Jessica"
+          ],
+          "deadline": "Thursday",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Update deployment docs",
+          "people": [
+            "Tom"
+          ],
+          "deadline": "Thursday",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": "Error code: 404 - {'type': 'error', 'error': {'type': 'not_found_error', 'message': 'model: claude-sonnet-4-6-20250514'}, 'request_id': 'req_011CZJum1rVXDqVJLARVYzFf'}",
+      "triage_cost": 0.0005432000000000001,
+      "extraction_cost": 0.0
+    }
+  ]
+}

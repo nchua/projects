@@ -1,0 +1,1022 @@
+{
+  "timestamp": "20260322_223332",
+  "fixture_count": 23,
+  "metrics": {
+    "triage_accuracy": 1.0,
+    "triage_precision": 1.0,
+    "triage_recall": 1.0,
+    "extraction_precision": 0.896551724137931,
+    "extraction_recall": 1.0,
+    "false_positive_rate": 0.10344827586206896,
+    "total_cost": 0.0957262,
+    "all_thresholds_met": true
+  },
+  "results": [
+    {
+      "fixture_id": "commit_01",
+      "source": "gmail",
+      "subject": "Re: Q2 investor deck",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Sarah directly requests that Nick send the updated investor deck with specific content (ARR numbers and product roadmap slide) by end of day Friday.",
+      "expected_count": 1,
+      "extracted_count": 2,
+      "expected_items": [
+        {
+          "title": "Send updated investor deck to Sarah",
+          "people": [
+            "Sarah"
+          ],
+          "deadline": "Friday",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [
+        {
+          "title": "Send updated investor deck to Sarah",
+          "description": "Sarah needs the deck with updated ARR numbers and a revised product roadmap slide, following today's call.",
+          "people": [
+            "Sarah"
+          ],
+          "deadline": "end of day Friday",
+          "confidence": 0.95,
+          "priority": "high",
+          "commitment_type": "mutual"
+        },
+        {
+          "title": "Watch for intro email from Sarah with James from legal",
+          "description": "Sarah is looping in James from legal to review the terms sheet \u2014 Nick should expect an intro email tomorrow and likely follow up with James.",
+          "people": [
+            "Sarah",
+            "James"
+          ],
+          "deadline": "tomorrow",
+          "confidence": 0.75,
+          "priority": "medium",
+          "commitment_type": "fyi"
+        }
+      ],
+      "matched_items": 1,
+      "false_positives": 1,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0005112,
+      "extraction_cost": 0.005391
+    },
+    {
+      "fixture_id": "commit_02",
+      "source": "gmail",
+      "subject": "Follow up: design review feedback",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Alex is making three direct requests to Nick (update colors, share Figma link, write changelog summary) with a Wednesday deadline.",
+      "expected_count": 3,
+      "extracted_count": 3,
+      "expected_items": [
+        {
+          "title": "Update color palette per brand guidelines",
+          "people": [
+            "Alex"
+          ],
+          "deadline": "Wednesday",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Share Figma link with engineering team",
+          "people": [
+            "Alex"
+          ],
+          "deadline": "Wednesday",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Write changelog summary of design changes",
+          "people": [
+            "Alex"
+          ],
+          "deadline": "Wednesday",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [
+        {
+          "title": "Update color palette based on brand guidelines",
+          "description": "Alex has requested the color palette be revised to align with company brand guidelines following the design review.",
+          "people": [
+            "Alex"
+          ],
+          "deadline": "Wednesday",
+          "confidence": 0.95,
+          "priority": "high",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Share Figma link with engineering team",
+          "description": "The engineering team needs access to the Figma file following the design review.",
+          "people": [
+            "Alex",
+            "engineering team"
+          ],
+          "deadline": "Wednesday",
+          "confidence": 0.95,
+          "priority": "high",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Write changelog summary of design changes",
+          "description": "A brief written summary of the design changes is needed for the changelog to document what was updated.",
+          "people": [
+            "Alex"
+          ],
+          "deadline": "Wednesday",
+          "confidence": 0.95,
+          "priority": "high",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "matched_items": 3,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0005024000000000001,
+      "extraction_cost": 0.006513
+    },
+    {
+      "fixture_id": "commit_03",
+      "source": "gmail",
+      "subject": "Re: Dinner plans",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Mike is asking Nick to check with Lisa about her availability and report back by Thursday, which is a direct request requiring Nick's action.",
+      "expected_count": 1,
+      "extracted_count": 2,
+      "expected_items": [
+        {
+          "title": "Check with Lisa about Saturday dinner and reply to Mike",
+          "people": [
+            "Mike",
+            "Lisa"
+          ],
+          "deadline": "Thursday",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [
+        {
+          "title": "Check with Lisa about Saturday dinner availability",
+          "description": "Mike is making a reservation at Nobu for Saturday at 7pm and needs to know if Lisa is free before confirming.",
+          "people": [
+            "Mike",
+            "Lisa"
+          ],
+          "deadline": "Thursday",
+          "confidence": 0.95,
+          "priority": "high",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Remind Mike to bring the book",
+          "description": "Mike asked to be reminded about the book he mentioned in case he forgets to bring it to dinner.",
+          "people": [
+            "Mike"
+          ],
+          "deadline": null,
+          "confidence": 0.85,
+          "priority": "low",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "matched_items": 1,
+      "false_positives": 1,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0004912,
+      "extraction_cost": 0.005271
+    },
+    {
+      "fixture_id": "commit_04",
+      "source": "gmail",
+      "subject": "Re: Apartment lease renewal",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Nick has a direct request to review the lease renewal terms and return the signed document by April 15 deadline.",
+      "expected_count": 1,
+      "extracted_count": 1,
+      "expected_items": [
+        {
+          "title": "Review and sign lease renewal",
+          "people": [
+            "landlord"
+          ],
+          "deadline": "April 15",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [
+        {
+          "title": "Review and sign lease renewal document",
+          "description": "Landlord has sent renewal terms for the lease expiring April 30. Signed document must be returned by April 15.",
+          "people": [
+            "Property Management"
+          ],
+          "deadline": "April 15",
+          "confidence": 0.95,
+          "priority": "high",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "matched_items": 1,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0004712,
+      "extraction_cost": 0.003861
+    },
+    {
+      "fixture_id": "commit_05",
+      "source": "gmail",
+      "subject": "Re: Mentorship session notes",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Nick made commitments to share resources on system design and introduce Jessica to a contact at Stripe, which Jessica is referencing and expecting him to follow through on.",
+      "expected_count": 2,
+      "extracted_count": 2,
+      "expected_items": [
+        {
+          "title": "Share system design resources with Jessica",
+          "people": [
+            "Jessica"
+          ],
+          "deadline": null,
+          "commitment_type": "you_committed"
+        },
+        {
+          "title": "Introduce Jessica to Stripe contact",
+          "people": [
+            "Jessica"
+          ],
+          "deadline": null,
+          "commitment_type": "you_committed"
+        }
+      ],
+      "extracted_items": [
+        {
+          "title": "Share system design resources with Jessica",
+          "description": "Nick mentioned during their mentorship session that he would send over resources on system design.",
+          "people": [
+            "Jessica"
+          ],
+          "deadline": null,
+          "confidence": 0.9,
+          "priority": "medium",
+          "commitment_type": "you_committed"
+        },
+        {
+          "title": "Introduce Jessica to Stripe contact",
+          "description": "Nick committed during the mentorship session to introduce Jessica to his friend who works at Stripe.",
+          "people": [
+            "Jessica"
+          ],
+          "deadline": null,
+          "confidence": 0.9,
+          "priority": "medium",
+          "commitment_type": "you_committed"
+        }
+      ],
+      "matched_items": 2,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0005104,
+      "extraction_cost": 0.004998
+    },
+    {
+      "fixture_id": "implicit_01",
+      "source": "gmail",
+      "subject": "Board meeting prep",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Nick has a direct assignment to prepare a specific section (engineering velocity and new feature pipeline) for the board meeting with a Monday EOD deadline.",
+      "expected_count": 1,
+      "extracted_count": 1,
+      "expected_items": [
+        {
+          "title": "Prepare engineering velocity and feature pipeline update for board meeting",
+          "people": [
+            "David"
+          ],
+          "deadline": "Monday",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [
+        {
+          "title": "Prepare board meeting section on engineering velocity and feature pipeline",
+          "description": "David needs Nick's department update covering engineering velocity and the new feature pipeline ready before the board meeting next Tuesday.",
+          "people": [
+            "David"
+          ],
+          "deadline": "Monday EOD",
+          "confidence": 0.95,
+          "priority": "high",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "matched_items": 1,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.00046960000000000003,
+      "extraction_cost": 0.00384
+    },
+    {
+      "fixture_id": "implicit_02",
+      "source": "slack",
+      "subject": "#engineering channel",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "The message contains a direct request for Nick to review a technical issue ('Could really use a second pair of eyes on this when you get a chance').",
+      "expected_count": 1,
+      "extracted_count": 1,
+      "expected_items": [
+        {
+          "title": "Look into flaky CI pipeline race condition",
+          "people": [
+            "Chen"
+          ],
+          "deadline": null,
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [
+        {
+          "title": "Review flaky CI pipeline with Chen",
+          "description": "Tests pass locally but fail in GitHub Actions ~30% of the time, possibly due to a race condition in database setup. Chen is asking for a second pair of eyes.",
+          "people": [
+            "Chen"
+          ],
+          "deadline": null,
+          "confidence": 0.8,
+          "priority": "medium",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "matched_items": 1,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0005048,
+      "extraction_cost": 0.003942
+    },
+    {
+      "fixture_id": "implicit_03",
+      "source": "gmail",
+      "subject": "Quick question about API rate limits",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Ryan is asking Nick a direct question that requires a response and guidance on how to proceed with solving a technical problem.",
+      "expected_count": 1,
+      "extracted_count": 1,
+      "expected_items": [
+        {
+          "title": "Respond to Ryan about API rate limit issue and recommend approach",
+          "people": [
+            "Ryan"
+          ],
+          "deadline": null,
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [
+        {
+          "title": "Advise Ryan on API rate limit solution for dashboard endpoint",
+          "description": "Ryan is hitting rate limit errors during peak hours and needs guidance on whether to increase the limit or implement client-side caching.",
+          "people": [
+            "Ryan"
+          ],
+          "deadline": null,
+          "confidence": 0.85,
+          "priority": "medium",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "matched_items": 1,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0004776,
+      "extraction_cost": 0.0039
+    },
+    {
+      "fixture_id": "implicit_04",
+      "source": "slack",
+      "subject": "DM from product manager",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Nick is being asked to deploy the new onboarding flow to staging by Wednesday night, which is a direct request requiring his action and confirmation.",
+      "expected_count": 1,
+      "extracted_count": 2,
+      "expected_items": [
+        {
+          "title": "Deploy onboarding flow to staging before Thursday demo",
+          "people": [
+            "Olivia"
+          ],
+          "deadline": "Wednesday",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [
+        {
+          "title": "Deploy new onboarding flow to staging",
+          "description": "Client demo was moved up to Thursday, so staging deployment is needed by Wednesday night to allow time for review before the demo.",
+          "people": [
+            "Olivia"
+          ],
+          "deadline": "Wednesday night",
+          "confidence": 0.95,
+          "priority": "high",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Confirm feasibility of Wednesday night staging deployment to Olivia",
+          "description": "Olivia explicitly asked if the Wednesday night deadline is doable \u2014 Nick should respond to unblock planning.",
+          "people": [
+            "Olivia"
+          ],
+          "deadline": null,
+          "confidence": 0.9,
+          "priority": "high",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "matched_items": 1,
+      "false_positives": 1,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0004888000000000001,
+      "extraction_cost": 0.005352
+    },
+    {
+      "fixture_id": "implicit_05",
+      "source": "gmail",
+      "subject": "Fwd: Conference speaker slot",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "The message contains two direct requests requiring Nick's response: confirming availability for the conference and submitting a talk abstract by May 1st deadline.",
+      "expected_count": 1,
+      "extracted_count": 1,
+      "expected_items": [
+        {
+          "title": "Confirm availability and send talk abstract for TechConf",
+          "people": [
+            "TechConf Team"
+          ],
+          "deadline": "May 1",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [
+        {
+          "title": "Confirm availability and send talk abstract to TechConf",
+          "description": "TechConf 2026 is requesting Nick speak on June 15 and needs a talk abstract submitted. Both confirmation of availability and the abstract are due by May 1st.",
+          "people": [
+            "TechConf Team"
+          ],
+          "deadline": "May 1st",
+          "confidence": 0.95,
+          "priority": "medium",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "matched_items": 1,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0005208,
+      "extraction_cost": 0.004272
+    },
+    {
+      "fixture_id": "non_action_01",
+      "source": "gmail",
+      "subject": "Your weekly digest from Medium",
+      "triage_expected": false,
+      "triage_actual": false,
+      "triage_correct": true,
+      "triage_reasoning": "This is a newsletter digest from Medium with curated content recommendations, which is purely informational with no direct requests or assignments for Nick.",
+      "expected_count": 0,
+      "extracted_count": 0,
+      "expected_items": [],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0005064000000000001,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "non_action_02",
+      "source": "gmail",
+      "subject": "Your Uber receipt",
+      "triage_expected": false,
+      "triage_actual": false,
+      "triage_correct": true,
+      "triage_reasoning": "This is an automated receipt confirmation from Uber, which is purely informational and requires no action from Nick.",
+      "expected_count": 0,
+      "extracted_count": 0,
+      "expected_items": [],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0004936000000000001,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "non_action_03",
+      "source": "gmail",
+      "subject": "GitHub Actions: Build succeeded",
+      "triage_expected": false,
+      "triage_actual": false,
+      "triage_correct": true,
+      "triage_reasoning": "This is an automated notification informing Nick that a CI build succeeded, which is purely informational with no required action.",
+      "expected_count": 0,
+      "extracted_count": 0,
+      "expected_items": [],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.00048640000000000006,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "non_action_04",
+      "source": "gmail",
+      "subject": "Your order has shipped!",
+      "triage_expected": false,
+      "triage_actual": false,
+      "triage_correct": true,
+      "triage_reasoning": "This is an automated shipping confirmation that is purely informational; it requires no action from Nick.",
+      "expected_count": 0,
+      "extracted_count": 0,
+      "expected_items": [],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.000476,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "non_action_05",
+      "source": "slack",
+      "subject": "#general channel",
+      "triage_expected": false,
+      "triage_actual": false,
+      "triage_correct": true,
+      "triage_reasoning": "This is a general announcement about office closure that applies to everyone, not a specific request or assignment directed at Nick.",
+      "expected_count": 0,
+      "extracted_count": 0,
+      "expected_items": [],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.00044560000000000004,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "github_01",
+      "source": "github",
+      "subject": "PR #42: Add REST API rate limiting",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Chen explicitly requested Nick's review on PR #42, which is a direct actionable request requiring Nick to review the pull request.",
+      "expected_count": 1,
+      "extracted_count": 1,
+      "expected_items": [
+        {
+          "title": "Review PR #42: Add REST API rate limiting",
+          "people": [
+            "Chen"
+          ],
+          "deadline": null,
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [
+        {
+          "title": "Review PR #42: Add REST API rate limiting",
+          "description": "Chen has requested a code review on a PR that adds rate limiting middleware using slowapi with per-user and per-IP limits backed by Redis. 5 files changed with +142 -12 lines.",
+          "people": [
+            "Chen"
+          ],
+          "deadline": null,
+          "confidence": 0.95,
+          "priority": "medium",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "matched_items": 1,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0004768,
+      "extraction_cost": 0.004182
+    },
+    {
+      "fixture_id": "github_02",
+      "source": "github",
+      "subject": "Issue #87: Database connection pool exhaustion in production",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Nick was explicitly assigned to Issue #87, which is a high-severity production problem requiring investigation and resolution.",
+      "expected_count": 1,
+      "extracted_count": 1,
+      "expected_items": [
+        {
+          "title": "Investigate and fix database connection pool exhaustion (Issue #87)",
+          "people": [],
+          "deadline": null,
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [
+        {
+          "title": "Investigate and resolve database connection pool exhaustion (Issue #87)",
+          "description": "Production DB connection pool hit 100% utilization at 3:42 AM causing API timeouts \u2014 this is the third occurrence this week, indicating a recurring underlying issue that needs a permanent fix.",
+          "people": [
+            "oncall_bot",
+            "monitoring-bot"
+          ],
+          "deadline": null,
+          "confidence": 0.95,
+          "priority": "high",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "matched_items": 1,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0004976000000000001,
+      "extraction_cost": 0.00435
+    },
+    {
+      "fixture_id": "github_03",
+      "source": "github",
+      "subject": "CI failed: main branch",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Nick is the commit author and the CI failure on his commit requires him to investigate and fix the failing integration test.",
+      "expected_count": 1,
+      "extracted_count": 1,
+      "expected_items": [
+        {
+          "title": "Fix failing CI on main branch (test_integration)",
+          "people": [],
+          "deadline": null,
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [
+        {
+          "title": "Fix failing integration test on main branch",
+          "description": "The CI workflow failed on the 'test_integration' step after Nick's commit 'Add new endpoint' \u2014 an endpoint is returning 422 instead of the expected 200.",
+          "people": [
+            "Nick"
+          ],
+          "deadline": null,
+          "confidence": 0.95,
+          "priority": "high",
+          "commitment_type": "you_committed"
+        }
+      ],
+      "matched_items": 1,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.000484,
+      "extraction_cost": 0.004029
+    },
+    {
+      "fixture_id": "ambiguous_01",
+      "source": "gmail",
+      "subject": "Re: Team offsite planning",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Nick is directly requested to put together a presentation on Q1 wins, and he's also included in the team-wide request to fill out the dietary preferences form by Friday.",
+      "expected_count": 2,
+      "extracted_count": 2,
+      "expected_items": [
+        {
+          "title": "Prepare Q1 wins presentation for team offsite",
+          "people": [
+            "Laura"
+          ],
+          "deadline": null,
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Fill out dietary preferences form for offsite",
+          "people": [
+            "Laura"
+          ],
+          "deadline": "Friday",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [
+        {
+          "title": "Put together short presentation on Q1 wins",
+          "description": "Laura has requested a presentation covering Q1 wins for the team offsite.",
+          "people": [
+            "Laura"
+          ],
+          "deadline": null,
+          "confidence": 0.9,
+          "priority": "medium",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Fill out dietary preferences form",
+          "description": "All team members, including Nick, are asked to submit their dietary preferences ahead of the offsite.",
+          "people": [
+            "Laura"
+          ],
+          "deadline": "Friday",
+          "confidence": 0.95,
+          "priority": "high",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "matched_items": 2,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0005447999999999999,
+      "extraction_cost": 0.005112
+    },
+    {
+      "fixture_id": "ambiguous_02",
+      "source": "gmail",
+      "subject": "Fwd: Meeting notes from product sync",
+      "triage_expected": false,
+      "triage_actual": false,
+      "triage_correct": true,
+      "triage_reasoning": "The sender explicitly states 'No action needed' and the API batch operations question is framed as optional ('Might be worth checking') without a direct request for Nick to investigate it.",
+      "expected_count": 0,
+      "extracted_count": 0,
+      "expected_items": [],
+      "extracted_items": [],
+      "matched_items": 0,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0005656,
+      "extraction_cost": 0.0
+    },
+    {
+      "fixture_id": "ambiguous_03",
+      "source": "slack",
+      "subject": "DM from CEO",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "The CEO is requesting to meet with Nick ('Let's grab coffee this week'), which requires Nick to coordinate and confirm a meeting time.",
+      "expected_count": 1,
+      "extracted_count": 1,
+      "expected_items": [
+        {
+          "title": "Schedule coffee with David to discuss fundraise next steps",
+          "people": [
+            "David"
+          ],
+          "deadline": "this week",
+          "commitment_type": "mutual"
+        }
+      ],
+      "extracted_items": [
+        {
+          "title": "Schedule coffee meeting with David to discuss fundraise next steps",
+          "description": "CEO wants to connect this week following a successful investor demo to talk about next steps for the fundraise.",
+          "people": [
+            "David"
+          ],
+          "deadline": "this week",
+          "confidence": 0.75,
+          "priority": "medium",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "matched_items": 1,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.000472,
+      "extraction_cost": 0.003759
+    },
+    {
+      "fixture_id": "multi_01",
+      "source": "gmail",
+      "subject": "Before you leave for vacation",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "The message contains four direct requests from Nick's manager that require action before his PTO starts: handing off work to Ryan, updating documentation, setting status messages, and providing a summary.",
+      "expected_count": 4,
+      "extracted_count": 4,
+      "expected_items": [
+        {
+          "title": "Hand off API migration to Ryan with staging access and walkthrough",
+          "people": [
+            "Karen",
+            "Ryan"
+          ],
+          "deadline": "Thursday",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Update on-call runbook with new alerting thresholds",
+          "people": [
+            "Karen"
+          ],
+          "deadline": "Thursday",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Set Slack status and email auto-responder for PTO",
+          "people": [
+            "Karen"
+          ],
+          "deadline": "Thursday",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Send status summary to Karen before PTO",
+          "people": [
+            "Karen"
+          ],
+          "deadline": "Thursday",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [
+        {
+          "title": "Hand off API migration to Ryan with staging access and walkthrough",
+          "description": "Ryan needs access to the staging environment and a brief walkthrough to take over the API migration while Nick is on PTO.",
+          "people": [
+            "Karen",
+            "Ryan"
+          ],
+          "deadline": "Thursday",
+          "confidence": 0.95,
+          "priority": "high",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Update on-call runbook with new alerting thresholds",
+          "description": "The runbook needs to reflect the latest alerting thresholds before Nick leaves so the on-call team has accurate documentation.",
+          "people": [
+            "Karen"
+          ],
+          "deadline": "Thursday",
+          "confidence": 0.95,
+          "priority": "high",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Set Slack status and email auto-responder for PTO",
+          "description": "Nick should configure his out-of-office indicators before his vacation starts Thursday so colleagues know he's unavailable.",
+          "people": [
+            "Karen"
+          ],
+          "deadline": "Thursday",
+          "confidence": 0.95,
+          "priority": "medium",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Send Karen a status summary of all open work",
+          "description": "Karen needs a quick overview of where everything stands so she can cover for Nick during his PTO.",
+          "people": [
+            "Karen"
+          ],
+          "deadline": "Thursday",
+          "confidence": 0.95,
+          "priority": "high",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "matched_items": 4,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0005712,
+      "extraction_cost": 0.008556
+    },
+    {
+      "fixture_id": "multi_02",
+      "source": "gmail",
+      "subject": "Action items from Monday standup",
+      "triage_expected": true,
+      "triage_actual": true,
+      "triage_correct": true,
+      "triage_reasoning": "Nick has three explicitly assigned action items from the standup: investigate memory leak, pair with Jessica on OAuth integration, and update deployment docs.",
+      "expected_count": 3,
+      "extracted_count": 3,
+      "expected_items": [
+        {
+          "title": "Investigate memory leak in worker process",
+          "people": [
+            "Tom"
+          ],
+          "deadline": "Thursday",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Pair with Jessica on OAuth integration",
+          "people": [
+            "Tom",
+            "Jessica"
+          ],
+          "deadline": "Thursday",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Update deployment docs",
+          "people": [
+            "Tom"
+          ],
+          "deadline": "Thursday",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "extracted_items": [
+        {
+          "title": "Investigate memory leak in worker process",
+          "description": "Nick needs to look into a memory leak occurring in the worker process, as assigned during Monday's standup.",
+          "people": [
+            "Tom",
+            "Nick"
+          ],
+          "deadline": "Thursday's standup",
+          "confidence": 0.95,
+          "priority": "high",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Pair with Jessica on OAuth integration",
+          "description": "Nick needs to collaborate with Jessica on the OAuth integration work, as assigned during Monday's standup.",
+          "people": [
+            "Tom",
+            "Nick",
+            "Jessica"
+          ],
+          "deadline": "Thursday's standup",
+          "confidence": 0.95,
+          "priority": "medium",
+          "commitment_type": "they_requested"
+        },
+        {
+          "title": "Update the deployment docs",
+          "description": "Nick needs to update deployment documentation, as assigned during Monday's standup.",
+          "people": [
+            "Tom",
+            "Nick"
+          ],
+          "deadline": "Thursday's standup",
+          "confidence": 0.95,
+          "priority": "medium",
+          "commitment_type": "they_requested"
+        }
+      ],
+      "matched_items": 3,
+      "false_positives": 0,
+      "missed_items": 0,
+      "error": null,
+      "triage_cost": 0.0005392000000000001,
+      "extraction_cost": 0.006891
+    }
+  ]
+}
