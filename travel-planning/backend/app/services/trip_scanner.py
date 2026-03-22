@@ -45,6 +45,12 @@ def determine_phase(
     if now is None:
         now = datetime.now(timezone.utc)
 
+    # Normalize naive datetimes (e.g. from SQLite) to UTC-aware
+    if arrival_time.tzinfo is None:
+        arrival_time = arrival_time.replace(tzinfo=timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+
     if last_eta_seconds is not None:
         estimated_notify_at = (
             arrival_time
@@ -102,13 +108,14 @@ def estimate_rough_eta_seconds(
     return int((distance_km / ROUGH_AVG_SPEED_KMH) * 3600)
 
 
-async def scan_active_trips(ctx: dict[str, Any]) -> None:
+async def scan_active_trips(ctx: dict[str, Any], *, now: datetime | None = None) -> None:
     """Cron job: scan all active trips and enqueue ETA checks as needed.
 
     Runs every 60 seconds. Queries trips that are within the monitoring
     window, determines their phase, and enqueues check_trip_eta jobs.
     """
-    now = datetime.now(timezone.utc)
+    if now is None:
+        now = datetime.now(timezone.utc)
     session_factory = ctx["db_session"]
     redis = ctx["redis"]
 

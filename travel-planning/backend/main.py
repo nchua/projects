@@ -7,13 +7,16 @@ from collections.abc import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from sqlalchemy import text
+
 from app.api.auth import router as auth_router
 from app.api.device_tokens import router as device_tokens_router
 from app.api.saved_locations import router as locations_router
 from app.api.trips import router as trips_router
 from app.api.users import router as users_router
 from app.core.config import get_settings
-from app.core.redis import close_redis_pool
+from app.core.database import async_session
+from app.core.redis import close_redis_pool, get_redis_pool
 
 logger = logging.getLogger(__name__)
 
@@ -56,9 +59,34 @@ def create_app() -> FastAPI:
     app.include_router(device_tokens_router, prefix=prefix)
 
     @app.get("/health")
-    async def health_check() -> dict[str, str]:
-        """Health check endpoint for load balancers and monitoring."""
-        return {"status": "ok", "version": settings.app_version}
+    async def health_check() -> dict:
+        """Health check endpoint — verifies DB and Redis connectivity."""
+        checks: dict[str, str] = {}
+
+        # Database check
+        try:
+            async with async_session() as session:
+                await session.execute(text("SELECT 1"))
+            checks["database"] = "ok"
+        except Exception as exc:
+            logger.error("Health check: database error: %s", exc)
+            checks["database"] = "error"
+
+        # Redis check
+        try:
+            r = await get_redis_pool()
+            await r.ping()
+            checks["redis"] = "ok"
+        except Exception as exc:
+            logger.error("Health check: redis error: %s", exc)
+            checks["redis"] = "error"
+
+        all_ok = all(v == "ok" for v in checks.values())
+        return {
+            "status": "ok" if all_ok else "degraded",
+            "version": settings.app_version,
+            "checks": checks,
+        }
 
     return app
 

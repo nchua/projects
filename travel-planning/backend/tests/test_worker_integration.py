@@ -12,6 +12,7 @@ os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost/
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 
 import pytest
@@ -48,18 +49,22 @@ async def test_scan_enqueues_active_trips(
     make_trip,
 ) -> None:
     """Trips in the active/critical window should each get an ETA check enqueued."""
-    # Trip arriving in 1.5 hours — active phase (no prior ETA → rough estimate
-    # ~6300s for SF→SJ; notify_at ≈ arrival - 6300s, well within active range)
+    # Rough ETA for SF→SJ is ~90 min (5400s). Phase uses:
+    #   time_until_notify = arrival - rough_eta - buffer - now
+    # Active phase: 15 min < time_until_notify ≤ 60 min
+    #   → arrival_from_now between ~2h and ~2.75h
     trip_active = await make_trip(
         name="Active Trip",
-        arrival_hours_from_now=1.5,
+        arrival_hours_from_now=2.5,
         status=TripStatus.pending,
     )
 
-    # Trip arriving in 0.5 hours — critical phase
+    # Critical phase: 0 < time_until_notify ≤ 15 min
+    # Rough ETA for SF→SJ is ~101 min. notify_at = arrival - 101min - 15min
+    # For critical: arrival_from_now needs ~2.0-2.1h
     trip_critical = await make_trip(
         name="Critical Trip",
-        arrival_hours_from_now=0.5,
+        arrival_hours_from_now=2.1,
         status=TripStatus.monitoring,
     )
 
@@ -67,7 +72,10 @@ async def test_scan_enqueues_active_trips(
     mock_redis.enqueue_job = AsyncMock(return_value=None)
     ctx = _build_ctx(mock_redis)
 
-    await scan_active_trips(ctx)
+    # Pass naive UTC now — SQLite stores naive datetimes, so SQL comparisons
+    # need naive values to match correctly.
+    now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
+    await scan_active_trips(ctx, now=now_naive)
 
     # Both trips should have been enqueued
     assert mock_redis.enqueue_job.call_count == 2
@@ -100,7 +108,8 @@ async def test_scan_skips_dormant_trips(
     mock_redis.enqueue_job = AsyncMock(return_value=None)
     ctx = _build_ctx(mock_redis)
 
-    await scan_active_trips(ctx)
+    now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
+    await scan_active_trips(ctx, now=now_naive)
 
     mock_redis.enqueue_job.assert_not_called()
 
@@ -112,9 +121,11 @@ async def test_scan_transitions_pending_to_monitoring(
     make_trip,
 ) -> None:
     """A pending trip that gets enqueued should be transitioned to monitoring."""
+    # arrival_hours_from_now=2.5 puts this in the active phase
+    # (rough ETA ~90 min + buffer 15 min leaves ~45 min until notify)
     trip = await make_trip(
         name="Pending Trip",
-        arrival_hours_from_now=1.0,
+        arrival_hours_from_now=2.5,
         status=TripStatus.pending,
     )
     trip_id = trip.id
@@ -123,7 +134,8 @@ async def test_scan_transitions_pending_to_monitoring(
     mock_redis.enqueue_job = AsyncMock(return_value=None)
     ctx = _build_ctx(mock_redis)
 
-    await scan_active_trips(ctx)
+    now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
+    await scan_active_trips(ctx, now=now_naive)
 
     # Verify the enqueue happened
     assert mock_redis.enqueue_job.call_count == 1
