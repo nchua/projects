@@ -146,7 +146,10 @@ class TestScannerHelpers:
             == "notifications"
         )
         assert (
-            _provider_resource_type("slack") == "unknown"
+            _provider_resource_type("slack") == "channels"
+        )
+        assert (
+            _provider_resource_type("granola") == "meetings"
         )
 
 

@@ -363,6 +363,220 @@ async def process_gmail_messages(
     return created_items
 
 
+async def process_slack_messages(
+    messages: list[dict[str, Any]],
+    user_id: str,
+    db: Session,
+) -> list[ActionItem]:
+    """Full Slack pipeline: dedup, triage, extract, persist.
+
+    Slack messages are already plain text — no HTML preprocessing needed.
+    """
+    created_items: list[ActionItem] = []
+
+    for msg in messages:
+        body = msg.get("body", "")
+        source_id = msg.get("source_id", "")
+        source_url = msg.get("source_url", "")
+        channel = msg.get("channel", "")
+
+        if len(body) < 50:
+            continue
+
+        # Dedup check
+        content_hash = hash_content(
+            f"{source_id}:{body[:500]}"
+        )
+        existing = (
+            db.query(ActionItem)
+            .filter(ActionItem.dedup_hash == content_hash)
+            .first()
+        )
+        if existing:
+            continue
+
+        # Triage (Haiku)
+        should_extract = await triage_message(
+            body, "slack", f"Message in #{channel}", msg.get("sender", "")
+        )
+
+        log_audit(
+            db,
+            "ai_triage",
+            user_id=user_id,
+            metadata={
+                "source": "slack",
+                "source_id": source_id,
+                "result": should_extract,
+            },
+        )
+
+        if not should_extract:
+            continue
+
+        # Extract (Sonnet)
+        extracted = await extract_action_items(
+            body,
+            source="slack",
+            source_id=source_id,
+            source_url=source_url,
+            subject=f"Slack message in #{channel}",
+            sender=msg.get("sender", ""),
+        )
+
+        log_audit(
+            db,
+            "ai_extraction",
+            user_id=user_id,
+            metadata={
+                "source": "slack",
+                "source_id": source_id,
+                "items_extracted": len(extracted),
+            },
+        )
+
+        # Persist
+        for item_data in extracted:
+            if item_data.get("dedup_hash"):
+                dup = (
+                    db.query(ActionItem)
+                    .filter(
+                        ActionItem.dedup_hash
+                        == item_data["dedup_hash"]
+                    )
+                    .first()
+                )
+                if dup:
+                    continue
+
+            action_item = ActionItem(
+                user_id=user_id,
+                source=ActionItemSource.SLACK.value,
+                source_id=item_data.get("source_id"),
+                source_url=item_data.get("source_url"),
+                title=item_data["title"],
+                description=item_data.get("description"),
+                confidence_score=item_data.get("confidence_score"),
+                priority=item_data.get(
+                    "priority", ActionItemPriority.MEDIUM.value
+                ),
+                status=ActionItemStatus.NEW.value,
+                dedup_hash=item_data.get("dedup_hash"),
+            )
+            db.add(action_item)
+            created_items.append(action_item)
+
+    db.flush()
+    return created_items
+
+
+async def process_granola_meetings(
+    meetings: list[dict[str, Any]],
+    user_id: str,
+    db: Session,
+) -> list[ActionItem]:
+    """Full Granola pipeline: dedup, triage, extract, persist.
+
+    Meeting notes may contain action items, TODOs, and commitments.
+    """
+    created_items: list[ActionItem] = []
+
+    for meeting in meetings:
+        body = meeting.get("body", "")
+        source_id = meeting.get("source_id", "")
+        source_url = meeting.get("source_url", "")
+        title = meeting.get("title", "")
+
+        if len(body) < 50:
+            continue
+
+        # Dedup check
+        content_hash = hash_content(
+            f"{source_id}:{body[:500]}"
+        )
+        existing = (
+            db.query(ActionItem)
+            .filter(ActionItem.dedup_hash == content_hash)
+            .first()
+        )
+        if existing:
+            continue
+
+        # Triage (Haiku)
+        should_extract = await triage_message(
+            body, "granola", f"Meeting: {title}", ""
+        )
+
+        log_audit(
+            db,
+            "ai_triage",
+            user_id=user_id,
+            metadata={
+                "source": "granola",
+                "source_id": source_id,
+                "result": should_extract,
+            },
+        )
+
+        if not should_extract:
+            continue
+
+        # Extract (Sonnet)
+        extracted = await extract_action_items(
+            body,
+            source="granola",
+            source_id=source_id,
+            source_url=source_url,
+            subject=f"Meeting notes: {title}",
+            sender="",
+        )
+
+        log_audit(
+            db,
+            "ai_extraction",
+            user_id=user_id,
+            metadata={
+                "source": "granola",
+                "source_id": source_id,
+                "items_extracted": len(extracted),
+            },
+        )
+
+        # Persist
+        for item_data in extracted:
+            if item_data.get("dedup_hash"):
+                dup = (
+                    db.query(ActionItem)
+                    .filter(
+                        ActionItem.dedup_hash
+                        == item_data["dedup_hash"]
+                    )
+                    .first()
+                )
+                if dup:
+                    continue
+
+            action_item = ActionItem(
+                user_id=user_id,
+                source=ActionItemSource.GRANOLA.value,
+                source_id=item_data.get("source_id"),
+                source_url=item_data.get("source_url"),
+                title=item_data["title"],
+                description=item_data.get("description"),
+                confidence_score=item_data.get("confidence_score"),
+                priority=item_data.get(
+                    "priority", ActionItemPriority.MEDIUM.value
+                ),
+                status=ActionItemStatus.NEW.value,
+                dedup_hash=item_data.get("dedup_hash"),
+            )
+            db.add(action_item)
+            created_items.append(action_item)
+
+    db.flush()
+    return created_items
+
+
 async def process_github_notifications(
     notifications: list[dict[str, Any]],
     user_id: str,

@@ -22,6 +22,7 @@ const SOURCE_ICONS: Record<ActionItemSource, string> = {
   slack: "\u0023",
   notion: "\u25A1",
   discord: "\u25C6",
+  granola: "\uD83C\uDF99",
   manual: "\u270E",
 };
 

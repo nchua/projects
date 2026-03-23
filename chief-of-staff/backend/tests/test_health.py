@@ -11,7 +11,7 @@ class TestHealth:
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "ok"
-        assert "Chief of Staff" in data["app"]
+        assert data["app"] in ("Chief of Staff", "Jarvis")
 
 
 class TestAuthFlow:

@@ -22,7 +22,7 @@ export function Sidebar() {
     <aside className="w-[220px] min-w-[220px] bg-surface-0 border-r border-surface-3 flex flex-col py-6 fixed top-0 left-0 bottom-0 z-50">
       {/* Brand */}
       <div className="px-5 pb-7 text-sm font-semibold text-text-tertiary tracking-widest uppercase">
-        Chief of Staff
+        Jarvis
       </div>
 
       {/* Nav */}

@@ -3,7 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Chief of Staff",
+  title: "Jarvis",
   description: "Your morning command center",
 };
 

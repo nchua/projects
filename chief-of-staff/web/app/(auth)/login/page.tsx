@@ -51,10 +51,10 @@ export default function LoginPage() {
           &#9632;
         </div>
         <div className="text-xl font-semibold text-text-primary tracking-tight">
-          Chief of Staff
+          Jarvis
         </div>
         <div className="text-[13px] text-text-dim mt-1">
-          Your morning command center
+          At your service
         </div>
       </div>
 

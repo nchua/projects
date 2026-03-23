@@ -318,3 +318,136 @@ class TestIntegrationEndpoints:
         headers = self._register_and_login(client)
         response = client.post("/api/v1/integrations/panic", headers=headers)
         assert response.status_code == 204
+
+    def test_slack_authorize_returns_url(self, client):
+        headers = self._register_and_login(client)
+        with patch("app.api.integrations.get_settings") as mock_settings:
+            mock_settings.return_value = MagicMock(
+                slack_client_id="slack-client-id",
+                slack_client_secret="slack-secret",
+                slack_signing_secret="slack-signing",
+                oauth_redirect_uris=[],
+            )
+            response = client.post(
+                "/api/v1/integrations/slack/authorize",
+                params={"redirect_uri": "http://localhost:3000/callback"},
+                headers=headers,
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert "authorization_url" in data
+        assert "slack.com" in data["authorization_url"]
+        assert "slack-client-id" in data["authorization_url"]
+        assert "state" in data
+
+    def test_slack_authorize_not_configured(self, client):
+        headers = self._register_and_login(client)
+        with patch("app.api.integrations.get_settings") as mock_settings:
+            mock_settings.return_value = MagicMock(
+                slack_client_id="",
+                oauth_redirect_uris=[],
+            )
+            response = client.post(
+                "/api/v1/integrations/slack/authorize",
+                params={"redirect_uri": "http://localhost:3000/callback"},
+                headers=headers,
+            )
+        assert response.status_code == 503
+
+    def test_granola_configure_missing_file(self, client):
+        headers = self._register_and_login(client)
+        response = client.post(
+            "/api/v1/integrations/granola/configure",
+            params={"cache_path": "/nonexistent/path/cache.json"},
+            headers=headers,
+        )
+        assert response.status_code == 400
+        assert "not found" in response.json()["detail"].lower()
+
+    def test_granola_configure_empty_path(self, client):
+        headers = self._register_and_login(client)
+        response = client.post(
+            "/api/v1/integrations/granola/configure",
+            params={"cache_path": ""},
+            headers=headers,
+        )
+        assert response.status_code == 400
+
+    def test_granola_configure_valid_file(self, client, tmp_path):
+        """Test Granola configure with a real temp file."""
+        import json
+
+        cache_file = tmp_path / "cache-v6.json"
+        cache_file.write_text(json.dumps({
+            "cache": {"state": {"documents": {}, "transcripts": {}, "meetingsMetadata": {}}}
+        }))
+
+        headers = self._register_and_login(client)
+        response = client.post(
+            "/api/v1/integrations/granola/configure",
+            params={"cache_path": str(cache_file)},
+            headers=headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["provider"] == "granola"
+        assert data["status"] == "healthy"
+        assert data["is_active"] is True
+
+
+class TestSlackConnector:
+    """Tests for the SlackConnector."""
+
+    def _create_user(self, db_session):
+        user = User(
+            email="slack-test@example.com",
+            password_hash=hash_password("TestPass123"),
+        )
+        db_session.add(user)
+        db_session.flush()
+        return user
+
+    def test_slack_connector_provider(self, db_session):
+        from app.services.connectors.slack import SlackConnector
+
+        user = self._create_user(db_session)
+        integration = Integration(
+            user_id=user.id,
+            provider="slack",
+            status="healthy",
+            error_count=0,
+        )
+        db_session.add(integration)
+        db_session.flush()
+
+        connector = SlackConnector(integration)
+        assert connector.provider == IntegrationProvider.SLACK
+
+
+class TestGranolaConnector:
+    """Tests for the GranolaConnector."""
+
+    def _create_user(self, db_session):
+        user = User(
+            email="granola-test@example.com",
+            password_hash=hash_password("TestPass123"),
+        )
+        db_session.add(user)
+        db_session.flush()
+        return user
+
+    def test_granola_connector_provider(self, db_session):
+        from app.services.connectors.granola import GranolaConnector
+
+        user = self._create_user(db_session)
+        integration = Integration(
+            user_id=user.id,
+            provider="granola",
+            status="healthy",
+            error_count=0,
+        )
+        db_session.add(integration)
+        db_session.flush()
+
+        connector = GranolaConnector(integration)
+        assert connector.provider == IntegrationProvider.GRANOLA
