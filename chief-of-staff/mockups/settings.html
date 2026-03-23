@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chief of Staff — Settings</title>
+<style>
+  /* ── Reset & Base ────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 15px; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    background: #0f1117;
+    color: #d1d5db;
+    line-height: 1.5;
+    display: flex;
+    min-height: 100vh;
+  }
+  a { color: #60a5fa; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── Sidebar (shared) ────────────────────────────────────── */
+  .sidebar { width: 220px; min-width: 220px; background: #0a0c10; border-right: 1px solid #1e2330; display: flex; flex-direction: column; padding: 24px 0; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; }
+  .sidebar-brand { padding: 0 20px 28px; font-size: 14px; font-weight: 600; color: #9ca3af; letter-spacing: 0.08em; text-transform: uppercase; }
+  .sidebar-nav { flex: 1; }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 14px; color: #9ca3af; border-left: 3px solid transparent; transition: all 0.15s; }
+  .sidebar-nav a:hover { color: #e5e7eb; background: rgba(255,255,255,0.03); text-decoration: none; }
+  .sidebar-nav a.active { color: #f9fafb; border-left-color: #60a5fa; background: rgba(96,165,250,0.06); }
+  .sidebar-nav a .nav-icon { width: 18px; text-align: center; font-size: 15px; }
+  .sidebar-nav a .shortcut { margin-left: auto; font-size: 11px; color: #4b5563; font-family: 'SF Mono', 'Cascadia Code', monospace; padding: 1px 5px; background: rgba(255,255,255,0.04); border-radius: 3px; border: 1px solid #1e2330; }
+  .sidebar-footer { padding: 16px 20px; border-top: 1px solid #1e2330; font-size: 12px; color: #4b5563; }
+
+  /* ── Main ─────────────────────────────────────────────────── */
+  .main { flex: 1; margin-left: 220px; padding: 28px 32px 48px; max-width: 860px; }
+
+  /* ── Page Header ─────────────────────────────────────────── */
+  h1 { font-size: 22px; font-weight: 600; color: #f9fafb; margin-bottom: 28px; }
+
+  /* ── Section ─────────────────────────────────────────────── */
+  .settings-section { margin-bottom: 36px; }
+  .settings-section-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b7280;
+    margin-bottom: 12px;
+    padding-left: 4px;
+  }
+
+  /* ── Card ─────────────────────────────────────────────────── */
+  .card {
+    background: #151922;
+    border: 1px solid #1e2330;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  /* ── Integration Row ─────────────────────────────────────── */
+  .integration-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    border-bottom: 1px solid rgba(30,35,48,0.4);
+  }
+  .integration-row:last-child { border-bottom: none; }
+  .integration-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .integration-icon.google-cal { background: rgba(66,133,244,0.12); color: #4285f4; }
+  .integration-icon.gmail { background: rgba(234,67,53,0.12); color: #ea4335; }
+  .integration-icon.github { background: rgba(139,92,246,0.12); color: #a78bfa; }
+  .integration-icon.slack { background: rgba(74,21,75,0.12); color: #e01e5a; }
+  .integration-icon.notion { background: rgba(255,255,255,0.06); color: #fff; }
+
+  .integration-info { flex: 1; min-width: 0; }
+  .integration-name { font-size: 14px; color: #e5e7eb; font-weight: 500; }
+  .integration-detail { font-size: 12px; color: #4b5563; margin-top: 1px; display: flex; align-items: center; gap: 6px; }
+
+  .status-indicator {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .status-indicator.healthy { background: #22c55e; }
+  .status-indicator.degraded { background: #f59e0b; animation: pulse-warn 2s infinite; }
+  .status-indicator.failed { background: #ef4444; animation: pulse-warn 1.5s infinite; }
+  .status-indicator.disabled { background: #374151; }
+  @keyframes pulse-warn { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .integration-actions { display: flex; gap: 8px; align-items: center; }
+  .connect-btn {
+    padding: 6px 14px;
+    font-size: 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .connect-btn.connect { background: rgba(96,165,250,0.12); color: #60a5fa; border: 1px solid rgba(96,165,250,0.2); }
+  .connect-btn.connect:hover { background: rgba(96,165,250,0.2); }
+  .connect-btn.disconnect { background: rgba(239,68,68,0.08); color: #ef4444; border: 1px solid rgba(239,68,68,0.15); }
+  .connect-btn.disconnect:hover { background: rgba(239,68,68,0.15); }
+  .connect-btn.reconnect { background: rgba(245,158,11,0.1); color: #f59e0b; border: 1px solid rgba(245,158,11,0.2); }
+  .connect-btn.reconnect:hover { background: rgba(245,158,11,0.18); }
+
+  .scopes-tag {
+    font-size: 10px;
+    color: #4b5563;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid #1e2330;
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-family: 'SF Mono', monospace;
+  }
+
+  /* ── Setting Row ─────────────────────────────────────────── */
+  .setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(30,35,48,0.4);
+  }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-info { flex: 1; }
+  .setting-label { font-size: 14px; color: #e5e7eb; }
+  .setting-desc { font-size: 12px; color: #4b5563; margin-top: 1px; }
+  .setting-control { flex-shrink: 0; }
+
+  .form-input, .form-select {
+    padding: 7px 10px;
+    font-size: 13px;
+    background: #0a0c10;
+    border: 1px solid #1e2330;
+    border-radius: 6px;
+    color: #e5e7eb;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus, .form-select:focus { border-color: #3b82f6; }
+  .form-select option { background: #0a0c10; color: #e5e7eb; }
+
+  /* ── Toggle Switch ───────────────────────────────────────── */
+  .toggle {
+    position: relative;
+    width: 40px;
+    height: 22px;
+    background: #374151;
+    border-radius: 11px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle.on { background: #1d4ed8; }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+  }
+  .toggle.on::after { transform: translateX(18px); }
+
+  /* ── Danger Zone ─────────────────────────────────────────── */
+  .danger-card {
+    border-color: rgba(239,68,68,0.2);
+  }
+  .danger-btn {
+    padding: 6px 14px;
+    font-size: 12px;
+    border-radius: 6px;
+    background: rgba(239,68,68,0.08);
+    color: #ef4444;
+    border: 1px solid rgba(239,68,68,0.15);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .danger-btn:hover { background: rgba(239,68,68,0.15); }
+
+  /* ── Scrollbar ───────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #1e2330; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ─── Sidebar ──────────────────────────────────────────────── -->
+<nav class="sidebar">
+  <div class="sidebar-brand">Chief of Staff</div>
+  <div class="sidebar-nav">
+    <a href="dashboard.html">
+      <span class="nav-icon">&#9632;</span> Dashboard <span class="shortcut">b</span>
+    </a>
+    <a href="tasks.html">
+      <span class="nav-icon">&#9745;</span> Tasks <span class="shortcut">t</span>
+    </a>
+    <a href="settings.html" class="active">
+      <span class="nav-icon">&#9881;</span> Settings <span class="shortcut">s</span>
+    </a>
+  </div>
+  <div class="sidebar-footer">v0.1.0 &middot; Phase 1</div>
+</nav>
+
+<!-- ─── Main ─────────────────────────────────────────────────── -->
+<main class="main">
+
+  <h1>Settings</h1>
+
+  <!-- ─── Integrations ───────────────────────────────────────── -->
+  <div class="settings-section">
+    <div class="settings-section-title">Integrations</div>
+    <div class="card">
+
+      <!-- Google Calendar - Connected -->
+      <div class="integration-row">
+        <div class="integration-icon google-cal">&#128197;</div>
+        <div class="integration-info">
+          <div class="integration-name">Google Calendar</div>
+          <div class="integration-detail">
+            <span class="status-indicator healthy"></span>
+            Healthy &middot; Last synced 1 min ago
+            <span class="scopes-tag">calendar.readonly</span>
+          </div>
+        </div>
+        <div class="integration-actions">
+          <button class="connect-btn disconnect" onclick="this.textContent='Disconnecting...'">Disconnect</button>
+        </div>
+      </div>
+
+      <!-- Gmail - Connected -->
+      <div class="integration-row">
+        <div class="integration-icon gmail">&#9993;</div>
+        <div class="integration-info">
+          <div class="integration-name">Gmail</div>
+          <div class="integration-detail">
+            <span class="status-indicator healthy"></span>
+            Healthy &middot; Last synced 3 min ago
+            <span class="scopes-tag">gmail.readonly</span>
+          </div>
+        </div>
+        <div class="integration-actions">
+          <button class="connect-btn disconnect">Disconnect</button>
+        </div>
+      </div>
+
+      <!-- GitHub - Degraded -->
+      <div class="integration-row">
+        <div class="integration-icon github">&#128736;</div>
+        <div class="integration-info">
+          <div class="integration-name">GitHub</div>
+          <div class="integration-detail">
+            <span class="status-indicator degraded"></span>
+            <span style="color:#f59e0b">Token expiring in 2 days</span>
+            &middot; Last synced 15 min ago
+            <span class="scopes-tag">repo, notifications</span>
+          </div>
+        </div>
+        <div class="integration-actions">
+          <button class="connect-btn reconnect">Reconnect</button>
+        </div>
+      </div>
+
+      <!-- Slack - Not Connected -->
+      <div class="integration-row" style="opacity: 0.5;">
+        <div class="integration-icon slack">S</div>
+        <div class="integration-info">
+          <div class="integration-name">Slack</div>
+          <div class="integration-detail">
+            <span class="status-indicator disabled"></span>
+            Not connected &middot; Phase 2
+          </div>
+        </div>
+        <div class="integration-actions">
+          <button class="connect-btn connect" disabled style="opacity:0.4;cursor:not-allowed;">Coming Soon</button>
+        </div>
+      </div>
+
+      <!-- Notion - Not Connected -->
+      <div class="integration-row" style="opacity: 0.5;">
+        <div class="integration-icon notion">N</div>
+        <div class="integration-info">
+          <div class="integration-name">Notion</div>
+          <div class="integration-detail">
+            <span class="status-indicator disabled"></span>
+            Not connected &middot; Phase 2
+          </div>
+        </div>
+        <div class="integration-actions">
+          <button class="connect-btn connect" disabled style="opacity:0.4;cursor:not-allowed;">Coming Soon</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── Briefing ───────────────────────────────────────────── -->
+  <div class="settings-section">
+    <div class="settings-section-title">Morning Briefing</div>
+    <div class="card">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Briefing time</div>
+          <div class="setting-desc">When your morning briefing is generated and notification sent</div>
+        </div>
+        <div class="setting-control">
+          <input type="time" class="form-input" value="07:00" style="width: 120px;">
+        </div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Timezone</div>
+          <div class="setting-desc">All times are based on this timezone</div>
+        </div>
+        <div class="setting-control">
+          <select class="form-select" style="width: 200px;">
+            <option>America/Los_Angeles (PT)</option>
+            <option>America/New_York (ET)</option>
+            <option selected>America/Chicago (CT)</option>
+            <option>America/Denver (MT)</option>
+            <option>Asia/Taipei (CST)</option>
+            <option>UTC</option>
+          </select>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Include AI insights</div>
+          <div class="setting-desc">Use Claude to generate priority rankings and risk analysis</div>
+        </div>
+        <div class="setting-control">
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Notifications ──────────────────────────────────────── -->
+  <div class="settings-section">
+    <div class="settings-section-title">Notifications</div>
+    <div class="card">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Browser notifications</div>
+          <div class="setting-desc">Receive a notification when your morning briefing is ready</div>
+        </div>
+        <div class="setting-control">
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Email digest fallback</div>
+          <div class="setting-desc">If browser is not active, send briefing summary via email</div>
+        </div>
+        <div class="setting-control">
+          <div class="toggle" onclick="this.classList.toggle('on')"></div>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Task reminders</div>
+          <div class="setting-desc">Notify for non-negotiable tasks not completed by their window</div>
+        </div>
+        <div class="setting-control">
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Quiet hours</div>
+          <div class="setting-desc">No notifications during these hours</div>
+        </div>
+        <div class="setting-control" style="display: flex; gap: 8px; align-items: center;">
+          <input type="time" class="form-input" value="22:00" style="width: 100px;">
+          <span style="color: #4b5563; font-size: 12px;">to</span>
+          <input type="time" class="form-input" value="07:00" style="width: 100px;">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── AI Extraction ──────────────────────────────────────── -->
+  <div class="settings-section">
+    <div class="settings-section-title">AI Extraction</div>
+    <div class="card">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Confidence threshold</div>
+          <div class="setting-desc">Action items below this score will be visually dimmed and grouped separately</div>
+        </div>
+        <div class="setting-control" style="display: flex; align-items: center; gap: 8px;">
+          <input type="range" min="0" max="100" value="60" style="width: 120px; accent-color: #3b82f6;" oninput="this.nextElementSibling.textContent = (this.value/100).toFixed(2)">
+          <span style="font-family: 'SF Mono', monospace; font-size: 12px; color: #9ca3af; min-width: 30px;">0.60</span>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Auto-dismiss newsletters</div>
+          <div class="setting-desc">Automatically dismiss items extracted from marketing emails and newsletters</div>
+        </div>
+        <div class="setting-control">
+          <div class="toggle" onclick="this.classList.toggle('on')"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Account ────────────────────────────────────────────── -->
+  <div class="settings-section">
+    <div class="settings-section-title">Account</div>
+    <div class="card danger-card">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Export all data</div>
+          <div class="setting-desc">Download all your tasks, action items, and briefings as JSON</div>
+        </div>
+        <div class="setting-control">
+          <button class="connect-btn connect">Export</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Revoke all integrations</div>
+          <div class="setting-desc">Immediately disconnect all integrations and revoke their tokens</div>
+        </div>
+        <div class="setting-control">
+          <button class="danger-btn">Revoke All</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Delete account</div>
+          <div class="setting-desc">Permanently delete your account and all associated data</div>
+        </div>
+        <div class="setting-control">
+          <button class="danger-btn">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+    switch(e.key) {
+      case 'b': window.location.href = 'dashboard.html'; break;
+      case 't': window.location.href = 'tasks.html'; break;
+    }
+  });
+</script>
+</body>
+</html>

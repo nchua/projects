@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chief of Staff — Setup</title>
+<style>
+  /* ── Reset & Base ────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 15px; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    background: #0f1117;
+    color: #d1d5db;
+    line-height: 1.5;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── Wizard Container ────────────────────────────────────── */
+  .wizard {
+    width: 100%;
+    max-width: 600px;
+    padding: 0 24px;
+  }
+
+  /* ── Step Indicator ──────────────────────────────────────── */
+  .step-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 36px;
+  }
+  .step-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #1e2330;
+    transition: all 0.3s;
+  }
+  .step-dot.active { background: #3b82f6; width: 24px; border-radius: 4px; }
+  .step-dot.completed { background: #22c55e; }
+  .step-line {
+    width: 32px;
+    height: 1px;
+    background: #1e2330;
+  }
+
+  /* ── Card ─────────────────────────────────────────────────── */
+  .wizard-card {
+    background: #151922;
+    border: 1px solid #1e2330;
+    border-radius: 12px;
+    padding: 32px;
+  }
+  .wizard-card h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #f9fafb;
+    margin-bottom: 6px;
+  }
+  .wizard-card .subtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 28px;
+  }
+
+  /* ── Step Panel ──────────────────────────────────────────── */
+  .step-panel { display: none; }
+  .step-panel.active { display: block; }
+
+  /* ── Task Checklist (Step 1) ─────────────────────────────── */
+  .task-setup-list { list-style: none; }
+  .task-setup-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.1s;
+    margin-bottom: 4px;
+  }
+  .task-setup-item:hover { background: rgba(255,255,255,0.02); }
+  .task-setup-check {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #374151;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    font-size: 12px;
+    color: transparent;
+  }
+  .task-setup-item.selected .task-setup-check {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+    color: #fff;
+  }
+  .task-setup-info { flex: 1; }
+  .task-setup-name { font-size: 14px; color: #e5e7eb; }
+  .task-setup-desc { font-size: 11px; color: #4b5563; margin-top: 1px; }
+  .task-setup-cadence {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+  }
+  .task-setup-cadence.daily { background: rgba(96,165,250,0.1); color: #60a5fa; }
+  .task-setup-cadence.weekly { background: rgba(139,92,246,0.1); color: #a78bfa; }
+  .task-setup-cadence.monthly { background: rgba(34,197,94,0.1); color: #22c55e; }
+
+  .add-custom {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #4b5563;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.15s;
+    margin-top: 8px;
+    border: 1px dashed #1e2330;
+  }
+  .add-custom:hover { color: #60a5fa; border-color: rgba(96,165,250,0.3); background: rgba(96,165,250,0.03); }
+
+  /* ── Integration Cards (Step 2) ──────────────────────────── */
+  .integration-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid #1e2330;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    transition: all 0.15s;
+    cursor: pointer;
+  }
+  .integration-card:hover { border-color: #374151; background: rgba(255,255,255,0.01); }
+  .integration-card.connected { border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.03); }
+  .int-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .int-icon.gcal { background: rgba(66,133,244,0.12); color: #4285f4; }
+  .int-icon.gmail { background: rgba(234,67,53,0.12); color: #ea4335; }
+  .int-icon.github { background: rgba(139,92,246,0.12); color: #a78bfa; }
+  .int-info { flex: 1; }
+  .int-name { font-size: 14px; color: #e5e7eb; font-weight: 500; }
+  .int-desc { font-size: 12px; color: #4b5563; margin-top: 1px; }
+  .int-value {
+    font-size: 11px;
+    color: #22c55e;
+    margin-top: 3px;
+    display: none;
+  }
+  .integration-card.connected .int-value { display: block; }
+  .int-action {
+    padding: 7px 16px;
+    font-size: 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .int-action.connect {
+    background: rgba(96,165,250,0.12);
+    color: #60a5fa;
+    border: 1px solid rgba(96,165,250,0.2);
+  }
+  .int-action.connect:hover { background: rgba(96,165,250,0.2); }
+  .int-action.connected {
+    background: rgba(34,197,94,0.1);
+    color: #22c55e;
+    border: 1px solid rgba(34,197,94,0.2);
+    cursor: default;
+  }
+  .skip-text {
+    text-align: center;
+    font-size: 12px;
+    color: #374151;
+    margin-top: 12px;
+  }
+
+  /* ── Briefing Time (Step 3) ──────────────────────────────── */
+  .time-picker-section {
+    text-align: center;
+    padding: 20px 0;
+  }
+  .time-display {
+    font-size: 64px;
+    font-weight: 300;
+    color: #f9fafb;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    margin-bottom: 8px;
+    letter-spacing: -2px;
+  }
+  .time-label {
+    font-size: 13px;
+    color: #4b5563;
+    margin-bottom: 24px;
+  }
+  .time-presets {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .time-preset {
+    padding: 8px 16px;
+    font-size: 13px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid #1e2330;
+    border-radius: 7px;
+    color: #9ca3af;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .time-preset:hover { border-color: #374151; color: #e5e7eb; }
+  .time-preset.active { border-color: #3b82f6; color: #60a5fa; background: rgba(96,165,250,0.06); }
+  .timezone-select {
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #4b5563;
+  }
+  .timezone-select select {
+    padding: 5px 8px;
+    font-size: 12px;
+    background: #0a0c10;
+    border: 1px solid #1e2330;
+    border-radius: 5px;
+    color: #9ca3af;
+    font-family: inherit;
+  }
+
+  /* ── Preview Briefing (Step 4) ───────────────────────────── */
+  .preview-briefing {
+    background: #0a0c10;
+    border: 1px solid #1e2330;
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .preview-header {
+    font-size: 16px;
+    color: #f9fafb;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .preview-date {
+    font-size: 12px;
+    color: #4b5563;
+    margin-bottom: 18px;
+  }
+  .preview-section {
+    margin-bottom: 16px;
+  }
+  .preview-section:last-child { margin-bottom: 0; }
+  .preview-section-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b7280;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .preview-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 13px;
+    color: #d1d5db;
+  }
+  .preview-item .time {
+    font-family: 'SF Mono', monospace;
+    font-size: 11px;
+    color: #6b7280;
+    min-width: 44px;
+  }
+  .preview-check {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #374151;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .preview-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .preview-insight {
+    font-size: 13px;
+    color: #9ca3af;
+    line-height: 1.6;
+    padding: 8px 12px;
+    background: rgba(96,165,250,0.04);
+    border-left: 2px solid #3b82f6;
+    border-radius: 0 6px 6px 0;
+  }
+  .preview-loading {
+    text-align: center;
+    padding: 20px;
+    font-size: 13px;
+    color: #4b5563;
+  }
+  .preview-loading .spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #1e2330;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Navigation ──────────────────────────────────────────── */
+  .wizard-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 24px;
+  }
+  .btn {
+    padding: 10px 22px;
+    font-size: 14px;
+    border-radius: 7px;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .btn-ghost { background: transparent; color: #6b7280; }
+  .btn-ghost:hover { color: #9ca3af; }
+  .btn-primary { background: #1d4ed8; color: #fff; }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-success { background: #059669; color: #fff; }
+  .btn-success:hover { background: #047857; }
+  .step-count { font-size: 12px; color: #4b5563; }
+</style>
+</head>
+<body>
+
+<div class="wizard">
+
+  <!-- Step Indicator -->
+  <div class="step-indicator">
+    <div class="step-dot active" id="dot1"></div>
+    <div class="step-line"></div>
+    <div class="step-dot" id="dot2"></div>
+    <div class="step-line"></div>
+    <div class="step-dot" id="dot3"></div>
+    <div class="step-line"></div>
+    <div class="step-dot" id="dot4"></div>
+  </div>
+
+  <div class="wizard-card">
+
+    <!-- ═══ Step 1: Default Tasks ════════════════════════════ -->
+    <div class="step-panel active" id="step1">
+      <h2>Set up your routines</h2>
+      <p class="subtitle">We've pre-populated some common daily non-negotiables. Uncheck any you don't want, or add your own.</p>
+
+      <ul class="task-setup-list">
+        <li class="task-setup-item selected" onclick="this.classList.toggle('selected')">
+          <div class="task-setup-check">&#10003;</div>
+          <div class="task-setup-info">
+            <div class="task-setup-name">Supplements</div>
+            <div class="task-setup-desc">Daily vitamin and supplement routine</div>
+          </div>
+          <span class="task-setup-cadence daily">Daily</span>
+        </li>
+        <li class="task-setup-item selected" onclick="this.classList.toggle('selected')">
+          <div class="task-setup-check">&#10003;</div>
+          <div class="task-setup-info">
+            <div class="task-setup-name">Reading</div>
+            <div class="task-setup-desc">30+ minutes of focused reading</div>
+          </div>
+          <span class="task-setup-cadence daily">Daily</span>
+        </li>
+        <li class="task-setup-item selected" onclick="this.classList.toggle('selected')">
+          <div class="task-setup-check">&#10003;</div>
+          <div class="task-setup-info">
+            <div class="task-setup-name">Writing</div>
+            <div class="task-setup-desc">Journal, blog post, or creative writing</div>
+          </div>
+          <span class="task-setup-cadence daily">Daily</span>
+        </li>
+        <li class="task-setup-item selected" onclick="this.classList.toggle('selected')">
+          <div class="task-setup-check">&#10003;</div>
+          <div class="task-setup-info">
+            <div class="task-setup-name">Coding</div>
+            <div class="task-setup-desc">Ship code on a personal or work project</div>
+          </div>
+          <span class="task-setup-cadence daily">Daily</span>
+        </li>
+        <li class="task-setup-item" onclick="this.classList.toggle('selected')">
+          <div class="task-setup-check">&#10003;</div>
+          <div class="task-setup-info">
+            <div class="task-setup-name">Weekly review</div>
+            <div class="task-setup-desc">Retrospective on the past week</div>
+          </div>
+          <span class="task-setup-cadence weekly">Weekly</span>
+        </li>
+        <li class="task-setup-item" onclick="this.classList.toggle('selected')">
+          <div class="task-setup-check">&#10003;</div>
+          <div class="task-setup-info">
+            <div class="task-setup-name">Brainstorming session</div>
+            <div class="task-setup-desc">Free-form idea generation</div>
+          </div>
+          <span class="task-setup-cadence weekly">Weekly</span>
+        </li>
+      </ul>
+
+      <div class="add-custom" onclick="alert('In the real app, this opens an inline form to add a custom task.')">
+        + Add a custom task
+      </div>
+    </div>
+
+    <!-- ═══ Step 2: Connect Integrations ═════════════════════ -->
+    <div class="step-panel" id="step2">
+      <h2>Connect your tools</h2>
+      <p class="subtitle">Link your accounts to enable AI-powered action item extraction and calendar integration. You can always do this later in Settings.</p>
+
+      <div class="integration-card connected" id="intGcal">
+        <div class="int-icon gcal">&#128197;</div>
+        <div class="int-info">
+          <div class="int-name">Google Calendar</div>
+          <div class="int-desc">See today's meetings in your morning briefing</div>
+          <div class="int-value">Connected -- 3 events found today</div>
+        </div>
+        <button class="int-action connected">Connected</button>
+      </div>
+
+      <div class="integration-card" id="intGmail" onclick="connectIntegration(this, 'Gmail', '12 unread messages found')">
+        <div class="int-icon gmail">&#9993;</div>
+        <div class="int-info">
+          <div class="int-name">Gmail</div>
+          <div class="int-desc">Extract action items and commitments from email</div>
+          <div class="int-value"></div>
+        </div>
+        <button class="int-action connect">Connect</button>
+      </div>
+
+      <div class="integration-card" id="intGithub" onclick="connectIntegration(this, 'GitHub', '2 PRs awaiting review')">
+        <div class="int-icon github">&#128736;</div>
+        <div class="int-info">
+          <div class="int-name">GitHub</div>
+          <div class="int-desc">Surface PR reviews, issue assignments, and CI failures</div>
+          <div class="int-value"></div>
+        </div>
+        <button class="int-action connect">Connect</button>
+      </div>
+
+      <p class="skip-text">You can connect more integrations later in Settings</p>
+    </div>
+
+    <!-- ═══ Step 3: Briefing Time ════════════════════════════ -->
+    <div class="step-panel" id="step3">
+      <h2>Choose your briefing time</h2>
+      <p class="subtitle">Your morning briefing will be generated and delivered at this time every day.</p>
+
+      <div class="time-picker-section">
+        <div class="time-display" id="timeDisplay">7:00 AM</div>
+        <div class="time-label">Your briefing will be ready when you open your laptop</div>
+
+        <div class="time-presets">
+          <button class="time-preset" onclick="setTime('6:00 AM', this)">6:00 AM</button>
+          <button class="time-preset" onclick="setTime('6:30 AM', this)">6:30 AM</button>
+          <button class="time-preset active" onclick="setTime('7:00 AM', this)">7:00 AM</button>
+          <button class="time-preset" onclick="setTime('7:30 AM', this)">7:30 AM</button>
+          <button class="time-preset" onclick="setTime('8:00 AM', this)">8:00 AM</button>
+          <button class="time-preset" onclick="setTime('8:30 AM', this)">8:30 AM</button>
+          <button class="time-preset" onclick="setTime('9:00 AM', this)">9:00 AM</button>
+        </div>
+
+        <div class="timezone-select">
+          <span>Timezone:</span>
+          <select>
+            <option>America/Los_Angeles (PT)</option>
+            <option>America/New_York (ET)</option>
+            <option selected>America/Chicago (CT)</option>
+            <option>Asia/Taipei (CST)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Step 4: Preview Briefing ═════════════════════════ -->
+    <div class="step-panel" id="step4">
+      <h2>Your first briefing</h2>
+      <p class="subtitle">Here's a preview of what your morning briefing will look like. This is generated from whatever data is already available.</p>
+
+      <div class="preview-briefing" id="previewContent" style="display:none;">
+        <div class="preview-header">Good morning, Nick</div>
+        <div class="preview-date">Sunday, March 22 &middot; Briefing preview</div>
+
+        <div class="preview-section">
+          <div class="preview-section-title">Today's Schedule</div>
+          <div class="preview-item">
+            <span class="time">10:00</span>
+            <span class="preview-dot" style="background:#3b82f6;"></span>
+            Team standup (30 min)
+          </div>
+          <div class="preview-item">
+            <span class="time">14:00</span>
+            <span class="preview-dot" style="background:#8b5cf6;"></span>
+            Design review with Alex (1 hr)
+          </div>
+          <div class="preview-item">
+            <span class="time">16:30</span>
+            <span class="preview-dot" style="background:#22c55e;"></span>
+            1:1 with Alex (30 min)
+          </div>
+        </div>
+
+        <div class="preview-section">
+          <div class="preview-section-title">Non-Negotiables</div>
+          <div class="preview-item">
+            <div class="preview-check"></div>
+            Supplements
+          </div>
+          <div class="preview-item">
+            <div class="preview-check"></div>
+            Reading
+          </div>
+          <div class="preview-item">
+            <div class="preview-check"></div>
+            Writing
+          </div>
+          <div class="preview-item">
+            <div class="preview-check"></div>
+            Coding
+          </div>
+        </div>
+
+        <div class="preview-section">
+          <div class="preview-section-title">AI Insights</div>
+          <div class="preview-insight">
+            You have a 3.5-hour block before standup. Good time for deep work. Design review with Alex at 2 PM -- prepare any updates you want to discuss.
+          </div>
+        </div>
+      </div>
+
+      <div class="preview-loading" id="previewLoading">
+        <span class="spinner"></span>
+        Generating your preview briefing...
+      </div>
+    </div>
+
+    <!-- ─── Navigation ───────────────────────────────────────── -->
+    <div class="wizard-nav">
+      <button class="btn btn-ghost" id="backBtn" onclick="prevStep()" style="visibility:hidden;">Back</button>
+      <span class="step-count" id="stepCount">Step 1 of 4</span>
+      <button class="btn btn-primary" id="nextBtn" onclick="nextStep()">Continue</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  let currentStep = 1;
+  const totalSteps = 4;
+
+  function updateUI() {
+    // Panels
+    for (let i = 1; i <= totalSteps; i++) {
+      document.getElementById('step' + i).classList.toggle('active', i === currentStep);
+    }
+    // Dots
+    for (let i = 1; i <= totalSteps; i++) {
+      const dot = document.getElementById('dot' + i);
+      dot.classList.remove('active', 'completed');
+      if (i === currentStep) dot.classList.add('active');
+      else if (i < currentStep) dot.classList.add('completed');
+    }
+    // Nav
+    document.getElementById('backBtn').style.visibility = currentStep === 1 ? 'hidden' : 'visible';
+    document.getElementById('stepCount').textContent = 'Step ' + currentStep + ' of ' + totalSteps;
+
+    if (currentStep === totalSteps) {
+      document.getElementById('nextBtn').textContent = 'Go to Dashboard';
+      document.getElementById('nextBtn').className = 'btn btn-success';
+      // Simulate briefing generation
+      setTimeout(() => {
+        document.getElementById('previewLoading').style.display = 'none';
+        document.getElementById('previewContent').style.display = 'block';
+      }, 1500);
+    } else {
+      document.getElementById('nextBtn').textContent = 'Continue';
+      document.getElementById('nextBtn').className = 'btn btn-primary';
+    }
+  }
+
+  function nextStep() {
+    if (currentStep === totalSteps) {
+      window.location.href = 'dashboard.html';
+      return;
+    }
+    currentStep = Math.min(currentStep + 1, totalSteps);
+    updateUI();
+  }
+
+  function prevStep() {
+    currentStep = Math.max(currentStep - 1, 1);
+    updateUI();
+  }
+
+  function setTime(time, btn) {
+    document.querySelectorAll('.time-preset').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('timeDisplay').textContent = time;
+  }
+
+  function connectIntegration(card, name, resultText) {
+    const btn = card.querySelector('.int-action');
+    btn.textContent = 'Connecting...';
+    btn.className = 'int-action connect';
+    btn.style.opacity = '0.6';
+
+    setTimeout(() => {
+      card.classList.add('connected');
+      btn.textContent = 'Connected';
+      btn.className = 'int-action connected';
+      btn.style.opacity = '';
+      card.querySelector('.int-value').textContent = 'Connected -- ' + resultText;
+    }, 1200);
+  }
+</script>
+</body>
+</html>

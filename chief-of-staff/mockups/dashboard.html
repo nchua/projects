@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chief of Staff — Dashboard</title>
+<style>
+  /* ── Reset & Base ────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 15px; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    background: #0f1117;
+    color: #d1d5db;
+    line-height: 1.5;
+    display: flex;
+    min-height: 100vh;
+  }
+  a { color: #60a5fa; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── Sidebar ─────────────────────────────────────────────── */
+  .sidebar {
+    width: 220px;
+    min-width: 220px;
+    background: #0a0c10;
+    border-right: 1px solid #1e2330;
+    display: flex;
+    flex-direction: column;
+    padding: 24px 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 100;
+  }
+  .sidebar-brand {
+    padding: 0 20px 28px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #9ca3af;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .sidebar-nav { flex: 1; }
+  .sidebar-nav a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    font-size: 14px;
+    color: #9ca3af;
+    border-left: 3px solid transparent;
+    transition: all 0.15s;
+  }
+  .sidebar-nav a:hover {
+    color: #e5e7eb;
+    background: rgba(255,255,255,0.03);
+    text-decoration: none;
+  }
+  .sidebar-nav a.active {
+    color: #f9fafb;
+    border-left-color: #60a5fa;
+    background: rgba(96,165,250,0.06);
+  }
+  .sidebar-nav a .nav-icon { width: 18px; text-align: center; font-size: 15px; }
+  .sidebar-nav a .shortcut {
+    margin-left: auto;
+    font-size: 11px;
+    color: #4b5563;
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+    padding: 1px 5px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 3px;
+    border: 1px solid #1e2330;
+  }
+  .sidebar-footer {
+    padding: 16px 20px;
+    border-top: 1px solid #1e2330;
+    font-size: 12px;
+    color: #4b5563;
+  }
+
+  /* ── Main Content ────────────────────────────────────────── */
+  .main {
+    flex: 1;
+    margin-left: 220px;
+    padding: 0;
+    min-height: 100vh;
+  }
+
+  /* ── Health Banner ───────────────────────────────────────── */
+  .health-banner {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 10px 32px;
+    background: #0a0c10;
+    border-bottom: 1px solid #1e2330;
+    font-size: 12px;
+  }
+  .health-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .health-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+  .health-dot.healthy { background: #22c55e; }
+  .health-dot.degraded { background: #f59e0b; animation: pulse-warn 2s infinite; }
+  .health-dot.failed { background: #ef4444; animation: pulse-warn 1.5s infinite; }
+  @keyframes pulse-warn {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .health-time { color: #4b5563; }
+  .health-banner .spacer { flex: 1; }
+  .help-shortcut {
+    font-size: 11px;
+    color: #4b5563;
+    cursor: pointer;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    padding: 2px 7px;
+    border: 1px solid #1e2330;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.02);
+  }
+  .help-shortcut:hover { color: #9ca3af; border-color: #374151; }
+
+  /* ── Header ──────────────────────────────────────────────── */
+  .header {
+    padding: 28px 32px 0;
+  }
+  .greeting {
+    font-size: 22px;
+    font-weight: 600;
+    color: #f9fafb;
+  }
+  .greeting .date-part {
+    font-weight: 400;
+    color: #6b7280;
+    margin-left: 8px;
+    font-size: 16px;
+  }
+  .briefing-meta {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #4b5563;
+  }
+
+  /* ── Dashboard Grid ──────────────────────────────────────── */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    padding: 24px 32px 32px;
+    max-width: 1400px;
+  }
+
+  /* ── Card ─────────────────────────────────────────────────── */
+  .card {
+    background: #151922;
+    border: 1px solid #1e2330;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px 10px;
+    border-bottom: 1px solid #1e2330;
+  }
+  .card-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #9ca3af;
+  }
+  .card-action {
+    font-size: 11px;
+    color: #4b5563;
+    cursor: pointer;
+  }
+  .card-action:hover { color: #9ca3af; }
+  .card-body { padding: 6px 0; }
+
+  /* ── Non-Negotiables ─────────────────────────────────────── */
+  .task-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 18px;
+    cursor: pointer;
+    transition: background 0.1s;
+    position: relative;
+  }
+  .task-row:hover { background: rgba(255,255,255,0.02); }
+  .task-row.completed .task-label { color: #4b5563; text-decoration: line-through; }
+  .task-checkbox {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #374151;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    font-size: 12px;
+    color: transparent;
+  }
+  .task-row:hover .task-checkbox { border-color: #60a5fa; }
+  .task-row.completed .task-checkbox {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+    color: #fff;
+  }
+  .task-label {
+    font-size: 14px;
+    color: #e5e7eb;
+    flex: 1;
+  }
+  .streak-badge {
+    font-size: 11px;
+    color: #6b7280;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .streak-badge.hot { color: #f59e0b; }
+  .streak-fire { font-style: normal; }
+  .shortcut-hint {
+    font-size: 10px;
+    color: #374151;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    padding: 1px 4px;
+    border: 1px solid #1e2330;
+    border-radius: 3px;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+  .task-row:hover .shortcut-hint { opacity: 1; }
+  .progress-bar-container {
+    padding: 10px 18px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .progress-bar-track {
+    flex: 1;
+    height: 4px;
+    background: #1e2330;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #1d4ed8, #60a5fa);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+  .progress-text {
+    font-size: 11px;
+    color: #4b5563;
+    white-space: nowrap;
+  }
+
+  /* ── Action Items ────────────────────────────────────────── */
+  .action-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 18px;
+    cursor: pointer;
+    transition: background 0.1s;
+    border-left: 3px solid transparent;
+  }
+  .action-row:hover { background: rgba(255,255,255,0.02); }
+  .action-row.selected { background: rgba(96,165,250,0.06); border-left-color: #60a5fa; }
+  .action-row.low-confidence { opacity: 0.6; }
+  .action-icon {
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 13px;
+    margin-top: 2px;
+  }
+  .action-icon.gmail { color: #ef4444; }
+  .action-icon.github { color: #a78bfa; }
+  .action-icon.manual { color: #60a5fa; }
+  .action-content { flex: 1; min-width: 0; }
+  .action-title {
+    font-size: 13px;
+    color: #e5e7eb;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .priority-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .priority-dot.high { background: #ef4444; }
+  .priority-dot.medium { background: #f59e0b; }
+  .priority-dot.low { background: #6b7280; }
+  .action-meta {
+    font-size: 11px;
+    color: #4b5563;
+    margin-top: 2px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .confidence-tag {
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+  }
+  .confidence-tag.high-conf { background: rgba(34,197,94,0.12); color: #22c55e; }
+  .confidence-tag.med-conf { background: rgba(245,158,11,0.12); color: #f59e0b; }
+  .confidence-tag.low-conf { background: rgba(239,68,68,0.12); color: #ef4444; }
+  .action-shortcuts {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+    align-self: center;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+  .action-row:hover .action-shortcuts,
+  .action-row.selected .action-shortcuts { opacity: 1; }
+  .action-btn {
+    font-size: 10px;
+    color: #4b5563;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    padding: 2px 6px;
+    border: 1px solid #1e2330;
+    border-radius: 3px;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.1s;
+    white-space: nowrap;
+  }
+  .action-btn:hover { color: #9ca3af; border-color: #374151; background: rgba(255,255,255,0.03); }
+  .action-btn.dismiss:hover { color: #ef4444; border-color: #7f1d1d; }
+  .triage-footer {
+    padding: 8px 18px 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 11px;
+    color: #374151;
+    border-top: 1px solid rgba(30,35,48,0.5);
+  }
+  .triage-footer kbd {
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    padding: 1px 5px;
+    border: 1px solid #1e2330;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.02);
+    font-size: 10px;
+    color: #4b5563;
+  }
+
+  /* ── Calendar ────────────────────────────────────────────── */
+  .calendar-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 18px;
+    transition: background 0.1s;
+  }
+  .calendar-row:hover { background: rgba(255,255,255,0.02); }
+  .cal-time {
+    font-size: 12px;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    color: #6b7280;
+    min-width: 52px;
+    text-align: right;
+    padding-top: 1px;
+  }
+  .cal-bar {
+    width: 3px;
+    min-height: 36px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .cal-bar.blue { background: #3b82f6; }
+  .cal-bar.purple { background: #8b5cf6; }
+  .cal-bar.green { background: #22c55e; }
+  .cal-bar.amber { background: #f59e0b; }
+  .cal-details { flex: 1; }
+  .cal-title { font-size: 13px; color: #e5e7eb; }
+  .cal-subtitle { font-size: 11px; color: #4b5563; margin-top: 1px; }
+  .cal-prep-tag {
+    font-size: 10px;
+    color: #f59e0b;
+    background: rgba(245,158,11,0.1);
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-top: 3px;
+    display: inline-block;
+  }
+
+  /* ── AI Insights ─────────────────────────────────────────── */
+  .insights-body {
+    padding: 14px 18px;
+  }
+  .insight-item {
+    padding: 10px 0;
+  }
+  .insight-item + .insight-item {
+    border-top: 1px solid rgba(30,35,48,0.5);
+  }
+  .insight-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .insight-label.priority { color: #60a5fa; }
+  .insight-label.risk { color: #f59e0b; }
+  .insight-label.opportunity { color: #22c55e; }
+  .insight-text {
+    font-size: 13px;
+    color: #d1d5db;
+    line-height: 1.55;
+  }
+
+  /* ── Keyboard Shortcut Overlay ───────────────────────────── */
+  .shortcut-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .shortcut-overlay.visible { display: flex; }
+  .shortcut-panel {
+    background: #151922;
+    border: 1px solid #1e2330;
+    border-radius: 12px;
+    padding: 28px 36px;
+    min-width: 480px;
+    max-width: 560px;
+  }
+  .shortcut-panel h2 {
+    font-size: 16px;
+    color: #f9fafb;
+    margin-bottom: 20px;
+    font-weight: 600;
+  }
+  .shortcut-group {
+    margin-bottom: 18px;
+  }
+  .shortcut-group-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b7280;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  .shortcut-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 0;
+    font-size: 13px;
+    color: #d1d5db;
+  }
+  .shortcut-row kbd {
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    font-size: 12px;
+    padding: 2px 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid #1e2330;
+    border-radius: 4px;
+    color: #9ca3af;
+    min-width: 28px;
+    text-align: center;
+  }
+
+  /* ── Scrollbar ───────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #1e2330; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #374151; }
+
+  /* ── Responsive (large screens) ──────────────────────────── */
+  @media (min-width: 1600px) {
+    .dashboard-grid { max-width: 1600px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── Sidebar ──────────────────────────────────────────────── -->
+<nav class="sidebar">
+  <div class="sidebar-brand">Chief of Staff</div>
+  <div class="sidebar-nav">
+    <a href="dashboard.html" class="active">
+      <span class="nav-icon">&#9632;</span>
+      Dashboard
+      <span class="shortcut">b</span>
+    </a>
+    <a href="tasks.html">
+      <span class="nav-icon">&#9745;</span>
+      Tasks
+      <span class="shortcut">t</span>
+    </a>
+    <a href="settings.html">
+      <span class="nav-icon">&#9881;</span>
+      Settings
+      <span class="shortcut">s</span>
+    </a>
+  </div>
+  <div class="sidebar-footer">
+    v0.1.0 &middot; Phase 1
+  </div>
+</nav>
+
+<!-- ─── Main ─────────────────────────────────────────────────── -->
+<main class="main">
+
+  <!-- Health Banner -->
+  <div class="health-banner">
+    <div class="health-item">
+      <span class="health-dot healthy"></span>
+      <span>Calendar</span>
+      <span class="health-time">synced 1m ago</span>
+    </div>
+    <div class="health-item">
+      <span class="health-dot healthy"></span>
+      <span>Gmail</span>
+      <span class="health-time">synced 3m ago</span>
+    </div>
+    <div class="health-item">
+      <span class="health-dot degraded"></span>
+      <span>GitHub</span>
+      <span class="health-time" style="color:#f59e0b">token expiring</span>
+    </div>
+    <span class="spacer"></span>
+    <span class="help-shortcut" onclick="toggleShortcuts()">?</span>
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <h1 class="greeting">
+      Good morning, Nick
+      <span class="date-part">&middot; Sunday, March 22</span>
+    </h1>
+    <div class="briefing-meta">Briefing generated at 7:00 AM &middot; 4 tasks &middot; 5 action items &middot; 3 meetings</div>
+  </div>
+
+  <!-- Dashboard Grid -->
+  <div class="dashboard-grid">
+
+    <!-- ─── LEFT COLUMN ────────────────────────────────────── -->
+    <div class="left-col">
+
+      <!-- Non-Negotiables -->
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header">
+          <span class="card-title">Non-Negotiables</span>
+          <span class="card-action">2 / 4 done</span>
+        </div>
+        <div class="card-body">
+          <div class="task-row completed" onclick="toggleTask(this)">
+            <div class="task-checkbox">&#10003;</div>
+            <span class="task-label">Supplements</span>
+            <span class="streak-badge hot"><span class="streak-fire">&#128293;</span> 12 days</span>
+            <span class="shortcut-hint">Space</span>
+          </div>
+          <div class="task-row completed" onclick="toggleTask(this)">
+            <div class="task-checkbox">&#10003;</div>
+            <span class="task-label">Coding</span>
+            <span class="streak-badge hot"><span class="streak-fire">&#128293;</span> 8 days</span>
+            <span class="shortcut-hint">Space</span>
+          </div>
+          <div class="task-row" onclick="toggleTask(this)">
+            <div class="task-checkbox"></div>
+            <span class="task-label">Reading</span>
+            <span class="streak-badge"><span class="streak-fire">&#8226;</span> 3 days</span>
+            <span class="shortcut-hint">Space</span>
+          </div>
+          <div class="task-row" onclick="toggleTask(this)">
+            <div class="task-checkbox"></div>
+            <span class="task-label">Writing</span>
+            <span class="streak-badge"><span class="streak-fire">&#8226;</span> 1 day</span>
+            <span class="shortcut-hint">Space</span>
+          </div>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" style="width: 50%;"></div>
+          </div>
+          <span class="progress-text">50%</span>
+        </div>
+      </div>
+
+      <!-- Action Items -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Action Items</span>
+          <span class="card-action">5 pending</span>
+        </div>
+        <div class="card-body">
+          <div class="action-row selected">
+            <div class="action-icon gmail">&#9993;</div>
+            <div class="action-content">
+              <div class="action-title">
+                <span class="priority-dot high"></span>
+                Reply to investor email from Mark
+              </div>
+              <div class="action-meta">
+                <span>Gmail &middot; 2h ago</span>
+                <span class="confidence-tag high-conf">0.95</span>
+              </div>
+            </div>
+            <div class="action-shortcuts">
+              <button class="action-btn" title="Acknowledge [a]">a</button>
+              <button class="action-btn dismiss" title="Dismiss [d]">d</button>
+            </div>
+          </div>
+          <div class="action-row">
+            <div class="action-icon gmail">&#9993;</div>
+            <div class="action-content">
+              <div class="action-title">
+                <span class="priority-dot high"></span>
+                Send pitch deck to Sarah by EOD
+              </div>
+              <div class="action-meta">
+                <span>Gmail &middot; 5h ago</span>
+                <span>Deadline: today</span>
+                <span class="confidence-tag high-conf">0.91</span>
+              </div>
+            </div>
+            <div class="action-shortcuts">
+              <button class="action-btn" title="Acknowledge [a]">a</button>
+              <button class="action-btn dismiss" title="Dismiss [d]">d</button>
+            </div>
+          </div>
+          <div class="action-row">
+            <div class="action-icon github">&#128736;</div>
+            <div class="action-content">
+              <div class="action-title">
+                <span class="priority-dot medium"></span>
+                Review PR #42: Add auth middleware
+              </div>
+              <div class="action-meta">
+                <span>GitHub &middot; 1d ago</span>
+                <span class="confidence-tag high-conf">0.88</span>
+              </div>
+            </div>
+            <div class="action-shortcuts">
+              <button class="action-btn" title="Acknowledge [a]">a</button>
+              <button class="action-btn dismiss" title="Dismiss [d]">d</button>
+            </div>
+          </div>
+          <div class="action-row">
+            <div class="action-icon gmail">&#9993;</div>
+            <div class="action-content">
+              <div class="action-title">
+                <span class="priority-dot medium"></span>
+                Follow up on contract with legal team
+              </div>
+              <div class="action-meta">
+                <span>Gmail &middot; 3d ago &middot; no reply</span>
+                <span class="confidence-tag med-conf">0.72</span>
+              </div>
+            </div>
+            <div class="action-shortcuts">
+              <button class="action-btn" title="Acknowledge [a]">a</button>
+              <button class="action-btn dismiss" title="Dismiss [d]">d</button>
+            </div>
+          </div>
+          <div class="action-row low-confidence">
+            <div class="action-icon gmail">&#9993;</div>
+            <div class="action-content">
+              <div class="action-title">
+                <span class="priority-dot low"></span>
+                Check pricing tiers mentioned in newsletter
+              </div>
+              <div class="action-meta">
+                <span>Gmail &middot; 4d ago</span>
+                <span class="confidence-tag low-conf">0.45</span>
+              </div>
+            </div>
+            <div class="action-shortcuts">
+              <button class="action-btn" title="Acknowledge [a]">a</button>
+              <button class="action-btn dismiss" title="Dismiss [d]">d</button>
+            </div>
+          </div>
+        </div>
+        <div class="triage-footer">
+          <kbd>j</kbd><kbd>k</kbd> navigate
+          &nbsp;&middot;&nbsp;
+          <kbd>a</kbd> acknowledge
+          &nbsp;&middot;&nbsp;
+          <kbd>d</kbd> dismiss
+          &nbsp;&middot;&nbsp;
+          <kbd>Enter</kbd> expand
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ─── RIGHT COLUMN ───────────────────────────────────── -->
+    <div class="right-col">
+
+      <!-- Calendar -->
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header">
+          <span class="card-title">Today's Schedule</span>
+          <span class="card-action">3 events</span>
+        </div>
+        <div class="card-body">
+          <div class="calendar-row">
+            <span class="cal-time">10:00</span>
+            <div class="cal-bar blue"></div>
+            <div class="cal-details">
+              <div class="cal-title">Team standup</div>
+              <div class="cal-subtitle">Zoom &middot; 30 min &middot; 4 attendees</div>
+            </div>
+          </div>
+          <div class="calendar-row">
+            <span class="cal-time">14:00</span>
+            <div class="cal-bar purple"></div>
+            <div class="cal-details">
+              <div class="cal-title">Design review with Alex</div>
+              <div class="cal-subtitle">Conference Room B &middot; 1 hr</div>
+              <span class="cal-prep-tag">prep needed</span>
+            </div>
+          </div>
+          <div class="calendar-row">
+            <span class="cal-time">16:30</span>
+            <div class="cal-bar green"></div>
+            <div class="cal-details">
+              <div class="cal-title">1:1 with Alex</div>
+              <div class="cal-subtitle">Zoom &middot; 30 min</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Insights -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">AI Insights</span>
+          <span class="card-action">from morning briefing</span>
+        </div>
+        <div class="insights-body">
+          <div class="insight-item">
+            <div class="insight-label priority">Priority</div>
+            <div class="insight-text">
+              Reply to Mark's investor email first -- he mentioned a deadline of end of day today and this has been sitting for 2 hours. The pitch deck for Sarah is also due today but you have until EOD.
+            </div>
+          </div>
+          <div class="insight-item">
+            <div class="insight-label risk">At Risk</div>
+            <div class="insight-text">
+              The legal contract follow-up has had no reply in 3 days. Consider re-sending or escalating before the weekend.
+            </div>
+          </div>
+          <div class="insight-item">
+            <div class="insight-label opportunity">Today</div>
+            <div class="insight-text">
+              You have a 2.5-hour block between standup and design review. Good window for deep work on the pitch deck.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</main>
+
+<!-- ─── Shortcut Overlay ─────────────────────────────────────── -->
+<div class="shortcut-overlay" id="shortcutOverlay">
+  <div class="shortcut-panel">
+    <h2>Keyboard Shortcuts</h2>
+    <div class="shortcut-group">
+      <div class="shortcut-group-title">Navigation</div>
+      <div class="shortcut-row"><span>Dashboard</span><kbd>b</kbd></div>
+      <div class="shortcut-row"><span>Tasks</span><kbd>t</kbd></div>
+      <div class="shortcut-row"><span>Settings</span><kbd>s</kbd></div>
+      <div class="shortcut-row"><span>Show shortcuts</span><kbd>?</kbd></div>
+    </div>
+    <div class="shortcut-group">
+      <div class="shortcut-group-title">Action Item Triage</div>
+      <div class="shortcut-row"><span>Move down</span><kbd>j</kbd></div>
+      <div class="shortcut-row"><span>Move up</span><kbd>k</kbd></div>
+      <div class="shortcut-row"><span>Dismiss</span><kbd>d</kbd></div>
+      <div class="shortcut-row"><span>Acknowledge</span><kbd>a</kbd></div>
+      <div class="shortcut-row"><span>Expand details</span><kbd>Enter</kbd></div>
+    </div>
+    <div class="shortcut-group">
+      <div class="shortcut-group-title">Tasks</div>
+      <div class="shortcut-row"><span>Complete task</span><kbd>Space</kbd></div>
+      <div class="shortcut-row"><span>Add new task</span><kbd>n</kbd></div>
+    </div>
+    <div style="margin-top: 16px; text-align: center; font-size: 11px; color: #4b5563;">
+      Press <kbd style="font-family:'SF Mono',monospace;padding:1px 5px;border:1px solid #1e2330;border-radius:3px;background:rgba(255,255,255,0.02);font-size:10px;color:#4b5563;">Esc</kbd> to close
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── Task toggle ───────────────────────────────────────────── */
+  function toggleTask(row) {
+    row.classList.toggle('completed');
+    const checkbox = row.querySelector('.task-checkbox');
+    checkbox.innerHTML = row.classList.contains('completed') ? '&#10003;' : '';
+    updateProgress();
+  }
+
+  function updateProgress() {
+    const total = document.querySelectorAll('.card:first-child .task-row').length;
+    const done = document.querySelectorAll('.card:first-child .task-row.completed').length;
+    const pct = Math.round((done / total) * 100);
+    document.querySelector('.progress-bar-fill').style.width = pct + '%';
+    document.querySelector('.progress-text').textContent = pct + '%';
+    document.querySelector('.card:first-child .card-action').textContent = done + ' / ' + total + ' done';
+  }
+
+  /* ── Shortcut overlay ──────────────────────────────────────── */
+  function toggleShortcuts() {
+    document.getElementById('shortcutOverlay').classList.toggle('visible');
+  }
+
+  /* ── Keyboard navigation ───────────────────────────────────── */
+  let selectedActionIdx = 0;
+  const actionRows = () => document.querySelectorAll('.action-row');
+
+  function selectAction(idx) {
+    const rows = actionRows();
+    if (idx < 0 || idx >= rows.length) return;
+    rows.forEach(r => r.classList.remove('selected'));
+    selectedActionIdx = idx;
+    rows[idx].classList.add('selected');
+    rows[idx].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  document.addEventListener('keydown', function(e) {
+    // Don't capture when typing in inputs
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    const overlay = document.getElementById('shortcutOverlay');
+
+    switch(e.key) {
+      case '?':
+        e.preventDefault();
+        toggleShortcuts();
+        break;
+      case 'Escape':
+        if (overlay.classList.contains('visible')) {
+          overlay.classList.remove('visible');
+        }
+        break;
+      case 'b':
+        // Already on dashboard
+        break;
+      case 't':
+        window.location.href = 'tasks.html';
+        break;
+      case 's':
+        window.location.href = 'settings.html';
+        break;
+      case 'j':
+        e.preventDefault();
+        selectAction(selectedActionIdx + 1);
+        break;
+      case 'k':
+        e.preventDefault();
+        selectAction(selectedActionIdx - 1);
+        break;
+      case 'd':
+        e.preventDefault();
+        // Dismiss selected action item
+        const rows = actionRows();
+        if (rows[selectedActionIdx]) {
+          rows[selectedActionIdx].style.opacity = '0';
+          rows[selectedActionIdx].style.transform = 'translateX(20px)';
+          rows[selectedActionIdx].style.transition = 'all 0.2s';
+          setTimeout(() => {
+            rows[selectedActionIdx].style.display = 'none';
+            if (selectedActionIdx > 0) selectAction(selectedActionIdx - 1);
+          }, 200);
+        }
+        break;
+      case 'a':
+        e.preventDefault();
+        // Acknowledge selected
+        const aRows = actionRows();
+        if (aRows[selectedActionIdx]) {
+          aRows[selectedActionIdx].style.opacity = '0.4';
+          const title = aRows[selectedActionIdx].querySelector('.action-title');
+          if (title) title.style.textDecoration = 'line-through';
+        }
+        break;
+      case ' ':
+        e.preventDefault();
+        // Toggle first incomplete task
+        const incomplete = document.querySelector('.task-row:not(.completed)');
+        if (incomplete) toggleTask(incomplete);
+        break;
+    }
+  });
+
+  /* ── Click to select action items ──────────────────────────── */
+  document.querySelectorAll('.action-row').forEach((row, idx) => {
+    row.addEventListener('click', () => selectAction(idx));
+  });
+</script>
+</body>
+</html>

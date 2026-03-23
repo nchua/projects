@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chief of Staff — Sign In</title>
+<style>
+  /* ── Reset & Base ────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 15px; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    background: #0f1117;
+    color: #d1d5db;
+    line-height: 1.5;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── Login Container ─────────────────────────────────────── */
+  .login-container {
+    width: 100%;
+    max-width: 400px;
+    padding: 0 24px;
+  }
+
+  /* ── Brand ───────────────────────────────────────────────── */
+  .brand {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .brand-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 16px;
+    background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: #fff;
+  }
+  .brand-name {
+    font-size: 20px;
+    font-weight: 600;
+    color: #f9fafb;
+    letter-spacing: -0.01em;
+  }
+  .brand-tagline {
+    font-size: 13px;
+    color: #4b5563;
+    margin-top: 4px;
+  }
+
+  /* ── Card ─────────────────────────────────────────────────── */
+  .login-card {
+    background: #151922;
+    border: 1px solid #1e2330;
+    border-radius: 12px;
+    padding: 28px;
+  }
+
+  /* ── Tabs ─────────────────────────────────────────────────── */
+  .auth-tabs {
+    display: flex;
+    gap: 2px;
+    background: #0a0c10;
+    border: 1px solid #1e2330;
+    border-radius: 8px;
+    padding: 3px;
+    margin-bottom: 24px;
+  }
+  .auth-tab {
+    flex: 1;
+    padding: 8px;
+    font-size: 13px;
+    color: #6b7280;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-family: inherit;
+  }
+  .auth-tab:hover { color: #9ca3af; }
+  .auth-tab.active {
+    background: #151922;
+    color: #f9fafb;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+
+  /* ── Form ─────────────────────────────────────────────────── */
+  .form-group { margin-bottom: 18px; }
+  .form-label {
+    display: block;
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+  }
+  .form-input {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    background: #0a0c10;
+    border: 1px solid #1e2330;
+    border-radius: 7px;
+    color: #e5e7eb;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus { border-color: #3b82f6; }
+  .form-input::placeholder { color: #374151; }
+
+  .submit-btn {
+    width: 100%;
+    padding: 11px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #fff;
+    background: #1d4ed8;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+    margin-top: 4px;
+  }
+  .submit-btn:hover { background: #2563eb; }
+
+  /* ── Divider ─────────────────────────────────────────────── */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 22px 0;
+    font-size: 11px;
+    color: #374151;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #1e2330;
+  }
+
+  /* ── Social Login ────────────────────────────────────────── */
+  .social-btn {
+    width: 100%;
+    padding: 10px;
+    font-size: 13px;
+    color: #d1d5db;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid #1e2330;
+    border-radius: 7px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .social-btn:hover { background: rgba(255,255,255,0.06); border-color: #374151; }
+  .social-btn + .social-btn { margin-top: 8px; }
+  .social-icon { font-size: 16px; }
+
+  /* ── Footer ──────────────────────────────────────────────── */
+  .login-footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 12px;
+    color: #374151;
+  }
+
+  /* ── Error message ───────────────────────────────────────── */
+  .error-msg {
+    display: none;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #ef4444;
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.15);
+    border-radius: 6px;
+    margin-bottom: 16px;
+  }
+  .error-msg.visible { display: block; }
+
+  /* ── Register form (hidden by default) ───────────────────── */
+  .register-form { display: none; }
+  .register-form.visible { display: block; }
+  .login-form.hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div class="login-container">
+
+  <!-- Brand -->
+  <div class="brand">
+    <div class="brand-icon">&#9632;</div>
+    <div class="brand-name">Chief of Staff</div>
+    <div class="brand-tagline">Your morning command center</div>
+  </div>
+
+  <!-- Card -->
+  <div class="login-card">
+
+    <!-- Tabs -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="showLogin()">Sign In</button>
+      <button class="auth-tab" onclick="showRegister()">Create Account</button>
+    </div>
+
+    <!-- Error -->
+    <div class="error-msg" id="errorMsg">Invalid email or password. Please try again.</div>
+
+    <!-- Login Form -->
+    <form class="login-form" id="loginForm" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" placeholder="you@example.com" required autocomplete="email" autofocus>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" type="password" placeholder="Enter your password" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="submit-btn">Sign In</button>
+    </form>
+
+    <!-- Register Form -->
+    <form class="register-form" id="registerForm" onsubmit="handleRegister(event)">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" placeholder="you@example.com" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" type="password" placeholder="Create a password" required autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm Password</label>
+        <input class="form-input" type="password" placeholder="Confirm your password" required autocomplete="new-password">
+      </div>
+      <button type="submit" class="submit-btn">Create Account</button>
+    </form>
+
+    <div class="divider">or continue with</div>
+
+    <button class="social-btn" onclick="window.location.href='onboarding.html'">
+      <span class="social-icon">G</span>
+      Google
+    </button>
+    <button class="social-btn">
+      <span class="social-icon">&#128736;</span>
+      GitHub
+    </button>
+
+  </div>
+
+  <div class="login-footer">
+    By signing in, you agree to our Terms of Service and Privacy Policy.
+  </div>
+
+</div>
+
+<script>
+  function showLogin() {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.auth-tab')[0].classList.add('active');
+    document.getElementById('loginForm').classList.remove('hidden');
+    document.getElementById('loginForm').style.display = '';
+    document.getElementById('registerForm').classList.remove('visible');
+    document.getElementById('registerForm').style.display = 'none';
+    document.getElementById('errorMsg').classList.remove('visible');
+  }
+
+  function showRegister() {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.auth-tab')[1].classList.add('active');
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('registerForm').style.display = 'block';
+    document.getElementById('errorMsg').classList.remove('visible');
+  }
+
+  function handleLogin(e) {
+    e.preventDefault();
+    // Mock: show error or redirect
+    const btn = e.target.querySelector('.submit-btn');
+    btn.textContent = 'Signing in...';
+    btn.disabled = true;
+    setTimeout(() => {
+      window.location.href = 'dashboard.html';
+    }, 800);
+  }
+
+  function handleRegister(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('.submit-btn');
+    btn.textContent = 'Creating account...';
+    btn.disabled = true;
+    setTimeout(() => {
+      window.location.href = 'onboarding.html';
+    }, 800);
+  }
+</script>
+</body>
+</html>

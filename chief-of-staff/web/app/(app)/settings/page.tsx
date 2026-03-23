@@ -1,0 +1,277 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import useSWR from "swr";
+import { useAuth } from "@/lib/auth";
+import { api } from "@/lib/api";
+import { SettingsSection } from "@/components/settings/SettingsSection";
+import { IntegrationCard } from "@/components/settings/IntegrationCard";
+import type {
+  IntegrationResponse,
+  IntegrationProvider,
+} from "@/lib/types";
+
+// ── Timezone options ────────────────────────────────────────────
+
+const TIMEZONES = [
+  { value: "America/Los_Angeles", label: "America/Los_Angeles (PT)" },
+  { value: "America/Denver", label: "America/Denver (MT)" },
+  { value: "America/Chicago", label: "America/Chicago (CT)" },
+  { value: "America/New_York", label: "America/New_York (ET)" },
+  { value: "Asia/Taipei", label: "Asia/Taipei (CST)" },
+  { value: "Asia/Tokyo", label: "Asia/Tokyo (JST)" },
+  { value: "Europe/London", label: "Europe/London (GMT)" },
+  { value: "Europe/Berlin", label: "Europe/Berlin (CET)" },
+  { value: "UTC", label: "UTC" },
+];
+
+// ── Integration providers to show ───────────────────────────────
+
+const INTEGRATION_PROVIDERS: IntegrationProvider[] = [
+  "google_calendar",
+  "gmail",
+  "github",
+];
+
+export default function SettingsPage() {
+  const { user, updateUser } = useAuth();
+
+  // ── Integrations data ───────────────────────────────────────
+  const {
+    data: integrations,
+    mutate: mutateIntegrations,
+  } = useSWR<IntegrationResponse[]>(
+    "/integrations",
+    () => api.integrations.list(),
+    { refreshInterval: 30_000 },
+  );
+
+  // ── Preferences state ───────────────────────────────────────
+  const [timezone, setTimezone] = useState(user?.timezone ?? "");
+  const [wakeTime, setWakeTime] = useState(user?.wake_time ?? "07:00");
+  const [prefsSaving, setPrefsSaving] = useState(false);
+  const [prefsSaved, setPrefsSaved] = useState(false);
+  const [prefsError, setPrefsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      setTimezone(user.timezone ?? "");
+      setWakeTime(user.wake_time ?? "07:00");
+    }
+  }, [user]);
+
+  async function savePreferences() {
+    setPrefsSaving(true);
+    setPrefsError(null);
+    setPrefsSaved(false);
+    try {
+      await updateUser({
+        timezone: timezone || undefined,
+        wake_time: wakeTime || undefined,
+      });
+      setPrefsSaved(true);
+      setTimeout(() => setPrefsSaved(false), 2000);
+    } catch {
+      setPrefsError("Failed to save preferences.");
+    } finally {
+      setPrefsSaving(false);
+    }
+  }
+
+  // ── Panic state ─────────────────────────────────────────────
+  const [panicInput, setPanicInput] = useState("");
+  const [panicking, setPanicking] = useState(false);
+  const [panicDone, setPanicDone] = useState(false);
+  const [panicError, setPanicError] = useState<string | null>(null);
+
+  async function handlePanic() {
+    if (panicInput !== "REVOKE") return;
+    setPanicking(true);
+    setPanicError(null);
+    try {
+      await api.integrations.panicRevokeAll();
+      setPanicDone(true);
+      setPanicInput("");
+      void mutateIntegrations();
+    } catch {
+      setPanicError("Failed to revoke integrations.");
+    } finally {
+      setPanicking(false);
+    }
+  }
+
+  // ── OAuth connect handlers ──────────────────────────────────
+
+  const getRedirectUri = useCallback(() => {
+    if (typeof window === "undefined") return "";
+    return `${window.location.origin}/callback`;
+  }, []);
+
+  async function connectGoogle() {
+    const { authorization_url } = await api.integrations.googleAuthorize(
+      getRedirectUri(),
+    );
+    window.location.href = authorization_url;
+  }
+
+  async function connectGmail() {
+    // Gmail uses same Google OAuth flow
+    const { authorization_url } = await api.integrations.googleAuthorize(
+      getRedirectUri(),
+    );
+    window.location.href = authorization_url;
+  }
+
+  async function connectGitHub() {
+    const { authorization_url } = await api.integrations.githubAuthorize(
+      getRedirectUri(),
+    );
+    window.location.href = authorization_url;
+  }
+
+  async function disconnectIntegration(id: string) {
+    await api.integrations.disconnect(id);
+    void mutateIntegrations();
+  }
+
+  // ── Connect handler router ─────────────────────────────────
+
+  function getConnectHandler(provider: IntegrationProvider) {
+    switch (provider) {
+      case "google_calendar":
+        return connectGoogle;
+      case "gmail":
+        return connectGmail;
+      case "github":
+        return connectGitHub;
+      default:
+        return async () => {};
+    }
+  }
+
+  function findIntegration(
+    provider: IntegrationProvider,
+  ): IntegrationResponse | null {
+    return integrations?.find((i) => i.provider === provider) ?? null;
+  }
+
+  // ── Render ──────────────────────────────────────────────────
+
+  return (
+    <div className="px-8 pt-7 pb-12 max-w-[860px]">
+      <h1 className="text-[22px] font-semibold text-text-primary mb-7">
+        Settings
+      </h1>
+
+      {/* ── Integrations ──────────────────────────────────────── */}
+      <SettingsSection title="Integrations">
+        {INTEGRATION_PROVIDERS.map((provider) => (
+          <IntegrationCard
+            key={provider}
+            provider={provider}
+            integration={findIntegration(provider)}
+            onConnect={getConnectHandler(provider)}
+            onDisconnect={disconnectIntegration}
+          />
+        ))}
+      </SettingsSection>
+
+      {/* ── Preferences ───────────────────────────────────────── */}
+      <SettingsSection title="Morning Briefing">
+        {/* Timezone */}
+        <div className="flex items-center justify-between px-[18px] py-3.5 border-b border-surface-3/40">
+          <div className="flex-1">
+            <div className="text-sm text-text-secondary">Timezone</div>
+            <div className="text-xs text-text-dim mt-0.5">
+              All times are based on this timezone
+            </div>
+          </div>
+          <select
+            value={timezone}
+            onChange={(e) => setTimezone(e.target.value)}
+            className="px-2.5 py-[7px] text-[13px] bg-surface-0 border border-surface-3 rounded-md text-text-secondary outline-none transition-colors focus:border-accent w-[200px]"
+          >
+            <option value="">Select timezone</option>
+            {TIMEZONES.map((tz) => (
+              <option key={tz.value} value={tz.value}>
+                {tz.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Briefing time */}
+        <div className="flex items-center justify-between px-[18px] py-3.5 border-b border-surface-3/40">
+          <div className="flex-1">
+            <div className="text-sm text-text-secondary">Briefing time</div>
+            <div className="text-xs text-text-dim mt-0.5">
+              When your morning briefing is generated
+            </div>
+          </div>
+          <input
+            type="time"
+            value={wakeTime}
+            onChange={(e) => setWakeTime(e.target.value)}
+            className="px-2.5 py-[7px] text-[13px] bg-surface-0 border border-surface-3 rounded-md text-text-secondary outline-none transition-colors focus:border-accent w-[120px]"
+          />
+        </div>
+
+        {/* Save button row */}
+        <div className="flex items-center justify-end gap-3 px-[18px] py-3.5">
+          {prefsError && (
+            <span className="text-xs text-red-400">{prefsError}</span>
+          )}
+          {prefsSaved && (
+            <span className="text-xs text-status-healthy">Saved</span>
+          )}
+          <button
+            onClick={savePreferences}
+            disabled={prefsSaving}
+            className="px-4 py-1.5 text-xs font-medium rounded-md bg-accent text-white transition-colors hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {prefsSaving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </SettingsSection>
+
+      {/* ── Danger Zone ───────────────────────────────────────── */}
+      <SettingsSection title="Danger Zone" danger>
+        <div className="px-[18px] py-4">
+          <div className="text-sm text-text-secondary mb-1">
+            Revoke all integrations
+          </div>
+          <div className="text-xs text-text-dim mb-3">
+            Immediately disconnect all integrations and revoke their OAuth
+            tokens. This cannot be undone.
+          </div>
+
+          {panicDone && (
+            <div className="text-xs text-status-healthy mb-3">
+              All integrations have been revoked.
+            </div>
+          )}
+          {panicError && (
+            <div className="text-xs text-red-400 mb-3">{panicError}</div>
+          )}
+
+          <div className="flex items-center gap-3">
+            <input
+              type="text"
+              value={panicInput}
+              onChange={(e) => setPanicInput(e.target.value)}
+              placeholder='Type "REVOKE" to confirm'
+              className="px-2.5 py-[7px] text-[13px] bg-surface-0 border border-surface-3 rounded-md text-text-secondary outline-none transition-colors focus:border-red-500/50 w-[200px] placeholder:text-text-ghost"
+            />
+            <button
+              onClick={handlePanic}
+              disabled={panicInput !== "REVOKE" || panicking}
+              className="px-3.5 py-1.5 text-xs rounded-md bg-red-500/8 text-red-500 border border-red-500/15 transition-colors hover:bg-red-500/15 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              {panicking ? "Revoking..." : "Revoke All"}
+            </button>
+          </div>
+        </div>
+      </SettingsSection>
+    </div>
+  );
+}

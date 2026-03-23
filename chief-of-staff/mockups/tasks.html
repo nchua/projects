@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chief of Staff — Tasks</title>
+<style>
+  /* ── Reset & Base ────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 15px; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    background: #0f1117;
+    color: #d1d5db;
+    line-height: 1.5;
+    display: flex;
+    min-height: 100vh;
+  }
+  a { color: #60a5fa; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── Sidebar (shared) ────────────────────────────────────── */
+  .sidebar {
+    width: 220px;
+    min-width: 220px;
+    background: #0a0c10;
+    border-right: 1px solid #1e2330;
+    display: flex;
+    flex-direction: column;
+    padding: 24px 0;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 100;
+  }
+  .sidebar-brand { padding: 0 20px 28px; font-size: 14px; font-weight: 600; color: #9ca3af; letter-spacing: 0.08em; text-transform: uppercase; }
+  .sidebar-nav { flex: 1; }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 14px; color: #9ca3af; border-left: 3px solid transparent; transition: all 0.15s; }
+  .sidebar-nav a:hover { color: #e5e7eb; background: rgba(255,255,255,0.03); text-decoration: none; }
+  .sidebar-nav a.active { color: #f9fafb; border-left-color: #60a5fa; background: rgba(96,165,250,0.06); }
+  .sidebar-nav a .nav-icon { width: 18px; text-align: center; font-size: 15px; }
+  .sidebar-nav a .shortcut { margin-left: auto; font-size: 11px; color: #4b5563; font-family: 'SF Mono', 'Cascadia Code', monospace; padding: 1px 5px; background: rgba(255,255,255,0.04); border-radius: 3px; border: 1px solid #1e2330; }
+  .sidebar-footer { padding: 16px 20px; border-top: 1px solid #1e2330; font-size: 12px; color: #4b5563; }
+
+  /* ── Main ─────────────────────────────────────────────────── */
+  .main {
+    flex: 1;
+    margin-left: 220px;
+    padding: 28px 32px 48px;
+    max-width: 1100px;
+  }
+
+  /* ── Page Header ─────────────────────────────────────────── */
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .page-header h1 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #f9fafb;
+  }
+  .add-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    color: #e5e7eb;
+    background: rgba(96,165,250,0.1);
+    border: 1px solid rgba(96,165,250,0.2);
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .add-btn:hover { background: rgba(96,165,250,0.18); border-color: rgba(96,165,250,0.35); }
+  .add-btn kbd { font-family: 'SF Mono', monospace; font-size: 10px; color: #4b5563; padding: 1px 4px; border: 1px solid #1e2330; border-radius: 3px; background: rgba(255,255,255,0.02); }
+
+  /* ── Segment Tabs ────────────────────────────────────────── */
+  .segment-tabs {
+    display: flex;
+    gap: 2px;
+    background: #0a0c10;
+    border: 1px solid #1e2330;
+    border-radius: 8px;
+    padding: 3px;
+    margin-bottom: 24px;
+    width: fit-content;
+  }
+  .segment-tab {
+    padding: 7px 18px;
+    font-size: 13px;
+    color: #6b7280;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+    background: transparent;
+  }
+  .segment-tab:hover { color: #9ca3af; }
+  .segment-tab.active {
+    background: #151922;
+    color: #f9fafb;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .segment-tab .count {
+    font-size: 11px;
+    color: #4b5563;
+    margin-left: 4px;
+    font-family: 'SF Mono', monospace;
+  }
+
+  /* ── Section ─────────────────────────────────────────────── */
+  .section { margin-bottom: 32px; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 0 4px;
+  }
+  .section-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b7280;
+  }
+  .section-actions {
+    font-size: 11px;
+    color: #374151;
+  }
+
+  /* ── Card (shared) ───────────────────────────────────────── */
+  .card {
+    background: #151922;
+    border: 1px solid #1e2330;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  /* ── Task Row (Recurring) ────────────────────────────────── */
+  .task-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    cursor: pointer;
+    transition: background 0.1s;
+    border-bottom: 1px solid rgba(30,35,48,0.4);
+  }
+  .task-row:last-child { border-bottom: none; }
+  .task-row:hover { background: rgba(255,255,255,0.02); }
+  .task-row.completed .task-title { color: #4b5563; text-decoration: line-through; }
+
+  .drag-handle {
+    color: #2a2f3e;
+    cursor: grab;
+    font-size: 14px;
+    padding: 0 2px;
+    transition: color 0.1s;
+  }
+  .task-row:hover .drag-handle { color: #4b5563; }
+
+  .task-checkbox {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #374151;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    font-size: 12px;
+    color: transparent;
+  }
+  .task-row:hover .task-checkbox { border-color: #60a5fa; }
+  .task-row.completed .task-checkbox { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+
+  .task-info { flex: 1; min-width: 0; }
+  .task-title { font-size: 14px; color: #e5e7eb; }
+  .task-meta {
+    font-size: 11px;
+    color: #4b5563;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 1px;
+  }
+
+  .cadence-tag {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .cadence-tag.daily { background: rgba(96,165,250,0.1); color: #60a5fa; }
+  .cadence-tag.weekly { background: rgba(139,92,246,0.1); color: #a78bfa; }
+  .cadence-tag.monthly { background: rgba(34,197,94,0.1); color: #22c55e; }
+
+  .priority-tag {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+  .priority-tag.non_negotiable { background: rgba(239,68,68,0.1); color: #ef4444; }
+  .priority-tag.flexible { background: rgba(107,114,128,0.1); color: #6b7280; }
+
+  .streak-badge {
+    font-size: 12px;
+    color: #6b7280;
+    font-family: 'SF Mono', monospace;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    min-width: 60px;
+    justify-content: flex-end;
+  }
+  .streak-badge.hot { color: #f59e0b; }
+
+  .task-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+  .task-row:hover .task-actions { opacity: 1; }
+  .task-action-btn {
+    font-size: 11px;
+    color: #4b5563;
+    padding: 3px 8px;
+    border: 1px solid #1e2330;
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .task-action-btn:hover { color: #9ca3af; border-color: #374151; }
+
+  /* ── Action Item Row ─────────────────────────────────────── */
+  .action-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 18px;
+    cursor: pointer;
+    transition: background 0.1s;
+    border-bottom: 1px solid rgba(30,35,48,0.4);
+    border-left: 3px solid transparent;
+  }
+  .action-row:last-child { border-bottom: none; }
+  .action-row:hover { background: rgba(255,255,255,0.02); }
+  .action-row.selected { background: rgba(96,165,250,0.06); border-left-color: #60a5fa; }
+  .action-row.low-confidence { opacity: 0.55; }
+
+  .action-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 14px;
+    margin-top: 1px;
+  }
+  .action-icon.gmail { color: #ef4444; }
+  .action-icon.github { color: #a78bfa; }
+  .action-icon.manual { color: #60a5fa; }
+
+  .action-content { flex: 1; min-width: 0; }
+  .action-title { font-size: 14px; color: #e5e7eb; display: flex; align-items: center; gap: 6px; }
+  .action-meta { font-size: 11px; color: #4b5563; margin-top: 2px; display: flex; gap: 8px; align-items: center; }
+  .action-desc { font-size: 12px; color: #6b7280; margin-top: 4px; line-height: 1.5; }
+
+  .priority-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .priority-dot.high { background: #ef4444; }
+  .priority-dot.medium { background: #f59e0b; }
+  .priority-dot.low { background: #6b7280; }
+
+  .confidence-tag {
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: 'SF Mono', monospace;
+  }
+  .confidence-tag.high-conf { background: rgba(34,197,94,0.12); color: #22c55e; }
+  .confidence-tag.med-conf { background: rgba(245,158,11,0.12); color: #f59e0b; }
+  .confidence-tag.low-conf { background: rgba(239,68,68,0.12); color: #ef4444; }
+
+  .status-tag {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .status-tag.new { background: rgba(96,165,250,0.1); color: #60a5fa; }
+  .status-tag.acknowledged { background: rgba(245,158,11,0.1); color: #f59e0b; }
+
+  .action-shortcuts {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.1s;
+    align-self: center;
+  }
+  .action-row:hover .action-shortcuts,
+  .action-row.selected .action-shortcuts { opacity: 1; }
+  .action-btn {
+    font-size: 10px;
+    color: #4b5563;
+    font-family: 'SF Mono', monospace;
+    padding: 2px 6px;
+    border: 1px solid #1e2330;
+    border-radius: 3px;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .action-btn:hover { color: #9ca3af; border-color: #374151; }
+  .action-btn.dismiss:hover { color: #ef4444; border-color: #7f1d1d; }
+
+  /* ── Reminder Row ────────────────────────────────────────── */
+  .reminder-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    cursor: pointer;
+    transition: background 0.1s;
+    border-bottom: 1px solid rgba(30,35,48,0.4);
+  }
+  .reminder-row:last-child { border-bottom: none; }
+  .reminder-row:hover { background: rgba(255,255,255,0.02); }
+  .reminder-icon { width: 20px; text-align: center; color: #f59e0b; font-size: 14px; }
+  .reminder-content { flex: 1; }
+  .reminder-title { font-size: 14px; color: #e5e7eb; }
+  .reminder-meta { font-size: 11px; color: #4b5563; margin-top: 1px; }
+  .reminder-actions {
+    display: flex; gap: 4px;
+    opacity: 0; transition: opacity 0.1s;
+  }
+  .reminder-row:hover .reminder-actions { opacity: 1; }
+
+  /* ── Empty State ─────────────────────────────────────────── */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #374151;
+    font-size: 13px;
+  }
+
+  /* ── Add Task Modal ──────────────────────────────────────── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.visible { display: flex; }
+  .modal {
+    background: #151922;
+    border: 1px solid #1e2330;
+    border-radius: 12px;
+    width: 480px;
+    padding: 24px;
+  }
+  .modal h2 { font-size: 16px; color: #f9fafb; margin-bottom: 20px; font-weight: 600; }
+  .form-group { margin-bottom: 16px; }
+  .form-label {
+    display: block;
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+  }
+  .form-input, .form-select {
+    width: 100%;
+    padding: 9px 12px;
+    font-size: 14px;
+    background: #0a0c10;
+    border: 1px solid #1e2330;
+    border-radius: 6px;
+    color: #e5e7eb;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus, .form-select:focus { border-color: #3b82f6; }
+  .form-input::placeholder { color: #374151; }
+  .form-select option { background: #0a0c10; color: #e5e7eb; }
+  .form-row { display: flex; gap: 12px; }
+  .form-row .form-group { flex: 1; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+  .btn {
+    padding: 8px 18px;
+    font-size: 13px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .btn-ghost { background: transparent; color: #6b7280; }
+  .btn-ghost:hover { color: #9ca3af; }
+  .btn-primary { background: #1d4ed8; color: #fff; }
+  .btn-primary:hover { background: #2563eb; }
+
+  /* ── Scrollbar ───────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #1e2330; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ─── Sidebar ──────────────────────────────────────────────── -->
+<nav class="sidebar">
+  <div class="sidebar-brand">Chief of Staff</div>
+  <div class="sidebar-nav">
+    <a href="dashboard.html">
+      <span class="nav-icon">&#9632;</span> Dashboard <span class="shortcut">b</span>
+    </a>
+    <a href="tasks.html" class="active">
+      <span class="nav-icon">&#9745;</span> Tasks <span class="shortcut">t</span>
+    </a>
+    <a href="settings.html">
+      <span class="nav-icon">&#9881;</span> Settings <span class="shortcut">s</span>
+    </a>
+  </div>
+  <div class="sidebar-footer">v0.1.0 &middot; Phase 1</div>
+</nav>
+
+<!-- ─── Main ─────────────────────────────────────────────────── -->
+<main class="main">
+
+  <div class="page-header">
+    <h1>Tasks</h1>
+    <button class="add-btn" onclick="openAddModal()">
+      + Add Task <kbd>n</kbd>
+    </button>
+  </div>
+
+  <!-- Segment Filter -->
+  <div class="segment-tabs">
+    <button class="segment-tab active" onclick="filterTasks('all', this)">All <span class="count">14</span></button>
+    <button class="segment-tab" onclick="filterTasks('recurring', this)">Routines <span class="count">6</span></button>
+    <button class="segment-tab" onclick="filterTasks('action_item', this)">Action Items <span class="count">5</span></button>
+    <button class="segment-tab" onclick="filterTasks('reminder', this)">Reminders <span class="count">3</span></button>
+  </div>
+
+  <!-- ─── Recurring Tasks Section ────────────────────────────── -->
+  <div class="section" data-section="recurring">
+    <div class="section-header">
+      <span class="section-title">Daily Non-Negotiables</span>
+      <span class="section-actions">Drag to reorder</span>
+    </div>
+    <div class="card">
+      <div class="task-row" onclick="toggleTask(this)">
+        <span class="drag-handle">&#8942;&#8942;</span>
+        <div class="task-checkbox"></div>
+        <div class="task-info">
+          <div class="task-title">Supplements</div>
+          <div class="task-meta">
+            <span class="cadence-tag daily">Daily</span>
+            <span class="priority-tag non_negotiable">Non-negotiable</span>
+          </div>
+        </div>
+        <span class="streak-badge hot">&#128293; 12 days</span>
+        <div class="task-actions">
+          <button class="task-action-btn">Edit</button>
+          <button class="task-action-btn">Skip</button>
+        </div>
+      </div>
+      <div class="task-row completed" onclick="toggleTask(this)">
+        <span class="drag-handle">&#8942;&#8942;</span>
+        <div class="task-checkbox">&#10003;</div>
+        <div class="task-info">
+          <div class="task-title">Coding</div>
+          <div class="task-meta">
+            <span class="cadence-tag daily">Daily</span>
+            <span class="priority-tag non_negotiable">Non-negotiable</span>
+          </div>
+        </div>
+        <span class="streak-badge hot">&#128293; 8 days</span>
+        <div class="task-actions">
+          <button class="task-action-btn">Edit</button>
+          <button class="task-action-btn">Skip</button>
+        </div>
+      </div>
+      <div class="task-row" onclick="toggleTask(this)">
+        <span class="drag-handle">&#8942;&#8942;</span>
+        <div class="task-checkbox"></div>
+        <div class="task-info">
+          <div class="task-title">Reading</div>
+          <div class="task-meta">
+            <span class="cadence-tag daily">Daily</span>
+            <span class="priority-tag non_negotiable">Non-negotiable</span>
+          </div>
+        </div>
+        <span class="streak-badge">3 days</span>
+        <div class="task-actions">
+          <button class="task-action-btn">Edit</button>
+          <button class="task-action-btn">Skip</button>
+        </div>
+      </div>
+      <div class="task-row" onclick="toggleTask(this)">
+        <span class="drag-handle">&#8942;&#8942;</span>
+        <div class="task-checkbox"></div>
+        <div class="task-info">
+          <div class="task-title">Writing</div>
+          <div class="task-meta">
+            <span class="cadence-tag daily">Daily</span>
+            <span class="priority-tag flexible">Flexible</span>
+          </div>
+        </div>
+        <span class="streak-badge">1 day</span>
+        <div class="task-actions">
+          <button class="task-action-btn">Edit</button>
+          <button class="task-action-btn">Skip</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" data-section="recurring">
+    <div class="section-header">
+      <span class="section-title">Weekly</span>
+    </div>
+    <div class="card">
+      <div class="task-row" onclick="toggleTask(this)">
+        <span class="drag-handle">&#8942;&#8942;</span>
+        <div class="task-checkbox"></div>
+        <div class="task-info">
+          <div class="task-title">Brainstorming session</div>
+          <div class="task-meta">
+            <span class="cadence-tag weekly">Weekly</span>
+            <span class="priority-tag flexible">Flexible</span>
+            <span>Due Monday</span>
+          </div>
+        </div>
+        <span class="streak-badge">4 wks</span>
+        <div class="task-actions">
+          <button class="task-action-btn">Edit</button>
+        </div>
+      </div>
+      <div class="task-row" onclick="toggleTask(this)">
+        <span class="drag-handle">&#8942;&#8942;</span>
+        <div class="task-checkbox"></div>
+        <div class="task-info">
+          <div class="task-title">Weekly review / retrospective</div>
+          <div class="task-meta">
+            <span class="cadence-tag weekly">Weekly</span>
+            <span class="priority-tag non_negotiable">Non-negotiable</span>
+            <span>Due Sunday</span>
+          </div>
+        </div>
+        <span class="streak-badge hot">&#128293; 6 wks</span>
+        <div class="task-actions">
+          <button class="task-action-btn">Edit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Action Items Section ───────────────────────────────── -->
+  <div class="section" data-section="action_item">
+    <div class="section-header">
+      <span class="section-title">Action Items</span>
+      <span class="section-actions">
+        <kbd style="font-family:'SF Mono',monospace;font-size:10px;color:#4b5563;padding:1px 4px;border:1px solid #1e2330;border-radius:3px;background:rgba(255,255,255,0.02);">j</kbd>
+        <kbd style="font-family:'SF Mono',monospace;font-size:10px;color:#4b5563;padding:1px 4px;border:1px solid #1e2330;border-radius:3px;background:rgba(255,255,255,0.02);">k</kbd>
+        to navigate
+      </span>
+    </div>
+    <div class="card">
+      <div class="action-row selected">
+        <div class="action-icon gmail">&#9993;</div>
+        <div class="action-content">
+          <div class="action-title">
+            <span class="priority-dot high"></span>
+            Reply to investor email from Mark
+          </div>
+          <div class="action-meta">
+            <span>Gmail</span>
+            <span>2h ago</span>
+            <span class="status-tag new">New</span>
+            <span class="confidence-tag high-conf">0.95</span>
+          </div>
+          <div class="action-desc">Mark asked for your availability for a follow-up meeting. He mentioned a deadline of end of day.</div>
+        </div>
+        <div class="action-shortcuts">
+          <button class="action-btn" title="Acknowledge">a</button>
+          <button class="action-btn dismiss" title="Dismiss">d</button>
+        </div>
+      </div>
+      <div class="action-row">
+        <div class="action-icon gmail">&#9993;</div>
+        <div class="action-content">
+          <div class="action-title">
+            <span class="priority-dot high"></span>
+            Send pitch deck to Sarah by EOD
+          </div>
+          <div class="action-meta">
+            <span>Gmail</span>
+            <span>5h ago</span>
+            <span class="status-tag new">New</span>
+            <span class="confidence-tag high-conf">0.91</span>
+          </div>
+        </div>
+        <div class="action-shortcuts">
+          <button class="action-btn">a</button>
+          <button class="action-btn dismiss">d</button>
+        </div>
+      </div>
+      <div class="action-row">
+        <div class="action-icon github">&#128736;</div>
+        <div class="action-content">
+          <div class="action-title">
+            <span class="priority-dot medium"></span>
+            Review PR #42: Add auth middleware
+          </div>
+          <div class="action-meta">
+            <span>GitHub</span>
+            <span>1d ago</span>
+            <span class="status-tag acknowledged">Acknowledged</span>
+            <span class="confidence-tag high-conf">0.88</span>
+          </div>
+        </div>
+        <div class="action-shortcuts">
+          <button class="action-btn">a</button>
+          <button class="action-btn dismiss">d</button>
+        </div>
+      </div>
+      <div class="action-row">
+        <div class="action-icon gmail">&#9993;</div>
+        <div class="action-content">
+          <div class="action-title">
+            <span class="priority-dot medium"></span>
+            Follow up on contract with legal team
+          </div>
+          <div class="action-meta">
+            <span>Gmail</span>
+            <span>3d ago</span>
+            <span class="status-tag new">New</span>
+            <span class="confidence-tag med-conf">0.72</span>
+          </div>
+        </div>
+        <div class="action-shortcuts">
+          <button class="action-btn">a</button>
+          <button class="action-btn dismiss">d</button>
+        </div>
+      </div>
+      <div class="action-row low-confidence">
+        <div class="action-icon gmail">&#9993;</div>
+        <div class="action-content">
+          <div class="action-title">
+            <span class="priority-dot low"></span>
+            Check pricing tiers mentioned in newsletter
+          </div>
+          <div class="action-meta">
+            <span>Gmail</span>
+            <span>4d ago</span>
+            <span class="status-tag new">New</span>
+            <span class="confidence-tag low-conf">0.45</span>
+          </div>
+        </div>
+        <div class="action-shortcuts">
+          <button class="action-btn">a</button>
+          <button class="action-btn dismiss">d</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Reminders Section ──────────────────────────────────── -->
+  <div class="section" data-section="reminder">
+    <div class="section-header">
+      <span class="section-title">Reminders</span>
+    </div>
+    <div class="card">
+      <div class="reminder-row">
+        <span class="reminder-icon">&#9200;</span>
+        <div class="reminder-content">
+          <div class="reminder-title">Call the dentist</div>
+          <div class="reminder-meta">Today at 3:00 PM &middot; Time-based</div>
+        </div>
+        <div class="reminder-actions">
+          <button class="task-action-btn">Done</button>
+          <button class="task-action-btn">Dismiss</button>
+        </div>
+      </div>
+      <div class="reminder-row">
+        <span class="reminder-icon">&#9993;</span>
+        <div class="reminder-content">
+          <div class="reminder-title">Follow up if no reply from Sarah</div>
+          <div class="reminder-meta">Triggers Friday &middot; Follow-up</div>
+        </div>
+        <div class="reminder-actions">
+          <button class="task-action-btn">Done</button>
+          <button class="task-action-btn">Dismiss</button>
+        </div>
+      </div>
+      <div class="reminder-row">
+        <span class="reminder-icon">&#128197;</span>
+        <div class="reminder-content">
+          <div class="reminder-title">Replace sparkling water supply</div>
+          <div class="reminder-meta">Triggers April 1 &middot; Time-based</div>
+        </div>
+        <div class="reminder-actions">
+          <button class="task-action-btn">Done</button>
+          <button class="task-action-btn">Dismiss</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ─── Add Task Modal ───────────────────────────────────────── -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <h2>Add New Task</h2>
+    <div class="form-group">
+      <label class="form-label">Title</label>
+      <input class="form-input" type="text" placeholder="What needs to be done?" autofocus>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Type</label>
+        <select class="form-select" id="taskType" onchange="toggleFormFields()">
+          <option value="recurring">Recurring Task</option>
+          <option value="action_item">Action Item</option>
+          <option value="reminder">Reminder</option>
+        </select>
+      </div>
+      <div class="form-group" id="cadenceGroup">
+        <label class="form-label">Cadence</label>
+        <select class="form-select">
+          <option>Daily</option>
+          <option>Weekly</option>
+          <option>Monthly</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Priority</label>
+        <select class="form-select">
+          <option>Non-negotiable</option>
+          <option>Flexible</option>
+        </select>
+      </div>
+      <div class="form-group" id="missedGroup">
+        <label class="form-label">When missed</label>
+        <select class="form-select">
+          <option>Roll forward (carry over)</option>
+          <option>Mark as missed</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes (optional)</label>
+      <input class="form-input" type="text" placeholder="Context, links, instructions...">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeAddModal()">Cancel <span style="font-family:monospace;font-size:10px;color:#4b5563;">Esc</span></button>
+      <button class="btn btn-primary">Create Task</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── Task toggle ──────────────────────────────────── */
+  function toggleTask(row) {
+    row.classList.toggle('completed');
+    const cb = row.querySelector('.task-checkbox');
+    cb.innerHTML = row.classList.contains('completed') ? '&#10003;' : '';
+  }
+
+  /* ── Segment filter ───────────────────────────────── */
+  function filterTasks(type, btn) {
+    document.querySelectorAll('.segment-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+
+    document.querySelectorAll('.section').forEach(sec => {
+      if (type === 'all') {
+        sec.style.display = '';
+      } else {
+        sec.style.display = sec.dataset.section === type ? '' : 'none';
+      }
+    });
+  }
+
+  /* ── Modal ────────────────────────────────────────── */
+  function openAddModal() {
+    document.getElementById('addModal').classList.add('visible');
+    document.querySelector('.modal .form-input').focus();
+  }
+  function closeAddModal() {
+    document.getElementById('addModal').classList.remove('visible');
+  }
+  function toggleFormFields() {
+    const type = document.getElementById('taskType').value;
+    document.getElementById('cadenceGroup').style.display = type === 'recurring' ? '' : 'none';
+    document.getElementById('missedGroup').style.display = type === 'recurring' ? '' : 'none';
+  }
+
+  /* ── Keyboard shortcuts ───────────────────────────── */
+  document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+      if (e.key === 'Escape') closeAddModal();
+      return;
+    }
+    switch(e.key) {
+      case 'b': window.location.href = 'dashboard.html'; break;
+      case 's': window.location.href = 'settings.html'; break;
+      case 'n': e.preventDefault(); openAddModal(); break;
+      case 'Escape': closeAddModal(); break;
+    }
+  });
+</script>
+</body>
+</html>
