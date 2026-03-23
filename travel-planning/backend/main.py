@@ -11,6 +11,7 @@ from sqlalchemy import text
 
 from app.api.auth import router as auth_router
 from app.api.device_tokens import router as device_tokens_router
+from app.api.geocoding import router as geocoding_router
 from app.api.saved_locations import router as locations_router
 from app.api.trips import router as trips_router
 from app.api.users import router as users_router
@@ -57,6 +58,7 @@ def create_app() -> FastAPI:
     app.include_router(trips_router, prefix=prefix)
     app.include_router(locations_router, prefix=prefix)
     app.include_router(device_tokens_router, prefix=prefix)
+    app.include_router(geocoding_router, prefix=prefix)
 
     @app.get("/health")
     async def health_check() -> dict:
