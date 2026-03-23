@@ -2,32 +2,39 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Background Modes -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>io.departnudge.trip-eta-refresh</string>
+	</array>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Nudge imports your calendar events to auto-create monitored trips.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Nudge imports your calendar events to auto-create monitored trips.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Nudge uses your location to calculate accurate travel times from where you are.</string>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>Nudge sends timely alerts when it's time to leave for your trips.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
 		<string>remote-notification</string>
 		<string>processing</string>
 	</array>
-
-	<!-- Background Task Identifiers -->
-	<key>BGTaskSchedulerPermittedIdentifiers</key>
-	<array>
-		<string>com.depart.trip-eta-refresh</string>
-	</array>
-
-	<!-- Location Usage -->
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Depart uses your location to calculate accurate travel times from where you are.</string>
-
-	<!-- Calendar Usage (iOS 17+) -->
-	<key>NSCalendarsUsageDescription</key>
-	<string>Depart imports your calendar events to auto-create monitored trips.</string>
-	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>Depart imports your calendar events to auto-create monitored trips.</string>
-
-	<!-- Notifications -->
-	<key>NSUserNotificationsUsageDescription</key>
-	<string>Depart sends timely alerts when it's time to leave for your trips.</string>
 </dict>
 </plist>

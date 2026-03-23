@@ -1,0 +1,114 @@
+name: Depart
+options:
+  bundleIdPrefix: io.departnudge
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "16.0"
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: D69T4MH7XQ
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.9"
+
+targets:
+  Depart:
+    type: application
+    platform: iOS
+    sources:
+      - path: Depart
+        excludes:
+          - "**/*.entitlements"
+    resources:
+      - path: Depart/Resources/Assets.xcassets
+    info:
+      path: Depart/Info.plist
+      properties:
+        UIBackgroundModes:
+          - fetch
+          - remote-notification
+          - processing
+        BGTaskSchedulerPermittedIdentifiers:
+          - io.departnudge.trip-eta-refresh
+        NSLocationWhenInUseUsageDescription: Nudge uses your location to calculate accurate travel times from where you are.
+        NSCalendarsUsageDescription: Nudge imports your calendar events to auto-create monitored trips.
+        NSCalendarsFullAccessUsageDescription: Nudge imports your calendar events to auto-create monitored trips.
+        NSUserNotificationsUsageDescription: Nudge sends timely alerts when it's time to leave for your trips.
+    entitlements:
+      path: Depart/Depart.entitlements
+      properties:
+        aps-environment: development
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.departnudge.app
+        INFOPLIST_FILE: Depart/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    dependencies: []
+
+  DepartTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: DepartTests
+    dependencies:
+      - target: Depart
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.departnudge.app.tests
+
+  DepartNotificationServiceExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: DepartNotificationServiceExtension
+    info:
+      path: DepartNotificationServiceExtension/Info.plist
+      properties:
+        CFBundleDisplayName: DepartNotificationServiceExtension
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.usernotifications.service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationService
+    entitlements:
+      path: Depart/Depart.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.departnudge.app.notification-service
+    dependencies:
+      - target: Depart
+        embed: false
+
+  DepartWidgetExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: DepartWidgetExtension
+    info:
+      path: DepartWidgetExtension/Info.plist
+      properties:
+        CFBundleDisplayName: DepartWidgetExtension
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.departnudge.app.widget
+    dependencies:
+      - target: Depart
+        embed: false
+
+  DepartLiveActivity:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: DepartLiveActivity
+    info:
+      path: DepartLiveActivity/Info.plist
+      properties:
+        CFBundleDisplayName: DepartLiveActivity
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.departnudge.app.live-activity
+    dependencies:
+      - target: Depart
+        embed: false
