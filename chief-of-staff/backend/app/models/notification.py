@@ -17,15 +17,15 @@ from app.core.database import Base
 
 
 class DeviceToken(Base):
-    """A registered APNs device token for push notifications."""
+    """A registered Web Push subscription for browser notifications."""
 
     __tablename__ = "device_tokens"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
 
-    token = Column(String, nullable=False)
-    platform = Column(String, nullable=True, default="ios")
+    token = Column(Text, nullable=False)  # Web Push subscription JSON
+    platform = Column(String, nullable=True, default="web")
 
     created_at = Column(
         DateTime(timezone=True), nullable=False,

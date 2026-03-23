@@ -4,7 +4,7 @@
 
 A personal chief of staff app that ensures nothing falls through the cracks. It monitors your calendars, emails, Slack, and GitHub — then synthesizes everything into actionable briefings and smart reminders. It manages your recurring routines (daily, weekly, monthly) and uses AI to extract commitments and deadlines from your communications.
 
-**Platform**: iOS app (Phase 1). Web app deferred to Phase 2.
+**Platform**: Web app (Phase 1). Desktop-first — the user's morning planning happens on their computer, not their phone. Mobile companion (PWA or native) deferred to Phase 2+.
 
 ---
 
@@ -48,7 +48,7 @@ The app actively monitors and analyzes:
 | **Google Calendar** | Upcoming meetings, prep needed, conflicts | 1 |
 | **Gmail** | Action items, commitments made, follow-ups needed | 1 |
 | **GitHub** | Open PRs needing review, issues assigned, CI failures | 1 |
-| **Apple Calendar** | Same as Google Calendar, merged view (via EventKit → backend) | 2 |
+| **Apple Calendar** | Same as Google Calendar, merged view (via CalDAV) | 2 |
 | **Slack** | Action items, mentions, threads needing response | 2 |
 | **Notion** | TODOs, tagged items, draft action items | 2 |
 | **Discord** | Action items, mentions, threads needing response | 3 |
@@ -69,7 +69,7 @@ The app actively monitors and analyzes:
 ### 3. Briefings
 
 #### Morning Briefing
-Generated daily at a fixed time (default 7:00 AM, user-configurable). Available as push notification + in-app view.
+Generated daily at a fixed time (default 7:00 AM, user-configurable). Available as browser notification + dashboard view.
 
 **Generation strategy**: Hybrid — rule-based assembly for structured data (calendar events, tasks, action items), Claude API call only for the insights/priority ranking section.
 
@@ -79,7 +79,7 @@ Contents:
 - Today's recurring tasks (non-negotiables + any weeklies/monthlies due)
 - AI-flagged items: commitments, follow-ups, things at risk
 - Priority ranking of what to tackle first
-- **Integration health**: If any integration is down, clearly flag: "Gmail data unavailable — last synced 6 hours ago. Tap to reconnect."
+- **Integration health**: If any integration is down, clearly flag: "Gmail data unavailable — last synced 6 hours ago. Click to reconnect."
 
 **Degraded mode**: Briefing always generates with available data. Missing sources are flagged, never silently omitted.
 
@@ -89,13 +89,16 @@ Deferred from Phase 1. When the user opens the app in the evening, show an optio
 ### 4. Notifications & Nudges
 
 **Phase 1: Minimal notifications to earn trust.**
-- **Morning briefing**: One push notification per day at the configured time
+- **Morning briefing**: One browser notification per day at the configured time (Web Push API)
+- **In-app toasts**: Real-time updates while dashboard is open
+- **Email digest fallback**: When browser is not active
 - **Task reminders**: Only for non-negotiable items the user explicitly opts into
 
 **Phase 2: Expand based on proven value.**
 - Smart nudges (pattern-based): "You usually take supplements by 9am — it's 10:30am"
 - Follow-up nudges: "You committed to sending X to Y yesterday — still pending"
 - Nudge frequency configurable (gentle / moderate / persistent)
+- macOS native notifications via Tauri shell (if adopted)
 
 **Key principle**: Start with 1 notification/day. Earn the right to send more by proving value.
 
@@ -107,7 +110,7 @@ Beyond recurring tasks, users can create ad-hoc reminders:
 - Manual action items: User can manually add "I need to follow up on X" (not solely AI-dependent)
 
 Phase 2+:
-- Location-based (iOS): "Remind me when I get to the office"
+- Location-based (mobile companion): "Remind me when I get to the office"
 - Context-based: "Remind me about this next time I talk to [person]"
 
 ### 6. AI Feedback Loop
@@ -123,48 +126,46 @@ Dismissal patterns are tracked and used to refine extraction prompts over time. 
 
 ## Information Architecture
 
-### Dashboard (Home)
+### Dashboard (Home) — Desktop Multi-Column Layout
 ```
-┌─────────────────────────────────┐
-│  Good morning, Nick              │
-│  Tuesday, March 22               │
-│                                  │
-│  ┌─ TODAY'S BRIEFING ─────────┐ │
-│  │ 3 meetings | 2 follow-ups  │ │
-│  │ 1 item at risk             │ │
-│  └────────────────────────────┘ │
-│                                  │
-│  ┌─ NON-NEGOTIABLES ──────────┐ │
-│  │ ○ Supplements    (5 days)  │ │
-│  │ ○ Reading        (3 days)  │ │
-│  │ ○ Writing        (1 day)   │ │
-│  │ ○ Coding         (12 days) │ │
-│  └────────────────────────────┘ │
-│                                  │
-│  ┌─ ACTION ITEMS ─────────────┐ │
-│  │ ⚡ Reply to investor email  │ │
-│  │ ⚡ Send deck to Sarah       │ │
-│  │ 📋 Review PR #42           │ │
-│  └────────────────────────────┘ │
-│                                  │
-│  ┌─ CALENDAR ─────────────────┐ │
-│  │ 10:00  Team standup        │ │
-│  │ 14:00  Design review       │ │
-│  │ 16:30  1:1 with Alex       │ │
-│  └────────────────────────────┘ │
-└─────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│  Good morning, Nick · Tuesday, March 22                    [?] Shortcuts │
+│  ┌─ Integration Health ──────────────────────────────────────────────┐  │
+│  │ ● Gmail (synced 2m ago)  ● Calendar (synced 1m ago)  ● GitHub ✓  │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+│                                                                          │
+│  ┌─ LEFT COLUMN ──────────────────┐  ┌─ RIGHT COLUMN ──────────────┐  │
+│  │                                 │  │                              │  │
+│  │  ┌─ NON-NEGOTIABLES ────────┐  │  │  ┌─ CALENDAR ────────────┐  │  │
+│  │  │ ○ Supplements    (5 days) │  │  │  │ 10:00  Team standup   │  │  │
+│  │  │ ○ Reading        (3 days) │  │  │  │ 14:00  Design review  │  │  │
+│  │  │ ○ Writing        (1 day)  │  │  │  │ 16:30  1:1 with Alex  │  │  │
+│  │  │ ○ Coding         (12 days)│  │  │  └──────────────────────┘  │  │
+│  │  └──────────────────────────┘  │  │                              │  │
+│  │                                 │  │  ┌─ AI INSIGHTS ─────────┐  │  │
+│  │  ┌─ ACTION ITEMS ───────────┐  │  │  │ Priority: Reply to     │  │  │
+│  │  │ ⚡ Reply to investor email│  │  │  │ investor email first   │  │  │
+│  │  │ ⚡ Send deck to Sarah     │  │  │  │ — deadline is today.   │  │  │
+│  │  │ 📋 Review PR #42         │  │  │  │                        │  │  │
+│  │  │                           │  │  │  │ Risk: No reply from    │  │  │
+│  │  │ [j/k] navigate [d]ismiss │  │  │  │ Sarah in 3 days.       │  │  │
+│  │  └──────────────────────────┘  │  │  └────────────────────────┘  │  │
+│  │                                 │  │                              │  │
+│  └─────────────────────────────────┘  └──────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Tabs (Simplified)
-1. **Home** — Dashboard with briefing, today's tasks, calendar, action items
+### Navigation (Sidebar)
+1. **Dashboard** — Morning briefing with calendar, tasks, action items, insights (multi-column)
 2. **Tasks** — All recurring + one-off tasks + AI-extracted action items, filterable by type (Routines | Action Items | All)
 3. **Settings** — Integrations (with health status), notification preferences, task configuration
 
-**Rationale**: Merged Tasks + Inbox (user mental model is "what do I need to do?", not "is this recurring or extracted?"). Dropped Calendar tab (calendar events shown inline on Home). Three tabs keeps navigation simple.
+**Rationale**: Merged Tasks + Inbox (user mental model is "what do I need to do?", not "is this recurring or extracted?"). Desktop layout shows calendar alongside tasks — no need for a separate Calendar page. Sidebar navigation replaces mobile tab bar.
 
-### iOS Widget
-- **Small widget**: Today's non-negotiables with checkboxes and streak counts
-- **Medium widget**: Non-negotiables + next calendar event + action item count
+### Keyboard Shortcuts (Desktop-Native)
+- **Global**: `b` dashboard, `t` tasks, `s` settings, `?` shortcut help
+- **Action item triage**: `j/k` navigate, `d` dismiss, `a` acknowledge, `s` snooze, `Enter` expand
+- **Tasks**: `Space` complete, `n` add new, drag to reorder
 
 ---
 
@@ -178,18 +179,24 @@ Dismissal patterns are tracked and used to refine extraction prompts over time. 
 - **Deployment**: Railway
 - **Auth**: JWT (single-user now, User model in place for multi-user later)
 
-### iOS App
-- **Framework**: SwiftUI
-- **Local storage**: SwiftData for offline cache (today's briefing + task list)
-- **Notifications**: APNs for push (morning briefing), UNUserNotificationCenter for local task reminders
-- **Calendar**: EventKit for Apple Calendar access — reads on-device, pushes events to backend for briefing generation
-- **Widget**: WidgetKit + SwiftData for home screen widgets
-- **Contacts**: ContactsKit for person-context reminders (Phase 2+)
+### Web App (Phase 1 — Primary Interface)
+- **Framework**: Next.js (React) with App Router (SSR for instant briefing render)
+- **Auth**: JWT auth with backend (access + refresh tokens, stored in httpOnly cookies or localStorage)
+- **Styling**: Tailwind CSS + shadcn/ui component library
+- **Notifications**: Web Push API (VAPID) via service worker — delivers native macOS notification banners
+- **Real-time**: SSE (Server-Sent Events) for dashboard updates (Phase 2)
+- **Keyboard shortcuts**: First-class desktop interaction pattern
+- **Deployment**: Vercel or Railway static hosting
 
-### Web App (Phase 2)
-- **Framework**: Next.js (React)
-- **Auth**: Shared JWT auth with backend
-- **Real-time**: SSE (Server-Sent Events) for dashboard updates — simpler than WebSocket, unidirectional is sufficient
+### Desktop Upgrade Path (Phase 2+, if needed)
+- **Tauri**: Wraps the existing Next.js frontend in a native ~10MB shell
+- **Benefits**: System tray, global keyboard shortcuts, native macOS notifications, offline support
+- **Trigger**: Adopt if user wants persistent background presence after 4+ weeks of web app usage
+
+### Mobile Companion (Phase 3+, if needed)
+- **First**: PWA manifest (installable from browser, ~1 day effort)
+- **If insufficient**: Lightweight React Native app (task checklist + quick-add only)
+- **Avoid**: Full iOS SwiftUI app (overbuilt for companion use case)
 
 ### Integrations
 
@@ -200,7 +207,7 @@ Dismissal patterns are tracked and used to refine extraction prompts over time. 
 | Gmail | OAuth 2.0 / Gmail API | Easy-Moderate | 1 |
 | Slack | Slack OAuth / Bot API (Socket Mode) | Easy-Moderate | 2 |
 | Notion | Notion API (OAuth) | Easy-Moderate | 2 |
-| Apple Calendar | EventKit (iOS) → push to backend | Moderate | 2 |
+| Apple Calendar | CalDAV (server-side) | Moderate | 2 |
 | Discord | Discord Bot API | Moderate | 3 |
 
 **Sync strategy**: Phase-based polling — aggressive (every 5 min) during active hours, dormant overnight. Per-integration rate limiting with exponential backoff.
@@ -295,7 +302,7 @@ User
 │   ├── related_entity_type, related_entity_id
 │   ├── title, body
 │   ├── sent_at, delivered_at, opened_at
-│   └── channel (push | local)
+│   └── channel (web_push | email_digest | in_app)
 │
 └── NudgePreference
     ├── aggressiveness (gentle | moderate | persistent)
@@ -362,32 +369,32 @@ First launch experience (critical for retention — blank dashboard is a killer)
 ### Phase 0: Prompt Harness (build first)
 Build a standalone script that tests the commitment extraction prompt against sample emails and messages. Validate AI extraction quality before building infrastructure around it. This is the make-or-break feature — if extraction is noisy, the app is a worse Apple Reminders.
 
-### Phase 1: Core Daily Loop (iOS only)
+### Phase 1: Core Daily Loop (Web App)
 The goal: **Do you open this app every morning for 2 weeks?**
 
 1. **Recurring task management** — daily non-negotiables with streaks. Weekly/monthly tasks.
-2. **Morning briefing** — push notification + in-app view (hybrid generation)
+2. **Morning briefing** — browser notification + dashboard view (hybrid generation)
 3. **Google Calendar + Gmail + GitHub integration** — highest-value, most reliable APIs
-4. **iOS widget** — small (task checklist) + medium (tasks + next event)
-5. **Manual action item creation** — user can add items directly, not solely AI-dependent
-6. **AI action item extraction** — from Gmail, with dismiss + teach feedback loop
-7. **Quick-add from notification** — tap notification to mark done, snooze, or dismiss without opening app
+4. **Multi-column dashboard** — calendar, tasks, action items, insights visible simultaneously
+5. **Keyboard shortcuts** — desktop-native triage (j/k navigate, d dismiss, a acknowledge)
+6. **Manual action item creation** — user can add items directly, not solely AI-dependent
+7. **AI action item extraction** — from Gmail, with dismiss + teach feedback loop
 8. **Onboarding flow** — guided setup with defaults and integration wizard
 
-### Phase 2: Expand Integrations + Web
-- Slack + Notion + Apple Calendar (EventKit) integration
-- Next.js web dashboard (SSE for real-time)
+### Phase 2: Expand Integrations + Enhancements
+- Slack + Notion + Apple Calendar (CalDAV) integration
+- SSE real-time updates on dashboard
 - Evening review (optional "wrap up" card)
 - Smart nudges (pattern-based, once usage data exists)
 - Follow-up tracking (unanswered emails)
-- Location-based reminders (iOS)
-- Siri integration via App Intents
+- PWA manifest (installable on phone)
+- Tauri desktop shell (system tray, native notifications) — if needed
 - Completion streaks / historical stats view
 - Search across action items, tasks, and briefings
 
 ### Phase 3: Extended Platform
 - Discord integration
-- Apple Watch companion (if daily loop is strong)
+- Mobile companion (React Native, if PWA insufficient)
 - Context-based reminders ("next time I talk to X")
 - Semantic duplicate detection across sources (embeddings + cosine similarity)
 
@@ -408,18 +415,21 @@ Decisions made during council review (2026-03-22):
 | Briefing generation | Hybrid (rule-based + Claude for insights) | Balance cost and intelligence |
 | Sync frequency | Phase-based (aggressive when active, dormant overnight) | Matches travel-planning pattern, balances freshness and cost |
 | Degraded mode | Generate briefing with gaps, flag missing sources | Briefing always ships — never silently incomplete |
-| Apple Calendar flow | EventKit on-device → push to backend | Backend needs calendar data for complete briefings |
+| Apple Calendar flow | CalDAV (server-side) in Phase 2 | No EventKit on web; CalDAV is the server-side alternative |
 | AI feedback loop | Dismiss with reason | Builds data for prompt refinement over time |
-| iOS Widget | Phase 1 | Highest-leverage feature for daily engagement |
-| Platforms | iOS only Phase 1, web Phase 2 | Avoid doubling frontend work before validating core loop |
+| **Platform pivot** | **Web-first (Next.js), not iOS** | **User plans their day on their computer, not their phone. Desktop is the natural primary platform.** |
+| Frontend tech | Next.js with App Router (SSR) | Fastest dev speed, instant briefing render, existing experience from holocron |
+| Desktop upgrade | Tauri shell if needed (Phase 2+) | Wraps existing Next.js in ~10MB native shell for system tray + native notifications |
+| Mobile story | PWA first, React Native if insufficient | Avoid building full iOS app; mobile is a companion, not primary |
+| Notifications | Web Push API (VAPID) + email digest fallback | Replaces APNs; delivers native macOS notification banners via browser |
+| Keyboard shortcuts | First-class in Phase 1 | Essential for desktop productivity; not needed on mobile |
+| Integrations vs MCP | Custom OAuth connectors (not MCP) | MCP can't do background polling; core value is pre-generated briefings |
 | Background jobs | ARQ + Redis (not Celery) | Async-native, simpler, already proven in travel-planning |
-| Real-time (web) | SSE (not WebSocket) | Unidirectional is sufficient, simpler |
+| Real-time (web) | SSE (not WebSocket) — Phase 2 | Unidirectional is sufficient, simpler; not needed for v1 morning briefing |
 | Prompt harness | Build before infrastructure | Extraction quality is the make-or-break feature |
 | Evening briefing | Cut from Phase 1 | Morning is the high-value touchpoint; evening is aspirational |
-| Tab structure | 3 tabs (Home, Tasks, Settings) | Merged Tasks+Inbox, dropped Calendar tab |
+| Navigation | Sidebar (Dashboard, Tasks, Settings) | Desktop sidebar replaces mobile tab bar |
 | Notification strategy | 1/day in Phase 1, earn the right to expand | Notification fatigue is the #1 product risk |
 | Notification timing | Fixed time (7am default) | Predictability creates ritual |
 | Shared tasks | Personal only, forever | Adding shared tasks means building Asana |
-| Siri/Voice | Phase 2 via App Intents | Get core app working first |
-| Apple Watch | Phase 3+ | Push notifications already arrive on wrist |
-| Offline | Minimal — SwiftData cache for today's briefing + tasks | Single user with reliable internet |
+| Offline | Not needed in v1 | Desktop user has reliable internet; service worker cache can be added later |

@@ -124,5 +124,6 @@ class NotificationType(str, enum.Enum):
 
 class NotificationChannel(str, enum.Enum):
     """Channel used to deliver a notification."""
-    PUSH = "push"
-    LOCAL = "local"
+    WEB_PUSH = "web_push"
+    EMAIL_DIGEST = "email_digest"
+    IN_APP = "in_app"

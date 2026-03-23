@@ -4,7 +4,7 @@
 
 All paths relative to `chief-of-staff/`. The project lives at `/Users/nickchua/Desktop/AI/chief-of-staff/` in the monorepo. Patterns are drawn from:
 
-- **fitness-app/backend/** -- FastAPI structure, SQLAlchemy models (sync), Pydantic schemas, Alembic, JWT auth, APNs push, Railway deploy
+- **fitness-app/backend/** -- FastAPI structure, SQLAlchemy models (sync), Pydantic schemas, Alembic, JWT auth, Railway deploy
 - **travel-planning/backend/** -- ARQ + Redis worker, async SQLAlchemy, cron jobs, phase-based polling
 - **holocron/backend/** -- Google OAuth connectors, base connector pattern, AI card generation
 
@@ -137,7 +137,7 @@ chief-of-staff/
 │   ├── Procfile
 │   └── .env.example
 ├── prompt-harness/          (from Phase 0)
-├── ios/                     (Phase 1F)
+├── web/                     (Phase 1G — Next.js frontend)
 └── spec.md
 ```
 
@@ -178,12 +178,9 @@ class Settings(BaseSettings):
     github_client_id: str = ""
     github_client_secret: str = ""
 
-    # APNs
-    apns_key_id: str = ""
-    apns_team_id: str = ""
-    apns_auth_key: str = ""  # .p8 key content
-    apns_topic: str = "com.nickchua.chiefofstaff"
-    apns_use_sandbox: bool = True
+    # Web Push (VAPID)
+    vapid_private_key: str = ""
+    vapid_claims_email: str = ""
 
     # App
     app_name: str = "Chief of Staff"
@@ -274,10 +271,8 @@ All models follow the fitness-app pattern: `Column`, `String` primary keys with 
 - `CalendarEvent`: id, user_id (FK), provider (enum: google/apple), external_id, title, start_time, end_time, location, attendees (JSON), needs_prep (bool), prep_notes, synced_at
 
 **File**: `backend/app/models/notification.py`
-- `DeviceToken`: id, user_id (FK), token, platform, is_active, created_at, updated_at
-- `NotificationLog`: id, user_id (FK), notification_type (enum: briefing/task_reminder), related_entity_type, related_entity_id, title, body, sent_at, delivered_at, opened_at, channel (enum: push/local)
-
-Pattern: `fitness-app/backend/app/models/notification.py` for DeviceToken.
+- `PushSubscription`: id, user_id (FK), subscription_json (Web Push subscription endpoint + keys), platform (default "web"), is_active, created_at, updated_at
+- `NotificationLog`: id, user_id (FK), notification_type (enum: briefing/task_reminder), related_entity_type, related_entity_id, title, body, sent_at, delivered_at, opened_at, channel (enum: web_push/email_digest/in_app)
 
 **File**: `backend/app/models/audit_log.py`
 - `AuditLog`: id, timestamp, action_type, integration_id (nullable), user_id (nullable), success (bool), error_details, metadata (JSON)
@@ -301,7 +296,7 @@ Import all models so Alembic discovers them. Pattern: `fitness-app/backend/app/m
 
 **File**: `backend/app/schemas/integration.py` -- IntegrationResponse (never expose tokens), IntegrationCreate, IntegrationHealthResponse.
 
-**File**: `backend/app/schemas/notification.py` -- DeviceTokenRegister, NotificationPreferenceUpdate. Pattern: `fitness-app/backend/app/schemas/notification.py`.
+**File**: `backend/app/schemas/notification.py` -- PushSubscriptionRegister (accepts Web Push subscription JSON), NotificationPreferenceUpdate.
 
 ### Step 1A.8: Alembic setup [S]
 
@@ -356,7 +351,7 @@ google-api-python-client>=2.120.0
 google-auth-oauthlib>=1.2.0
 arq>=0.26.0
 redis>=5.0
-aioapns>=3.0
+pywebpush>=2.0.0
 psycopg2-binary>=2.9.0
 python-multipart>=0.0.7
 ```
@@ -650,7 +645,7 @@ class WorkerSettings:
         _sync_integration,
         _process_new_messages,
         _generate_briefing,
-        _send_push_notification,
+        _send_web_push_notification,
         _cleanup_old_data,
     ]
 
@@ -725,198 +720,207 @@ Pattern: `travel-planning/backend/app/core/redis.py`. Async Redis connection poo
 
 ---
 
-## Phase 1G: iOS App
+## Phase 1G: Next.js Web App
 
-**Goal**: SwiftUI app with 3 tabs (Home, Tasks, Settings), widget, push notifications.
+**Goal**: Desktop-first web app with sidebar navigation (Dashboard, Tasks, Settings), keyboard shortcuts, multi-column layout.
 
 **Dependencies**: Phase 1A (auth API), Phase 1D (briefing API), Phase 1E (tasks API), Phase 1B (integrations API).
 
-### Step 1G.1: Xcode project setup [S]
+### Step 1G.1: Project scaffolding [S]
 
 ```
-chief-of-staff/ios/
-├── ChiefOfStaff.xcodeproj (or use xcodegen)
-├── project.yml            (xcodegen spec)
-├── ChiefOfStaff/
-│   ├── App/
-│   │   ├── ChiefOfStaffApp.swift
-│   │   └── ContentView.swift
-│   ├── Models/
-│   ├── Views/
-│   │   ├── Home/
-│   │   ├── Tasks/
-│   │   └── Settings/
-│   ├── Services/
-│   ├── Components/
-│   └── Utils/
-├── ChiefOfStaffWidget/    (WidgetKit extension)
-└── Info.plist
+chief-of-staff/web/
+├── app/
+│   ├── layout.tsx              # Root layout with sidebar navigation
+│   ├── page.tsx                # Dashboard (morning briefing)
+│   ├── login/page.tsx
+│   ├── register/page.tsx
+│   ├── tasks/page.tsx          # Tasks view
+│   └── settings/page.tsx       # Integration + preference management
+├── components/
+│   ├── layout/
+│   │   ├── Sidebar.tsx
+│   │   └── IntegrationHealthBanner.tsx
+│   ├── dashboard/
+│   │   ├── BriefingCard.tsx
+│   │   ├── NonNegotiables.tsx
+│   │   ├── ActionItems.tsx
+│   │   ├── CalendarTimeline.tsx
+│   │   └── AiInsights.tsx
+│   ├── tasks/
+│   │   ├── RecurringTaskRow.tsx
+│   │   ├── ActionItemRow.tsx
+│   │   ├── ReminderRow.tsx
+│   │   └── AddTaskDialog.tsx
+│   └── settings/
+│       ├── IntegrationCard.tsx
+│       └── PreferencesForm.tsx
+├── lib/
+│   ├── api.ts                  # API client (fetch + JWT)
+│   ├── auth.ts                 # Token management (login, refresh, logout)
+│   └── hooks/
+│       ├── useKeyboardShortcuts.ts
+│       └── useAuth.ts
+├── public/
+│   └── sw.js                   # Service worker for Web Push
+├── next.config.ts
+├── tailwind.config.ts
+├── package.json
+└── tsconfig.json
 ```
 
-Use xcodegen if available (fitness-app pattern: `cd ios && xcodegen generate`).
+Initialize with `npx create-next-app@latest --typescript --tailwind --app --src-dir=false`. Add shadcn/ui: `npx shadcn@latest init`.
 
-### Step 1G.2: API client service [M]
+### Step 1G.2: API client + auth library [M]
 
-**File**: `ios/ChiefOfStaff/Services/APIClient.swift`
+**File**: `web/lib/api.ts`
 
-Pattern: match fitness-app's APIClient. URLSession-based, JWT token management, automatic refresh.
+Fetch-based API client with JWT token management:
+- Stores access/refresh tokens in localStorage (or httpOnly cookies for production)
+- Automatic token refresh on 401 responses
+- Typed request/response functions for all endpoints
+- Base URL from environment variable
 
-Endpoints to support:
-- Auth (register, login, refresh)
-- Recurring tasks CRUD + complete/skip
-- Action items list + dismiss/acknowledge/action
-- Reminders CRUD + complete
-- Briefings (today, mark viewed)
-- Integrations (list, authorize, disconnect)
-- Device token registration
-- Combined tasks/today endpoint
+**File**: `web/lib/auth.ts`
 
-### Step 1G.3: Auth flow [M]
+Auth context provider:
+- `login(email, password)` → stores tokens, redirects to dashboard
+- `register(email, password)` → creates account, auto-login
+- `logout()` → clears tokens, redirects to login
+- `useAuth()` hook → current user, isAuthenticated, loading state
+- Protected route wrapper (redirect to login if unauthenticated)
 
-**File**: `ios/ChiefOfStaff/Services/AuthManager.swift`
-**File**: `ios/ChiefOfStaff/Views/Auth/LoginView.swift`
-**File**: `ios/ChiefOfStaff/Views/Auth/RegisterView.swift`
+### Step 1G.3: Auth pages [S]
 
-Pattern: fitness-app auth flow. Keychain storage for JWT tokens.
+**File**: `web/app/login/page.tsx`
+**File**: `web/app/register/page.tsx`
 
-### Step 1G.4: Home tab (Dashboard) [L]
+Simple login/register forms. Redirect to dashboard on success.
 
-**File**: `ios/ChiefOfStaff/Views/Home/HomeView.swift`
-**File**: `ios/ChiefOfStaff/Views/Home/HomeViewModel.swift`
-**File**: `ios/ChiefOfStaff/Views/Home/BriefingCard.swift`
-**File**: `ios/ChiefOfStaff/Views/Home/NonNegotiablesCard.swift`
-**File**: `ios/ChiefOfStaff/Views/Home/ActionItemsCard.swift`
-**File**: `ios/ChiefOfStaff/Views/Home/CalendarCard.swift`
+### Step 1G.4: Dashboard (multi-column briefing view) [L]
 
-Per spec's Information Architecture wireframe:
-1. Greeting + date
-2. Today's Briefing summary card (tap to expand full briefing)
-3. Non-Negotiables section with checkboxes and streak counts
-4. Action Items section (top items by priority, confidence indicators for AI-extracted)
-5. Calendar section (today's events from cached CalendarEvent data)
+**File**: `web/app/page.tsx`
+**File**: `web/components/dashboard/BriefingCard.tsx`
+**File**: `web/components/dashboard/NonNegotiables.tsx`
+**File**: `web/components/dashboard/ActionItems.tsx`
+**File**: `web/components/dashboard/CalendarTimeline.tsx`
+**File**: `web/components/dashboard/AiInsights.tsx`
 
-Integration health banner at top if any integration is degraded/failed.
+Per spec's multi-column wireframe:
+- Left column: Non-negotiables (checkboxes + streaks) + Action items (keyboard-navigable list)
+- Right column: Calendar timeline + AI insights
+- Top: Greeting + integration health banner
+- SSR for the briefing data → no loading spinner on first paint
 
-### Step 1G.5: Tasks tab [L]
+### Step 1G.5: Tasks page [L]
 
-**File**: `ios/ChiefOfStaff/Views/Tasks/TasksView.swift`
-**File**: `ios/ChiefOfStaff/Views/Tasks/TasksViewModel.swift`
-**File**: `ios/ChiefOfStaff/Views/Tasks/RecurringTaskRow.swift`
-**File**: `ios/ChiefOfStaff/Views/Tasks/ActionItemRow.swift`
-**File**: `ios/ChiefOfStaff/Views/Tasks/ReminderRow.swift`
-**File**: `ios/ChiefOfStaff/Views/Tasks/TaskDetailSheet.swift`
-**File**: `ios/ChiefOfStaff/Views/Tasks/AddTaskSheet.swift`
+**File**: `web/app/tasks/page.tsx`
+**File**: `web/components/tasks/RecurringTaskRow.tsx`
+**File**: `web/components/tasks/ActionItemRow.tsx`
+**File**: `web/components/tasks/ReminderRow.tsx`
+**File**: `web/components/tasks/AddTaskDialog.tsx`
 
 Per spec: merged view of Routines + Action Items + Reminders. Segmented filter: Routines | Action Items | All.
 
 Features:
-- Swipe to complete/dismiss
-- Tap to expand detail
-- Confidence score indicator for AI-extracted items (low confidence visually distinct per spec)
-- Manual add button for action items and reminders
-- Drag to reorder recurring tasks
+- Click to complete/dismiss, keyboard shortcuts for batch operations
+- Click to expand detail inline (not modal)
+- Confidence score indicator for AI-extracted items (low confidence visually distinct)
+- Add button + dialog for manual action items and reminders
+- Drag to reorder recurring tasks (dnd-kit or similar)
 
-### Step 1G.6: Settings tab [M]
+### Step 1G.6: Settings page [M]
 
-**File**: `ios/ChiefOfStaff/Views/Settings/SettingsView.swift`
-**File**: `ios/ChiefOfStaff/Views/Settings/IntegrationsView.swift`
-**File**: `ios/ChiefOfStaff/Views/Settings/IntegrationRow.swift`
-**File**: `ios/ChiefOfStaff/Views/Settings/NotificationSettingsView.swift`
-**File**: `ios/ChiefOfStaff/Views/Settings/TaskConfigView.swift`
+**File**: `web/app/settings/page.tsx`
+**File**: `web/components/settings/IntegrationCard.tsx`
+**File**: `web/components/settings/PreferencesForm.tsx`
 
 Sections:
-- Integrations: list with health status indicators (green/yellow/red), connect/disconnect buttons, OAuth flow via ASWebAuthenticationSession
+- Integrations: cards with health status indicators (green/yellow/red), connect/disconnect buttons, OAuth redirect flow (native browser)
 - Briefing time picker
-- Notification preferences
-- Task management (edit recurring tasks, reorder)
+- Notification preferences (browser notifications toggle)
+- Task management (edit recurring tasks)
 - Account (timezone, data export, delete account)
 
 ### Step 1G.7: Onboarding flow [M]
 
-**File**: `ios/ChiefOfStaff/Views/Onboarding/OnboardingView.swift`
-**File**: `ios/ChiefOfStaff/Views/Onboarding/WelcomeStep.swift`
-**File**: `ios/ChiefOfStaff/Views/Onboarding/DefaultTasksStep.swift`
-**File**: `ios/ChiefOfStaff/Views/Onboarding/IntegrationWizardStep.swift`
-**File**: `ios/ChiefOfStaff/Views/Onboarding/BriefingTimeStep.swift`
+**File**: `web/components/onboarding/OnboardingWizard.tsx`
 
-Per spec:
-1. Welcome + pre-populate defaults (editable)
-2. Connect integrations wizard (start with Google Calendar)
+Multi-step wizard (shown on first login):
+1. Welcome + pre-populate default daily non-negotiables (editable)
+2. Connect integrations (start with Google Calendar — native OAuth redirect)
 3. Set briefing time
 4. Generate preview briefing
 
-### Step 1G.8: SwiftData cache [M]
+### Step 1G.8: Sidebar layout + integration health [S]
 
-**File**: `ios/ChiefOfStaff/Models/CachedBriefing.swift`
-**File**: `ios/ChiefOfStaff/Models/CachedTask.swift`
+**File**: `web/components/layout/Sidebar.tsx`
+**File**: `web/components/layout/IntegrationHealthBanner.tsx`
 
-Minimal offline cache per spec: "SwiftData cache for today's briefing + tasks". Cache today's briefing and task list locally so the app isn't blank when offline.
+Sidebar navigation: Dashboard, Tasks, Settings. Active state indicator. Collapsible on smaller screens.
 
-### Step 1G.9: iOS Widget [M]
+Integration health banner: shown at top when any integration is degraded/failed. Click to go to settings.
 
-**File**: `ios/ChiefOfStaffWidget/ChiefOfStaffWidget.swift`
-**File**: `ios/ChiefOfStaffWidget/SmallWidgetView.swift`
-**File**: `ios/ChiefOfStaffWidget/MediumWidgetView.swift`
+### Step 1G.9: Keyboard shortcut system [M]
 
-Per spec:
-- **Small**: Today's non-negotiables with checkboxes and streak counts
-- **Medium**: Non-negotiables + next calendar event + action item count
+**File**: `web/lib/hooks/useKeyboardShortcuts.ts`
 
-Use shared SwiftData container to read cached data. WidgetKit timeline provider refreshes when app updates cache.
+Global keyboard shortcut system:
+- **Navigation**: `b` dashboard, `t` tasks, `s` settings, `?` show shortcut help overlay
+- **Action item triage**: `j/k` navigate list, `d` dismiss, `a` acknowledge, `s` snooze, `Enter` expand
+- **Tasks**: `Space` complete, `n` add new
+- Context-aware: shortcuts change based on current page/focus
+- Help overlay (modal) showing all available shortcuts
 
-### Step 1G.10: Data models [S]
+### Step 1G.10: Service worker for Web Push [S]
 
-**File**: `ios/ChiefOfStaff/Models/APITypes.swift`
+**File**: `web/public/sw.js`
 
-Decodable structs matching all backend response schemas. Pattern: fitness-app's APITypes.swift.
+Service worker that:
+- Registers for Web Push notifications (VAPID)
+- Handles push events → shows native macOS notification banner
+- Click handler: opens dashboard when notification is clicked
+- Subscription management: register/unregister with backend
 
-**Build order for 1G**: 1G.1 -> 1G.10 + 1G.2 (parallel) -> 1G.3 -> 1G.8 -> 1G.4 + 1G.5 + 1G.6 (parallel) -> 1G.7 -> 1G.9
+**Build order for 1G**: 1G.1 -> 1G.2 -> 1G.3 -> 1G.8 -> 1G.4 + 1G.5 + 1G.6 (parallel) -> 1G.7 -> 1G.9 + 1G.10 (parallel)
 
 ---
 
-## Phase 1H: Notifications
+## Phase 1H: Browser Notifications
 
-**Goal**: APNs push for morning briefing, local notifications for task reminders.
+**Goal**: Web Push notifications for morning briefing, email digest as fallback.
 
-**Dependencies**: Phase 1A (notification models), Phase 1F (worker generates briefings), Phase 1G (device token registration).
+**Dependencies**: Phase 1A (notification models), Phase 1F (worker generates briefings), Phase 1G (service worker registration).
 
-### Step 1H.1: Push notification service [S]
+### Step 1H.1: Web Push notification service [S]
 
 **File**: `backend/app/services/notification_service.py`
 
-Pattern: `fitness-app/backend/app/services/notification_service.py`. Direct adaptation:
-- `get_apns_client()` with `_resolve_apns_key()`
-- `send_push_notification(db, user_id, notification_type, title, body, data)`
-- Convenience wrapper: `notify_morning_briefing(db, user_id)`
+Uses `pywebpush` library with VAPID keys:
+- `send_web_push(db, user_id, notification_type, title, body, data)` — sends to all active subscriptions for user
+- `notify_morning_briefing(db, user_id)` — convenience wrapper
+- Handles expired/invalid subscriptions (remove from DB on 410 response)
 
 ### Step 1H.2: Notification API endpoints [S]
 
 **File**: `backend/app/api/notifications.py`
 
-Pattern: `fitness-app/backend/app/api/notifications.py`. Endpoints:
-- `POST /api/v1/notifications/device-token` -- register
-- `DELETE /api/v1/notifications/device-token` -- deactivate
+Endpoints:
+- `POST /api/v1/notifications/subscribe` — register Web Push subscription (JSON blob with endpoint + keys)
+- `DELETE /api/v1/notifications/unsubscribe` — deactivate subscription
 - `GET /api/v1/notifications/preferences`
 - `PUT /api/v1/notifications/preferences`
 
-### Step 1H.3: iOS notification manager [S]
+### Step 1H.3: Email digest service [S]
 
-**File**: `ios/ChiefOfStaff/Services/NotificationManager.swift`
+**File**: `backend/app/services/email_digest_service.py`
 
-- Request notification permission (prompt after onboarding completes)
-- Register device token with backend
-- Handle push notification taps:
-  - Morning briefing: open Home tab, scroll to briefing
-  - Task reminder: open Tasks tab, highlight specific task
-- Quick actions from notification: mark done, snooze, dismiss (UNNotificationAction per spec: "Quick-add from notification")
+Fallback notification channel:
+- `send_briefing_email(user_id, briefing)` — sends morning briefing summary via transactional email (Resend or SES)
+- Triggered when Web Push delivery fails or user opts into email digest
+- Simple HTML email template with briefing highlights + link to dashboard
 
-### Step 1H.4: Local task reminders [S]
-
-**File**: `ios/ChiefOfStaff/Services/LocalNotificationScheduler.swift`
-
-Schedule local notifications for non-negotiable tasks the user opts in to. Uses UNUserNotificationCenter. Reschedule when tasks are updated.
-
-**Build order for 1H**: 1H.1 + 1H.2 (parallel) -> 1H.3 -> 1H.4
+**Build order for 1H**: 1H.1 + 1H.2 + 1H.3 (all parallel)
 
 ---
 
@@ -1001,11 +1005,9 @@ GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 GITHUB_CLIENT_ID=...
 GITHUB_CLIENT_SECRET=...
-APNS_KEY_ID=...
-APNS_TEAM_ID=...
-APNS_AUTH_KEY=...
-APNS_TOPIC=com.nickchua.chiefofstaff
-APNS_USE_SANDBOX=true
+VAPID_PRIVATE_KEY=...      # Web Push VAPID key
+VAPID_CLAIMS_EMAIL=...     # Contact email for VAPID
+NEXT_PUBLIC_API_URL=...    # Backend URL for frontend
 ```
 
 ### Step 1J.3: Railway configuration [S]
@@ -1049,10 +1051,10 @@ Phase 1D (Briefing Engine)   Phase 1E (Task Management API)
               Phase 1F (ARQ Worker)
                     |
                     v
-              Phase 1G (iOS App)
+              Phase 1G (Next.js Web App)
                     |
                     v
-              Phase 1H (Notifications)
+              Phase 1H (Browser Notifications)
                     |
                     v
          Phase 1I (Security Hardening)
@@ -1065,9 +1067,9 @@ Phase 1D (Briefing Engine)   Phase 1E (Task Management API)
 - Phase 0 and Phase 1A can be built simultaneously
 - Phase 1B connectors (Calendar, Gmail, GitHub) can be built in parallel
 - Phase 1D and Phase 1E are independent of each other
-- Phase 1G iOS views (Home, Tasks, Settings) can be built in parallel
+- Phase 1G web pages (Dashboard, Tasks, Settings) can be built in parallel
 - Phase 1I steps are all independent
 
 **Critical path**: Phase 0 -> Phase 1A -> Phase 1B -> Phase 1C -> Phase 1F -> Phase 1G -> Phase 1J
 
-**Estimated total effort**: ~80-100 hours of implementation across all phases.
+**Estimated total effort**: ~60-70 hours of implementation across all phases (~50% less frontend effort vs. original iOS plan).

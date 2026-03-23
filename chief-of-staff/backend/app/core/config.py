@@ -41,12 +41,9 @@ class Settings(BaseSettings):
     github_client_id: str = ""
     github_client_secret: str = ""
 
-    # APNs
-    apns_key_id: str = ""
-    apns_team_id: str = ""
-    apns_auth_key_path: str = ""
-    apns_topic: str = "com.nickchua.chiefofstaff"
-    apns_use_sandbox: bool = True
+    # Web Push (VAPID)
+    vapid_private_key: str = ""
+    vapid_claims_email: str = ""
 
     # App
     app_name: str = "Chief of Staff"

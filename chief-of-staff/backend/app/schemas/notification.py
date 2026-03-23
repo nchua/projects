@@ -6,10 +6,10 @@ from pydantic import BaseModel
 
 
 class DeviceTokenRegister(BaseModel):
-    """Schema for registering an APNs device token."""
+    """Schema for registering a Web Push subscription."""
 
-    token: str
-    platform: str = "ios"
+    token: str  # Web Push subscription JSON (endpoint + keys)
+    platform: str = "web"
 
 
 class NotificationPreferenceUpdate(BaseModel):
