@@ -14,7 +14,6 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
-from uuid import UUID
 
 import pytest
 from sqlalchemy import select

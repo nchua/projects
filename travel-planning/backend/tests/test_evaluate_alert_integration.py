@@ -54,6 +54,7 @@ async def test_full_db_leave_now(db_session, test_user, make_trip) -> None:
     # Set last_eta_seconds to 2700 (45 min) so departure = now + 0 min
     async with test_session_factory() as session:
         from sqlalchemy import update
+
         from app.models.trip import Trip
 
         await session.execute(
@@ -93,6 +94,7 @@ async def test_no_notification_when_insignificant(
     )
     async with test_session_factory() as session:
         from sqlalchemy import update
+
         from app.models.trip import Trip
 
         await session.execute(
@@ -145,6 +147,7 @@ async def test_anti_spam_blocks_5th_update(
     )
     async with test_session_factory() as session:
         from sqlalchemy import update
+
         from app.models.trip import Trip
 
         await session.execute(

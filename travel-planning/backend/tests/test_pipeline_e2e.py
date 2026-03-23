@@ -12,11 +12,10 @@ os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost/
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
-from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sqlalchemy import select, update
+from sqlalchemy import select
 
 from app.models.device_token import DeviceToken
 from app.models.enums import (

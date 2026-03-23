@@ -20,7 +20,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sqlalchemy import select
 
-from app.models.enums import CongestionLevel, TripStatus
+from app.models.enums import TripStatus
 from app.models.trip import Trip
 from app.models.trip_eta_snapshot import TripEtaSnapshot
 from app.schemas.eta import EtaResult

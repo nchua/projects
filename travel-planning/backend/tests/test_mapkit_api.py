@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
-
-import os
 
 # Set minimal env vars before any app imports
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost/test")
@@ -216,7 +215,7 @@ class TestMapKitClientErrors:
         ).decode()
 
     @classmethod
-    def _make_client(cls, handler) -> "MapKitClient":
+    def _make_client(cls, handler):
         import httpx
 
         from app.services.mapkit_api import MapKitClient
@@ -247,7 +246,7 @@ class TestMapKitClientErrors:
     async def test_401_clears_token_cache(self) -> None:
         from app.services.mapkit_api import MapKitError
 
-        def auth_fail_handler(request) -> "httpx.Response":
+        def auth_fail_handler(request):
             import httpx
 
             return httpx.Response(401, text="Unauthorized")
@@ -268,7 +267,7 @@ class TestMapKitClientErrors:
     async def test_429_raises_rate_limited(self) -> None:
         from app.services.mapkit_api import MapKitRateLimited
 
-        def rate_limit_handler(request) -> "httpx.Response":
+        def rate_limit_handler(request):
             import httpx
 
             return httpx.Response(429, text="Too Many Requests")
