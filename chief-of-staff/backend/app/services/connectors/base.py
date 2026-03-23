@@ -96,7 +96,9 @@ class BaseConnector(ABC):
         """Encrypt a token for storage."""
         return encrypt_token(plaintext)
 
-    def _update_rate_limits(self, remaining: int | None, reset_at: datetime | None) -> None:
+    def _update_rate_limits(
+        self, remaining: int | None, reset_at: datetime | None
+    ) -> None:
         """Update rate limit tracking on the integration model."""
         if remaining is not None:
             self.integration.rate_limit_remaining = remaining

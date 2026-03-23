@@ -6,7 +6,6 @@ from datetime import datetime, timedelta, timezone
 from google.oauth2.credentials import Credentials
 
 from app.core.config import get_settings
-from app.models.integration import Integration
 from app.services.connectors.base import BaseConnector
 
 logger = logging.getLogger(__name__)

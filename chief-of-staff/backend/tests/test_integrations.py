@@ -45,7 +45,10 @@ class TestBaseConnector:
 
     def _create_user(self, db_session):
         """Create a test user for FK constraints."""
-        user = User(email="connector@example.com", password_hash=hash_password("TestPass123"))
+        user = User(
+            email="connector@example.com",
+            password_hash=hash_password("TestPass123"),
+        )
         db_session.add(user)
         db_session.flush()
         return user
