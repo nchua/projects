@@ -4,6 +4,11 @@ import os
 
 os.environ["TESTING"] = "1"
 
+# Ensure a dummy encryption key exists for tests that exercise OAuth endpoints
+if not os.environ.get("TOKEN_ENCRYPTION_KEY"):
+    from cryptography.fernet import Fernet
+    os.environ["TOKEN_ENCRYPTION_KEY"] = Fernet.generate_key().decode()
+
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import create_engine, event
