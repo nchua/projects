@@ -7,4 +7,5 @@ __pycache__/
 .ruff_cache/
 *.p8
 Nudge_Key
+Nudge Maps
 AuthKey*
