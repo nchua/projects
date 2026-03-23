@@ -43,6 +43,22 @@ GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token"
 
 GITHUB_SCOPES = ["notifications", "repo:status"]
 
+# Slack OAuth constants
+SLACK_AUTH_URL = "https://slack.com/oauth/v2/authorize"
+SLACK_TOKEN_URL = "https://slack.com/api/oauth.v2.access"
+SLACK_REVOKE_URL = "https://slack.com/api/auth.revoke"
+
+SLACK_SCOPES = [
+    "channels:read",
+    "groups:read",
+    "im:read",
+    "mpim:read",
+    "channels:history",
+    "groups:history",
+    "im:history",
+    "users:read",
+]
+
 
 @router.get("", response_model=list[IntegrationResponse])
 def list_integrations(
@@ -108,10 +124,10 @@ def google_authorize(
 
     _validate_redirect_uri(redirect_uri)
 
-    # Generate CSRF state token (signed JWT with nonce)
+    # Generate CSRF state token (signed JWT with nonce + provider)
     nonce = secrets.token_urlsafe(32)
     state = create_access_token(
-        data={"sub": current_user.id, "nonce": nonce},
+        data={"sub": current_user.id, "nonce": nonce, "provider": "google_calendar"},
     )
 
     params = {
@@ -220,7 +236,7 @@ def github_authorize(
 
     nonce = secrets.token_urlsafe(32)
     state = create_access_token(
-        data={"sub": current_user.id, "nonce": nonce},
+        data={"sub": current_user.id, "nonce": nonce, "provider": "github"},
     )
 
     params = {
@@ -293,6 +309,171 @@ def github_callback(
         user_id=current_user.id,
         integration_id=integration.id,
         metadata={"provider": IntegrationProvider.GITHUB.value},
+    )
+
+    db.commit()
+    db.refresh(integration)
+    return integration
+
+
+# --- Slack OAuth ---
+
+
+@router.post("/slack/authorize")
+def slack_authorize(
+    redirect_uri: str,
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Generate a Slack OAuth v2 authorization URL."""
+    settings = get_settings()
+    if not settings.slack_client_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Slack OAuth not configured",
+        )
+
+    _validate_redirect_uri(redirect_uri)
+
+    nonce = secrets.token_urlsafe(32)
+    state = create_access_token(
+        data={"sub": current_user.id, "nonce": nonce, "provider": "slack"},
+    )
+
+    params = {
+        "client_id": settings.slack_client_id,
+        "redirect_uri": redirect_uri,
+        "scope": ",".join(SLACK_SCOPES),
+        "state": state,
+    }
+    auth_url = f"{SLACK_AUTH_URL}?{urlencode(params)}"
+    return {"authorization_url": auth_url, "state": state}
+
+
+@router.post("/slack/callback", response_model=IntegrationResponse)
+def slack_callback(
+    callback: OAuthCallbackRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> IntegrationResponse:
+    """Exchange a Slack OAuth authorization code for a bot token."""
+    _validate_oauth_state(callback.state, current_user.id)
+    _validate_redirect_uri(callback.redirect_uri)
+    settings = get_settings()
+
+    response = httpx.post(
+        SLACK_TOKEN_URL,
+        data={
+            "code": callback.code,
+            "client_id": settings.slack_client_id,
+            "client_secret": settings.slack_client_secret,
+            "redirect_uri": callback.redirect_uri,
+        },
+    )
+
+    if response.status_code != 200:
+        log_audit(
+            db,
+            "oauth_callback",
+            user_id=current_user.id,
+            success=False,
+            error_details=f"Slack token exchange failed: {response.text}",
+        )
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to exchange authorization code",
+        )
+
+    token_data = response.json()
+    if not token_data.get("ok"):
+        log_audit(
+            db,
+            "oauth_callback",
+            user_id=current_user.id,
+            success=False,
+            error_details=f"Slack OAuth error: {token_data.get('error')}",
+        )
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Slack OAuth error: {token_data.get('error')}",
+        )
+
+    access_token = token_data.get("access_token")
+    scopes = token_data.get("scope", "")
+
+    if not access_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No access token in response",
+        )
+
+    integration = _upsert_integration(
+        db,
+        user_id=current_user.id,
+        provider=IntegrationProvider.SLACK.value,
+        access_token=access_token,
+        scopes=scopes,
+    )
+
+    log_audit(
+        db,
+        "oauth_callback",
+        user_id=current_user.id,
+        integration_id=integration.id,
+        metadata={"provider": IntegrationProvider.SLACK.value},
+    )
+
+    db.commit()
+    db.refresh(integration)
+    return integration
+
+
+# --- Granola (local cache) ---
+
+
+@router.post("/granola/configure", response_model=IntegrationResponse)
+def granola_configure(
+    cache_path: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> IntegrationResponse:
+    """Configure the Granola integration by setting the local cache path.
+
+    No OAuth needed — Granola reads from a local JSON file.
+    The cache_path is stored as the encrypted auth token (reusing the field).
+    """
+    import os
+
+    if not cache_path:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cache path is required",
+        )
+
+    # Expand ~ and validate path exists
+    expanded_path = os.path.expanduser(cache_path)
+    if not os.path.isfile(expanded_path):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cache file not found: {expanded_path}",
+        )
+
+    # Store the expanded path as the "auth token" (encrypted)
+    integration = _upsert_integration(
+        db,
+        user_id=current_user.id,
+        provider=IntegrationProvider.GRANOLA.value,
+        access_token=expanded_path,
+        scopes="local_cache",
+    )
+
+    log_audit(
+        db,
+        "granola_configure",
+        user_id=current_user.id,
+        integration_id=integration.id,
+        metadata={"provider": IntegrationProvider.GRANOLA.value},
     )
 
     db.commit()
@@ -377,11 +558,15 @@ def test_integration(
     from app.services.connectors.google_calendar import (
         GoogleCalendarConnector,
     )
+    from app.services.connectors.slack import SlackConnector
+    from app.services.connectors.granola import GranolaConnector
 
     connector_map = {
         IntegrationProvider.GOOGLE_CALENDAR.value: GoogleCalendarConnector,
         IntegrationProvider.GMAIL.value: GmailConnector,
         IntegrationProvider.GITHUB.value: GitHubConnector,
+        IntegrationProvider.SLACK.value: SlackConnector,
+        IntegrationProvider.GRANOLA.value: GranolaConnector,
     }
 
     connector_cls = connector_map.get(integration.provider)
@@ -539,6 +724,12 @@ def _revoke_at_provider(integration: Integration) -> None:
                 auth=(settings.github_client_id, settings.github_client_secret),
                 json={"access_token": token},
             )
+        elif integration.provider == IntegrationProvider.SLACK.value:
+            httpx.post(
+                SLACK_REVOKE_URL,
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        # Granola has no remote token to revoke (local cache only)
     except Exception as e:
         logger.warning(
             "Failed to revoke token at provider %s: %s",

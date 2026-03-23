@@ -284,11 +284,11 @@ export const api = {
         { method: "POST" },
       ),
 
-    googleCallback: (code: string, redirectUri: string, state: string) =>
+    googleCallback: (code: string, redirectUri: string, state: string, provider: string = "google_calendar") =>
       apiFetch<IntegrationResponse>("/integrations/google/callback", {
         method: "POST",
         body: JSON.stringify({
-          provider: "google_calendar",
+          provider,
           code,
           redirect_uri: redirectUri,
           state,

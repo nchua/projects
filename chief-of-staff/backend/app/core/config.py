@@ -41,6 +41,14 @@ class Settings(BaseSettings):
     github_client_id: str = ""
     github_client_secret: str = ""
 
+    # Slack OAuth
+    slack_client_id: str = ""
+    slack_client_secret: str = ""
+    slack_signing_secret: str = ""
+
+    # Granola (local cache)
+    granola_cache_path: str = ""
+
     # OAuth security
     oauth_redirect_uris: List[str] = []  # Empty = allow all (dev only)
 
@@ -49,10 +57,15 @@ class Settings(BaseSettings):
     vapid_claims_email: str = ""
 
     # App
-    app_name: str = "Chief of Staff"
+    app_name: str = "Jarvis"
     app_version: str = "0.1.0"
     api_v1_prefix: str = "/api/v1"
-    cors_origins: List[str] = ["*"]
+    cors_origins: List[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "tauri://localhost",
+        "https://tauri.localhost",
+    ]
 
     # Worker
     worker_db_pool_size: int = 10

@@ -13,6 +13,10 @@ venv/
 # Environment
 .env
 backend/.env
+*.json.bak
+
+# OAuth credential files
+Google OAuth*.json
 
 # Node
 node_modules/

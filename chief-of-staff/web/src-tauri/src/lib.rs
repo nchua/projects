@@ -1,3 +1,4 @@
+mod oauth;
 mod tray;
 
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
@@ -20,6 +21,7 @@ pub fn run() {
                 })
                 .build(),
         )
+        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -33,6 +35,7 @@ pub fn run() {
             tray::create_tray(app)?;
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![oauth::start_oauth_listener])
         .run(tauri::generate_context!())
         .expect("error while running Jarvis");
 }

@@ -9,6 +9,16 @@ type CallbackState =
   | { phase: "success" }
   | { phase: "error"; message: string };
 
+/** Decode the provider from the state JWT payload (base64url-encoded, not secret). */
+function getProviderFromState(state: string): string {
+  try {
+    const payload = JSON.parse(atob(state.split(".")[1]));
+    return payload.provider ?? "google_calendar";
+  } catch {
+    return "google_calendar";
+  }
+}
+
 function CallbackHandler() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -17,8 +27,10 @@ function CallbackHandler() {
   useEffect(() => {
     const code = searchParams.get("code");
     const stateParam = searchParams.get("state");
-    // Provider is encoded in the state parameter, or inferred from query
-    const provider = searchParams.get("provider") ?? "google_calendar";
+    // Provider is encoded in the state JWT payload
+    const provider = stateParam
+      ? getProviderFromState(stateParam)
+      : searchParams.get("provider") ?? "google_calendar";
 
     if (!code || !stateParam) {
       setState({
@@ -34,9 +46,11 @@ function CallbackHandler() {
       try {
         if (provider === "github") {
           await api.integrations.githubCallback(code!, redirectUri, stateParam!);
+        } else if (provider === "slack") {
+          await api.integrations.slackCallback(code!, redirectUri, stateParam!);
         } else {
           // google_calendar, gmail — both use Google OAuth
-          await api.integrations.googleCallback(code!, redirectUri, stateParam!);
+          await api.integrations.googleCallback(code!, redirectUri, stateParam!, provider);
         }
         setState({ phase: "success" });
         // Redirect to settings after a short delay to show success

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import useSWR from "swr";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
@@ -140,33 +140,117 @@ export default function SettingsPage() {
     return `${window.location.origin}/callback`;
   }, []);
 
+  // Refs to track pending Tauri OAuth state (avoids stale closures)
+  const pendingProviderRef = useRef<string | null>(null);
+  const pendingPortRef = useRef<number | null>(null);
+  const [oauthError, setOauthError] = useState<{ provider: string; message: string } | null>(null);
+
+  // Listen for oauth-callback events from the Rust listener
+  useEffect(() => {
+    if (!isTauri) return;
+    let unlisten: (() => void) | null = null;
+
+    import("@tauri-apps/api/event").then(({ listen }) => {
+      listen<{ code: string; state: string }>("oauth-callback", async (event) => {
+        const { code, state } = event.payload;
+        const port = pendingPortRef.current;
+        const provider = pendingProviderRef.current;
+        if (!port) return;
+
+        const redirectUri = `http://localhost:${port}/callback`;
+
+        try {
+          if (provider === "github") {
+            await api.integrations.githubCallback(code, redirectUri, state);
+          } else if (provider === "slack") {
+            await api.integrations.slackCallback(code, redirectUri, state);
+          } else {
+            await api.integrations.googleCallback(code, redirectUri, state, provider ?? "google_calendar");
+          }
+          void mutateIntegrations();
+          setOauthError(null);
+        } catch (e) {
+          setOauthError({
+            provider: provider ?? "unknown",
+            message: e instanceof Error ? e.message : "OAuth exchange failed",
+          });
+        } finally {
+          pendingProviderRef.current = null;
+          pendingPortRef.current = null;
+        }
+      }).then((fn) => { unlisten = fn; });
+    });
+
+    return () => { unlisten?.(); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function startTauriOAuth(
+    provider: string,
+    getAuthUrl: (redirectUri: string) => Promise<{ authorization_url: string }>,
+  ) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    const port = await invoke<number>("start_oauth_listener");
+    const redirectUri = `http://localhost:${port}/callback`;
+
+    pendingProviderRef.current = provider;
+    pendingPortRef.current = port;
+
+    const { authorization_url } = await getAuthUrl(redirectUri);
+
+    const { openUrl } = await import("@tauri-apps/plugin-opener");
+    await openUrl(authorization_url);
+  }
+
   async function connectGoogle() {
-    const { authorization_url } = await api.integrations.googleAuthorize(
-      getRedirectUri(),
-    );
-    window.location.href = authorization_url;
+    if (isTauri) {
+      await startTauriOAuth("google_calendar", (uri) =>
+        api.integrations.googleAuthorize(uri),
+      );
+    } else {
+      const { authorization_url } = await api.integrations.googleAuthorize(
+        getRedirectUri(),
+      );
+      window.location.href = authorization_url;
+    }
   }
 
   async function connectGmail() {
-    // Gmail uses same Google OAuth flow
-    const { authorization_url } = await api.integrations.googleAuthorize(
-      getRedirectUri(),
-    );
-    window.location.href = authorization_url;
+    if (isTauri) {
+      await startTauriOAuth("gmail", (uri) =>
+        api.integrations.googleAuthorize(uri),
+      );
+    } else {
+      const { authorization_url } = await api.integrations.googleAuthorize(
+        getRedirectUri(),
+      );
+      window.location.href = authorization_url;
+    }
   }
 
   async function connectGitHub() {
-    const { authorization_url } = await api.integrations.githubAuthorize(
-      getRedirectUri(),
-    );
-    window.location.href = authorization_url;
+    if (isTauri) {
+      await startTauriOAuth("github", (uri) =>
+        api.integrations.githubAuthorize(uri),
+      );
+    } else {
+      const { authorization_url } = await api.integrations.githubAuthorize(
+        getRedirectUri(),
+      );
+      window.location.href = authorization_url;
+    }
   }
 
   async function connectSlack() {
-    const { authorization_url } = await api.integrations.slackAuthorize(
-      getRedirectUri(),
-    );
-    window.location.href = authorization_url;
+    if (isTauri) {
+      await startTauriOAuth("slack", (uri) =>
+        api.integrations.slackAuthorize(uri),
+      );
+    } else {
+      const { authorization_url } = await api.integrations.slackAuthorize(
+        getRedirectUri(),
+      );
+      window.location.href = authorization_url;
+    }
   }
 
   // ── Granola configure state ───────────────────────────────
@@ -230,6 +314,7 @@ export default function SettingsPage() {
             key={provider}
             provider={provider}
             integration={findIntegration(provider)}
+            error={oauthError?.provider === provider ? oauthError.message : undefined}
             onConnect={getConnectHandler(provider)}
             onDisconnect={disconnectIntegration}
           />

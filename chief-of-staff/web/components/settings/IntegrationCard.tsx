@@ -37,6 +37,18 @@ const PROVIDER_CONFIG: Record<string, ProviderConfig> = {
     iconBg: "rgba(139,92,246,0.12)",
     iconColor: "#a78bfa",
   },
+  slack: {
+    label: "Slack",
+    icon: "\uD83D\uDCAC",
+    iconBg: "rgba(74,21,75,0.12)",
+    iconColor: "#e01e5a",
+  },
+  granola: {
+    label: "Granola",
+    icon: "\uD83C\uDF99",
+    iconBg: "rgba(245,158,11,0.12)",
+    iconColor: "#f59e0b",
+  },
 };
 
 const STATUS_DOT: Record<IntegrationStatusValue, string> = {
@@ -58,6 +70,7 @@ const STATUS_LABEL: Record<IntegrationStatusValue, string> = {
 interface IntegrationCardProps {
   provider: IntegrationProvider;
   integration: IntegrationResponse | null;
+  error?: string | null;
   onConnect: () => Promise<void>;
   onDisconnect: (id: string) => Promise<void>;
 }
@@ -74,11 +87,14 @@ function formatSyncTime(iso: string | null): string {
 export function IntegrationCard({
   provider,
   integration,
+  error: externalError,
   onConnect,
   onDisconnect,
 }: IntegrationCardProps) {
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const error = externalError ?? localError;
 
   const config = PROVIDER_CONFIG[provider] ?? {
     label: provider,
@@ -92,10 +108,11 @@ export function IntegrationCard({
 
   async function handleConnect() {
     setLoading(true);
+    setLocalError(null);
     try {
       await onConnect();
-    } catch {
-      // Parent handles errors
+    } catch (e) {
+      setLocalError(e instanceof Error ? e.message : "Connection failed");
     } finally {
       setLoading(false);
     }
@@ -152,6 +169,9 @@ export function IntegrationCard({
             </span>
           )}
         </div>
+        {error && (
+          <div className="text-xs text-red-400 mt-1">{error}</div>
+        )}
       </div>
 
       {/* Actions */}
