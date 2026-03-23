@@ -9,7 +9,8 @@
     "lint": "eslint",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "tauri:install": "tauri build && osascript -e 'tell application \"Jarvis\" to quit' 2>/dev/null; rm -rf /Applications/Jarvis.app && cp -R src-tauri/target/release/bundle/macos/Jarvis.app /Applications/ && open /Applications/Jarvis.app && echo '✓ Jarvis updated and launched'"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.10.1",
