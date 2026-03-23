@@ -481,6 +481,62 @@ def granola_configure(
     return integration
 
 
+# --- Apple Calendar (local via AppleScript) ---
+
+
+@router.post("/apple_calendar/configure", response_model=IntegrationResponse)
+def apple_calendar_configure(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> IntegrationResponse:
+    """Enable the Apple Calendar integration.
+
+    No OAuth needed — reads events via AppleScript from Calendar.app.
+    macOS handles calendar permissions natively.
+    """
+    import subprocess
+
+    # Quick auth check — verify we can talk to Calendar.app
+    try:
+        result = subprocess.run(
+            ["osascript", "-e", 'tell application "Calendar" to get name of calendars'],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode != 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Calendar access failed: {result.stderr.strip()}",
+            )
+    except subprocess.TimeoutExpired:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Calendar.app timed out — is it responding?",
+        )
+
+    # Store a placeholder token (the connector doesn't need a real one)
+    integration = _upsert_integration(
+        db,
+        user_id=current_user.id,
+        provider=IntegrationProvider.APPLE_CALENDAR.value,
+        access_token="apple_calendar_local",
+        scopes="local_events",
+    )
+
+    log_audit(
+        db,
+        "apple_calendar_configure",
+        user_id=current_user.id,
+        integration_id=integration.id,
+        metadata={"provider": IntegrationProvider.APPLE_CALENDAR.value},
+    )
+
+    db.commit()
+    db.refresh(integration)
+    return integration
+
+
 # --- Disconnect / Panic ---
 
 
@@ -560,6 +616,7 @@ def test_integration(
     )
     from app.services.connectors.slack import SlackConnector
     from app.services.connectors.granola import GranolaConnector
+    from app.services.connectors.apple_calendar import AppleCalendarConnector
 
     connector_map = {
         IntegrationProvider.GOOGLE_CALENDAR.value: GoogleCalendarConnector,
@@ -567,6 +624,7 @@ def test_integration(
         IntegrationProvider.GITHUB.value: GitHubConnector,
         IntegrationProvider.SLACK.value: SlackConnector,
         IntegrationProvider.GRANOLA.value: GranolaConnector,
+        IntegrationProvider.APPLE_CALENDAR.value: AppleCalendarConnector,
     }
 
     connector_cls = connector_map.get(integration.provider)

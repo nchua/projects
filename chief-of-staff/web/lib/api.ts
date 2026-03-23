@@ -335,6 +335,12 @@ export const api = {
         { method: "POST" },
       ),
 
+    appleCalendarConfigure: () =>
+      apiFetch<IntegrationResponse>(
+        "/integrations/apple_calendar/configure",
+        { method: "POST" },
+      ),
+
     disconnect: (integrationId: string) =>
       apiFetch<void>(`/integrations/${integrationId}`, {
         method: "DELETE",

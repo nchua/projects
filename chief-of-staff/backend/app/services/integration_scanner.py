@@ -68,6 +68,9 @@ async def sync_integration(
     from app.services.connectors.google_calendar import (
         GoogleCalendarConnector,
     )
+    from app.services.connectors.slack import SlackConnector
+    from app.services.connectors.granola import GranolaConnector
+    from app.services.connectors.apple_calendar import AppleCalendarConnector
 
     session_factory = ctx["db_session"]
 
@@ -91,6 +94,9 @@ async def sync_integration(
             IntegrationProvider.GOOGLE_CALENDAR.value: GoogleCalendarConnector,
             IntegrationProvider.GMAIL.value: GmailConnector,
             IntegrationProvider.GITHUB.value: GitHubConnector,
+            IntegrationProvider.SLACK.value: SlackConnector,
+            IntegrationProvider.GRANOLA.value: GranolaConnector,
+            IntegrationProvider.APPLE_CALENDAR.value: AppleCalendarConnector,
         }
         connector_cls = connector_map.get(integration.provider)
         if not connector_cls:
@@ -129,13 +135,15 @@ async def sync_integration(
                 tz=timezone.utc
             )
 
-            # Enqueue message processing for Gmail/GitHub
+            # Enqueue message processing for providers with raw items
             if (
                 sync_result.raw_items
                 and integration.provider
                 in (
                     IntegrationProvider.GMAIL.value,
                     IntegrationProvider.GITHUB.value,
+                    IntegrationProvider.SLACK.value,
+                    IntegrationProvider.GRANOLA.value,
                 )
             ):
                 from arq.connections import ArqRedis
@@ -229,5 +237,7 @@ def _provider_resource_type(provider: str) -> str:
         IntegrationProvider.GOOGLE_CALENDAR.value: "calendar",
         IntegrationProvider.GMAIL.value: "inbox",
         IntegrationProvider.GITHUB.value: "notifications",
+        IntegrationProvider.SLACK.value: "channels",
+        IntegrationProvider.GRANOLA.value: "meetings",
     }
     return mapping.get(provider, "unknown")

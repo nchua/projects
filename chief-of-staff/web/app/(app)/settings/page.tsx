@@ -31,6 +31,7 @@ const TIMEZONES = [
 const INTEGRATION_PROVIDERS: IntegrationProvider[] = [
   "google_calendar",
   "gmail",
+  "apple_calendar",
   "github",
   "slack",
   "granola",
@@ -259,6 +260,11 @@ export default function SettingsPage() {
   );
   const [granolaError, setGranolaError] = useState<string | null>(null);
 
+  async function connectAppleCalendar() {
+    await api.integrations.appleCalendarConfigure();
+    void mutateIntegrations();
+  }
+
   async function connectGranola() {
     setGranolaError(null);
     try {
@@ -286,6 +292,8 @@ export default function SettingsPage() {
         return connectGitHub;
       case "slack":
         return connectSlack;
+      case "apple_calendar":
+        return connectAppleCalendar;
       case "granola":
         return connectGranola;
       default:

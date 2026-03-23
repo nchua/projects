@@ -49,6 +49,12 @@ const PROVIDER_CONFIG: Record<string, ProviderConfig> = {
     iconBg: "rgba(245,158,11,0.12)",
     iconColor: "#f59e0b",
   },
+  apple_calendar: {
+    label: "Apple Calendar",
+    icon: "\uD83C\uDF4E",
+    iconBg: "rgba(255,59,48,0.12)",
+    iconColor: "#ff3b30",
+  },
 };
 
 const STATUS_DOT: Record<IntegrationStatusValue, string> = {
