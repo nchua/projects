@@ -1,55 +1,35 @@
-# Session State — Last Updated: 2026-03-22 23:00
+# Session State — Last Updated: 2026-03-23 08:15
 
-## Session Name: Chief of Staff — Spec Review + Phase 0 Build
+## Session Name: Fix timezone display + Apple Calendar picker
 
 ## Completed This Session
-- Fetched and merged `chief-of-staff/spec.md` from mobile branch into main
-- Ran /council with 3 agents (Staff Engineer, PM, Security) to review the spec
-- Collected user decisions on 10 open questions (users, briefing strategy, sync frequency, etc.)
-- Rewrote spec.md with all council findings: revised data model (5 new tables), security section, phased MVP, decisions log
-- Created implementation plan (`chief-of-staff/plan.md`) covering Phase 0 through Phase 1J
-- Built Phase 0 prompt harness (3 files, 23 test fixtures)
-- Ran harness — all thresholds met: 100% triage accuracy, 100% extraction recall, 10.3% FP rate, $0.096 total cost
-- Ran /council code review on the harness — applied fixes (JSON parsing robustness, error handling, preprocessing)
-- Ran /simplify — extracted shared helpers, precompiled regexes, eliminated duplicate code
+- Fixed UTC timezone bug: SQLite drops timezone info, causing "Last synced in about 7 hours" (future) instead of "about 7 hours ago". Added `field_validator` to Pydantic schemas to stamp naive datetimes with UTC.
+- Fixed Apple Calendar sync timeout: was iterating all 17+ calendars and timing out at 60s
+- Added calendar picker: `GET /apple_calendar/calendars` endpoint + frontend checkbox UI so user can select which calendars to sync
+- AppleScript now filters to selected calendars only, deduplicates recurring events, timeout bumped to 120s
+- Added `connectDisabled` prop to IntegrationCard to hide Connect button when picker is visible
+- Rebuilt Tauri app with new code (was serving stale static build from `web/out/`)
 
 ## In Progress
-- None — Phase 0 is complete and clean
+- None — clean stopping point
 
 ## Blockers / Open Questions
-- None — ready to start Phase 1A (Backend Foundation)
+- None
+
+## TODO (Future)
+- **Apple Calendar picker UI polish**: The checkbox list works but looks basic — needs better styling, select all/none toggles, calendar color indicators, and possibly grouping by account. Noted by user as "not great" UX.
+- Test Google Calendar and Gmail sync (APIs were enabled last session)
+- Verify Dashboard CalendarCard shows today's events
+- Move on to AI extraction pipeline / briefing engine
 
 ## Git State
 - Branch: `main`
-- Recent commits:
-  - `c3afb1b` — Add initial Chief of Staff app spec
-  - NOTE: Phase 0 harness code is NOT yet committed (untracked files)
 
-## Key Files
-- `chief-of-staff/spec.md` — Full product spec with council decisions
-- `chief-of-staff/plan.md` — Implementation plan (Phase 0 through 1J)
-- `chief-of-staff/prompt-harness/test_corpus.py` — 23 test fixtures
-- `chief-of-staff/prompt-harness/prompts.py` — Triage + extraction prompts, preprocessing
-- `chief-of-staff/prompt-harness/run_harness.py` — CLI harness runner with scoring
-- `chief-of-staff/prompt-harness/results/run_20260322_223332.json` — Passing run results
-
-## Context for Next Session
-Phase 0 (prompt harness) is complete and validated. The next step is **Phase 1A: Backend Foundation** from `chief-of-staff/plan.md`. This includes:
-
-1. Project scaffolding (mirror fitness-app/backend structure)
-2. Config (`@lru_cache` pattern from travel-planning)
-3. Database setup (sync + async)
-4. Security & auth (JWT, copy fitness-app patterns)
-5. Token encryption module (AES-256-GCM, new — no existing pattern)
-6. 11 SQLAlchemy models
-7. Pydantic schemas
-8. Alembic setup + initial migration
-9. Main app entry point + auth endpoints
-10. Requirements.txt
-
-Phase 0 and Phase 1A are independent, so 1A can start fresh. The harness code should be committed before starting 1A.
-
-Key patterns to follow from existing projects:
-- `fitness-app/backend/` for FastAPI structure, models, schemas, auth
-- `travel-planning/backend/` for ARQ worker, async DB, config
-- `holocron/backend/app/services/connectors/` for OAuth patterns
+## Key Files Touched
+- `backend/app/schemas/integration.py` — UTC timezone fix + AppleCalendarConfigureRequest schema
+- `backend/app/schemas/briefing.py` — UTC timezone fix
+- `backend/app/services/connectors/apple_calendar.py` — calendar filtering, dedup, list_calendars()
+- `backend/app/api/integrations.py` — new calendar list endpoint, updated configure endpoint
+- `web/app/(app)/settings/page.tsx` — calendar picker UI
+- `web/components/settings/IntegrationCard.tsx` — connectDisabled prop
+- `web/lib/api.ts` — appleCalendarListCalendars + updated configure signature

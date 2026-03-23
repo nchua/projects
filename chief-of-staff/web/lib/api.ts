@@ -335,9 +335,23 @@ export const api = {
         { method: "POST" },
       ),
 
-    appleCalendarConfigure: () =>
+    appleCalendarListCalendars: () =>
+      apiFetch<{ calendars: string[] }>(
+        "/integrations/apple_calendar/calendars",
+      ),
+
+    appleCalendarConfigure: (calendars?: string[]) =>
       apiFetch<IntegrationResponse>(
         "/integrations/apple_calendar/configure",
+        {
+          method: "POST",
+          body: JSON.stringify({ calendars: calendars ?? null }),
+        },
+      ),
+
+    syncAll: () =>
+      apiFetch<{ synced: Record<string, { status: string; documents_fetched?: number; error?: string }> }>(
+        "/integrations/sync-all",
         { method: "POST" },
       ),
 
@@ -349,6 +363,12 @@ export const api = {
     test: (integrationId: string) =>
       apiFetch<IntegrationHealthResponse>(
         `/integrations/${integrationId}/test`,
+        { method: "POST" },
+      ),
+
+    sync: (integrationId: string) =>
+      apiFetch<IntegrationResponse>(
+        `/integrations/${integrationId}/sync`,
         { method: "POST" },
       ),
 

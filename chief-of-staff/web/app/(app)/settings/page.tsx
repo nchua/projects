@@ -254,16 +254,52 @@ export default function SettingsPage() {
     }
   }
 
+  // ── Apple Calendar selection state ──────────────────────────
+  const [appleCalendars, setAppleCalendars] = useState<string[] | null>(null);
+  const [appleSelected, setAppleSelected] = useState<Set<string>>(new Set());
+  const [appleLoading, setAppleLoading] = useState(false);
+  const [appleError, setAppleError] = useState<string | null>(null);
+
+  async function connectAppleCalendar() {
+    // If we haven't fetched calendars yet, fetch them and show picker
+    if (!appleCalendars) {
+      setAppleLoading(true);
+      setAppleError(null);
+      try {
+        const { calendars } = await api.integrations.appleCalendarListCalendars();
+        setAppleCalendars(calendars);
+        setAppleSelected(new Set(calendars)); // default: all selected
+      } catch (e) {
+        setAppleError(e instanceof Error ? e.message : "Failed to list calendars");
+      } finally {
+        setAppleLoading(false);
+      }
+      return;
+    }
+
+    // If we have calendars, configure with selected ones
+    if (appleSelected.size === 0) {
+      setAppleError("Select at least one calendar");
+      return;
+    }
+    setAppleLoading(true);
+    setAppleError(null);
+    try {
+      await api.integrations.appleCalendarConfigure([...appleSelected]);
+      setAppleCalendars(null); // reset picker
+      void mutateIntegrations();
+    } catch (e) {
+      setAppleError(e instanceof Error ? e.message : "Failed to configure");
+    } finally {
+      setAppleLoading(false);
+    }
+  }
+
   // ── Granola configure state ───────────────────────────────
   const [granolaPath, setGranolaPath] = useState(
     "~/Library/Application Support/Granola/cache-v6.json",
   );
   const [granolaError, setGranolaError] = useState<string | null>(null);
-
-  async function connectAppleCalendar() {
-    await api.integrations.appleCalendarConfigure();
-    void mutateIntegrations();
-  }
 
   async function connectGranola() {
     setGranolaError(null);
@@ -277,6 +313,11 @@ export default function SettingsPage() {
 
   async function disconnectIntegration(id: string) {
     await api.integrations.disconnect(id);
+    void mutateIntegrations();
+  }
+
+  async function syncIntegration(id: string) {
+    await api.integrations.sync(id);
     void mutateIntegrations();
   }
 
@@ -323,10 +364,62 @@ export default function SettingsPage() {
             provider={provider}
             integration={findIntegration(provider)}
             error={oauthError?.provider === provider ? oauthError.message : undefined}
+            connectDisabled={provider === "apple_calendar" && appleCalendars !== null}
             onConnect={getConnectHandler(provider)}
             onDisconnect={disconnectIntegration}
+            onSync={syncIntegration}
           />
         ))}
+
+        {/* Apple Calendar picker */}
+        {appleCalendars && !findIntegration("apple_calendar") && (
+          <div className="px-[18px] py-3.5 border-t border-surface-3/40">
+            <div className="text-xs text-text-dim mb-2">
+              Select which calendars to sync from Calendar.app:
+            </div>
+            <div className="flex flex-col gap-1.5 max-h-[200px] overflow-y-auto mb-3">
+              {appleCalendars.map((name) => (
+                <label
+                  key={name}
+                  className="flex items-center gap-2 text-[13px] text-text-secondary cursor-pointer hover:text-text-primary"
+                >
+                  <input
+                    type="checkbox"
+                    checked={appleSelected.has(name)}
+                    onChange={() => {
+                      setAppleSelected((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(name)) next.delete(name);
+                        else next.add(name);
+                        return next;
+                      });
+                    }}
+                    className="accent-accent"
+                  />
+                  {name}
+                </label>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={connectAppleCalendar}
+                disabled={appleLoading || appleSelected.size === 0}
+                className="px-3.5 py-1.5 text-xs rounded-md bg-accent-muted text-accent border border-accent/20 transition-colors hover:bg-accent/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {appleLoading ? "Connecting..." : `Connect ${appleSelected.size} calendar${appleSelected.size !== 1 ? "s" : ""}`}
+              </button>
+              <button
+                onClick={() => setAppleCalendars(null)}
+                className="px-3.5 py-1.5 text-xs rounded-md bg-white/[0.04] text-text-secondary border border-surface-3 transition-colors hover:bg-white/[0.08]"
+              >
+                Cancel
+              </button>
+            </div>
+            {appleError && (
+              <div className="text-xs text-red-400 mt-1.5">{appleError}</div>
+            )}
+          </div>
+        )}
 
         {/* Granola cache path configuration */}
         {!findIntegration("granola") && (

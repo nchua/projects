@@ -15,13 +15,20 @@ from app.core.encryption import decrypt_token, encrypt_token
 from app.core.security import create_access_token, verify_token
 from app.models.enums import IntegrationProvider
 from app.models.integration import Integration
+from app.models.sync_state import SyncState
 from app.models.user import User
 from app.schemas.integration import (
+    AppleCalendarConfigureRequest,
     IntegrationHealthResponse,
     IntegrationResponse,
     OAuthCallbackRequest,
 )
 from app.services.audit_log import log_audit
+from app.services.calendar_persistence import (
+    CALENDAR_PROVIDERS,
+    persist_calendar_events,
+)
+from app.services.message_processor_sync import MESSAGE_PROVIDERS
 
 logger = logging.getLogger(__name__)
 
@@ -484,44 +491,70 @@ def granola_configure(
 # --- Apple Calendar (local via AppleScript) ---
 
 
+@router.get("/apple_calendar/calendars")
+def apple_calendar_list_calendars(
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """List available calendars from Calendar.app.
+
+    Returns calendar names so the user can choose which to sync.
+    """
+    from app.services.connectors.apple_calendar import list_calendars
+
+    try:
+        names = list_calendars()
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    return {"calendars": names}
+
+
 @router.post("/apple_calendar/configure", response_model=IntegrationResponse)
 def apple_calendar_configure(
+    body: AppleCalendarConfigureRequest | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> IntegrationResponse:
-    """Enable the Apple Calendar integration.
+    """Enable the Apple Calendar integration with selected calendars.
 
     No OAuth needed — reads events via AppleScript from Calendar.app.
     macOS handles calendar permissions natively.
+    Pass a list of calendar names to sync; if omitted, syncs all.
     """
-    import subprocess
+    from app.services.connectors.apple_calendar import list_calendars
 
-    # Quick auth check — verify we can talk to Calendar.app
     try:
-        result = subprocess.run(
-            ["osascript", "-e", 'tell application "Calendar" to get name of calendars'],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        if result.returncode != 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Calendar access failed: {result.stderr.strip()}",
-            )
-    except subprocess.TimeoutExpired:
+        available = list_calendars()
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Calendar.app timed out — is it responding?",
+            detail=str(e),
         )
 
-    # Store a placeholder token (the connector doesn't need a real one)
+    # Determine which calendars to store
+    calendars = body.calendars if body else None
+    if calendars:
+        # Validate that requested calendars exist
+        invalid = [c for c in calendars if c not in available]
+        if invalid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unknown calendars: {', '.join(invalid)}",
+            )
+        scopes = ",".join(calendars)
+    else:
+        # No selection = sync all
+        scopes = ",".join(available)
+
     integration = _upsert_integration(
         db,
         user_id=current_user.id,
         provider=IntegrationProvider.APPLE_CALENDAR.value,
         access_token="apple_calendar_local",
-        scopes="local_events",
+        scopes=scopes,
     )
 
     log_audit(
@@ -529,12 +562,111 @@ def apple_calendar_configure(
         "apple_calendar_configure",
         user_id=current_user.id,
         integration_id=integration.id,
-        metadata={"provider": IntegrationProvider.APPLE_CALENDAR.value},
+        metadata={
+            "provider": IntegrationProvider.APPLE_CALENDAR.value,
+            "calendars": calendars or available,
+        },
     )
 
     db.commit()
     db.refresh(integration)
     return integration
+
+
+# --- Sync All ---
+
+
+@router.post("/sync-all")
+async def sync_all_integrations(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Sync all active integrations for the current user (no Redis needed).
+
+    Called by the dashboard on load to ensure data is fresh.
+    Returns a summary of sync results per provider.
+    """
+    from datetime import datetime, timezone
+
+    integrations = (
+        db.query(Integration)
+        .filter(
+            Integration.user_id == current_user.id,
+            Integration.is_active.is_(True),
+            Integration.status != "disabled",
+        )
+        .all()
+    )
+
+    results: dict[str, dict] = {}
+
+    for integration in integrations:
+        provider = integration.provider
+        try:
+            connector = _get_connector(integration)
+
+            sync_state = (
+                db.query(SyncState)
+                .filter(SyncState.integration_id == integration.id)
+                .first()
+            )
+
+            sync_result = await connector.sync(sync_state=sync_state)
+
+            if sync_result.errors:
+                connector._mark_error("; ".join(sync_result.errors))
+            else:
+                connector._mark_healthy()
+                integration.last_synced_at = datetime.now(tz=timezone.utc)
+
+            # Update cursor
+            if sync_result.new_cursor:
+                if sync_state:
+                    sync_state.cursor_value = sync_result.new_cursor
+                    sync_state.last_sync_status = "success"
+                    sync_state.last_sync_error = None
+                else:
+                    sync_state = SyncState(
+                        integration_id=integration.id,
+                        resource_type=_provider_resource_type(provider),
+                        cursor_value=sync_result.new_cursor,
+                        cursor_type="sync_token",
+                        last_sync_status="success",
+                    )
+                    db.add(sync_state)
+
+            # Persist calendar events
+            if provider in CALENDAR_PROVIDERS:
+                persist_calendar_events(
+                    db, current_user.id, provider, sync_result.raw_items
+                )
+
+            # Process messages for action items + memory
+            if sync_result.raw_items and provider in MESSAGE_PROVIDERS:
+                from app.services.message_processor_sync import (
+                    process_messages_inline,
+                )
+
+                try:
+                    await process_messages_inline(
+                        db, current_user.id, provider, sync_result.raw_items
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "Message processing failed for %s: %s", provider, e
+                    )
+
+            results[provider] = {
+                "status": "ok",
+                "documents_fetched": sync_result.documents_fetched,
+            }
+
+        except Exception as e:
+            logger.warning("Sync-all failed for %s: %s", provider, e)
+            results[provider] = {"status": "error", "error": str(e)}
+
+    db.commit()
+    return {"synced": results}
 
 
 # --- Disconnect / Panic ---
@@ -597,48 +729,18 @@ def panic_revoke_all(
 
 
 @router.post("/{integration_id}/test", response_model=IntegrationHealthResponse)
-def test_integration(
+async def test_integration(
     integration_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> IntegrationHealthResponse:
     """Trigger a test sync to verify integration health."""
-    import asyncio
-
     integration = _get_user_integration(
         db, integration_id, current_user.id
     )
 
-    from app.services.connectors.github import GitHubConnector
-    from app.services.connectors.gmail import GmailConnector
-    from app.services.connectors.google_calendar import (
-        GoogleCalendarConnector,
-    )
-    from app.services.connectors.slack import SlackConnector
-    from app.services.connectors.granola import GranolaConnector
-    from app.services.connectors.apple_calendar import AppleCalendarConnector
-
-    connector_map = {
-        IntegrationProvider.GOOGLE_CALENDAR.value: GoogleCalendarConnector,
-        IntegrationProvider.GMAIL.value: GmailConnector,
-        IntegrationProvider.GITHUB.value: GitHubConnector,
-        IntegrationProvider.SLACK.value: SlackConnector,
-        IntegrationProvider.GRANOLA.value: GranolaConnector,
-        IntegrationProvider.APPLE_CALENDAR.value: AppleCalendarConnector,
-    }
-
-    connector_cls = connector_map.get(integration.provider)
-    if not connector_cls:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                f"No connector for provider: "
-                f"{integration.provider}"
-            ),
-        )
-
-    connector = connector_cls(integration)
-    authenticated = asyncio.run(connector.authenticate())
+    connector = _get_connector(integration)
+    authenticated = await connector.authenticate()
 
     if not authenticated:
         integration.status = "failed"
@@ -661,6 +763,98 @@ def test_integration(
         last_synced_at=integration.last_synced_at,
         is_active=integration.is_active,
     )
+
+
+@router.post("/{integration_id}/sync", response_model=IntegrationResponse)
+async def sync_integration_now(
+    integration_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> IntegrationResponse:
+    """Trigger an immediate sync for a single integration (no Redis needed)."""
+    from datetime import datetime, timezone
+
+    integration = _get_user_integration(
+        db, integration_id, current_user.id
+    )
+
+    connector = _get_connector(integration)
+
+    # Look up existing sync state for cursor
+    sync_state = (
+        db.query(SyncState)
+        .filter(SyncState.integration_id == integration.id)
+        .first()
+    )
+
+    try:
+        sync_result = await connector.sync(sync_state=sync_state)
+    except Exception as e:
+        connector._mark_error(str(e))
+        db.commit()
+        db.refresh(integration)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Sync failed: {e}",
+        )
+
+    if sync_result.errors:
+        connector._mark_error("; ".join(sync_result.errors))
+    else:
+        connector._mark_healthy()
+        integration.last_synced_at = datetime.now(tz=timezone.utc)
+
+    # Update or create SyncState cursor
+    if sync_result.new_cursor:
+        if sync_state:
+            sync_state.cursor_value = sync_result.new_cursor
+            sync_state.last_sync_status = "success"
+            sync_state.last_sync_error = None
+        else:
+            sync_state = SyncState(
+                integration_id=integration.id,
+                resource_type=_provider_resource_type(integration.provider),
+                cursor_value=sync_result.new_cursor,
+                cursor_type="sync_token",
+                last_sync_status="success",
+            )
+            db.add(sync_state)
+
+    # Persist calendar events to DB
+    if integration.provider in CALENDAR_PROVIDERS:
+        persist_calendar_events(
+            db, current_user.id, integration.provider, sync_result.raw_items
+        )
+
+    # Process messages for action items + memory (inline, no Redis needed)
+    if sync_result.raw_items and integration.provider in MESSAGE_PROVIDERS:
+        from app.services.message_processor_sync import process_messages_inline
+
+        try:
+            await process_messages_inline(
+                db, current_user.id, integration.provider, sync_result.raw_items
+            )
+        except Exception as e:
+            logger.warning(
+                "Inline message processing failed (non-fatal): %s", e
+            )
+
+    log_audit(
+        db,
+        "manual_sync",
+        user_id=current_user.id,
+        integration_id=integration.id,
+        success=not sync_result.errors,
+        metadata={
+            "provider": integration.provider,
+            "documents_fetched": sync_result.documents_fetched,
+            "errors": sync_result.errors,
+        },
+    )
+
+    db.commit()
+    db.refresh(integration)
+    return integration
 
 
 # --- Helpers ---
@@ -757,6 +951,46 @@ def _upsert_integration(
         db.add(integration)
 
     return integration
+
+
+def _get_connector(integration: Integration) -> "BaseConnector":
+    """Instantiate the correct connector for an integration."""
+    from app.services.connectors.apple_calendar import AppleCalendarConnector
+    from app.services.connectors.github import GitHubConnector
+    from app.services.connectors.gmail import GmailConnector
+    from app.services.connectors.google_calendar import GoogleCalendarConnector
+    from app.services.connectors.granola import GranolaConnector
+    from app.services.connectors.slack import SlackConnector
+
+    connector_map = {
+        IntegrationProvider.GOOGLE_CALENDAR.value: GoogleCalendarConnector,
+        IntegrationProvider.GMAIL.value: GmailConnector,
+        IntegrationProvider.GITHUB.value: GitHubConnector,
+        IntegrationProvider.SLACK.value: SlackConnector,
+        IntegrationProvider.GRANOLA.value: GranolaConnector,
+        IntegrationProvider.APPLE_CALENDAR.value: AppleCalendarConnector,
+    }
+
+    connector_cls = connector_map.get(integration.provider)
+    if not connector_cls:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"No connector for provider: {integration.provider}",
+        )
+    return connector_cls(integration)
+
+
+def _provider_resource_type(provider: str) -> str:
+    """Map provider to default resource type for SyncState."""
+    mapping = {
+        IntegrationProvider.GOOGLE_CALENDAR.value: "calendar",
+        IntegrationProvider.GMAIL.value: "inbox",
+        IntegrationProvider.GITHUB.value: "notifications",
+        IntegrationProvider.SLACK.value: "channels",
+        IntegrationProvider.GRANOLA.value: "meetings",
+        IntegrationProvider.APPLE_CALENDAR.value: "calendar",
+    }
+    return mapping.get(provider, "unknown")
 
 
 def _revoke_at_provider(integration: Integration) -> None:

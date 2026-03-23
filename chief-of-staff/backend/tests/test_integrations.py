@@ -1,6 +1,6 @@
 """Tests for Phase 1B: Integration Layer."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.core.security import hash_password
 from app.models.audit_log import AuditLog
@@ -393,6 +393,276 @@ class TestIntegrationEndpoints:
         assert data["provider"] == "granola"
         assert data["status"] == "healthy"
         assert data["is_active"] is True
+
+
+class TestSyncEndpoint:
+    """Tests for the sync and calendar persistence endpoints."""
+
+    def _register_and_login(self, client):
+        """Helper to create a user and get auth token."""
+        client.post("/api/v1/auth/register", json={
+            "email": "sync-test@example.com",
+            "password": "TestPass123",
+        })
+        response = client.post("/api/v1/auth/login", json={
+            "email": "sync-test@example.com",
+            "password": "TestPass123",
+        })
+        token = response.json()["access_token"]
+        return {"Authorization": f"Bearer {token}"}
+
+    def _create_integration(self, db_session, user_id, provider="apple_calendar"):
+        """Helper to create a test integration."""
+        from app.core.encryption import encrypt_token
+
+        integration = Integration(
+            user_id=user_id,
+            provider=provider,
+            encrypted_auth_token=encrypt_token("test_token"),
+            status="healthy",
+            is_active=True,
+            error_count=0,
+        )
+        db_session.add(integration)
+        db_session.flush()
+        return integration
+
+    def test_sync_endpoint_success(self, client, db_session):
+        """Sync endpoint returns 200 and updates last_synced_at."""
+        headers = self._register_and_login(client)
+        user = db_session.query(User).filter(User.email == "sync-test@example.com").first()
+        integration = self._create_integration(db_session, user.id)
+        db_session.commit()
+
+        mock_result = SyncResult(
+            documents_fetched=3,
+            new_cursor="2026-03-23T00:00:00+00:00",
+            raw_items=[
+                {
+                    "source_id": "apple_calendar:uid-1",
+                    "title": "Meeting",
+                    "date": "2026-03-23T10:00:00+00:00",
+                    "end_date": "2026-03-23T11:00:00+00:00",
+                    "calendar": "Work",
+                    "location": "",
+                    "attendees": [],
+                    "notes": "",
+                    "body": "",
+                },
+            ],
+        )
+
+        with patch("app.api.integrations._get_connector") as mock_conn:
+            connector_instance = MagicMock()
+            connector_instance.sync = AsyncMock(return_value=mock_result)
+            connector_instance._mark_healthy = MagicMock()
+            mock_conn.return_value = connector_instance
+
+            response = client.post(
+                f"/api/v1/integrations/{integration.id}/sync",
+                headers=headers,
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "healthy"
+        assert data["last_synced_at"] is not None
+
+    def test_sync_persists_calendar_events(self, client, db_session):
+        """Sync creates CalendarEvent rows in the database."""
+        from app.models.calendar_event import CalendarEvent
+
+        headers = self._register_and_login(client)
+        user = db_session.query(User).filter(User.email == "sync-test@example.com").first()
+        integration = self._create_integration(db_session, user.id)
+        db_session.commit()
+
+        mock_result = SyncResult(
+            documents_fetched=3,
+            new_cursor="2026-03-23T00:00:00+00:00",
+            raw_items=[
+                {
+                    "source_id": "apple_calendar:uid-1",
+                    "title": "Standup",
+                    "date": "2026-03-23T09:00:00+00:00",
+                    "end_date": "2026-03-23T09:30:00+00:00",
+                    "calendar": "Work",
+                    "location": "",
+                    "attendees": [],
+                    "notes": "",
+                    "body": "",
+                },
+                {
+                    "source_id": "apple_calendar:uid-2",
+                    "title": "Lunch",
+                    "date": "2026-03-23T12:00:00+00:00",
+                    "end_date": "2026-03-23T13:00:00+00:00",
+                    "calendar": "Personal",
+                    "location": "Cafe",
+                    "attendees": [],
+                    "notes": "",
+                    "body": "",
+                },
+                {
+                    "source_id": "apple_calendar:uid-3",
+                    "title": "Review",
+                    "date": "2026-03-23T14:00:00+00:00",
+                    "end_date": "2026-03-23T15:00:00+00:00",
+                    "calendar": "Work",
+                    "location": "",
+                    "attendees": [],
+                    "notes": "Prep slides",
+                    "body": "Prep slides",
+                },
+            ],
+        )
+
+        with patch("app.api.integrations._get_connector") as mock_conn:
+            connector_instance = MagicMock()
+            connector_instance.sync = AsyncMock(return_value=mock_result)
+            connector_instance._mark_healthy = MagicMock()
+            mock_conn.return_value = connector_instance
+
+            client.post(
+                f"/api/v1/integrations/{integration.id}/sync",
+                headers=headers,
+            )
+
+        events = db_session.query(CalendarEvent).filter(
+            CalendarEvent.user_id == user.id,
+        ).all()
+        assert len(events) == 3
+        titles = {e.title for e in events}
+        assert titles == {"Standup", "Lunch", "Review"}
+
+    def test_sync_deduplicates_events(self, client, db_session):
+        """Syncing the same events twice doesn't create duplicates."""
+        from app.models.calendar_event import CalendarEvent
+
+        headers = self._register_and_login(client)
+        user = db_session.query(User).filter(User.email == "sync-test@example.com").first()
+        integration = self._create_integration(db_session, user.id)
+        db_session.commit()
+
+        mock_result = SyncResult(
+            documents_fetched=1,
+            new_cursor="2026-03-23T00:00:00+00:00",
+            raw_items=[{
+                "source_id": "apple_calendar:uid-dedup",
+                "title": "Recurring",
+                "date": "2026-03-23T10:00:00+00:00",
+                "end_date": "2026-03-23T11:00:00+00:00",
+                "calendar": "Work",
+                "location": "",
+                "attendees": [],
+                "notes": "",
+                "body": "",
+            }],
+        )
+
+        with patch("app.api.integrations._get_connector") as mock_conn:
+            connector_instance = MagicMock()
+            connector_instance.sync = AsyncMock(return_value=mock_result)
+            connector_instance._mark_healthy = MagicMock()
+            mock_conn.return_value = connector_instance
+
+            # Sync twice
+            client.post(f"/api/v1/integrations/{integration.id}/sync", headers=headers)
+            client.post(f"/api/v1/integrations/{integration.id}/sync", headers=headers)
+
+        events = db_session.query(CalendarEvent).filter(
+            CalendarEvent.user_id == user.id,
+            CalendarEvent.external_id == "uid-dedup",
+        ).all()
+        assert len(events) == 1
+
+    def test_sync_handles_cancelled_google_events(self, client, db_session):
+        """Cancelled Google events are deleted from the database."""
+        from app.models.calendar_event import CalendarEvent
+
+        headers = self._register_and_login(client)
+        user = db_session.query(User).filter(User.email == "sync-test@example.com").first()
+        integration = self._create_integration(db_session, user.id, provider="google_calendar")
+        db_session.commit()
+
+        # First sync: create the event
+        mock_result_create = SyncResult(
+            documents_fetched=1,
+            new_cursor="cursor-1",
+            raw_items=[{
+                "source_id": "google_calendar:gid-cancel",
+                "title": "Cancelled Meeting",
+                "start_time": "2026-03-23T10:00:00+00:00",
+                "end_time": "2026-03-23T11:00:00+00:00",
+                "is_all_day": False,
+                "calendar": "Work",
+                "location": "",
+                "attendees": [],
+                "notes": "",
+                "body": "",
+            }],
+        )
+
+        with patch("app.api.integrations._get_connector") as mock_conn:
+            connector_instance = MagicMock()
+            connector_instance.sync = AsyncMock(return_value=mock_result_create)
+            connector_instance._mark_healthy = MagicMock()
+            mock_conn.return_value = connector_instance
+            client.post(f"/api/v1/integrations/{integration.id}/sync", headers=headers)
+
+        assert db_session.query(CalendarEvent).filter(
+            CalendarEvent.external_id == "gid-cancel",
+        ).count() == 1
+
+        # Second sync: cancel the event
+        mock_result_cancel = SyncResult(
+            documents_fetched=1,
+            new_cursor="cursor-2",
+            raw_items=[{
+                "source_id": "google_calendar:gid-cancel",
+                "cancelled": True,
+            }],
+        )
+
+        with patch("app.api.integrations._get_connector") as mock_conn:
+            connector_instance = MagicMock()
+            connector_instance.sync = AsyncMock(return_value=mock_result_cancel)
+            connector_instance._mark_healthy = MagicMock()
+            mock_conn.return_value = connector_instance
+            client.post(f"/api/v1/integrations/{integration.id}/sync", headers=headers)
+
+        assert db_session.query(CalendarEvent).filter(
+            CalendarEvent.external_id == "gid-cancel",
+        ).count() == 0
+
+    def test_sync_updates_cursor(self, client, db_session):
+        """SyncState is created/updated after successful sync."""
+        from app.models.sync_state import SyncState
+
+        headers = self._register_and_login(client)
+        user = db_session.query(User).filter(User.email == "sync-test@example.com").first()
+        integration = self._create_integration(db_session, user.id)
+        db_session.commit()
+
+        mock_result = SyncResult(
+            documents_fetched=0,
+            new_cursor="2026-03-23T12:00:00+00:00",
+            raw_items=[],
+        )
+
+        with patch("app.api.integrations._get_connector") as mock_conn:
+            connector_instance = MagicMock()
+            connector_instance.sync = AsyncMock(return_value=mock_result)
+            connector_instance._mark_healthy = MagicMock()
+            mock_conn.return_value = connector_instance
+            client.post(f"/api/v1/integrations/{integration.id}/sync", headers=headers)
+
+        sync_state = db_session.query(SyncState).filter(
+            SyncState.integration_id == integration.id,
+        ).first()
+        assert sync_state is not None
+        assert sync_state.cursor_value == "2026-03-23T12:00:00+00:00"
+        assert sync_state.last_sync_status == "success"
 
 
 class TestSlackConnector:

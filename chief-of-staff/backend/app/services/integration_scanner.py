@@ -135,6 +135,25 @@ async def sync_integration(
                 tz=timezone.utc
             )
 
+            # Persist calendar events for calendar providers
+            if (
+                sync_result.raw_items
+                and integration.provider
+                in (
+                    IntegrationProvider.GOOGLE_CALENDAR.value,
+                    IntegrationProvider.APPLE_CALENDAR.value,
+                )
+            ):
+                from app.services.calendar_persistence import (
+                    persist_calendar_events_async,
+                )
+                await persist_calendar_events_async(
+                    session,
+                    integration.user_id,
+                    integration.provider,
+                    sync_result.raw_items,
+                )
+
             # Enqueue message processing for providers with raw items
             if (
                 sync_result.raw_items
@@ -239,5 +258,6 @@ def _provider_resource_type(provider: str) -> str:
         IntegrationProvider.GITHUB.value: "notifications",
         IntegrationProvider.SLACK.value: "channels",
         IntegrationProvider.GRANOLA.value: "meetings",
+        IntegrationProvider.APPLE_CALENDAR.value: "calendar",
     }
     return mapping.get(provider, "unknown")

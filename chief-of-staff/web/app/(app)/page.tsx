@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import useSWR from "swr";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
@@ -64,15 +65,30 @@ export default function DashboardPage() {
     unregisterCard,
   } = useKeyboardShortcuts();
 
-  const { data: briefing, isLoading: briefingLoading, error: briefingError } =
+  // Auto-sync all integrations on first mount, then refresh data
+  const hasSynced = useRef(false);
+  const { data: briefing, isLoading: briefingLoading, error: briefingError, mutate: mutateBriefing } =
     useSWR<BriefingResponse>("/briefings/today", () => api.briefings.today(), {
       refreshInterval: 120_000,
     });
 
-  const { data: todayTasks, isLoading: tasksLoading, error: tasksError } =
+  const { data: todayTasks, isLoading: tasksLoading, error: tasksError, mutate: mutateTasks } =
     useSWR<TodayTasksResponse>("/tasks/today", () => api.tasks.today(), {
       refreshInterval: 30_000,
     });
+
+  useEffect(() => {
+    if (hasSynced.current) return;
+    hasSynced.current = true;
+
+    api.integrations.syncAll().then(() => {
+      // Refresh dashboard data after sync completes
+      mutateBriefing();
+      mutateTasks();
+    }).catch(() => {
+      // Non-fatal — dashboard still shows whatever data exists
+    });
+  }, [mutateBriefing, mutateTasks]);
 
   const briefingContent = briefing?.content ?? null;
   const generatingBriefing = briefing && !briefing.content;

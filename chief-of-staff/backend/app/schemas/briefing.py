@@ -1,9 +1,16 @@
 """Briefing schemas."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional, List, Any, Dict
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+
+def _ensure_utc(v: datetime | None) -> datetime | None:
+    """Treat naive datetimes (from SQLite) as UTC so JSON includes +00:00."""
+    if v is not None and v.tzinfo is None:
+        return v.replace(tzinfo=timezone.utc)
+    return v
 
 
 class BriefingCalendarEvent(BaseModel):
@@ -46,6 +53,11 @@ class IntegrationHealthItem(BaseModel):
     status: str
     last_synced_at: Optional[datetime] = None
     error_message: Optional[str] = None
+
+    @field_validator("last_synced_at", mode="before")
+    @classmethod
+    def ensure_utc(cls, v: datetime | None) -> datetime | None:
+        return _ensure_utc(v)
 
 
 class BriefingMemoryFact(BaseModel):

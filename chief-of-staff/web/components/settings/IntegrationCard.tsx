@@ -77,8 +77,10 @@ interface IntegrationCardProps {
   provider: IntegrationProvider;
   integration: IntegrationResponse | null;
   error?: string | null;
+  connectDisabled?: boolean;
   onConnect: () => Promise<void>;
   onDisconnect: (id: string) => Promise<void>;
+  onSync: (id: string) => Promise<void>;
 }
 
 function formatSyncTime(iso: string | null): string {
@@ -94,10 +96,13 @@ export function IntegrationCard({
   provider,
   integration,
   error: externalError,
+  connectDisabled,
   onConnect,
   onDisconnect,
+  onSync,
 }: IntegrationCardProps) {
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const error = externalError ?? localError;
@@ -182,11 +187,32 @@ export function IntegrationCard({
 
       {/* Actions */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        {loading && (
+        {(loading || syncing) && (
           <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-text-dim/30 border-t-text-dim rounded-full" />
         )}
 
-        {!isConnected && (
+        {isConnected && (
+          <button
+            onClick={async () => {
+              if (!integration) return;
+              setSyncing(true);
+              setLocalError(null);
+              try {
+                await onSync(integration.id);
+              } catch (e) {
+                setLocalError(e instanceof Error ? e.message : "Sync failed");
+              } finally {
+                setSyncing(false);
+              }
+            }}
+            disabled={syncing || loading}
+            className="px-3.5 py-1.5 text-xs rounded-md bg-white/[0.04] text-text-secondary border border-surface-3 transition-colors hover:bg-white/[0.08] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {syncing ? "Syncing..." : "Sync Now"}
+          </button>
+        )}
+
+        {!isConnected && !connectDisabled && (
           <button
             onClick={handleConnect}
             disabled={loading}
