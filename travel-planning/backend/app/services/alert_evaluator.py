@@ -193,8 +193,11 @@ def evaluate_decision(
     now = datetime.now(timezone.utc)
 
     # Compute recommended departure time
+    arrival = trip.arrival_time
+    if arrival.tzinfo is None:
+        arrival = arrival.replace(tzinfo=timezone.utc)
     recommended_departure = (
-        trip.arrival_time
+        arrival
         - timedelta(seconds=new_eta_seconds)
         - timedelta(minutes=trip.buffer_minutes)
     )

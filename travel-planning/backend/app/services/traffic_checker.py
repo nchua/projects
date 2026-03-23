@@ -52,9 +52,15 @@ def _compute_api_departure_time(trip: Trip) -> datetime | None:
     now = datetime.now(timezone.utc)
 
     candidate = trip.notify_at
+    # Normalize naive datetimes (e.g. from SQLite) to UTC-aware
+    if candidate is not None and candidate.tzinfo is None:
+        candidate = candidate.replace(tzinfo=timezone.utc)
     if candidate is None and trip.last_eta_seconds is not None:
+        arrival = trip.arrival_time
+        if arrival.tzinfo is None:
+            arrival = arrival.replace(tzinfo=timezone.utc)
         candidate = (
-            trip.arrival_time
+            arrival
             - timedelta(seconds=trip.last_eta_seconds)
             - timedelta(minutes=trip.buffer_minutes)
         )
@@ -146,6 +152,7 @@ async def check_trip_eta(ctx: dict[str, Any], trip_id: str) -> None:
                 dest_lat=trip.dest_lat,
                 dest_lng=trip.dest_lng,
                 departure_time=departure_time,
+                travel_mode=trip.travel_mode.value,
             )
         except Exception:
             logger.exception(f"MapKit API error for trip {trip_id}")

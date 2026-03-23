@@ -76,12 +76,13 @@ async def startup(ctx: dict[str, Any]) -> None:
     # APNs client for direct push notifications
     _init_apns(ctx, settings)
 
+    # Note: ARQ automatically injects ctx["redis"] (ArqRedis instance)
     logger.info("Worker startup complete")
 
 
 def _init_apns(ctx: dict[str, Any], settings: Any) -> None:
     """Initialize direct APNs client using aioapns."""
-    if not settings.apple_mapkit_private_key or not settings.apns_key_id:
+    if not settings.apns_key_id or not settings.apple_team_id:
         logger.warning(
             "APNs credentials not configured — push notifications disabled"
         )

@@ -75,6 +75,8 @@ def _format_time(dt: datetime, tz: Any) -> str:
 
 def _minutes_until(target: datetime) -> int:
     """Minutes from now until a target datetime."""
+    if target.tzinfo is None:
+        target = target.replace(tzinfo=timezone.utc)
     delta = (target - datetime.now(timezone.utc)).total_seconds()
     return max(0, round(delta / 60))
 
@@ -92,7 +94,10 @@ def build_notification(
     """
     tz = _resolve_timezone(user.timezone or "America/Los_Angeles")
     departure_str = _format_time(departure_time, tz)
-    arrival_str = _format_time(trip.arrival_time, tz)
+    arrival_time = trip.arrival_time
+    if arrival_time.tzinfo is None:
+        arrival_time = arrival_time.replace(tzinfo=timezone.utc)
+    arrival_str = _format_time(arrival_time, tz)
     dest_name = (
         trip.name or trip.dest_address[:30]
         if trip.dest_address
@@ -201,7 +206,6 @@ def build_apns_payload(
         "headers": {
             "apns-priority": apns_config["priority"],
             "apns-push-type": "alert" if not silent else "background",
-            "apns-topic": "",  # Filled in at send time from config
         },
     }
 
@@ -264,6 +268,19 @@ async def send_push_notification(
 
     if not tokens:
         logger.warning(f"No active device tokens for trip {trip_id}")
+        async with session_factory() as session:
+            log_entry = NotificationLog(
+                trip_id=UUID(trip_id),
+                user_id=trip.user_id,
+                type=NotificationType(tier),
+                title=title,
+                body=body,
+                eta_at_send_seconds=trip.last_eta_seconds,
+                recommended_departure=departure_time,
+                delivery_status=DeliveryStatus.failed,
+            )
+            session.add(log_entry)
+            await session.commit()
         return
 
     results = []
@@ -351,10 +368,10 @@ async def send_push_notification(
         )
         session.add(log_entry)
 
-        # Step 6: Update trip status
+        # Step 6: Update trip status (atomic increment avoids stale-read races)
         update_values: dict[str, Any] = {
             "notified": True,
-            "notification_count": trip.notification_count + 1,
+            "notification_count": Trip.notification_count + 1,
             "updated_at": datetime.now(timezone.utc),
         }
 

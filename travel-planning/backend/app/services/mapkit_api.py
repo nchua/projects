@@ -92,6 +92,14 @@ class MapKitClient:
         token = self._generate_token()
         return {"Authorization": f"Bearer {token}"}
 
+    # MapKit transportType values mapped from our TravelMode enum
+    _TRANSPORT_TYPE_MAP: dict[str, str] = {
+        "driving": "Automobile",
+        "walking": "Walking",
+        "transit": "Transit",
+        "cycling": "Automobile",  # MapKit has no cycling — fall back
+    }
+
     async def compute_route(
         self,
         origin_lat: float,
@@ -99,16 +107,18 @@ class MapKitClient:
         dest_lat: float,
         dest_lng: float,
         departure_time: datetime | None = None,
+        travel_mode: str = "driving",
     ) -> EtaResult:
         """Compute a route using MapKit Directions and return the parsed ETA.
 
         Uses /v1/directions which returns traffic-aware travel time when
         a departureDate is provided.
         """
+        transport_type = self._TRANSPORT_TYPE_MAP.get(travel_mode, "Automobile")
         params: dict[str, str] = {
             "origin": f"{origin_lat},{origin_lng}",
             "destination": f"{dest_lat},{dest_lng}",
-            "transportType": "Automobile",
+            "transportType": transport_type,
         }
 
         if departure_time is not None:

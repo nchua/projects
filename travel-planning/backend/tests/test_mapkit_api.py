@@ -192,3 +192,87 @@ class TestCongestionBoundaries:
     def test_severe_at_1_6(self) -> None:
         result = EtaResult.from_route_response(1000, 1600, 10000)
         assert result.congestion_level == CongestionLevel.severe
+
+
+# --- MapKitClient error handling ---
+
+
+class TestMapKitClientErrors:
+    """Tests for MapKitClient HTTP error handling using httpx.MockTransport."""
+
+    @staticmethod
+    def _generate_es256_pem() -> str:
+        """Generate a fresh ES256 private key PEM for tests."""
+        from cryptography.hazmat.primitives.asymmetric import ec
+        from cryptography.hazmat.primitives.serialization import (
+            Encoding,
+            NoEncryption,
+            PrivateFormat,
+        )
+
+        key = ec.generate_private_key(ec.SECP256R1())
+        return key.private_bytes(
+            Encoding.PEM, PrivateFormat.TraditionalOpenSSL, NoEncryption()
+        ).decode()
+
+    @classmethod
+    def _make_client(cls, handler) -> "MapKitClient":
+        import httpx
+
+        from app.services.mapkit_api import MapKitClient
+
+        transport = httpx.MockTransport(handler)
+        http_client = httpx.AsyncClient(transport=transport)
+        return MapKitClient(
+            team_id="TEAMID",
+            key_id="KEYID",
+            private_key=cls._generate_es256_pem(),
+            http_client=http_client,
+        )
+
+    @pytest.mark.asyncio
+    async def test_timeout_raises_mapkit_error(self) -> None:
+        import httpx
+
+        from app.services.mapkit_api import MapKitError
+
+        def timeout_handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.TimeoutException("Connection timed out")
+
+        client = self._make_client(timeout_handler)
+        with pytest.raises(MapKitError, match="timed out"):
+            await client.compute_route(37.77, -122.42, 37.33, -121.89)
+
+    @pytest.mark.asyncio
+    async def test_401_clears_token_cache(self) -> None:
+        from app.services.mapkit_api import MapKitError
+
+        def auth_fail_handler(request) -> "httpx.Response":
+            import httpx
+
+            return httpx.Response(401, text="Unauthorized")
+
+        client = self._make_client(auth_fail_handler)
+
+        # Pre-warm the token cache
+        client._generate_token()
+        assert client._token is not None
+
+        with pytest.raises(MapKitError, match="Authentication failed"):
+            await client.compute_route(37.77, -122.42, 37.33, -121.89)
+
+        # Token cache should be cleared
+        assert client._token is None
+
+    @pytest.mark.asyncio
+    async def test_429_raises_rate_limited(self) -> None:
+        from app.services.mapkit_api import MapKitRateLimited
+
+        def rate_limit_handler(request) -> "httpx.Response":
+            import httpx
+
+            return httpx.Response(429, text="Too Many Requests")
+
+        client = self._make_client(rate_limit_handler)
+        with pytest.raises(MapKitRateLimited):
+            await client.compute_route(37.77, -122.42, 37.33, -121.89)
