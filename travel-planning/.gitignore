@@ -5,3 +5,6 @@ __pycache__/
 *.egg-info/
 .env
 .ruff_cache/
+*.p8
+Nudge_Key
+AuthKey*
