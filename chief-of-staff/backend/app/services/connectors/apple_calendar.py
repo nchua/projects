@@ -4,7 +4,6 @@ Uses Calendar.app's AppleScript interface to fetch events.
 No OAuth needed — macOS handles permissions natively.
 """
 
-import json
 import logging
 import subprocess
 from datetime import datetime, timedelta, timezone
@@ -28,53 +27,53 @@ end tell
 """
 
 # AppleScript to fetch events from all calendars within a date range.
-# Returns JSON-formatted list of events.
+# Outputs tab-delimited lines: uid\ttitle\tstart_iso\tend_iso\tcalendar\tlocation\tnotes
+# All parsing/escaping happens in Python — AppleScript just dumps raw text.
 _EVENTS_SCRIPT_TEMPLATE = """
-use AppleScript version "2.4"
-use scripting additions
-use framework "Foundation"
-
-on formatDate(d)
-    set formatter to current application's NSDateFormatter's alloc()'s init()
-    formatter's setDateFormat:"yyyy-MM-dd'T'HH:mm:ssZZZZZ"
-    set nsDate to current application's NSDate's dateWithTimeIntervalSince1970:(d's time to real)
-    return (formatter's stringFromDate:nsDate) as text
-end formatDate
+on sanitize(txt)
+    -- Replace tabs and newlines with spaces so they don't break TSV format
+    set oldTIDs to AppleScript's text item delimiters
+    set AppleScript's text item delimiters to tab
+    set parts to text items of txt
+    set AppleScript's text item delimiters to " "
+    set txt to parts as text
+    set AppleScript's text item delimiters to (ASCII character 10)
+    set parts to text items of txt
+    set AppleScript's text item delimiters to " "
+    set txt to parts as text
+    set AppleScript's text item delimiters to (ASCII character 13)
+    set parts to text items of txt
+    set AppleScript's text item delimiters to " "
+    set txt to parts as text
+    set AppleScript's text item delimiters to oldTIDs
+    return txt
+end sanitize
 
 tell application "Calendar"
-    set startDate to date "{start_date}"
-    set endDate to date "{end_date}"
-    set allEvents to {{}}
+    set startDate to (current date) - ({days_back} * days)
+    set endDate to (current date) + ({days_forward} * days)
+    set output to ""
 
     repeat with cal in calendars
-        set calName to name of cal
+        set calName to my sanitize(name of cal)
         set calEvents to (every event of cal whose start date >= startDate and start date <= endDate)
         repeat with evt in calEvents
             set evtId to uid of evt
-            set evtTitle to summary of evt
-            set evtStart to start date of evt
-            set evtEnd to end date of evt
+            set evtTitle to my sanitize(summary of evt)
+            set evtStart to (start date of evt) as «class isot» as string
+            set evtEnd to (end date of evt) as «class isot» as string
             set evtNotes to description of evt
             set evtLoc to location of evt
-
             if evtNotes is missing value then set evtNotes to ""
             if evtLoc is missing value then set evtLoc to ""
+            set evtNotes to my sanitize(evtNotes)
+            set evtLoc to my sanitize(evtLoc)
 
-            set evtRecord to "{{" & ¬
-                "\\"id\\": \\"" & evtId & "\\", " & ¬
-                "\\"title\\": \\"" & evtTitle & "\\", " & ¬
-                "\\"start\\": \\"" & (evtStart as «class isot» as string) & "\\", " & ¬
-                "\\"end\\": \\"" & (evtEnd as «class isot» as string) & "\\", " & ¬
-                "\\"calendar\\": \\"" & calName & "\\", " & ¬
-                "\\"location\\": \\"" & evtLoc & "\\", " & ¬
-                "\\"notes\\": \\"" & evtNotes & "\\"" & ¬
-                "}}"
-            set end of allEvents to evtRecord
+            set output to output & evtId & tab & evtTitle & tab & evtStart & tab & evtEnd & tab & calName & tab & evtLoc & tab & evtNotes & (ASCII character 10)
         end repeat
     end repeat
 
-    set AppleScript's text item delimiters to ", "
-    return "[" & (allEvents as text) & "]"
+    return output
 end tell
 """
 
@@ -169,33 +168,47 @@ def _fetch_events(
     start: datetime,
     end: datetime,
 ) -> list[dict[str, Any]]:
-    """Run AppleScript to fetch events in the given date range."""
-    # Format dates as AppleScript expects: "Monday, March 23, 2026 12:00:00 AM"
-    start_str = start.strftime("%A, %B %d, %Y %I:%M:%S %p")
-    end_str = end.strftime("%A, %B %d, %Y %I:%M:%S %p")
+    """Run AppleScript to fetch events in the given date range.
+
+    Returns list of event dicts parsed from tab-delimited AppleScript output.
+    """
+    now = datetime.now(timezone.utc)
+    days_back = max(0, (now - start).days)
+    days_forward = max(1, (end - now).days)
 
     script = _EVENTS_SCRIPT_TEMPLATE.format(
-        start_date=start_str,
-        end_date=end_str,
+        days_back=days_back,
+        days_forward=days_forward,
     )
 
     result = subprocess.run(
         ["osascript", "-e", script],
         capture_output=True,
         text=True,
-        timeout=30,
+        timeout=60,
     )
 
     if result.returncode != 0:
         raise RuntimeError(f"AppleScript error: {result.stderr.strip()}")
 
     output = result.stdout.strip()
-    if not output or output == "[]":
+    if not output:
         return []
 
-    try:
-        return json.loads(output)
-    except json.JSONDecodeError:
-        # AppleScript JSON can be messy — try to salvage
-        logger.warning("Failed to parse AppleScript output as JSON: %s", output[:200])
-        return []
+    events: list[dict[str, Any]] = []
+    for line in output.split("\n"):
+        parts = line.split("\t")
+        if len(parts) < 5:
+            logger.warning("Skipping malformed calendar line: %s", line[:100])
+            continue
+        events.append({
+            "id": parts[0],
+            "title": parts[1],
+            "start": parts[2],
+            "end": parts[3],
+            "calendar": parts[4],
+            "location": parts[5] if len(parts) > 5 else "",
+            "notes": parts[6] if len(parts) > 6 else "",
+        })
+
+    return events

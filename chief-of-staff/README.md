@@ -238,6 +238,25 @@ CORS_ORIGINS=["http://localhost:3000"]
 GRANOLA_CACHE_PATH=                             # Path to Granola's cache-v6.json if using Granola
 ```
 
+### 7. Google API Setup (required for Gmail + Google Calendar sync)
+
+The Google OAuth credentials alone aren't enough — you also need to enable the APIs in your GCP project:
+
+1. Go to [Google Cloud Console → APIs & Services → Library](https://console.cloud.google.com/apis/library)
+2. Select the GCP project that owns your OAuth credentials
+3. Search for and **Enable** each of these APIs:
+   - **Google Calendar API** — required for calendar event sync
+   - **Gmail API** — required for email sync and action item extraction
+4. No code changes needed — the existing OAuth tokens will work once the APIs are enabled
+
+Without this step, sync will return HTTP 403 `accessNotConfigured`.
+
+### 8. Apple Calendar (macOS only)
+
+Apple Calendar sync uses AppleScript and requires no OAuth or API keys. On first sync, macOS will prompt you to grant Calendar access to the terminal/app running the backend. Accept the prompt, or enable it manually:
+
+**System Settings → Privacy & Security → Calendars** → toggle on your terminal app.
+
 ## Setup — Production Deployment
 
 For deploying to a cloud provider (Railway, Render, Fly.io, etc.):
