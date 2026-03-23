@@ -10,6 +10,7 @@ import type {
   IntegrationResponse,
   IntegrationProvider,
 } from "@/lib/types";
+import { isTauri } from "@/lib/tauri";
 
 // ── Timezone options ────────────────────────────────────────────
 
@@ -31,6 +32,8 @@ const INTEGRATION_PROVIDERS: IntegrationProvider[] = [
   "google_calendar",
   "gmail",
   "github",
+  "slack",
+  "granola",
 ];
 
 export default function SettingsPage() {
@@ -75,6 +78,36 @@ export default function SettingsPage() {
       setPrefsError("Failed to save preferences.");
     } finally {
       setPrefsSaving(false);
+    }
+  }
+
+  // ── Autostart state (Tauri only) ────────────────────────────
+  const [autostart, setAutostart] = useState(false);
+  const [autostartLoading, setAutostartLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isTauri) return;
+    import("@tauri-apps/plugin-autostart").then(({ isEnabled }) => {
+      isEnabled().then(setAutostart);
+    });
+  }, []);
+
+  async function toggleAutostart() {
+    if (!isTauri) return;
+    setAutostartLoading(true);
+    try {
+      const { enable, disable } = await import(
+        "@tauri-apps/plugin-autostart"
+      );
+      if (autostart) {
+        await disable();
+        setAutostart(false);
+      } else {
+        await enable();
+        setAutostart(true);
+      }
+    } finally {
+      setAutostartLoading(false);
     }
   }
 
@@ -129,6 +162,29 @@ export default function SettingsPage() {
     window.location.href = authorization_url;
   }
 
+  async function connectSlack() {
+    const { authorization_url } = await api.integrations.slackAuthorize(
+      getRedirectUri(),
+    );
+    window.location.href = authorization_url;
+  }
+
+  // ── Granola configure state ───────────────────────────────
+  const [granolaPath, setGranolaPath] = useState(
+    "~/Library/Application Support/Granola/cache-v6.json",
+  );
+  const [granolaError, setGranolaError] = useState<string | null>(null);
+
+  async function connectGranola() {
+    setGranolaError(null);
+    try {
+      await api.integrations.granolaConfigure(granolaPath);
+      void mutateIntegrations();
+    } catch (e) {
+      setGranolaError(e instanceof Error ? e.message : "Failed to configure Granola");
+    }
+  }
+
   async function disconnectIntegration(id: string) {
     await api.integrations.disconnect(id);
     void mutateIntegrations();
@@ -144,6 +200,10 @@ export default function SettingsPage() {
         return connectGmail;
       case "github":
         return connectGitHub;
+      case "slack":
+        return connectSlack;
+      case "granola":
+        return connectGranola;
       default:
         return async () => {};
     }
@@ -174,6 +234,27 @@ export default function SettingsPage() {
             onDisconnect={disconnectIntegration}
           />
         ))}
+
+        {/* Granola cache path configuration */}
+        {!findIntegration("granola") && (
+          <div className="px-[18px] py-3.5 border-t border-surface-3/40">
+            <div className="text-xs text-text-dim mb-2">
+              Granola reads meeting notes from a local cache file.
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={granolaPath}
+                onChange={(e) => setGranolaPath(e.target.value)}
+                placeholder="Path to Granola cache"
+                className="flex-1 px-2.5 py-[7px] text-[13px] bg-surface-0 border border-surface-3 rounded-md text-text-secondary outline-none transition-colors focus:border-accent font-mono placeholder:text-text-ghost"
+              />
+            </div>
+            {granolaError && (
+              <div className="text-xs text-red-400 mt-1.5">{granolaError}</div>
+            )}
+          </div>
+        )}
       </SettingsSection>
 
       {/* ── Preferences ───────────────────────────────────────── */}
@@ -233,6 +314,35 @@ export default function SettingsPage() {
           </button>
         </div>
       </SettingsSection>
+
+      {/* ── Desktop App (Tauri only) ────────────────────────── */}
+      {isTauri && (
+        <SettingsSection title="Desktop App">
+          <div className="flex items-center justify-between px-[18px] py-3.5">
+            <div className="flex-1">
+              <div className="text-sm text-text-secondary">
+                Launch on login
+              </div>
+              <div className="text-xs text-text-dim mt-0.5">
+                Start Jarvis automatically when you log in to your Mac
+              </div>
+            </div>
+            <button
+              onClick={toggleAutostart}
+              disabled={autostartLoading}
+              className={`relative w-10 h-[22px] rounded-full transition-colors ${
+                autostart ? "bg-accent" : "bg-surface-3"
+              } disabled:opacity-50`}
+            >
+              <div
+                className={`absolute top-[3px] w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                  autostart ? "left-[22px]" : "left-[3px]"
+                }`}
+              />
+            </button>
+          </div>
+        </SettingsSection>
+      )}
 
       {/* ── Danger Zone ───────────────────────────────────────── */}
       <SettingsSection title="Danger Zone" danger>

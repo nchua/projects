@@ -18,7 +18,10 @@ Open **[`walkthrough.html`](walkthrough.html)** in your browser for a visual, 5-
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│  Next.js Frontend (port 3000)                                    │
+│  Tauri Desktop Shell (optional — macOS native)                   │
+│  System Tray · ⌘J Spotlight · Notifications · Auto-launch        │
+├──────────────────────────────────────────────────────────────────┤
+│  Next.js Frontend (port 3000 / static export)                    │
 │  Dashboard: Tasks · Action Items · Calendar · Insights · Context │
 └──────────────────────┬───────────────────────────────────────────┘
                        │ REST API
@@ -132,7 +135,35 @@ npm run dev
 # → http://localhost:3000
 ```
 
-### 4. Background Worker (optional)
+### 4. Desktop App (optional — macOS)
+
+Wraps the frontend in a native macOS shell with system tray, global shortcut, and notifications.
+
+**Prerequisites:** Rust toolchain (`curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh`)
+
+```bash
+cd web
+
+# Install Tauri dependencies (already in package.json)
+npm install
+
+# Development — opens native window loading localhost:3000
+npm run tauri:dev
+
+# Production build — produces Jarvis.app + .dmg
+npm run tauri:build
+# Output: web/src-tauri/target/release/bundle/dmg/Jarvis_*.dmg
+```
+
+**Desktop features:**
+- **System tray** — menubar icon with briefing popup (polls every 60s, red dot when unviewed)
+- **⌘J global shortcut** — spotlight-style search overlay, works from any app
+- **Native notifications** — fires when morning briefing is ready or new context is detected
+- **Auto-launch on login** — toggle in Settings (only visible in desktop app)
+
+The backend still runs separately — the desktop app just wraps the frontend.
+
+### 5. Background Worker (optional)
 
 The ARQ worker handles integration sync, AI extraction, and memory fact extraction. Without it, you can still use the app manually (create action items, memory facts, briefings via API).
 
@@ -144,7 +175,7 @@ redis-server &
 arq app.worker.WorkerSettings
 ```
 
-### 5. Register and Login
+### 6. Register and Login
 
 Open `http://localhost:3000` → register an account → log in. The dashboard will show empty cards until you add data.
 
@@ -310,6 +341,7 @@ npm run build                  # TypeScript + Next.js compilation check
 | Layer | Technology |
 |-------|-----------|
 | Frontend | Next.js 16, React, TypeScript, Tailwind CSS, SWR |
+| Desktop | Tauri v2 (Rust), macOS native shell |
 | Backend | FastAPI, SQLAlchemy, Pydantic, Alembic |
 | AI | Claude Haiku 4.5 (triage + memory), Claude Sonnet 4.5 (extraction + insights) |
 | Database | SQLite (dev), PostgreSQL (prod) |
