@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.config import get_settings
-from app.api import auth, integrations
+from app.api import action_items, auth, integrations
 
 # Logging must be configured before first use
 logging.basicConfig(
@@ -110,6 +110,12 @@ app.include_router(
     integrations.router,
     prefix=f"{settings.api_v1_prefix}/integrations",
     tags=["Integrations"],
+)
+
+app.include_router(
+    action_items.router,
+    prefix=f"{settings.api_v1_prefix}/action-items",
+    tags=["Action Items"],
 )
 
 
