@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jarvis — Memory + Adaptive Prioritization Walkthrough</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; background: #0d0d0f; color: #e0e0e0; }
+
+  .nav { display: flex; gap: 8px; padding: 16px 32px; background: #141418; border-bottom: 1px solid #2a2a30; position: sticky; top: 0; z-index: 10; }
+  .nav button { padding: 8px 16px; border-radius: 8px; border: 1px solid #2a2a30; background: transparent; color: #888; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+  .nav button.active { background: #1a1a22; color: #e0e0e0; border-color: #4a9eff40; }
+  .nav button:hover { border-color: #4a9eff60; color: #ccc; }
+
+  .scene { display: none; padding: 32px; max-width: 1100px; margin: 0 auto; }
+  .scene.active { display: block; }
+
+  .scene-header { margin-bottom: 24px; }
+  .scene-header h2 { font-size: 20px; font-weight: 600; color: #fff; }
+  .scene-header .subtitle { font-size: 13px; color: #666; margin-top: 4px; }
+  .scene-header .step-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; background: #4a9eff20; color: #4a9eff; margin-bottom: 8px; }
+
+  .card { background: #16161a; border: 1px solid #2a2a30; border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; border-bottom: 1px solid #2a2a30; }
+  .card-header span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #666; }
+  .card-header .count { font-size: 10px; color: #555; }
+  .card-body { padding: 18px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* Action items */
+  .ai-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid #1e1e24; }
+  .ai-row:last-child { border-bottom: none; }
+  .ai-priority { width: 4px; height: 32px; border-radius: 2px; flex-shrink: 0; margin-top: 2px; }
+  .ai-priority.high { background: #ef4444; }
+  .ai-priority.medium { background: #f59e0b; }
+  .ai-priority.low { background: #3b82f6; }
+  .ai-title { font-size: 13px; color: #ccc; line-height: 1.4; }
+  .ai-meta { font-size: 10px; color: #555; margin-top: 2px; display: flex; gap: 8px; align-items: center; }
+  .ai-score { font-size: 10px; padding: 1px 6px; border-radius: 4px; background: #4a9eff15; color: #4a9eff; font-weight: 500; }
+  .ai-source { font-size: 10px; padding: 1px 6px; border-radius: 4px; background: #ffffff08; color: #888; }
+
+  /* Memory facts */
+  .mem-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; }
+  .mem-type { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; min-width: 72px; margin-top: 2px; }
+  .mem-type.commitment { color: #60a5fa; }
+  .mem-type.deadline { color: #f59e0b; }
+  .mem-type.decision { color: #34d399; }
+  .mem-type.context { color: #666; }
+  .mem-type.follow_up { color: #a78bfa; }
+  .mem-text { font-size: 13px; color: #aaa; line-height: 1.4; }
+  .mem-meta { font-size: 10px; color: #555; margin-top: 2px; display: flex; gap: 8px; }
+  .mem-expires { color: #f59e0b99; }
+
+  /* Calendar */
+  .cal-row { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid #1e1e24; }
+  .cal-row:last-child { border-bottom: none; }
+  .cal-time { font-size: 12px; color: #666; min-width: 50px; font-variant-numeric: tabular-nums; }
+  .cal-title { font-size: 13px; color: #ccc; }
+  .cal-location { font-size: 10px; color: #555; margin-top: 2px; }
+
+  /* Tasks */
+  .task-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+  .task-check { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid #3a3a44; flex-shrink: 0; }
+  .task-check.done { background: #34d399; border-color: #34d399; }
+  .task-title { font-size: 13px; color: #ccc; }
+  .task-streak { font-size: 10px; color: #f59e0b; }
+
+  /* Insights */
+  .insight-line { font-size: 13px; color: #aaa; line-height: 1.6; margin-bottom: 4px; }
+  .insight-line strong { color: #e0e0e0; font-weight: 600; }
+
+  /* Triage visualization */
+  .triage-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .triage-label { font-size: 12px; color: #888; min-width: 70px; }
+  .triage-track { flex: 1; height: 24px; background: #1e1e24; border-radius: 6px; overflow: hidden; position: relative; }
+  .triage-fill { height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; font-size: 10px; font-weight: 600; transition: width 0.5s; }
+  .triage-fill.green { background: #34d39940; color: #34d399; }
+  .triage-fill.yellow { background: #f59e0b30; color: #f59e0b; }
+  .triage-fill.red { background: #ef444430; color: #ef4444; }
+  .triage-threshold { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; z-index: 2; }
+  .triage-threshold-label { position: absolute; top: -16px; font-size: 9px; color: #888; transform: translateX(-50%); }
+
+  /* Flow diagram */
+  .flow { display: flex; align-items: stretch; gap: 0; margin: 20px 0; }
+  .flow-step { flex: 1; padding: 16px; background: #1a1a22; border: 1px solid #2a2a30; text-align: center; position: relative; }
+  .flow-step:first-child { border-radius: 10px 0 0 10px; }
+  .flow-step:last-child { border-radius: 0 10px 10px 0; }
+  .flow-step .flow-label { font-size: 11px; font-weight: 600; color: #4a9eff; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .flow-step .flow-desc { font-size: 12px; color: #888; line-height: 1.4; }
+  .flow-arrow { display: flex; align-items: center; color: #333; font-size: 20px; padding: 0 2px; }
+
+  /* Annotations */
+  .annotation { background: #4a9eff10; border: 1px solid #4a9eff30; border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 12px; color: #8ec5ff; line-height: 1.5; }
+  .annotation strong { color: #4a9eff; }
+  .annotation.warn { background: #f59e0b10; border-color: #f59e0b30; color: #f5c842; }
+  .annotation.warn strong { color: #f59e0b; }
+  .annotation.green { background: #34d39910; border-color: #34d39930; color: #6ee7a8; }
+  .annotation.green strong { color: #34d399; }
+
+  /* Supersession */
+  .supersede { display: flex; gap: 16px; align-items: stretch; margin: 16px 0; }
+  .supersede-fact { flex: 1; padding: 16px; border-radius: 10px; }
+  .supersede-fact.old { background: #ef444410; border: 1px solid #ef444430; }
+  .supersede-fact.new { background: #34d39910; border: 1px solid #34d39930; }
+  .supersede-fact .ss-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .supersede-fact.old .ss-label { color: #ef4444; }
+  .supersede-fact.new .ss-label { color: #34d399; }
+  .supersede-fact .ss-text { font-size: 13px; color: #ccc; }
+  .supersede-fact .ss-meta { font-size: 10px; color: #666; margin-top: 6px; }
+  .supersede-arrow { display: flex; align-items: center; color: #444; font-size: 24px; }
+
+  .dismissed-item { opacity: 0.4; text-decoration: line-through; }
+
+  .section-divider { border: none; border-top: 1px solid #1e1e24; margin: 24px 0; }
+
+  .greeting { font-size: 22px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+  .greeting-sub { font-size: 13px; color: #555; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <button class="active" onclick="showScene(0)">1. Morning Briefing</button>
+  <button onclick="showScene(1)">2. Smart Reranking</button>
+  <button onclick="showScene(2)">3. Memory Updates</button>
+  <button onclick="showScene(3)">4. Adaptive Triage</button>
+  <button onclick="showScene(4)">5. After 2 Weeks</button>
+</nav>
+
+<!-- ============================================================ -->
+<!-- SCENE 1: Morning Briefing -->
+<!-- ============================================================ -->
+<div class="scene active" id="scene-0">
+  <div class="scene-header">
+    <div class="step-badge">Scene 1 of 5</div>
+    <h2>Morning Briefing — with Context</h2>
+    <div class="subtitle">Tuesday, March 24 · 7:02 AM · Jarvis surfaces what matters</div>
+  </div>
+
+  <div class="greeting">Good morning <span class="greeting-sub">Tuesday, March 24</span></div>
+  <p style="font-size:12px;color:#444;margin:4px 0 20px;">test@example.com &nbsp; Press <kbd style="padding:2px 6px;background:#1e1e24;border-radius:3px;font-size:10px;">?</kbd> for shortcuts</p>
+
+  <div class="grid">
+    <!-- Non-Negotiables -->
+    <div class="card">
+      <div class="card-header"><span>Non-Negotiables</span><span class="count">3/5 done</span></div>
+      <div class="card-body">
+        <div class="task-row"><div class="task-check done"></div><span class="task-title" style="text-decoration:line-through;color:#666;">Morning journaling</span><span class="task-streak">12d</span></div>
+        <div class="task-row"><div class="task-check done"></div><span class="task-title" style="text-decoration:line-through;color:#666;">Exercise</span><span class="task-streak">8d</span></div>
+        <div class="task-row"><div class="task-check done"></div><span class="task-title" style="text-decoration:line-through;color:#666;">Review calendar</span><span class="task-streak">30d</span></div>
+        <div class="task-row"><div class="task-check"></div><span class="task-title">Deep work block (2h)</span></div>
+        <div class="task-row"><div class="task-check"></div><span class="task-title">Process inbox to zero</span></div>
+      </div>
+    </div>
+
+    <!-- Action Items (RERANKED) -->
+    <div class="card">
+      <div class="card-header"><span>Action Items</span><span class="count">6 open · ranked by importance</span></div>
+      <div class="card-body">
+        <div class="ai-row">
+          <div class="ai-priority high"></div>
+          <div>
+            <div class="ai-title">Review Alice's API spec — she committed to Friday delivery</div>
+            <div class="ai-meta"><span class="ai-source">gmail</span><span class="ai-score">0.94</span><span>due tomorrow</span></div>
+          </div>
+        </div>
+        <div class="ai-row">
+          <div class="ai-priority high"></div>
+          <div>
+            <div class="ai-title">Fix CI failure on deploy pipeline</div>
+            <div class="ai-meta"><span class="ai-source">github</span><span class="ai-score">0.91</span></div>
+          </div>
+        </div>
+        <div class="ai-row">
+          <div class="ai-priority medium"></div>
+          <div>
+            <div class="ai-title">Respond to Bob's database migration proposal</div>
+            <div class="ai-meta"><span class="ai-source">slack</span><span class="ai-score">0.78</span><span>from #eng-backend</span></div>
+          </div>
+        </div>
+        <div class="ai-row">
+          <div class="ai-priority medium"></div>
+          <div>
+            <div class="ai-title">Prepare talking points for Q2 retro</div>
+            <div class="ai-meta"><span class="ai-source">granola</span><span class="ai-score">0.65</span><span>meeting Thu</span></div>
+          </div>
+        </div>
+        <div class="ai-row">
+          <div class="ai-priority low"></div>
+          <div>
+            <div class="ai-title">Review PR #342: Add rate limiting middleware</div>
+            <div class="ai-meta"><span class="ai-source">github</span><span class="ai-score">0.58</span></div>
+          </div>
+        </div>
+        <div class="ai-row">
+          <div class="ai-priority low"></div>
+          <div>
+            <div class="ai-title">Update team wiki with new onboarding steps</div>
+            <div class="ai-meta"><span class="ai-source">slack</span><span class="ai-score">0.42</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Calendar -->
+    <div class="card">
+      <div class="card-header"><span>Calendar</span><span class="count">4 events</span></div>
+      <div class="card-body">
+        <div class="cal-row"><div class="cal-time">09:00</div><div><div class="cal-title">Standup</div><div class="cal-location">Zoom · eng-team</div></div></div>
+        <div class="cal-row"><div class="cal-time">10:30</div><div><div class="cal-title">1:1 with Alice</div><div class="cal-location">Conference Room B</div></div></div>
+        <div class="cal-row"><div class="cal-time">14:00</div><div><div class="cal-title">API Design Review</div><div class="cal-location">Zoom · alice, bob, carol</div></div></div>
+        <div class="cal-row"><div class="cal-time">16:00</div><div><div class="cal-title">Interview: Backend Engineer</div><div class="cal-location">Conference Room A</div></div></div>
+      </div>
+    </div>
+
+    <!-- Insights -->
+    <div class="card">
+      <div class="card-header"><span>Insights</span></div>
+      <div class="card-body">
+        <div class="insight-line"><strong>Priority ranking:</strong></div>
+        <div class="insight-line">- <strong>Alice's spec review</strong> is most urgent — she committed to Friday and your 1:1 is at 10:30. Review before then.</div>
+        <div class="insight-line">- <strong>CI failure</strong> is blocking deploys. Fix before standup if possible.</div>
+        <div class="insight-line">- <strong>Bob's migration proposal</strong> ties into the 2pm API review — respond beforehand.</div>
+        <div class="insight-line" style="margin-top:8px"><strong>Risk flags:</strong></div>
+        <div class="insight-line">- Q2 retro prep (Thu) — haven't started, and you have a packed Wednesday.</div>
+        <div class="insight-line" style="margin-top:8px"><strong>Suggested focus:</strong> Clear Alice's spec + CI before lunch. Afternoon is meeting-heavy — protect the morning.</div>
+      </div>
+    </div>
+
+    <!-- NEW: Context card -->
+    <div class="card" style="border-color: #4a9eff30;">
+      <div class="card-header"><span>Context</span><span class="count">5 facts</span></div>
+      <div class="card-body">
+        <div class="mem-row">
+          <span class="mem-type commitment">Commitment</span>
+          <div><div class="mem-text">Alice committed to delivering API spec by Friday</div><div class="mem-meta"><span>from gmail</span><span class="mem-expires">expires Mar 28</span><span>alice@co.com</span></div></div>
+        </div>
+        <div class="mem-row">
+          <span class="mem-type deadline">Deadline</span>
+          <div><div class="mem-text">Q2 retro scheduled for Thursday 2pm</div><div class="mem-meta"><span>from granola</span><span class="mem-expires">expires Mar 27</span></div></div>
+        </div>
+        <div class="mem-row">
+          <span class="mem-type decision">Decision</span>
+          <div><div class="mem-text">Team agreed to use PostgreSQL for the new analytics service</div><div class="mem-meta"><span>from slack</span><span>bob, carol</span></div></div>
+        </div>
+        <div class="mem-row">
+          <span class="mem-type follow_up">Follow-up</span>
+          <div><div class="mem-text">Bob asked for feedback on migration plan by Wednesday</div><div class="mem-meta"><span>from slack</span><span class="mem-expires">expires Mar 26</span><span>bob</span></div></div>
+        </div>
+        <div class="mem-row">
+          <span class="mem-type context">Context</span>
+          <div><div class="mem-text">Carol is on PTO this week — covering her PR reviews</div><div class="mem-meta"><span>from gmail</span><span>carol</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annotation">
+    <strong>What's new here:</strong> The Context card shows facts Jarvis extracted from your emails, Slack messages, and meeting notes over the past few days. The AI insights reference these facts — notice how it knows Alice has a Friday commitment and connects it to your 10:30 1:1. The action items are ranked by a composite score (contact importance × deadline urgency × source reliability), not just priority level.
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCENE 2: Smart Reranking -->
+<!-- ============================================================ -->
+<div class="scene" id="scene-1">
+  <div class="scene-header">
+    <div class="step-badge">Scene 2 of 5</div>
+    <h2>Smart Reranking — How Scores Work</h2>
+    <div class="subtitle">Same 6 action items, but ordered by composite score instead of just priority</div>
+  </div>
+
+  <div class="annotation">
+    <strong>Before (v1 — static priority sort):</strong> Items were sorted by priority label (high → medium → low), then by creation date. A "high" item from a spammy newsletter ranked above a "medium" item from your manager.
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span>Old Ranking (Priority Only)</span></div>
+    <div class="card-body">
+      <div class="ai-row"><div class="ai-priority high"></div><div><div class="ai-title">⚠️ Newsletter: "Top 10 AI tools for 2026"</div><div class="ai-meta"><span class="ai-source">gmail</span><span style="color:#ef4444">high (wrong)</span></div></div></div>
+      <div class="ai-row"><div class="ai-priority high"></div><div><div class="ai-title">Fix CI failure on deploy pipeline</div><div class="ai-meta"><span class="ai-source">github</span><span>high</span></div></div></div>
+      <div class="ai-row"><div class="ai-priority medium"></div><div><div class="ai-title">Review Alice's API spec</div><div class="ai-meta"><span class="ai-source">gmail</span><span>medium</span></div></div></div>
+      <div class="ai-row"><div class="ai-priority medium"></div><div><div class="ai-title">Respond to Bob's migration proposal</div><div class="ai-meta"><span class="ai-source">slack</span><span>medium</span></div></div></div>
+      <div class="ai-row"><div class="ai-priority low"></div><div><div class="ai-title">Review PR #342</div><div class="ai-meta"><span class="ai-source">github</span><span>low</span></div></div></div>
+    </div>
+  </div>
+
+  <div class="annotation green">
+    <strong>After (v2 — composite scoring):</strong> Each item gets a score from 5 weighted signals. The newsletter gets deprioritized because the sender has a high dismissal rate.
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span>New Ranking (Composite Score)</span></div>
+    <div class="card-body" style="font-size:12px;color:#888;margin-bottom:12px;">
+      Score = 30% priority + 25% contact importance + 20% source reliability + 15% confidence + 10% deadline urgency
+    </div>
+    <div class="card-body" style="padding-top:0">
+      <div class="ai-row">
+        <div class="ai-priority high"></div>
+        <div style="flex:1">
+          <div class="ai-title">Review Alice's API spec — committed to Friday</div>
+          <div class="ai-meta"><span class="ai-source">gmail</span><span class="ai-score">0.94</span></div>
+        </div>
+        <div style="font-size:10px;color:#555;text-align:right;min-width:200px;">
+          priority 0.6 × contact <strong style="color:#4a9eff">0.92</strong> × deadline <strong style="color:#f59e0b">1.0</strong>
+        </div>
+      </div>
+      <div class="ai-row">
+        <div class="ai-priority high"></div>
+        <div style="flex:1">
+          <div class="ai-title">Fix CI failure on deploy pipeline</div>
+          <div class="ai-meta"><span class="ai-source">github</span><span class="ai-score">0.91</span></div>
+        </div>
+        <div style="font-size:10px;color:#555;text-align:right;min-width:200px;">
+          priority 1.0 × source <strong style="color:#34d399">0.95</strong> × confidence 0.90
+        </div>
+      </div>
+      <div class="ai-row">
+        <div class="ai-priority medium"></div>
+        <div style="flex:1">
+          <div class="ai-title">Respond to Bob's migration proposal</div>
+          <div class="ai-meta"><span class="ai-source">slack</span><span class="ai-score">0.78</span></div>
+        </div>
+        <div style="font-size:10px;color:#555;text-align:right;min-width:200px;">
+          contact <strong style="color:#4a9eff">0.85</strong> × deadline <strong style="color:#f59e0b">0.8</strong>
+        </div>
+      </div>
+      <div class="ai-row" style="opacity:0.5">
+        <div class="ai-priority high"></div>
+        <div style="flex:1">
+          <div class="ai-title">Newsletter: "Top 10 AI tools for 2026"</div>
+          <div class="ai-meta"><span class="ai-source">gmail</span><span class="ai-score" style="background:#ef444420;color:#ef4444">0.31</span></div>
+        </div>
+        <div style="font-size:10px;color:#555;text-align:right;min-width:200px;">
+          contact <strong style="color:#ef4444">0.1</strong> × source <strong style="color:#ef4444">0.3</strong> × dismissed 80%
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annotation">
+    <strong>Key insight:</strong> The newsletter sender has been dismissed 80% of the time → contact importance drops to 0.1, source reliability to 0.3. Even though the AI labeled it "high priority," the composite score pushes it to the bottom. Alice's item jumps to #1 because she's a high-frequency contact (0.92) with a deadline tomorrow (1.0).
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCENE 3: Memory Updates (Supersession) -->
+<!-- ============================================================ -->
+<div class="scene" id="scene-2">
+  <div class="scene-header">
+    <div class="step-badge">Scene 3 of 5</div>
+    <h2>Memory Updates — Supersession in Action</h2>
+    <div class="subtitle">When facts change, old facts are retired and new ones take their place</div>
+  </div>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-label">Monday</div>
+      <div class="flow-desc">Slack message from Alice:<br>"I'll have the API spec ready by Friday"</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-label">Haiku Extracts</div>
+      <div class="flow-desc">fact_type: commitment<br>people: [alice]<br>valid_until: Friday</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-label">Stored</div>
+      <div class="flow-desc">is_active: true<br>importance: 0.8<br>Shows in briefings</div>
+    </div>
+  </div>
+
+  <div class="annotation">
+    <strong>Day 1:</strong> Jarvis extracts the commitment from Alice's Slack message and stores it. It appears in your morning briefings until it expires.
+  </div>
+
+  <hr class="section-divider">
+
+  <p style="font-size:14px;color:#ccc;margin-bottom:16px;">Wednesday — Alice sends a follow-up:</p>
+  <div class="card">
+    <div class="card-header"><span>New Slack Message</span></div>
+    <div class="card-body" style="font-size:13px;color:#aaa;">
+      "Hey, the spec is going to take longer than expected. Moving the deadline to next Monday. Will have it ready by EOD Monday."
+    </div>
+  </div>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-label">Haiku Extracts</div>
+      <div class="flow-desc">Same person (alice) + same type (commitment)<br>→ triggers UPDATE, not ADD</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-label">Mem0 CRUD</div>
+      <div class="flow-desc">Old fact → is_active: false<br>New fact → superseded_by_id linked<br>valid_until: next Monday</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-label">Result</div>
+      <div class="flow-desc">Only the updated fact<br>shows in briefings</div>
+    </div>
+  </div>
+
+  <div class="supersede">
+    <div class="supersede-fact old">
+      <div class="ss-label">Superseded (inactive)</div>
+      <div class="ss-text" style="text-decoration:line-through;opacity:0.6;">Alice committed to delivering API spec by Friday</div>
+      <div class="ss-meta">is_active: false · invalidated_at: Wed 10:15am · superseded_by_id: fact_002</div>
+    </div>
+    <div class="supersede-arrow">→</div>
+    <div class="supersede-fact new">
+      <div class="ss-label">Current (active)</div>
+      <div class="ss-text">Alice pushed API spec delivery to next Monday EOD</div>
+      <div class="ss-meta">is_active: true · importance: 0.85 · valid_until: next Monday</div>
+    </div>
+  </div>
+
+  <div class="annotation green">
+    <strong>How it works:</strong> Jarvis matches new facts against existing ones using people overlap + fact type. When Alice (same person) updates a commitment (same type), the old fact is retired and linked to the new one. Your Thursday briefing shows "Monday" not "Friday" — no stale data.
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCENE 4: Adaptive Triage -->
+<!-- ============================================================ -->
+<div class="scene" id="scene-3">
+  <div class="scene-header">
+    <div class="step-badge">Scene 4 of 5</div>
+    <h2>Adaptive Triage — Learning from Dismissals</h2>
+    <div class="subtitle">Structured rules, not prompt injection — deterministic and debuggable</div>
+  </div>
+
+  <div class="annotation">
+    <strong>Week 1 (cold start):</strong> All sources use the default confidence threshold of 0.5. The system needs 20+ dismissals per source before adapting.
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span>Dismissal Activity — Week 1 to 3</span></div>
+    <div class="card-body">
+      <p style="font-size:12px;color:#666;margin-bottom:16px;">You dismiss action items that aren't actually actionable. Jarvis tracks the pattern per source.</p>
+
+      <div class="triage-bar">
+        <div class="triage-label">Gmail</div>
+        <div class="triage-track">
+          <div class="triage-fill green" style="width:75%;">18/24 kept</div>
+        </div>
+        <span style="font-size:11px;color:#34d399;">25% dismissed</span>
+      </div>
+
+      <div class="triage-bar">
+        <div class="triage-label">GitHub</div>
+        <div class="triage-track">
+          <div class="triage-fill green" style="width:90%;">27/30 kept</div>
+        </div>
+        <span style="font-size:11px;color:#34d399;">10% dismissed</span>
+      </div>
+
+      <div class="triage-bar">
+        <div class="triage-label">Slack</div>
+        <div class="triage-track">
+          <div class="triage-fill yellow" style="width:45%;">14/31 kept</div>
+        </div>
+        <span style="font-size:11px;color:#f59e0b;">55% dismissed</span>
+      </div>
+
+      <div class="triage-bar">
+        <div class="triage-label">Granola</div>
+        <div class="triage-track">
+          <div class="triage-fill red" style="width:22%;">5/23 kept</div>
+        </div>
+        <span style="font-size:11px;color:#ef4444;">78% dismissed</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="annotation warn">
+    <strong>Threshold escalation kicks in:</strong> Slack hit >50% dismissal rate (20+ samples) → threshold raised from 0.5 to 0.7. Granola hit >70% → threshold raised to 0.85. Only high-confidence items from these sources will be shown going forward.
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span>Updated triage_config (stored on User)</span></div>
+    <div class="card-body">
+<pre style="font-size:12px;color:#aaa;line-height:1.6;font-family:'SF Mono',monospace;">
+{
+  "source_thresholds": {
+    "slack": 0.7,      <span style="color:#f59e0b">// was 0.5 — raised after 55% dismissal rate</span>
+    "granola": 0.85     <span style="color:#ef4444">// was 0.5 — raised after 78% dismissal rate</span>
+  },
+  "suppressed_senders": [
+    "noreply@marketing.co"   <span style="color:#ef4444">// 90% of this sender's items were dismissed</span>
+  ]
+}
+</pre>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-header"><span>Before Adaptation</span></div>
+      <div class="card-body">
+        <p style="font-size:12px;color:#666;margin-bottom:12px;">Slack items with confidence 0.55:</p>
+        <div class="ai-row"><div class="ai-priority low"></div><div><div class="ai-title">Dave mentioned the deploy in #random</div><div class="ai-meta"><span class="ai-source">slack</span><span class="ai-score">0.55</span><span style="color:#34d399">✓ shown</span></div></div></div>
+        <div class="ai-row"><div class="ai-priority low"></div><div><div class="ai-title">Reminder: team lunch Friday</div><div class="ai-meta"><span class="ai-source">slack</span><span class="ai-score">0.52</span><span style="color:#34d399">✓ shown</span></div></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span>After Adaptation</span></div>
+      <div class="card-body">
+        <p style="font-size:12px;color:#666;margin-bottom:12px;">Same items, but threshold is now 0.7:</p>
+        <div class="ai-row dismissed-item"><div class="ai-priority low"></div><div><div class="ai-title">Dave mentioned the deploy in #random</div><div class="ai-meta"><span class="ai-source">slack</span><span class="ai-score" style="background:#ef444420;color:#ef4444">0.55 &lt; 0.7</span><span style="color:#ef4444">✗ filtered</span></div></div></div>
+        <div class="ai-row dismissed-item"><div class="ai-priority low"></div><div><div class="ai-title">Reminder: team lunch Friday</div><div class="ai-meta"><span class="ai-source">slack</span><span class="ai-score" style="background:#ef444420;color:#ef4444">0.52 &lt; 0.7</span><span style="color:#ef4444">✗ filtered</span></div></div></div>
+        <p style="font-size:11px;color:#555;margin-top:8px;">Only Slack items with confidence ≥ 0.7 appear now.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCENE 5: After 2 Weeks -->
+<!-- ============================================================ -->
+<div class="scene" id="scene-4">
+  <div class="scene-header">
+    <div class="step-badge">Scene 5 of 5</div>
+    <h2>After 2 Weeks — The System Learns</h2>
+    <div class="subtitle">Memory decays naturally, triage adapts, contacts are scored</div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-header"><span>Memory Decay</span></div>
+      <div class="card-body">
+        <p style="font-size:12px;color:#666;margin-bottom:12px;">Daily cron applies exponential decay:</p>
+        <div class="mem-row"><span class="mem-type deadline" style="min-width:50px;">0.90</span><div><div class="mem-text">Q3 planning July 15</div><div class="mem-meta"><span style="color:#34d399">still relevant</span></div></div></div>
+        <div class="mem-row"><span class="mem-type context" style="min-width:50px;color:#555;">0.12</span><div><div class="mem-text" style="color:#555;">Carol was on PTO last week</div><div class="mem-meta"><span style="color:#f59e0b">fading — not accessed</span></div></div></div>
+        <div class="mem-row"><span class="mem-type context" style="min-width:50px;color:#333;">0.03</span><div><div class="mem-text" style="color:#444;text-decoration:line-through;">Office wifi password changed</div><div class="mem-meta"><span style="color:#ef4444">archived (below 0.05)</span></div></div></div>
+        <p style="font-size:10px;color:#555;margin-top:12px;">importance *= e^(-0.01 × days_since_access)</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span>Contact Scores</span></div>
+      <div class="card-body">
+        <p style="font-size:12px;color:#666;margin-bottom:12px;">RFM scores after 2 weeks of interactions:</p>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e1e24;">
+          <span style="font-size:12px;color:#ccc;">Alice</span>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div style="width:80px;height:6px;background:#1e1e24;border-radius:3px;overflow:hidden;"><div style="width:92%;height:100%;background:#4a9eff;border-radius:3px;"></div></div>
+            <span style="font-size:10px;color:#4a9eff;min-width:28px;">0.92</span>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e1e24;">
+          <span style="font-size:12px;color:#ccc;">Bob</span>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div style="width:80px;height:6px;background:#1e1e24;border-radius:3px;overflow:hidden;"><div style="width:85%;height:100%;background:#4a9eff;border-radius:3px;"></div></div>
+            <span style="font-size:10px;color:#4a9eff;min-width:28px;">0.85</span>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e1e24;">
+          <span style="font-size:12px;color:#ccc;">Carol</span>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div style="width:80px;height:6px;background:#1e1e24;border-radius:3px;overflow:hidden;"><div style="width:45%;height:100%;background:#f59e0b;border-radius:3px;"></div></div>
+            <span style="font-size:10px;color:#f59e0b;min-width:28px;">0.45</span>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;">
+          <span style="font-size:12px;color:#666;">Newsletter Bot</span>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div style="width:80px;height:6px;background:#1e1e24;border-radius:3px;overflow:hidden;"><div style="width:8%;height:100%;background:#ef4444;border-radius:3px;"></div></div>
+            <span style="font-size:10px;color:#ef4444;min-width:28px;">0.08</span>
+          </div>
+        </div>
+        <p style="font-size:10px;color:#555;margin-top:12px;">score = base × recency × frequency × (1 - dismissal_rate×0.5)</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span>Noise Reduction</span></div>
+      <div class="card-body">
+        <p style="font-size:12px;color:#666;margin-bottom:16px;">Items filtered before you see them:</p>
+        <div style="text-align:center;margin:20px 0;">
+          <div style="font-size:36px;font-weight:700;color:#34d399;">-42%</div>
+          <div style="font-size:12px;color:#666;margin-top:4px;">fewer false-positive items</div>
+        </div>
+        <div style="font-size:11px;color:#555;line-height:1.6;">
+          <div>· 18 Slack items filtered (below 0.7 threshold)</div>
+          <div>· 12 Granola items filtered (below 0.85 threshold)</div>
+          <div>· 6 emails from suppressed senders skipped</div>
+          <div>· 3 duplicate facts merged via supersession</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annotation green">
+    <strong>The loop:</strong> You use Jarvis → dismiss noise → triage adapts → less noise → better briefings → you trust it more → you use it more. No prompt engineering needed — it's all structured rules computed from your actual behavior.
+  </div>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-label">Messages come in</div>
+      <div class="flow-desc">Gmail, Slack, GitHub, Granola sync</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-label">Adaptive filter</div>
+      <div class="flow-desc">Sender suppression<br>Source thresholds<br>Confidence gating</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-label">AI extraction</div>
+      <div class="flow-desc">Haiku triage → Sonnet extract<br>Haiku memory extraction (parallel)</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-label">Smart ranking</div>
+      <div class="flow-desc">RFM contact scores<br>Deadline urgency<br>Source reliability</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-label">Morning briefing</div>
+      <div class="flow-desc">Ranked items + memory context<br>AI insights with full context</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showScene(idx) {
+  document.querySelectorAll('.scene').forEach((s, i) => {
+    s.classList.toggle('active', i === idx);
+  });
+  document.querySelectorAll('.nav button').forEach((b, i) => {
+    b.classList.toggle('active', i === idx);
+  });
+}
+</script>
+</body>
+</html>

@@ -30,6 +30,7 @@ class ActionItemSource(str, enum.Enum):
     SLACK = "slack"
     NOTION = "notion"
     DISCORD = "discord"
+    GRANOLA = "granola"
     MANUAL = "manual"
 
 
@@ -83,6 +84,7 @@ class IntegrationProvider(str, enum.Enum):
     SLACK = "slack"
     NOTION = "notion"
     DISCORD = "discord"
+    GRANOLA = "granola"
     APPLE_CALENDAR = "apple_calendar"
 
 
@@ -100,6 +102,7 @@ class ResourceType(str, enum.Enum):
     CALENDAR = "calendar"
     CHANNELS = "channels"
     NOTIFICATIONS = "notifications"
+    MEETINGS = "meetings"
 
 
 class SyncStatus(str, enum.Enum):
@@ -127,3 +130,12 @@ class NotificationChannel(str, enum.Enum):
     WEB_PUSH = "web_push"
     EMAIL_DIGEST = "email_digest"
     IN_APP = "in_app"
+
+
+class MemoryFactType(str, enum.Enum):
+    """Type of memory fact extracted from messages."""
+    COMMITMENT = "commitment"
+    DEADLINE = "deadline"
+    DECISION = "decision"
+    CONTEXT = "context"
+    FOLLOW_UP = "follow_up"

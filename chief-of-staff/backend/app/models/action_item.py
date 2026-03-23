@@ -4,6 +4,7 @@ import uuid
 
 from sqlalchemy import (
     Column,
+    Integer,
     String,
     Float,
     DateTime,
@@ -57,6 +58,11 @@ class ActionItem(Base):
         onupdate=func.now(),
     )
     actioned_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Implicit signal tracking
+    viewed_at = Column(DateTime(timezone=True), nullable=True)
+    snooze_count = Column(Integer, nullable=False, default=0)
+    time_to_action_secs = Column(Integer, nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="action_items")

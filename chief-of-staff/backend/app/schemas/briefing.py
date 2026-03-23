@@ -48,6 +48,18 @@ class IntegrationHealthItem(BaseModel):
     error_message: Optional[str] = None
 
 
+class BriefingMemoryFact(BaseModel):
+    """A contextual memory fact surfaced in a briefing."""
+
+    id: str
+    fact_text: str
+    fact_type: str
+    source: str
+    people: Optional[List[str]] = None
+    valid_until: Optional[datetime] = None
+    importance: float = 0.5
+
+
 class BriefingContent(BaseModel):
     """Structured content for a briefing."""
 
@@ -56,6 +68,7 @@ class BriefingContent(BaseModel):
     todays_tasks: List[BriefingTaskItem] = []
     action_items: List[BriefingActionItem] = []
     integration_health: List[IntegrationHealthItem] = []
+    memory_context: List[BriefingMemoryFact] = []
     ai_insights: Optional[str] = None
 
 

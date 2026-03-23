@@ -8,6 +8,7 @@ import { NonNegotiablesCard } from "@/components/dashboard/NonNegotiablesCard";
 import { ActionItemsCard } from "@/components/dashboard/ActionItemsCard";
 import { CalendarCard } from "@/components/dashboard/CalendarCard";
 import { InsightsCard } from "@/components/dashboard/InsightsCard";
+import { MemoryContextCard } from "@/components/dashboard/MemoryContextCard";
 import { ShortcutOverlay } from "@/components/shared/ShortcutOverlay";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import type { BriefingResponse, TodayTasksResponse } from "@/lib/types";
@@ -174,6 +175,15 @@ export default function DashboardPage() {
           <ErrorCard title="Insights" message="Failed to load insights." />
         ) : (
           <InsightsCard insights={briefingContent?.ai_insights ?? null} />
+        )}
+
+        {/* Memory Context */}
+        {briefingLoading ? (
+          <SkeletonCard title="Context" />
+        ) : briefingError ? (
+          <ErrorCard title="Context" message="Failed to load context." />
+        ) : (
+          <MemoryContextCard facts={briefingContent?.memory_context ?? []} />
         )}
       </div>
 

@@ -4,6 +4,8 @@ import uuid
 
 from sqlalchemy import (
     Column,
+    Float,
+    Integer,
     String,
     DateTime,
     Text,
@@ -32,6 +34,12 @@ class Contact(Base):
     notes = Column(Text, nullable=True)
 
     last_interaction_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Scoring columns for adaptive prioritization
+    interaction_count = Column(Integer, nullable=False, default=0)
+    action_item_count = Column(Integer, nullable=False, default=0)
+    dismissal_count = Column(Integer, nullable=False, default=0)
+    importance_score = Column(Float, nullable=False, default=0.5)
 
     created_at = Column(
         DateTime(timezone=True), nullable=False,

@@ -11,3 +11,4 @@ from app.models.sync_state import SyncState  # noqa: F401
 from app.models.calendar_event import CalendarEvent  # noqa: F401
 from app.models.notification import DeviceToken, NotificationLog  # noqa: F401
 from app.models.audit_log import AuditLog  # noqa: F401
+from app.models.memory_fact import MemoryFact  # noqa: F401

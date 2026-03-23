@@ -22,10 +22,13 @@ from app.schemas.briefing import (
     BriefingActionItem,
     BriefingCalendarEvent,
     BriefingContent,
+    BriefingMemoryFact,
     BriefingTaskItem,
     IntegrationHealthItem,
 )
 from app.services.audit_log import log_audit
+from app.services.memory_service import get_relevant_memories
+from app.services.prioritization_service import rerank_action_items
 
 logger = logging.getLogger(__name__)
 
@@ -33,10 +36,12 @@ AI_INSIGHTS_MODEL = "claude-sonnet-4-5-20250514"
 
 _INSIGHTS_SYSTEM = """\
 You are a concise personal assistant. Given a structured summary \
-of someone's day (calendar, tasks, action items), provide:
+of someone's day (calendar, tasks, action items, and context from \
+recent messages/meetings), provide:
 
 1. **Priority ranking**: What to focus on first and why (2-3 items)
-2. **Risk flags**: Anything at risk of falling through the cracks
+2. **Risk flags**: Anything at risk of falling through the cracks — \
+especially approaching deadlines and commitments due from context
 3. **Suggested focus**: One sentence on what makes today successful
 
 Be brief and actionable. No fluff. Use bullet points."""
@@ -52,6 +57,9 @@ Recurring tasks ({task_count} due today, {overdue_count} overdue):
 
 Action items ({action_count} open):
 {action_summary}
+
+Context from recent messages/meetings ({memory_count} items):
+{memory_summary}
 
 Give me a brief morning briefing with priorities, risks, and \
 focus for today."""
@@ -99,6 +107,9 @@ def generate_morning_briefing(
     action_items = _get_open_action_items(db, user_id)
     integration_health = _get_integration_health(db, user_id)
 
+    # === Memory context (Mem0 + Zep pattern) ===
+    memory_context = _get_memory_context(db, user_id, target_date)
+
     # Identify integration gaps
     integration_gaps = [
         h.provider
@@ -112,6 +123,7 @@ def generate_morning_briefing(
         overdue_tasks,
         todays_tasks,
         action_items,
+        memory_context,
         target_date,
         user_id,
         db,
@@ -124,6 +136,7 @@ def generate_morning_briefing(
         todays_tasks=todays_tasks,
         action_items=action_items,
         integration_health=integration_health,
+        memory_context=memory_context,
         ai_insights=ai_insights,
     )
 
@@ -292,9 +305,7 @@ def _get_todays_tasks(
 def _get_open_action_items(
     db: Session, user_id: str
 ) -> list[BriefingActionItem]:
-    """Get open action items sorted by priority."""
-    priority_order = {"high": 0, "medium": 1, "low": 2}
-
+    """Get open action items sorted by composite score (RFM-based)."""
     items = (
         db.query(ActionItem)
         .filter(
@@ -306,10 +317,8 @@ def _get_open_action_items(
         .all()
     )
 
-    # Sort by priority in Python (cleaner than SQL CASE)
-    items.sort(
-        key=lambda i: priority_order.get(i.priority, 1)
-    )
+    # Rerank by composite score (contact importance + deadline urgency + source reliability)
+    ranked = rerank_action_items(items, user_id, db)
 
     return [
         BriefingActionItem(
@@ -320,7 +329,27 @@ def _get_open_action_items(
             extracted_deadline=item.extracted_deadline,
             confidence_score=item.confidence_score,
         )
-        for item in items[:10]  # Top 10 for the briefing
+        for item in ranked[:10]  # Top 10 for the briefing
+    ]
+
+
+def _get_memory_context(
+    db: Session, user_id: str, target_date: date
+) -> list[BriefingMemoryFact]:
+    """Get relevant memory facts for the briefing."""
+    facts = get_relevant_memories(user_id, target_date, db, limit=10)
+
+    return [
+        BriefingMemoryFact(
+            id=fact.id,
+            fact_text=fact.fact_text,
+            fact_type=fact.fact_type,
+            source=fact.source,
+            people=fact.people,
+            valid_until=fact.valid_until,
+            importance=fact.importance,
+        )
+        for fact in facts
     ]
 
 
@@ -393,6 +422,7 @@ def _generate_ai_insights(
     overdue_tasks: list[BriefingTaskItem],
     todays_tasks: list[BriefingTaskItem],
     action_items: list[BriefingActionItem],
+    memory_context: list[BriefingMemoryFact],
     target_date: date,
     user_id: str,
     db: Session,
@@ -439,6 +469,21 @@ def _generate_ai_insights(
         "\n".join(action_lines) if action_lines else "No items"
     )
 
+    # Build memory context summary
+    memory_lines = []
+    for m in memory_context:
+        deadline_str = (
+            f" (expires {m.valid_until.strftime('%Y-%m-%d')})"
+            if m.valid_until
+            else ""
+        )
+        memory_lines.append(
+            f"- [{m.fact_type}] {m.fact_text} (from {m.source}){deadline_str}"
+        )
+    memory_summary = (
+        "\n".join(memory_lines) if memory_lines else "No context"
+    )
+
     user_prompt = _INSIGHTS_USER.format(
         date=target_date.isoformat(),
         event_count=len(calendar_events),
@@ -448,6 +493,8 @@ def _generate_ai_insights(
         task_summary=task_summary,
         action_count=len(action_items),
         action_summary=action_summary,
+        memory_count=len(memory_context),
+        memory_summary=memory_summary,
     )
 
     try:

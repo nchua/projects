@@ -15,6 +15,7 @@ from app.api import (
     auth,
     briefings,
     integrations,
+    memory,
     recurring_tasks,
     reminders,
     tasks,
@@ -151,6 +152,12 @@ app.include_router(
     tasks.router,
     prefix=f"{settings.api_v1_prefix}/tasks",
     tags=["Tasks"],
+)
+
+app.include_router(
+    memory.router,
+    prefix=f"{settings.api_v1_prefix}/memory",
+    tags=["Memory"],
 )
 
 

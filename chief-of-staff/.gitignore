@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.venv/
+
+# Database
+*.db
+*.db.bak
+*.sqlite3
+
+# Environment
+.env
+backend/.env
+
+# Node
+node_modules/
+.next/
+web/.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Session state (local only)
+session-state.md

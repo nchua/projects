@@ -10,6 +10,7 @@ export type ActionItemSource =
   | "slack"
   | "notion"
   | "discord"
+  | "granola"
   | "manual";
 export type ActionItemPriority = "high" | "medium" | "low";
 export type ActionItemStatus =
@@ -29,6 +30,7 @@ export type IntegrationProvider =
   | "slack"
   | "notion"
   | "discord"
+  | "granola"
   | "apple_calendar";
 export type IntegrationStatusValue =
   | "healthy"
@@ -170,6 +172,42 @@ export interface ActionItemSnoozePayload {
   snoozed_until: string; // ISO datetime
 }
 
+// ── Memory ───────────────────────────────────────────────────────
+
+export type MemoryFactType =
+  | "commitment"
+  | "deadline"
+  | "decision"
+  | "context"
+  | "follow_up";
+
+export interface MemoryFactResponse {
+  id: string;
+  fact_text: string;
+  fact_type: MemoryFactType;
+  source: string;
+  source_id: string | null;
+  source_url: string | null;
+  people: string[] | null;
+  valid_from: string; // ISO datetime
+  valid_until: string | null;
+  extracted_at: string;
+  importance: number;
+  access_count: number;
+  is_active: boolean;
+  confidence: number;
+  created_at: string;
+}
+
+export interface MemoryFactCreatePayload {
+  fact_text: string;
+  fact_type?: MemoryFactType;
+  people?: string[];
+  valid_from?: string;
+  valid_until?: string;
+  importance?: number;
+}
+
 // ── Briefings ────────────────────────────────────────────────────
 
 export interface BriefingCalendarEvent {
@@ -206,12 +244,23 @@ export interface IntegrationHealthItem {
   error_message: string | null;
 }
 
+export interface BriefingMemoryFact {
+  id: string;
+  fact_text: string;
+  fact_type: MemoryFactType;
+  source: string;
+  people: string[] | null;
+  valid_until: string | null;
+  importance: number;
+}
+
 export interface BriefingContent {
   calendar_events: BriefingCalendarEvent[];
   overdue_tasks: BriefingTaskItem[];
   todays_tasks: BriefingTaskItem[];
   action_items: BriefingActionItem[];
   integration_health: IntegrationHealthItem[];
+  memory_context: BriefingMemoryFact[];
   ai_insights: string | null;
 }
 

@@ -25,7 +25,7 @@ ACTION_ITEM_ARCHIVE_DAYS = 30
 
 
 async def cleanup_old_data(ctx: dict[str, Any]) -> None:
-    """Run all cleanup tasks."""
+    """Run all cleanup tasks, including memory decay."""
     session_factory = ctx["db_session"]
 
     async with session_factory() as session:
@@ -39,6 +39,10 @@ async def cleanup_old_data(ctx: dict[str, Any]) -> None:
         archived,
         purged,
     )
+
+    # Memory fact decay runs in its own session
+    from app.services.memory_service import decay_and_cleanup
+    await decay_and_cleanup(ctx)
 
 
 async def _archive_stale_action_items(

@@ -7,6 +7,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.core.database import Base
+from app.core.types import JSONB
 
 
 class User(Base):
@@ -21,6 +22,7 @@ class User(Base):
     wake_time = Column(Time, nullable=True)
     sleep_time = Column(Time, nullable=True)
     is_deleted = Column(Boolean, default=False, nullable=False, server_default="false")
+    triage_config = Column(JSONB, nullable=True)
     created_at = Column(
         DateTime(timezone=True), nullable=False,
         server_default=func.now(),
@@ -59,4 +61,7 @@ class User(Base):
     )
     notification_logs = relationship(
         "NotificationLog", back_populates="user", cascade="all, delete-orphan"
+    )
+    memory_facts = relationship(
+        "MemoryFact", back_populates="user", cascade="all, delete-orphan"
     )

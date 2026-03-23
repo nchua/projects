@@ -12,6 +12,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.action_item import ActionItem
+from app.models.contact import ActionItemContact, Contact
 from app.models.enums import ActionItemStatus, DismissReason
 
 
@@ -22,6 +23,9 @@ def dismiss_action_item(
     reason: DismissReason,
 ) -> ActionItem:
     """Mark an action item as dismissed with a reason.
+
+    Also updates contact dismissal stats and recomputes triage
+    config at regular intervals.
 
     Args:
         db: Database session.
@@ -50,8 +54,44 @@ def dismiss_action_item(
     item.status = ActionItemStatus.DISMISSED.value
     item.dismiss_reason = reason.value
     item.actioned_at = datetime.now(tz=timezone.utc)
+
+    # Compute time_to_action if not already set
+    if item.created_at and not item.time_to_action_secs:
+        delta = datetime.now(tz=timezone.utc) - item.created_at.replace(
+            tzinfo=timezone.utc
+        ) if item.created_at.tzinfo is None else (
+            datetime.now(tz=timezone.utc) - item.created_at
+        )
+        item.time_to_action_secs = int(delta.total_seconds())
+
     db.flush()
+
+    # Update contact dismissal stats
+    _update_contact_stats_on_dismiss(db, item)
+
+    # Recompute triage config at regular intervals
+    from app.services.triage_rules import maybe_recompute_triage_config
+    maybe_recompute_triage_config(user_id, db)
+
     return item
+
+
+def _update_contact_stats_on_dismiss(
+    db: Session, item: ActionItem
+) -> None:
+    """Increment dismissal_count on linked contacts."""
+    links = (
+        db.query(ActionItemContact)
+        .filter(ActionItemContact.action_item_id == item.id)
+        .all()
+    )
+    for link in links:
+        contact = db.query(Contact).filter(
+            Contact.id == link.contact_id
+        ).first()
+        if contact:
+            contact.dismissal_count = (contact.dismissal_count or 0) + 1
+            db.flush()
 
 
 def get_dismissal_stats(

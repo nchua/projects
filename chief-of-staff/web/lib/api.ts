@@ -20,6 +20,8 @@ import type {
   TodayTasksResponse,
   AllTasksResponse,
   DismissalStats,
+  MemoryFactResponse,
+  MemoryFactCreatePayload,
 } from "./types";
 
 // ── Base URL ─────────────────────────────────────────────────────
@@ -310,6 +312,29 @@ export const api = {
         }),
       }),
 
+    slackAuthorize: (redirectUri: string) =>
+      apiFetch<{ authorization_url: string; state: string }>(
+        `/integrations/slack/authorize?redirect_uri=${encodeURIComponent(redirectUri)}`,
+        { method: "POST" },
+      ),
+
+    slackCallback: (code: string, redirectUri: string, state: string) =>
+      apiFetch<IntegrationResponse>("/integrations/slack/callback", {
+        method: "POST",
+        body: JSON.stringify({
+          provider: "slack",
+          code,
+          redirect_uri: redirectUri,
+          state,
+        }),
+      }),
+
+    granolaConfigure: (cachePath: string) =>
+      apiFetch<IntegrationResponse>(
+        `/integrations/granola/configure?cache_path=${encodeURIComponent(cachePath)}`,
+        { method: "POST" },
+      ),
+
     disconnect: (integrationId: string) =>
       apiFetch<void>(`/integrations/${integrationId}`, {
         method: "DELETE",
@@ -324,6 +349,25 @@ export const api = {
     panicRevokeAll: () =>
       apiFetch<void>("/integrations/panic", {
         method: "POST",
+      }),
+  },
+
+  // ── Memory ─────────────────────────────────────────────────────
+  memory: {
+    list: (activeOnly = true) =>
+      apiFetch<MemoryFactResponse[]>(
+        `/memory?active_only=${activeOnly}`,
+      ),
+
+    create: (data: MemoryFactCreatePayload) =>
+      apiFetch<MemoryFactResponse>("/memory", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+
+    delete: (factId: string) =>
+      apiFetch<void>(`/memory/${factId}`, {
+        method: "DELETE",
       }),
   },
 
