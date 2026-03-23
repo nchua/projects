@@ -73,6 +73,15 @@ def list_action_items(
     return items
 
 
+@router.get("/stats/dismissals")
+def dismissal_stats(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Get dismissal statistics for prompt refinement."""
+    return get_dismissal_stats(db, current_user.id)
+
+
 @router.post(
     "",
     response_model=ActionItemResponse,
@@ -117,16 +126,19 @@ def get_action_item(
     return item
 
 
-@router.put("/{item_id}", response_model=ActionItemResponse)
-def update_action_item(
+@router.post(
+    "/{item_id}/snooze",
+    response_model=ActionItemResponse,
+)
+def snooze_item(
     item_id: str,
-    updates: ActionItemSnooze,
+    snooze_data: ActionItemSnooze,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> ActionItemResponse:
-    """Update an action item (e.g., snooze)."""
+    """Snooze an action item until a specified time."""
     item = _get_user_item(db, item_id, current_user.id)
-    item.snoozed_until = updates.snoozed_until
+    item.snoozed_until = snooze_data.snoozed_until
     db.commit()
     db.refresh(item)
     return item
@@ -193,15 +205,6 @@ def action_item(
     db.commit()
     db.refresh(item)
     return item
-
-
-@router.get("/stats/dismissals")
-def dismissal_stats(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> dict:
-    """Get dismissal statistics for prompt refinement."""
-    return get_dismissal_stats(db, current_user.id)
 
 
 # --- Helpers ---

@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 # Model configuration
 TRIAGE_MODEL = "claude-haiku-4-5-20251001"
-EXTRACTION_MODEL = "claude-sonnet-4-5-20241022"
+EXTRACTION_MODEL = "claude-sonnet-4-5-20250514"
 
 # Per-message cost estimates (for logging/auditing)
 # Haiku: ~$0.80/$4.00 per 1M tokens

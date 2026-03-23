@@ -13,6 +13,20 @@ from app.models.user import User
 from app.schemas.briefing import BriefingResponse
 from app.services.briefing_service import generate_morning_briefing
 
+
+def _user_today(user: User) -> date:
+    """Get today's date in the user's timezone."""
+    now_utc = datetime.now(tz=timezone.utc)
+    if user.timezone:
+        try:
+            from zoneinfo import ZoneInfo
+            return now_utc.astimezone(
+                ZoneInfo(user.timezone)
+            ).date()
+        except (KeyError, ImportError):
+            pass
+    return now_utc.date()
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -60,7 +74,7 @@ def mark_briefing_viewed(
     db: Session = Depends(get_db),
 ) -> BriefingResponse:
     """Mark today's briefing as viewed."""
-    today = date.today()
+    today = _user_today(current_user)
     briefing = (
         db.query(Briefing)
         .filter(
@@ -90,7 +104,7 @@ def generate_preview_briefing(
 
     Always generates fresh, even if one already exists.
     """
-    today = date.today()
+    today = _user_today(current_user)
 
     # Delete existing briefing for today to force regeneration
     existing = (

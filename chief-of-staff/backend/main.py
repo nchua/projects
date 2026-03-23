@@ -25,12 +25,15 @@ logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
-if settings.secret_key == "change-me-to-a-random-secret-key":
-    logger.warning(
-        "SECRET_KEY is set to the insecure default. "
-        "Set SECRET_KEY environment variable before "
-        "deploying to production."
-    )
+_INSECURE_DEFAULT_KEY = "change-me-to-a-random-secret-key"
+if settings.secret_key == _INSECURE_DEFAULT_KEY:
+    import os
+    if os.environ.get("TESTING") != "1":
+        raise RuntimeError(
+            "SECRET_KEY is set to the insecure default. "
+            "Set the SECRET_KEY environment variable to a "
+            "random value before running the application."
+        )
 
 app = FastAPI(
     title=settings.app_name,

@@ -1,6 +1,7 @@
 """Integration management and OAuth flow API endpoints."""
 
 import logging
+import secrets
 from urllib.parse import urlencode
 
 import httpx
@@ -11,6 +12,7 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.encryption import decrypt_token, encrypt_token
+from app.core.security import create_access_token, verify_token
 from app.models.enums import IntegrationProvider
 from app.models.integration import Integration
 from app.models.user import User
@@ -94,8 +96,8 @@ def google_authorize(
 ) -> dict:
     """Generate a Google OAuth authorization URL.
 
-    The frontend redirects the user to this URL. After the user
-    consents, Google redirects back to redirect_uri with a code.
+    Returns the URL and a signed state token for CSRF protection.
+    The frontend must pass the state back in the callback.
     """
     settings = get_settings()
     if not settings.google_client_id:
@@ -104,6 +106,14 @@ def google_authorize(
             detail="Google OAuth not configured",
         )
 
+    _validate_redirect_uri(redirect_uri)
+
+    # Generate CSRF state token (signed JWT with nonce)
+    nonce = secrets.token_urlsafe(32)
+    state = create_access_token(
+        data={"sub": current_user.id, "nonce": nonce},
+    )
+
     params = {
         "client_id": settings.google_client_id,
         "redirect_uri": redirect_uri,
@@ -111,9 +121,10 @@ def google_authorize(
         "scope": " ".join(GOOGLE_SCOPES),
         "access_type": "offline",
         "prompt": "consent",
+        "state": state,
     }
     auth_url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
-    return {"authorization_url": auth_url}
+    return {"authorization_url": auth_url, "state": state}
 
 
 @router.post("/google/callback", response_model=IntegrationResponse)
@@ -127,6 +138,8 @@ def google_callback(
     Creates or updates the Google integration (covering both
     Calendar and Gmail from a single OAuth consent).
     """
+    _validate_oauth_state(callback.state, current_user.id)
+    _validate_redirect_uri(callback.redirect_uri)
     settings = get_settings()
 
     response = httpx.post(
@@ -203,13 +216,21 @@ def github_authorize(
             detail="GitHub OAuth not configured",
         )
 
+    _validate_redirect_uri(redirect_uri)
+
+    nonce = secrets.token_urlsafe(32)
+    state = create_access_token(
+        data={"sub": current_user.id, "nonce": nonce},
+    )
+
     params = {
         "client_id": settings.github_client_id,
         "redirect_uri": redirect_uri,
         "scope": " ".join(GITHUB_SCOPES),
+        "state": state,
     }
     auth_url = f"{GITHUB_AUTH_URL}?{urlencode(params)}"
-    return {"authorization_url": auth_url}
+    return {"authorization_url": auth_url, "state": state}
 
 
 @router.post("/github/callback", response_model=IntegrationResponse)
@@ -219,6 +240,8 @@ def github_callback(
     db: Session = Depends(get_db),
 ) -> IntegrationResponse:
     """Exchange a GitHub OAuth authorization code for a token."""
+    _validate_oauth_state(callback.state, current_user.id)
+    _validate_redirect_uri(callback.redirect_uri)
     settings = get_settings()
 
     response = httpx.post(
@@ -337,17 +360,23 @@ def panic_revoke_all(
 
 
 @router.post("/{integration_id}/test", response_model=IntegrationHealthResponse)
-async def test_integration(
+def test_integration(
     integration_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> IntegrationHealthResponse:
     """Trigger a test sync to verify integration health."""
-    integration = _get_user_integration(db, integration_id, current_user.id)
+    import asyncio
+
+    integration = _get_user_integration(
+        db, integration_id, current_user.id
+    )
 
     from app.services.connectors.github import GitHubConnector
     from app.services.connectors.gmail import GmailConnector
-    from app.services.connectors.google_calendar import GoogleCalendarConnector
+    from app.services.connectors.google_calendar import (
+        GoogleCalendarConnector,
+    )
 
     connector_map = {
         IntegrationProvider.GOOGLE_CALENDAR.value: GoogleCalendarConnector,
@@ -359,11 +388,14 @@ async def test_integration(
     if not connector_cls:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"No connector for provider: {integration.provider}",
+            detail=(
+                f"No connector for provider: "
+                f"{integration.provider}"
+            ),
         )
 
     connector = connector_cls(integration)
-    authenticated = await connector.authenticate()
+    authenticated = asyncio.run(connector.authenticate())
 
     if not authenticated:
         integration.status = "failed"
@@ -389,6 +421,34 @@ async def test_integration(
 
 
 # --- Helpers ---
+
+
+def _validate_redirect_uri(redirect_uri: str) -> None:
+    """Validate redirect URI against allowed list."""
+    settings = get_settings()
+    allowed = settings.oauth_redirect_uris
+    if allowed and redirect_uri not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid redirect URI",
+        )
+
+
+def _validate_oauth_state(
+    state: str, expected_user_id: str
+) -> None:
+    """Validate the OAuth state token for CSRF protection."""
+    payload = verify_token(state, token_type="access")
+    if payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OAuth state",
+        )
+    if payload.get("sub") != expected_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="OAuth state user mismatch",
+        )
 
 
 def _get_user_integration(

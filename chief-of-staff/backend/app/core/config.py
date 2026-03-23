@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     github_client_id: str = ""
     github_client_secret: str = ""
 
+    # OAuth security
+    oauth_redirect_uris: List[str] = []  # Empty = allow all (dev only)
+
     # Web Push (VAPID)
     vapid_private_key: str = ""
     vapid_claims_email: str = ""

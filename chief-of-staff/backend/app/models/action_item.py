@@ -66,5 +66,8 @@ class ActionItem(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint("dedup_hash", name="uq_action_item_dedup_hash"),
+        UniqueConstraint(
+            "user_id", "dedup_hash",
+            name="uq_action_item_user_dedup_hash",
+        ),
     )

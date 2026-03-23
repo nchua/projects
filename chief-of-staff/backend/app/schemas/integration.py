@@ -39,3 +39,4 @@ class OAuthCallbackRequest(BaseModel):
     provider: IntegrationProvider
     code: str
     redirect_uri: str
+    state: str  # CSRF protection — must match the state from authorize

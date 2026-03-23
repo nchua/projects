@@ -29,7 +29,7 @@ from app.services.audit_log import log_audit
 
 logger = logging.getLogger(__name__)
 
-AI_INSIGHTS_MODEL = "claude-sonnet-4-5-20241022"
+AI_INSIGHTS_MODEL = "claude-sonnet-4-5-20250514"
 
 _INSIGHTS_SYSTEM = """\
 You are a concise personal assistant. Given a structured summary \

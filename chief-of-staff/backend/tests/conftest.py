@@ -1,13 +1,18 @@
 """Test fixtures and configuration."""
 
-import pytest
-from fastapi.testclient import TestClient
+import os
+
+os.environ["TESTING"] = "1"
+
+import pytest  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.core.database import Base, get_db
-import app.models  # noqa: F401 — register all models before create_all
+from app.core.database import Base, get_db  # noqa: E402
+from app.core.encryption import _get_fernet  # noqa: E402
+import app.models  # noqa: F401,E402 — register all models before create_all
 
 
 @pytest.fixture(scope="session")
@@ -27,6 +32,14 @@ def engine():
 
     Base.metadata.create_all(bind=eng)
     return eng
+
+
+@pytest.fixture(autouse=True)
+def _clear_fernet_cache():
+    """Clear the Fernet cache before each test to prevent cross-test poisoning."""
+    _get_fernet.cache_clear()
+    yield
+    _get_fernet.cache_clear()
 
 
 @pytest.fixture

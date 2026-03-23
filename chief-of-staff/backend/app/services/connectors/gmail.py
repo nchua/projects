@@ -1,10 +1,7 @@
 """Gmail connector -- incremental sync via historyId with data minimization."""
 
 import base64
-import hashlib
 import logging
-import re
-from html.parser import HTMLParser
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -13,98 +10,15 @@ from app.models.enums import IntegrationProvider
 from app.models.sync_state import SyncState
 from app.services.connectors.base import SyncResult
 from app.services.connectors.google_base import GoogleBaseConnector
+from app.services.email_preprocessor import (
+    hash_content,
+    html_to_text,
+    strip_email_noise,
+    truncate_for_api,
+    MIN_BODY_CHARS,
+)
 
 logger = logging.getLogger(__name__)
-
-# Max chars to send to the AI extraction pipeline
-MAX_BODY_CHARS = 8000
-MIN_BODY_CHARS = 50
-
-
-class _HTMLTextExtractor(HTMLParser):
-    """Strips HTML tags and extracts plain text."""
-
-    BLOCK_TAGS = {"p", "div", "br", "li", "h1", "h2", "h3", "h4", "h5", "h6", "tr"}
-    SKIP_TAGS = {"script", "style"}
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._parts: list[str] = []
-        self._skip = False
-
-    def handle_starttag(self, tag: str, attrs: list) -> None:
-        if tag.lower() in self.SKIP_TAGS:
-            self._skip = True
-        if tag.lower() in self.BLOCK_TAGS:
-            self._parts.append("\n")
-
-    def handle_endtag(self, tag: str) -> None:
-        if tag.lower() in self.SKIP_TAGS:
-            self._skip = False
-        if tag.lower() in self.BLOCK_TAGS:
-            self._parts.append("\n")
-
-    def handle_data(self, data: str) -> None:
-        if not self._skip:
-            self._parts.append(data)
-
-    def get_text(self) -> str:
-        return "".join(self._parts).strip()
-
-
-def html_to_text(html: str) -> str:
-    """Convert HTML to plain text."""
-    parser = _HTMLTextExtractor()
-    parser.feed(html)
-    return parser.get_text()
-
-
-def strip_email_noise(text: str) -> str:
-    """Strip signatures, quoted replies, marketing footers.
-
-    Data minimization step -- reduce content before AI processing.
-    """
-    lines = text.split("\n")
-    cleaned: list[str] = []
-
-    for line in lines:
-        stripped = line.strip()
-
-        # Quoted reply markers
-        if stripped.startswith(">"):
-            continue
-        if re.match(r"^On .+ wrote:$", stripped):
-            break
-        if re.match(r"^-{3,}\s*(Original Message|Forwarded)", stripped, re.IGNORECASE):
-            break
-
-        # Common signature markers
-        if stripped in ("--", "---", "Sent from my iPhone", "Sent from my iPad"):
-            break
-        if re.match(r"^Get Outlook for", stripped, re.IGNORECASE):
-            break
-
-        # Marketing/unsubscribe footers
-        if re.search(r"unsubscribe|opt.out|email preferences", stripped, re.IGNORECASE):
-            continue
-        if re.search(r"view.*(in|this).*(browser|email)", stripped, re.IGNORECASE):
-            continue
-
-        cleaned.append(line)
-
-    return "\n".join(cleaned).strip()
-
-
-def truncate_for_api(text: str, max_chars: int = MAX_BODY_CHARS) -> str:
-    """Truncate text to max length with marker."""
-    if len(text) <= max_chars:
-        return text
-    return text[:max_chars] + "\n[truncated]"
-
-
-def hash_content(text: str) -> str:
-    """SHA-256 hash for dedup checking."""
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 class GmailConnector(GoogleBaseConnector):
