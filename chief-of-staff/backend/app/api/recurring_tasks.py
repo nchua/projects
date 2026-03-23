@@ -69,6 +69,28 @@ def create_recurring_task(
     return task
 
 
+@router.put("/reorder", status_code=status.HTTP_204_NO_CONTENT)
+def reorder_tasks(
+    reorder: RecurringTaskReorderRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    """Bulk reorder recurring tasks by setting sort_order."""
+    tasks = (
+        db.query(RecurringTask)
+        .filter(
+            RecurringTask.user_id == current_user.id,
+            RecurringTask.id.in_(reorder.task_ids),
+        )
+        .all()
+    )
+    task_map = {t.id: t for t in tasks}
+    for idx, task_id in enumerate(reorder.task_ids):
+        if task_id in task_map:
+            task_map[task_id].sort_order = idx
+    db.commit()
+
+
 @router.put("/{task_id}", response_model=RecurringTaskResponse)
 def update_recurring_task(
     task_id: str,
@@ -136,9 +158,7 @@ def complete_task(
             detail="Task already completed today",
         )
 
-    # Update or create completion
     if existing:
-        # Was skipped, now completing
         existing.completed_at = now
         existing.skipped = False
         completion = existing
@@ -150,7 +170,6 @@ def complete_task(
         )
         db.add(completion)
 
-    # Streak logic
     yesterday = today - timedelta(days=1)
     yesterday_completion = (
         db.query(TaskCompletion)
@@ -211,27 +230,6 @@ def skip_task(
     db.commit()
     db.refresh(completion)
     return completion
-
-
-@router.put("/reorder", status_code=status.HTTP_204_NO_CONTENT)
-def reorder_tasks(
-    reorder: RecurringTaskReorderRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> None:
-    """Bulk reorder recurring tasks by setting sort_order."""
-    for idx, task_id in enumerate(reorder.task_ids):
-        task = (
-            db.query(RecurringTask)
-            .filter(
-                RecurringTask.id == task_id,
-                RecurringTask.user_id == current_user.id,
-            )
-            .first()
-        )
-        if task:
-            task.sort_order = idx
-    db.commit()
 
 
 # --- Helpers ---

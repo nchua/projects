@@ -1,4 +1,4 @@
-"""Unified tasks endpoint — merged view of tasks, reminders, and action items."""
+"""Unified tasks endpoint — merged view of tasks, reminders, action items."""
 
 import logging
 from datetime import date
@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.action_item import ActionItem
+from app.models.enums import ActionItemStatus, ReminderStatus
 from app.models.one_off_reminder import OneOffReminder
 from app.models.recurring_task import RecurringTask, TaskCompletion
 from app.models.user import User
@@ -18,51 +19,38 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Priority sort order (lower = higher priority)
-_PRIORITY_ORDER = {
-    "non_negotiable": 0,
-    "high": 1,
-    "medium": 2,
-    "flexible": 3,
-    "low": 4,
-}
-
 
 @router.get("/today")
 def get_today_tasks(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """Combined view of today's tasks.
-
-    Returns recurring tasks (with completion status), pending
-    reminders, and open action items — merged and sorted by
-    priority.
-    """
+    """Combined view of today's tasks, reminders, and action items."""
     today = date.today()
 
-    # Recurring tasks due today
     recurring = _get_recurring_for_today(
         db, current_user.id, today
     )
 
-    # Pending reminders
     reminders = (
         db.query(OneOffReminder)
         .filter(
             OneOffReminder.user_id == current_user.id,
-            OneOffReminder.status == "pending",
+            OneOffReminder.status
+            == ReminderStatus.PENDING.value,
         )
         .order_by(OneOffReminder.created_at)
         .all()
     )
 
-    # Open action items
     action_items = (
         db.query(ActionItem)
         .filter(
             ActionItem.user_id == current_user.id,
-            ActionItem.status.in_(["new", "acknowledged"]),
+            ActionItem.status.in_([
+                ActionItemStatus.NEW.value,
+                ActionItemStatus.ACKNOWLEDGED.value,
+            ]),
         )
         .order_by(ActionItem.created_at.desc())
         .limit(20)
@@ -80,7 +68,6 @@ def get_today_tasks(
                 "description": r.description,
                 "trigger_type": r.trigger_type,
                 "status": r.status,
-                "priority": "medium",
             }
             for r in reminders
         ],
@@ -119,6 +106,7 @@ def get_all_tasks(
                 RecurringTask.is_archived.is_(False),
             )
             .order_by(RecurringTask.sort_order)
+            .limit(200)
             .all()
         )
         result["recurring_tasks"] = [
@@ -139,11 +127,13 @@ def get_all_tasks(
             db.query(ActionItem)
             .filter(
                 ActionItem.user_id == current_user.id,
-                ActionItem.status.in_(
-                    ["new", "acknowledged"]
-                ),
+                ActionItem.status.in_([
+                    ActionItemStatus.NEW.value,
+                    ActionItemStatus.ACKNOWLEDGED.value,
+                ]),
             )
             .order_by(ActionItem.created_at.desc())
+            .limit(100)
             .all()
         )
         result["action_items"] = [
@@ -163,9 +153,11 @@ def get_all_tasks(
             db.query(OneOffReminder)
             .filter(
                 OneOffReminder.user_id == current_user.id,
-                OneOffReminder.status == "pending",
+                OneOffReminder.status
+                == ReminderStatus.PENDING.value,
             )
             .order_by(OneOffReminder.created_at)
+            .limit(100)
             .all()
         )
         result["reminders"] = [
@@ -186,43 +178,43 @@ def _get_recurring_for_today(
     db: Session, user_id: str, today: date
 ) -> list[dict[str, Any]]:
     """Get recurring tasks due today with completion status."""
+    # Determine which cadences are due today
+    due_cadences = ["daily"]
+    if today.weekday() == 0:
+        due_cadences.append("weekly")
+    if today.day == 1:
+        due_cadences.append("monthly")
+
     tasks = (
         db.query(RecurringTask)
         .filter(
             RecurringTask.user_id == user_id,
             RecurringTask.is_archived.is_(False),
+            RecurringTask.cadence.in_(due_cadences),
         )
         .order_by(RecurringTask.sort_order)
         .all()
     )
 
-    day_of_week = today.weekday()
-    day_of_month = today.day
-    result = []
+    if not tasks:
+        return []
 
-    for task in tasks:
-        is_due = False
-        if task.cadence == "daily":
-            is_due = True
-        elif task.cadence == "weekly" and day_of_week == 0:
-            is_due = True
-        elif task.cadence == "monthly" and day_of_month == 1:
-            is_due = True
-
-        if not is_due:
-            continue
-
-        # Check completion status
-        completion = (
-            db.query(TaskCompletion)
-            .filter(
-                TaskCompletion.recurring_task_id == task.id,
-                TaskCompletion.date == today,
-            )
-            .first()
+    # Batch-fetch completions for today (avoids N+1)
+    task_ids = [t.id for t in tasks]
+    completions = (
+        db.query(TaskCompletion)
+        .filter(
+            TaskCompletion.recurring_task_id.in_(task_ids),
+            TaskCompletion.date == today,
         )
+        .all()
+    )
+    completion_map = {
+        c.recurring_task_id: c for c in completions
+    }
 
-        result.append({
+    return [
+        {
             "id": task.id,
             "type": "recurring",
             "title": task.title,
@@ -230,12 +222,13 @@ def _get_recurring_for_today(
             "priority": task.priority,
             "streak_count": task.streak_count,
             "completed_today": (
-                completion is not None
-                and completion.completed_at is not None
+                (c := completion_map.get(task.id)) is not None
+                and c.completed_at is not None
             ),
             "skipped_today": (
-                completion is not None and completion.skipped
+                (c := completion_map.get(task.id)) is not None
+                and c.skipped
             ),
-        })
-
-    return result
+        }
+        for task in tasks
+    ]

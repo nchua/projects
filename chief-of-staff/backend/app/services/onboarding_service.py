@@ -44,9 +44,8 @@ def create_default_tasks(
 
     Returns the list of created tasks.
     """
-    created = []
-    for task_data in DEFAULT_TASKS:
-        task = RecurringTask(
+    created = [
+        RecurringTask(
             user_id=user_id,
             title=task_data["title"],
             cadence=task_data["cadence"].value,
@@ -54,8 +53,8 @@ def create_default_tasks(
             missed_behavior=MissedBehavior.ROLL_FORWARD.value,
             sort_order=task_data["sort_order"],
         )
-        db.add(task)
-        created.append(task)
-
+        for task_data in DEFAULT_TASKS
+    ]
+    db.add_all(created)
     db.flush()
     return created
