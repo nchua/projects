@@ -49,6 +49,21 @@ on sanitize(txt)
     return txt
 end sanitize
 
+on pad2(n)
+    if n < 10 then return "0" & n
+    return n as text
+end pad2
+
+on isoDate(d)
+    set y to year of d
+    set m to my pad2(month of d as integer)
+    set dy to my pad2(day of d)
+    set h to my pad2(hours of d)
+    set mn to my pad2(minutes of d)
+    set s to my pad2(seconds of d)
+    return (y as text) & "-" & m & "-" & dy & "T" & h & ":" & mn & ":" & s
+end isoDate
+
 tell application "Calendar"
     set startDate to (current date) - ({days_back} * days)
     set endDate to (current date) + ({days_forward} * days)
@@ -63,8 +78,8 @@ tell application "Calendar"
             repeat with evt in calEvents
                 set evtId to uid of evt
                 set evtTitle to my sanitize(summary of evt)
-                set evtStart to (start date of evt) as <<class isot>> as string
-                set evtEnd to (end date of evt) as <<class isot>> as string
+                set evtStart to my isoDate(start date of evt)
+                set evtEnd to my isoDate(end date of evt)
                 set evtNotes to description of evt
                 set evtLoc to location of evt
                 if evtNotes is missing value then set evtNotes to ""
