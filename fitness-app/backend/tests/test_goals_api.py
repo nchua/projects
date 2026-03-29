@@ -338,11 +338,11 @@ class TestGoalDeletion:
 
     def test_abandon_sets_abandoned_at(self, sample_goals):
         """Abandoning should set abandoned_at timestamp"""
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         goal = sample_goals["bench_goal"]
         goal.status = GoalStatus.ABANDONED.value
-        goal.abandoned_at = datetime.utcnow()
+        goal.abandoned_at = datetime.now(timezone.utc)
 
         assert goal.abandoned_at is not None
 

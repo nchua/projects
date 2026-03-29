@@ -193,9 +193,7 @@ class APIClient {
     }
 
     func getWeeklyReview() async throws -> WeeklyReviewResponse {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        let today = formatter.string(from: Date())
+        let today = DateFormatter.localDate.string(from: Date())
         return try await get("/analytics/weekly-review?client_date=\(today)")
     }
 
@@ -204,9 +202,7 @@ class APIClient {
     }
 
     func getWeeklyProgressReport(weekStart: String? = nil) async throws -> WeeklyProgressReportResponse {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        let today = formatter.string(from: Date())
+        let today = DateFormatter.localDate.string(from: Date())
         var path = "/progress/weekly-report?client_date=\(today)"
         if let weekStart = weekStart {
             path += "&week_start=\(weekStart)"
@@ -560,10 +556,7 @@ class APIClient {
 
         // Add session_date field if provided
         if let date = sessionDate {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd"
-            formatter.timeZone = .current
-            let dateString = formatter.string(from: date)
+            let dateString = DateFormatter.localDate.string(from: date)
 
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"session_date\"\r\n\r\n".data(using: .utf8)!)
@@ -662,10 +655,7 @@ class APIClient {
 
         // Add session_date field if provided
         if let date = sessionDate {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd"
-            formatter.timeZone = .current
-            let dateString = formatter.string(from: date)
+            let dateString = DateFormatter.localDate.string(from: date)
 
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"session_date\"\r\n\r\n".data(using: .utf8)!)

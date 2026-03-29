@@ -1,5 +1,77 @@
 import SwiftUI
 
+// MARK: - DateFormatter Cache
+
+extension DateFormatter {
+    /// Cached yyyy-MM-dd formatter using local timezone
+    static let localDate: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = TimeZone.current
+        return formatter
+    }()
+}
+
+// MARK: - Big Three Variations
+
+enum BigThree {
+    static let variations: [String: [String]] = [
+        "Squat": ["Back Squat", "Barbell Back Squat", "Squat", "BB Squat", "Barbell Squat", "Low Bar Squat", "High Bar Squat"],
+        "Bench": ["Bench Press", "Barbell Bench Press", "BB Bench", "Flat Bench Press", "Flat Barbell Bench Press"],
+        "Deadlift": ["Deadlift", "Barbell Deadlift", "Conventional Deadlift", "BB Deadlift"]
+    ]
+
+    /// Ordered list of variation arrays (Squat, Bench, Deadlift) for iteration
+    static let orderedVariations: [[String]] = [
+        variations["Squat"]!,
+        variations["Bench"]!,
+        variations["Deadlift"]!
+    ]
+}
+
+// MARK: - Dungeon Display Protocol
+
+protocol DungeonDisplayable {
+    var rank: String { get }
+    var status: String { get }
+}
+
+extension DungeonDisplayable {
+    var rankColor: Color {
+        switch rank {
+        case "E": return .rankE
+        case "D": return .rankD
+        case "C": return .rankC
+        case "B": return .rankB
+        case "A": return .rankA
+        case "S", "S+", "S++": return .rankS
+        default: return .textMuted
+        }
+    }
+
+    var statusColor: Color {
+        switch status {
+        case "available": return .systemPrimary
+        case "active": return .gold
+        case "completed": return .successGreen
+        case "failed", "expired", "abandoned": return .warningRed
+        default: return .textMuted
+        }
+    }
+
+    var statusLabel: String {
+        switch status {
+        case "available": return "AVAILABLE"
+        case "active": return "IN PROGRESS"
+        case "completed": return "COMPLETED"
+        case "failed": return "FAILED"
+        case "expired": return "EXPIRED"
+        case "abandoned": return "ABANDONED"
+        default: return status.uppercased()
+        }
+    }
+}
+
 // MARK: - ARISE View Extensions
 
 extension View {
@@ -97,19 +169,9 @@ extension View {
         modifier(PulseGlowModifier(color: color))
     }
 
-    /// Glitch effect for penalty/error states
-    func glitch() -> some View {
-        modifier(GlitchModifier())
-    }
-
     /// Fade-in with delay for staggered reveals
     func fadeIn(delay: Double = 0) -> some View {
         modifier(FadeInModifier(delay: delay))
-    }
-
-    /// Slide in from right
-    func slideInRight(delay: Double = 0) -> some View {
-        modifier(SlideInRightModifier(delay: delay))
     }
 
     // ============================================
@@ -309,24 +371,6 @@ struct PulseGlowModifier: ViewModifier {
     }
 }
 
-/// Glitch effect for error states
-struct GlitchModifier: ViewModifier {
-    @State private var offset: CGFloat = 0
-    @State private var hueRotation: Double = 0
-
-    func body(content: Content) -> some View {
-        content
-            .offset(x: offset)
-            .hueRotation(.degrees(hueRotation))
-            .onAppear {
-                Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-                    offset = CGFloat.random(in: -2...2)
-                    hueRotation = Double.random(in: 0...90)
-                }
-            }
-    }
-}
-
 /// Fade-in with delay
 struct FadeInModifier: ViewModifier {
     let delay: Double
@@ -341,25 +385,6 @@ struct FadeInModifier: ViewModifier {
                 withAnimation(.easeOut(duration: 0.5).delay(delay)) {
                     opacity = 1
                     offsetY = 0
-                }
-            }
-    }
-}
-
-/// Slide in from right
-struct SlideInRightModifier: ViewModifier {
-    let delay: Double
-    @State private var opacity: Double = 0
-    @State private var offsetX: CGFloat = 100
-
-    func body(content: Content) -> some View {
-        content
-            .opacity(opacity)
-            .offset(x: offsetX)
-            .onAppear {
-                withAnimation(.easeOut(duration: 0.5).delay(delay)) {
-                    opacity = 1
-                    offsetX = 0
                 }
             }
     }
@@ -470,13 +495,10 @@ extension String {
 
     /// Formats ISO date string (YYYY-MM-DD) to readable format (Jan 15, 2025)
     var formattedDateString: String {
-        let inputFormatter = DateFormatter()
-        inputFormatter.dateFormat = "yyyy-MM-dd"
-
         let outputFormatter = DateFormatter()
         outputFormatter.dateStyle = .medium
 
-        if let date = inputFormatter.date(from: self) {
+        if let date = DateFormatter.localDate.date(from: self) {
             return outputFormatter.string(from: date)
         }
         return self
@@ -515,10 +537,7 @@ extension String {
 
         // Fallback: date-only format "YYYY-MM-DD" (workout dates stored as local dates)
         // Use local timezone since these represent the user's local date, not UTC
-        let dateOnlyFormatter = DateFormatter()
-        dateOnlyFormatter.dateFormat = "yyyy-MM-dd"
-        dateOnlyFormatter.timeZone = TimeZone.current
-        return dateOnlyFormatter.date(from: self)
+        return DateFormatter.localDate.date(from: self)
     }
 
     /// Formatted month-day from ISO8601 string

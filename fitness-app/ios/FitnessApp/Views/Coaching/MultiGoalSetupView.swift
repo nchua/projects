@@ -958,16 +958,13 @@ class MultiGoalSetupViewModel: ObservableObject {
         error = nil
 
         do {
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy-MM-dd"
-
             let goalCreates = pendingGoals.map { goal in
                 GoalCreate(
                     exerciseId: goal.exerciseId,
                     targetWeight: goal.targetWeight,
                     targetReps: goal.targetReps,
                     weightUnit: goal.weightUnit,
-                    deadline: dateFormatter.string(from: goal.deadline),
+                    deadline: DateFormatter.localDate.string(from: goal.deadline),
                     notes: nil
                 )
             }

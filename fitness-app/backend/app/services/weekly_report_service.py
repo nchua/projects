@@ -2,7 +2,7 @@
 Weekly Progress Report service — goal-vs-actual comparison with pace prediction
 and actionable coaching suggestions.
 """
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 from collections import defaultdict
 
@@ -279,7 +279,7 @@ def _calc_actual_weekly_gain(
     sorted_snaps = sorted(snapshots, key=lambda s: s.recorded_at)
 
     # Only look at last 4 weeks of snapshots
-    four_weeks_ago = datetime.utcnow() - timedelta(weeks=4)
+    four_weeks_ago = datetime.now(timezone.utc) - timedelta(weeks=4)
     recent = [s for s in sorted_snaps if s.recorded_at >= four_weeks_ago]
 
     if len(recent) < 2:

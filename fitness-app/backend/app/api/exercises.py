@@ -393,7 +393,7 @@ async def test_create_workout(db: Session = Depends(get_db)):
     from app.services.achievement_service import check_and_unlock_achievements
     from app.services.quest_service import update_quest_progress
     from app.models.pr import PR
-    from datetime import datetime
+    from datetime import datetime, timezone
     from sqlalchemy.orm import joinedload
     import traceback
 
@@ -416,7 +416,7 @@ async def test_create_workout(db: Session = Depends(get_db)):
         # Create workout
         workout = WorkoutSession(
             user_id=user.id,
-            date=datetime.utcnow(),
+            date=datetime.now(timezone.utc),
             duration_minutes=60
         )
         db.add(workout)

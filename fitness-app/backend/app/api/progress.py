@@ -2,7 +2,7 @@
 Progress API endpoints - XP, leveling, and achievements
 """
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
@@ -106,7 +106,7 @@ async def check_achievements(
 
     # Build context for achievement checking
     # Get exercise PRs for strength achievements
-    prs = db.query(PR).filter(PR.user_id == current_user.id).all()
+    prs = db.query(PR).options(joinedload(PR.exercise)).filter(PR.user_id == current_user.id).all()
     exercise_prs = {}
     for pr in prs:
         exercise_name = pr.exercise.name.lower() if pr.exercise else ""

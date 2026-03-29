@@ -1,13 +1,6 @@
 import Foundation
 import SwiftUI
 
-// The Big Three - all known variations for each lift (first name is display name)
-let bigThreeVariations: [[String]] = [
-    ["Back Squat", "Barbell Back Squat", "Squat", "BB Squat", "Barbell Squat"],
-    ["Bench Press", "Barbell Bench Press", "BB Bench", "Flat Bench Press", "Flat Barbell Bench Press"],
-    ["Deadlift", "Barbell Deadlift", "Conventional Deadlift", "BB Deadlift"]
-]
-
 @MainActor
 class ProgressViewModel: ObservableObject {
     @Published var exercises: [ExerciseResponse] = []
@@ -40,7 +33,7 @@ class ProgressViewModel: ObservableObject {
 
     // Get Big Three exercises from loaded exercises (matches any known variation)
     var bigThreeExercises: [ExerciseResponse] {
-        bigThreeVariations.compactMap { variations in
+        BigThree.orderedVariations.compactMap { variations in
             // Find the first exercise that matches any of the variations
             for variation in variations {
                 if let exercise = exercises.first(where: { $0.name.caseInsensitiveCompare(variation) == .orderedSame }) {
@@ -70,21 +63,31 @@ class ProgressViewModel: ObservableObject {
         error = nil
 
         do {
+            #if DEBUG
             print("DEBUG: Loading exercises...")
+            #endif
             let exercisesResult = try await APIClient.shared.getExercises()
+            #if DEBUG
             print("DEBUG: Got \(exercisesResult.count) exercises")
 
             print("DEBUG: Loading percentiles...")
+            #endif
             let percentilesResult = try await APIClient.shared.getPercentiles()
+            #if DEBUG
             print("DEBUG: Got \(percentilesResult.exercises.count) exercises with percentiles")
 
             print("DEBUG: Loading PRs...")
+            #endif
             let prsResult = try await APIClient.shared.getPRs()
+            #if DEBUG
             print("DEBUG: Got \(prsResult.prs.count) PRs")
 
             print("DEBUG: Loading bodyweight...")
+            #endif
             let bodyweightResult = try await APIClient.shared.getBodyweightHistory()
+            #if DEBUG
             print("DEBUG: Got \(bodyweightResult.entries.count) bodyweight entries")
+            #endif
 
             exercises = exercisesResult
             percentiles = percentilesResult
@@ -103,14 +106,18 @@ class ProgressViewModel: ObservableObject {
                 await loadTrend()
             }
         } catch let apiError as APIError {
+            #if DEBUG
             print("DEBUG: loadInitialData API error - \(apiError)")
+            #endif
             // Don't set error for unauthorized - user will be redirected to login
             if case .unauthorized = apiError {
                 return
             }
             self.error = apiError.localizedDescription
         } catch {
+            #if DEBUG
             print("DEBUG: loadInitialData error - \(error)")
+            #endif
             self.error = error.localizedDescription
         }
 
@@ -126,9 +133,13 @@ class ProgressViewModel: ObservableObject {
                     includeSets: true
                 )
                 bigThreeTrends[exercise.id] = trend
+                #if DEBUG
                 print("DEBUG: Loaded trend for \(exercise.name)")
+                #endif
             } catch {
+                #if DEBUG
                 print("DEBUG: Failed to load trend for \(exercise.name): \(error)")
+                #endif
             }
         }
     }
@@ -143,18 +154,24 @@ class ProgressViewModel: ObservableObject {
                 )
                 additionalTrends[exerciseId] = trend
             } catch {
+                #if DEBUG
                 print("DEBUG: Failed to load trend for additional exercise: \(error)")
+                #endif
             }
         }
     }
 
     func loadTrend() async {
         guard let exerciseId = selectedExercise?.id else {
+            #if DEBUG
             print("DEBUG: No exercise selected")
+            #endif
             return
         }
 
+        #if DEBUG
         print("DEBUG: Loading trend for exercise \(exerciseId) with range \(selectedTimeRange)")
+        #endif
 
         do {
             trend = try await APIClient.shared.getExerciseTrend(
@@ -162,9 +179,13 @@ class ProgressViewModel: ObservableObject {
                 timeRange: selectedTimeRange,
                 includeSets: true
             )
+            #if DEBUG
             print("DEBUG: Got trend with \(trend?.dataPoints.count ?? 0) data points")
+            #endif
         } catch {
+            #if DEBUG
             print("DEBUG: Trend error - \(error)")
+            #endif
             self.error = "Failed to load trend: \(error.localizedDescription)"
             trend = nil
         }
@@ -198,7 +219,9 @@ class ProgressViewModel: ObservableObject {
                 )
                 additionalTrends[exercise.id] = trend
             } catch {
+                #if DEBUG
                 print("DEBUG: Failed to load trend for added exercise: \(error)")
+                #endif
             }
         }
     }

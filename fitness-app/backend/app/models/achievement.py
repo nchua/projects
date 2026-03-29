@@ -3,7 +3,7 @@ Achievement models - Definitions and user unlocks
 """
 from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from app.core.database import Base
 
@@ -28,7 +28,7 @@ class AchievementDefinition(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     sort_order = Column(Integer, default=0, nullable=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     user_achievements = relationship("UserAchievement", back_populates="achievement")
@@ -43,7 +43,7 @@ class UserAchievement(Base):
     user_progress_id = Column(String, ForeignKey("user_progress.id"), nullable=False)
     achievement_id = Column(String, ForeignKey("achievement_definitions.id"), nullable=False)
 
-    unlocked_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    unlocked_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     user_progress = relationship("UserProgress", back_populates="achievements")

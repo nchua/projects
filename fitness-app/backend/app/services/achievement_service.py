@@ -10,16 +10,7 @@ from app.models.achievement import AchievementDefinition, UserAchievement
 from app.models.workout import WorkoutSession
 from app.models.pr import PR
 from app.core.utils import to_iso8601_utc
-
-
-def get_or_create_user_progress(db: Session, user_id: str) -> UserProgress:
-    """Get existing user progress or create new one"""
-    progress = db.query(UserProgress).filter(UserProgress.user_id == user_id).first()
-    if not progress:
-        progress = UserProgress(user_id=user_id)
-        db.add(progress)
-        db.flush()
-    return progress
+from app.services.xp_service import get_or_create_user_progress
 
 
 def get_user_achievements(db: Session, user_id: str) -> List[Dict[str, Any]]:

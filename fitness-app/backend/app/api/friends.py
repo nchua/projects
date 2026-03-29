@@ -91,11 +91,55 @@ async def get_friends(
     Returns:
         List of FriendResponse with friend details
     """
-    friendships = db.query(Friendship).filter(
+    from sqlalchemy.orm import joinedload
+
+    friendships = db.query(Friendship).options(
+        joinedload(Friendship.friend)
+    ).filter(
         Friendship.user_id == current_user.id
     ).all()
 
-    return [build_friend_response(f, db) for f in friendships]
+    if not friendships:
+        return []
+
+    friend_ids = [f.friend_id for f in friendships]
+
+    # Batch-load UserProgress for all friends
+    progress_rows = db.query(UserProgress).filter(
+        UserProgress.user_id.in_(friend_ids)
+    ).all()
+    progress_map = {p.user_id: p for p in progress_rows}
+
+    # Batch-load last workout for each friend using a subquery
+    from sqlalchemy import func
+    last_workout_sub = db.query(
+        WorkoutSession.user_id,
+        func.max(WorkoutSession.date).label("last_date")
+    ).filter(
+        WorkoutSession.user_id.in_(friend_ids),
+        WorkoutSession.deleted_at.is_(None)
+    ).group_by(WorkoutSession.user_id).all()
+    last_workout_map = {row.user_id: row.last_date for row in last_workout_sub}
+
+    results = []
+    for f in friendships:
+        prog = progress_map.get(f.friend_id)
+        rank = prog.rank.value if prog and prog.rank else "E"
+        level = prog.level if prog and prog.level else 1
+        last_date = last_workout_map.get(f.friend_id)
+
+        results.append(FriendResponse(
+            id=f.id,
+            user_id=f.user_id,
+            friend_id=f.friend_id,
+            friend_username=f.friend.username if f.friend else None,
+            friend_rank=rank,
+            friend_level=level,
+            created_at=to_iso8601_utc(f.created_at),
+            last_workout_at=to_iso8601_utc(last_date) if last_date else None
+        ))
+
+    return results
 
 
 @router.get("/requests", response_model=FriendRequestsResponse)
@@ -417,7 +461,13 @@ async def get_friend_profile(
     current_streak = progress.current_streak if progress else 0
 
     # Get recent workouts (last 5)
-    recent_workouts_query = db.query(WorkoutSession).filter(
+    from sqlalchemy.orm import joinedload
+    from app.models.workout import WorkoutExercise
+
+    recent_workouts_query = db.query(WorkoutSession).options(
+        joinedload(WorkoutSession.workout_exercises)
+        .joinedload(WorkoutExercise.exercise)
+    ).filter(
         WorkoutSession.user_id == friend_id,
         WorkoutSession.deleted_at.is_(None)
     ).order_by(WorkoutSession.date.desc()).limit(5).all()
@@ -425,14 +475,14 @@ async def get_friend_profile(
     recent_workouts = []
     for workout in recent_workouts_query:
         exercise_names = []
-        for we in workout.exercises:
+        for we in workout.workout_exercises:
             if we.exercise:
                 exercise_names.append(we.exercise.name)
 
         recent_workouts.append(RecentWorkoutResponse(
             id=workout.id,
             date=to_iso8601_utc(workout.date),
-            exercise_count=len(workout.exercises),
+            exercise_count=len(workout.workout_exercises),
             exercise_names=exercise_names,
             xp_earned=None  # Could track this if needed
         ))

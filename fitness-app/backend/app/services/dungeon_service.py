@@ -2,7 +2,7 @@
 Dungeon Service - Gate spawning, progress tracking, and rewards
 """
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any, Tuple
 import random
 import uuid
@@ -15,9 +15,10 @@ from app.models.dungeon import (
 from app.models.workout import WorkoutSession
 from app.models.progress import UserProgress
 from app.services.xp_service import (
-    get_or_create_user_progress, xp_for_level, get_rank_for_level
+    award_xp, get_or_create_user_progress, xp_for_level, get_rank_for_level
 )
 from app.core.utils import to_iso8601_utc
+from app.services.workout_stats import COMPOUND_EXERCISES, calculate_workout_stats
 from app.schemas.dungeon import (
     DUNGEON_LEVEL_REQUIREMENTS,
     DUNGEON_BASE_XP_BY_RANK,
@@ -32,15 +33,6 @@ MAX_AVAILABLE_DUNGEONS = 5  # Maximum dungeons on mission board
 MIN_AVAILABLE_DUNGEONS = 3  # Minimum dungeons to always have available
 STRETCH_LEVEL_THRESHOLD = 10  # Can't attempt more than 10 levels above
 RARE_GATE_CHANCE = 0.05  # 5% chance for a rare gate (higher rank)
-
-# Compound exercises for quest checking
-COMPOUND_EXERCISES = [
-    "back squat", "squat", "front squat",
-    "bench press", "flat bench", "incline bench",
-    "deadlift", "conventional deadlift", "sumo deadlift", "romanian deadlift",
-    "overhead press", "shoulder press", "military press",
-    "barbell row", "bent over row", "pendlay row"
-]
 
 
 def calculate_spawn_chance(user_level: int, available_count: int) -> float:
@@ -175,7 +167,7 @@ def maybe_spawn_dungeon(
     )
 
     # Create user dungeon
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     expires_at = now + timedelta(hours=selected.duration_hours)
 
     user_dungeon = UserDungeon(
@@ -276,7 +268,7 @@ def ensure_minimum_dungeons(db: Session, user_id: str) -> List[Dict[str, Any]]:
     available_count = db.query(UserDungeon).filter(
         UserDungeon.user_id == user_id,
         UserDungeon.status == DungeonStatus.AVAILABLE.value,
-        UserDungeon.expires_at > datetime.utcnow()  # Not expired
+        UserDungeon.expires_at > datetime.now(timezone.utc)  # Not expired
     ).count()
 
     spawned = []
@@ -301,7 +293,7 @@ def get_user_dungeons(db: Session, user_id: str) -> Dict[str, Any]:
         Dict with available, active, and completed_unclaimed lists
     """
     progress = get_or_create_user_progress(db, user_id)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # Auto-replenish dungeons if below minimum
     ensure_minimum_dungeons(db, user_id)
@@ -398,7 +390,7 @@ def get_dungeon_detail(db: Session, user_id: str, user_dungeon_id: str) -> Optio
         return None
 
     definition = user_dungeon.definition
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # Build objectives list
     objectives = []
@@ -500,7 +492,7 @@ def accept_dungeon(db: Session, user_id: str, user_dungeon_id: str) -> Dict[str,
         raise ValueError("You already have an active dungeon. Complete or abandon it first.")
 
     # Check if expired
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if user_dungeon.expires_at < now:
         user_dungeon.status = DungeonStatus.EXPIRED.value
         db.flush()
@@ -558,7 +550,7 @@ def update_dungeon_progress(
     Returns:
         Dict with dungeons_progressed, dungeons_completed, objectives_completed
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # Get active dungeons
     active_dungeons = db.query(UserDungeon).filter(
@@ -574,21 +566,11 @@ def update_dungeon_progress(
         }
 
     # Calculate workout stats
-    total_reps = 0
-    compound_sets = 0
-    total_volume = 0
-    total_sets = 0
-
-    for workout_exercise in workout.workout_exercises:
-        exercise_name = workout_exercise.exercise.name.lower() if workout_exercise.exercise else ""
-
-        for set_obj in workout_exercise.sets:
-            total_reps += set_obj.reps
-            total_volume += set_obj.weight * set_obj.reps
-            total_sets += 1
-
-            if any(compound in exercise_name for compound in COMPOUND_EXERCISES):
-                compound_sets += 1
+    stats = calculate_workout_stats(workout)
+    total_reps = stats["total_reps"]
+    compound_sets = stats["compound_sets"]
+    total_volume = stats["total_volume"]
+    total_sets = stats["total_sets"]
 
     # Get user's current streak and PR count (for streak/PR objectives)
     progress = get_or_create_user_progress(db, user_id)
@@ -700,26 +682,12 @@ def claim_dungeon_rewards(db: Session, user_id: str, user_dungeon_id: str) -> Di
     # Total XP
     total_xp = base_xp + stretch_bonus_xp + bonus_obj_xp
 
-    # Award XP
-    progress = get_or_create_user_progress(db, user_id)
-    old_level = progress.level
-    old_rank = progress.rank
-
-    progress.total_xp += total_xp
-
-    # Check for level ups
-    while progress.total_xp >= xp_for_level(progress.level + 1):
-        progress.level += 1
-
-    # Update rank if needed
-    new_rank = get_rank_for_level(progress.level)
-    rank_changed = new_rank != old_rank
-    if rank_changed:
-        progress.rank = new_rank
+    # Award XP (no workout count/streak for reward claims)
+    xp_result = award_xp(db, user_id, total_xp, count_workout=False)
 
     # Mark dungeon as claimed
     user_dungeon.status = DungeonStatus.CLAIMED.value
-    user_dungeon.claimed_at = datetime.utcnow()
+    user_dungeon.claimed_at = datetime.now(timezone.utc)
     user_dungeon.xp_earned = base_xp
     user_dungeon.stretch_bonus_xp = stretch_bonus_xp
 
@@ -730,13 +698,13 @@ def claim_dungeon_rewards(db: Session, user_id: str, user_dungeon_id: str) -> Di
         "xp_earned": base_xp,
         "stretch_bonus_xp": stretch_bonus_xp,
         "bonus_objectives_xp": bonus_obj_xp,
-        "total_xp": progress.total_xp,
-        "level": progress.level,
-        "leveled_up": progress.level > old_level,
-        "new_level": progress.level if progress.level > old_level else None,
-        "rank": progress.rank,
-        "rank_changed": rank_changed,
-        "new_rank": progress.rank if rank_changed else None
+        "total_xp": xp_result["total_xp"],
+        "level": xp_result["new_level"],
+        "leveled_up": xp_result["leveled_up"],
+        "new_level": xp_result["new_level"] if xp_result["leveled_up"] else None,
+        "rank": xp_result["new_rank"],
+        "rank_changed": xp_result["rank_changed"],
+        "new_rank": xp_result["new_rank"] if xp_result["rank_changed"] else None
     }
 
 
@@ -747,7 +715,7 @@ def get_dungeon_history(
     limit: int = 20
 ) -> Dict[str, Any]:
     """Get past dungeon attempts."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # Get terminal-state dungeons
     dungeons = db.query(UserDungeon).filter(

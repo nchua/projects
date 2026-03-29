@@ -80,6 +80,11 @@ struct GoalSetupView: View {
         }
         .task {
             await viewModel.loadExercises()
+
+            // When editing a goal, fetch the current e1RM if not provided
+            if viewModel.isEditMode && viewModel.currentMax == nil {
+                await viewModel.fetchCurrentMaxForEditingExercise()
+            }
         }
     }
 }
@@ -1094,9 +1099,7 @@ class GoalSetupViewModel: ObservableObject {
             self.hasExerciseHistory = goal.currentE1rm != nil
 
             // Parse deadline string to Date
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy-MM-dd"
-            if let date = dateFormatter.date(from: goal.deadline) {
+            if let date = DateFormatter.localDate.date(from: goal.deadline) {
                 self.deadline = date
             }
 
@@ -1106,6 +1109,26 @@ class GoalSetupViewModel: ObservableObject {
             self.isEditMode = false
             self.editingGoalId = nil
             self.editingExerciseName = nil
+        }
+    }
+
+    /// Fetch the current e1RM for the editing exercise by name
+    /// Called when editing a goal and currentMax is nil
+    func fetchCurrentMaxForEditingExercise() async {
+        guard let exerciseName = editingExerciseName else { return }
+
+        do {
+            let exercises = try await APIClient.shared.getExercises(search: exerciseName)
+            if let exercise = exercises.first(where: {
+                $0.name.lowercased() == exerciseName.lowercased()
+            }) {
+                // fetchCurrentMax manages isLoadingHistory internally
+                await fetchCurrentMax(for: exercise.id)
+            }
+        } catch {
+            #if DEBUG
+            print("DEBUG: Failed to fetch exercise for current max: \(error)")
+            #endif
         }
     }
 
@@ -1184,12 +1207,16 @@ class GoalSetupViewModel: ObservableObject {
     }
 
     func createGoal() async {
+        #if DEBUG
         print("DEBUG: createGoal() called, isEditMode=\(isEditMode), selectedExercise=\(selectedExercise?.name ?? "nil")")
+        #endif
 
         // In edit mode, we don't need a selected exercise
         if !isEditMode {
             guard selectedExercise != nil else {
+                #if DEBUG
                 print("DEBUG: ERROR - No exercise selected")
+                #endif
                 error = "No exercise selected"
                 return
             }
@@ -1199,9 +1226,7 @@ class GoalSetupViewModel: ObservableObject {
         error = nil
 
         do {
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy-MM-dd"
-            let deadlineString = dateFormatter.string(from: deadline)
+            let deadlineString = DateFormatter.localDate.string(from: deadline)
 
             if isEditMode, let goalId = editingGoalId {
                 // Update existing goal
@@ -1213,10 +1238,14 @@ class GoalSetupViewModel: ObservableObject {
                     notes: nil
                 )
 
+                #if DEBUG
                 print("DEBUG: Updating goal \(goalId): \(targetWeight) \(weightUnit) x \(targetReps) by \(deadlineString)")
+                #endif
 
                 let response = try await APIClient.shared.updateGoal(id: goalId, goalUpdate)
+                #if DEBUG
                 print("DEBUG: Goal updated successfully: id=\(response.id), exercise=\(response.exerciseName)")
+                #endif
                 goalCreated = true
             } else if let exercise = selectedExercise {
                 // Create new goal
@@ -1229,23 +1258,35 @@ class GoalSetupViewModel: ObservableObject {
                     notes: nil
                 )
 
+                #if DEBUG
                 print("DEBUG: Creating goal - exerciseId=\(exercise.id), name=\(exercise.name), target=\(targetWeight) \(weightUnit) x \(targetReps), deadline=\(deadlineString)")
+                #endif
 
                 let response = try await APIClient.shared.createGoal(goalCreate)
+                #if DEBUG
                 print("DEBUG: Goal created successfully! id=\(response.id), exercise=\(response.exerciseName), progress=\(response.progressPercent)%")
+                #endif
                 goalCreated = true
+                #if DEBUG
                 print("DEBUG: goalCreated set to true, view should dismiss")
+                #endif
             }
         } catch let apiError as APIError {
+            #if DEBUG
             print("DEBUG: API error creating goal: \(apiError), description: \(apiError.localizedDescription)")
+            #endif
             self.error = "Failed to save goal: \(apiError.localizedDescription)"
         } catch {
+            #if DEBUG
             print("DEBUG: Unknown error creating goal: \(error)")
+            #endif
             self.error = "Failed to save goal: \(error.localizedDescription)"
         }
 
         isCreating = false
+        #if DEBUG
         print("DEBUG: createGoal() complete, goalCreated=\(goalCreated), error=\(error ?? "nil")")
+        #endif
     }
 }
 

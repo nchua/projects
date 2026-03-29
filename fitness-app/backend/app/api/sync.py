@@ -3,13 +3,13 @@ Sync API endpoints for offline data synchronization
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.utils import to_iso8601_utc
-from app.core.e1rm import calculate_e1rm, calculate_e1rm_from_rpe, calculate_e1rm_from_rir
+from app.core.e1rm import calculate_e1rm, calculate_e1rm_from_rpe, calculate_e1rm_from_rir, get_user_e1rm_formula
 from app.models.user import User, UserProfile, E1RMFormula
 from app.models.workout import WorkoutSession, WorkoutExercise, Set
 from app.models.exercise import Exercise
@@ -50,10 +50,7 @@ async def sync_data(
     profile_synced = False
 
     # Get user's preferred e1RM formula
-    user_profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
-    e1rm_formula = E1RMFormula.EPLEY
-    if user_profile and user_profile.e1rm_formula:
-        e1rm_formula = user_profile.e1rm_formula
+    e1rm_formula = get_user_e1rm_formula(db, current_user.id)
 
     # Sync workouts
     for workout_data in sync_data.workouts:
@@ -68,7 +65,7 @@ async def sync_data(
             if existing:
                 # Conflict - client wins (device priority)
                 # Delete existing and create new
-                existing.deleted_at = datetime.utcnow()
+                existing.deleted_at = datetime.now(timezone.utc)
                 conflicts.append(SyncConflict(
                     entity_type="workout",
                     entity_id=existing.id,
@@ -83,7 +80,7 @@ async def sync_data(
                 duration_minutes=workout_data.duration_minutes,
                 session_rpe=workout_data.session_rpe,
                 notes=workout_data.notes,
-                synced_at=datetime.utcnow()
+                synced_at=datetime.now(timezone.utc)
             )
             db.add(workout_session)
             db.flush()
@@ -232,7 +229,7 @@ async def sync_data(
 
     return SyncResponse(
         success=True,
-        synced_at=to_iso8601_utc(datetime.utcnow()),
+        synced_at=to_iso8601_utc(datetime.now(timezone.utc)),
         results=results,
         conflicts=conflicts,
         workouts_synced=workouts_synced,

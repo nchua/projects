@@ -2,7 +2,7 @@
 Dungeon Seed Data - Solo Leveling themed dungeon definitions
 """
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 from app.models.dungeon import DungeonDefinition, DungeonObjectiveDefinition
@@ -357,7 +357,7 @@ def seed_dungeon_definitions(db: Session) -> int:
             is_boss_dungeon=dungeon_data.get("is_boss_dungeon", False),
             is_event_dungeon=dungeon_data.get("is_event_dungeon", False),
             is_active=True,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         db.add(dungeon)
         db.flush()
@@ -374,7 +374,7 @@ def seed_dungeon_definitions(db: Session) -> int:
                 is_required=obj_data.get("required", True),
                 xp_bonus=obj_data.get("xp_bonus", 0),
                 order_index=idx,
-                created_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc)
             )
             db.add(objective)
 

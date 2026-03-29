@@ -403,16 +403,15 @@ struct QuestsCalendarView: View {
     private func hasWorkout(on date: Date) -> Bool {
         // Use local timezone DateFormatter to match how workout dates are stored
         // (stored as local date strings like "2024-01-15", not UTC)
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone.current
-        let dateString = formatter.string(from: date)
+        let dateString = DateFormatter.localDate.string(from: date)
         let hasIt = datesWithWorkouts.contains(dateString)
         // Debug for end of month dates
+        #if DEBUG
         let day = Calendar.current.component(.day, from: date)
         if day >= 29 {
             print("DEBUG hasWorkout check: '\(dateString)' in \(datesWithWorkouts) = \(hasIt)")
         }
+        #endif
         return hasIt
     }
 }

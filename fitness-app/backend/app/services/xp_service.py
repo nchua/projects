@@ -143,7 +143,8 @@ def award_xp(
     db: Session,
     user_id: str,
     xp_amount: int,
-    workout_date: Optional[date] = None
+    workout_date: Optional[date] = None,
+    count_workout: bool = True
 ) -> Dict[str, Any]:
     """
     Award XP to user and handle level/rank progression
@@ -153,6 +154,7 @@ def award_xp(
         user_id: User ID
         xp_amount: Amount of XP to award
         workout_date: Date of workout for streak tracking
+        count_workout: Whether to increment total_workouts (False for quest/dungeon rewards)
 
     Returns:
         Dict with new totals, level up info, rank up info
@@ -222,8 +224,9 @@ def award_xp(
             progress.level += 1
             levels_gained += 1
 
-    # Update workout count
-    progress.total_workouts += 1
+    # Update workout count (skip for reward claims)
+    if count_workout:
+        progress.total_workouts += 1
 
     db.flush()
 

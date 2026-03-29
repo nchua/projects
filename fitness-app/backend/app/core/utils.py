@@ -1,8 +1,21 @@
 """
 Core utility functions
 """
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional, Union
+
+
+def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    """Ensure a datetime is timezone-aware UTC.
+
+    SQLite returns naive datetimes; PostgreSQL returns aware ones.
+    This helper normalizes both to aware UTC so comparisons are safe.
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 def to_iso8601_utc(dt: Optional[Union[datetime, date]]) -> Optional[str]:

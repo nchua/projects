@@ -31,7 +31,9 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
                 }
             }
         } catch {
+            #if DEBUG
             print("DEBUG: Notification authorization error: \(error)")
+            #endif
         }
     }
 
@@ -45,13 +47,17 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     func registerDeviceToken(_ tokenData: Data) {
         let hex = tokenData.map { String(format: "%02x", $0) }.joined()
         deviceTokenHex = hex
+        #if DEBUG
         print("DEBUG: Device token registered: \(hex.prefix(16))...")
+        #endif
 
         Task {
             do {
                 try await APIClient.shared.registerDeviceToken(hex)
             } catch {
+                #if DEBUG
                 print("DEBUG: Failed to register device token with backend: \(error)")
+                #endif
             }
         }
     }
@@ -61,7 +67,9 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         do {
             try await APIClient.shared.deactivateDeviceToken(hex)
         } catch {
+            #if DEBUG
             print("DEBUG: Failed to deactivate device token: \(error)")
+            #endif
         }
     }
 
@@ -87,7 +95,9 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         let request = UNNotificationRequest(identifier: "streak_at_risk", content: content, trigger: trigger)
 
         UNUserNotificationCenter.current().add(request) { error in
+            #if DEBUG
             if let error { print("DEBUG: Failed to schedule streak notification: \(error)") }
+            #endif
         }
     }
 
@@ -109,7 +119,9 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         let request = UNNotificationRequest(identifier: "quest_reset", content: content, trigger: trigger)
 
         UNUserNotificationCenter.current().add(request) { error in
+            #if DEBUG
             if let error { print("DEBUG: Failed to schedule quest reset notification: \(error)") }
+            #endif
         }
     }
 
@@ -134,7 +146,9 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
 
         UNUserNotificationCenter.current().add(request) { error in
+            #if DEBUG
             if let error { print("DEBUG: Failed to schedule dungeon expiring notification: \(error)") }
+            #endif
         }
     }
 
@@ -158,7 +172,9 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         let request = UNNotificationRequest(identifier: "mission_expiring", content: content, trigger: trigger)
 
         UNUserNotificationCenter.current().add(request) { error in
+            #if DEBUG
             if let error { print("DEBUG: Failed to schedule mission expiring notification: \(error)") }
+            #endif
         }
     }
 
@@ -177,7 +193,9 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         )
 
         UNUserNotificationCenter.current().add(request) { error in
+            #if DEBUG
             if let error { print("DEBUG: Failed to send quest completed notification: \(error)") }
+            #endif
         }
     }
 

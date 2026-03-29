@@ -641,6 +641,9 @@ struct ActiveQuestView: View {
                                     onAddRound: { id in
                                         viewModel.addRoundToSuperset(groupId: id)
                                     },
+                                    onCopyRound: { id in
+                                        viewModel.copyLastRoundToSuperset(groupId: id)
+                                    },
                                     onRemoveSuperset: { id in
                                         viewModel.removeSuperset(groupId: id)
                                     }

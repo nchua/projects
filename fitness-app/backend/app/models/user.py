@@ -3,7 +3,7 @@ User and UserProfile models
 """
 from sqlalchemy import Column, String, Integer, Float, Enum, ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import enum
 from app.core.database import Base
@@ -42,8 +42,8 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     is_deleted = Column(Boolean, default=False, nullable=False, server_default="false")
     deleted_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     profile = relationship("UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
@@ -74,8 +74,8 @@ class UserProfile(Base):
     preferred_unit = Column(Enum(WeightUnit), default=WeightUnit.LB)
     e1rm_formula = Column(Enum(E1RMFormula), default=E1RMFormula.EPLEY)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     user = relationship("User", back_populates="profile")

@@ -30,12 +30,14 @@ class QuestsViewModel: ObservableObject {
 
     var datesWithWorkouts: Set<String> {
         let dates = Set(workouts.map { String($0.date.prefix(10)) })
+        #if DEBUG
         // Debug: print what dates we're extracting
         print("DEBUG datesWithWorkouts: \(dates.sorted())")
         if let firstWorkout = workouts.first {
             print("DEBUG first workout raw date: '\(firstWorkout.date)'")
             print("DEBUG first workout prefix(10): '\(String(firstWorkout.date.prefix(10)))'")
         }
+        #endif
         return dates
     }
 
@@ -109,10 +111,7 @@ class QuestsViewModel: ObservableObject {
 
     func workoutsForDate(_ date: Date) -> [WorkoutSummaryResponse] {
         // Use local timezone DateFormatter to match how workout dates are stored
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone.current
-        let dateString = formatter.string(from: date)
+        let dateString = DateFormatter.localDate.string(from: date)
         return workouts.filter { String($0.date.prefix(10)) == dateString }
     }
 

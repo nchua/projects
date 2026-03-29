@@ -490,9 +490,9 @@ def update_goal(
     if status is not None:
         goal.status = status
         if status == GoalStatus.ABANDONED.value:
-            goal.abandoned_at = datetime.utcnow()
+            goal.abandoned_at = datetime.now(timezone.utc)
         elif status == GoalStatus.COMPLETED.value:
-            goal.achieved_at = datetime.utcnow()
+            goal.achieved_at = datetime.now(timezone.utc)
 
     db.flush()
     return goal
@@ -537,7 +537,7 @@ def update_goal_progress(
         snapshot = GoalProgressSnapshot(
             id=str(uuid.uuid4()),
             goal_id=goal.id,
-            recorded_at=datetime.utcnow(),
+            recorded_at=datetime.now(timezone.utc),
             e1rm=new_e1rm,
             weight=weight,
             reps=reps,
@@ -555,7 +555,7 @@ def update_goal_progress(
         # Check if goal is achieved (compare e1RMs)
         if new_e1rm >= target_e1rm and goal.status == GoalStatus.ACTIVE.value:
             goal.status = GoalStatus.COMPLETED.value
-            goal.achieved_at = datetime.utcnow()
+            goal.achieved_at = datetime.now(timezone.utc)
             completed_goal_ids.append(goal.id)
 
     db.flush()
@@ -1613,7 +1613,7 @@ def accept_mission(db: Session, user_id: str, mission_id: str) -> Dict[str, Any]
         raise ValueError("Mission has expired")
 
     mission.status = MissionStatus.ACCEPTED.value
-    mission.accepted_at = datetime.utcnow()
+    mission.accepted_at = datetime.now(timezone.utc)
 
     db.flush()
 
@@ -1635,7 +1635,7 @@ def decline_mission(db: Session, user_id: str, mission_id: str) -> Dict[str, Any
         raise ValueError(f"Mission cannot be declined (status: {mission.status})")
 
     mission.status = MissionStatus.DECLINED.value
-    mission.declined_at = datetime.utcnow()
+    mission.declined_at = datetime.now(timezone.utc)
 
     db.flush()
 
@@ -1737,7 +1737,7 @@ def check_mission_workout_completion(
                 # Mark this mission workout as completed
                 mission_workout.status = MissionWorkoutStatus.COMPLETED.value
                 mission_workout.completed_workout_id = workout.id
-                mission_workout.completed_at = datetime.utcnow()
+                mission_workout.completed_at = datetime.now(timezone.utc)
 
                 # Note which goals were progressed
                 goal_names = [mg.goal.exercise.name for mg in goals_hit_this_workout
@@ -1758,7 +1758,7 @@ def check_mission_workout_completion(
         completed_count = sum(1 for mw in mission.workouts if mw.status == MissionWorkoutStatus.COMPLETED.value)
         if completed_count >= len(mission.workouts):
             mission.status = MissionStatus.COMPLETED.value
-            mission.completed_at = datetime.utcnow()
+            mission.completed_at = datetime.now(timezone.utc)
             mission.xp_earned = mission.xp_reward
 
             result["missions_completed"].append({

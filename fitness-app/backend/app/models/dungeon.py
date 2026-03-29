@@ -1,9 +1,9 @@
 """
 Dungeon models - Solo Leveling inspired gate/dungeon system
 """
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, Float
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, Float, Index
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import enum
 from app.core.database import Base
@@ -69,7 +69,7 @@ class DungeonDefinition(Base):
     is_boss_dungeon = Column(Boolean, default=False)
     is_event_dungeon = Column(Boolean, default=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     objectives = relationship("DungeonObjectiveDefinition", back_populates="dungeon", cascade="all, delete-orphan")
@@ -93,7 +93,7 @@ class DungeonObjectiveDefinition(Base):
     is_required = Column(Boolean, default=True)  # Optional bonus objectives
     xp_bonus = Column(Integer, default=0)  # Additional XP for this objective
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     dungeon = relationship("DungeonDefinition", back_populates="objectives")
@@ -102,6 +102,9 @@ class DungeonObjectiveDefinition(Base):
 class UserDungeon(Base):
     """User's dungeon instances"""
     __tablename__ = "user_dungeons"
+    __table_args__ = (
+        Index("ix_user_dungeons_user_status", "user_id", "status"),
+    )
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
@@ -125,8 +128,8 @@ class UserDungeon(Base):
     stretch_type = Column(String, nullable=True)  # "stretch" or "very_stretch"
     is_rare_gate = Column(Boolean, default=False)  # Special rare spawn with bonus XP
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     definition = relationship("DungeonDefinition", back_populates="user_dungeons")
@@ -145,7 +148,7 @@ class UserDungeonObjective(Base):
     is_completed = Column(Boolean, default=False, nullable=False)
     completed_at = Column(DateTime, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     user_dungeon = relationship("UserDungeon", back_populates="objectives")

@@ -7,6 +7,7 @@ struct SupersetCard: View {
     let indices: [Int]
     @Binding var allExercises: [LoggedExercise]
     let onAddRound: (UUID) -> Void
+    let onCopyRound: (UUID) -> Void
     let onRemoveSuperset: (UUID) -> Void
 
     /// Number of rounds (based on the first exercise's set count)
@@ -38,6 +39,8 @@ struct SupersetCard: View {
                 exercises: exercises,
                 completedRounds: completedRounds,
                 totalRounds: roundCount,
+                onAddRound: { onAddRound(groupId) },
+                onCopyRound: { onCopyRound(groupId) },
                 onRemove: { onRemoveSuperset(groupId) }
             )
 
@@ -98,6 +101,8 @@ struct SupersetHeader: View {
     let exercises: [LoggedExercise]
     let completedRounds: Int
     let totalRounds: Int
+    let onAddRound: () -> Void
+    let onCopyRound: () -> Void
     let onRemove: () -> Void
 
     var body: some View {
@@ -150,6 +155,13 @@ struct SupersetHeader: View {
 
                 // Menu
                 Menu {
+                    Button(action: onAddRound) {
+                        Label("Add Round", systemImage: "plus")
+                    }
+                    Button(action: onCopyRound) {
+                        Label("Copy Last Round", systemImage: "doc.on.doc")
+                    }
+                    Divider()
                     Button(role: .destructive, action: onRemove) {
                         Label("Remove Superset", systemImage: "trash")
                     }

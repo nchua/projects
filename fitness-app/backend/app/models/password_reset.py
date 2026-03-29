@@ -2,7 +2,7 @@
 Password Reset Token model for email-based password reset
 """
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import secrets
 from app.core.database import Base
@@ -24,4 +24,4 @@ class PasswordResetToken(Base):
     expires_at = Column(DateTime, nullable=False)
     used_at = Column(DateTime, nullable=True)
     attempts = Column(Integer, default=0, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)

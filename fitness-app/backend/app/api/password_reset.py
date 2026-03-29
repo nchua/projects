@@ -1,7 +1,7 @@
 """
 Password Reset API endpoints
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
@@ -45,7 +45,7 @@ async def request_password_reset(
     # Check for recent reset request (rate limiting)
     recent_token = db.query(PasswordResetToken).filter(
         PasswordResetToken.email == email,
-        PasswordResetToken.created_at > datetime.utcnow() - timedelta(minutes=COOLDOWN_MINUTES),
+        PasswordResetToken.created_at > datetime.now(timezone.utc) - timedelta(minutes=COOLDOWN_MINUTES),
         PasswordResetToken.used_at.is_(None)
     ).first()
 
@@ -60,13 +60,13 @@ async def request_password_reset(
     if user and not user.is_deleted:
         # Generate code and create token
         code = generate_reset_code()
-        expires_at = datetime.utcnow() + timedelta(minutes=CODE_EXPIRY_MINUTES)
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=CODE_EXPIRY_MINUTES)
 
         # Invalidate any existing unused tokens for this user
         db.query(PasswordResetToken).filter(
             PasswordResetToken.user_id == user.id,
             PasswordResetToken.used_at.is_(None)
-        ).update({"used_at": datetime.utcnow()})
+        ).update({"used_at": datetime.now(timezone.utc)})
 
         # Create new token
         reset_token = PasswordResetToken(
@@ -109,7 +109,7 @@ async def verify_password_reset(
     token = db.query(PasswordResetToken).filter(
         PasswordResetToken.email == email,
         PasswordResetToken.used_at.is_(None),
-        PasswordResetToken.expires_at > datetime.utcnow()
+        PasswordResetToken.expires_at > datetime.now(timezone.utc)
     ).order_by(PasswordResetToken.created_at.desc()).first()
 
     if not token:
@@ -121,7 +121,7 @@ async def verify_password_reset(
     # Check attempt limit
     if token.attempts >= MAX_ATTEMPTS:
         # Mark token as used to prevent further attempts
-        token.used_at = datetime.utcnow()
+        token.used_at = datetime.now(timezone.utc)
         db.commit()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -150,10 +150,10 @@ async def verify_password_reset(
 
     # Hash and update password
     user.password_hash = hash_password(verify_data.new_password)
-    user.updated_at = datetime.utcnow()
+    user.updated_at = datetime.now(timezone.utc)
 
     # Mark token as used
-    token.used_at = datetime.utcnow()
+    token.used_at = datetime.now(timezone.utc)
 
     db.commit()
     logger.info(f"Password reset successful for user {user.id}")

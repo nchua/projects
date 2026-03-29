@@ -3,7 +3,7 @@ Notification API endpoints — device token registration and preference manageme
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
@@ -36,15 +36,15 @@ async def register_device_token(
         existing.user_id = current_user.id
         existing.platform = payload.platform
         existing.is_active = True
-        existing.updated_at = datetime.utcnow()
+        existing.updated_at = datetime.now(timezone.utc)
     else:
         new_token = DeviceToken(
             user_id=current_user.id,
             token=payload.token,
             platform=payload.platform,
             is_active=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         db.add(new_token)
 
@@ -66,7 +66,7 @@ async def deactivate_device_token(
 
     if token_record:
         token_record.is_active = False
-        token_record.updated_at = datetime.utcnow()
+        token_record.updated_at = datetime.now(timezone.utc)
         db.commit()
 
     return DeviceTokenResponse(message="Device token deactivated")
@@ -111,7 +111,7 @@ async def update_notification_preferences(
                 detail=f"Invalid notification type: {pref.notification_type}",
             )
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     for pref in payload.preferences:
         existing = db.query(NotificationPreference).filter(
             NotificationPreference.user_id == current_user.id,

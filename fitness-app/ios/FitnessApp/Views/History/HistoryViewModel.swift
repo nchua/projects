@@ -89,10 +89,7 @@ class HistoryViewModel: ObservableObject {
 
     func workoutsForDate(_ date: Date) -> [WorkoutSummaryResponse] {
         // Use local timezone DateFormatter to match how workout dates are stored
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone.current
-        let dateString = formatter.string(from: date)
+        let dateString = DateFormatter.localDate.string(from: date)
         return workouts.filter { String($0.date.prefix(10)) == dateString }
     }
 }

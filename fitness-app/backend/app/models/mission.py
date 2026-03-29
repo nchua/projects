@@ -3,7 +3,7 @@ Mission models - AI-powered coaching system with goals and weekly missions
 """
 from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, ForeignKey, Date, Text, JSON
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import enum
 from app.core.database import Base
@@ -66,8 +66,8 @@ class Goal(Base):
 
     # Metadata
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     user = relationship("User", back_populates="goals")
@@ -94,7 +94,7 @@ class GoalProgressSnapshot(Base):
     reps = Column(Integer, nullable=True)  # Reps performed
     workout_id = Column(String, ForeignKey("workout_sessions.id"), nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     goal = relationship("Goal", back_populates="progress_snapshots")
@@ -113,7 +113,7 @@ class MissionGoal(Base):
     workouts_completed = Column(Integer, default=0, nullable=False)  # How many workouts hit this goal
     is_satisfied = Column(Boolean, default=False, nullable=False)    # True when goal has enough weekly volume
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     mission = relationship("WeeklyMission", back_populates="mission_goals")
@@ -151,8 +151,8 @@ class WeeklyMission(Base):
     weekly_target = Column(String, nullable=True)  # e.g., "Hit 4x5 @ 190 lbs on heavy day"
     coaching_message = Column(Text, nullable=True)  # AI coaching message for the week
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     user = relationship("User", back_populates="weekly_missions")
@@ -188,7 +188,7 @@ class MissionWorkout(Base):
     # AI evaluation
     completion_notes = Column(Text, nullable=True)  # AI notes on how workout matched prescription
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     mission = relationship("WeeklyMission", back_populates="workouts")
@@ -221,7 +221,7 @@ class ExercisePrescription(Base):
     actual_reps = Column(Integer, nullable=True)
     actual_weight = Column(Float, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     mission_workout = relationship("MissionWorkout", back_populates="prescriptions")

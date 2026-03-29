@@ -9,7 +9,7 @@ Provides shared fixtures for:
 """
 import os
 import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import List, Tuple
 from unittest.mock import Mock, MagicMock
 import uuid
@@ -132,7 +132,7 @@ def deleted_user(db: Session):
         email="deleted@example.com",
         password_hash=hash_password("TestPass123!"),
         is_deleted=True,
-        deleted_at=datetime.utcnow(),
+        deleted_at=datetime.now(timezone.utc),
     )
     db.add(user)
     db.commit()
@@ -182,7 +182,7 @@ class MockGoal:
         self.status = status
         self.starting_e1rm = starting_e1rm
         self.current_e1rm = current_e1rm
-        self.created_at = datetime.utcnow()
+        self.created_at = datetime.now(timezone.utc)
         self.achieved_at = None
         self.abandoned_at = None
         self.notes = None

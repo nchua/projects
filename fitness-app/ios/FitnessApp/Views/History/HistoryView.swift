@@ -285,10 +285,7 @@ struct AriseCalendarView: View {
 
     private func hasWorkout(on date: Date) -> Bool {
         // Use local timezone DateFormatter to match how workout dates are stored
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone.current
-        return datesWithWorkouts.contains(formatter.string(from: date))
+        return datesWithWorkouts.contains(DateFormatter.localDate.string(from: date))
     }
 }
 

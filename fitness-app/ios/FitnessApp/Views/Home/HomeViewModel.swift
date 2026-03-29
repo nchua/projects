@@ -10,13 +10,6 @@ struct WeeklyStats {
     var totalVolume: Double = 0
 }
 
-// Big Three exercise name variations (same as ProgressViewModel)
-private let homeBigThreeVariations: [[String]] = [
-    ["Back Squat", "Barbell Back Squat", "Squat", "BB Squat", "Barbell Squat", "Low Bar Squat", "High Bar Squat"],
-    ["Bench Press", "Barbell Bench Press", "BB Bench", "Flat Bench Press", "Flat Barbell Bench Press"],
-    ["Deadlift", "Barbell Deadlift", "Conventional Deadlift", "BB Deadlift"]
-]
-
 @MainActor
 class HomeViewModel: ObservableObject {
     @Published var recentWorkout: WorkoutSummaryResponse?
@@ -107,7 +100,7 @@ class HomeViewModel: ObservableObject {
 
     /// Find Big Three exercises from loaded exercises list
     var bigThreeExercises: [ExerciseResponse] {
-        homeBigThreeVariations.compactMap { variations in
+        BigThree.orderedVariations.compactMap { variations in
             for variation in variations {
                 if let exercise = exercises.first(where: { $0.name.caseInsensitiveCompare(variation) == .orderedSame }) {
                     return exercise
@@ -156,7 +149,9 @@ class HomeViewModel: ObservableObject {
                 bigThreeTrends[exercise.id] = trend
             } catch {
                 // Silently fail - not critical
+                #if DEBUG
                 print("DEBUG: Failed to load trend for \(exercise.name): \(error)")
+                #endif
             }
         }
     }
@@ -172,7 +167,9 @@ class HomeViewModel: ObservableObject {
                     let workouts = try await APIClient.shared.getWorkouts(limit: 1, offset: 0)
                     self.recentWorkout = workouts.first
                 } catch {
+                    #if DEBUG
                     print("DEBUG: Failed to load workouts: \(error)")
+                    #endif
                 }
             }
 
@@ -184,7 +181,9 @@ class HomeViewModel: ObservableObject {
                     self.weeklyStats.calories = weekly.totalWorkouts * 120
                     self.weeklyStats.activeMinutes = weekly.totalWorkouts * 45
                 } catch {
+                    #if DEBUG
                     print("DEBUG: Failed to load weekly review: \(error)")
+                    #endif
                 }
             }
 
@@ -193,7 +192,9 @@ class HomeViewModel: ObservableObject {
                     let prs = try await APIClient.shared.getPRs()
                     self.recentPRs = prs.prs
                 } catch {
+                    #if DEBUG
                     print("DEBUG: Failed to load PRs: \(error)")
+                    #endif
                 }
             }
 
@@ -202,7 +203,9 @@ class HomeViewModel: ObservableObject {
                     let insightsResponse = try await APIClient.shared.getInsights()
                     self.insights = insightsResponse.insights
                 } catch {
+                    #if DEBUG
                     print("DEBUG: Failed to load insights: \(error)")
+                    #endif
                 }
             }
 
@@ -214,9 +217,13 @@ class HomeViewModel: ObservableObject {
                     if case .unauthorized = apiError {
                         // Will be handled by auth manager
                     }
+                    #if DEBUG
                     print("DEBUG: Failed to load user progress: \(apiError)")
+                    #endif
                 } catch {
+                    #if DEBUG
                     print("DEBUG: Failed to load user progress: \(error)")
+                    #endif
                 }
             }
 
@@ -225,7 +232,9 @@ class HomeViewModel: ObservableObject {
                     let achievements = try await APIClient.shared.getRecentAchievements(limit: 3)
                     self.recentAchievements = achievements.achievements
                 } catch {
+                    #if DEBUG
                     print("DEBUG: Failed to load achievements: \(error)")
+                    #endif
                 }
             }
 
@@ -234,7 +243,9 @@ class HomeViewModel: ObservableObject {
                     let quests = try await APIClient.shared.getDailyQuests()
                     self.dailyQuests = quests
                 } catch {
+                    #if DEBUG
                     print("DEBUG: Failed to load quests: \(error)")
+                    #endif
                 }
             }
 
@@ -243,7 +254,9 @@ class HomeViewModel: ObservableObject {
                     let profileResult = try await APIClient.shared.getProfile()
                     self.profile = profileResult
                 } catch {
+                    #if DEBUG
                     print("DEBUG: Failed to load profile: \(error)")
+                    #endif
                 }
             }
 
@@ -253,7 +266,9 @@ class HomeViewModel: ObservableObject {
                     self.cooldownStatus = cooldowns.musclesCooling
                     self.cooldownAgeModifier = cooldowns.ageModifier
                 } catch {
+                    #if DEBUG
                     print("DEBUG: Failed to load cooldown status: \(error)")
+                    #endif
                 }
             }
 
@@ -262,7 +277,9 @@ class HomeViewModel: ObservableObject {
                     let exercisesResult = try await APIClient.shared.getExercises()
                     self.exercises = exercisesResult
                 } catch {
+                    #if DEBUG
                     print("DEBUG: Failed to load exercises: \(error)")
+                    #endif
                 }
             }
 
@@ -271,7 +288,9 @@ class HomeViewModel: ObservableObject {
                     self.currentMission = try await APIClient.shared.getCurrentMission()
                     self.missionLoadError = nil
                 } catch {
+                    #if DEBUG
                     print("DEBUG: Failed to load current mission: \(error)")
+                    #endif
                     self.missionLoadError = error.localizedDescription
                 }
             }
@@ -280,7 +299,9 @@ class HomeViewModel: ObservableObject {
                 do {
                     self.weeklyProgressReport = try await APIClient.shared.getWeeklyProgressReport()
                 } catch {
+                    #if DEBUG
                     print("DEBUG: Failed to load weekly progress report: \(error)")
+                    #endif
                 }
             }
         }
@@ -410,7 +431,9 @@ class HomeViewModel: ObservableObject {
             // Reload quests (they'll now show mission objectives)
             self.dailyQuests = try await APIClient.shared.getDailyQuests()
         } catch {
+            #if DEBUG
             print("DEBUG: Failed to accept mission: \(error)")
+            #endif
             self.error = error.localizedDescription
         }
     }
@@ -421,7 +444,9 @@ class HomeViewModel: ObservableObject {
             // Reload mission data
             self.currentMission = try await APIClient.shared.getCurrentMission()
         } catch {
+            #if DEBUG
             print("DEBUG: Failed to decline mission: \(error)")
+            #endif
             self.error = error.localizedDescription
         }
     }
@@ -456,14 +481,18 @@ class HomeViewModel: ObservableObject {
                 )
             }
         } catch {
+            #if DEBUG
             print("DEBUG: Failed to load goal for edit: \(error)")
+            #endif
             self.error = error.localizedDescription
         }
     }
 
     func abandonGoal() async {
         guard let goalId = currentMission?.goal?.id else {
+            #if DEBUG
             print("DEBUG: No goal to abandon")
+            #endif
             return
         }
 
@@ -474,7 +503,9 @@ class HomeViewModel: ObservableObject {
             // Also reload quests
             self.dailyQuests = try await APIClient.shared.getDailyQuests()
         } catch {
+            #if DEBUG
             print("DEBUG: Failed to abandon goal: \(error)")
+            #endif
             self.error = error.localizedDescription
         }
     }
@@ -488,7 +519,9 @@ class HomeViewModel: ObservableObject {
             // Also reload quests
             self.dailyQuests = try await APIClient.shared.getDailyQuests()
         } catch {
+            #if DEBUG
             print("DEBUG: Failed to delete goal: \(error)")
+            #endif
             self.error = error.localizedDescription
         }
     }
@@ -501,7 +534,9 @@ class HomeViewModel: ObservableObject {
             do {
                 try await APIClient.shared.deleteGoal(id: goal.id)
             } catch {
+                #if DEBUG
                 print("DEBUG: Failed to delete goal \(goal.id): \(error)")
+                #endif
             }
         }
 
@@ -510,7 +545,9 @@ class HomeViewModel: ObservableObject {
             self.currentMission = try await APIClient.shared.getCurrentMission()
             self.dailyQuests = try await APIClient.shared.getDailyQuests()
         } catch {
+            #if DEBUG
             print("DEBUG: Failed to reload data after deleting all goals: \(error)")
+            #endif
             self.error = error.localizedDescription
         }
     }

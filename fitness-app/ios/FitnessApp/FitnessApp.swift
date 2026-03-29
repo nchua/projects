@@ -15,7 +15,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
+        #if DEBUG
         print("DEBUG: Failed to register for remote notifications: \(error)")
+        #endif
     }
 }
 

@@ -196,9 +196,9 @@ async def delete_account(
             detail="Incorrect password",
         )
 
-    from datetime import datetime
+    from datetime import datetime, timezone
     current_user.is_deleted = True
-    current_user.deleted_at = datetime.utcnow()
+    current_user.deleted_at = datetime.now(timezone.utc)
     db.commit()
 
     return None

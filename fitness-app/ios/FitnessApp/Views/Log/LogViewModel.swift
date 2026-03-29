@@ -100,6 +100,16 @@ class LogViewModel: ObservableObject {
         }
     }
 
+    /// Copies the last round's values into a new round for all exercises in a superset group
+    func copyLastRoundToSuperset(groupId: UUID) {
+        for i in 0..<selectedExercises.count {
+            if selectedExercises[i].supersetGroupId == groupId {
+                guard let lastSet = selectedExercises[i].sets.last else { continue }
+                selectedExercises[i].sets.append(lastSet.copyForNextSet())
+            }
+        }
+    }
+
     /// Removes all exercises in a superset group
     func removeSuperset(groupId: UUID) {
         selectedExercises.removeAll { $0.supersetGroupId == groupId }
@@ -151,14 +161,7 @@ class LogViewModel: ObservableObject {
 
     func copyLastSet(for exerciseIndex: Int) {
         guard let lastSet = selectedExercises[exerciseIndex].sets.last else { return }
-        let newSet = LoggedSet(
-            setNumber: lastSet.setNumber + 1,
-            weightText: lastSet.weightText,
-            repsText: lastSet.repsText,
-            rpe: lastSet.rpe,
-            isBodyweight: lastSet.isBodyweight
-        )
-        selectedExercises[exerciseIndex].sets.append(newSet)
+        selectedExercises[exerciseIndex].sets.append(lastSet.copyForNextSet())
     }
 
     func saveWorkout() async {
@@ -169,9 +172,6 @@ class LogViewModel: ObservableObject {
 
         // Use local timezone DateFormatter to ensure the date matches user's local date
         // ISO8601DateFormatter converts to UTC which can shift the date for users in timezones ahead of UTC
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone.current
 
         let workoutExercises = selectedExercises.enumerated().map { index, exercise in
             WorkoutExerciseCreate(
@@ -192,7 +192,7 @@ class LogViewModel: ObservableObject {
         }
 
         let workout = WorkoutCreate(
-            date: formatter.string(from: workoutDate),
+            date: DateFormatter.localDate.string(from: workoutDate),
             durationMinutes: nil,
             sessionRpe: sessionRPE,
             notes: workoutNotes.isEmpty ? nil : workoutNotes,
@@ -245,6 +245,17 @@ struct LoggedSet: Identifiable {
     // Computed properties for API/calculations
     var weight: Double { isBodyweight ? 0 : (Double(weightText) ?? 0) }
     var reps: Int { Int(repsText) ?? 0 }
+
+    /// Creates a copy with incremented set number, preserving all input values
+    func copyForNextSet() -> LoggedSet {
+        LoggedSet(
+            setNumber: setNumber + 1,
+            weightText: weightText,
+            repsText: repsText,
+            rpe: rpe,
+            isBodyweight: isBodyweight
+        )
+    }
 }
 
 /// Represents an item in the exercise list - either a single exercise or a superset group

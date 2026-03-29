@@ -301,50 +301,6 @@ enum HunterRank: String, CaseIterable, Codable {
         }
     }
 
-    /// Get rank based on lift strength standard (bodyweight multiplier)
-    static func forStrengthStandard(_ bwMultiplier: Double, lift: String) -> HunterRank {
-        // Strength standards vary by lift
-        let lowerLift = lift.lowercased()
-
-        if lowerLift.contains("squat") {
-            switch bwMultiplier {
-            case 2.5...: return .s
-            case 2.0..<2.5: return .a
-            case 1.5..<2.0: return .b
-            case 1.25..<1.5: return .c
-            case 1.0..<1.25: return .d
-            default: return .e
-            }
-        } else if lowerLift.contains("bench") {
-            switch bwMultiplier {
-            case 2.0...: return .s
-            case 1.5..<2.0: return .a
-            case 1.25..<1.5: return .b
-            case 1.0..<1.25: return .c
-            case 0.75..<1.0: return .d
-            default: return .e
-            }
-        } else if lowerLift.contains("deadlift") {
-            switch bwMultiplier {
-            case 3.0...: return .s
-            case 2.5..<3.0: return .a
-            case 2.0..<2.5: return .b
-            case 1.5..<2.0: return .c
-            case 1.25..<1.5: return .d
-            default: return .e
-            }
-        } else {
-            // Default standards
-            switch bwMultiplier {
-            case 2.0...: return .s
-            case 1.5..<2.0: return .a
-            case 1.25..<1.5: return .b
-            case 1.0..<1.25: return .c
-            case 0.75..<1.0: return .d
-            default: return .e
-            }
-        }
-    }
 }
 
 // MARK: - Fantasy Exercise Names

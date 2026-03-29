@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, desc
 from typing import List, Optional
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from collections import defaultdict
 
 from app.core.database import get_db
@@ -609,7 +609,7 @@ async def get_insights(
             title="No recent workouts",
             description="You haven't logged any workouts in the last 4 weeks. Time to get back to training!"
         ))
-        return InsightsResponse(insights=insights, generated_at=to_iso8601_utc(datetime.utcnow()))
+        return InsightsResponse(insights=insights, generated_at=to_iso8601_utc(datetime.now(timezone.utc)))
 
     # Analyze exercise trends - aggregate by date using max e1RM per workout
     # This prevents false alerts from within-session fatigue (later sets have lower e1RM)
@@ -706,7 +706,7 @@ async def get_insights(
     priority_order = {InsightPriority.HIGH: 0, InsightPriority.MEDIUM: 1, InsightPriority.LOW: 2}
     insights.sort(key=lambda x: priority_order[x.priority])
 
-    return InsightsResponse(insights=insights, generated_at=to_iso8601_utc(datetime.utcnow()))
+    return InsightsResponse(insights=insights, generated_at=to_iso8601_utc(datetime.now(timezone.utc)))
 
 
 @router.get("/weekly-review", response_model=WeeklyReviewResponse)

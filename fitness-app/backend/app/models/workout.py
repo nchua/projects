@@ -3,7 +3,7 @@ Workout session, exercises, and sets models
 """
 from sqlalchemy import Column, String, Integer, Float, ForeignKey, DateTime, Text, Enum
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import enum
 from app.core.database import Base
@@ -33,8 +33,8 @@ class WorkoutSession(Base):
     # Soft delete
     deleted_at = Column(DateTime, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     user = relationship("User", back_populates="workout_sessions")
@@ -52,7 +52,7 @@ class WorkoutExercise(Base):
     order_index = Column(Integer, nullable=False)  # Order of exercises in the workout
     superset_group_id = Column(String, nullable=True, index=True)  # Groups exercises performed as superset
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     session = relationship("WorkoutSession", back_populates="workout_exercises")
@@ -77,7 +77,7 @@ class Set(Base):
     set_number = Column(Integer, nullable=False)  # Order within the exercise
     e1rm = Column(Float, nullable=True)  # Computed estimated 1RM
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     workout_exercise = relationship("WorkoutExercise", back_populates="sets")

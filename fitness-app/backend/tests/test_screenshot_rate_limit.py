@@ -5,7 +5,7 @@ Tests the _check_screenshot_rate_limit function directly since full
 screenshot endpoint testing would require mocking the Claude Vision API.
 """
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch, MagicMock
 from fastapi import HTTPException
 
@@ -29,7 +29,7 @@ class TestScreenshotRateLimit:
             usage = ScreenshotUsage(
                 user_id=user.id,
                 screenshots_count=1,
-                created_at=datetime.utcnow() - timedelta(minutes=i + 1),
+                created_at=datetime.now(timezone.utc) - timedelta(minutes=i + 1),
             )
             db.add(usage)
         db.commit()
@@ -46,7 +46,7 @@ class TestScreenshotRateLimit:
             usage = ScreenshotUsage(
                 user_id=user.id,
                 screenshots_count=1,
-                created_at=datetime.utcnow() - timedelta(minutes=i + 1),
+                created_at=datetime.now(timezone.utc) - timedelta(minutes=i + 1),
             )
             db.add(usage)
         db.commit()
@@ -64,7 +64,7 @@ class TestScreenshotRateLimit:
         usage = ScreenshotUsage(
             user_id=user.id,
             screenshots_count=1,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
         db.add(usage)
         db.commit()

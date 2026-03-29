@@ -14,7 +14,7 @@ Enhanced fatigue calculation factors:
 - Volume: Number of sets per muscle group
 - Fatigue stacking: Multiple exercises accumulate fatigue
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
@@ -531,7 +531,7 @@ def calculate_cooldowns(
     - generated_at: timestamp
     - age_modifier: The multiplier applied based on user age
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     age_modifier = get_age_modifier(user_age)
     lookback_start = now - timedelta(hours=lookback_hours)
 

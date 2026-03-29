@@ -147,28 +147,4 @@ struct FontRegistration {
         #endif
     }
 
-    /// List all available font families (for debugging)
-    static func listAvailableFonts() {
-        print("Available Font Families:")
-        for family in UIFont.familyNames.sorted() {
-            print("  \(family)")
-            for name in UIFont.fontNames(forFamilyName: family) {
-                print("    - \(name)")
-            }
-        }
-    }
-
-    /// List ARISE-related fonts only
-    static func listARISEFonts() {
-        let ariseFamilies = ["Orbitron", "Rajdhani", "Inter", "JetBrains Mono"]
-        print("ARISE Fonts:")
-        for family in UIFont.familyNames.sorted() {
-            if ariseFamilies.contains(where: { family.contains($0) }) {
-                print("  \(family)")
-                for name in UIFont.fontNames(forFamilyName: family) {
-                    print("    - \(name)")
-                }
-            }
-        }
-    }
 }

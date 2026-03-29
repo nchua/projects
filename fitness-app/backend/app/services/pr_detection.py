@@ -3,7 +3,7 @@ PR (Personal Record) detection service
 """
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Tuple
 from app.models.pr import PR, PRType
 from app.models.workout import WorkoutExercise, Set
@@ -69,7 +69,7 @@ def detect_and_create_prs(
 
     # Check each set for PRs
     for set_obj in sets:
-        achieved_at = datetime.utcnow()
+        achieved_at = datetime.now(timezone.utc)
 
         # Check for e1RM PR
         if set_obj.e1rm and set_obj.e1rm > current_best_e1rm:

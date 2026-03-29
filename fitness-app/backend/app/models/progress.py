@@ -3,7 +3,7 @@ User Progress model - XP, leveling, and rank tracking
 """
 from sqlalchemy import Column, String, Integer, Date, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 import uuid
 import enum
 from app.core.database import Base
@@ -41,8 +41,8 @@ class UserProgress(Base):
     total_volume_lb = Column(Integer, default=0, nullable=False)  # Lifetime volume
     total_prs = Column(Integer, default=0, nullable=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     user = relationship("User", backref="progress")

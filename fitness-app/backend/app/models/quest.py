@@ -1,9 +1,9 @@
 """
 Quest models - Daily quest definitions and user progress
 """
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, Date
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, Date, Index
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import enum
 from app.core.database import Base
@@ -40,7 +40,7 @@ class QuestDefinition(Base):
     is_daily = Column(Boolean, default=True, nullable=False)  # Daily vs weekly
     is_active = Column(Boolean, default=True, nullable=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     user_quests = relationship("UserQuest", back_populates="quest")
@@ -49,6 +49,9 @@ class QuestDefinition(Base):
 class UserQuest(Base):
     """User's assigned quests and their progress"""
     __tablename__ = "user_quests"
+    __table_args__ = (
+        Index("ix_user_quests_user_date", "user_id", "assigned_date"),
+    )
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
@@ -63,7 +66,7 @@ class UserQuest(Base):
     claimed_at = Column(DateTime, nullable=True)
     # TODO: Re-enable after migration runs on Railway
     # completed_by_workout_id = Column(String, ForeignKey("workout_sessions.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     quest = relationship("QuestDefinition", back_populates="user_quests")

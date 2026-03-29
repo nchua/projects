@@ -3,7 +3,7 @@ Workout schemas for request/response validation
 """
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Union
-from datetime import datetime
+from datetime import datetime, timezone
 from app.models.workout import WeightUnit
 
 
@@ -57,7 +57,7 @@ class WorkoutExerciseResponse(BaseModel):
 
 class WorkoutCreate(BaseModel):
     """Schema for creating a workout"""
-    date: Union[datetime, str] = Field(default_factory=datetime.utcnow, description="Workout date/time")
+    date: Union[datetime, str] = Field(default_factory=lambda: datetime.now(timezone.utc), description="Workout date/time")
     duration_minutes: Optional[int] = Field(None, ge=1, le=600, description="Workout duration in minutes")
     session_rpe: Optional[int] = Field(None, ge=1, le=10, description="Overall session RPE")
     notes: Optional[str] = Field(None, max_length=1000, description="Workout notes")

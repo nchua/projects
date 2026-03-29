@@ -1,7 +1,17 @@
 """
 Estimated 1RM (e1RM) calculation functions
 """
-from app.models.user import E1RMFormula
+from sqlalchemy.orm import Session
+
+from app.models.user import E1RMFormula, UserProfile
+
+
+def get_user_e1rm_formula(db: Session, user_id: int) -> E1RMFormula:
+    """Return the user's preferred e1RM formula, defaulting to Epley."""
+    user_profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+    if user_profile and user_profile.e1rm_formula:
+        return user_profile.e1rm_formula
+    return E1RMFormula.EPLEY
 
 
 def calculate_e1rm(weight: float, reps: int, formula: E1RMFormula = E1RMFormula.EPLEY) -> float:

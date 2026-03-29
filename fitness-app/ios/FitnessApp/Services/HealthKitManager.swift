@@ -298,10 +298,7 @@ struct DailyHealthData {
 
     func toActivityCreate() -> ActivityCreate {
         // Use local timezone DateFormatter so the date reflects user's local date
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone.current
-        let dateString = formatter.string(from: date)
+        let dateString = DateFormatter.localDate.string(from: date)
 
         return ActivityCreate(
             date: dateString,

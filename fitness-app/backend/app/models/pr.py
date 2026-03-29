@@ -3,7 +3,7 @@ Personal Record (PR) tracking model
 """
 from sqlalchemy import Column, String, Float, Integer, ForeignKey, DateTime, Enum
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import enum
 from app.core.database import Base
@@ -34,7 +34,7 @@ class PR(Base):
     weight = Column(Float, nullable=True)  # Weight at which reps were achieved
 
     achieved_at = Column(DateTime, nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     user = relationship("User", back_populates="prs")

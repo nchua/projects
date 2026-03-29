@@ -8,7 +8,7 @@ Create Date: 2026-01-11
 from alembic import op
 from sqlalchemy import text
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 # revision identifiers, used by Alembic.
@@ -94,7 +94,7 @@ ONE_ARM_EXERCISES = [
 
 def upgrade():
     conn = op.get_bind()
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
 
     for ex_data in ONE_ARM_EXERCISES:
         # Check if exercise already exists (idempotent)

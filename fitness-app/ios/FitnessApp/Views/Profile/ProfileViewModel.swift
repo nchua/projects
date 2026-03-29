@@ -154,12 +154,8 @@ class ProfileViewModel: ObservableObject {
         error = nil
 
         // Use local timezone DateFormatter so the date reflects user's local date
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone.current
-
         let entry = BodyweightCreate(
-            date: formatter.string(from: Date()),
+            date: DateFormatter.localDate.string(from: Date()),
             weight: weight,
             weightUnit: preferredUnit,
             source: "manual"

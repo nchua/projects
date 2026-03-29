@@ -63,7 +63,7 @@ def upgrade() -> None:
 
         for mission_id, goal_id in missions:
             import uuid
-            from datetime import datetime
+            from datetime import datetime, timezone
             conn.execute(
                 sa.text("""
                     INSERT INTO mission_goals (id, mission_id, goal_id, workouts_completed, is_satisfied, created_at)
@@ -73,7 +73,7 @@ def upgrade() -> None:
                     "id": str(uuid.uuid4()),
                     "mission_id": mission_id,
                     "goal_id": goal_id,
-                    "created_at": datetime.utcnow()
+                    "created_at": datetime.now(timezone.utc)
                 }
             )
 

@@ -3,7 +3,7 @@ Scan Balance API endpoints
 Manages scan credits for screenshot scanner monetization
 """
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.config import settings
 from app.core.dependencies import get_current_user
+from app.core.utils import ensure_utc
 from app.models.user import User
 from app.models.scan_balance import ScanBalance, PurchaseRecord
 from app.schemas.scan_balance import (
@@ -41,7 +42,7 @@ def _get_or_create_balance(db: Session, user_id: str) -> ScanBalance:
             user_id=user_id,
             scan_credits=settings.FREE_MONTHLY_SCANS,
             has_unlimited=False,
-            free_scans_reset_at=datetime.utcnow() + timedelta(days=30),
+            free_scans_reset_at=datetime.now(timezone.utc) + timedelta(days=30),
         )
         db.add(balance)
         db.commit()
@@ -51,11 +52,12 @@ def _get_or_create_balance(db: Session, user_id: str) -> ScanBalance:
 
 def _check_monthly_reset(db: Session, balance: ScanBalance) -> ScanBalance:
     """If the free scans reset period has passed, add free credits and advance reset date."""
-    now = datetime.utcnow()
-    if balance.free_scans_reset_at and now >= balance.free_scans_reset_at:
+    now = datetime.now(timezone.utc)
+    reset_at = ensure_utc(balance.free_scans_reset_at)
+    if reset_at and now >= reset_at:
         balance.scan_credits += settings.FREE_MONTHLY_SCANS
         # Advance reset date by 30 days from the previous reset (not from now)
-        while balance.free_scans_reset_at <= now:
+        while ensure_utc(balance.free_scans_reset_at) <= now:
             balance.free_scans_reset_at += timedelta(days=30)
         db.commit()
         db.refresh(balance)

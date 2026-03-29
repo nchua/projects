@@ -11,17 +11,8 @@ from sqlalchemy.orm import joinedload
 from app.models.quest import QuestDefinition, UserQuest
 from app.models.workout import WorkoutSession, WorkoutExercise
 from app.services.xp_service import award_xp, get_or_create_user_progress
+from app.services.workout_stats import COMPOUND_EXERCISES, calculate_workout_stats
 from app.core.utils import to_iso8601_utc
-
-
-# Compound exercises for quest checking (lowercase for matching)
-COMPOUND_EXERCISES = [
-    "back squat", "squat", "front squat",
-    "bench press", "flat bench", "incline bench",
-    "deadlift", "conventional deadlift", "sumo deadlift", "romanian deadlift",
-    "overhead press", "shoulder press", "military press",
-    "barbell row", "bent over row", "pendlay row"
-]
 
 
 def get_midnight_utc_tomorrow() -> datetime:
@@ -46,24 +37,22 @@ def calculate_todays_workout_stats(db: Session, user_id: str, target_date: date)
     Returns:
         Dict with total_reps, compound_sets, total_volume, and workout_count
     """
-    # Get workouts with their exercises and sets
-    workouts = db.query(WorkoutSession).options(
+    # Get workouts for the target date with their exercises and sets
+    from datetime import datetime as _dt
+    day_start = _dt.combine(target_date, _dt.min.time())
+    day_end = _dt.combine(target_date + timedelta(days=1), _dt.min.time())
+
+    matching_workouts = db.query(WorkoutSession).options(
         joinedload(WorkoutSession.workout_exercises)
         .joinedload(WorkoutExercise.sets),
         joinedload(WorkoutSession.workout_exercises)
         .joinedload(WorkoutExercise.exercise)
     ).filter(
         WorkoutSession.user_id == user_id,
-        WorkoutSession.deleted_at == None
+        WorkoutSession.deleted_at == None,
+        WorkoutSession.date >= day_start,
+        WorkoutSession.date < day_end
     ).all()
-
-    # Filter to ONLY workouts matching the exact target date
-    # A Feb 1 quest only counts Feb 1 workouts, not Jan 31 or earlier
-    matching_workouts = []
-    for w in workouts:
-        workout_date = w.date.date() if hasattr(w.date, 'date') else w.date
-        if workout_date == target_date:
-            matching_workouts.append(w)
 
     total_reps = 0
     compound_sets = 0
@@ -272,7 +261,7 @@ def recalculate_quest_progress(db: Session, user_id: str, user_quests: List[User
         # Check if quest is now completed
         if uq.progress >= quest_def.target_value and not uq.is_completed:
             uq.is_completed = True
-            uq.completed_at = datetime.utcnow()
+            uq.completed_at = datetime.now(timezone.utc)
             completed_quest_ids.append(uq.id)
 
     db.flush()
@@ -325,23 +314,10 @@ def update_quest_progress(db: Session, user_id: str, workout: WorkoutSession) ->
             return []
 
     # Calculate workout stats for quest checking
-    total_reps = 0
-    compound_sets = 0
-    total_volume = 0
-
-    for workout_exercise in workout.workout_exercises:
-        exercise_name = workout_exercise.exercise.name.lower() if workout_exercise.exercise else ""
-
-        for set_obj in workout_exercise.sets:
-            # Total reps
-            total_reps += set_obj.reps
-
-            # Total volume (weight * reps)
-            total_volume += set_obj.weight * set_obj.reps
-
-            # Count compound sets
-            if any(compound in exercise_name for compound in COMPOUND_EXERCISES):
-                compound_sets += 1
+    stats = calculate_workout_stats(workout)
+    total_reps = stats["total_reps"]
+    compound_sets = stats["compound_sets"]
+    total_volume = stats["total_volume"]
 
     # Update each quest's progress
     completed_quest_ids = []
@@ -364,7 +340,7 @@ def update_quest_progress(db: Session, user_id: str, workout: WorkoutSession) ->
         # Check if quest is now completed
         if uq.progress >= quest_def.target_value and not uq.is_completed:
             uq.is_completed = True
-            uq.completed_at = datetime.utcnow()
+            uq.completed_at = datetime.now(timezone.utc)
             # TODO: Re-enable after migration runs
             # uq.completed_by_workout_id = workout.id
             completed_quest_ids.append(uq.id)
@@ -406,41 +382,25 @@ def claim_quest_reward(db: Session, user_id: str, user_quest_id: str) -> Dict[st
     quest_def = user_quest.quest
     xp_reward = quest_def.xp_reward
 
-    # Award XP
-    progress = get_or_create_user_progress(db, user_id)
-    old_level = progress.level
-    old_rank = progress.rank
-
-    progress.total_xp += xp_reward
-
-    # Check for level ups
-    from app.services.xp_service import xp_for_level, get_rank_for_level
-
-    while progress.total_xp >= xp_for_level(progress.level + 1):
-        progress.level += 1
-
-    # Update rank if needed
-    new_rank = get_rank_for_level(progress.level)
-    rank_changed = new_rank != old_rank
-    if rank_changed:
-        progress.rank = new_rank
+    # Award XP (no workout count/streak for reward claims)
+    xp_result = award_xp(db, user_id, xp_reward, count_workout=False)
 
     # Mark quest as claimed
     user_quest.is_claimed = True
-    user_quest.claimed_at = datetime.utcnow()
+    user_quest.claimed_at = datetime.now(timezone.utc)
 
     db.flush()
 
     return {
         "success": True,
         "xp_earned": xp_reward,
-        "total_xp": progress.total_xp,
-        "level": progress.level,
-        "leveled_up": progress.level > old_level,
-        "new_level": progress.level if progress.level > old_level else None,
-        "rank": progress.rank,
-        "rank_changed": rank_changed,
-        "new_rank": progress.rank if rank_changed else None
+        "total_xp": xp_result["total_xp"],
+        "level": xp_result["new_level"],
+        "leveled_up": xp_result["leveled_up"],
+        "new_level": xp_result["new_level"] if xp_result["leveled_up"] else None,
+        "rank": xp_result["new_rank"],
+        "rank_changed": xp_result["rank_changed"],
+        "new_rank": xp_result["new_rank"] if xp_result["rank_changed"] else None
     }
 
 

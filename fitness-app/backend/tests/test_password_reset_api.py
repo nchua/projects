@@ -5,7 +5,7 @@ Tests hit real FastAPI endpoints via TestClient with a test SQLite database.
 Email sending is mocked to avoid external dependencies.
 """
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 from app.models.password_reset import generate_reset_code, PasswordResetToken
 from app.models.user import User
@@ -55,7 +55,7 @@ class TestVerifyPasswordReset:
             user_id=user.id,
             email=user.email,
             code=code,
-            expires_at=datetime.utcnow() + timedelta(minutes=15) - timedelta(minutes=minutes_ago),
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=15) - timedelta(minutes=minutes_ago),
         )
         db.add(token)
         db.commit()
@@ -102,7 +102,7 @@ class TestVerifyPasswordReset:
             user_id=user.id,
             email=user.email,
             code="123456",
-            expires_at=datetime.utcnow() - timedelta(minutes=1),
+            expires_at=datetime.now(timezone.utc) - timedelta(minutes=1),
         )
         db.add(token)
         db.commit()

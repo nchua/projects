@@ -9,7 +9,7 @@ import re
 import logging
 import io
 from typing import Optional, Tuple, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 
@@ -24,7 +24,7 @@ from app.models.exercise import Exercise
 from app.models.workout import WorkoutSession, WorkoutExercise, Set, WeightUnit
 from app.models.user import UserProfile, E1RMFormula
 from app.api.exercises import EXERCISES_DATA
-from app.core.e1rm import calculate_e1rm
+from app.core.e1rm import calculate_e1rm, get_user_e1rm_formula
 from app.services.pr_detection import detect_and_create_prs
 from app.services.xp_service import calculate_workout_xp, award_xp, get_or_create_user_progress
 from app.services.achievement_service import check_and_unlock_achievements
@@ -591,15 +591,12 @@ async def save_extracted_workout(
         try:
             workout_date = datetime.strptime(extraction_result["session_date"], "%Y-%m-%d")
         except (ValueError, TypeError):
-            workout_date = datetime.utcnow()
+            workout_date = datetime.now(timezone.utc)
     else:
-        workout_date = datetime.utcnow()
+        workout_date = datetime.now(timezone.utc)
 
     # Get user's e1RM formula preference
-    user_profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
-    e1rm_formula = E1RMFormula.EPLEY
-    if user_profile and user_profile.e1rm_formula:
-        e1rm_formula = user_profile.e1rm_formula
+    e1rm_formula = get_user_e1rm_formula(db, user_id)
 
     # Create workout session
     notes = f"Imported from screenshot"
@@ -820,7 +817,7 @@ async def save_whoop_activity(
             existing.steps = extraction_result["steps"]
         if extraction_result.get("duration_minutes") is not None:
             existing.active_minutes = extraction_result["duration_minutes"]
-        existing.updated_at = datetime.utcnow()
+        existing.updated_at = datetime.now(timezone.utc)
         activity_id = str(existing.id)
     else:
         activity = DailyActivity(
@@ -866,10 +863,7 @@ async def save_whoop_activity(
     exercises = extraction_result.get("exercises") or []
     if exercises:
         # Get user's e1RM formula preference
-        user_profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
-        e1rm_formula = E1RMFormula.EPLEY
-        if user_profile and user_profile.e1rm_formula:
-            e1rm_formula = user_profile.e1rm_formula
+        e1rm_formula = get_user_e1rm_formula(db, user_id)
 
         order_index = 0
         for exercise_data in exercises:

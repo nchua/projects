@@ -4,10 +4,10 @@ Workout API endpoints
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.core.e1rm import calculate_e1rm, calculate_e1rm_from_rpe, calculate_e1rm_from_rir
+from app.core.e1rm import calculate_e1rm, calculate_e1rm_from_rpe, calculate_e1rm_from_rir, get_user_e1rm_formula
 from app.core.utils import to_iso8601_utc
 from app.models.user import User, E1RMFormula
 from app.models.workout import WorkoutSession, WorkoutExercise, Set
@@ -72,7 +72,13 @@ async def debug_workout_error(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Debug endpoint that returns the actual error"""
+    """Debug endpoint that returns the actual error. Only available in DEBUG mode."""
+    from app.core.config import settings
+    if not settings.DEBUG:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not found"
+        )
     import traceback
     try:
         return await _create_workout_impl(workout_data, current_user, db)
@@ -110,11 +116,7 @@ async def _create_workout_impl(
         HTTPException: If exercise IDs are invalid
     """
     # Get user's preferred e1RM formula
-    from app.models.user import UserProfile
-    user_profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
-    e1rm_formula = E1RMFormula.EPLEY  # Default
-    if user_profile and user_profile.e1rm_formula:
-        e1rm_formula = user_profile.e1rm_formula
+    e1rm_formula = get_user_e1rm_formula(db, current_user.id)
 
     # Create workout session
     workout_session = WorkoutSession(
@@ -232,7 +234,7 @@ async def _create_workout_impl(
 
     # Check for newly unlocked achievements
     # Build context for achievement checking
-    all_prs = db.query(PR).filter(PR.user_id == current_user.id).all()
+    all_prs = db.query(PR).options(joinedload(PR.exercise)).filter(PR.user_id == current_user.id).all()
     exercise_prs = {}
     for pr in all_prs:
         exercise_name = pr.exercise.name.lower() if pr.exercise else ""
@@ -543,11 +545,7 @@ async def update_workout(
     # If exercises are provided, replace all exercises and sets
     if workout_data.exercises is not None:
         # Get user's preferred e1RM formula
-        from app.models.user import UserProfile
-        user_profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
-        e1rm_formula = E1RMFormula.EPLEY  # Default
-        if user_profile and user_profile.e1rm_formula:
-            e1rm_formula = user_profile.e1rm_formula
+        e1rm_formula = get_user_e1rm_formula(db, current_user.id)
 
         # Delete existing exercises and sets (cascade will handle sets)
         db.query(WorkoutExercise).filter(
@@ -669,7 +667,7 @@ async def delete_workout(
         )
 
     # Soft delete by setting deleted_at timestamp
-    workout.deleted_at = datetime.utcnow()
+    workout.deleted_at = datetime.now(timezone.utc)
     db.commit()
 
     return None

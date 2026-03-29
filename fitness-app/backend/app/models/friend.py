@@ -3,7 +3,7 @@ Friend and FriendRequest models for social features
 """
 from sqlalchemy import Column, String, Enum, ForeignKey, DateTime, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import enum
 from app.core.database import Base
@@ -24,8 +24,8 @@ class FriendRequest(Base):
     sender_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     receiver_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     status = Column(Enum(FriendRequestStatus), default=FriendRequestStatus.PENDING, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     sender = relationship("User", foreign_keys=[sender_id])
@@ -49,7 +49,7 @@ class Friendship(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     friend_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     user = relationship("User", foreign_keys=[user_id])

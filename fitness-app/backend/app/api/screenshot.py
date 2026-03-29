@@ -8,10 +8,11 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from app.core.database import get_db
 from app.core.config import settings
 from app.core.dependencies import get_current_user
+from app.core.utils import ensure_utc
 from app.models.user import User
 from app.models.screenshot_usage import ScreenshotUsage
 from app.models.scan_balance import ScanBalance
@@ -43,7 +44,7 @@ def _get_or_create_balance(db: Session, user_id: str) -> ScanBalance:
             user_id=user_id,
             scan_credits=settings.FREE_MONTHLY_SCANS,
             has_unlimited=False,
-            free_scans_reset_at=datetime.utcnow() + timedelta(days=30),
+            free_scans_reset_at=datetime.now(timezone.utc) + timedelta(days=30),
         )
         db.add(balance)
         db.commit()
@@ -53,10 +54,11 @@ def _get_or_create_balance(db: Session, user_id: str) -> ScanBalance:
 
 def _check_monthly_reset(db: Session, balance: ScanBalance) -> ScanBalance:
     """If free scans reset period passed, add free credits and advance reset date."""
-    now = datetime.utcnow()
-    if balance.free_scans_reset_at and now >= balance.free_scans_reset_at:
+    now = datetime.now(timezone.utc)
+    reset_at = ensure_utc(balance.free_scans_reset_at)
+    if reset_at and now >= reset_at:
         balance.scan_credits += settings.FREE_MONTHLY_SCANS
-        while balance.free_scans_reset_at <= now:
+        while ensure_utc(balance.free_scans_reset_at) <= now:
             balance.free_scans_reset_at += timedelta(days=30)
         db.commit()
         db.refresh(balance)
@@ -79,7 +81,7 @@ def _check_screenshot_rate_limit(db: Session, user_id: str, screenshot_count: in
             detail="Screenshot scanning temporarily unavailable"
         )
 
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
     # Check daily abuse limit (hard cap regardless of payment)
     today_usage = db.query(func.sum(ScreenshotUsage.screenshots_count)).filter(
@@ -92,7 +94,7 @@ def _check_screenshot_rate_limit(db: Session, user_id: str, screenshot_count: in
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=f"Daily limit reached. You've used {today_usage}/{DAILY_SCREENSHOT_LIMIT} screenshots today.",
-            headers={"Retry-After": str(int((resets_at - datetime.utcnow()).total_seconds()))}
+            headers={"Retry-After": str(int((resets_at - datetime.now(timezone.utc)).total_seconds()))}
         )
 
     # Check cooldown (10 seconds between requests)
@@ -100,7 +102,7 @@ def _check_screenshot_rate_limit(db: Session, user_id: str, screenshot_count: in
         ScreenshotUsage.user_id == user_id
     ).order_by(ScreenshotUsage.created_at.desc()).first()
 
-    if last_usage and (datetime.utcnow() - last_usage.created_at).total_seconds() < COOLDOWN_SECONDS:
+    if last_usage and (datetime.now(timezone.utc) - ensure_utc(last_usage.created_at)).total_seconds() < COOLDOWN_SECONDS:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Please wait a few seconds between screenshot requests.",
