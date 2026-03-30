@@ -1,9 +1,11 @@
 """
 Screenshot usage tracking model for rate limiting
 """
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey
-from datetime import datetime, timezone
 import uuid
+from datetime import datetime, timezone
+
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+
 from app.core.database import Base
 
 

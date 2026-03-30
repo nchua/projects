@@ -2,28 +2,28 @@
 Weekly Progress Report service — goal-vs-actual comparison with pace prediction
 and actionable coaching suggestions.
 """
-from datetime import date, datetime, timedelta, timezone
-from typing import List, Optional, Dict, Any
 from collections import defaultdict
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.utils import to_iso8601_utc
-from app.models.workout import WorkoutSession, WorkoutExercise, Set
-from app.models.exercise import Exercise
-from app.models.mission import Goal, GoalProgressSnapshot, GoalStatus
-from app.models.pr import PR, PRType as PRTypeModel
+from app.models.mission import Goal, GoalStatus
+from app.models.pr import PR
+from app.models.pr import PRType as PRTypeModel
+from app.models.workout import WorkoutExercise, WorkoutSession
 from app.schemas.analytics import PRResponse, PRType
-from app.schemas.weekly_report import (
-    GoalProgressReport,
-    CoachingSuggestion,
-    WeeklyProgressReportResponse,
-    PaceStatus,
-    SuggestionType,
-    SuggestionPriority,
-)
 from app.schemas.mission import ProgressPoint
+from app.schemas.weekly_report import (
+    CoachingSuggestion,
+    GoalProgressReport,
+    PaceStatus,
+    SuggestionPriority,
+    SuggestionType,
+    WeeklyProgressReportResponse,
+)
 from app.services.mission_service import get_goal_progress_data
 
 

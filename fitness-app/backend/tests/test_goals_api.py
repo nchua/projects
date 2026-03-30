@@ -14,10 +14,8 @@ Key business rules tested:
 - Batch creation respects the limit
 - Goal progress tracking
 """
-import pytest
 from datetime import date, timedelta
-from unittest.mock import Mock, MagicMock, patch
-from typing import List
+from unittest.mock import Mock
 
 from app.services.mission_service import MAX_ACTIVE_GOALS, GoalStatus
 

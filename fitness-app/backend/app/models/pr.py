@@ -1,11 +1,13 @@
 """
 Personal Record (PR) tracking model
 """
-from sqlalchemy import Column, String, Float, Integer, ForeignKey, DateTime, Enum
-from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
-import uuid
 import enum
+import uuid
+from datetime import datetime, timezone
+
+from sqlalchemy import Column, DateTime, Enum, Float, ForeignKey, Integer, String
+from sqlalchemy.orm import relationship
+
 from app.core.database import Base
 
 

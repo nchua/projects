@@ -14,17 +14,17 @@ Enhanced fatigue calculation factors:
 - Volume: Number of sets per muscle group
 - Fatigue stacking: Multiple exercises accumulate fatigue
 """
+import logging
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Tuple
-from sqlalchemy.orm import Session
-from sqlalchemy import and_
-from collections import defaultdict
-import logging
 
-from app.models.workout import WorkoutSession, WorkoutExercise, Set
-from app.models.exercise import Exercise
-from app.models.pr import PR, PRType
+from sqlalchemy import and_
+from sqlalchemy.orm import Session
+
 from app.core.utils import to_iso8601_utc
+from app.models.pr import PR, PRType
+from app.models.workout import WorkoutSession
 
 logger = logging.getLogger(__name__)
 

@@ -4,13 +4,14 @@ Push notification service — sends APNs notifications and manages preferences
 import logging
 import os
 from typing import Optional
-from datetime import datetime
 
 from sqlalchemy.orm import Session
 
 from app.models.notification import (
-    DeviceToken, NotificationPreference, NotificationType,
-    SERVER_SENT_TYPES
+    SERVER_SENT_TYPES,
+    DeviceToken,
+    NotificationPreference,
+    NotificationType,
 )
 
 logger = logging.getLogger(__name__)
@@ -48,7 +49,7 @@ def get_apns_client():
         return None
 
     try:
-        from aioapns import APNs, NotificationRequest
+        from aioapns import APNs
         use_sandbox = os.environ.get("APNS_USE_SANDBOX", "true").lower() == "true"
         client = APNs(
             key=key_path,

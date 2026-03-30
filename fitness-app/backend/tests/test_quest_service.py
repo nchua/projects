@@ -20,10 +20,8 @@ This happened because:
 
 These tests ensure we don't regress on this issue.
 """
-import pytest
-from datetime import datetime, date, timedelta
-from unittest.mock import Mock, MagicMock, patch
-from typing import List
+from datetime import date, datetime
+from unittest.mock import Mock
 
 
 class TestUpdateQuestProgressRequirements:
@@ -53,7 +51,6 @@ class TestUpdateQuestProgressRequirements:
 
         for workout_exercise in workout.workout_exercises:
             # This loop never executes because workout_exercises is empty!
-            exercise_name = workout_exercise.exercise.name.lower()
             for set_obj in workout_exercise.sets:
                 total_reps += set_obj.reps
                 total_volume += set_obj.weight * set_obj.reps
@@ -183,12 +180,10 @@ class TestQuestDateMatching:
         This ensures a workout logged for "Jan 31" affects "Jan 31" quests.
         """
         # Simulate: UTC is Feb 1, but workout is dated Jan 31
-        utc_today = date(2026, 2, 1)
         workout_date = date(2026, 1, 31)
 
         # The fix: use workout_date for quest lookup, not utc_today
         quest_lookup_date = workout_date  # CORRECT
-        # Old bug: quest_lookup_date = utc_today  # WRONG
 
         assert quest_lookup_date == date(2026, 1, 31)
 

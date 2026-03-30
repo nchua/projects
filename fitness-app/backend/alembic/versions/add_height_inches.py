@@ -5,9 +5,9 @@ Revises: add_one_arm_exercises
 Create Date: 2026-01-15
 
 """
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = 'add_height_inches'

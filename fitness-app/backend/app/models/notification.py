@@ -1,10 +1,12 @@
 """
 Device token and notification preference models for push notifications
 """
-from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime, UniqueConstraint, Index
-from datetime import datetime, timezone
-import uuid
 import enum
+import uuid
+from datetime import datetime, timezone
+
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, String, UniqueConstraint
+
 from app.core.database import Base
 
 

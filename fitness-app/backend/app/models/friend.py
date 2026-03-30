@@ -1,11 +1,13 @@
 """
 Friend and FriendRequest models for social features
 """
-from sqlalchemy import Column, String, Enum, ForeignKey, DateTime, UniqueConstraint, Index
-from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
-import uuid
 import enum
+import uuid
+from datetime import datetime, timezone
+
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy.orm import relationship
+
 from app.core.database import Base
 
 

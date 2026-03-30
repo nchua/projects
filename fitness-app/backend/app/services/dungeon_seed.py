@@ -1,12 +1,11 @@
 """
 Dungeon Seed Data - Solo Leveling themed dungeon definitions
 """
-from sqlalchemy.orm import Session
 from datetime import datetime, timezone
-import uuid
+
+from sqlalchemy.orm import Session
 
 from app.models.dungeon import DungeonDefinition, DungeonObjectiveDefinition
-
 
 # Dungeon definitions organized by rank
 DUNGEON_SEEDS = [

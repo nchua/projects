@@ -3,11 +3,12 @@ User profile API endpoints
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.utils import to_iso8601_utc
 from app.models.user import User, UserProfile
-from app.schemas.profile import ProfileUpdate, ProfileResponse
+from app.schemas.profile import ProfileResponse, ProfileUpdate
 
 router = APIRouter()
 

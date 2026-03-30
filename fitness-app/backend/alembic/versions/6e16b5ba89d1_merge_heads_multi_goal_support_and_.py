@@ -5,8 +5,6 @@ Revises: add_multi_goal_support, b3c7e2f91a45
 Create Date: 2026-02-02 19:38:21.248485
 
 """
-from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.

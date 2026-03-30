@@ -1,30 +1,27 @@
 """
 Dungeon Service - Gate spawning, progress tracking, and rewards
 """
-from sqlalchemy.orm import Session
-from datetime import datetime, timedelta, timezone
-from typing import Optional, List, Dict, Any, Tuple
 import random
 import uuid
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Tuple
 
+from sqlalchemy.orm import Session
+
+from app.core.utils import to_iso8601_utc
 from app.models.dungeon import (
-    DungeonDefinition, DungeonObjectiveDefinition,
-    UserDungeon, UserDungeonObjective,
-    DungeonRank, DungeonObjectiveType, DungeonStatus
+    DungeonDefinition,
+    DungeonObjectiveType,
+    DungeonStatus,
+    UserDungeon,
+    UserDungeonObjective,
 )
 from app.models.workout import WorkoutSession
-from app.models.progress import UserProgress
+from app.services.workout_stats import calculate_workout_stats
 from app.services.xp_service import (
-    award_xp, get_or_create_user_progress, xp_for_level, get_rank_for_level
+    award_xp,
+    get_or_create_user_progress,
 )
-from app.core.utils import to_iso8601_utc
-from app.services.workout_stats import COMPOUND_EXERCISES, calculate_workout_stats
-from app.schemas.dungeon import (
-    DUNGEON_LEVEL_REQUIREMENTS,
-    DUNGEON_BASE_XP_BY_RANK,
-    DUNGEON_DURATION_BY_RANK
-)
-
 
 # Spawn configuration
 BASE_SPAWN_CHANCE = 0.20  # 20% base chance
@@ -198,7 +195,6 @@ def maybe_spawn_dungeon(
 
     # Calculate total XP reward
     base_xp = selected.base_xp_reward
-    stretch_bonus = int(base_xp * bonus_percent / 100) if bonus_percent else 0
 
     # Rare gates message
     if is_rare_gate:
@@ -573,7 +569,7 @@ def update_dungeon_progress(
     total_sets = stats["total_sets"]
 
     # Get user's current streak and PR count (for streak/PR objectives)
-    progress = get_or_create_user_progress(db, user_id)
+    get_or_create_user_progress(db, user_id)
 
     dungeons_progressed = []
     dungeons_completed = []

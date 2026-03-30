@@ -1,31 +1,36 @@
 """
 Mission Service - Goals, weekly missions, and AI-powered coaching
 """
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy.exc import OperationalError, ProgrammingError
-from datetime import datetime, date, timedelta, timezone
-from typing import Optional, List, Dict, Any, Set
-import uuid
 import logging
+import uuid
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Set
+
+from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy.orm import Session, joinedload
 
 logger = logging.getLogger(__name__)
 
-from app.models.mission import (
-    Goal, GoalProgressSnapshot, WeeklyMission, MissionWorkout, ExercisePrescription, MissionGoal,
-    GoalStatus, MissionStatus, MissionWorkoutStatus, TrainingSplit
-)
-from app.models.workout import WorkoutSession, WorkoutExercise
-from app.models.exercise import Exercise
-from app.models.pr import PR
 from app.core.utils import to_iso8601_utc
-from app.services.exercise_equivalence import get_equivalent_exercise_ids
-from app.services.accessory_templates import (
-    get_accessory_group,
-    get_accessories_for_group,
-    ACCESSORY_TEMPLATES,
-    VOLUME_ACCESSORY_TEMPLATES,
+from app.models.exercise import Exercise
+from app.models.mission import (
+    ExercisePrescription,
+    Goal,
+    GoalProgressSnapshot,
+    GoalStatus,
+    MissionGoal,
+    MissionStatus,
+    MissionWorkout,
+    MissionWorkoutStatus,
+    TrainingSplit,
+    WeeklyMission,
 )
-
+from app.models.pr import PR
+from app.models.workout import WorkoutSession
+from app.services.accessory_templates import (
+    get_accessories_for_group,
+)
+from app.services.exercise_equivalence import get_equivalent_exercise_ids
 
 # Maximum number of active goals per user
 MAX_ACTIVE_GOALS = 5
@@ -246,7 +251,7 @@ def _generate_accessory_prescriptions(
             "reps": acc["reps"],
             "weight": rounded_weight if rounded_weight > 0 else None,
             "weight_unit": weight_unit,
-            "notes": f"Accessory work"
+            "notes": "Accessory work"
         })
 
     return prescriptions
@@ -1088,7 +1093,6 @@ def _generate_same_group_workouts(
     goals_sorted = sorted(goals_with_exercise, key=lambda g: g.exercise.name)
     primary_a = goals_sorted[0]
     primary_b = goals_sorted[1]
-    others = goals_sorted[2:]
 
     group_label = get_muscle_group(primary_a.exercise.name)
     label_map = {

@@ -1,10 +1,12 @@
 """
 Password Reset Token model for email-based password reset
 """
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey
-from datetime import datetime, timezone
-import uuid
 import secrets
+import uuid
+from datetime import datetime, timezone
+
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+
 from app.core.database import Base
 
 

@@ -7,9 +7,9 @@ Create Date: 2026-02-02
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = 'add_target_reps_to_goals'

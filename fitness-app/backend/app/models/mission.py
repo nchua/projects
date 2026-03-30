@@ -1,11 +1,13 @@
 """
 Mission models - AI-powered coaching system with goals and weekly missions
 """
-from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, ForeignKey, Date, Text, JSON
-from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
-import uuid
 import enum
+import uuid
+from datetime import datetime, timezone
+
+from sqlalchemy import Boolean, Column, Date, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
+
 from app.core.database import Base
 
 

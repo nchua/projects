@@ -1,10 +1,12 @@
 """
 Seed exercise library with 50+ common exercises
 """
+import uuid
+
 from sqlalchemy.orm import Session
+
 from app.core.database import SessionLocal
 from app.models.exercise import Exercise
-import uuid
 
 exercises_data = [
     # Push Exercises
@@ -150,7 +152,7 @@ def seed_exercises(db: Session):
 
     db.commit()
     print(f"✅ Created {exercises_created} exercise entries ({len(exercises_data)} unique exercises with aliases)")
-    print(f"   Categories: Push, Pull, Legs, Core, Accessories")
+    print("   Categories: Push, Pull, Legs, Core, Accessories")
 
 
 if __name__ == "__main__":

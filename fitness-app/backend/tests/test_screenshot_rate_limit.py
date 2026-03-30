@@ -4,15 +4,14 @@ Unit tests for screenshot processing rate limiting.
 Tests the _check_screenshot_rate_limit function directly since full
 screenshot endpoint testing would require mocking the Claude Vision API.
 """
-import pytest
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
+import pytest
 from fastapi import HTTPException
 
 from app.api.screenshot import (
     _check_screenshot_rate_limit,
-    DAILY_SCREENSHOT_LIMIT,
-    COOLDOWN_SECONDS,
 )
 from app.models.screenshot_usage import ScreenshotUsage
 

@@ -1,22 +1,30 @@
 """
 Sync API endpoints for offline data synchronization
 """
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 from datetime import datetime, timezone
-from typing import List
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.e1rm import (
+    calculate_e1rm,
+    calculate_e1rm_from_rir,
+    calculate_e1rm_from_rpe,
+    get_user_e1rm_formula,
+)
 from app.core.utils import to_iso8601_utc
-from app.core.e1rm import calculate_e1rm, calculate_e1rm_from_rpe, calculate_e1rm_from_rir, get_user_e1rm_formula
-from app.models.user import User, UserProfile, E1RMFormula
-from app.models.workout import WorkoutSession, WorkoutExercise, Set
-from app.models.exercise import Exercise
 from app.models.bodyweight import BodyweightEntry
+from app.models.exercise import Exercise
+from app.models.user import User, UserProfile
+from app.models.workout import Set, WorkoutExercise, WorkoutSession
 from app.schemas.sync import (
-    SyncRequest, SyncResponse, SyncResult, SyncConflict,
-    SyncStatusResponse
+    SyncConflict,
+    SyncRequest,
+    SyncResponse,
+    SyncResult,
+    SyncStatusResponse,
 )
 from app.services.pr_detection import detect_and_create_prs
 

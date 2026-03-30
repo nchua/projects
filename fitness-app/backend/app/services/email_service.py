@@ -1,10 +1,11 @@
 """
 Email service for sending transactional emails via SendGrid
 """
-import os
 import logging
+import os
+
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, Email, To, Content
+from sendgrid.helpers.mail import Content, Email, Mail, To
 
 logger = logging.getLogger(__name__)
 

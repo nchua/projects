@@ -1,10 +1,11 @@
 """
 Bodyweight Pydantic schemas for request/response validation
 """
-from pydantic import BaseModel, Field
-from typing import Optional, List
 from datetime import date as date_type
 from enum import Enum
+from typing import List, Optional
+
+from pydantic import BaseModel, Field
 
 
 class WeightUnit(str, Enum):

@@ -16,15 +16,17 @@ for handler in logging.root.handlers:
 
 logger = logging.getLogger(__name__)
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
-from app.core.database import engine, Base
-from app import models  # Import models to register them
+import os
 
 # Run alembic migrations on startup
 import subprocess
-import os
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.config import settings
+from app.core.database import Base, engine
+
 try:
     print("Running database migrations...")
     result = subprocess.run(
@@ -56,6 +58,7 @@ app = FastAPI(
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
@@ -95,6 +98,7 @@ app.add_middleware(
 # Debug middleware to log all requests/responses
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+
 
 class DebugMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -213,8 +217,8 @@ if settings.DEBUG:
     @app.post("/debug/add-sports")
     async def add_sports_exercises_endpoint():
         """Add sports and cardio exercises to the database"""
-        from app.core.database import SessionLocal
         from add_sports_exercises import add_sports_exercises
+        from app.core.database import SessionLocal
         db = SessionLocal()
         try:
             add_sports_exercises(db)
@@ -223,7 +227,29 @@ if settings.DEBUG:
             db.close()
 
 # Import and include API routers
-from app.api import auth, profile, exercises, workouts, bodyweight, analytics, sync, progress, quests, screenshot, activity, dungeons, users, friends, password_reset, goals, missions, weekly_report, scan_balance, notifications
+from app.api import (
+    activity,
+    analytics,
+    auth,
+    bodyweight,
+    dungeons,
+    exercises,
+    friends,
+    goals,
+    missions,
+    notifications,
+    password_reset,
+    profile,
+    progress,
+    quests,
+    scan_balance,
+    screenshot,
+    sync,
+    users,
+    weekly_report,
+    workouts,
+)
+
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(password_reset.router, prefix="/auth/password-reset", tags=["Password Reset"])
 app.include_router(profile.router, prefix="/profile", tags=["Profile"])

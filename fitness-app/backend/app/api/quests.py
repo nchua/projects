@@ -3,19 +3,16 @@ Quest API endpoints - Daily quests and rewards
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
+from app.schemas.quest import DailyQuestsResponse, QuestClaimResponse, QuestResponse
 from app.services.quest_service import (
-    get_daily_quests,
     claim_quest_reward,
+    generate_daily_quests,
+    get_daily_quests,
     seed_quest_definitions,
-    generate_daily_quests
-)
-from app.schemas.quest import (
-    DailyQuestsResponse,
-    QuestResponse,
-    QuestClaimResponse
 )
 
 router = APIRouter()
@@ -99,7 +96,7 @@ async def refresh_quests(
     ).delete()
 
     # Generate new ones
-    user_quests = generate_daily_quests(db, current_user.id)
+    generate_daily_quests(db, current_user.id)
     db.commit()
 
     # Return the new quests

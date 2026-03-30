@@ -1,0 +1,25 @@
+# Root-level ruff config — fallback for projects without their own config.
+# Per-project configs (travel-planning, chief-of-staff) take precedence automatically.
+
+target-version = "py312"
+line-length = 99
+
+# Third-party repos we don't own
+extend-exclude = [
+    "anthropic-quickstarts",
+    "claude-cookbooks",
+    "claude-quickstarts",
+    "financial-analyst-agent",
+    "personal-website",
+    "speedreader",
+    "mcp-servers",
+    "skills",
+    "codex-skills",
+]
+
+[lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]  # 900+ pre-existing; ruff format handles line length on touched files
+
+[lint.per-file-ignores]
+"*/alembic/versions/*.py" = ["E402"]  # sys.path manipulation before imports

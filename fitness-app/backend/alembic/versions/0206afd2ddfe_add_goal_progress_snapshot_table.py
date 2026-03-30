@@ -10,9 +10,9 @@ initial snapshots from PR history:
     python scripts/backfill_goal_progress.py
 
 """
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = '0206afd2ddfe'

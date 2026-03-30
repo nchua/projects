@@ -4,12 +4,12 @@ Integration tests for password reset API endpoints.
 Tests hit real FastAPI endpoints via TestClient with a test SQLite database.
 Email sending is mocked to avoid external dependencies.
 """
-import pytest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
-from app.models.password_reset import generate_reset_code, PasswordResetToken
+
+from app.core.security import verify_password
+from app.models.password_reset import PasswordResetToken, generate_reset_code
 from app.models.user import User
-from app.core.security import hash_password, verify_password
 
 
 class TestRequestPasswordReset:

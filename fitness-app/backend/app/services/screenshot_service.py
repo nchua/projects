@@ -2,35 +2,32 @@
 Screenshot Processing Service
 Extracts workout data from screenshots using Claude Vision API
 """
-import os
 import base64
-import json
-import re
-import logging
 import io
-from typing import Optional, Tuple, List, Dict, Any
+import json
+import logging
+import os
 from datetime import datetime, timezone
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import or_
+from typing import Any, Dict, List, Optional, Tuple
 
 import anthropic
 from PIL import Image
 from PIL.ExifTags import TAGS
+from sqlalchemy import or_
+from sqlalchemy.orm import Session, joinedload
 
 logger = logging.getLogger(__name__)
 from rapidfuzz import fuzz, process
 
-from app.models.exercise import Exercise
-from app.models.workout import WorkoutSession, WorkoutExercise, Set, WeightUnit
-from app.models.user import UserProfile, E1RMFormula
 from app.api.exercises import EXERCISES_DATA
 from app.core.e1rm import calculate_e1rm, get_user_e1rm_formula
-from app.services.pr_detection import detect_and_create_prs
-from app.services.xp_service import calculate_workout_xp, award_xp, get_or_create_user_progress
-from app.services.achievement_service import check_and_unlock_achievements
-from app.services.quest_service import update_quest_progress
+from app.models.exercise import Exercise
 from app.models.pr import PR
-
+from app.models.workout import Set, WeightUnit, WorkoutExercise, WorkoutSession
+from app.services.achievement_service import check_and_unlock_achievements
+from app.services.pr_detection import detect_and_create_prs
+from app.services.quest_service import update_quest_progress
+from app.services.xp_service import award_xp, calculate_workout_xp, get_or_create_user_progress
 
 DATE_FORMATS = ["%Y-%m-%d", "%B %d, %Y", "%b %d, %Y", "%m/%d/%Y", "%d/%m/%Y"]
 
@@ -599,7 +596,7 @@ async def save_extracted_workout(
     e1rm_formula = get_user_e1rm_formula(db, user_id)
 
     # Create workout session
-    notes = f"Imported from screenshot"
+    notes = "Imported from screenshot"
     if extraction_result.get("session_name"):
         notes = f"{extraction_result['session_name']} - {notes}"
 
@@ -693,7 +690,7 @@ async def save_extracted_workout(
     logger.info(f"[SAVE] Committing workout session {workout_session.id}")
     try:
         db.commit()
-        logger.info(f"[SAVE] Workout session committed successfully")
+        logger.info("[SAVE] Workout session committed successfully")
     except Exception as e:
         logger.error(f"[SAVE] Failed to commit workout session: {e}")
         raise

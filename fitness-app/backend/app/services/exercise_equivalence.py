@@ -4,11 +4,11 @@ Exercise Equivalence Service - Maps similar exercises that can count towards goa
 When a user logs an exercise that's similar to their goal exercise,
 it should still count as progress towards that goal.
 """
-from typing import Set, Dict, List
+from typing import Dict, List, Set
+
 from sqlalchemy.orm import Session
 
 from app.models.exercise import Exercise
-
 
 # Exercise equivalence mappings
 # Key = canonical exercise keyword, Value = list of equivalent exercise keywords

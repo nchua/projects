@@ -1,9 +1,11 @@
 """
 User profile schemas for request/response validation
 """
-from pydantic import BaseModel, Field
 from typing import Optional
-from app.models.user import TrainingExperience, WeightUnit, E1RMFormula
+
+from pydantic import BaseModel, Field
+
+from app.models.user import E1RMFormula, TrainingExperience, WeightUnit
 
 
 class ProfileUpdate(BaseModel):

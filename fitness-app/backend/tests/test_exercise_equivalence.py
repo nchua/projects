@@ -11,17 +11,15 @@ Functions tested:
 - get_equivalent_exercise_ids(goal_exercise_id, db) - DB lookup
 - exercises_are_equivalent(name1, name2) - Comparison check
 """
-import pytest
-from unittest.mock import Mock, MagicMock
-from typing import Set
+from unittest.mock import Mock
 
 from app.services.exercise_equivalence import (
-    get_canonical_exercise,
-    get_equivalent_exercises,
-    get_equivalent_exercise_ids,
-    exercises_are_equivalent,
-    normalize_exercise_name,
     EXERCISE_EQUIVALENCE,
+    exercises_are_equivalent,
+    get_canonical_exercise,
+    get_equivalent_exercise_ids,
+    get_equivalent_exercises,
+    normalize_exercise_name,
 )
 
 

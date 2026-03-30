@@ -1,11 +1,13 @@
 """
 User and UserProfile models
 """
-from sqlalchemy import Column, String, Integer, Float, Enum, ForeignKey, DateTime, Boolean
-from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
-import uuid
 import enum
+import uuid
+from datetime import datetime, timezone
+
+from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String
+from sqlalchemy.orm import relationship
+
 from app.core.database import Base
 
 

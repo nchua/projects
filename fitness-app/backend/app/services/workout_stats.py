@@ -1,10 +1,9 @@
 """
 Shared workout statistics calculations used by quest, dungeon, and XP services.
 """
-from typing import Dict, Any
+from typing import Any, Dict
 
 from app.models.workout import WorkoutSession
-
 
 # Compound exercises for quest/dungeon checking (lowercase for matching)
 COMPOUND_EXERCISES = [

@@ -2,9 +2,11 @@
 Security utilities for password hashing and JWT token management
 """
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any
-from jose import JWTError, jwt
+from typing import Any, Dict, Optional
+
 import bcrypt
+from jose import JWTError, jwt
+
 from app.core.config import settings
 
 

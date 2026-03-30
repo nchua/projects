@@ -2,20 +2,18 @@
 Achievement Service
 Handles achievement checking, unlocking, and management
 """
+from typing import Any, Dict, List, Optional
+
 from sqlalchemy.orm import Session
-from datetime import datetime
-from typing import List, Dict, Any, Optional
-from app.models.progress import UserProgress
-from app.models.achievement import AchievementDefinition, UserAchievement
-from app.models.workout import WorkoutSession
-from app.models.pr import PR
+
 from app.core.utils import to_iso8601_utc
+from app.models.achievement import AchievementDefinition, UserAchievement
 from app.services.xp_service import get_or_create_user_progress
 
 
 def get_user_achievements(db: Session, user_id: str) -> List[Dict[str, Any]]:
     """Get all achievements with unlock status for a user"""
-    progress = get_or_create_user_progress(db, user_id)
+    get_or_create_user_progress(db, user_id)
 
     # Get all active achievement definitions
     definitions = db.query(AchievementDefinition).filter(
@@ -145,7 +143,7 @@ def check_and_unlock_achievements(
     Returns:
         List of newly unlocked achievements
     """
-    progress = get_or_create_user_progress(db, user_id)
+    get_or_create_user_progress(db, user_id)
     newly_unlocked = []
 
     # Get all active achievements not yet unlocked by this user

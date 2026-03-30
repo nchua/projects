@@ -4,7 +4,6 @@ Integration tests for authentication API endpoints.
 Tests hit real FastAPI endpoints via TestClient with a test SQLite database.
 Covers: registration, login, token refresh, account deletion.
 """
-import pytest
 
 
 class TestRegistration:

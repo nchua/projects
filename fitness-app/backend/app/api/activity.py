@@ -1,23 +1,22 @@
 """
 Activity/Health data API endpoints for Apple HealthKit sync
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
-from typing import List, Optional
 from datetime import date
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.utils import to_iso8601_utc
-from app.models.user import User
 from app.models.activity import DailyActivity
+from app.models.user import User
 from app.schemas.activity import (
     ActivityCreate,
-    ActivityResponse,
     ActivityHistoryResponse,
+    ActivityResponse,
     LastSyncResponse,
-    ActivitySource
 )
 
 router = APIRouter()

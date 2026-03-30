@@ -1,20 +1,21 @@
 """
 Notification API endpoints — device token registration and preference management
 """
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.models.user import User
 from app.models.notification import DeviceToken, NotificationPreference, NotificationType
+from app.models.user import User
 from app.schemas.notification import (
     DeviceTokenRegister,
     DeviceTokenResponse,
     NotificationPreferenceBulkUpdate,
-    NotificationPreferencesListResponse,
     NotificationPreferenceItem,
+    NotificationPreferencesListResponse,
 )
 
 router = APIRouter()

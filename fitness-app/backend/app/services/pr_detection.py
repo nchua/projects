@@ -1,13 +1,15 @@
 """
 PR (Personal Record) detection service
 """
-from sqlalchemy.orm import Session
-from sqlalchemy import func
 from datetime import datetime, timezone
-from typing import List, Tuple
-from app.models.pr import PR, PRType
-from app.models.workout import WorkoutExercise, Set
+from typing import List
+
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app.models.exercise import Exercise
+from app.models.pr import PR, PRType
+from app.models.workout import Set, WorkoutExercise
 
 
 def get_canonical_exercise_ids(db: Session, exercise_id: str) -> List[str]:

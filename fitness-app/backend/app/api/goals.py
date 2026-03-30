@@ -2,37 +2,36 @@
 Goals API endpoints - Strength PR goals CRUD
 """
 import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
 
 from app.core.database import get_db
 
 logger = logging.getLogger(__name__)
 from app.core.dependencies import get_current_user
-from app.models.user import User
 from app.models.exercise import Exercise
-from app.services.mission_service import (
-    create_goal,
-    get_user_goals,
-    get_goal_by_id,
-    update_goal,
-    goal_to_response,
-    goal_to_summary,
-    get_goal_progress_data,
-    GoalStatus,
-    MAX_ACTIVE_GOALS
-)
+from app.models.user import User
 from app.schemas.mission import (
-    GoalCreate,
-    GoalUpdate,
-    GoalResponse,
-    GoalSummaryResponse,
-    GoalsListResponse,
     GoalBatchCreate,
     GoalBatchCreateResponse,
+    GoalCreate,
     GoalProgressResponse,
-    MAX_ACTIVE_GOALS as SCHEMA_MAX_GOALS
+    GoalResponse,
+    GoalsListResponse,
+    GoalSummaryResponse,
+    GoalUpdate,
+)
+from app.services.mission_service import (
+    MAX_ACTIVE_GOALS,
+    GoalStatus,
+    create_goal,
+    get_goal_by_id,
+    get_goal_progress_data,
+    get_user_goals,
+    goal_to_response,
+    goal_to_summary,
+    update_goal,
 )
 
 router = APIRouter()
@@ -100,7 +99,7 @@ async def create_new_goal(
     goal = get_goal_by_id(db, current_user.id, goal.id)
 
     if not goal:
-        logger.error(f"Goal not found after creation - this should not happen!")
+        logger.error("Goal not found after creation - this should not happen!")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Goal creation failed - please try again"

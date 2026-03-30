@@ -1,9 +1,11 @@
 """
 Workout schemas for request/response validation
 """
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List, Union
 from datetime import datetime, timezone
+from typing import List, Optional, Union
+
+from pydantic import BaseModel, Field, field_validator
+
 from app.models.workout import WeightUnit
 
 

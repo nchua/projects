@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Seed real workout data from workout_log.json for a user."""
 
-import requests
 import json
-from datetime import datetime
-
 import os
+
+import requests
 
 BASE_URL = os.environ.get("API_BASE_URL", "https://backend-production-e316.up.railway.app")
 EMAIL = os.environ.get("SEED_USER_EMAIL", "test@example.com")
@@ -199,16 +198,16 @@ else:
     print(f"✗ Profile update failed: {resp.text[:100]}")
 
 print("\n" + "="*50)
-print(f"Summary:")
+print("Summary:")
 print(f"  Workouts created: {workouts_created}")
 print(f"  Your bodyweight: {bodyweight} lb")
 print("="*50)
 
 if exercises_not_found:
-    print(f"\n⚠ Exercises not found in database (skipped):")
+    print("\n⚠ Exercises not found in database (skipped):")
     for name in sorted(exercises_not_found):
         print(f"  - {name}")
 
-print(f"\nLogin with:")
+print("\nLogin with:")
 print(f"  Email: {EMAIL}")
 print(f"  Password: {PASSWORD}")

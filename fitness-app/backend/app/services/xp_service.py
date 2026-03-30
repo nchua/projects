@@ -2,12 +2,14 @@
 XP Calculation and Leveling Service
 Handles XP awards, level progression, and rank advancement
 """
+from datetime import date
+from typing import Any, Dict, Optional, Union
+
 from sqlalchemy.orm import Session
-from datetime import date, timedelta
-from typing import Optional, Dict, List, Any, Union
-from app.models.progress import UserProgress, HunterRank
-from app.models.workout import WorkoutSession, WorkoutExercise, Set
+
 from app.core.utils import to_iso8601_utc
+from app.models.progress import HunterRank, UserProgress
+from app.models.workout import WorkoutSession
 
 
 def to_date(value: Union[date, Any]) -> date:
@@ -163,7 +165,6 @@ def award_xp(
 
     old_level = progress.level
     old_rank = progress.rank
-    old_xp = progress.total_xp
 
     # Award XP
     progress.total_xp += xp_amount

@@ -1,10 +1,10 @@
 """
 Mission schemas - Goals and weekly mission responses
 """
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List
-from datetime import date, datetime
+from datetime import date
+from typing import List, Optional
 
+from pydantic import BaseModel, Field, field_validator
 
 # Maximum active goals per user
 MAX_ACTIVE_GOALS = 5

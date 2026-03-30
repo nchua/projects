@@ -1,10 +1,12 @@
 """
 Add sports and cardio exercises to existing database
 """
+import uuid
+
 from sqlalchemy.orm import Session
+
 from app.core.database import SessionLocal
 from app.models.exercise import Exercise
-import uuid
 
 sports_data = [
     # Sports & Cardio

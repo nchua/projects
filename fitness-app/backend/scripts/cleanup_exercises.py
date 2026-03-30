@@ -22,10 +22,9 @@ Usage:
     DATABASE_URL=$DATABASE_URL python scripts/cleanup_exercises.py --verbose
 """
 
+import argparse
 import os
 import sys
-import argparse
-from collections import defaultdict
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -231,7 +230,7 @@ def execute_merge(db, duplicates, dry_run=False):
                 """), {"canon_id": canon["id"], "dup_id": dup["id"]})
 
         # Delete duplicate exercise
-        print(f"   - Deleting duplicate exercise entry...")
+        print("   - Deleting duplicate exercise entry...")
         if not dry_run:
             db.execute(text("""
                 DELETE FROM exercises WHERE id = :dup_id

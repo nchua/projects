@@ -1,11 +1,12 @@
 """
 Sync Pydantic schemas for request/response validation
 """
+from typing import List, Optional
+
 from pydantic import BaseModel, Field
-from typing import Optional, List, Any
-from datetime import datetime as datetime_type
-from app.schemas.workout import WorkoutCreate
+
 from app.schemas.bodyweight import BodyweightCreate
+from app.schemas.workout import WorkoutCreate
 
 
 class SyncConflict(BaseModel):

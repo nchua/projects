@@ -6,8 +6,7 @@ exercises for a complete ~45 minute training session.
 
 Weight percentages are relative to the primary lift's prescribed weight.
 """
-from typing import Dict, List, Any
-
+from typing import Any, Dict, List
 
 # Accessory templates by muscle group (push/pull/legs)
 # Each entry: exercise_name, sets, reps, weight_pct (% of primary lift weight)

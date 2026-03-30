@@ -1,9 +1,10 @@
 """
 Weekly Progress Report schemas for goal-vs-actual comparison with pace prediction
 """
-from pydantic import BaseModel
-from typing import Optional, List
 from enum import Enum
+from typing import List, Optional
+
+from pydantic import BaseModel
 
 from app.schemas.analytics import PRResponse
 from app.schemas.mission import ProgressPoint

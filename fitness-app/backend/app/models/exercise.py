@@ -1,10 +1,12 @@
 """
 Exercise model for library and custom exercises
 """
-from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime, JSON
-from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
 import uuid
+from datetime import datetime, timezone
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, String
+from sqlalchemy.orm import relationship
+
 from app.core.database import Base
 
 

@@ -10,35 +10,31 @@ Key functionality tested:
 - Exercise equivalence for workout completion
 - Goal progress tracking through mission workouts
 """
-import pytest
-from datetime import date, timedelta, datetime
-from unittest.mock import Mock, MagicMock, patch
-from typing import List
+from datetime import date, timedelta
+from types import SimpleNamespace
+from unittest.mock import Mock
 
+import pytest
+
+from app.models.mission import MissionWorkoutStatus, TrainingSplit
 from app.services.mission_service import (
-    determine_training_split,
-    get_muscle_group,
-    calculate_e1rm,
+    MAX_ACTIVE_GOALS,
+    _generate_ppl_workouts,
+    _generate_same_group_workouts,
+    _generate_single_focus_workouts,
     _get_projected_e1rm,
     _prescribed_weight,
-    weeks_until,
-    generate_multi_goal_mission,
-    _generate_single_focus_workouts,
-    _generate_same_group_workouts,
-    _generate_ppl_workouts,
-    needs_backfill,
     backfill_current_mission,
-    check_mission_workout_completion,
-    MAX_ACTIVE_GOALS,
+    calculate_e1rm,
+    determine_training_split,
+    generate_multi_goal_mission,
+    get_muscle_group,
+    needs_backfill,
+    weeks_until,
 )
-from types import SimpleNamespace
-from app.models.mission import TrainingSplit, MissionStatus, MissionWorkoutStatus
 from tests.conftest import (
-    MockGoal,
     MockExercise,
-    MockWorkoutSession,
-    MockWorkoutExercise,
-    MockSet,
+    MockGoal,
     MockMissionGoal,
     create_goal,
     create_workout,
@@ -773,7 +769,6 @@ class TestCoachingMessageGeneration:
         Multi-goal gets split-specific coaching.
         """
         goals = list(sample_goals.values())
-        split = TrainingSplit.PPL
 
         if len(goals) > 1:
             message = f"This week's Push/Pull/Legs split targets all {len(goals)} of your goals."

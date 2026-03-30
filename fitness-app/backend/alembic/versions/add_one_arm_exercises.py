@@ -5,11 +5,12 @@ Revises: add_dungeon_tables
 Create Date: 2026-01-11
 
 """
-from alembic import op
-from sqlalchemy import text
 import uuid
 from datetime import datetime, timezone
 
+from sqlalchemy import text
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = 'add_one_arm_exercises'

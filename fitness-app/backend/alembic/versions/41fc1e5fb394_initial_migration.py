@@ -1,13 +1,13 @@
 """Initial migration
 
 Revision ID: 41fc1e5fb394
-Revises: 
+Revises:
 Create Date: 2025-12-30 17:51:37.354643
 
 """
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = '41fc1e5fb394'

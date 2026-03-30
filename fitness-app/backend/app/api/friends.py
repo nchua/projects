@@ -1,29 +1,31 @@
 """
 Friends API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_, func
 from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import and_, func, or_
+from sqlalchemy.orm import Session
+
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.utils import to_iso8601_utc
-from app.models.user import User
-from app.models.friend import FriendRequest, Friendship, FriendRequestStatus
-from app.models.workout import WorkoutSession
-from app.models.progress import UserProgress
+from app.models.friend import FriendRequest, FriendRequestStatus, Friendship
 from app.models.pr import PR
+from app.models.progress import UserProgress
+from app.models.user import User
+from app.models.workout import WorkoutSession
 from app.schemas.friend import (
+    FriendProfileResponse,
     FriendRequestCreate,
     FriendRequestResponse,
     FriendRequestsResponse,
     FriendResponse,
-    FriendProfileResponse,
-    RecentWorkoutResponse
+    RecentWorkoutResponse,
 )
 from app.services.notification_service import (
-    notify_friend_request_received,
     notify_friend_request_accepted,
+    notify_friend_request_received,
 )
 
 router = APIRouter()
@@ -462,6 +464,7 @@ async def get_friend_profile(
 
     # Get recent workouts (last 5)
     from sqlalchemy.orm import joinedload
+
     from app.models.workout import WorkoutExercise
 
     recent_workouts_query = db.query(WorkoutSession).options(

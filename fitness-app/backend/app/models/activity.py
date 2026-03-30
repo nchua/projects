@@ -1,10 +1,12 @@
 """
 Daily Activity model for HealthKit sync
 """
-from sqlalchemy import Column, String, Integer, Float, ForeignKey, DateTime, Date, UniqueConstraint
-from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
 import uuid
+from datetime import datetime, timezone
+
+from sqlalchemy import Column, Date, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy.orm import relationship
+
 from app.core.database import Base
 
 

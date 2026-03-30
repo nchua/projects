@@ -1,9 +1,9 @@
 """
 Friend schemas for request/response validation
 """
+from typing import List, Optional
+
 from pydantic import BaseModel, Field
-from typing import Optional, List
-from datetime import datetime
 
 
 class FriendRequestCreate(BaseModel):

@@ -4,18 +4,20 @@ Handles workout screenshot uploads and Claude Vision extraction
 """
 import logging
 import traceback
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import func
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
-from datetime import date, datetime, timedelta, timezone
-from app.core.database import get_db
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app.core.config import settings
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.utils import ensure_utc
-from app.models.user import User
-from app.models.screenshot_usage import ScreenshotUsage
 from app.models.scan_balance import ScanBalance
+from app.models.screenshot_usage import ScreenshotUsage
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -23,14 +25,17 @@ logger = logging.getLogger(__name__)
 DAILY_SCREENSHOT_LIMIT = 20
 COOLDOWN_SECONDS = 10
 from app.schemas.screenshot import (
-    ScreenshotProcessResponse, ScreenshotBatchResponse,
-    ExtractedExercise, ExtractedSet, HeartRateZone
+    ExtractedExercise,
+    ExtractedSet,
+    HeartRateZone,
+    ScreenshotBatchResponse,
+    ScreenshotProcessResponse,
 )
 from app.services.screenshot_service import (
     extract_workout_from_screenshot,
-    save_extracted_workout,
     merge_extractions,
-    save_whoop_activity
+    save_extracted_workout,
+    save_whoop_activity,
 )
 
 router = APIRouter()

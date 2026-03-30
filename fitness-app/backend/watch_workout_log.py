@@ -9,10 +9,10 @@ This script monitors the workout log file and automatically imports
 new workouts when the file changes.
 """
 
+import hashlib
 import subprocess
 import sys
 import time
-import hashlib
 from pathlib import Path
 
 WORKOUT_LOG_PATH = Path("/Users/nickchua/Desktop/AI/Fitness/workout_log.json")
@@ -30,7 +30,7 @@ def get_file_hash(filepath: Path) -> str:
 def sync_workouts():
     """Run the seed script to sync workouts."""
     print(f"\n{'='*50}")
-    print(f"Change detected! Syncing workouts...")
+    print("Change detected! Syncing workouts...")
     print(f"{'='*50}\n")
 
     result = subprocess.run(

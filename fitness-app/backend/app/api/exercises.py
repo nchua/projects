@@ -1,16 +1,18 @@
 """
 Exercise API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import or_
-from typing import Optional, List
 import uuid
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import or_
+from sqlalchemy.orm import Session
+
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.utils import to_iso8601_utc
-from app.models.user import User
 from app.models.exercise import Exercise
+from app.models.user import User
 from app.schemas.exercise import ExerciseCreate, ExerciseResponse
 
 router = APIRouter()
@@ -386,16 +388,17 @@ async def seed_exercises(
 @router.post("/test-create-workout", status_code=status.HTTP_200_OK)
 async def test_create_workout(db: Session = Depends(get_db)):
     """Debug endpoint to test workout creation with full error logging"""
-    from app.models.workout import WorkoutSession, WorkoutExercise, Set
-    from app.models.exercise import Exercise
-    from app.services.pr_detection import detect_and_create_prs
-    from app.services.xp_service import calculate_workout_xp, award_xp, get_or_create_user_progress
-    from app.services.achievement_service import check_and_unlock_achievements
-    from app.services.quest_service import update_quest_progress
-    from app.models.pr import PR
-    from datetime import datetime, timezone
-    from sqlalchemy.orm import joinedload
     import traceback
+    from datetime import datetime, timezone
+
+    from sqlalchemy.orm import joinedload
+
+    from app.models.exercise import Exercise
+    from app.models.pr import PR
+    from app.models.workout import Set, WorkoutExercise, WorkoutSession
+    from app.services.pr_detection import detect_and_create_prs
+    from app.services.quest_service import update_quest_progress
+    from app.services.xp_service import award_xp, calculate_workout_xp, get_or_create_user_progress
 
     result = {"steps": []}
 

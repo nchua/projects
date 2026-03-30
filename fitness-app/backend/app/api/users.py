@@ -1,14 +1,15 @@
 """
 User API endpoints for username management and user search
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
 from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
-from app.models.progress import UserProgress
-from app.schemas.user import UsernameUpdate, UsernameCheckResponse, UserPublicResponse
+from app.schemas.user import UsernameCheckResponse, UsernameUpdate, UserPublicResponse
 from app.services.xp_service import get_or_create_user_progress
 
 router = APIRouter()

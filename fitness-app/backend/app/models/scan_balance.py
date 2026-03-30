@@ -1,9 +1,11 @@
 """
 Scan balance and purchase record models for screenshot scanner paywall
 """
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey
-from datetime import datetime, timedelta, timezone
 import uuid
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+
 from app.core.database import Base
 
 

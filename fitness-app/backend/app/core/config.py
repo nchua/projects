@@ -1,8 +1,8 @@
 """
 Application configuration using Pydantic settings
 """
-from pydantic_settings import BaseSettings
 from pydantic import Field
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -42,6 +42,7 @@ settings = Settings()
 
 # Warn if using default secret key in production
 import logging as _logging
+
 _config_logger = _logging.getLogger(__name__)
 if not settings.DEBUG and settings.SECRET_KEY == "your-secret-key-here-change-in-production":
     _config_logger.warning(

@@ -1,11 +1,13 @@
 """
 User Progress model - XP, leveling, and rank tracking
 """
-from sqlalchemy import Column, String, Integer, Date, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
-from datetime import datetime, date, timezone
-import uuid
 import enum
+import uuid
+from datetime import datetime, timezone
+
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String
+from sqlalchemy.orm import relationship
+
 from app.core.database import Base
 
 

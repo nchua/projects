@@ -1,8 +1,8 @@
 """
 Authentication schemas for request/response validation
 """
+
 from pydantic import BaseModel, EmailStr, Field, validator
-from typing import Optional
 
 
 class UserRegister(BaseModel):

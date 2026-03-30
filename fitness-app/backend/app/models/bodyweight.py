@@ -1,10 +1,12 @@
 """
 Bodyweight tracking model
 """
-from sqlalchemy import Column, String, Float, ForeignKey, DateTime, Date
-from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
 import uuid
+from datetime import datetime, timezone
+
+from sqlalchemy import Column, Date, DateTime, Float, ForeignKey, String
+from sqlalchemy.orm import relationship
+
 from app.core.database import Base
 
 

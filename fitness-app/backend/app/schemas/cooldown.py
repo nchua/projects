@@ -6,9 +6,10 @@ Science-based cooldown times:
 - Medium muscles (Shoulders): 48 hours
 - Small muscles (Biceps, Triceps): 24-48 hours
 """
-from pydantic import BaseModel
-from typing import List
 from enum import Enum
+from typing import List
+
+from pydantic import BaseModel
 
 
 class MuscleGroup(str, Enum):

@@ -8,29 +8,30 @@ Provides shared fixtures for:
 - Test exercises (Big Three + variations)
 """
 import os
-import pytest
+import uuid
 from datetime import date, datetime, timedelta, timezone
 from typing import List, Tuple
-from unittest.mock import Mock, MagicMock
-import uuid
+from unittest.mock import Mock
+
+import pytest
 
 # Set test environment variables BEFORE any app imports
 _TEST_DB_PATH = os.path.join(os.path.dirname(__file__), ".test.db")
 os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB_PATH}"
 os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
 
+from fastapi.testclient import TestClient
 from sqlalchemy import event
 from sqlalchemy.orm import Session
-from fastapi.testclient import TestClient
-from app.core.database import Base, get_db, engine, SessionLocal
-from app.core.security import hash_password, create_access_token
+
 from app import models  # noqa: F401 — register all models with Base.metadata
+from app.core.database import Base, SessionLocal, engine, get_db
+from app.core.security import hash_password
 
 # Import app once at module level; main.py runs migrations on import.
 # Since DATABASE_URL points to a file-based SQLite, alembic may warn/fail
 # but the fallback create_all(bind=engine) ensures tables exist.
 from main import app as _app
-
 
 # ============ Integration Test Infrastructure ============
 

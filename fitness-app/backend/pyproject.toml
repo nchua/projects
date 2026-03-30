@@ -1,0 +1,27 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+
+[tool.ruff]
+line-length = 99
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = [
+    "E501",   # line length — ruff format handles on touched files
+    "E711",   # == None is correct in SQLAlchemy filters (generates IS NULL)
+    "E712",   # == True/False is correct in SQLAlchemy filters
+]
+
+[tool.ruff.lint.per-file-ignores]
+"alembic/versions/*.py" = ["E402"]
+"main.py" = ["E402"]
+"app/api/goals.py" = ["E402"]
+"app/api/screenshot.py" = ["E402"]
+"app/core/config.py" = ["E402"]
+"app/services/screenshot_service.py" = ["E402"]
+"app/services/mission_service.py" = ["E402"]
+"tests/conftest.py" = ["E402"]

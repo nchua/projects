@@ -17,17 +17,17 @@ Options:
     --dry-run    Show what would be created without actually creating records
 """
 
+import argparse
 import os
 import sys
-import argparse
-from datetime import datetime
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import uuid
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-import uuid
 
 from app.models.mission import Goal, GoalProgressSnapshot, GoalStatus
 from app.models.pr import PR
@@ -145,13 +145,13 @@ def backfill_goal_progress(db_url: str, dry_run: bool = False):
     if not dry_run:
         db.commit()
         print(f"\n{'=' * 70}")
-        print(f"BACKFILL COMPLETE")
+        print("BACKFILL COMPLETE")
         print(f"  Goals processed: {goals_processed}")
         print(f"  Snapshots created: {total_snapshots_created}")
         print(f"{'=' * 70}\n")
     else:
         print(f"\n{'=' * 70}")
-        print(f"DRY RUN COMPLETE")
+        print("DRY RUN COMPLETE")
         print(f"  Goals that would be processed: {goals_processed}")
         print(f"  Snapshots that would be created: {len([s for g in goals for s in []])}+")
         print(f"{'=' * 70}\n")

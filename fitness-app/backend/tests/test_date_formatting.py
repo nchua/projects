@@ -14,8 +14,10 @@ This contract ensures:
 - A workout logged on "Feb 1" in PST displays as "Feb 1" everywhere
 - Quests use UTC for daily reset (midnight UTC = new quest day)
 """
+from datetime import date, datetime, timedelta
+
 import pytest
-from datetime import datetime, date, timezone, timedelta
+
 from app.core.utils import to_iso8601_utc
 
 

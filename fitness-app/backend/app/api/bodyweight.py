@@ -1,19 +1,24 @@
 """
 Bodyweight tracking API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import func
-from typing import List, Optional
 from datetime import date, timedelta
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.utils import to_iso8601_utc
-from app.models.user import User, UserProfile, WeightUnit as ModelWeightUnit
 from app.models.bodyweight import BodyweightEntry
+from app.models.user import User, UserProfile
 from app.schemas.bodyweight import (
-    BodyweightCreate, BodyweightResponse, BodyweightHistoryResponse,
-    BodyweightTrend, WeightUnit
+    BodyweightCreate,
+    BodyweightHistoryResponse,
+    BodyweightResponse,
+    BodyweightTrend,
+    WeightUnit,
 )
 
 router = APIRouter()

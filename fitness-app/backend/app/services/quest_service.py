@@ -1,18 +1,18 @@
 """
 Quest Service - Daily quest generation, progress tracking, and rewards
 """
-from sqlalchemy.orm import Session
-from datetime import datetime, date, timedelta, timezone
-from typing import Optional, List, Dict, Any
 import random
 import uuid
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Dict, List
 
-from sqlalchemy.orm import joinedload
-from app.models.quest import QuestDefinition, UserQuest
-from app.models.workout import WorkoutSession, WorkoutExercise
-from app.services.xp_service import award_xp, get_or_create_user_progress
-from app.services.workout_stats import COMPOUND_EXERCISES, calculate_workout_stats
+from sqlalchemy.orm import Session, joinedload
+
 from app.core.utils import to_iso8601_utc
+from app.models.quest import QuestDefinition, UserQuest
+from app.models.workout import WorkoutExercise, WorkoutSession
+from app.services.workout_stats import COMPOUND_EXERCISES, calculate_workout_stats
+from app.services.xp_service import award_xp
 
 
 def get_midnight_utc_tomorrow() -> datetime:
@@ -94,7 +94,10 @@ def get_daily_quests(db: Session, user_id: str) -> Dict[str, Any]:
         Dict with quests list, refresh timestamp, and counts
     """
     # Check for active mission first
-    from app.services.mission_service import get_active_mission_for_quests, format_mission_as_quests
+    from app.services.mission_service import (
+        format_mission_as_quests,
+        get_active_mission_for_quests,
+    )
 
     active_mission = get_active_mission_for_quests(db, user_id)
     if active_mission:

@@ -1,31 +1,26 @@
 """
 Progress API endpoints - XP, leveling, and achievements
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session, joinedload
-from typing import List
+
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.models.user import User
 from app.models.pr import PR
-from app.services.xp_service import (
-    get_user_progress_summary,
-    get_or_create_user_progress,
-    xp_to_next_level,
-    level_progress
-)
-from app.services.achievement_service import (
-    get_user_achievements,
-    get_recently_unlocked,
-    check_and_unlock_achievements,
-    seed_achievement_definitions
-)
+from app.models.user import User
 from app.schemas.progress import (
-    UserProgressResponse,
     AchievementResponse,
     AchievementsListResponse,
-    RecentAchievementsResponse
+    RecentAchievementsResponse,
+    UserProgressResponse,
 )
+from app.services.achievement_service import (
+    check_and_unlock_achievements,
+    get_recently_unlocked,
+    get_user_achievements,
+    seed_achievement_definitions,
+)
+from app.services.xp_service import get_or_create_user_progress, get_user_progress_summary
 
 router = APIRouter()
 

@@ -1,11 +1,13 @@
 """
 Workout session, exercises, and sets models
 """
-from sqlalchemy import Column, String, Integer, Float, ForeignKey, DateTime, Text, Enum
-from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
-import uuid
 import enum
+import uuid
+from datetime import datetime, timezone
+
+from sqlalchemy import Column, DateTime, Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
+
 from app.core.database import Base
 
 

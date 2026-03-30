@@ -1,29 +1,30 @@
 """
 Dungeon API endpoints - Gate system for multi-day challenges
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
+
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
-from app.services.dungeon_service import (
-    get_user_dungeons,
-    get_dungeon_detail,
-    accept_dungeon,
-    abandon_dungeon,
-    claim_dungeon_rewards,
-    get_dungeon_history,
-    maybe_spawn_dungeon
-)
 from app.schemas.dungeon import (
-    DungeonsResponse,
-    DungeonResponse,
-    DungeonSummaryResponse,
-    DungeonAcceptResponse,
     DungeonAbandonResponse,
+    DungeonAcceptResponse,
     DungeonClaimResponse,
     DungeonHistoryResponse,
-    DungeonSpawnResponse
+    DungeonResponse,
+    DungeonSpawnResponse,
+    DungeonsResponse,
+    DungeonSummaryResponse,
+)
+from app.services.dungeon_service import (
+    abandon_dungeon,
+    accept_dungeon,
+    claim_dungeon_rewards,
+    get_dungeon_detail,
+    get_dungeon_history,
+    get_user_dungeons,
+    maybe_spawn_dungeon,
 )
 
 router = APIRouter()

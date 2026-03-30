@@ -1,33 +1,50 @@
 """
 Workout API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session, joinedload
-from typing import List
 from datetime import datetime, timezone
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session, joinedload
+
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.core.e1rm import calculate_e1rm, calculate_e1rm_from_rpe, calculate_e1rm_from_rir, get_user_e1rm_formula
+from app.core.e1rm import (
+    calculate_e1rm,
+    calculate_e1rm_from_rir,
+    calculate_e1rm_from_rpe,
+    get_user_e1rm_formula,
+)
 from app.core.utils import to_iso8601_utc
-from app.models.user import User, E1RMFormula
-from app.models.workout import WorkoutSession, WorkoutExercise, Set
 from app.models.exercise import Exercise
+from app.models.pr import PR, PRType
+from app.models.user import User
+from app.models.workout import Set, WorkoutExercise, WorkoutSession
 from app.schemas.workout import (
-    WorkoutCreate, WorkoutUpdate, WorkoutResponse, WorkoutSummary,
-    WorkoutExerciseResponse, SetResponse, WorkoutCreateResponse, AchievementUnlocked,
-    PRAchieved, DungeonSpawnedResponse, DungeonProgressResponse
+    AchievementUnlocked,
+    DungeonProgressResponse,
+    DungeonSpawnedResponse,
+    PRAchieved,
+    SetResponse,
+    WorkoutCreate,
+    WorkoutCreateResponse,
+    WorkoutExerciseResponse,
+    WorkoutResponse,
+    WorkoutSummary,
+    WorkoutUpdate,
+)
+from app.services.achievement_service import check_and_unlock_achievements
+from app.services.dungeon_service import maybe_spawn_dungeon, update_dungeon_progress
+from app.services.mission_service import update_goal_progress
+from app.services.notification_service import (
+    notify_achievement_unlocked,
+    notify_dungeon_spawned,
+    notify_level_up,
+    notify_rank_promotion,
 )
 from app.services.pr_detection import detect_and_create_prs
-from app.services.xp_service import calculate_workout_xp, award_xp, get_or_create_user_progress
-from app.services.achievement_service import check_and_unlock_achievements
 from app.services.quest_service import update_quest_progress
-from app.services.dungeon_service import update_dungeon_progress, maybe_spawn_dungeon
-from app.services.mission_service import update_goal_progress
-from app.models.pr import PR, PRType
-from app.services.notification_service import (
-    notify_achievement_unlocked, notify_level_up,
-    notify_rank_promotion, notify_dungeon_spawned,
-)
+from app.services.xp_service import award_xp, calculate_workout_xp, get_or_create_user_progress
 
 router = APIRouter()
 
@@ -263,7 +280,7 @@ async def _create_workout_impl(
     ).filter(WorkoutSession.id == workout_session.id).first()
 
     # Update quest progress based on this workout (requires loaded relationships)
-    completed_quest_ids = update_quest_progress(db, current_user.id, workout)
+    update_quest_progress(db, current_user.id, workout)
 
     # Update dungeon progress based on this workout
     dungeon_progress_result = update_dungeon_progress(db, current_user.id, workout)

@@ -2,9 +2,8 @@
 User schemas for request/response validation
 """
 import re
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional
 
+from pydantic import BaseModel, Field, field_validator
 
 # Username validation pattern: 3-20 chars, lowercase, alphanumeric + underscore
 # No leading/trailing underscores

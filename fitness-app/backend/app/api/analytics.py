@@ -1,27 +1,41 @@
 """
 Analytics API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func, desc
-from typing import List, Optional
-from datetime import date, datetime, timedelta, timezone
 from collections import defaultdict
+from datetime import date, datetime, timedelta, timezone
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import desc, func
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.utils import to_iso8601_utc
-from app.models.user import User, UserProfile
-from app.models.workout import WorkoutSession, WorkoutExercise, Set
 from app.models.exercise import Exercise
-from app.models.pr import PR, PRType as PRTypeModel
+from app.models.pr import PR
+from app.models.pr import PRType as PRTypeModel
+from app.models.user import User, UserProfile
+from app.models.workout import Set, WorkoutExercise, WorkoutSession
 from app.schemas.analytics import (
-    TrendResponse, TrendDirection, DataPoint, SetDetail, TimeRange,
-    ExerciseHistoryResponse, SetHistoryItem, SessionGroup,
-    PercentilesResponse, ExercisePercentile, StrengthClassification,
-    PRResponse, PRListResponse, PRType,
-    InsightsResponse, Insight, InsightType, InsightPriority,
-    WeeklyReviewResponse
+    DataPoint,
+    ExerciseHistoryResponse,
+    ExercisePercentile,
+    Insight,
+    InsightPriority,
+    InsightsResponse,
+    InsightType,
+    PercentilesResponse,
+    PRListResponse,
+    PRResponse,
+    PRType,
+    SessionGroup,
+    SetDetail,
+    SetHistoryItem,
+    StrengthClassification,
+    TrendDirection,
+    TrendResponse,
+    WeeklyReviewResponse,
 )
 from app.schemas.cooldown import CooldownResponse
 from app.services.cooldown_service import calculate_cooldowns
