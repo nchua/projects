@@ -141,6 +141,42 @@ EXERCISES_DATA = [
     {"name": "One-Arm Tricep Pushdown", "aliases": ["Single Arm Tricep Pushdown", "1-Arm Pushdown"], "category": "Push", "primary_muscle": "Triceps", "secondary_muscles": []},
     {"name": "One-Arm Overhead Extension", "aliases": ["Single Arm Overhead Extension", "1-Arm Tricep Extension"], "category": "Push", "primary_muscle": "Triceps", "secondary_muscles": []},
 
+    # Machine Exercises
+    {"name": "Machine Chest Press", "aliases": ["Chest Press Machine", "Seated Chest Press"], "category": "Push", "primary_muscle": "Chest", "secondary_muscles": ["Triceps", "Front Delts"]},
+    {"name": "Pec Deck", "aliases": ["Machine Fly", "Pec Deck Machine", "Machine Flye"], "category": "Push", "primary_muscle": "Chest", "secondary_muscles": []},
+    {"name": "Machine Shoulder Press", "aliases": ["Shoulder Press Machine", "Seated Machine Press"], "category": "Push", "primary_muscle": "Shoulders", "secondary_muscles": ["Triceps"]},
+    {"name": "Smith Machine Bench Press", "aliases": ["Smith Bench", "Smith Bench Press"], "category": "Push", "primary_muscle": "Chest", "secondary_muscles": ["Triceps", "Front Delts"]},
+    {"name": "Smith Machine Squat", "aliases": ["Smith Squat"], "category": "Legs", "primary_muscle": "Quads", "secondary_muscles": ["Glutes", "Hamstrings"]},
+    {"name": "Cable Crossover", "aliases": ["Cable Crossovers", "Cable Cross"], "category": "Push", "primary_muscle": "Chest", "secondary_muscles": []},
+    {"name": "Machine Row", "aliases": ["Seated Machine Row", "Machine Back Row"], "category": "Pull", "primary_muscle": "Back", "secondary_muscles": ["Biceps"]},
+    {"name": "Chest Supported Row", "aliases": ["Chest Supported DB Row", "Incline Row"], "category": "Pull", "primary_muscle": "Back", "secondary_muscles": ["Biceps"]},
+    {"name": "Reverse Pec Deck", "aliases": ["Reverse Machine Fly", "Machine Reverse Fly"], "category": "Pull", "primary_muscle": "Rear Delts", "secondary_muscles": ["Upper Back"]},
+    {"name": "Cable Lateral Raise", "aliases": ["Cable Side Raise", "Cable Lat Raise"], "category": "Push", "primary_muscle": "Side Delts", "secondary_muscles": []},
+    {"name": "Machine Hip Abductor", "aliases": ["Hip Abductor", "Abductor Machine"], "category": "Legs", "primary_muscle": "Glutes", "secondary_muscles": []},
+    {"name": "Machine Hip Adductor", "aliases": ["Hip Adductor", "Adductor Machine"], "category": "Legs", "primary_muscle": "Adductors", "secondary_muscles": []},
+
+    # Additional Core Exercises
+    {"name": "Medicine Ball Rotations", "aliases": ["Med Ball Rotations", "Medicine Ball Twist"], "category": "Core", "primary_muscle": "Obliques", "secondary_muscles": ["Abs"]},
+    {"name": "Bicycle Crunches", "aliases": ["Bicycle Crunch"], "category": "Core", "primary_muscle": "Abs", "secondary_muscles": ["Obliques"]},
+    {"name": "Dead Bug", "aliases": ["Dead Bugs"], "category": "Core", "primary_muscle": "Core", "secondary_muscles": ["Lower Abs"]},
+    {"name": "Mountain Climbers", "aliases": ["Mountain Climber"], "category": "Core", "primary_muscle": "Core", "secondary_muscles": ["Shoulders", "Quads"]},
+    {"name": "Pallof Press", "aliases": ["Pallof Press Hold", "Anti-Rotation Press"], "category": "Core", "primary_muscle": "Core", "secondary_muscles": ["Obliques"]},
+    {"name": "Decline Sit-ups", "aliases": ["Decline Sit-up", "Decline Situps"], "category": "Core", "primary_muscle": "Abs", "secondary_muscles": []},
+    {"name": "V-ups", "aliases": ["V-up", "V Ups"], "category": "Core", "primary_muscle": "Abs", "secondary_muscles": ["Lower Abs"]},
+    {"name": "Woodchoppers", "aliases": ["Cable Woodchop", "Wood Chop"], "category": "Core", "primary_muscle": "Obliques", "secondary_muscles": ["Core"]},
+
+    # Additional Strength Variations
+    {"name": "Skull Crushers", "aliases": ["Lying Tricep Extension", "EZ Bar Skull Crusher"], "category": "Push", "primary_muscle": "Triceps", "secondary_muscles": []},
+    {"name": "EZ Bar Curl", "aliases": ["EZ Curl", "EZ Barbell Curl"], "category": "Pull", "primary_muscle": "Biceps", "secondary_muscles": []},
+    {"name": "Concentration Curl", "aliases": ["Concentration Curls", "Seated Concentration Curl"], "category": "Pull", "primary_muscle": "Biceps", "secondary_muscles": []},
+    {"name": "Incline Dumbbell Curl", "aliases": ["Incline DB Curl", "Incline Curl"], "category": "Pull", "primary_muscle": "Biceps", "secondary_muscles": []},
+    {"name": "Spider Curl", "aliases": ["Spider Curls"], "category": "Pull", "primary_muscle": "Biceps", "secondary_muscles": []},
+    {"name": "Tricep Kickbacks", "aliases": ["Kickbacks", "DB Kickbacks", "Dumbbell Kickback"], "category": "Push", "primary_muscle": "Triceps", "secondary_muscles": []},
+    {"name": "Trap Bar Deadlift", "aliases": ["Hex Bar Deadlift", "Trap Bar DL"], "category": "Pull", "primary_muscle": "Back", "secondary_muscles": ["Glutes", "Hamstrings", "Quads"]},
+    {"name": "Good Mornings", "aliases": ["Good Morning", "Barbell Good Morning"], "category": "Pull", "primary_muscle": "Hamstrings", "secondary_muscles": ["Back", "Glutes"]},
+    {"name": "Step-ups", "aliases": ["Step Up", "Dumbbell Step-up", "Barbell Step-up"], "category": "Legs", "primary_muscle": "Quads", "secondary_muscles": ["Glutes"]},
+    {"name": "Rack Pull", "aliases": ["Rack Pulls", "Block Pull"], "category": "Pull", "primary_muscle": "Back", "secondary_muscles": ["Glutes", "Traps"]},
+
     # Sports & Cardio
     {"name": "Tennis", "aliases": ["Tennis Match", "Tennis Practice"], "category": "Sport", "primary_muscle": "Full Body", "secondary_muscles": []},
     {"name": "Pickleball", "aliases": ["Pickleball Match", "Pickleball Game"], "category": "Sport", "primary_muscle": "Full Body", "secondary_muscles": []},
@@ -201,6 +237,20 @@ async def list_exercises(
     # Order by name
     exercises = query.order_by(Exercise.name).all()
 
+    # Deduplicate seeded exercises: one per canonical_id (prefer longest/most descriptive name).
+    # Aliases stay in the DB for screenshot matching and existing workout FK references.
+    seen_canonical = {}
+    custom = []
+    for ex in exercises:
+        if ex.is_custom:
+            custom.append(ex)
+        else:
+            key = ex.canonical_id or ex.id
+            if key not in seen_canonical or len(ex.name) > len(seen_canonical[key].name):
+                seen_canonical[key] = ex
+
+    deduped = custom + sorted(seen_canonical.values(), key=lambda e: e.name)
+
     # Convert to response format
     return [
         ExerciseResponse(
@@ -215,7 +265,7 @@ async def list_exercises(
             created_at=to_iso8601_utc(ex.created_at),
             updated_at=to_iso8601_utc(ex.updated_at)
         )
-        for ex in exercises
+        for ex in deduped
     ]
 
 

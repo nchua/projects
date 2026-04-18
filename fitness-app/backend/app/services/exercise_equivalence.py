@@ -22,6 +22,8 @@ EXERCISE_EQUIVALENCE: Dict[str, List[str]] = {
         "close grip bench press", "close grip bench", "cgbp",
         "pause bench", "pause bench press",
         "floor press",
+        "smith machine bench press", "smith bench",
+        "machine chest press", "chest press machine",
     ],
 
     # Squat variations
@@ -33,7 +35,9 @@ EXERCISE_EQUIVALENCE: Dict[str, List[str]] = {
         "box squat",
         "pause squat",
         "safety bar squat", "ssb squat",
-        "leg press",  # Partial equivalence for squat
+        "leg press",
+        "smith machine squat", "smith squat",
+        "step up", "step-up",
     ],
 
     # Deadlift variations
@@ -45,6 +49,7 @@ EXERCISE_EQUIVALENCE: Dict[str, List[str]] = {
         "deficit deadlift",
         "block pull", "rack pull",
         "pause deadlift",
+        "good morning", "good mornings",
     ],
 
     # Overhead Press variations
@@ -56,6 +61,7 @@ EXERCISE_EQUIVALENCE: Dict[str, List[str]] = {
         "push press",
         "behind the neck press", "btn press",
         "arnold press",
+        "machine shoulder press",
     ],
 
     # Row variations
@@ -68,6 +74,7 @@ EXERCISE_EQUIVALENCE: Dict[str, List[str]] = {
         "chest supported row",
         "meadows row",
         "seal row",
+        "machine row",
     ],
 
     # Pull-up / Chin-up variations
@@ -90,6 +97,7 @@ EXERCISE_EQUIVALENCE: Dict[str, List[str]] = {
         "cable curl",
         "spider curl",
         "concentration curl",
+        "ez barbell curl",
     ],
 
     # Tricep variations
@@ -98,9 +106,10 @@ EXERCISE_EQUIVALENCE: Dict[str, List[str]] = {
         "skull crusher", "skull crushers", "lying tricep extension",
         "tricep pushdown", "pushdown", "cable pushdown",
         "overhead tricep extension", "overhead extension",
-        "dips",  # Also targets triceps
-        "close grip bench press",  # Also targets triceps
+        "dips",
+        "close grip bench press",
         "jm press",
+        "tricep kickback", "kickback",
     ],
 
     # Leg curl variations
@@ -144,7 +153,7 @@ EXERCISE_EQUIVALENCE: Dict[str, List[str]] = {
     "lateral_raise": [
         "lateral raise", "side raise", "side lateral raise",
         "dumbbell lateral raise", "db lateral raise",
-        "cable lateral raise",
+        "cable lateral raise", "cable side raise",
         "machine lateral raise",
     ],
 
@@ -153,6 +162,7 @@ EXERCISE_EQUIVALENCE: Dict[str, List[str]] = {
         "face pull", "face pulls",
         "cable face pull",
         "rear delt fly", "reverse fly",
+        "reverse pec deck", "reverse machine fly",
     ],
 
     # Calf Raise
