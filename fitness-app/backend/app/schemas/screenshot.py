@@ -71,15 +71,21 @@ class ScreenshotProcessResponse(BaseModel):
     activity_id: Optional[str] = Field(None, description="Created activity ID if saved (WHOOP)")
     activity_saved: bool = Field(default=False, description="Whether activity was saved (WHOOP)")
 
-    # WHOOP/Activity-specific fields
-    activity_type: Optional[str] = Field(None, description="Activity type (e.g., 'TENNIS', 'RUNNING')")
+    # Activity-specific fields (Apple Watch / WHOOP / Strava / etc.)
+    activity_type: Optional[str] = Field(None, description="Activity type (e.g., 'Tennis', 'Padel', 'Outdoor Run')")
     time_range: Optional[str] = Field(None, description="Activity time range (e.g., '7:03 PM to 8:46 PM')")
-    strain: Optional[float] = Field(None, description="WHOOP activity strain score")
+    distance: Optional[float] = Field(None, description="Distance covered (sport-dependent)")
+    distance_unit: Optional[str] = Field(None, description="Distance unit (mi, km, m, yd)")
+    elevation_gain: Optional[float] = Field(None, description="Elevation gain")
+    elevation_unit: Optional[str] = Field(None, description="Elevation unit (ft, m)")
+    avg_pace: Optional[str] = Field(None, description="Average pace as shown (e.g., '8:42 /mi')")
+    strain: Optional[float] = Field(None, description="WHOOP activity strain score (WHOOP only)")
     steps: Optional[int] = Field(None, description="Step count")
-    calories: Optional[int] = Field(None, description="Calories burned")
+    calories: Optional[int] = Field(None, description="Total calories burned")
+    active_calories: Optional[int] = Field(None, description="Active calories burned")
     avg_hr: Optional[int] = Field(None, description="Average heart rate in BPM")
     max_hr: Optional[int] = Field(None, description="Max heart rate in BPM")
-    source: Optional[str] = Field(None, description="Data source (e.g., 'VIA APPLE WATCH')")
+    source: Optional[str] = Field(None, description="Data source (e.g., 'Apple Watch', 'WHOOP')")
     heart_rate_zones: List[HeartRateZone] = Field(default_factory=list, description="Heart rate zone breakdown")
 
     class Config:
@@ -101,15 +107,21 @@ class ScreenshotBatchResponse(BaseModel):
     activity_id: Optional[str] = Field(None, description="Created activity ID if saved (WHOOP)")
     activity_saved: bool = Field(default=False, description="Whether activity was saved (WHOOP)")
 
-    # WHOOP/Activity-specific fields
-    activity_type: Optional[str] = Field(None, description="Activity type (e.g., 'TENNIS', 'RUNNING')")
+    # Activity-specific fields (Apple Watch / WHOOP / Strava / etc.)
+    activity_type: Optional[str] = Field(None, description="Activity type (e.g., 'Tennis', 'Padel', 'Outdoor Run')")
     time_range: Optional[str] = Field(None, description="Activity time range")
-    strain: Optional[float] = Field(None, description="WHOOP activity strain score")
+    distance: Optional[float] = Field(None, description="Distance covered (sport-dependent)")
+    distance_unit: Optional[str] = Field(None, description="Distance unit (mi, km, m, yd)")
+    elevation_gain: Optional[float] = Field(None, description="Elevation gain")
+    elevation_unit: Optional[str] = Field(None, description="Elevation unit (ft, m)")
+    avg_pace: Optional[str] = Field(None, description="Average pace as shown")
+    strain: Optional[float] = Field(None, description="WHOOP activity strain score (WHOOP only)")
     steps: Optional[int] = Field(None, description="Step count")
-    calories: Optional[int] = Field(None, description="Calories burned")
+    calories: Optional[int] = Field(None, description="Total calories burned")
+    active_calories: Optional[int] = Field(None, description="Active calories burned")
     avg_hr: Optional[int] = Field(None, description="Average heart rate in BPM")
     max_hr: Optional[int] = Field(None, description="Max heart rate in BPM")
-    source: Optional[str] = Field(None, description="Data source")
+    source: Optional[str] = Field(None, description="Data source (e.g., 'Apple Watch', 'WHOOP')")
     heart_rate_zones: List[HeartRateZone] = Field(default_factory=list, description="Heart rate zone breakdown")
 
     class Config:

@@ -42,29 +42,41 @@ def parse_date_string(date_string: str) -> Optional[datetime]:
     return None
 
 
-# Extraction prompt - handles both gym workout screenshots and WHOOP/activity screenshots
-EXTRACTION_PROMPT = """Analyze this fitness screenshot and extract the data.
+# Extraction prompt - handles gym workout screenshots and any cardio/sport activity screenshot
+# (Apple Watch / Apple Fitness / Apple Health is the most common source, but WHOOP, Strava,
+# Garmin, Nike Run Club, etc. all work the same way.)
+EXTRACTION_PROMPT = """Analyze this fitness screenshot and extract the data as JSON.
 
-FIRST, determine the screenshot type:
-1. "gym_workout" - Traditional weight training screenshot with exercises, sets, reps, weights
-2. "whoop_activity" - WHOOP app screenshot OR any cardio/activity screenshot (running, cycling, tennis, etc.) with metrics like strain, heart rate, calories, steps, duration
+STEP 1 - Classify the screenshot into one of two types:
 
-IMPORTANT: Use "whoop_activity" for ANY of these:
-- WHOOP app screenshots showing strain scores, heart rate zones, activity metrics
-- Running/jogging activity summaries (from WHOOP, Apple Fitness, Strava, etc.)
-- Cycling, swimming, tennis, or other cardio activities
-- Any screenshot showing "Activity Strain", heart rate zones, or cardio metrics
-- Screenshots with activity names like "RUNNING", "CYCLING", "TENNIS", etc.
+1. "gym_workout" - Weight training log with exercises, sets, reps, and weights.
+   Examples: Hevy, Strong, FitNotes, Apple Workouts strength session detail.
 
-Use "gym_workout" ONLY for weight training with exercises, sets, reps, and weights.
+2. "whoop_activity" - ANY recorded sport/cardio activity summary, regardless of source app.
+   This is the catch-all for non-weight-training activities. Use it for:
+   - Apple Watch / Apple Fitness / Apple Health workout summaries (MOST COMMON)
+   - WHOOP activity screens with strain scores
+   - Strava, Garmin Connect, Nike Run Club, Polar, Suunto, Coros activity summaries
+   - ANY sport: running (indoor/outdoor), cycling (indoor/outdoor), walking, hiking,
+     swimming (pool/open water), rowing, elliptical, stair stepper, HIIT, functional
+     training, traditional strength training summary card, core, yoga, pilates,
+     barre, dance, kickboxing, boxing, martial arts, climbing, bouldering,
+     tennis, padel, pickleball, squash, badminton, table tennis,
+     basketball, soccer, football, baseball, softball, volleyball, hockey, lacrosse,
+     rugby, cricket, handball, golf, disc sports,
+     skiing (downhill/cross-country), snowboarding, snowshoeing, skating,
+     surfing, paddleboarding, kayaking, sailing, fishing, hunting,
+     equestrian, archery, fencing, gymnastics, cooldown, mind & body,
+     wheelchair workouts, "Other" workouts.
+   If in doubt and the screenshot is not a strength-training set/rep log, use "whoop_activity".
 
-Based on the type, return JSON in the appropriate format:
+STEP 2 - Return JSON in the matching schema. Output JSON ONLY: no prose, no markdown.
 
-FOR GYM WORKOUT SCREENSHOTS (screenshot_type: "gym_workout"):
+SCHEMA A - "gym_workout":
 {
   "screenshot_type": "gym_workout",
-  "session_date": "YYYY-MM-DD or null if not visible",
-  "session_name": "Name of workout if shown (e.g., 'Upper Three', 'Leg Day')",
+  "session_date": "YYYY-MM-DD or null",
+  "session_name": "Workout name if shown (e.g., 'Upper Three', 'Leg Day') or null",
   "duration_minutes": number or null,
   "summary": {
     "tonnage_lb": total weight lifted in pounds,
@@ -74,7 +86,7 @@ FOR GYM WORKOUT SCREENSHOTS (screenshot_type: "gym_workout"):
     {
       "name": "Exercise Name",
       "equipment": "barbell|dumbbell|cable|bodyweight|machine",
-      "variation": "any variation noted (e.g., 'seated', 'incline')",
+      "variation": "variation if noted (e.g., 'seated', 'incline') or null",
       "sets": [
         {
           "weight_lb": weight in pounds (0 for bodyweight),
@@ -89,37 +101,46 @@ FOR GYM WORKOUT SCREENSHOTS (screenshot_type: "gym_workout"):
   ]
 }
 
-FOR WHOOP/ACTIVITY SCREENSHOTS (screenshot_type: "whoop_activity"):
+SCHEMA B - "whoop_activity" (use for ALL sports/cardio activities):
 {
   "screenshot_type": "whoop_activity",
-  "activity_type": "Activity name exactly as shown (e.g., 'RUNNING', 'CYCLING', 'TENNIS', 'Indoor Run')",
-  "session_date": "YYYY-MM-DD or null if not visible",
-  "time_range": "Start to end time if visible (e.g., '6:30 AM to 6:40 AM')",
-  "duration_minutes": number extracted from duration shown (e.g., '0:09:59' = 10),
-  "strain": activity strain score as a number (e.g., 7.7),
-  "steps": step count as integer or null,
-  "calories": calories burned as integer or null,
+  "activity_type": "Activity name exactly as shown (e.g., 'Tennis', 'Padel', 'Outdoor Run', 'Pool Swim', 'HIIT', 'Functional Strength Training')",
+  "session_date": "YYYY-MM-DD or null",
+  "time_range": "Start to end time if visible (e.g., '6:30 AM to 7:15 AM') or null",
+  "duration_minutes": duration converted to minutes (e.g., '0:09:59' = 10, '1:30:00' = 90) or null,
+  "distance": numeric distance covered or null (omit for sports that don't track distance like tennis, yoga, strength),
+  "distance_unit": "mi|km|m|yd or null",
+  "active_calories": active calories as integer or null,
+  "calories": total calories burned as integer (use Total Calories if shown, otherwise active) or null,
   "avg_hr": average heart rate in BPM as integer or null,
   "max_hr": max heart rate in BPM as integer or null,
-  "source": "Data source if shown (e.g., 'VIA APPLE WATCH')",
+  "steps": step count as integer or null (only for walking/running/hiking),
+  "elevation_gain": elevation gain in feet or meters as a number or null,
+  "elevation_unit": "ft|m or null",
+  "avg_pace": "pace as shown if applicable (e.g., '8:42 /mi', '5:24 /km') or null",
+  "strain": WHOOP strain score as a number (e.g., 7.7) or null (WHOOP only - leave null for Apple Watch),
+  "source": "Data source label if shown (e.g., 'Apple Watch', 'WHOOP', 'Strava', 'Garmin') or null",
   "heart_rate_zones": [
     {
-      "zone": zone number as integer (0-5),
+      "zone": zone number 0-5,
       "bpm_range": "BPM range as string (e.g., '150-161')",
-      "percentage": percentage as number without % sign (e.g., 53 not '53%'),
+      "percentage": percentage as number without % sign,
       "duration": "time in zone as string (e.g., '5:05')"
     }
-  ]
+  ] or null
 }
 
 CRITICAL RULES:
-- Return ONLY valid JSON - no explanations, no markdown, no extra text before or after
-- All numeric values must be numbers, not strings (e.g., 7.7 not "7.7", 53 not "53%")
-- If a field is not visible, use null (not empty string)
-- For duration_minutes, convert time format to minutes (e.g., "0:09:59" = 10, "1:30:00" = 90)
-- For percentages, extract just the number (e.g., "53%" becomes 53)
-- Ignore any AI-generated summaries or motivational text at the bottom of screenshots
-- For WHOOP running/cardio screenshots: look for Activity Strain, heart rate zones, duration, steps"""
+- Return ONLY valid JSON. No explanations, no markdown fences, no text before or after.
+- Numbers must be numbers, not strings ('7.7' -> 7.7, '53%' -> 53).
+- If a field is not visible OR not applicable to this sport, use null. Do not invent values.
+- The "whoop_activity" schema is required for EVERY non-weight-training sport, including ones
+  that don't have heart rate zones, strain, distance, or steps. Most fields are optional;
+  only activity_type and screenshot_type are required.
+- Convert any duration shown as H:MM:SS or MM:SS into total minutes (round to nearest int).
+- Ignore AI summaries, motivational quotes, ads, or any non-data text overlays.
+- Do NOT refuse to extract a screenshot just because the sport is unfamiliar; map it to
+  "whoop_activity" with as many fields as the screenshot shows."""
 
 
 def get_media_type(filename: str) -> str:
@@ -359,9 +380,15 @@ async def extract_workout_from_screenshot(
             "session_date": session_date,
             "time_range": extracted_data.get("time_range"),
             "duration_minutes": extracted_data.get("duration_minutes"),
+            "distance": extracted_data.get("distance"),
+            "distance_unit": extracted_data.get("distance_unit"),
+            "elevation_gain": extracted_data.get("elevation_gain"),
+            "elevation_unit": extracted_data.get("elevation_unit"),
+            "avg_pace": extracted_data.get("avg_pace"),
             "strain": extracted_data.get("strain"),
             "steps": extracted_data.get("steps"),
             "calories": extracted_data.get("calories"),
+            "active_calories": extracted_data.get("active_calories"),
             "avg_hr": extracted_data.get("avg_hr"),
             "max_hr": extracted_data.get("max_hr"),
             "source": extracted_data.get("source"),
@@ -465,10 +492,16 @@ def merge_extractions(extractions: List[Dict[str, Any]]) -> Dict[str, Any]:
     time_range = None
     source = None
 
-    # WHOOP-specific fields - aggregate
+    # Activity-specific fields - aggregate
     total_strain = None
     total_steps = None
     total_calories = None
+    total_active_calories = None
+    total_distance = None
+    distance_unit = None
+    total_elevation = None
+    elevation_unit = None
+    avg_pace = None
     max_avg_hr = None
     max_max_hr = None
     all_heart_rate_zones = []
@@ -486,14 +519,26 @@ def merge_extractions(extractions: List[Dict[str, Any]]) -> Dict[str, Any]:
             time_range = ext["time_range"]
         if not source and ext.get("source"):
             source = ext["source"]
+        if not distance_unit and ext.get("distance_unit"):
+            distance_unit = ext["distance_unit"]
+        if not elevation_unit and ext.get("elevation_unit"):
+            elevation_unit = ext["elevation_unit"]
+        if not avg_pace and ext.get("avg_pace"):
+            avg_pace = ext["avg_pace"]
 
-        # Aggregate WHOOP metrics
+        # Aggregate activity metrics
         if ext.get("strain"):
             total_strain = (total_strain or 0) + ext["strain"]
         if ext.get("steps"):
             total_steps = (total_steps or 0) + ext["steps"]
         if ext.get("calories"):
             total_calories = (total_calories or 0) + ext["calories"]
+        if ext.get("active_calories"):
+            total_active_calories = (total_active_calories or 0) + ext["active_calories"]
+        if ext.get("distance"):
+            total_distance = (total_distance or 0) + ext["distance"]
+        if ext.get("elevation_gain"):
+            total_elevation = (total_elevation or 0) + ext["elevation_gain"]
         if ext.get("avg_hr"):
             max_avg_hr = max(max_avg_hr or 0, ext["avg_hr"])
         if ext.get("max_hr"):
@@ -545,7 +590,7 @@ def merge_extractions(extractions: List[Dict[str, Any]]) -> Dict[str, Any]:
         "processing_confidence": overall_confidence
     }
 
-    # Add WHOOP-specific fields if applicable
+    # Add activity-specific fields if applicable
     if is_whoop:
         result["activity_type"] = activity_type
         result["time_range"] = time_range
@@ -553,6 +598,12 @@ def merge_extractions(extractions: List[Dict[str, Any]]) -> Dict[str, Any]:
         result["strain"] = total_strain
         result["steps"] = total_steps
         result["calories"] = total_calories
+        result["active_calories"] = total_active_calories
+        result["distance"] = total_distance
+        result["distance_unit"] = distance_unit
+        result["elevation_gain"] = total_elevation
+        result["elevation_unit"] = elevation_unit
+        result["avg_pace"] = avg_pace
         result["avg_hr"] = max_avg_hr
         result["max_hr"] = max_max_hr
         result["heart_rate_zones"] = all_heart_rate_zones if all_heart_rate_zones else None
@@ -835,12 +886,22 @@ async def save_whoop_activity(
     strain = extraction_result.get("strain")
     calories = extraction_result.get("calories")
 
-    # Build notes with WHOOP metrics
-    notes_parts = [f"{activity_type} - WHOOP Activity"]
+    # Build notes with activity metrics (Apple Watch / WHOOP / Strava / etc.)
+    source_label = extraction_result.get("source") or "Activity"
+    notes_parts = [f"{activity_type} - {source_label}"]
+    distance = extraction_result.get("distance")
+    distance_unit = extraction_result.get("distance_unit")
+    if distance:
+        unit = distance_unit or "mi"
+        notes_parts.append(f"Distance: {distance} {unit}")
+    if extraction_result.get("avg_pace"):
+        notes_parts.append(f"Pace: {extraction_result['avg_pace']}")
     if strain:
         notes_parts.append(f"Strain: {strain}")
     if calories:
         notes_parts.append(f"Calories: {calories}")
+    if extraction_result.get("avg_hr"):
+        notes_parts.append(f"Avg HR: {extraction_result['avg_hr']}")
     if extraction_result.get("time_range"):
         notes_parts.append(f"Time: {extraction_result['time_range']}")
     notes = " | ".join(notes_parts)
