@@ -6,6 +6,7 @@ struct LogView: View {
     var initialScreenshots: [Data]?
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel = LogViewModel()
     @StateObject private var screenshotViewModel = ScreenshotProcessingViewModel()
     @StateObject private var storeKitManager = StoreKitManager.shared
@@ -36,31 +37,67 @@ struct LogView: View {
         self.initialScreenshots = initialScreenshots
     }
 
+    // MARK: - Credit label for IdleQuestView
+
+    /// Label shown next to the "SCAN QUEST LOG" button.
+    /// Shows remaining credits or "∞" for unlimited; "..." while loading.
+    private var scanCreditsLabel: String? {
+        guard let balance = storeKitManager.scanBalance else { return "..." }
+        if balance.hasUnlimited { return "∞ scans" }
+        if balance.scanCredits == 0 { return "0 credits" }
+        return "\(balance.scanCredits) scan\(balance.scanCredits == 1 ? "" : "s")"
+    }
+
+    /// Show the "Get more" link only when out of credits AND not unlimited.
+    private var showGetMoreLink: Bool {
+        guard let balance = storeKitManager.scanBalance else { return false }
+        return !balance.hasUnlimited && balance.scanCredits == 0
+    }
+
     var body: some View {
         ZStack {
             VoidBackground(showGrid: true, glowIntensity: 0.05)
 
             if !isSessionActive {
                 // Idle State - No active quest
-                IdleQuestView(
-                    onStartQuest: {
-                        withAnimation(.smoothSpring) {
-                            isSessionActive = true
-                        }
-                    },
-                    onScanQuestLog: {
-                        Task {
-                            await storeKitManager.fetchBalance()
-                            if storeKitManager.canScan {
-                                showScreenshotPicker = true
-                            } else {
-                                showPaywall = true
+                VStack(spacing: 0) {
+                    // Pending-workout badge — visible only when the offline queue has entries.
+                    if viewModel.pendingCount > 0 {
+                        PendingWorkoutBadge(
+                            count: viewModel.pendingCount,
+                            isRetrying: viewModel.isRetryingPending,
+                            hasStaleWarning: viewModel.pendingStaleWarning,
+                            onRetry: {
+                                Task { await viewModel.retryPendingWorkouts() }
                             }
-                        }
-                    },
-                    showCloseButton: true,
-                    onClose: { dismiss() }
-                )
+                        )
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                    }
+
+                    IdleQuestView(
+                        onStartQuest: {
+                            withAnimation(.smoothSpring) {
+                                isSessionActive = true
+                            }
+                        },
+                        onScanQuestLog: {
+                            Task {
+                                await storeKitManager.fetchBalance()
+                                if storeKitManager.canScan {
+                                    showScreenshotPicker = true
+                                } else {
+                                    showPaywall = true
+                                }
+                            }
+                        },
+                        scanCreditsLabel: scanCreditsLabel,
+                        showGetMore: showGetMoreLink,
+                        onGetMore: { showPaywall = true },
+                        showCloseButton: true,
+                        onClose: { dismiss() }
+                    )
+                }
                 #if DEBUG
                 .onLongPressGesture(minimumDuration: 2.0) {
                     // Debug: Trigger rank-up celebration for testing
@@ -278,6 +315,57 @@ struct LogView: View {
                 screenshotViewModel.selectedImagesData = screenshots
                 showScreenshotPreview = true
             }
+            // Refresh credit balance (feeds IdleQuestView) and sync the pending mirror.
+            Task {
+                await storeKitManager.fetchBalance()
+                viewModel.refreshPendingCount()
+            }
+        }
+        // Drain the pending-workout queue when the app returns to the foreground.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                Task {
+                    await viewModel.retryPendingWorkouts(silent: true)
+                    await storeKitManager.fetchBalance()
+                }
+            }
+        }
+        .alert("Workout queued",
+               isPresented: Binding(
+                get: { viewModel.queuedForLater },
+                set: { if !$0 { viewModel.queuedForLater = false } }
+               )) {
+            Button("OK", role: .cancel) { viewModel.queuedForLater = false }
+        } message: {
+            Text("No internet connection. Your workout was saved locally and will sync automatically when you're back online.")
+        }
+        .alert("Stale pending workout",
+               isPresented: Binding(
+                get: {
+                    viewModel.pendingStaleWarning
+                        && viewModel.pendingCount > 0
+                        && !viewModel.hasAcknowledgedStale
+                },
+                set: { newValue in
+                    // When SwiftUI dismisses (sets false), record acknowledgement
+                    // so the alert doesn't immediately re-present.
+                    if !newValue { viewModel.acknowledgeStale() }
+                }
+               )) {
+            Button("Keep and retry") {
+                viewModel.acknowledgeStale()
+                Task { await viewModel.retryPendingWorkouts() }
+            }
+            Button("Discard all", role: .destructive) {
+                viewModel.acknowledgeStale()
+                viewModel.pendingStore.clearAll()
+                viewModel.refreshPendingCount()
+            }
+            Button("Dismiss", role: .cancel) {
+                viewModel.acknowledgeStale()
+            }
+        } message: {
+            Text("One or more queued workouts are more than 30 days old. They may fail to sync — review before retrying.")
         }
     }
 
@@ -347,6 +435,11 @@ struct LogView: View {
 struct IdleQuestView: View {
     let onStartQuest: () -> Void
     var onScanQuestLog: (() -> Void)? = nil
+    /// Text for the credit pill next to the scan button (e.g. "3 scans", "∞ scans", "0 credits").
+    var scanCreditsLabel: String? = nil
+    /// True if the user is out of credits — shows a muted "Get more" link.
+    var showGetMore: Bool = false
+    var onGetMore: (() -> Void)? = nil
     var showCloseButton: Bool = false
     var onClose: (() -> Void)? = nil
     @State private var showContent = false
@@ -451,27 +544,51 @@ struct IdleQuestView: View {
 
             // Scan Quest Log Button
             if let onScan = onScanQuestLog {
-                Button {
-                    let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                    impactFeedback.impactOccurred()
-                    onScan()
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: "camera.viewfinder")
-                            .font(.system(size: 14))
-                        Text("SCAN QUEST LOG")
-                            .font(.ariseHeader(size: 14, weight: .semibold))
-                            .tracking(2)
+                VStack(spacing: 6) {
+                    Button {
+                        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                        impactFeedback.impactOccurred()
+                        onScan()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "camera.viewfinder")
+                                .font(.system(size: 14))
+                            Text("SCAN QUEST LOG")
+                                .font(.ariseHeader(size: 14, weight: .semibold))
+                                .tracking(2)
+
+                            if let label = scanCreditsLabel {
+                                Text(label)
+                                    .font(.ariseMono(size: 10, weight: .semibold))
+                                    .foregroundColor(.systemPrimary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(Color.systemPrimary.opacity(0.12))
+                                    .cornerRadius(4)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .background(Color.voidMedium)
+                    .foregroundColor(.textPrimary)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.ariseBorder, lineWidth: 1)
+                    )
+
+                    // "Get more" link shown only when out of credits.
+                    if showGetMore {
+                        Button {
+                            onGetMore?()
+                        } label: {
+                            Text("Get more")
+                                .font(.ariseMono(size: 11))
+                                .foregroundColor(.textMuted)
+                                .underline()
+                        }
                     }
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 48)
-                .background(Color.voidMedium)
-                .foregroundColor(.textPrimary)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(Color.ariseBorder, lineWidth: 1)
-                )
                 .padding(.horizontal, 24)
                 .opacity(showContent ? 1 : 0)
             }
@@ -1540,6 +1657,72 @@ struct AriseExerciseListRow: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
         }
+    }
+}
+
+// MARK: - Pending Workout Badge
+
+/// Small banner shown at the top of the Log screen when the offline queue has
+/// entries. Tap the Retry button to attempt to upload all of them in order.
+struct PendingWorkoutBadge: View {
+    let count: Int
+    let isRetrying: Bool
+    let hasStaleWarning: Bool
+    let onRetry: () -> Void
+
+    private var label: String {
+        if count == 1 { return "1 pending workout" }
+        return "\(count) pending workouts"
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: hasStaleWarning ? "exclamationmark.triangle.fill" : "arrow.triangle.2.circlepath.circle.fill")
+                .font(.system(size: 14))
+                .foregroundColor(hasStaleWarning ? .yellow : .systemPrimary)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.ariseMono(size: 11, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+                    .tracking(0.5)
+                Text(hasStaleWarning ? "Some entries are over 30 days old" : "Tap retry to sync")
+                    .font(.ariseMono(size: 10))
+                    .foregroundColor(.textMuted)
+            }
+
+            Spacer(minLength: 8)
+
+            Button(action: onRetry) {
+                HStack(spacing: 6) {
+                    if isRetrying {
+                        SwiftUI.ProgressView()
+                            .controlSize(.small)
+                            .tint(.voidBlack)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    Text(isRetrying ? "SYNCING" : "RETRY")
+                        .font(.ariseMono(size: 11, weight: .semibold))
+                        .tracking(1)
+                }
+                .foregroundColor(.voidBlack)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.systemPrimary)
+                .cornerRadius(4)
+            }
+            .disabled(isRetrying)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color.voidMedium)
+        .cornerRadius(6)
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(hasStaleWarning ? Color.yellow.opacity(0.4) : Color.systemPrimary.opacity(0.3), lineWidth: 1)
+        )
     }
 }
 

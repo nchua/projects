@@ -31,6 +31,21 @@ class HomeViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var error: String?
 
+    /// Errors from individual endpoints in `loadData()`. Keyed by a short endpoint
+    /// name (e.g. "workouts", "quests"); value is a user-visible message.
+    /// Surfaced in a compact banner on HomeView so users see partial failures
+    /// instead of blank dashboards.
+    @Published var dataLoadErrors: [String: String] = [:]
+
+    /// True when at least one endpoint failed during the most recent load.
+    var hasDataLoadErrors: Bool { !dataLoadErrors.isEmpty }
+
+    /// Human-readable summary for the banner (e.g. "Quests, PRs").
+    var dataLoadErrorSummary: String {
+        let names = dataLoadErrors.keys.sorted().map { $0.capitalized }
+        return names.joined(separator: ", ")
+    }
+
     // Big Three data (loaded from trends like Stats page)
     @Published var exercises: [ExerciseResponse] = []
     @Published var bigThreeTrends: [String: TrendResponse] = [:] // exerciseId -> trend
@@ -159,6 +174,9 @@ class HomeViewModel: ObservableObject {
     func loadData() async {
         isLoading = true
         error = nil
+        // Clear prior endpoint errors at the start of every load so the banner
+        // reflects only the most recent attempt.
+        dataLoadErrors = [:]
 
         // Load each data source independently so one failure doesn't break everything
         await withTaskGroup(of: Void.self) { group in
@@ -167,9 +185,7 @@ class HomeViewModel: ObservableObject {
                     let workouts = try await APIClient.shared.getWorkouts(limit: 1, offset: 0)
                     self.recentWorkout = workouts.first
                 } catch {
-                    #if DEBUG
-                    print("DEBUG: Failed to load workouts: \(error)")
-                    #endif
+                    self.recordLoadError("workouts", error)
                 }
             }
 
@@ -181,9 +197,7 @@ class HomeViewModel: ObservableObject {
                     self.weeklyStats.calories = weekly.totalWorkouts * 120
                     self.weeklyStats.activeMinutes = weekly.totalWorkouts * 45
                 } catch {
-                    #if DEBUG
-                    print("DEBUG: Failed to load weekly review: \(error)")
-                    #endif
+                    self.recordLoadError("weekly review", error)
                 }
             }
 
@@ -192,9 +206,7 @@ class HomeViewModel: ObservableObject {
                     let prs = try await APIClient.shared.getPRs()
                     self.recentPRs = prs.prs
                 } catch {
-                    #if DEBUG
-                    print("DEBUG: Failed to load PRs: \(error)")
-                    #endif
+                    self.recordLoadError("PRs", error)
                 }
             }
 
@@ -203,9 +215,7 @@ class HomeViewModel: ObservableObject {
                     let insightsResponse = try await APIClient.shared.getInsights()
                     self.insights = insightsResponse.insights
                 } catch {
-                    #if DEBUG
-                    print("DEBUG: Failed to load insights: \(error)")
-                    #endif
+                    self.recordLoadError("insights", error)
                 }
             }
 
@@ -215,15 +225,12 @@ class HomeViewModel: ObservableObject {
                     self.userProgress = progress
                 } catch let apiError as APIError {
                     if case .unauthorized = apiError {
-                        // Will be handled by auth manager
+                        // Will be handled by auth manager; don't surface in banner.
+                    } else {
+                        self.recordLoadError("progress", apiError)
                     }
-                    #if DEBUG
-                    print("DEBUG: Failed to load user progress: \(apiError)")
-                    #endif
                 } catch {
-                    #if DEBUG
-                    print("DEBUG: Failed to load user progress: \(error)")
-                    #endif
+                    self.recordLoadError("progress", error)
                 }
             }
 
@@ -232,9 +239,7 @@ class HomeViewModel: ObservableObject {
                     let achievements = try await APIClient.shared.getRecentAchievements(limit: 3)
                     self.recentAchievements = achievements.achievements
                 } catch {
-                    #if DEBUG
-                    print("DEBUG: Failed to load achievements: \(error)")
-                    #endif
+                    self.recordLoadError("achievements", error)
                 }
             }
 
@@ -243,9 +248,7 @@ class HomeViewModel: ObservableObject {
                     let quests = try await APIClient.shared.getDailyQuests()
                     self.dailyQuests = quests
                 } catch {
-                    #if DEBUG
-                    print("DEBUG: Failed to load quests: \(error)")
-                    #endif
+                    self.recordLoadError("quests", error)
                 }
             }
 
@@ -254,9 +257,7 @@ class HomeViewModel: ObservableObject {
                     let profileResult = try await APIClient.shared.getProfile()
                     self.profile = profileResult
                 } catch {
-                    #if DEBUG
-                    print("DEBUG: Failed to load profile: \(error)")
-                    #endif
+                    self.recordLoadError("profile", error)
                 }
             }
 
@@ -266,9 +267,7 @@ class HomeViewModel: ObservableObject {
                     self.cooldownStatus = cooldowns.musclesCooling
                     self.cooldownAgeModifier = cooldowns.ageModifier
                 } catch {
-                    #if DEBUG
-                    print("DEBUG: Failed to load cooldown status: \(error)")
-                    #endif
+                    self.recordLoadError("recovery", error)
                 }
             }
 
@@ -277,9 +276,7 @@ class HomeViewModel: ObservableObject {
                     let exercisesResult = try await APIClient.shared.getExercises()
                     self.exercises = exercisesResult
                 } catch {
-                    #if DEBUG
-                    print("DEBUG: Failed to load exercises: \(error)")
-                    #endif
+                    self.recordLoadError("exercises", error)
                 }
             }
 
@@ -288,10 +285,8 @@ class HomeViewModel: ObservableObject {
                     self.currentMission = try await APIClient.shared.getCurrentMission()
                     self.missionLoadError = nil
                 } catch {
-                    #if DEBUG
-                    print("DEBUG: Failed to load current mission: \(error)")
-                    #endif
                     self.missionLoadError = error.localizedDescription
+                    self.recordLoadError("mission", error)
                 }
             }
 
@@ -299,9 +294,7 @@ class HomeViewModel: ObservableObject {
                 do {
                     self.weeklyProgressReport = try await APIClient.shared.getWeeklyProgressReport()
                 } catch {
-                    #if DEBUG
-                    print("DEBUG: Failed to load weekly progress report: \(error)")
-                    #endif
+                    self.recordLoadError("weekly report", error)
                 }
             }
         }
@@ -335,6 +328,15 @@ class HomeViewModel: ObservableObject {
 
         // Load HealthKit data after main data
         await loadHealthKitData()
+    }
+
+    /// Record a per-endpoint load error so `HomeView` can show a banner.
+    /// Keeps the existing DEBUG log for parity with prior behavior.
+    private func recordLoadError(_ endpointName: String, _ error: Error) {
+        #if DEBUG
+        print("DEBUG: Failed to load \(endpointName): \(error)")
+        #endif
+        dataLoadErrors[endpointName] = error.localizedDescription
     }
 
     private func scheduleLocalNotifications() {

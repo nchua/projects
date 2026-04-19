@@ -16,6 +16,11 @@ class ScreenshotProcessingViewModel: ObservableObject {
     @Published var selectedDate: Date = Date()  // User-selectable date for the workout
     @Published var needsPaywall = false  // Set when 402 received
 
+    // Inline-editable working copy of the extracted exercises. This is what gets
+    // converted to LoggedExercises on save — NOT the original extraction, so the
+    // user never has to burn another scan credit to fix a single mis-read set.
+    @Published var editableExercises: [EditableExtractedExercise] = []
+
     var isBatchMode: Bool {
         selectedImagesData.count > 1
     }
@@ -56,6 +61,7 @@ class ScreenshotProcessingViewModel: ObservableObject {
                     savedWorkoutId = data.workoutId
                     activitySaved = data.activitySaved
                     savedActivityId = data.activityId
+                    hydrateEditableExercises(from: data.exercises)
                 }
             } catch APIError.paymentRequired(_) {
                 self.needsPaywall = true
@@ -89,6 +95,7 @@ class ScreenshotProcessingViewModel: ObservableObject {
                     savedWorkoutId = batch.workoutId
                     activitySaved = batch.activitySaved
                     savedActivityId = batch.activityId
+                    hydrateEditableExercises(from: batch.exercises)
                 }
 
                 processingProgress = "Complete! Processed \(batchData?.screenshotsProcessed ?? 0) screenshots."
@@ -113,56 +120,40 @@ class ScreenshotProcessingViewModel: ObservableObject {
     }
 
     func convertToLoggedExercises() -> [LoggedExercise] {
-        // Get exercises from either processedData or batchData
-        let exercises: [ExtractedExercise]
-        if let data = processedData {
-            // WHOOP activities don't have exercises to log
-            if data.isWhoopActivity {
-                return []
-            }
-            exercises = data.exercises
-        } else if let batch = batchData {
-            // WHOOP activities don't have exercises to log
-            if batch.isWhoopActivity {
-                return []
-            }
-            exercises = batch.exercises
-        } else {
+        // WHOOP activities don't have exercises to log
+        if processedData?.isWhoopActivity == true || batchData?.isWhoopActivity == true {
             return []
         }
 
-        return exercises.compactMap { extracted -> LoggedExercise? in
-            // Only include exercises that were matched to the database
-            guard let exerciseId = extracted.matchedExerciseId else {
-                return nil
-            }
+        // ALWAYS go through the editable copy so user edits are what gets saved.
+        // If editableExercises is empty (shouldn't happen post-hydrate) fall back
+        // to the raw extraction to preserve legacy behavior.
+        if editableExercises.isEmpty {
+            hydrateEditableExercises(from: processedData?.exercises ?? batchData?.exercises ?? [])
+        }
 
-            let exerciseName = extracted.matchedExerciseName ?? extracted.name
+        return editableExercises.compactMap { edited -> LoggedExercise? in
+            guard let exerciseId = edited.matchedExerciseId else { return nil }
+            let exerciseName = edited.displayName
 
-            // Convert extracted sets to logged sets
             var setNumber = 1
             var loggedSets: [LoggedSet] = []
 
-            for extractedSet in extracted.sets {
-                // Skip warmup sets
-                if extractedSet.isWarmup {
-                    continue
-                }
-
-                // If the set has a count > 1, expand it
-                let count = max(1, extractedSet.sets)
+            for set in edited.sets {
+                if set.isWarmup { continue }
+                // Expand grouped sets (e.g. "3x10") into individual entries.
+                let count = max(1, set.setsCount)
                 for _ in 0..<count {
                     loggedSets.append(LoggedSet(
                         setNumber: setNumber,
-                        weightText: String(extractedSet.weightLb),
-                        repsText: String(extractedSet.reps),
+                        weightText: set.weightText,
+                        repsText: set.repsText,
                         rpe: nil
                     ))
                     setNumber += 1
                 }
             }
 
-            // Only include if we have working sets
             guard !loggedSets.isEmpty else { return nil }
 
             return LoggedExercise(
@@ -171,6 +162,22 @@ class ScreenshotProcessingViewModel: ObservableObject {
                 sets: loggedSets
             )
         }
+    }
+
+    /// Seed the editable working copy from a freshly-extracted list. Called once
+    /// per extraction; subsequent user edits live in `editableExercises` only.
+    func hydrateEditableExercises(from extracted: [ExtractedExercise]) {
+        editableExercises = extracted.map { EditableExtractedExercise(from: $0) }
+    }
+
+    /// Index of an editable exercise by its stable `UUID` — for sheet re-entry.
+    func editableIndex(for id: UUID) -> Int? {
+        editableExercises.firstIndex { $0.id == id }
+    }
+
+    /// Remove an edited exercise. The user can re-add via re-scanning if needed.
+    func removeEditableExercise(id: UUID) {
+        editableExercises.removeAll { $0.id == id }
     }
 
     func reset() {
@@ -186,6 +193,7 @@ class ScreenshotProcessingViewModel: ObservableObject {
         savedActivityId = nil
         selectedDate = Date()
         needsPaywall = false
+        editableExercises = []
     }
 
     var formattedSelectedDate: String {
@@ -195,23 +203,28 @@ class ScreenshotProcessingViewModel: ObservableObject {
     }
 
     var hasMatchedExercises: Bool {
-        // Check processedData first, then batchData
+        // WHOOP activities are saved by the backend directly — always allow.
+        if processedData?.isWhoopActivity == true || batchData?.isWhoopActivity == true {
+            return true
+        }
+        // Prefer the editable working copy (reflects user edits).
+        if !editableExercises.isEmpty {
+            return editableExercises.contains { $0.isMatched }
+        }
+        // Fall back to raw extraction if editables not yet hydrated.
         if let data = processedData {
-            if data.isWhoopActivity {
-                return true
-            }
             return data.exercises.contains { $0.matchedExerciseId != nil }
         }
         if let batch = batchData {
-            if batch.isWhoopActivity {
-                return true
-            }
             return batch.exercises.contains { $0.matchedExerciseId != nil }
         }
         return false
     }
 
     var unmatchedExerciseCount: Int {
+        if !editableExercises.isEmpty {
+            return editableExercises.filter { !$0.isMatched }.count
+        }
         if let data = processedData {
             return data.exercises.filter { $0.matchedExerciseId == nil }.count
         }

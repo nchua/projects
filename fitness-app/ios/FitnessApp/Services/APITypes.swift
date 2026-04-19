@@ -124,21 +124,41 @@ struct ExerciseResponse: Decodable, Identifiable {
 
 // MARK: - Workout
 
-struct WorkoutCreate: Encodable {
+struct WorkoutCreate: Codable {
     let date: String
     let durationMinutes: Int?
     let sessionRpe: Int?
     let notes: String?
     let exercises: [WorkoutExerciseCreate]
+    /// Client-generated UUID so the backend can dedupe retries from the offline queue.
+    /// TODO (backend): accept and honor `client_id` on `POST /workouts` — out of scope for this PR.
+    let clientId: String?
+
+    init(
+        date: String,
+        durationMinutes: Int?,
+        sessionRpe: Int?,
+        notes: String?,
+        exercises: [WorkoutExerciseCreate],
+        clientId: String? = UUID().uuidString
+    ) {
+        self.date = date
+        self.durationMinutes = durationMinutes
+        self.sessionRpe = sessionRpe
+        self.notes = notes
+        self.exercises = exercises
+        self.clientId = clientId
+    }
 
     enum CodingKeys: String, CodingKey {
         case date, notes, exercises
         case durationMinutes = "duration_minutes"
         case sessionRpe = "session_rpe"
+        case clientId = "client_id"
     }
 }
 
-struct WorkoutExerciseCreate: Encodable {
+struct WorkoutExerciseCreate: Codable {
     let exerciseId: String
     let orderIndex: Int
     let sets: [SetCreate]
@@ -152,7 +172,7 @@ struct WorkoutExerciseCreate: Encodable {
     }
 }
 
-struct SetCreate: Encodable {
+struct SetCreate: Codable {
     let weight: Double
     let weightUnit: String
     let reps: Int
