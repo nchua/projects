@@ -3,7 +3,7 @@ Application configuration using Pydantic settings
 """
 import os
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 
 DEFAULT_SECRET_KEY = "your-secret-key-here-change-in-production"
@@ -23,7 +23,13 @@ class Settings(BaseSettings):
     DATABASE_URL: str = Field(default="sqlite:///./fitness_app.db")
 
     # JWT Authentication
-    SECRET_KEY: str = Field(default=DEFAULT_SECRET_KEY)
+    # Accept either SECRET_KEY or JWT_SECRET_KEY env vars — Railway docs use
+    # JWT_SECRET_KEY. Without this alias the prod guard below would RuntimeError
+    # if only JWT_SECRET_KEY is set.
+    SECRET_KEY: str = Field(
+        default=DEFAULT_SECRET_KEY,
+        validation_alias=AliasChoices("SECRET_KEY", "JWT_SECRET_KEY"),
+    )
     ALGORITHM: str = Field(default="HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=60)  # 1 hour
 

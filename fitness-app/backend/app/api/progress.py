@@ -127,7 +127,10 @@ async def check_achievements(
 
 
 @router.post("/seed-achievements")
-async def seed_achievements(db: Session = Depends(get_db)):
+async def seed_achievements(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     Seed achievement definitions (admin endpoint)
 

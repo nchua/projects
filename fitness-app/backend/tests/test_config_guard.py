@@ -9,8 +9,7 @@ import sys
 
 import pytest
 
-
-DEFAULT_SECRET_KEY = "your-secret-key-here-change-in-production"
+from app.core.config import DEFAULT_SECRET_KEY
 
 
 def _reload_config(env: dict):

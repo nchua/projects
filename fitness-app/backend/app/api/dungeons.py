@@ -236,7 +236,10 @@ async def force_spawn_rare_dungeon(
 
 
 @router.post("/seed")
-async def seed_dungeons(db: Session = Depends(get_db)):
+async def seed_dungeons(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     Seed dungeon definitions (admin endpoint).
 
