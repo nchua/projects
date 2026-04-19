@@ -239,13 +239,18 @@ struct ScreenshotExerciseEditView: View {
                     .background(Color.voidMedium)
                     .cornerRadius(6)
             } else {
-                // Iterate by index so bindings are stable across deletes.
-                ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, _ in
+                // Capture each set's stable id in the closure instead of the
+                // enumeration index. With `id: \.element.id`, SwiftUI keeps
+                // rows alive across mutations, so a closure that captures
+                // `index` by value would dereference a stale index after a
+                // delete and crash with out-of-bounds. Removing by id keeps
+                // every row's onDelete correct regardless of ordering.
+                ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, set in
                     SetEditRow(
                         index: index + 1,
                         set: $exercise.sets[index],
-                        onDelete: {
-                            exercise.sets.remove(at: index)
+                        onDelete: { [setId = set.id] in
+                            exercise.sets.removeAll { $0.id == setId }
                         }
                     )
                 }

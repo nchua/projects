@@ -23,6 +23,15 @@ class LogViewModel: ObservableObject {
     @Published var pendingStaleWarning: Bool = false
     @Published var queuedForLater: Bool = false  // Set after a save falls back to the queue
     @Published var isRetryingPending: Bool = false
+    /// Suppresses the stale-pending alert after the user dismisses it.
+    /// Reset to `false` whenever the set of stale entries changes so a
+    /// newly-stale entry (or a retry that leaves stale entries behind) will
+    /// surface the warning again.
+    @Published var hasAcknowledgedStale: Bool = false
+    /// Tracks the count of stale entries we last saw, used to decide when a
+    /// new stale entry has entered the queue and the acknowledgement should
+    /// reset.
+    private var lastKnownStaleCount: Int = 0
 
     var filteredExercises: [ExerciseResponse] {
         var result = exercises
@@ -254,6 +263,25 @@ class LogViewModel: ObservableObject {
     func refreshPendingCount() {
         pendingCount = pendingStore.count
         pendingStaleWarning = pendingStore.hasStaleWarning
+
+        // Reset the acknowledgement flag whenever the queue is empty or the
+        // number of stale entries grows (new stale entry entered). Without
+        // this, the user would be stuck with no alert after a subsequent
+        // workout ages past the threshold.
+        let currentStaleCount = pendingStore.pending.filter {
+            Date().timeIntervalSince($0.createdAt) > TimeInterval(pendingStore.staleThresholdDays * 24 * 60 * 60)
+        }.count
+        if currentStaleCount == 0 || currentStaleCount > lastKnownStaleCount {
+            hasAcknowledgedStale = false
+        }
+        lastKnownStaleCount = currentStaleCount
+    }
+
+    /// Mark the stale-pending alert as acknowledged by the user. Called from
+    /// all three alert buttons (Keep/Discard/Dismiss) so the alert doesn't
+    /// immediately re-present after dismissal.
+    func acknowledgeStale() {
+        hasAcknowledgedStale = true
     }
 
     func dismissXPReward() {

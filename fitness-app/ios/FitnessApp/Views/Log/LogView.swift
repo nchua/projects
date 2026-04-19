@@ -340,15 +340,30 @@ struct LogView: View {
             Text("No internet connection. Your workout was saved locally and will sync automatically when you're back online.")
         }
         .alert("Stale pending workout",
-               isPresented: .constant(viewModel.pendingStaleWarning && viewModel.pendingCount > 0)) {
+               isPresented: Binding(
+                get: {
+                    viewModel.pendingStaleWarning
+                        && viewModel.pendingCount > 0
+                        && !viewModel.hasAcknowledgedStale
+                },
+                set: { newValue in
+                    // When SwiftUI dismisses (sets false), record acknowledgement
+                    // so the alert doesn't immediately re-present.
+                    if !newValue { viewModel.acknowledgeStale() }
+                }
+               )) {
             Button("Keep and retry") {
+                viewModel.acknowledgeStale()
                 Task { await viewModel.retryPendingWorkouts() }
             }
             Button("Discard all", role: .destructive) {
+                viewModel.acknowledgeStale()
                 viewModel.pendingStore.clearAll()
                 viewModel.refreshPendingCount()
             }
-            Button("Dismiss", role: .cancel) {}
+            Button("Dismiss", role: .cancel) {
+                viewModel.acknowledgeStale()
+            }
         } message: {
             Text("One or more queued workouts are more than 30 days old. They may fail to sync — review before retrying.")
         }

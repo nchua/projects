@@ -176,7 +176,18 @@ final class PendingWorkoutStore: ObservableObject {
 
         for entry in snapshot {
             do {
-                _ = try await api.createWorkout(entry.workout)
+                // Use the XP-aware endpoint so the server awards XP, PRs,
+                // achievements, quest credit, and dungeon progress for the
+                // drained workout. The bare `createWorkout` path skips all of
+                // that, silently losing every reward for offline-queued work.
+                //
+                // We intentionally discard the `WorkoutCreateResponse` payload
+                // here — the UI isn't active during a background drain, so
+                // there's nothing to celebrate against. HomeView refetches
+                // `/users/progress` (see HomeViewModel.loadData) every time it
+                // appears / foregrounds, so the authoritative XP + level +
+                // streak come back from the server on the next surface view.
+                _ = try await api.createWorkoutWithXP(entry.workout)
                 // Uploaded OK — remove from queue
                 remove(id: entry.id)
             } catch let apiError as APIError {
@@ -245,12 +256,20 @@ final class PendingWorkoutStore: ObservableObject {
     private func saveToDisk() {
         do {
             let data = try encoder.encode(pending)
-            // `.completeFileProtection` keeps the file encrypted while the
-            // device is locked. Queued WorkoutCreate payloads contain a
-            // user's training log — not as sensitive as credentials, but
-            // still tied to their identity, so at-rest protection is cheap
-            // insurance.
-            try data.write(to: fileURL, options: [.atomic, .completeFileProtection])
+            // `.completeFileProtectionUntilFirstUserAuthentication` encrypts
+            // the file at rest but allows reads and writes once the user has
+            // unlocked the device for the first time after boot. Critically,
+            // this lets the background drain (triggered by scene-phase /
+            // remote push wakeups) persist successful uploads or retry
+            // bookkeeping even if the device has since re-locked.
+            // `.completeFileProtection` would reject those writes and cause
+            // data loss. Queued WorkoutCreate payloads are identity-linked
+            // but not credentials, so the slightly weaker protection class
+            // is the right tradeoff.
+            try data.write(
+                to: fileURL,
+                options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]
+            )
         } catch {
             #if DEBUG
             print("DEBUG: PendingWorkoutStore failed to save: \(error)")
