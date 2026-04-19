@@ -110,7 +110,10 @@ async def refresh_quests(
 
 
 @router.post("/seed")
-async def seed_quests(db: Session = Depends(get_db)):
+async def seed_quests(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     Seed quest definitions (admin endpoint).
 

@@ -16,35 +16,15 @@ for handler in logging.root.handlers:
 
 logger = logging.getLogger(__name__)
 
-import os
-
-# Run alembic migrations on startup
-import subprocess
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.core.database import Base, engine
 
-try:
-    print("Running database migrations...")
-    result = subprocess.run(
-        ["alembic", "upgrade", "head"],
-        cwd=os.path.dirname(os.path.abspath(__file__)),
-        capture_output=True,
-        text=True
-    )
-    if result.returncode == 0:
-        print("Migrations completed successfully")
-    else:
-        print(f"Migration warning: {result.stderr}")
-        # Fall back to create_all for new tables
-        Base.metadata.create_all(bind=engine)
-except Exception as e:
-    print(f"Migration error: {e}")
-    # Fall back to create_all
-    Base.metadata.create_all(bind=engine)
+# Migrations run via Railway's startCommand (alembic upgrade head). We used to
+# re-run them here with a Base.metadata.create_all() fallback, which silently
+# masked schema drift and bypassed Alembic entirely — removed to make broken
+# migrations fail loudly.
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -211,20 +191,6 @@ async def privacy_policy():
 </html>"""
     return HTMLResponse(content=html)
 
-
-# Debug endpoint to add sports exercises
-if settings.DEBUG:
-    @app.post("/debug/add-sports")
-    async def add_sports_exercises_endpoint():
-        """Add sports and cardio exercises to the database"""
-        from add_sports_exercises import add_sports_exercises
-        from app.core.database import SessionLocal
-        db = SessionLocal()
-        try:
-            add_sports_exercises(db)
-            return {"status": "ok", "message": "Sports exercises added"}
-        finally:
-            db.close()
 
 # Import and include API routers
 from app.api import (
