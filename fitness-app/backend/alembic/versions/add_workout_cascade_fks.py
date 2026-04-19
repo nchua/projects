@@ -18,6 +18,7 @@ Revises: add_apple_workout_exercises
 Create Date: 2026-04-19
 """
 from alembic import op
+from sqlalchemy import inspect
 
 from app.core.db_maintenance import purge_workout_orphans
 
@@ -30,10 +31,27 @@ branch_labels = None
 depends_on = None
 
 
-# Postgres default constraint names (table_col_fkey).
-WORKOUT_EXERCISES_SESSION_FK = 'workout_exercises_session_id_fkey'
-WORKOUT_EXERCISES_EXERCISE_FK = 'workout_exercises_exercise_id_fkey'
-SETS_WORKOUT_EXERCISE_FK = 'sets_workout_exercise_id_fkey'
+# Canonical names we re-create the constraints under, so downgrade / future
+# migrations can reference them without guessing Postgres defaults.
+WORKOUT_EXERCISES_SESSION_FK = 'fk_workout_exercises_session_id'
+WORKOUT_EXERCISES_EXERCISE_FK = 'fk_workout_exercises_exercise_id'
+SETS_WORKOUT_EXERCISE_FK = 'fk_sets_workout_exercise_id'
+
+
+def _drop_fk_if_exists(bind, table_name: str, column_name: str) -> None:
+    """Drop any FK on (table_name.column_name).
+
+    Looks up the actual constraint name via the dialect inspector rather than
+    assuming the Postgres default (``{table}_{col}_fkey``). Prod databases may
+    have been created with differently-named constraints (e.g. from an older
+    ORM version or a manual DBA rename), so hardcoding is unsafe.
+
+    No-ops if no FK is found on that column.
+    """
+    insp = inspect(bind)
+    for fk in insp.get_foreign_keys(table_name):
+        if column_name in fk.get('constrained_columns', []):
+            op.drop_constraint(fk['name'], table_name, type_='foreignkey')
 
 
 def upgrade() -> None:
@@ -49,9 +67,7 @@ def upgrade() -> None:
     purge_workout_orphans(bind)
 
     # workout_exercises.session_id -> workout_sessions.id
-    op.drop_constraint(
-        WORKOUT_EXERCISES_SESSION_FK, 'workout_exercises', type_='foreignkey'
-    )
+    _drop_fk_if_exists(bind, 'workout_exercises', 'session_id')
     op.create_foreign_key(
         WORKOUT_EXERCISES_SESSION_FK,
         'workout_exercises',
@@ -62,9 +78,7 @@ def upgrade() -> None:
     )
 
     # workout_exercises.exercise_id -> exercises.id
-    op.drop_constraint(
-        WORKOUT_EXERCISES_EXERCISE_FK, 'workout_exercises', type_='foreignkey'
-    )
+    _drop_fk_if_exists(bind, 'workout_exercises', 'exercise_id')
     op.create_foreign_key(
         WORKOUT_EXERCISES_EXERCISE_FK,
         'workout_exercises',
@@ -75,9 +89,7 @@ def upgrade() -> None:
     )
 
     # sets.workout_exercise_id -> workout_exercises.id
-    op.drop_constraint(
-        SETS_WORKOUT_EXERCISE_FK, 'sets', type_='foreignkey'
-    )
+    _drop_fk_if_exists(bind, 'sets', 'workout_exercise_id')
     op.create_foreign_key(
         SETS_WORKOUT_EXERCISE_FK,
         'sets',
@@ -93,10 +105,9 @@ def downgrade() -> None:
     if bind.dialect.name == 'sqlite':
         return
 
-    # Restore FKs without cascade behavior (original state).
-    op.drop_constraint(
-        SETS_WORKOUT_EXERCISE_FK, 'sets', type_='foreignkey'
-    )
+    # Restore FKs without cascade behavior. Look up by column so we drop
+    # whatever name the upgrade actually created (canonical or legacy).
+    _drop_fk_if_exists(bind, 'sets', 'workout_exercise_id')
     op.create_foreign_key(
         SETS_WORKOUT_EXERCISE_FK,
         'sets',
@@ -105,9 +116,7 @@ def downgrade() -> None:
         ['id'],
     )
 
-    op.drop_constraint(
-        WORKOUT_EXERCISES_EXERCISE_FK, 'workout_exercises', type_='foreignkey'
-    )
+    _drop_fk_if_exists(bind, 'workout_exercises', 'exercise_id')
     op.create_foreign_key(
         WORKOUT_EXERCISES_EXERCISE_FK,
         'workout_exercises',
@@ -116,9 +125,7 @@ def downgrade() -> None:
         ['id'],
     )
 
-    op.drop_constraint(
-        WORKOUT_EXERCISES_SESSION_FK, 'workout_exercises', type_='foreignkey'
-    )
+    _drop_fk_if_exists(bind, 'workout_exercises', 'session_id')
     op.create_foreign_key(
         WORKOUT_EXERCISES_SESSION_FK,
         'workout_exercises',
