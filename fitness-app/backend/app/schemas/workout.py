@@ -64,6 +64,12 @@ class WorkoutCreate(BaseModel):
     session_rpe: Optional[int] = Field(None, ge=1, le=10, description="Overall session RPE")
     notes: Optional[str] = Field(None, max_length=1000, description="Workout notes")
     exercises: List[WorkoutExerciseCreate] = Field(..., min_length=1, description="Exercises in workout")
+    # Optional client-generated idempotency key. iOS offline queue stamps one
+    # per enqueued workout; if the same key re-arrives (e.g. network blip that
+    # actually succeeded server-side), we return the existing row instead of
+    # creating a duplicate. Format: any string up to 128 chars — UUID is the
+    # expected shape but we don't enforce it.
+    client_id: Optional[str] = Field(None, min_length=1, max_length=128, description="Client idempotency key")
 
     @field_validator('date', mode='before')
     @classmethod
