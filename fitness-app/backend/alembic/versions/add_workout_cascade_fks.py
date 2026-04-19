@@ -19,6 +19,8 @@ Create Date: 2026-04-19
 """
 from alembic import op
 
+from app.core.db_maintenance import purge_workout_orphans
+
 # revision identifiers, used by Alembic.
 revision = 'add_workout_cascade_fks'
 # Merges the two open heads so this can apply as a single head going forward.
@@ -41,6 +43,9 @@ def upgrade() -> None:
     # emit it when create_all recreates the table).
     if bind.dialect.name == 'sqlite':
         return
+
+    # Pre-clean orphans so CREATE FOREIGN KEY doesn't fail on existing data.
+    purge_workout_orphans(bind)
 
     # workout_exercises.session_id -> workout_sessions.id
     op.drop_constraint(
