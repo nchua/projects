@@ -237,13 +237,28 @@ async def health_check():
 
 # ---------------------------------------------------------------------------
 # Sentry smoke-test canary.
-# Disabled by default. Set ALLOW_SMOKE_TEST_ENDPOINT=true to enable post-deploy
-# verification that the Sentry pipeline is wired up.
+# Disabled by default. Enabling requires BOTH:
+#   - ALLOW_SMOKE_TEST_ENDPOINT=true   (registers the route at all)
+#   - SMOKE_TEST_SECRET=<strong-value> (caller must send X-Smoke-Test-Secret)
+# This prevents an unauthenticated 500-trigger if the feature flag ever
+# leaks to prod.
 # ---------------------------------------------------------------------------
 if os.environ.get("ALLOW_SMOKE_TEST_ENDPOINT", "").lower() == "true":
+    from fastapi import Header, HTTPException
+
+    _smoke_test_secret = os.environ.get("SMOKE_TEST_SECRET", "")
+
     @app.get("/internal/debug/boom", include_in_schema=False)
-    async def _sentry_canary():
-        """Intentionally raise to verify Sentry pipeline end-to-end."""
+    async def _sentry_canary(x_smoke_test_secret: str = Header(default="")):
+        """Intentionally raise to verify Sentry pipeline end-to-end.
+
+        Requires the X-Smoke-Test-Secret header to match SMOKE_TEST_SECRET
+        (which must itself be non-empty). Silently returns 404 on any
+        mismatch so the endpoint is indistinguishable from a real 404 to
+        external scanners.
+        """
+        if not _smoke_test_secret or x_smoke_test_secret != _smoke_test_secret:
+            raise HTTPException(status_code=404, detail="Not Found")
         try:
             import sentry_sdk
 
