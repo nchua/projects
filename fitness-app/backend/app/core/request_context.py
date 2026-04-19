@@ -8,6 +8,7 @@ request handling without explicit propagation.
 from __future__ import annotations
 
 import logging
+import re
 import uuid
 from contextvars import ContextVar
 from typing import Optional
@@ -18,6 +19,12 @@ from starlette.responses import Response
 
 # Header used to both accept and emit the correlation ID.
 REQUEST_ID_HEADER = "X-Request-ID"
+
+# Whitelist for client-supplied request IDs. Prevents log injection
+# (newlines, control chars), unbounded-length spam, and trace-ID
+# collisions from hostile callers. UUIDs, nanoids, and typical tracing
+# IDs all fit comfortably.
+_REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 
 # Module-level contextvar; default "-" so loggers have something to print
 # outside request scope (e.g. startup logs).
@@ -50,7 +57,13 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next) -> Response:
         incoming = request.headers.get(REQUEST_ID_HEADER)
-        request_id = incoming if incoming else _generate_request_id()
+        # Only trust client-supplied IDs that match the strict whitelist.
+        # Anything else (control chars, overlong, weird unicode) is
+        # discarded and replaced with a fresh uuid.
+        if incoming and _REQUEST_ID_RE.match(incoming):
+            request_id = incoming
+        else:
+            request_id = _generate_request_id()
         token = _request_id_ctx.set(request_id)
 
         # Make the ID accessible on request.state for handlers.

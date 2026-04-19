@@ -91,7 +91,6 @@ app = FastAPI(
 # it and the 429 exception handler can emit a friendly JSON body.
 # ---------------------------------------------------------------------------
 from slowapi.errors import RateLimitExceeded  # noqa: E402
-from slowapi.middleware import SlowAPIMiddleware  # noqa: E402
 
 from app.core.rate_limit import limiter  # noqa: E402
 
@@ -189,7 +188,11 @@ app.add_middleware(
 # Request-ID middleware runs before everything so ID is available in every
 # downstream handler, log, and exception handler. Starlette runs middleware
 # in reverse order of registration, so this is added last.
-app.add_middleware(SlowAPIMiddleware)
+#
+# Note: we intentionally do NOT register SlowAPIMiddleware. slowapi's docs
+# warn against combining app-level middleware with per-route @limiter.limit
+# decorators; the rate-limiting in this service runs through the decorators
+# and the RateLimitExceeded exception handler above.
 app.add_middleware(RequestIDMiddleware)
 
 # Debug middleware to log all requests/responses
@@ -244,6 +247,8 @@ async def health_check():
 # leaks to prod.
 # ---------------------------------------------------------------------------
 if os.environ.get("ALLOW_SMOKE_TEST_ENDPOINT", "").lower() == "true":
+    import hmac
+
     from fastapi import Header, HTTPException
 
     _smoke_test_secret = os.environ.get("SMOKE_TEST_SECRET", "")
@@ -255,9 +260,17 @@ if os.environ.get("ALLOW_SMOKE_TEST_ENDPOINT", "").lower() == "true":
         Requires the X-Smoke-Test-Secret header to match SMOKE_TEST_SECRET
         (which must itself be non-empty). Silently returns 404 on any
         mismatch so the endpoint is indistinguishable from a real 404 to
-        external scanners.
+        external scanners. Uses constant-time comparison to avoid leaking
+        the secret via response-timing side channel.
         """
-        if not _smoke_test_secret or x_smoke_test_secret != _smoke_test_secret:
+        if (
+            not _smoke_test_secret
+            or not x_smoke_test_secret
+            or not hmac.compare_digest(
+                x_smoke_test_secret.encode("utf-8"),
+                _smoke_test_secret.encode("utf-8"),
+            )
+        ):
             raise HTTPException(status_code=404, detail="Not Found")
         try:
             import sentry_sdk
