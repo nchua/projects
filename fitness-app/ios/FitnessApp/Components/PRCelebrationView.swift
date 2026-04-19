@@ -56,6 +56,7 @@ struct PRCelebrationView: View {
                         .font(.system(size: 32, weight: .bold))
                         .foregroundColor(.gold)
                         .scaleEffect(iconScale)
+                        .accessibilityHidden(true)
                 }
 
                 // PR Type label
@@ -148,12 +149,18 @@ struct PRCelebrationView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black.opacity(showCard ? 0.7 : 0))
+        .contentShape(Rectangle())
         .onTapGesture {
             dismissWithAnimation()
         }
         .onAppear {
             startAnimations()
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isModal)
+        .accessibilityLabel("\(prType.label) unlocked for \(exerciseName)")
+        .accessibilityValue("\(value), plus 100 XP\(totalCount > 1 ? ", record \(currentIndex) of \(totalCount)" : "")")
+        .accessibilityHint("Tap to dismiss")
     }
 
     private func startAnimations() {

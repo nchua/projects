@@ -42,6 +42,8 @@ struct RankBadgeView: View {
             .background(rank.color)
             .foregroundColor(rank.textColor)
             .cornerRadius(2)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(rank.rawValue) rank")
     }
 }
 
@@ -78,6 +80,8 @@ struct HunterAvatarView: View {
                 .scaleEffect(0.85)
                 .offset(x: 2, y: 2)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Hunter avatar, \(rank.rawValue) rank")
     }
 }
 
@@ -100,6 +104,8 @@ struct LevelDisplayView: View {
                 .foregroundColor(.textMuted)
                 .tracking(1)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Level \(level)")
     }
 }
 
@@ -154,6 +160,7 @@ struct StreakDisplayView: View {
         HStack(spacing: 4) {
             Text("\u{1F525}") // Fire emoji
                 .font(.system(size: 16))
+                .accessibilityHidden(true)
 
             Text("\(days)")
                 .font(.ariseDisplay(size: 20, weight: .bold))
@@ -167,6 +174,9 @@ struct StreakDisplayView: View {
             RoundedRectangle(cornerRadius: 4)
                 .stroke(Color.gold.opacity(0.2), lineWidth: 1)
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Streak")
+        .accessibilityValue("\(days) \(days == 1 ? "day" : "days")")
     }
 }
 

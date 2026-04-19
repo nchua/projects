@@ -12,6 +12,15 @@ from app.models.pr import PR, PRType
 from app.models.workout import Set, WorkoutExercise
 
 
+def _weight_bucket(weight: float) -> float:
+    """Round a weight to the nearest 2.5 lb — the smallest commercially
+    plate-able increment. Using the same bucketing for both storage and
+    lookup keys prevents float drift (e.g., 222.3 vs 222.6) from creating
+    phantom duplicate rep PRs across workouts.
+    """
+    return round(weight * 2) / 2
+
+
 def get_canonical_exercise_ids(db: Session, exercise_id: str) -> List[str]:
     """
     Get all exercise IDs that share the same canonical_id as the given exercise.
@@ -61,13 +70,24 @@ def detect_and_create_prs(
         PR.pr_type == PRType.E1RM
     ).scalar() or 0
 
-    # Get current rep PRs across ALL canonical aliases (weight -> max reps)
+    # Get current rep PRs across ALL canonical aliases.
+    # IMPORTANT: we bucket weights to the nearest 2.5 lb (see _weight_bucket)
+    # both when STORING and LOOKING UP, so a 222.3 lb PR on day 1 and a 222.6
+    # lb set on day 2 resolve to the same bucket and don't spuriously create a
+    # duplicate PR. If two historical rows fall in the same bucket, we keep
+    # the higher rep count — that's the one future sets must beat.
     existing_rep_prs = db.query(PR.weight, PR.reps).filter(
         PR.user_id == user_id,
         PR.exercise_id.in_(related_exercise_ids),
         PR.pr_type == PRType.REP_PR
     ).all()
-    rep_pr_map = {weight: reps for weight, reps in existing_rep_prs}
+    rep_pr_map: dict[float, int] = {}
+    for weight, reps in existing_rep_prs:
+        if weight is None:
+            continue
+        key = _weight_bucket(weight)
+        if reps > rep_pr_map.get(key, 0):
+            rep_pr_map[key] = reps
 
     # Check each set for PRs
     for set_obj in sets:
@@ -87,12 +107,10 @@ def detect_and_create_prs(
             new_prs.append(pr)
             current_best_e1rm = set_obj.e1rm  # Update for subsequent sets
 
-        # Check for rep PR at this weight
+        # Check for rep PR at this weight bucket.
         weight = set_obj.weight
         reps = set_obj.reps
-
-        # Round weight to nearest 2.5 for comparison (handles floating point)
-        weight_key = round(weight * 2) / 2
+        weight_key = _weight_bucket(weight)
 
         current_best_reps = rep_pr_map.get(weight_key, 0)
 

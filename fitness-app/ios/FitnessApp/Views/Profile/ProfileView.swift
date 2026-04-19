@@ -39,9 +39,12 @@ struct ProfileView: View {
                                     RoundedRectangle(cornerRadius: 4)
                                         .stroke(Color.ariseBorder, lineWidth: 1)
                                 )
+                                .accessibilityHidden(true)
                         }
                         .padding(.trailing, 16)
                         .padding(.top, 16)
+                        .accessibilityLabel("Close")
+                        .accessibilityHint("Closes the profile screen")
                     }
                     Spacer()
                 }
@@ -123,6 +126,7 @@ struct ProfileView: View {
                                     } else {
                                         Image(systemName: "checkmark.shield.fill")
                                             .font(.system(size: 14))
+                                            .accessibilityHidden(true)
                                         Text("SAVE CHANGES")
                                             .font(.ariseHeader(size: 14, weight: .semibold))
                                             .tracking(2)
@@ -141,6 +145,8 @@ struct ProfileView: View {
                             .padding(.horizontal)
                             .disabled(viewModel.isSaving)
                             .animation(.easeInOut(duration: 0.2), value: viewModel.isSaving)
+                            .accessibilityLabel(viewModel.isSaving ? "Saving changes" : "Save Changes")
+                            .accessibilityHint("Saves your profile edits")
 
                             // Logout Button
                             Button {
@@ -149,6 +155,7 @@ struct ProfileView: View {
                                 HStack(spacing: 6) {
                                     Image(systemName: "rectangle.portrait.and.arrow.right")
                                         .font(.system(size: 12))
+                                        .accessibilityHidden(true)
                                     Text("DISCONNECT")
                                         .font(.ariseMono(size: 12, weight: .semibold))
                                         .tracking(1)
@@ -156,6 +163,8 @@ struct ProfileView: View {
                                 .foregroundColor(.warningRed)
                             }
                             .padding(.top, 8)
+                            .accessibilityLabel("Log out")
+                            .accessibilityHint("Signs you out of your account")
 
                             // Delete Account Button
                             Button {
@@ -164,6 +173,7 @@ struct ProfileView: View {
                                 HStack(spacing: 6) {
                                     Image(systemName: "trash.fill")
                                         .font(.system(size: 12))
+                                        .accessibilityHidden(true)
                                     Text("DELETE ACCOUNT")
                                         .font(.ariseMono(size: 12, weight: .semibold))
                                         .tracking(1)
@@ -171,6 +181,8 @@ struct ProfileView: View {
                                 .foregroundColor(.warningRed.opacity(0.7))
                             }
                             .padding(.top, 4)
+                            .accessibilityLabel("Delete account")
+                            .accessibilityHint("Permanently deletes your account")
 
                             Spacer(minLength: 100)
                         }
