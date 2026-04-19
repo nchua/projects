@@ -882,8 +882,9 @@ async def save_extracted_workout(
     progress.total_volume_lb += xp_result["total_volume"]
     progress.total_prs += workout_prs
 
-    # Check achievements
-    all_prs = db.query(PR).filter(PR.user_id == user_id).all()
+    # Check achievements — eager-load PR.exercise to avoid N+1 when reading
+    # pr.exercise.name below.
+    all_prs = db.query(PR).options(joinedload(PR.exercise)).filter(PR.user_id == user_id).all()
     exercise_prs = {}
     for pr in all_prs:
         exercise_name = pr.exercise.name.lower() if pr.exercise else ""
@@ -900,15 +901,19 @@ async def save_extracted_workout(
         "current_streak": progress.current_streak,
         "exercise_prs": exercise_prs
     }
-    check_and_unlock_achievements(db, user_id, achievement_context)
 
-    # Fetch complete workout with relationships (needed for quest progress)
+    # Fetch complete workout with relationships BEFORE services that touch
+    # them. After db.commit() + db.refresh() above, relationship collections
+    # are empty without this eager-loaded re-query. Used by achievements
+    # (indirectly via progress) and quest progress.
     workout_with_relationships = db.query(WorkoutSession).options(
         joinedload(WorkoutSession.workout_exercises)
         .joinedload(WorkoutExercise.sets),
         joinedload(WorkoutSession.workout_exercises)
         .joinedload(WorkoutExercise.exercise)
     ).filter(WorkoutSession.id == workout_session.id).first()
+
+    check_and_unlock_achievements(db, user_id, achievement_context)
 
     # Update quest progress
     update_quest_progress(db, user_id, workout_with_relationships)
@@ -1110,8 +1115,8 @@ async def save_whoop_activity(
             progress.total_volume_lb += xp_result["total_volume"]
             progress.total_prs += workout_prs
 
-            # Check achievements
-            all_prs = db.query(PR).filter(PR.user_id == user_id).all()
+            # Check achievements — eager-load PR.exercise to avoid N+1.
+            all_prs = db.query(PR).options(joinedload(PR.exercise)).filter(PR.user_id == user_id).all()
             exercise_prs = {}
             for pr in all_prs:
                 exercise_name = pr.exercise.name.lower() if pr.exercise else ""
@@ -1128,15 +1133,18 @@ async def save_whoop_activity(
                 "current_streak": progress.current_streak,
                 "exercise_prs": exercise_prs
             }
-            check_and_unlock_achievements(db, user_id, achievement_context)
 
-            # Fetch complete workout with relationships (needed for quest progress)
+            # Fetch complete workout with relationships BEFORE services that
+            # touch them (quest progress, and achievement checks that rely on
+            # consistent eager-loaded state).
             workout_with_relationships = db.query(WorkoutSession).options(
                 joinedload(WorkoutSession.workout_exercises)
                 .joinedload(WorkoutExercise.sets),
                 joinedload(WorkoutSession.workout_exercises)
                 .joinedload(WorkoutExercise.exercise)
             ).filter(WorkoutSession.id == workout_session.id).first()
+
+            check_and_unlock_achievements(db, user_id, achievement_context)
 
             # Update quest progress
             update_quest_progress(db, user_id, workout_with_relationships)

@@ -4,7 +4,7 @@ Handles achievement checking, unlocking, and management
 """
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.utils import to_iso8601_utc
 from app.models.achievement import AchievementDefinition, UserAchievement
@@ -46,7 +46,11 @@ def get_user_achievements(db: Session, user_id: str) -> List[Dict[str, Any]]:
 
 def get_recently_unlocked(db: Session, user_id: str, limit: int = 5) -> List[Dict[str, Any]]:
     """Get most recently unlocked achievements"""
-    unlocked = db.query(UserAchievement).filter(
+    # Eager-load the achievement definition to avoid N+1 queries when
+    # rendering the list (ua.achievement is accessed per row below).
+    unlocked = db.query(UserAchievement).options(
+        joinedload(UserAchievement.achievement)
+    ).filter(
         UserAchievement.user_id == user_id
     ).order_by(UserAchievement.unlocked_at.desc()).limit(limit).all()
 

@@ -75,8 +75,18 @@ class WorkoutExercise(Base):
     __tablename__ = "workout_exercises"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    session_id = Column(String, ForeignKey("workout_sessions.id"), nullable=False, index=True)
-    exercise_id = Column(String, ForeignKey("exercises.id"), nullable=False, index=True)
+    session_id = Column(
+        String,
+        ForeignKey("workout_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    exercise_id = Column(
+        String,
+        ForeignKey("exercises.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
     order_index = Column(Integer, nullable=False)  # Order of exercises in the workout
     superset_group_id = Column(String, nullable=True, index=True)  # Groups exercises performed as superset
@@ -94,7 +104,12 @@ class Set(Base):
     __tablename__ = "sets"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    workout_exercise_id = Column(String, ForeignKey("workout_exercises.id"), nullable=False, index=True)
+    workout_exercise_id = Column(
+        String,
+        ForeignKey("workout_exercises.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
     weight = Column(Float, nullable=False)
     weight_unit = Column(Enum(WeightUnit), default=WeightUnit.LB, nullable=False)

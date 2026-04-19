@@ -301,7 +301,6 @@ async def _create_workout_impl(
     progress.total_volume_lb += xp_result["total_volume"]
     progress.total_prs += workout_prs
 
-    # Check for newly unlocked achievements
     # Build context for achievement checking
     all_prs = db.query(PR).options(joinedload(PR.exercise)).filter(PR.user_id == current_user.id).all()
     exercise_prs = {}
@@ -321,15 +320,21 @@ async def _create_workout_impl(
         "current_streak": progress.current_streak,
         "exercise_prs": exercise_prs
     }
-    newly_unlocked = check_and_unlock_achievements(db, current_user.id, achievement_context)
 
-    # Fetch complete workout with relationships (needed for quest/dungeon progress)
+    # Fetch complete workout with relationships BEFORE any service call that
+    # touches relationship collections (achievements, quests, dungeons).
+    # After db.commit() + db.refresh() above, the collections would be empty
+    # without this eager-loaded re-query. See CLAUDE.md SQLAlchemy rule.
     workout = db.query(WorkoutSession).options(
         joinedload(WorkoutSession.workout_exercises)
         .joinedload(WorkoutExercise.sets),
         joinedload(WorkoutSession.workout_exercises)
         .joinedload(WorkoutExercise.exercise)
     ).filter(WorkoutSession.id == workout_session.id).first()
+
+    # Check for newly unlocked achievements (uses context dict but also
+    # reads progress — kept after eager-load for consistency)
+    newly_unlocked = check_and_unlock_achievements(db, current_user.id, achievement_context)
 
     # Update quest progress based on this workout (requires loaded relationships)
     update_quest_progress(db, current_user.id, workout)
@@ -450,7 +455,7 @@ async def _create_workout_impl(
 @router.get("", response_model=List[WorkoutSummary])
 @router.get("/", response_model=List[WorkoutSummary])
 async def list_workouts(
-    limit: int = Query(20, ge=1, le=100, description="Number of workouts to return"),
+    limit: int = Query(50, ge=1, le=200, description="Number of workouts to return (max 200)"),
     offset: int = Query(0, ge=0, description="Number of workouts to skip"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
