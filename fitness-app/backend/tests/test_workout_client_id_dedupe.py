@@ -38,8 +38,9 @@ def seeded_exercise(db):
 
 class TestClientIdDedupe:
     def test_first_post_creates_workout(self, client, auth_headers, seeded_exercise):
+        headers, _ = auth_headers()
         body = _sample_workout("dedupe-test-1", seeded_exercise)
-        r = client.post("/workouts", json=body, headers=auth_headers)
+        r = client.post("/workouts", json=body, headers=headers)
         assert r.status_code == 201, r.text
         data = r.json()
         assert data["workout"]["id"]
@@ -52,13 +53,14 @@ class TestClientIdDedupe:
         """Second POST with the same client_id must return the ORIGINAL workout
         without creating a new row or re-awarding XP.
         """
+        headers, _ = auth_headers()
         body = _sample_workout("dedupe-test-2", seeded_exercise)
 
-        first = client.post("/workouts", json=body, headers=auth_headers)
+        first = client.post("/workouts", json=body, headers=headers)
         assert first.status_code == 201, first.text
         first_id = first.json()["workout"]["id"]
 
-        second = client.post("/workouts", json=body, headers=auth_headers)
+        second = client.post("/workouts", json=body, headers=headers)
         # Still 201 because FastAPI's decorator sets it; the BODY is what matters.
         assert second.status_code in (200, 201), second.text
         assert second.json()["workout"]["id"] == first_id
@@ -68,19 +70,20 @@ class TestClientIdDedupe:
         assert second.json()["prs_achieved"] == []
 
     def test_different_users_dont_collide(
-        self, client, auth_headers, create_test_user, seeded_exercise
+        self, client, auth_headers, seeded_exercise
     ):
         """Same client_id from different users must create independent workouts
         (uniqueness is scoped to (user_id, client_id)).
         """
         # First user saves.
+        headers1, _ = auth_headers(email="hunter@example.com", password="TestPass123!")
         body1 = _sample_workout("shared-client-id", seeded_exercise)
-        r1 = client.post("/workouts", json=body1, headers=auth_headers)
+        r1 = client.post("/workouts", json=body1, headers=headers1)
         assert r1.status_code == 201
         first_id = r1.json()["workout"]["id"]
 
         # Second user saves with the same client_id.
-        _, headers2 = create_test_user(email="other@example.com", password="TestPass123!")
+        headers2, _ = auth_headers(email="other@example.com", password="TestPass123!")
         body2 = _sample_workout("shared-client-id", seeded_exercise)
         r2 = client.post("/workouts", json=body2, headers=headers2)
         assert r2.status_code == 201
@@ -92,11 +95,12 @@ class TestClientIdDedupe:
         self, client, auth_headers, seeded_exercise
     ):
         """Web clients that don't send client_id must NOT be dedupe-blocked."""
+        headers, _ = auth_headers()
         body = _sample_workout("", seeded_exercise)  # replaced below
         body.pop("client_id")
 
-        r1 = client.post("/workouts", json=body, headers=auth_headers)
-        r2 = client.post("/workouts", json=body, headers=auth_headers)
+        r1 = client.post("/workouts", json=body, headers=headers)
+        r2 = client.post("/workouts", json=body, headers=headers)
         assert r1.status_code == 201
         assert r2.status_code == 201
         assert r1.json()["workout"]["id"] != r2.json()["workout"]["id"]
