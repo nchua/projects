@@ -23,13 +23,45 @@ final class PendingWorkoutStore: ObservableObject {
         let id: UUID
         let createdAt: Date
         let workout: WorkoutCreate
+        /// Number of failed drain attempts. We retain the entry and retry on
+        /// future drains up to `maxRetryAttempts` — then drop it so a
+        /// permanently-malformed payload doesn't wedge the queue forever.
+        var failedAttempts: Int
+        /// Human-readable text of the last error this entry hit, if any.
+        /// Surfaced in the UI when the entry eventually gets dropped.
+        var lastError: String?
 
-        init(workout: WorkoutCreate, id: UUID = UUID(), createdAt: Date = Date()) {
+        init(
+            workout: WorkoutCreate,
+            id: UUID = UUID(),
+            createdAt: Date = Date(),
+            failedAttempts: Int = 0,
+            lastError: String? = nil
+        ) {
             self.id = id
             self.createdAt = createdAt
             self.workout = workout
+            self.failedAttempts = failedAttempts
+            self.lastError = lastError
+        }
+
+        // Custom decoder so queue files written before `failedAttempts` /
+        // `lastError` existed still load cleanly — they default to 0 / nil.
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            self.id = try c.decode(UUID.self, forKey: .id)
+            self.createdAt = try c.decode(Date.self, forKey: .createdAt)
+            self.workout = try c.decode(WorkoutCreate.self, forKey: .workout)
+            self.failedAttempts = try c.decodeIfPresent(Int.self, forKey: .failedAttempts) ?? 0
+            self.lastError = try c.decodeIfPresent(String.self, forKey: .lastError)
         }
     }
+
+    /// After this many consecutive failed drain attempts, an entry is
+    /// considered poison and dropped. Gives us ~5 independent opportunities
+    /// (across app foregrounds / manual retries) before giving up — enough
+    /// to ride out a rolling deploy or a multi-minute backend outage.
+    static let maxRetryAttempts: Int = 5
 
     enum DrainResult {
         case success
@@ -117,10 +149,19 @@ final class PendingWorkoutStore: ObservableObject {
     }
 
     /// Attempt to upload every queued workout, in FIFO order.
+    ///
+    /// Policy per failure mode:
+    /// - `.networkError` / `.unauthorized` / `.serviceUnavailable` / `.rateLimited`
+    ///   / `.serverError`: keep the entry, stop draining, surface the error. A
+    ///   future drain will retry.
+    /// - `.badRequest` / `.validationError` / other client-side 4xx: the payload
+    ///   is almost certainly malformed. Increment `failedAttempts`; drop only
+    ///   after `maxRetryAttempts` to avoid wedging on a single bad entry but
+    ///   also to avoid silently losing data on a transient server-side bug
+    ///   that happens to surface as a 4xx.
+    ///
     /// Returns `.success` if the queue drained (or was already empty),
-    /// `.failed(error)` if a network error blocked draining.
-    /// Client/auth errors do NOT stop the drain — they drop the bad entry
-    /// so we don't get stuck forever on malformed data.
+    /// `.failed(error)` if a recoverable error blocked draining.
     @discardableResult
     func drain(api: APIClient = APIClient.shared) async -> DrainResult {
         guard !isDraining else { return .skipped }
@@ -140,22 +181,22 @@ final class PendingWorkoutStore: ObservableObject {
                 remove(id: entry.id)
             } catch let apiError as APIError {
                 switch apiError {
-                case .networkError:
-                    // Still offline — stop here, keep remaining entries in queue.
-                    lastDrainError = apiError.localizedDescription
-                    return .failed(apiError)
-                case .unauthorized:
-                    // Don't drop the entry — the caller will re-authenticate and retry.
+                case .networkError, .unauthorized,
+                     .serviceUnavailable, .rateLimited, .serverError:
+                    // Transient — keep the entry, stop the drain, retry next time.
+                    // Server outages, rolling deploys, auth refreshes, and 5xx
+                    // all fall here. Dropping the entry would be data loss.
                     lastDrainError = apiError.localizedDescription
                     return .failed(apiError)
                 default:
-                    // 4xx/5xx that isn't a network problem — the payload is likely bad.
-                    // Drop it so we don't get wedged on a single poison entry, but
-                    // surface the error to the user.
-                    lastDrainError = "Skipped pending workout: \(apiError.localizedDescription)"
-                    remove(id: entry.id)
+                    // Likely-malformed payload (400/422). Count this as a
+                    // failed attempt and only drop once we've exceeded the
+                    // retry budget — some 4xx are actually transient server
+                    // bugs in disguise.
+                    bumpAttempt(entryId: entry.id, error: apiError.localizedDescription)
                 }
             } catch {
+                // Unknown error shape — treat as transient and keep the entry.
                 lastDrainError = error.localizedDescription
                 return .failed(error)
             }
@@ -163,6 +204,21 @@ final class PendingWorkoutStore: ObservableObject {
 
         refreshStaleWarning()
         return .success
+    }
+
+    /// Increment the failed-attempt counter for a queued entry, and drop it
+    /// if we've hit the retry budget. Persists either way.
+    private func bumpAttempt(entryId: UUID, error: String) {
+        guard let idx = pending.firstIndex(where: { $0.id == entryId }) else { return }
+        pending[idx].failedAttempts += 1
+        pending[idx].lastError = error
+        if pending[idx].failedAttempts >= Self.maxRetryAttempts {
+            lastDrainError = "Dropped pending workout after \(Self.maxRetryAttempts) attempts: \(error)"
+            pending.remove(at: idx)
+        } else {
+            lastDrainError = "Retrying pending workout (attempt \(pending[idx].failedAttempts) of \(Self.maxRetryAttempts)): \(error)"
+        }
+        saveToDisk()
     }
 
     /// Whether any queued entry is older than `staleThresholdDays`.
@@ -189,7 +245,12 @@ final class PendingWorkoutStore: ObservableObject {
     private func saveToDisk() {
         do {
             let data = try encoder.encode(pending)
-            try data.write(to: fileURL, options: [.atomic])
+            // `.completeFileProtection` keeps the file encrypted while the
+            // device is locked. Queued WorkoutCreate payloads contain a
+            // user's training log — not as sensitive as credentials, but
+            // still tied to their identity, so at-rest protection is cheap
+            // insurance.
+            try data.write(to: fileURL, options: [.atomic, .completeFileProtection])
         } catch {
             #if DEBUG
             print("DEBUG: PendingWorkoutStore failed to save: \(error)")
