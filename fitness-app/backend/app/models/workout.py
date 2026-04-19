@@ -5,7 +5,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Enum, Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Column, DateTime, Enum, Float, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -52,13 +52,20 @@ class WorkoutSession(Base):
     # Enforce per-user client_id uniqueness so a retry returns the existing
     # session. Postgres treats multiple NULLs as distinct, so legacy rows and
     # web clients that don't send a client_id aren't affected.
+    #
+    # `postgresql_where` must be a SQL clause, not a detached Column(). Using
+    # Column("client_id") here creates a brand-new Column object that isn't
+    # tied to this table, so SQLAlchemy emits invalid DDL for the partial
+    # index (the migration itself uses sa.text, so Postgres deploys are fine,
+    # but Base.metadata.create_all under tests would fail). Keep the raw
+    # SQL text to match the migration.
     __table_args__ = (
         Index(
             "ix_workout_sessions_user_client_unique",
             "user_id",
             "client_id",
             unique=True,
-            postgresql_where=Column("client_id").isnot(None),
+            postgresql_where=text("client_id IS NOT NULL"),
         ),
     )
 
