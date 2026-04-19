@@ -29,3 +29,6 @@ node_modules/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Claude Code local state (agent worktrees, etc.)
+.claude/
