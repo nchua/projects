@@ -68,4 +68,14 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Tag Sentry scope with the resolved user id so exceptions include it.
+    # Lazy import so local dev without the SDK installed stays a no-op.
+    try:  # pragma: no cover - depends on optional dep
+        import sentry_sdk
+
+        sentry_sdk.set_user({"id": str(user.id)})
+        sentry_sdk.set_tag("user_id", str(user.id))
+    except Exception:
+        pass
+
     return user
