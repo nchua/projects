@@ -2,22 +2,73 @@
 Fitness Tracker API - Main application entry point
 """
 import logging
+import os
 import sys
 
-# Configure logging to stdout for Railway
+# Configure logging to stdout for Railway. The format includes `request_id`
+# (populated by RequestIdLogFilter) so every line is traceable across a
+# single request.
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
+    format='%(asctime)s - %(name)s - %(levelname)s - [req_id=%(request_id)s] %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 # Ensure logs are flushed immediately
 for handler in logging.root.handlers:
     handler.flush = sys.stdout.flush
 
+# Install the request-id log filter before anything else logs so the
+# `request_id` attribute is always present on log records (defaulting to "-").
+from app.core.request_context import (  # noqa: E402
+    REQUEST_ID_HEADER,
+    RequestIDMiddleware,
+    get_request_id,
+    install_logging_filter,
+)
+
+install_logging_filter()
+
 logger = logging.getLogger(__name__)
 
-from fastapi import FastAPI
+# ---------------------------------------------------------------------------
+# Sentry initialization (must happen as early as possible).
+# Only initialize when SENTRY_DSN is set so local dev + tests stay silent.
+# ---------------------------------------------------------------------------
+SENTRY_DSN = os.environ.get("SENTRY_DSN", "").strip()
+if SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        from sentry_sdk.integrations.starlette import StarletteIntegration
+
+        def _before_send(event, hint):
+            # Always include the current request_id tag so issue search works.
+            tags = event.setdefault("tags", {})
+            tags.setdefault("request_id", get_request_id())
+            return event
+
+        sentry_sdk.init(
+            dsn=SENTRY_DSN,
+            traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.0")),
+            profiles_sample_rate=float(os.environ.get("SENTRY_PROFILES_SAMPLE_RATE", "0.0")),
+            send_default_pii=False,
+            integrations=[
+                StarletteIntegration(),
+                FastApiIntegration(),
+            ],
+            before_send=_before_send,
+            environment=os.environ.get("SENTRY_ENVIRONMENT", "production"),
+            release=os.environ.get("SENTRY_RELEASE"),
+        )
+        logger.info("Sentry initialized")
+    except Exception as _sentry_err:  # pragma: no cover - defensive
+        logger.warning(f"Failed to initialize Sentry: {_sentry_err}")
+else:
+    logger.info("SENTRY_DSN not set — Sentry disabled")
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 
@@ -34,10 +85,56 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+# ---------------------------------------------------------------------------
+# Rate limiting via slowapi.
+# A single limiter instance is stored on app.state so decorators can resolve
+# it and the 429 exception handler can emit a friendly JSON body.
+# ---------------------------------------------------------------------------
+from slowapi.errors import RateLimitExceeded  # noqa: E402
+
+from app.core.rate_limit import limiter  # noqa: E402
+
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+async def _rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    """Friendly 429 response with Retry-After header."""
+    # `exc.limit` is a slowapi `Limit` wrapper whose `.limit` is the
+    # underlying `limits.RateLimitItem` with a `get_expiry()` (seconds).
+    retry_after = 60
+    try:
+        inner = getattr(exc, "limit", None)
+        rate_item = getattr(inner, "limit", None) if inner is not None else None
+        if rate_item is not None and hasattr(rate_item, "get_expiry"):
+            retry_after = int(rate_item.get_expiry())
+    except Exception:
+        pass
+    headers = {"Retry-After": str(retry_after)}
+    rid = getattr(getattr(request, "state", None), "request_id", None) or get_request_id()
+    if rid and rid != "-":
+        headers[REQUEST_ID_HEADER] = rid
+    return JSONResponse(
+        status_code=429,
+        content={
+            "detail": "Too many requests. Please try again later.",
+            "retry_after_seconds": retry_after,
+        },
+        headers=headers,
+    )
+
+
 # Add validation error handler to log details
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.exceptions import RequestValidationError  # noqa: E402
+from starlette.exceptions import HTTPException as StarletteHTTPException  # noqa: E402
+
+
+def _error_headers(request: Request) -> dict:
+    """Propagate request id onto error responses."""
+    rid = getattr(getattr(request, "state", None), "request_id", None) or get_request_id()
+    if not rid or rid == "-":
+        return {}
+    return {REQUEST_ID_HEADER: rid}
 
 
 @app.exception_handler(RequestValidationError)
@@ -45,7 +142,8 @@ async def validation_exception_handler(request, exc):
     print(f"VALIDATION ERROR on {request.url.path}: {exc.errors()}", flush=True)
     return JSONResponse(
         status_code=422,
-        content={"detail": exc.errors()}
+        content={"detail": exc.errors()},
+        headers=_error_headers(request),
     )
 
 @app.exception_handler(StarletteHTTPException)
@@ -53,7 +151,8 @@ async def http_exception_handler(request, exc):
     print(f"HTTP EXCEPTION on {request.url.path}: status={exc.status_code}, detail={exc.detail}", flush=True)
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail}
+        content={"detail": exc.detail},
+        headers=_error_headers(request),
     )
 
 @app.exception_handler(Exception)
@@ -62,7 +161,8 @@ async def general_exception_handler(request, exc):
     detail = str(exc) if settings.DEBUG else "Internal server error"
     return JSONResponse(
         status_code=500,
-        content={"detail": detail}
+        content={"detail": detail},
+        headers=_error_headers(request),
     )
 
 # Configure CORS — iOS native apps don't send Origin headers,
@@ -85,9 +185,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Request-ID middleware runs before everything so ID is available in every
+# downstream handler, log, and exception handler. Starlette runs middleware
+# in reverse order of registration, so this is added last.
+#
+# Note: we intentionally do NOT register SlowAPIMiddleware. slowapi's docs
+# warn against combining app-level middleware with per-route @limiter.limit
+# decorators; the rate-limiting in this service runs through the decorators
+# and the RateLimitExceeded exception handler above.
+app.add_middleware(RequestIDMiddleware)
+
 # Debug middleware to log all requests/responses
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
+from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
+from starlette.requests import Request  # noqa: E402
 
 
 class DebugMiddleware(BaseHTTPMiddleware):
@@ -126,6 +236,49 @@ async def health_check():
         "status": "ok",
         "app": settings.APP_NAME
     }
+
+
+# ---------------------------------------------------------------------------
+# Sentry smoke-test canary.
+# Disabled by default. Enabling requires BOTH:
+#   - ALLOW_SMOKE_TEST_ENDPOINT=true   (registers the route at all)
+#   - SMOKE_TEST_SECRET=<strong-value> (caller must send X-Smoke-Test-Secret)
+# This prevents an unauthenticated 500-trigger if the feature flag ever
+# leaks to prod.
+# ---------------------------------------------------------------------------
+if os.environ.get("ALLOW_SMOKE_TEST_ENDPOINT", "").lower() == "true":
+    import hmac
+
+    from fastapi import Header, HTTPException
+
+    _smoke_test_secret = os.environ.get("SMOKE_TEST_SECRET", "")
+
+    @app.get("/internal/debug/boom", include_in_schema=False)
+    async def _sentry_canary(x_smoke_test_secret: str = Header(default="")):
+        """Intentionally raise to verify Sentry pipeline end-to-end.
+
+        Requires the X-Smoke-Test-Secret header to match SMOKE_TEST_SECRET
+        (which must itself be non-empty). Silently returns 404 on any
+        mismatch so the endpoint is indistinguishable from a real 404 to
+        external scanners. Uses constant-time comparison to avoid leaking
+        the secret via response-timing side channel.
+        """
+        if (
+            not _smoke_test_secret
+            or not x_smoke_test_secret
+            or not hmac.compare_digest(
+                x_smoke_test_secret.encode("utf-8"),
+                _smoke_test_secret.encode("utf-8"),
+            )
+        ):
+            raise HTTPException(status_code=404, detail="Not Found")
+        try:
+            import sentry_sdk
+
+            sentry_sdk.set_tag("smoke_test", "true")
+        except Exception:
+            pass
+        raise RuntimeError("sentry-canary: intentional smoke-test failure")
 
 
 @app.get("/privacy")
@@ -255,4 +408,3 @@ if __name__ == "__main__":
         port=8000,
         reload=settings.DEBUG
     )
-

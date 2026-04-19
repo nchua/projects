@@ -104,6 +104,9 @@ def client(db: Session):
 
     Overrides the get_db dependency so all endpoints share the same
     session (and thus the same transaction) as the test.
+
+    Also resets the slowapi rate-limit storage between tests so that
+    sequential tests don't accidentally trip the per-IP auth rate limit.
     """
     def _override_get_db():
         try:
@@ -112,6 +115,16 @@ def client(db: Session):
             pass  # session lifecycle managed by the db fixture
 
     _app.dependency_overrides[get_db] = _override_get_db
+
+    # Reset rate limiter state between tests — TestClient reuses the same
+    # client IP, so shared state would cause spurious 429s across tests.
+    try:
+        limiter = getattr(_app.state, "limiter", None)
+        if limiter is not None:
+            limiter.reset()
+    except Exception:
+        pass
+
     with TestClient(_app, raise_server_exceptions=False) as c:
         yield c
     _app.dependency_overrides.clear()
