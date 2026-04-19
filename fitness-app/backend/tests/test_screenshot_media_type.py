@@ -54,3 +54,25 @@ def test_filename_lies_png_bytes_detected():
     # Regression: iOS used to upload PNG bytes with filename=foo.jpg. The
     # bytes are authoritative — we ignore the filename entirely.
     assert detect_media_type_from_bytes(PNG_MAGIC) == "image/png"
+
+
+# --- Activity prefix stripping (Apple Watch labels) ---------------------------
+
+from app.services.screenshot_service import _strip_activity_prefix  # noqa: E402
+
+
+@pytest.mark.parametrize("raw,expected", [
+    ("Indoor Run", "Run"),
+    ("Outdoor Run", "Run"),
+    ("Indoor Cycle", "Cycle"),
+    ("Outdoor Cycling", "Cycling"),
+    ("Pool Swim", "Swim"),
+    ("Open Water Swim", "Swim"),
+    ("Indoor Walk", "Walk"),
+    ("Pickleball", "Pickleball"),  # No prefix — left alone
+    ("Tennis", "Tennis"),
+    ("  Outdoor  Run  ", "Run"),  # Leading/trailing whitespace
+    ("INDOOR RUN", "RUN"),         # Case-insensitive prefix match, preserves case
+])
+def test_strip_activity_prefix(raw, expected):
+    assert _strip_activity_prefix(raw) == expected

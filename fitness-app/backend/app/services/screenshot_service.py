@@ -216,6 +216,84 @@ def clean_json_response(response_text: str) -> str:
     return text.strip()
 
 
+# Canonical sport/cardio names seeded by add_sports_exercises.py. Aliases like
+# "Run"/"Jog"/"Pickleball Match" each live in their own Exercise row that shares
+# canonical_id with the primary — we use this set to resolve a fuzzy match back
+# to the primary so workout history shows "Running" instead of "Run".
+SPORT_PRIMARY_NAMES = frozenset({
+    "Tennis", "Pickleball", "Padel", "Running", "Cycling", "Swimming",
+    "Rowing", "Jump Rope", "Stair Climber", "Elliptical", "Walking",
+    "HIIT", "Basketball", "Soccer", "Golf",
+})
+
+# Apple Watch labels its workouts with location prefixes that aren't part of
+# the exercise name in our database (e.g., "Indoor Run", "Outdoor Cycle",
+# "Pool Swim"). We strip these so fuzzy matching can hit the right row.
+_ACTIVITY_PREFIXES = ("indoor ", "outdoor ", "pool ", "open water ")
+
+
+def _strip_activity_prefix(activity_type: str) -> str:
+    """Strip Apple Watch location prefixes from an activity name."""
+    lowered = activity_type.lower().strip()
+    for prefix in _ACTIVITY_PREFIXES:
+        if lowered.startswith(prefix):
+            return activity_type.strip()[len(prefix):].strip()
+    return activity_type.strip()
+
+
+def match_activity_to_exercise(
+    db: Session,
+    activity_type: str,
+    threshold: int = 70,
+) -> Tuple[Optional[str], Optional[str]]:
+    """Match a WHOOP/Apple Watch activity_type to a seeded Sport/Cardio exercise.
+
+    Returns (exercise_id, exercise_name) of the canonical row, or (None, None)
+    when no match clears the threshold (e.g., "Yoga" with no seeded row).
+    """
+    if not activity_type:
+        return None, None
+
+    stripped = _strip_activity_prefix(activity_type)
+
+    exercises = db.query(Exercise).filter(
+        Exercise.is_custom == False,  # noqa: E712
+        Exercise.category.in_(["Sport", "Cardio"]),
+    ).all()
+    if not exercises:
+        return None, None
+
+    candidates = [(ex.name.lower(), ex) for ex in exercises]
+    result = process.extractOne(
+        stripped.lower(),
+        [c[0] for c in candidates],
+        scorer=fuzz.ratio,
+    )
+    if not result or result[1] < threshold:
+        logger.info(f"No exercise match for activity_type={activity_type!r} (best={result})")
+        return None, None
+
+    matched = next(ex for name, ex in candidates if name == result[0])
+
+    # Resolve to the canonical (primary) row when the match landed on an alias.
+    # Primary rows have a name in SPORT_PRIMARY_NAMES; aliases share canonical_id.
+    if matched.name not in SPORT_PRIMARY_NAMES and matched.canonical_id:
+        primary = db.query(Exercise).filter(
+            Exercise.canonical_id == matched.canonical_id,
+            Exercise.name.in_(SPORT_PRIMARY_NAMES),
+            Exercise.is_custom == False,  # noqa: E712
+        ).first()
+        if primary:
+            logger.info(
+                f"Activity {activity_type!r} matched alias {matched.name!r} -> "
+                f"canonical {primary.name!r} (score={result[1]})"
+            )
+            return primary.id, primary.name
+
+    logger.info(f"Activity {activity_type!r} matched {matched.name!r} (score={result[1]})")
+    return matched.id, matched.name
+
+
 def build_exercise_candidates(db: Session, user_id: str) -> List[Tuple[str, str]]:
     """
     Build list of (name/alias, exercise_id) tuples for fuzzy matching.
@@ -938,9 +1016,29 @@ async def save_whoop_activity(
     db.flush()
     workout_id = str(workout_session.id)
 
+    # Link the session to the seeded Sport/Cardio exercise so it shows up in
+    # exercise history (e.g., a Pickleball Apple Watch screenshot becomes a
+    # Pickleball workout, not just a free-text WorkoutSession).
+    exercises = extraction_result.get("exercises") or []
+    if not exercises:
+        sport_exercise_id, sport_exercise_name = match_activity_to_exercise(
+            db, activity_type
+        )
+        if sport_exercise_id:
+            sport_workout_exercise = WorkoutExercise(
+                session_id=workout_session.id,
+                exercise_id=sport_exercise_id,
+                order_index=0,
+            )
+            db.add(sport_workout_exercise)
+            db.flush()
+            logger.info(
+                f"Linked WHOOP activity {activity_type!r} to exercise "
+                f"{sport_exercise_name!r} (id={sport_exercise_id})"
+            )
+
     # If WHOOP extracted exercises (e.g., weightlifting activity), save them too
     # This ensures exercises get set credit and tie to recovery tracking
-    exercises = extraction_result.get("exercises") or []
     if exercises:
         # Get user's e1RM formula preference
         e1rm_formula = get_user_e1rm_formula(db, user_id)
