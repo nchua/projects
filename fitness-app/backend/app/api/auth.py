@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.core.rate_limit import AUTH_RATE_LIMIT, limiter
+from app.core.rate_limit import LOGIN_RATE_LIMIT, REGISTER_RATE_LIMIT, limiter
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -45,7 +45,7 @@ router = APIRouter()
 
 
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
-@limiter.limit(AUTH_RATE_LIMIT)
+@limiter.limit(REGISTER_RATE_LIMIT)
 async def register(request: Request, user_data: UserRegister, db: Session = Depends(get_db)):
     """
     Register a new user account.
@@ -97,7 +97,7 @@ async def register(request: Request, user_data: UserRegister, db: Session = Depe
 
 
 @router.post("/login", response_model=Token)
-@limiter.limit(AUTH_RATE_LIMIT)
+@limiter.limit(LOGIN_RATE_LIMIT)
 async def login(request: Request, user_data: UserLogin, db: Session = Depends(get_db)):
     """
     Authenticate user and return JWT tokens

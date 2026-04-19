@@ -80,10 +80,13 @@ class TestLoginRateLimit:
             f"Expected 200 after reset, got {response.status_code}: {response.json()}"
         )
 
-    def test_register_also_rate_limited(self, client):
-        """POST /auth/register shares the same brute-force policy."""
-        # First 5 registrations with different emails -> 201 each.
-        for i in range(5):
+    def test_register_has_looser_rate_limit(self, client):
+        """POST /auth/register permits higher burst than /auth/login — shared-NAT
+        networks (gyms, coffee shops) must be able to sign up multiple users in
+        one 10-minute window. Policy is 20/10min vs login's 5/10min.
+        """
+        # First 20 registrations with different emails -> 201 each.
+        for i in range(20):
             response = client.post(
                 "/auth/register",
                 json={"email": f"reg{i}@example.com", "password": "StrongPass1!"},
@@ -92,9 +95,42 @@ class TestLoginRateLimit:
                 f"Attempt {i + 1} expected 201, got {response.status_code}"
             )
 
-        # 6th -> blocked.
+        # 21st -> blocked.
         response = client.post(
             "/auth/register",
-            json={"email": "reg6@example.com", "password": "StrongPass1!"},
+            json={"email": "reg21@example.com", "password": "StrongPass1!"},
         )
         assert response.status_code == 429
+
+    def test_proxy_forwarded_header_distinguishes_clients(self, client, create_test_user):
+        """X-Forwarded-For is the true client IP on Railway; two different
+        clients behind the same proxy must not share each other's quota.
+        """
+        create_test_user(email="proxytest@example.com", password="TestPass123!")
+
+        # Client A burns through 5 attempts.
+        for _ in range(5):
+            response = client.post(
+                "/auth/login",
+                json={"email": "proxytest@example.com", "password": "WrongPass1!"},
+                headers={"X-Forwarded-For": "203.0.113.10"},
+            )
+            assert response.status_code == 401
+
+        # 6th attempt from A is blocked.
+        blocked = client.post(
+            "/auth/login",
+            json={"email": "proxytest@example.com", "password": "WrongPass1!"},
+            headers={"X-Forwarded-For": "203.0.113.10"},
+        )
+        assert blocked.status_code == 429
+
+        # Different client behind the same proxy — fresh quota.
+        fresh = client.post(
+            "/auth/login",
+            json={"email": "proxytest@example.com", "password": "TestPass123!"},
+            headers={"X-Forwarded-For": "198.51.100.77"},
+        )
+        assert fresh.status_code == 200, (
+            f"Expected 200 from a different X-Forwarded-For IP, got {fresh.status_code}"
+        )
