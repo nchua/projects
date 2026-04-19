@@ -79,14 +79,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Alembic upgrade head
-        run: alembic upgrade head
-
-      - name: Alembic downgrade -1
-        run: alembic downgrade -1
-
-      - name: Alembic upgrade head (round-trip)
-        run: alembic upgrade head
+      - name: Alembic migrations (upgrade head)
+        run: |
+          alembic upgrade head
+          alembic history --verbose
+          alembic current
 
   ios-build:
     name: iOS — xcodebuild
