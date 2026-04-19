@@ -1,6 +1,9 @@
 """
 Authentication API endpoints
 """
+import uuid
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -11,6 +14,7 @@ from app.core.security import (
     create_refresh_token,
     hash_password,
     verify_password,
+    verify_password_with_rehash,
     verify_token,
 )
 from app.core.utils import to_iso8601_utc
@@ -25,60 +29,68 @@ from app.schemas.auth import (
     UserResponse,
 )
 
+# Generic success message returned by /auth/register regardless of whether the
+# email was new or already taken. This closes the email-enumeration oracle:
+# an attacker probing /auth/register cannot distinguish "fresh account" from
+# "existing account" because the status code and response body shape are the
+# same in both cases. Real users discover duplicate-email collisions at login
+# time (their "new" password won't match the existing stored hash).
+# TODO: once an email-verification pipeline exists, switch to the stronger
+# pattern of sending a verification / "someone tried to register your email"
+# message out-of-band instead of faking a success response.
+_REGISTER_GENERIC_MESSAGE = "User registered successfully"
+
 router = APIRouter()
 
 
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     """
-    Register a new user account
+    Register a new user account.
 
-    Args:
-        user_data: User registration data (email, password)
-        db: Database session
-
-    Returns:
-        Success message and user information
-
-    Raises:
-        HTTPException: If email already exists or validation fails
+    Returns an identical-shape response whether the email was new or already
+    registered to avoid leaking account existence (email enumeration). On
+    duplicate email we simply no-op rather than creating a second row, but
+    the caller sees the same status code and JSON shape as a fresh signup.
+    A real user whose email collides discovers the collision at login time.
     """
-    # Check if user already exists
     existing_user = db.query(User).filter(User.email == user_data.email).first()
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+
+    if existing_user is None:
+        # Fresh account path.
+        password_hash = hash_password(user_data.password)
+        new_user = User(
+            email=user_data.email,
+            password_hash=password_hash,
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+
+        default_profile = UserProfile(user_id=new_user.id)
+        db.add(default_profile)
+        db.commit()
+
+        user_response = UserResponse(
+            id=new_user.id,
+            email=new_user.email,
+            created_at=to_iso8601_utc(new_user.created_at),
+        )
+    else:
+        # Duplicate email path: return the same response shape but with a
+        # synthetic id and current timestamp so the response is
+        # indistinguishable from a fresh registration. Crucially we do NOT
+        # expose the real user's id or created_at — either would let an
+        # attacker correlate probes and confirm the account exists.
+        user_response = UserResponse(
+            id=str(uuid.uuid4()),
+            email=user_data.email,
+            created_at=to_iso8601_utc(datetime.now(timezone.utc)),
         )
 
-    # Hash password
-    password_hash = hash_password(user_data.password)
-
-    # Create new user
-    new_user = User(
-        email=user_data.email,
-        password_hash=password_hash
-    )
-
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-
-    # Create default user profile
-    default_profile = UserProfile(user_id=new_user.id)
-    db.add(default_profile)
-    db.commit()
-
-    # Prepare response
-    user_response = UserResponse(
-        id=new_user.id,
-        email=new_user.email,
-        created_at=to_iso8601_utc(new_user.created_at)
-    )
-
     return RegisterResponse(
-        message="User registered successfully",
-        user=user_response
+        message=_REGISTER_GENERIC_MESSAGE,
+        user=user_response,
     )
 
 
@@ -113,13 +125,21 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
             detail="Account scheduled for deletion. Contact support to recover.",
         )
 
-    # Verify password
-    if not verify_password(user_data.password, user.password_hash):
+    # Verify password. The helper returns (ok, needs_rehash); the second
+    # flag is True when the stored hash is the legacy raw-bcrypt format,
+    # giving us a transparent migration point to re-store under the new
+    # sha256-prehash + bcrypt scheme on next successful login.
+    ok, needs_rehash = verify_password_with_rehash(user_data.password, user.password_hash)
+    if not ok:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    if needs_rehash:
+        user.password_hash = hash_password(user_data.password)
+        db.commit()
 
     # Create tokens
     access_token = create_access_token(data={"sub": user.id})

@@ -21,15 +21,40 @@ class TestRegistration:
         assert data["user"]["email"] == "newuser@example.com"
         assert "id" in data["user"]
 
-    def test_register_duplicate_email(self, client, create_test_user):
-        """Registering with an existing email returns 400."""
-        create_test_user(email="dupe@example.com")
+    def test_register_duplicate_email_is_indistinguishable(self, client, create_test_user):
+        """
+        Registering with an existing email must return an indistinguishable
+        response from a fresh registration to prevent email enumeration.
+        The duplicate user is NOT overwritten and the original password still
+        works at login time.
+        """
+        _, original_password = create_test_user(
+            email="dupe@example.com", password="OriginalPass1!"
+        )
         response = client.post("/auth/register", json={
             "email": "dupe@example.com",
-            "password": "StrongPass1!",
+            "password": "DifferentPass1!",
         })
-        assert response.status_code == 400
-        assert "already registered" in response.json()["detail"]
+        # Same status + same body shape as a fresh registration.
+        assert response.status_code == 201, response.text
+        data = response.json()
+        assert data["message"] == "User registered successfully"
+        assert data["user"]["email"] == "dupe@example.com"
+        assert "id" in data["user"] and "created_at" in data["user"]
+
+        # The attacker's "new" password must NOT have taken over the account.
+        bad_login = client.post("/auth/login", json={
+            "email": "dupe@example.com",
+            "password": "DifferentPass1!",
+        })
+        assert bad_login.status_code == 401
+
+        # The original password must still work.
+        good_login = client.post("/auth/login", json={
+            "email": "dupe@example.com",
+            "password": original_password,
+        })
+        assert good_login.status_code == 200
 
     def test_register_weak_password(self, client):
         """Password missing uppercase/digit fails validation (not 201)."""
