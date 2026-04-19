@@ -123,17 +123,43 @@ CRITICAL RULES:
 - For WHOOP running/cardio screenshots: look for Activity Strain, heart rate zones, duration, steps"""
 
 
-def get_media_type(filename: str) -> str:
-    """Determine media type from filename extension."""
-    ext = filename.lower().split('.')[-1] if '.' in filename else 'png'
-    media_types = {
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png',
-        'gif': 'image/gif',
-        'webp': 'image/webp'
-    }
-    return media_types.get(ext, 'image/png')
+SUPPORTED_MEDIA_TYPES = ("image/jpeg", "image/png", "image/gif", "image/webp")
+
+
+def detect_media_type_from_bytes(image_data: bytes) -> str:
+    """Detect the actual image media type from raw bytes using magic numbers.
+
+    Claude Vision rejects requests when the declared media type disagrees with
+    the decoded image, so we must never trust the filename or client-supplied
+    Content-Type. Returns one of the Anthropic-accepted media types. Raises
+    ValueError for HEIC/HEIF or any unrecognized format so the caller can
+    surface a clear error instead of letting Claude 400.
+    """
+    if len(image_data) < 12:
+        raise ValueError("Image data too short to identify format")
+
+    # PNG: 89 50 4E 47 0D 0A 1A 0A
+    if image_data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    # JPEG: FF D8 FF
+    if image_data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    # GIF: GIF87a or GIF89a
+    if image_data[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    # WEBP: RIFF....WEBP
+    if image_data[:4] == b"RIFF" and image_data[8:12] == b"WEBP":
+        return "image/webp"
+    # HEIC/HEIF: ....ftyp<brand>
+    if image_data[4:8] == b"ftyp" and image_data[8:12] in (
+        b"heic", b"heix", b"hevc", b"hevx", b"mif1", b"msf1",
+    ):
+        raise ValueError(
+            "HEIC/HEIF images are not supported by Claude Vision. "
+            "Please convert to JPEG or PNG before uploading."
+        )
+
+    raise ValueError("Unrecognized image format. Expected JPEG, PNG, GIF, or WEBP.")
 
 
 def encode_image_bytes(image_data: bytes) -> str:
@@ -188,6 +214,95 @@ def clean_json_response(response_text: str) -> str:
         text = text[first_brace:last_brace + 1]
 
     return text.strip()
+
+
+# Canonical sport/cardio/fitness names seeded by add_sports_exercises.py and
+# the add_apple_workout_exercises migration. Aliases like "Run"/"Jog"/"Bouldering"
+# each live in their own Exercise row that shares canonical_id with the primary
+# — we use this set to resolve a fuzzy match back to the primary so workout
+# history shows "Running" instead of "Run".
+SPORT_PRIMARY_NAMES = frozenset({
+    # add_sports_exercises.py / EXERCISES_DATA
+    "Tennis", "Pickleball", "Padel", "Running", "Cycling", "Swimming",
+    "Rowing", "Jump Rope", "Stair Climber", "Elliptical", "Walking",
+    "HIIT", "Basketball", "Soccer", "Golf",
+    # add_apple_workout_exercises migration
+    "Yoga", "Pilates", "Core Training", "Strength Training",
+    "Functional Strength Training", "Hiking", "Dance", "Boxing",
+    "Kickboxing", "Martial Arts", "Climbing", "Skiing", "Snowboarding",
+    "Surfing", "Volleyball",
+})
+
+# Exercise categories that represent trackable standalone activities (vs. gym
+# movements like Push/Pull/Legs). The activity matcher only searches these.
+_ACTIVITY_CATEGORIES = ("Sport", "Cardio", "Flexibility", "Strength")
+
+# Apple Watch labels its workouts with location prefixes that aren't part of
+# the exercise name in our database (e.g., "Indoor Run", "Outdoor Cycle",
+# "Pool Swim"). We strip these so fuzzy matching can hit the right row.
+_ACTIVITY_PREFIXES = ("indoor ", "outdoor ", "pool ", "open water ")
+
+
+def _strip_activity_prefix(activity_type: str) -> str:
+    """Strip Apple Watch location prefixes from an activity name."""
+    lowered = activity_type.lower().strip()
+    for prefix in _ACTIVITY_PREFIXES:
+        if lowered.startswith(prefix):
+            return activity_type.strip()[len(prefix):].strip()
+    return activity_type.strip()
+
+
+def match_activity_to_exercise(
+    db: Session,
+    activity_type: str,
+    threshold: int = 70,
+) -> Tuple[Optional[str], Optional[str]]:
+    """Match a WHOOP/Apple Watch activity_type to a seeded Sport/Cardio exercise.
+
+    Returns (exercise_id, exercise_name) of the canonical row, or (None, None)
+    when no match clears the threshold (e.g., "Yoga" with no seeded row).
+    """
+    if not activity_type:
+        return None, None
+
+    stripped = _strip_activity_prefix(activity_type)
+
+    exercises = db.query(Exercise).filter(
+        Exercise.is_custom == False,  # noqa: E712
+        Exercise.category.in_(_ACTIVITY_CATEGORIES),
+    ).all()
+    if not exercises:
+        return None, None
+
+    candidates = [(ex.name.lower(), ex) for ex in exercises]
+    result = process.extractOne(
+        stripped.lower(),
+        [c[0] for c in candidates],
+        scorer=fuzz.ratio,
+    )
+    if not result or result[1] < threshold:
+        logger.info(f"No exercise match for activity_type={activity_type!r} (best={result})")
+        return None, None
+
+    matched = next(ex for name, ex in candidates if name == result[0])
+
+    # Resolve to the canonical (primary) row when the match landed on an alias.
+    # Primary rows have a name in SPORT_PRIMARY_NAMES; aliases share canonical_id.
+    if matched.name not in SPORT_PRIMARY_NAMES and matched.canonical_id:
+        primary = db.query(Exercise).filter(
+            Exercise.canonical_id == matched.canonical_id,
+            Exercise.name.in_(SPORT_PRIMARY_NAMES),
+            Exercise.is_custom == False,  # noqa: E712
+        ).first()
+        if primary:
+            logger.info(
+                f"Activity {activity_type!r} matched alias {matched.name!r} -> "
+                f"canonical {primary.name!r} (score={result[1]})"
+            )
+            return primary.id, primary.name
+
+    logger.info(f"Activity {activity_type!r} matched {matched.name!r} (score={result[1]})")
+    return matched.id, matched.name
 
 
 def build_exercise_candidates(db: Session, user_id: str) -> List[Tuple[str, str]]:
@@ -296,9 +411,12 @@ async def extract_workout_from_screenshot(
         timeout=httpx.Timeout(30.0),
     )
 
-    # Encode image
+    # Detect media type from the actual bytes — iOS may send a .jpg filename
+    # with PNG/HEIC bytes, and Claude 400s when the declared media type differs
+    # from the decoded image.
+    media_type = detect_media_type_from_bytes(image_data)
+    logger.info(f"Detected media_type={media_type} for {filename}")
     image_base64 = encode_image_bytes(image_data)
-    media_type = get_media_type(filename)
 
     # Call Claude Vision API
     try:
@@ -909,14 +1027,18 @@ async def save_whoop_activity(
     db.flush()
     workout_id = str(workout_session.id)
 
+    # Link the session to the seeded Sport/Cardio exercise so it shows up in
+    # exercise history (e.g., a Pickleball Apple Watch screenshot becomes a
+    # Pickleball workout, not just a free-text WorkoutSession).
+    exercises = extraction_result.get("exercises") or []
+    order_index = 0
+
     # If WHOOP extracted exercises (e.g., weightlifting activity), save them too
     # This ensures exercises get set credit and tie to recovery tracking
-    exercises = extraction_result.get("exercises") or []
     if exercises:
         # Get user's e1RM formula preference
         e1rm_formula = get_user_e1rm_formula(db, user_id)
 
-        order_index = 0
         for exercise_data in exercises:
             exercise_id = exercise_data.get("matched_exercise_id")
 
@@ -1018,6 +1140,32 @@ async def save_whoop_activity(
 
             # Update quest progress
             update_quest_progress(db, user_id, workout_with_relationships)
+
+    # Fallback: if no exercises were actually saved (either because `exercises`
+    # was empty or every item had matched_exercise_id=None), link the session
+    # to the seeded Sport/Cardio exercise so it still shows up in exercise
+    # history instead of being an orphan WorkoutSession with zero rows.
+    if order_index == 0:
+        sport_exercise_id, sport_exercise_name = match_activity_to_exercise(
+            db, activity_type
+        )
+        if sport_exercise_id:
+            sport_workout_exercise = WorkoutExercise(
+                session_id=workout_session.id,
+                exercise_id=sport_exercise_id,
+                order_index=0,
+            )
+            db.add(sport_workout_exercise)
+            db.flush()
+            logger.info(
+                f"Linked WHOOP activity {activity_type!r} to exercise "
+                f"{sport_exercise_name!r} (id={sport_exercise_id})"
+            )
+        else:
+            logger.warning(
+                f"WHOOP activity {activity_type!r} saved with no exercises "
+                f"(no matched exercises in extraction and no sport/cardio match)"
+            )
 
     db.commit()
     return activity_id, workout_id

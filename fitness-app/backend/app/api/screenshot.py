@@ -611,6 +611,11 @@ async def process_screenshots_batch(
                 user_id=current_user.id
             )
             extractions.append(result)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Failed to process {file.filename}: {str(e)}"
+            )
         except anthropic.APITimeoutError as e:
             failed_count += 1
             if first_error is None:
