@@ -277,13 +277,15 @@ class TestRepPR:
         # the second from tying at the same rounded bucket.
         assert len(rep_prs) == 1
 
-    def test_known_bug_cross_call_weight_rounding_not_deduplicated(self, db, create_test_user):
-        """Document current behavior: between calls, rep PRs are stored at the raw
-        weight, but compared at the rounded weight_key. This means a 222.3 lb x 5
-        stored PR will not block a 222.6 lb x 5 tie in a later workout.
+    def test_cross_call_weight_rounding_deduplicates(self, db, create_test_user):
+        """Regression: 222.3 lb x 5 on day 1 and 222.6 lb x 5 on day 2 should
+        both resolve to the same 222.5 lb bucket. The second set ties the
+        first and must NOT create a duplicate rep PR.
 
-        This test pins the current (buggy) behavior so a future fix intentionally
-        breaks this test rather than silently changing it.
+        Previously `detect_and_create_prs` stored the lookup map keyed on raw
+        `PR.weight` but performed lookups with a rounded `weight_key`, so
+        ties across workouts silently generated phantom PRs and inflated
+        achievement / streak counters. See `_weight_bucket` in pr_detection.
         """
         user, _ = create_test_user(email="floatbug@example.com")
         ex = _mk_exercise(db, "Squat")
@@ -294,17 +296,14 @@ class TestRepPR:
         db.commit()
 
         we2 = _mk_workout(db, user.id, ex)
-        s2 = _mk_set(db, we2, 222.6, 5)  # Would round to same 222.5 bucket
+        s2 = _mk_set(db, we2, 222.6, 5)  # Same 222.5 lb bucket as s1.
         prs2 = detect_and_create_prs(db, user.id, we2, [s2])
         db.commit()
 
-        # Current behavior: the 222.6 tie IS logged as a "new" rep PR because
-        # the stored map key (222.3) doesn't match the lookup key (222.5).
         rep_prs = [p for p in prs2 if p.pr_type == PRType.REP_PR]
-        assert len(rep_prs) == 1, (
-            "If this assertion flips to 0, the raw-weight vs rounded-bucket "
-            "inconsistency has been fixed — update both this test and the "
-            "PR detection cross-workout rounding logic."
+        assert len(rep_prs) == 0, (
+            "A same-rep set in the same 2.5 lb weight bucket must not create "
+            "a duplicate rep PR — see _weight_bucket in pr_detection.py."
         )
 
 
