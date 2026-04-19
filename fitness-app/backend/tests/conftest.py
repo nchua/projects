@@ -2,10 +2,11 @@
 Pytest fixtures for fitness app backend tests.
 
 Provides shared fixtures for:
-- In-memory SQLite database (mock models for unit tests)
-- Integration test database (real SQLAlchemy models + TestClient)
-- Test users
-- Test exercises (Big Three + variations)
+- In-memory SQLite database (session-scoped, shared per-worker)
+- Per-test transaction rollback for isolation (xdist-safe)
+- FastAPI TestClient bound to the test session
+- Test users and auth headers
+- Mock models + sample fixtures for pure-logic unit tests
 """
 import os
 import uuid
@@ -15,48 +16,85 @@ from unittest.mock import Mock
 
 import pytest
 
-# Set test environment variables BEFORE any app imports
-_TEST_DB_PATH = os.path.join(os.path.dirname(__file__), ".test.db")
-os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB_PATH}"
-os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
+# Set test environment variables BEFORE any app imports.
+# Use an in-memory SQLite shared across connections via StaticPool; this is
+# xdist-safe (each worker gets its own process + its own in-memory DB) and
+# leaves no stale `.test.db` file between runs.
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ.setdefault("SECRET_KEY", "test-secret-key-for-testing-only")
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-testing-only")
 
 from fastapi.testclient import TestClient
-from sqlalchemy import event
-from sqlalchemy.orm import Session
+from sqlalchemy import create_engine, event
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app import models  # noqa: F401 — register all models with Base.metadata
-from app.core.database import Base, SessionLocal, engine, get_db
+from app.core import database as _database
+from app.core.database import Base, get_db
 from app.core.security import hash_password
 
-# Import app once at module level; main.py runs migrations on import.
-# Since DATABASE_URL points to a file-based SQLite, alembic may warn/fail
-# but the fallback create_all(bind=engine) ensures tables exist.
-from main import app as _app
+# Build our own in-memory engine with StaticPool so every connection sees the
+# same underlying DB (default :memory: gives each connection its own DB).
+_test_engine = create_engine(
+    "sqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+_TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_test_engine)
 
-# ============ Integration Test Infrastructure ============
+# Monkey-patch the app's engine + SessionLocal so any code path that imports
+# them directly (e.g. `from app.core.database import engine`) uses the test DB.
+_database.engine = _test_engine
+_database.SessionLocal = _TestSessionLocal
 
-# Enable foreign key support for SQLite on the app's engine
-@event.listens_for(engine, "connect")
+
+@event.listens_for(_test_engine, "connect")
 def _set_sqlite_pragma(dbapi_connection, connection_record):
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.close()
 
 
-@pytest.fixture
-def db():
-    """
-    Create a fresh test database for each test.
+# Import the app AFTER patching so main.py's startup migration fallback
+# (Base.metadata.create_all(bind=engine)) targets our test engine.
+from main import app as _app  # noqa: E402
 
-    Drops and recreates all tables for isolation, yields a session.
+
+@pytest.fixture(scope="session")
+def _schema():
+    """Create schema once per test session (per xdist worker)."""
+    Base.metadata.create_all(bind=_test_engine)
+    yield
+    Base.metadata.drop_all(bind=_test_engine)
+
+
+@pytest.fixture
+def db(_schema) -> Session:
     """
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
-    session = SessionLocal()
+    Yield a Session wrapped in a SAVEPOINT-style transaction that is rolled
+    back at the end of each test, giving full isolation without recreating
+    the schema between tests.
+    """
+    connection = _test_engine.connect()
+    transaction = connection.begin()
+    session = _TestSessionLocal(bind=connection)
+
+    # Start a SAVEPOINT so nested commits in application code don't end the
+    # outer transaction. When a SAVEPOINT ends, start a new one.
+    session.begin_nested()
+
+    @event.listens_for(session, "after_transaction_end")
+    def _restart_savepoint(sess, trans):
+        if trans.nested and not trans._parent.nested:
+            sess.begin_nested()
+
     try:
         yield session
     finally:
         session.close()
+        transaction.rollback()
+        connection.close()
 
 
 @pytest.fixture

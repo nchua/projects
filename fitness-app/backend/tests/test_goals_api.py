@@ -1,402 +1,336 @@
 """
-Tests for Goals API endpoints.
+Integration tests for Goals API endpoints.
 
 Endpoints tested:
-- POST /api/goals - Create single goal
-- POST /api/goals/batch - Create multiple goals
-- GET /api/goals - List user goals
-- GET /api/goals/{id} - Get goal detail
-- PUT /api/goals/{id} - Update goal
-- DELETE /api/goals/{id} - Abandon goal
+- POST /goals - Create single goal
+- POST /goals/batch - Create multiple goals
+- GET /goals - List user goals
+- GET /goals/{id} - Get goal detail
+- PUT /goals/{id} - Update goal
+- DELETE /goals/{id} - Abandon goal
 
 Key business rules tested:
 - Maximum 5 active goals per user
 - Batch creation respects the limit
 - Goal progress tracking
+
+These tests hit the real FastAPI endpoints via TestClient and the SQLite
+test DB from conftest.py. The previous revision of this file was mostly
+pseudo-tests asserting on hand-built mock lists — those have been
+converted to real endpoint calls or removed (see TODO markers).
 """
 from datetime import date, timedelta
-from unittest.mock import Mock
 
-from app.services.mission_service import MAX_ACTIVE_GOALS, GoalStatus
+from app.models.exercise import Exercise
+from app.services.mission_service import MAX_ACTIVE_GOALS
+
+
+def _seed_exercise(
+    db,
+    *,
+    id: str = "ex-bench-001",
+    name: str = "Barbell Bench Press",
+    category: str = "compound",
+) -> Exercise:
+    """Insert an exercise row into the test DB and return it."""
+    exercise = Exercise(id=id, name=name, category=category)
+    db.add(exercise)
+    db.commit()
+    db.refresh(exercise)
+    return exercise
+
+
+def _goal_payload(exercise_id: str, *, target_weight: float = 225, target_reps: int = 1) -> dict:
+    return {
+        "exercise_id": exercise_id,
+        "target_weight": target_weight,
+        "target_reps": target_reps,
+        "weight_unit": "lb",
+        "deadline": (date.today() + timedelta(weeks=12)).isoformat(),
+    }
 
 
 class TestMaxGoalsLimit:
-    """
-    Tests for the 5 active goals limit.
+    """Enforces the MAX_ACTIVE_GOALS (5) business rule."""
 
-    Users can have at most 5 active goals at any time.
-    """
+    def test_single_goal_creation_allowed_when_under_limit(self, client, db, auth_headers):
+        headers, _user = auth_headers()
+        exercise = _seed_exercise(db)
 
-    def test_single_goal_creation_allowed_when_under_limit(self, sample_goals, test_user_id):
-        """
-        Should allow creating a single goal when user has < 5 active goals.
-        """
-        active_goals = []  # User has no goals
-        assert len(active_goals) < MAX_ACTIVE_GOALS
+        resp = client.post("/goals", json=_goal_payload(exercise.id), headers=headers)
 
-    def test_single_goal_creation_blocked_at_limit(self, sample_goals, test_user_id):
-        """
-        Should block creating a single goal when user already has 5 active goals.
+        assert resp.status_code == 201, resp.json()
+        assert resp.json()["target_weight"] == 225
 
-        This tests the business rule enforced in the API endpoint.
-        """
-        # Simulate user having 5 active goals
-        active_goals = list(sample_goals.values())[:3] + [
-            Mock(status="active"),
-            Mock(status="active"),
-        ]
-        assert len(active_goals) >= MAX_ACTIVE_GOALS
+    def test_single_goal_creation_blocked_at_limit(self, client, db, auth_headers):
+        headers, _user = auth_headers()
+        # Seed 5 exercises and create 5 goals to hit the cap.
+        for i in range(MAX_ACTIVE_GOALS):
+            ex = _seed_exercise(db, id=f"ex-cap-{i:03d}", name=f"Exercise {i}")
+            resp = client.post("/goals", json=_goal_payload(ex.id), headers=headers)
+            assert resp.status_code == 201, resp.json()
 
-        # The API would return 400 Bad Request
-        # "Maximum 5 active goals allowed. Abandon or complete existing goals first."
+        # 6th should fail.
+        extra = _seed_exercise(db, id="ex-cap-999", name="Extra Exercise")
+        resp = client.post("/goals", json=_goal_payload(extra.id), headers=headers)
 
-    def test_completed_goals_dont_count_towards_limit(self, sample_goals, test_user_id):
-        """
-        Completed goals should NOT count towards the 5 goal limit.
-        """
-        bench_goal = sample_goals["bench_goal"]
-        bench_goal.status = GoalStatus.COMPLETED.value
-
-        # This goal is completed, so it shouldn't count
-        active_goals = [g for g in sample_goals.values() if g.status == GoalStatus.ACTIVE.value]
-        assert len(active_goals) == 2  # bench is completed, squat and deadlift are active
-
-    def test_abandoned_goals_dont_count_towards_limit(self, sample_goals, test_user_id):
-        """
-        Abandoned goals should NOT count towards the 5 goal limit.
-        """
-        bench_goal = sample_goals["bench_goal"]
-        bench_goal.status = GoalStatus.ABANDONED.value
-
-        active_goals = [g for g in sample_goals.values() if g.status == GoalStatus.ACTIVE.value]
-        assert len(active_goals) == 2
+        assert resp.status_code == 400
+        assert "Maximum" in resp.json()["detail"]
 
 
 class TestBatchGoalCreation:
-    """
-    Tests for POST /api/goals/batch endpoint.
+    """POST /goals/batch."""
 
-    This endpoint allows creating multiple goals at once (e.g., from the multi-goal wizard).
-    """
+    def test_batch_creation_success_when_under_limit(self, client, db, auth_headers):
+        headers, _user = auth_headers()
+        ex1 = _seed_exercise(db, id="ex-batch-1", name="Bench")
+        ex2 = _seed_exercise(db, id="ex-batch-2", name="Squat")
+        ex3 = _seed_exercise(db, id="ex-batch-3", name="Deadlift")
 
-    def test_batch_creation_success_when_under_limit(self, test_exercises, test_user_id):
-        """
-        Should successfully create multiple goals when total won't exceed limit.
-        """
-        active_goals = []  # User has no goals
-        batch_size = 3
+        resp = client.post(
+            "/goals/batch",
+            json={"goals": [_goal_payload(ex1.id), _goal_payload(ex2.id), _goal_payload(ex3.id)]},
+            headers=headers,
+        )
 
-        slots_available = MAX_ACTIVE_GOALS - len(active_goals)
-        assert batch_size <= slots_available
+        assert resp.status_code == 201, resp.json()
+        body = resp.json()
+        assert body["created_count"] == 3
+        assert body["active_count"] == 3
 
-    def test_batch_creation_blocked_when_would_exceed_limit(self, test_user_id):
-        """
-        Should return error when batch would exceed 5 active goals.
+    def test_batch_creation_blocked_when_would_exceed_limit(self, client, db, auth_headers):
+        headers, _user = auth_headers()
+        # Pre-seed 4 goals.
+        for i in range(4):
+            ex = _seed_exercise(db, id=f"ex-pre-{i}", name=f"Pre {i}")
+            resp = client.post("/goals", json=_goal_payload(ex.id), headers=headers)
+            assert resp.status_code == 201
 
-        If user has 4 active goals and tries to create 2 more, should fail.
-        """
-        current_active_count = 4
-        batch_size = 2
+        # Batch of 2 more would exceed limit of 5.
+        ex_a = _seed_exercise(db, id="ex-batch-a", name="A")
+        ex_b = _seed_exercise(db, id="ex-batch-b", name="B")
+        resp = client.post(
+            "/goals/batch",
+            json={"goals": [_goal_payload(ex_a.id), _goal_payload(ex_b.id)]},
+            headers=headers,
+        )
 
-        slots_available = MAX_ACTIVE_GOALS - current_active_count
-        assert batch_size > slots_available
+        assert resp.status_code == 400
+        assert "Can only create" in resp.json()["detail"]
 
-        # Expected error message pattern:
-        # "Can only create {slots_available} more goals. You have {current_active_count} active goals."
+    def test_batch_size_cannot_exceed_max(self, client, db, auth_headers):
+        headers, _user = auth_headers()
+        exercises = [
+            _seed_exercise(db, id=f"ex-big-{i}", name=f"Big {i}")
+            for i in range(MAX_ACTIVE_GOALS + 1)
+        ]
 
-    def test_batch_size_cannot_exceed_max(self, test_user_id):
-        """
-        Batch size itself cannot exceed 5 (even with 0 active goals).
-        """
-        batch_size = 6
-        assert batch_size > MAX_ACTIVE_GOALS
+        resp = client.post(
+            "/goals/batch",
+            json={"goals": [_goal_payload(e.id) for e in exercises]},
+            headers=headers,
+        )
 
-        # Expected validation error:
-        # "Batch size cannot exceed 5 goals"
+        # Pydantic rejects the oversized list with 422 at the schema layer.
+        assert resp.status_code == 422
 
-    def test_batch_creation_validates_all_exercises(self, test_exercises, test_user_id):
-        """
-        All exercise IDs in batch must exist.
-        """
-        valid_ids = [test_exercises["bench_press"].id, test_exercises["squat"].id]
-        invalid_id = "nonexistent-exercise-id"
+    def test_batch_creation_validates_all_exercises(self, client, db, auth_headers):
+        headers, _user = auth_headers()
+        real = _seed_exercise(db, id="ex-real-1", name="Real")
 
-        # If any exercise ID is invalid, the whole batch should fail
-        all_ids = valid_ids + [invalid_id]
-        found_ids = set(valid_ids)
-        missing_ids = set(all_ids) - found_ids
+        resp = client.post(
+            "/goals/batch",
+            json={
+                "goals": [
+                    _goal_payload(real.id),
+                    _goal_payload("nonexistent-exercise-id"),
+                ]
+            },
+            headers=headers,
+        )
 
-        assert missing_ids == {invalid_id}
-        # Expected error: "Exercises not found: {missing_ids}"
-
-    def test_batch_returns_all_created_goals(self, sample_goals):
-        """
-        Response should include all created goals with their IDs and progress.
-        """
-        goals = list(sample_goals.values())
-
-        # Simulate response structure
-        response = {
-            "goals": goals,
-            "created_count": len(goals),
-            "active_count": len(goals),
-        }
-
-        assert response["created_count"] == 3
-        assert response["active_count"] == 3
+        assert resp.status_code == 400
+        assert "not found" in resp.json()["detail"].lower()
 
 
 class TestGoalCreationValidation:
-    """
-    Tests for goal creation validation rules.
-    """
+    """Schema-level validation on POST /goals."""
 
-    def test_exercise_id_required(self):
-        """Goal must have a valid exercise_id"""
-        goal_data = {
-            "target_weight": 225,
-            "weight_unit": "lb",
-            "deadline": (date.today() + timedelta(weeks=12)).isoformat(),
-            # Missing exercise_id
-        }
-        assert "exercise_id" not in goal_data
+    def test_exercise_id_required(self, client, auth_headers):
+        headers, _user = auth_headers()
+        resp = client.post(
+            "/goals",
+            json={
+                "target_weight": 225,
+                "weight_unit": "lb",
+                "deadline": (date.today() + timedelta(weeks=12)).isoformat(),
+            },
+            headers=headers,
+        )
+        assert resp.status_code == 422
 
-    def test_exercise_must_exist(self, test_exercises):
-        """Exercise ID must reference an existing exercise"""
-        existing_ids = {ex.id for ex in test_exercises.values()}
-        fake_id = "fake-exercise-id"
-        assert fake_id not in existing_ids
+    def test_exercise_must_exist(self, client, auth_headers):
+        headers, _user = auth_headers()
+        resp = client.post(
+            "/goals",
+            json=_goal_payload("fake-exercise-id"),
+            headers=headers,
+        )
+        assert resp.status_code == 400
+        assert "Exercise not found" in resp.json()["detail"]
 
-    def test_target_weight_must_be_positive(self):
-        """Target weight must be > 0"""
-        invalid_weights = [0, -100, -1]
-        for weight in invalid_weights:
-            assert weight <= 0
+    def test_target_weight_must_be_positive(self, client, db, auth_headers):
+        headers, _user = auth_headers()
+        ex = _seed_exercise(db)
+        resp = client.post(
+            "/goals",
+            json=_goal_payload(ex.id, target_weight=-10),
+            headers=headers,
+        )
+        assert resp.status_code == 422
 
-    def test_target_reps_must_be_positive(self):
-        """Target reps must be >= 1"""
-        invalid_reps = [0, -1]
-        for reps in invalid_reps:
-            assert reps < 1
-
-    def test_deadline_must_be_in_future(self):
-        """Deadline should be in the future (warning, not error)"""
-        past_date = date.today() - timedelta(days=1)
-        today = date.today()
-        assert past_date < today
-
-    def test_weight_unit_valid_values(self):
-        """Weight unit must be 'lb' or 'kg'"""
-        valid_units = ["lb", "kg"]
-        assert "lb" in valid_units
-        assert "kg" in valid_units
+    def test_target_reps_must_be_positive(self, client, db, auth_headers):
+        headers, _user = auth_headers()
+        ex = _seed_exercise(db)
+        resp = client.post(
+            "/goals",
+            json=_goal_payload(ex.id, target_reps=0),
+            headers=headers,
+        )
+        assert resp.status_code == 422
 
 
 class TestGoalListing:
-    """
-    Tests for GET /api/goals endpoint.
-    """
+    """GET /goals."""
 
-    def test_list_returns_active_goals_by_default(self, sample_goals):
-        """By default, only active goals are returned"""
-        all_goals = list(sample_goals.values())
+    def test_list_returns_active_goals_by_default(self, client, db, auth_headers):
+        headers, _user = auth_headers()
+        ex = _seed_exercise(db)
+        client.post("/goals", json=_goal_payload(ex.id), headers=headers)
 
-        # Simulate filtering
-        active_only = [g for g in all_goals if g.status == GoalStatus.ACTIVE.value]
-        assert len(active_only) == len(all_goals)  # All are active by default
+        resp = client.get("/goals", headers=headers)
 
-    def test_list_includes_inactive_when_requested(self, sample_goals):
-        """include_inactive=True returns completed/abandoned goals too"""
-        all_goals = list(sample_goals.values())
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["active_count"] == 1
+        assert body["max_goals"] == MAX_ACTIVE_GOALS
+        assert body["can_add_more"] is True
+        assert len(body["goals"]) == 1
 
-        # Mark one as completed
-        all_goals[0].status = GoalStatus.COMPLETED.value
+    def test_list_includes_counts(self, client, db, auth_headers):
+        headers, _user = auth_headers()
+        for i in range(3):
+            ex = _seed_exercise(db, id=f"ex-list-{i}", name=f"Ex {i}")
+            client.post("/goals", json=_goal_payload(ex.id), headers=headers)
 
-        active_only = [g for g in all_goals if g.status == GoalStatus.ACTIVE.value]
-        all_goals_count = len(all_goals)
+        resp = client.get("/goals", headers=headers)
 
-        assert len(active_only) < all_goals_count
-
-    def test_list_returns_goal_summaries(self, sample_goals):
-        """
-        Response should include summary info for each goal:
-        - id, exercise_name, target_weight, target_reps, progress_percent
-        """
-        goal = sample_goals["bench_goal"]
-
-        summary = {
-            "id": goal.id,
-            "exercise_name": goal.exercise.name,
-            "target_weight": goal.target_weight,
-            "target_reps": goal.target_reps,
-            "progress_percent": 91.1,  # (205/225) * 100
-            "status": goal.status,
-        }
-
-        assert summary["exercise_name"] == "Barbell Bench Press"
-
-    def test_list_includes_counts(self, sample_goals):
-        """
-        Response should include:
-        - active_count, completed_count, can_add_more, max_goals
-        """
-        goals = list(sample_goals.values())
-
-        response = {
-            "goals": goals,
-            "active_count": 3,
-            "completed_count": 0,
-            "can_add_more": True,  # 3 < 5
-            "max_goals": MAX_ACTIVE_GOALS,
-        }
-
-        assert response["can_add_more"] == (response["active_count"] < MAX_ACTIVE_GOALS)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["active_count"] == 3
+        assert body["completed_count"] == 0
+        assert body["can_add_more"] is True
 
 
 class TestGoalUpdates:
-    """
-    Tests for PUT /api/goals/{id} endpoint.
-    """
+    """PUT /goals/{id}."""
 
-    def test_update_target_weight(self, sample_goals):
-        """Should allow updating target weight"""
-        goal = sample_goals["bench_goal"]
-        original_weight = goal.target_weight
+    def test_update_target_weight(self, client, db, auth_headers):
+        headers, _user = auth_headers()
+        ex = _seed_exercise(db)
+        created = client.post("/goals", json=_goal_payload(ex.id), headers=headers).json()
 
-        # Update to new target
-        goal.target_weight = 250
-        assert goal.target_weight != original_weight
+        resp = client.put(
+            f"/goals/{created['id']}",
+            json={"target_weight": 250},
+            headers=headers,
+        )
 
-    def test_update_target_reps(self, sample_goals):
-        """Should allow updating target reps"""
-        goal = sample_goals["bench_goal"]
-        original_reps = goal.target_reps
+        assert resp.status_code == 200
+        assert resp.json()["target_weight"] == 250
 
-        goal.target_reps = 3  # Change from 1RM to 3RM goal
-        assert goal.target_reps != original_reps
+    def test_update_deadline(self, client, db, auth_headers):
+        headers, _user = auth_headers()
+        ex = _seed_exercise(db)
+        created = client.post("/goals", json=_goal_payload(ex.id), headers=headers).json()
+        new_deadline = (date.today() + timedelta(weeks=16)).isoformat()
 
-    def test_update_deadline(self, sample_goals):
-        """Should allow extending deadline"""
-        goal = sample_goals["bench_goal"]
-        original_deadline = goal.deadline
+        resp = client.put(
+            f"/goals/{created['id']}",
+            json={"deadline": new_deadline},
+            headers=headers,
+        )
 
-        goal.deadline = original_deadline + timedelta(weeks=4)
-        assert goal.deadline > original_deadline
+        assert resp.status_code == 200
+        assert resp.json()["deadline"] == new_deadline
 
-    def test_update_status_to_completed(self, sample_goals):
-        """Should allow marking goal as completed"""
-        goal = sample_goals["bench_goal"]
-        assert goal.status == GoalStatus.ACTIVE.value
+    def test_cannot_update_other_users_goal(self, client, db, auth_headers):
+        headers_a, _user_a = auth_headers(email="a@example.com")
+        ex = _seed_exercise(db)
+        created = client.post("/goals", json=_goal_payload(ex.id), headers=headers_a).json()
 
-        goal.status = GoalStatus.COMPLETED.value
-        assert goal.status == GoalStatus.COMPLETED.value
+        headers_b, _user_b = auth_headers(email="b@example.com")
+        resp = client.put(
+            f"/goals/{created['id']}",
+            json={"target_weight": 999},
+            headers=headers_b,
+        )
 
-    def test_cannot_update_other_users_goal(self, sample_goals):
-        """Should not allow updating goals belonging to other users"""
-        goal = sample_goals["bench_goal"]
-        other_user_id = "other-user-id"
+        assert resp.status_code == 404
 
-        assert goal.user_id != other_user_id
+    def test_invalid_status_rejected(self, client, db, auth_headers):
+        headers, _user = auth_headers()
+        ex = _seed_exercise(db)
+        created = client.post("/goals", json=_goal_payload(ex.id), headers=headers).json()
 
-    def test_invalid_status_rejected(self):
-        """Invalid status values should be rejected"""
-        valid_statuses = [s.value for s in GoalStatus]
-        invalid_status = "invalid_status"
+        resp = client.put(
+            f"/goals/{created['id']}",
+            json={"status": "invalid_status"},
+            headers=headers,
+        )
 
-        assert invalid_status not in valid_statuses
+        assert resp.status_code == 400
 
 
 class TestGoalDeletion:
-    """
-    Tests for DELETE /api/goals/{id} endpoint (abandon goal).
-    """
+    """DELETE /goals/{id} — abandon goal."""
 
-    def test_abandon_active_goal(self, sample_goals):
-        """Should allow abandoning active goals"""
-        goal = sample_goals["bench_goal"]
-        assert goal.status == GoalStatus.ACTIVE.value
+    def test_abandon_active_goal(self, client, db, auth_headers):
+        headers, _user = auth_headers()
+        ex = _seed_exercise(db)
+        created = client.post("/goals", json=_goal_payload(ex.id), headers=headers).json()
 
-        goal.status = GoalStatus.ABANDONED.value
-        assert goal.status == GoalStatus.ABANDONED.value
+        resp = client.delete(f"/goals/{created['id']}", headers=headers)
 
-    def test_cannot_abandon_completed_goal(self, sample_goals):
-        """Should not allow abandoning already completed goals"""
-        goal = sample_goals["bench_goal"]
-        goal.status = GoalStatus.COMPLETED.value
+        assert resp.status_code == 200
 
-        # Attempting to abandon should fail
-        assert goal.status != GoalStatus.ACTIVE.value
+        # Confirm it was removed from the active list.
+        list_resp = client.get("/goals", headers=headers)
+        assert list_resp.json()["active_count"] == 0
 
-    def test_cannot_abandon_already_abandoned_goal(self, sample_goals):
-        """Should not allow abandoning already abandoned goals"""
-        goal = sample_goals["bench_goal"]
-        goal.status = GoalStatus.ABANDONED.value
+    def test_cannot_abandon_already_abandoned_goal(self, client, db, auth_headers):
+        headers, _user = auth_headers()
+        ex = _seed_exercise(db)
+        created = client.post("/goals", json=_goal_payload(ex.id), headers=headers).json()
+        client.delete(f"/goals/{created['id']}", headers=headers)
 
-        assert goal.status != GoalStatus.ACTIVE.value
+        resp = client.delete(f"/goals/{created['id']}", headers=headers)
 
-    def test_abandon_sets_abandoned_at(self, sample_goals):
-        """Abandoning should set abandoned_at timestamp"""
-        from datetime import datetime, timezone
-
-        goal = sample_goals["bench_goal"]
-        goal.status = GoalStatus.ABANDONED.value
-        goal.abandoned_at = datetime.now(timezone.utc)
-
-        assert goal.abandoned_at is not None
+        assert resp.status_code == 400
 
 
-class TestGoalProgress:
-    """
-    Tests for goal progress calculation.
-    """
-
-    def test_progress_calculation(self, sample_goals):
-        """
-        Progress = (current_e1rm / target_e1rm) * 100
-
-        For bench goal: current=205, target=225 (with 1 rep) -> 91.1%
-        For 1 rep, target_e1rm = target_weight * (1 + 1/30) = target_weight * 1.033
-        205 / (225 * 1.033) = 205 / 232.5 = 88.2%
-        """
-        goal = sample_goals["bench_goal"]
-        target_e1rm = goal.target_weight * (1 + goal.target_reps / 30)  # Epley
-        progress = (goal.current_e1rm / target_e1rm) * 100
-
-        # current=205, target_weight=225, target_reps=1
-        # target_e1rm = 225 * (1 + 1/30) = 232.5
-        # progress = 205 / 232.5 * 100 = 88.2%
-        assert round(progress, 1) == 88.2
-
-    def test_progress_capped_at_100(self, sample_goals):
-        """Progress should be capped at 100%"""
-        goal = sample_goals["bench_goal"]
-        goal.current_e1rm = 250  # Exceeds target
-
-        target_e1rm = goal.target_weight
-        progress = min(100, (goal.current_e1rm / target_e1rm) * 100)
-
-        assert progress == 100
-
-    def test_progress_with_rep_goal(self, sample_goals):
-        """
-        For rep goals (target_reps > 1), target_e1rm uses Epley formula.
-
-        E.g., 200 lb x 5 reps goal -> target_e1rm = 200 * (1 + 5/30) = 233.3
-        """
-        goal = sample_goals["bench_goal"]
-        goal.target_weight = 200
-        goal.target_reps = 5
-
-        target_e1rm = goal.target_weight * (1 + goal.target_reps / 30)
-        assert round(target_e1rm, 1) == 233.3
-
-    def test_weeks_remaining(self, sample_goals):
-        """Should calculate weeks until deadline"""
-        goal = sample_goals["bench_goal"]
-        deadline = date.today() + timedelta(weeks=12)
-        goal.deadline = deadline
-
-        days_remaining = (goal.deadline - date.today()).days
-        weeks_remaining = days_remaining // 7
-
-        assert weeks_remaining == 12
+# ============================================================================
+# TODO: Previous pseudo-tests removed because they asserted on hand-built
+# Python lists rather than real API behavior. The gaps below need coverage
+# via new endpoints or service-level tests:
+#
+# - TODO: progress calculation (was TestGoalProgress) — needs an endpoint like
+#   GET /goals/{id}/progress to return progress_percent; the endpoint exists
+#   but returns a chart payload, not a simple percent — write a service-level
+#   test against compute_goal_progress once its signature stabilizes.
+# - TODO: "completed_goals_dont_count_towards_limit" — no API to mark a goal
+#   as completed directly; completion is driven by PR detection. Cover with
+#   an integration test once the PR-completion path is testable end-to-end.
+# - TODO: weeks_remaining calculation — covered indirectly by GoalResponse
+#   fields but no dedicated endpoint test yet.
+# ============================================================================
