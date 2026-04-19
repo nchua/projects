@@ -12,6 +12,7 @@ struct MissionCard: View {
     var onEditGoal: (() -> Void)? = nil
     var onChangeGoal: (() -> Void)? = nil
     var onAbandonGoal: (() -> Void)? = nil
+    var onEditDeadline: (() -> Void)? = nil
     var onGoalsBadgeTap: (() -> Void)? = nil
 
     var body: some View {
@@ -52,6 +53,7 @@ struct MissionCard: View {
                             onAccept: { onAcceptMission(mission.id) },
                             onAddGoal: onAddGoal,
                             onEditGoal: onEditGoal,
+                            onEditDeadline: onEditDeadline,
                             onChangeGoal: onChangeGoal,
                             onAbandonGoal: onAbandonGoal
                         )
@@ -183,6 +185,7 @@ struct ReadyMissionCard: View {
     let onAccept: () -> Void
     var onAddGoal: (() -> Void)? = nil
     var onEditGoal: (() -> Void)? = nil
+    var onEditDeadline: (() -> Void)? = nil
     var onChangeGoal: (() -> Void)? = nil
     var onAbandonGoal: (() -> Void)? = nil
 
@@ -245,6 +248,12 @@ struct ReadyMissionCard: View {
                         onEditGoal?()
                     } label: {
                         Label("Edit Goals", systemImage: "pencil")
+                    }
+
+                    Button {
+                        onEditDeadline?()
+                    } label: {
+                        Label("Edit Deadline", systemImage: "calendar.badge.clock")
                     }
 
                     Button {

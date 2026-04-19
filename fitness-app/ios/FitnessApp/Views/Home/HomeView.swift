@@ -15,6 +15,7 @@ struct HomeView: View {
     @State private var showAbandonConfirmation = false
     @State private var showGoalsList = false
     @State private var goalToEditFromList: GoalSummaryResponse?
+    @State private var goalForDeadlineEdit: GoalSummaryResponse?
     @State private var showWeeklyReport = false
 
     var body: some View {
@@ -93,6 +94,14 @@ struct HomeView: View {
                             },
                             onChangeGoal: { showGoalSetup = true },
                             onAbandonGoal: { showAbandonConfirmation = true },
+                            onEditDeadline: {
+                                let goals = viewModel.currentMission?.goals ?? []
+                                if goals.count == 1, let goal = goals.first {
+                                    goalForDeadlineEdit = goal
+                                } else if goals.count > 1 {
+                                    showGoalsList = true
+                                }
+                            },
                             onGoalsBadgeTap: { showGoalsList = true }
                         )
 
@@ -286,6 +295,12 @@ struct HomeView: View {
                 weightToGo: 0,
                 weeksRemaining: 0
             ))
+        }
+        .sheet(item: $goalForDeadlineEdit, onDismiss: {
+            Task { await viewModel.loadData() }
+        }) { goal in
+            GoalDeadlineEditView(goal: goal, onSaved: {})
+            .presentationDetents([.large])
         }
     }
 }
