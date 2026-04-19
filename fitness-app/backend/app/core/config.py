@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     APNS_TOPIC: str = Field(default="com.nickchua.fitnessapp")
     APNS_USE_SANDBOX: bool = Field(default=True)
 
+    # CORS — comma-separated list of allowed origins. When empty the app
+    # falls back to the production Railway origin (see main.py) so local
+    # dev and existing deploys don't break.
+    ALLOWED_ORIGINS: str = Field(default="")
+
     class Config:
         env_file = ".env"
         case_sensitive = True

@@ -87,9 +87,19 @@ async def general_exception_handler(request, exc):
 
 # Configure CORS — iOS native apps don't send Origin headers,
 # so CORS doesn't apply to mobile requests. This covers web clients.
+# Origins are loaded from the ALLOWED_ORIGINS env var (comma-separated).
+# When empty, fall back to the production Railway origin so local dev and
+# existing deploys don't break.
+_default_origin = "https://backend-production-e316.up.railway.app"
+_allowed_origins = [
+    o.strip()
+    for o in (settings.ALLOWED_ORIGINS or "").split(",")
+    if o.strip()
+] or [_default_origin]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://backend-production-e316.up.railway.app"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

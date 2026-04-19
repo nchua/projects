@@ -351,12 +351,13 @@ async def get_exercise_trend(
 @router.get("/exercise/{exercise_id}/history", response_model=ExerciseHistoryResponse)
 async def get_exercise_history(
     exercise_id: str,
-    limit: int = Query(50, ge=1, le=200, description="Number of sessions to return"),
+    limit: int = Query(50, ge=1, le=200, description="Number of sessions to return (max 200)"),
+    offset: int = Query(0, ge=0, description="Number of sessions to skip"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Get complete set history for an exercise
+    Get complete set history for an exercise with pagination
     """
     # Verify exercise exists
     exercise = db.query(Exercise).filter(Exercise.id == exercise_id).first()
@@ -373,7 +374,7 @@ async def get_exercise_history(
         WorkoutExercise.exercise_id == exercise_id,
         WorkoutSession.user_id == current_user.id,
         WorkoutSession.deleted_at == None
-    ).order_by(desc(WorkoutSession.date)).limit(limit).all()
+    ).order_by(desc(WorkoutSession.date)).offset(offset).limit(limit).all()
 
     # Group by session
     sessions = []
