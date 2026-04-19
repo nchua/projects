@@ -5,14 +5,15 @@ Handles workout screenshot uploads and Claude Vision extraction
 import logging
 import traceback
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
+import anthropic
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.database import get_db
+from app.core.database import SessionLocal, get_db
 from app.core.dependencies import get_current_user
 from app.core.utils import ensure_utc
 from app.models.scan_balance import ScanBalance
@@ -57,29 +58,118 @@ def _get_or_create_balance(db: Session, user_id: str) -> ScanBalance:
     return balance
 
 
-def _check_monthly_reset(db: Session, balance: ScanBalance) -> ScanBalance:
-    """If free scans reset period passed, add free credits and advance reset date."""
+def _apply_monthly_reset_if_needed(balance: ScanBalance) -> bool:
+    """
+    Apply the monthly free-scan reset to an already-locked balance row, if due.
+
+    Mutates `balance` in place but does NOT commit — the caller owns the
+    surrounding transaction. This is intentional: it must run inside the same
+    `FOR UPDATE` critical section as the deduction so two concurrent callers
+    cannot each commit a separate reset (which would double-credit the user).
+
+    Returns True if a reset was applied, False otherwise.
+    """
     now = datetime.now(timezone.utc)
     reset_at = ensure_utc(balance.free_scans_reset_at)
     if reset_at and now >= reset_at:
         balance.scan_credits += settings.FREE_MONTHLY_SCANS
-        while ensure_utc(balance.free_scans_reset_at) <= now:
-            balance.free_scans_reset_at += timedelta(days=30)
-        db.commit()
-        db.refresh(balance)
-    return balance
+        # Advance the reset date forward until it is in the future. Using a
+        # local variable avoids repeated SQLAlchemy attribute round-trips.
+        new_reset_at = balance.free_scans_reset_at
+        while ensure_utc(new_reset_at) <= now:
+            new_reset_at = new_reset_at + timedelta(days=30)
+        balance.free_scans_reset_at = new_reset_at
+        return True
+    return False
 
 
-def _deduct_scan_credits(db: Session, user_id: str, count: int = 1) -> None:
-    """Deduct scan credits after successful processing. Skipped for unlimited users."""
-    balance = db.query(ScanBalance).filter(ScanBalance.user_id == user_id).first()
+def _refund_scan_credits(db: Session, user_id: str, count: int) -> None:
+    """
+    Compensating refund for batch failures. Skipped for unlimited users.
+
+    Runs in its OWN short transaction with a fresh FOR UPDATE lock — the
+    caller has already committed the original deduction, so this must stand
+    alone. Callers should wrap invocations in a try/except because by the
+    time we refund the user has already received their HTTP response and we
+    must not raise.
+    """
+    if count <= 0:
+        return
+    balance = db.query(ScanBalance).filter(ScanBalance.user_id == user_id).with_for_update().first()
     if balance and not balance.has_unlimited:
-        balance.scan_credits = max(0, balance.scan_credits - count)
+        balance.scan_credits = balance.scan_credits + count
         db.commit()
+
+
+def _refund_scan_credits_safe(
+    db_factory,
+    user_id: str,
+    count: int,
+    *,
+    max_attempts: int = 2,
+) -> bool:
+    """
+    Best-effort refund that never raises.
+
+    Opens a FRESH DB session per attempt via `db_factory()` so a poisoned
+    request session doesn't cascade into the refund path. On failure we log
+    at ERROR level with a REFUND FAILED marker so the over-bill is visible
+    in logs / alerting. We do not re-raise: by the time this runs the user
+    already has their HTTP response and we'd rather fail a refund than
+    convert (say) a 504 into a 500.
+
+    Returns True if the refund committed, False if all attempts failed.
+    """
+    if count <= 0:
+        return True
+
+    last_error: Optional[Exception] = None
+    for attempt in range(1, max_attempts + 1):
+        fresh_db: Optional[Session] = None
+        try:
+            fresh_db = db_factory()
+            _refund_scan_credits(fresh_db, user_id, count)
+            return True
+        except Exception as e:  # noqa: BLE001 - best-effort, must not raise
+            last_error = e
+            logger.warning(
+                "[REFUND RETRY] attempt %d/%d failed for user_id=%s count=%d: %s",
+                attempt,
+                max_attempts,
+                user_id,
+                count,
+                e,
+            )
+            if fresh_db is not None:
+                try:
+                    fresh_db.rollback()
+                except Exception:  # noqa: BLE001
+                    pass
+        finally:
+            if fresh_db is not None:
+                try:
+                    fresh_db.close()
+                except Exception:  # noqa: BLE001
+                    pass
+
+    logger.error(
+        "[REFUND FAILED] user_id=%s count=%d attempts=%d last_error=%r — "
+        "user is over-billed; manual credit adjustment required",
+        user_id,
+        count,
+        max_attempts,
+        last_error,
+    )
+    return False
 
 
 def _check_screenshot_rate_limit(db: Session, user_id: str, screenshot_count: int = 1) -> None:
-    """Check rate limits for screenshot processing. Raises HTTPException if exceeded."""
+    """
+    Check non-monetary rate limits (feature flag, daily abuse cap, cooldown).
+
+    Does NOT check or deduct scan credits — that happens atomically in
+    `_reserve_scan_credits`. Raises HTTPException if limits are exceeded.
+    """
     if not settings.SCREENSHOT_PROCESSING_ENABLED:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -114,22 +204,67 @@ def _check_screenshot_rate_limit(db: Session, user_id: str, screenshot_count: in
             headers={"Retry-After": str(COOLDOWN_SECONDS)}
         )
 
-    # Check scan balance (monetization gate)
-    balance = _get_or_create_balance(db, user_id)
-    balance = _check_monthly_reset(db, balance)
 
-    if not balance.has_unlimited and balance.scan_credits < screenshot_count:
-        raise HTTPException(
-            status_code=402,  # Payment Required
-            detail="Insufficient scan credits. Purchase a scan pack to continue.",
-        )
+def _reserve_scan_credits(db: Session, user_id: str, count: int = 1) -> bool:
+    """
+    Atomically check balance and reserve (deduct) `count` credits.
+
+    Uses SELECT ... FOR UPDATE to lock the ScanBalance row so two concurrent
+    requests cannot both observe sufficient credits and each deduct. On
+    Postgres this serializes the read/modify/write. On SQLite the lock is a
+    no-op at the row level, but the single in-process transaction still
+    enforces ordering via Python's GIL + SQLite's database-level locking.
+
+    The caller is responsible for committing (on success) or rolling back
+    (on failure) the surrounding transaction. If rollback occurs, the
+    deduction is automatically reversed.
+
+    Returns:
+        True if credits were reserved (including unlimited users).
+        False if the user has insufficient credits — caller should 402.
+    """
+    # Ensure a balance row exists before taking the row lock. Row creation
+    # commits on its own (happens at most once per user).
+    _get_or_create_balance(db, user_id)
+
+    # Re-query under row lock to prevent read/modify/write race. The monthly
+    # reset is applied INSIDE this locked section so two concurrent
+    # reset-time requests cannot each commit a separate +FREE_MONTHLY_SCANS
+    # (which would double-credit the user).
+    locked_balance = (
+        db.query(ScanBalance)
+        .filter(ScanBalance.user_id == user_id)
+        .with_for_update()
+        .first()
+    )
+    if locked_balance is None:
+        # Should not happen — _get_or_create_balance just created it.
+        return False
+
+    # Apply monthly reset if due. Mutates the locked row without committing;
+    # the same transaction that will do the deduction (or the caller's
+    # rollback) also persists/reverts the reset.
+    _apply_monthly_reset_if_needed(locked_balance)
+
+    if locked_balance.has_unlimited:
+        db.flush()
+        return True
+
+    if locked_balance.scan_credits < count:
+        return False
+
+    locked_balance.scan_credits = locked_balance.scan_credits - count
+    # NOTE: do NOT commit here. The caller commits after successful
+    # processing, or rolls back on failure to undo the deduction.
+    db.flush()
+    return True
 
 
 def _record_screenshot_usage(db: Session, user_id: str, count: int = 1) -> None:
-    """Record screenshot usage for rate limiting."""
+    """Record screenshot usage for rate limiting. Flushes but does not commit."""
     usage = ScreenshotUsage(user_id=user_id, screenshots_count=count)
     db.add(usage)
-    db.commit()
+    db.flush()
 
 
 # Allowed image types
@@ -175,7 +310,7 @@ async def process_screenshot(
     Raises:
         HTTPException: If file type is invalid, file is too large, or processing fails
     """
-    # Rate limiting check
+    # Non-monetary rate limiting (feature flag, daily cap, cooldown)
     _check_screenshot_rate_limit(db, current_user.id, screenshot_count=1)
 
     import sys
@@ -206,8 +341,19 @@ async def process_screenshot(
             detail=f"File too large. Maximum size: {MAX_FILE_SIZE // (1024 * 1024)} MB"
         )
 
-    # Process the screenshot
+    # Atomic credit reservation + processing + usage record. Everything runs
+    # inside a single transaction so a failure rolls back the deduction.
     try:
+        reserved = _reserve_scan_credits(db, current_user.id, count=1)
+        if not reserved:
+            # Abandon the transaction opened by _reserve_scan_credits (no
+            # mutations persisted since we short-circuit before flush).
+            db.rollback()
+            raise HTTPException(
+                status_code=402,  # Payment Required
+                detail="Insufficient scan credits. Purchase a scan pack to continue.",
+            )
+
         logger.info("Calling extract_workout_from_screenshot...")
         result = await extract_workout_from_screenshot(
             image_data=content,
@@ -217,14 +363,27 @@ async def process_screenshot(
         )
         logger.info(f"Extraction complete, screenshot_type: {result.get('screenshot_type')}")
         _record_screenshot_usage(db, current_user.id, count=1)
-        _deduct_scan_credits(db, current_user.id, count=1)
+        # Commit the deduction + usage record together.
+        db.commit()
+    except HTTPException:
+        # Preserve explicit HTTP responses (e.g. 402 above).
+        raise
+    except anthropic.APITimeoutError as e:
+        db.rollback()
+        logger.error(f"Anthropic API timeout: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="Screenshot extraction timed out. No credit was consumed — please try again.",
+        )
     except ValueError as e:
+        db.rollback()
         logger.error(f"ValueError during extraction: {e}")
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e)
         )
     except Exception as e:
+        db.rollback()
         logger.error(f"Unexpected error during extraction: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -378,7 +537,7 @@ async def process_screenshots_batch(
             detail="No files provided"
         )
 
-    # Rate limiting check
+    # Non-monetary rate limiting (feature flag, daily cap, cooldown)
     _check_screenshot_rate_limit(db, current_user.id, screenshot_count=len(files))
 
     if len(files) > 10:
@@ -387,27 +546,63 @@ async def process_screenshots_batch(
             detail="Maximum 10 screenshots per batch"
         )
 
-    # Process each screenshot
-    extractions = []
+    # Pre-validate file types and sizes so we don't charge for malformed
+    # uploads that we know will fail. Any validation error aborts the batch
+    # before we reserve credits.
+    file_contents: List[Tuple[UploadFile, bytes]] = []
     for file in files:
-        # Validate content type
         if file.content_type not in ALLOWED_CONTENT_TYPES:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid file type for {file.filename}: {file.content_type}"
             )
-
-        # Read file content
         content = await file.read()
-
-        # Validate file size
         if len(content) > MAX_FILE_SIZE:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"File too large: {file.filename}"
             )
+        file_contents.append((file, content))
 
-        # Process the screenshot
+    # Atomic batch credit reservation — deduct len(files) up front under a
+    # row lock so two concurrent batches can't each observe capacity for
+    # the same credits. Commit IMMEDIATELY so the FOR UPDATE lock + DB
+    # connection are released before we start awaiting Anthropic for ~30s
+    # per file (holding the lock would pin a DB connection per in-flight
+    # batch and exhaust the pool under load).
+    #
+    # TRADE-OFF: if the worker crashes mid-loop (OOM kill, SIGKILL, etc.)
+    # the user's credits will be spent with no workouts extracted. We
+    # accept that over the DB pool exhaustion risk of the previous design.
+    # Successful-but-partial batches are reconciled via a best-effort
+    # refund in a separate short transaction below.
+    try:
+        reserved = _reserve_scan_credits(db, current_user.id, count=len(files))
+        if not reserved:
+            db.rollback()
+            raise HTTPException(
+                status_code=402,
+                detail="Insufficient scan credits. Purchase a scan pack to continue.",
+            )
+        # Record usage + commit deduction in the same short transaction so
+        # the FOR UPDATE lock is released before any external calls.
+        _record_screenshot_usage(db, current_user.id, count=len(files))
+        db.commit()
+    except HTTPException:
+        raise
+    except Exception:
+        db.rollback()
+        raise
+
+    # Process each screenshot. Track how many failed so we can refund
+    # (compensating transaction) without penalizing the user for our
+    # extraction errors.
+    extractions = []
+    failed_count = 0
+    first_error: Optional[Exception] = None
+    first_error_filename: Optional[str] = None
+
+    for file, content in file_contents:
         try:
             result = await extract_workout_from_screenshot(
                 image_data=content,
@@ -416,18 +611,45 @@ async def process_screenshots_batch(
                 user_id=current_user.id
             )
             extractions.append(result)
+        except anthropic.APITimeoutError as e:
+            failed_count += 1
+            if first_error is None:
+                first_error = e
+                first_error_filename = file.filename
+            logger.error(f"[BATCH] Anthropic timeout on {file.filename}: {e}")
         except Exception as e:
+            failed_count += 1
+            if first_error is None:
+                first_error = e
+                first_error_filename = file.filename
+            logger.error(f"[BATCH] Extraction failed on {file.filename}: {e}")
+
+    # If EVERY file failed, refund all credits and raise. Reservation was
+    # already committed above, so we must issue a compensating refund in a
+    # fresh transaction rather than rolling back.
+    if not extractions:
+        _refund_scan_credits_safe(SessionLocal, current_user.id, count=len(files))
+        if isinstance(first_error, anthropic.APITimeoutError):
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to process {file.filename}: {str(e)}"
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail=(
+                    f"Screenshot extraction timed out for {first_error_filename}. "
+                    "No credits were consumed — please try again."
+                ),
             )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process {first_error_filename}: {first_error}",
+        )
+
+    if failed_count > 0:
+        # Partial success: credits were already deducted + committed above.
+        # Issue a best-effort refund for the failed count in a fresh
+        # transaction so partial success still bills correctly.
+        _refund_scan_credits_safe(SessionLocal, current_user.id, count=failed_count)
 
     # Merge all extractions
     merged = merge_extractions(extractions)
-
-    # Record usage after successful processing
-    _record_screenshot_usage(db, current_user.id, count=len(files))
-    _deduct_scan_credits(db, current_user.id, count=len(files))
 
     # Get screenshot type
     screenshot_type = merged.get("screenshot_type", "gym_workout")
