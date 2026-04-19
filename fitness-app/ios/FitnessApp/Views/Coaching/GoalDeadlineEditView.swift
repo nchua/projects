@@ -8,6 +8,7 @@ struct GoalDeadlineEditView: View {
     @State private var selectedDate: Date
     @State private var isSaving = false
     @State private var error: String?
+    @State private var initialDateParseError: Bool = false
 
     private let originalDeadline: Date
     private let minimumDate: Date
@@ -15,10 +16,20 @@ struct GoalDeadlineEditView: View {
     init(goal: GoalSummaryResponse, onSaved: @escaping () -> Void) {
         self.goal = goal
         self.onSaved = onSaved
-        let parsed = DateFormatter.localDate.date(from: goal.deadline) ?? Date()
-        self._selectedDate = State(initialValue: parsed)
-        self.originalDeadline = parsed
-        self.minimumDate = Calendar.current.date(byAdding: .weekOfYear, value: 1, to: Date()) ?? Date()
+        let minimum = Calendar.current.date(byAdding: .weekOfYear, value: 1, to: Date()) ?? Date()
+        self.minimumDate = minimum
+        if let parsed = DateFormatter.localDate.date(from: goal.deadline) {
+            // Use parsed date as originalDeadline (unclamped). The DatePicker range
+            // is widened below so it won't silently snap selectedDate.
+            self._selectedDate = State(initialValue: parsed)
+            self.originalDeadline = parsed
+            self._initialDateParseError = State(initialValue: false)
+        } else {
+            // Unparseable server deadline — surface an error and block save.
+            self._selectedDate = State(initialValue: minimum)
+            self.originalDeadline = minimum
+            self._initialDateParseError = State(initialValue: true)
+        }
     }
 
     private var weeksRemaining: Int {
@@ -47,6 +58,10 @@ struct GoalDeadlineEditView: View {
                 ScrollView {
                     VStack(spacing: 24) {
                         goalHeader
+
+                        if initialDateParseError {
+                            parseErrorBanner
+                        }
 
                         quickAdjustSection
 
@@ -109,30 +124,58 @@ struct GoalDeadlineEditView: View {
 
     private var quickAdjustSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Quick Adjust")
+            Text("Quick Adjust (relative to current deadline)")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.textSecondary)
                 .padding(.horizontal, 20)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
-                    DeadlineChip(label: "-2 wk", delta: -2, selectedDate: $selectedDate, minimum: minimumDate, base: originalDeadline)
-                    DeadlineChip(label: "-1 wk", delta: -1, selectedDate: $selectedDate, minimum: minimumDate, base: originalDeadline)
-                    DeadlineChip(label: "+1 wk", delta: 1, selectedDate: $selectedDate, minimum: minimumDate, base: originalDeadline)
-                    DeadlineChip(label: "+2 wk", delta: 2, selectedDate: $selectedDate, minimum: minimumDate, base: originalDeadline)
-                    DeadlineChip(label: "+1 mo", delta: 4, selectedDate: $selectedDate, minimum: minimumDate, base: originalDeadline)
-                    DeadlineChip(label: "+2 mo", delta: 8, selectedDate: $selectedDate, minimum: minimumDate, base: originalDeadline)
+                    DeadlineChip(label: "Pull 2 wk", delta: -2, selectedDate: $selectedDate, minimum: minimumDate, base: originalDeadline)
+                    DeadlineChip(label: "Pull 1 wk", delta: -1, selectedDate: $selectedDate, minimum: minimumDate, base: originalDeadline)
+                    DeadlineChip(label: "Push 1 wk", delta: 1, selectedDate: $selectedDate, minimum: minimumDate, base: originalDeadline)
+                    DeadlineChip(label: "Push 2 wk", delta: 2, selectedDate: $selectedDate, minimum: minimumDate, base: originalDeadline)
+                    DeadlineChip(label: "Push 1 mo", delta: 4, selectedDate: $selectedDate, minimum: minimumDate, base: originalDeadline)
+                    DeadlineChip(label: "Push 2 mo", delta: 8, selectedDate: $selectedDate, minimum: minimumDate, base: originalDeadline)
                 }
                 .padding(.horizontal, 20)
             }
         }
     }
 
+    private var parseErrorBanner: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 14))
+                .foregroundColor(.warningRed)
+            Text("Couldn't read current deadline. Please refresh and try again.")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.warningRed)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(Color.warningRed.opacity(0.12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.warningRed.opacity(0.4), lineWidth: 1)
+        )
+        .cornerRadius(12)
+        .padding(.horizontal, 20)
+    }
+
+    private var datePickerLowerBound: Date {
+        // Widen the range to include originalDeadline if it's earlier than
+        // minimumDate so SwiftUI doesn't silently snap selectedDate on first render.
+        // Save-time validation enforces selectedDate >= minimumDate.
+        min(originalDeadline, minimumDate)
+    }
+
     private var datePickerSection: some View {
         DatePicker(
             "Target Date",
             selection: $selectedDate,
-            in: minimumDate...,
+            in: datePickerLowerBound...,
             displayedComponents: .date
         )
         .datePickerStyle(.graphical)
@@ -187,6 +230,10 @@ struct GoalDeadlineEditView: View {
         .padding(.horizontal, 20)
     }
 
+    private var canSave: Bool {
+        !initialDateParseError && hasChanged && !isSaving
+    }
+
     private var saveButton: some View {
         Button {
             Task { await saveDeadline() }
@@ -203,15 +250,21 @@ struct GoalDeadlineEditView: View {
             .foregroundColor(.black)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 18)
-            .background(hasChanged ? Color.systemPrimary : Color.textMuted)
+            .background(canSave ? Color.systemPrimary : Color.textMuted)
             .cornerRadius(50)
         }
-        .disabled(!hasChanged || isSaving)
+        .disabled(!canSave)
         .padding(.horizontal, 20)
         .padding(.bottom, 20)
     }
 
     private func saveDeadline() async {
+        // Validate: selected date must be on/after minimumDate (1 week out).
+        if selectedDate < Calendar.current.startOfDay(for: minimumDate) {
+            self.error = "Deadline must be at least 1 week from today."
+            return
+        }
+
         isSaving = true
         error = nil
 
