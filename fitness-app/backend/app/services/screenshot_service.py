@@ -123,17 +123,43 @@ CRITICAL RULES:
 - For WHOOP running/cardio screenshots: look for Activity Strain, heart rate zones, duration, steps"""
 
 
-def get_media_type(filename: str) -> str:
-    """Determine media type from filename extension."""
-    ext = filename.lower().split('.')[-1] if '.' in filename else 'png'
-    media_types = {
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png',
-        'gif': 'image/gif',
-        'webp': 'image/webp'
-    }
-    return media_types.get(ext, 'image/png')
+SUPPORTED_MEDIA_TYPES = ("image/jpeg", "image/png", "image/gif", "image/webp")
+
+
+def detect_media_type_from_bytes(image_data: bytes) -> str:
+    """Detect the actual image media type from raw bytes using magic numbers.
+
+    Claude Vision rejects requests when the declared media type disagrees with
+    the decoded image, so we must never trust the filename or client-supplied
+    Content-Type. Returns one of the Anthropic-accepted media types. Raises
+    ValueError for HEIC/HEIF or any unrecognized format so the caller can
+    surface a clear error instead of letting Claude 400.
+    """
+    if len(image_data) < 12:
+        raise ValueError("Image data too short to identify format")
+
+    # PNG: 89 50 4E 47 0D 0A 1A 0A
+    if image_data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    # JPEG: FF D8 FF
+    if image_data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    # GIF: GIF87a or GIF89a
+    if image_data[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    # WEBP: RIFF....WEBP
+    if image_data[:4] == b"RIFF" and image_data[8:12] == b"WEBP":
+        return "image/webp"
+    # HEIC/HEIF: ....ftyp<brand>
+    if image_data[4:8] == b"ftyp" and image_data[8:12] in (
+        b"heic", b"heix", b"hevc", b"hevx", b"mif1", b"msf1",
+    ):
+        raise ValueError(
+            "HEIC/HEIF images are not supported by Claude Vision. "
+            "Please convert to JPEG or PNG before uploading."
+        )
+
+    raise ValueError("Unrecognized image format. Expected JPEG, PNG, GIF, or WEBP.")
 
 
 def encode_image_bytes(image_data: bytes) -> str:
@@ -296,9 +322,12 @@ async def extract_workout_from_screenshot(
         timeout=httpx.Timeout(30.0),
     )
 
-    # Encode image
+    # Detect media type from the actual bytes — iOS may send a .jpg filename
+    # with PNG/HEIC bytes, and Claude 400s when the declared media type differs
+    # from the decoded image.
+    media_type = detect_media_type_from_bytes(image_data)
+    logger.info(f"Detected media_type={media_type} for {filename}")
     image_base64 = encode_image_bytes(image_data)
-    media_type = get_media_type(filename)
 
     # Call Claude Vision API
     try:

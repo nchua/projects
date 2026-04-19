@@ -1,4 +1,55 @@
 import Foundation
+import UIKit
+
+/// Detect the image format from raw bytes and return bytes + MIME + filename
+/// extension that match what we're actually uploading. iOS's PhotosPicker can
+/// hand us HEIC or PNG even when the filename says .jpg; Claude Vision 400s on
+/// any mismatch between declared media type and decoded image.
+fileprivate func imageUploadPayload(from data: Data) -> (data: Data, contentType: String, ext: String) {
+    let prefix = [UInt8](data.prefix(12))
+
+    // PNG: 89 50 4E 47 0D 0A 1A 0A
+    if prefix.count >= 8,
+       prefix[0] == 0x89, prefix[1] == 0x50, prefix[2] == 0x4E, prefix[3] == 0x47,
+       prefix[4] == 0x0D, prefix[5] == 0x0A, prefix[6] == 0x1A, prefix[7] == 0x0A {
+        return (data, "image/png", "png")
+    }
+    // JPEG: FF D8 FF
+    if prefix.count >= 3, prefix[0] == 0xFF, prefix[1] == 0xD8, prefix[2] == 0xFF {
+        return (data, "image/jpeg", "jpg")
+    }
+    // GIF87a / GIF89a
+    if prefix.count >= 6,
+       prefix[0] == 0x47, prefix[1] == 0x49, prefix[2] == 0x46, prefix[3] == 0x38,
+       (prefix[4] == 0x37 || prefix[4] == 0x39), prefix[5] == 0x61 {
+        return (data, "image/gif", "gif")
+    }
+    // WEBP: "RIFF"...."WEBP"
+    if prefix.count >= 12,
+       prefix[0] == 0x52, prefix[1] == 0x49, prefix[2] == 0x46, prefix[3] == 0x46,
+       prefix[8] == 0x57, prefix[9] == 0x45, prefix[10] == 0x42, prefix[11] == 0x50 {
+        return (data, "image/webp", "webp")
+    }
+
+    // Anything else (HEIC, TIFF, unknown) — decode via UIImage and re-encode as
+    // JPEG so Claude gets a format it accepts.
+    if let image = UIImage(data: data),
+       let jpeg = image.jpegData(compressionQuality: 0.9) {
+        return (jpeg, "image/jpeg", "jpg")
+    }
+
+    // Last resort: send as-is and let the backend surface a clear error.
+    return (data, "application/octet-stream", "bin")
+}
+
+/// Replace (or append) the extension on a filename so it matches the detected
+/// media type. Keeps the basename stable for server-side logs.
+fileprivate func rewriteFilenameExtension(_ filename: String, to ext: String) -> String {
+    if let dot = filename.lastIndex(of: ".") {
+        return String(filename[..<dot]) + "." + ext
+    }
+    return filename + "." + ext
+}
 
 class APIClient {
     static let shared = APIClient()
@@ -544,14 +595,15 @@ class APIClient {
 
         var body = Data()
 
-        // Add file field
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
+        // Detect content type from the actual image bytes (filename lies —
+        // PhotosPicker can return HEIC/PNG even when we name it .jpg).
+        let payload = imageUploadPayload(from: imageData)
+        let normalizedFilename = rewriteFilenameExtension(filename, to: payload.ext)
 
-        // Determine content type from filename
-        let contentType = filename.lowercased().hasSuffix(".png") ? "image/png" : "image/jpeg"
-        body.append("Content-Type: \(contentType)\r\n\r\n".data(using: .utf8)!)
-        body.append(imageData)
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(normalizedFilename)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(payload.contentType)\r\n\r\n".data(using: .utf8)!)
+        body.append(payload.data)
         body.append("\r\n".data(using: .utf8)!)
 
         // Add session_date field if provided
@@ -637,14 +689,15 @@ class APIClient {
 
         var body = Data()
 
-        // Add each file
-        for (_, image) in images.enumerated() {
-            body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"files\"; filename=\"\(image.filename)\"\r\n".data(using: .utf8)!)
+        // Add each file — detect content type from actual bytes per image.
+        for image in images {
+            let payload = imageUploadPayload(from: image.data)
+            let normalizedFilename = rewriteFilenameExtension(image.filename, to: payload.ext)
 
-            let contentType = image.filename.lowercased().hasSuffix(".png") ? "image/png" : "image/jpeg"
-            body.append("Content-Type: \(contentType)\r\n\r\n".data(using: .utf8)!)
-            body.append(image.data)
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"files\"; filename=\"\(normalizedFilename)\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: \(payload.contentType)\r\n\r\n".data(using: .utf8)!)
+            body.append(payload.data)
             body.append("\r\n".data(using: .utf8)!)
         }
 
