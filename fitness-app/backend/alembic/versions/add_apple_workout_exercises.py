@@ -10,6 +10,7 @@ Revises: f8a2c3d4e5b6, b2c3d4e5f6g7
 Create Date: 2026-04-19
 
 """
+import json
 import uuid
 from datetime import datetime, timezone
 
@@ -153,7 +154,7 @@ def upgrade():
 
         canonical_id = str(uuid.uuid4())
         exercise_id = str(uuid.uuid4())
-        secondary_muscles_str = str(ex_data["secondary_muscles"]).replace("'", '"')
+        secondary_muscles_str = json.dumps(ex_data["secondary_muscles"])
 
         conn.execute(
             text("""

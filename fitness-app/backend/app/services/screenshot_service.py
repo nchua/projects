@@ -1031,22 +1031,7 @@ async def save_whoop_activity(
     # exercise history (e.g., a Pickleball Apple Watch screenshot becomes a
     # Pickleball workout, not just a free-text WorkoutSession).
     exercises = extraction_result.get("exercises") or []
-    if not exercises:
-        sport_exercise_id, sport_exercise_name = match_activity_to_exercise(
-            db, activity_type
-        )
-        if sport_exercise_id:
-            sport_workout_exercise = WorkoutExercise(
-                session_id=workout_session.id,
-                exercise_id=sport_exercise_id,
-                order_index=0,
-            )
-            db.add(sport_workout_exercise)
-            db.flush()
-            logger.info(
-                f"Linked WHOOP activity {activity_type!r} to exercise "
-                f"{sport_exercise_name!r} (id={sport_exercise_id})"
-            )
+    order_index = 0
 
     # If WHOOP extracted exercises (e.g., weightlifting activity), save them too
     # This ensures exercises get set credit and tie to recovery tracking
@@ -1054,7 +1039,6 @@ async def save_whoop_activity(
         # Get user's e1RM formula preference
         e1rm_formula = get_user_e1rm_formula(db, user_id)
 
-        order_index = 0
         for exercise_data in exercises:
             exercise_id = exercise_data.get("matched_exercise_id")
 
@@ -1156,6 +1140,32 @@ async def save_whoop_activity(
 
             # Update quest progress
             update_quest_progress(db, user_id, workout_with_relationships)
+
+    # Fallback: if no exercises were actually saved (either because `exercises`
+    # was empty or every item had matched_exercise_id=None), link the session
+    # to the seeded Sport/Cardio exercise so it still shows up in exercise
+    # history instead of being an orphan WorkoutSession with zero rows.
+    if order_index == 0:
+        sport_exercise_id, sport_exercise_name = match_activity_to_exercise(
+            db, activity_type
+        )
+        if sport_exercise_id:
+            sport_workout_exercise = WorkoutExercise(
+                session_id=workout_session.id,
+                exercise_id=sport_exercise_id,
+                order_index=0,
+            )
+            db.add(sport_workout_exercise)
+            db.flush()
+            logger.info(
+                f"Linked WHOOP activity {activity_type!r} to exercise "
+                f"{sport_exercise_name!r} (id={sport_exercise_id})"
+            )
+        else:
+            logger.warning(
+                f"WHOOP activity {activity_type!r} saved with no exercises "
+                f"(no matched exercises in extraction and no sport/cardio match)"
+            )
 
     db.commit()
     return activity_id, workout_id
