@@ -338,6 +338,8 @@ struct HunterStatusHeader: View {
                     EdgeFlowAvatar(initial: avatarInitials, rank: rank, size: 40)
                 }
                 .buttonStyle(PlainButtonStyle())
+                .accessibilityLabel("Profile, \(rank.rawValue) rank")
+                .accessibilityHint("Opens your profile")
 
                 // Name and Meta - Tappable for profile
                 Button {
@@ -362,15 +364,20 @@ struct HunterStatusHeader: View {
                                 HStack(spacing: 3) {
                                     Image(systemName: "flame.fill")
                                         .foregroundColor(Color(hex: "FF9500"))
+                                        .accessibilityHidden(true)
                                     Text("\(streakDays)")
                                 }
                                 .foregroundColor(Color(hex: "FF9500"))
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel("Streak: \(streakDays) \(streakDays == 1 ? "day" : "days")")
                             }
                         }
                         .font(.system(size: 12))
                     }
                 }
                 .buttonStyle(PlainButtonStyle())
+                .accessibilityLabel("\(name), \(rank.rawValue) rank, level \(level)")
+                .accessibilityHint("Opens your profile")
 
                 Spacer()
             }
@@ -497,22 +504,28 @@ struct QuickActionsRow: View {
                 HStack(spacing: 8) {
                     Image(systemName: "bolt.fill")
                         .font(.system(size: 14))
+                        .accessibilityHidden(true)
                     Text("Start Workout")
                         .font(.system(size: 14, weight: .semibold))
                 }
                 .edgeFlowPillButton(isPrimary: true)
             }
+            .accessibilityLabel("Start Workout")
+            .accessibilityHint("Opens the log screen to begin a new workout")
 
             // Scan Screenshot Button - secondary pill
             NavigationLink(destination: LogView()) {
                 HStack(spacing: 8) {
                     Image(systemName: "camera.viewfinder")
                         .font(.system(size: 14, weight: .medium))
+                        .accessibilityHidden(true)
                     Text("Scan")
                         .font(.system(size: 14, weight: .semibold))
                 }
                 .edgeFlowPillButton(isPrimary: false)
             }
+            .accessibilityLabel("Scan Screenshot")
+            .accessibilityHint("Opens the log screen to import a workout from a screenshot")
         }
     }
 }

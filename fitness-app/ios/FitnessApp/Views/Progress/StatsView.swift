@@ -233,6 +233,7 @@ struct PowerProgressView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 16))
+                        .accessibilityHidden(true)
                     Text("ADD SKILL")
                         .font(.ariseMono(size: 12, weight: .semibold))
                         .tracking(1)
@@ -248,6 +249,8 @@ struct PowerProgressView: View {
                 )
             }
             .padding(.horizontal)
+            .accessibilityLabel("Add skill")
+            .accessibilityHint("Opens a picker to track a new exercise")
         }
         .sheet(isPresented: $showAddExercise) {
             AddSkillSheet(
@@ -400,6 +403,17 @@ struct AriseTimeRangeButton: View {
         }
     }
 
+    var spokenLabel: String {
+        switch range {
+        case "4w": return "4 weeks"
+        case "8w": return "8 weeks"
+        case "12w": return "12 weeks"
+        case "26w": return "6 months"
+        case "52w": return "1 year"
+        default: return range
+        }
+    }
+
     var body: some View {
         Button(action: action) {
             Text(label)
@@ -414,6 +428,9 @@ struct AriseTimeRangeButton: View {
                         .stroke(isSelected ? Color.systemPrimary : Color.ariseBorder, lineWidth: 1)
                 )
         }
+        .accessibilityLabel(spokenLabel)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityHint("Selects the \(spokenLabel) time range")
     }
 }
 
@@ -773,11 +790,13 @@ struct ExerciseDetailView: View {
             HStack(spacing: 6) {
                 Image(systemName: "arrow.left")
                     .font(.system(size: 14, weight: .semibold))
+                    .accessibilityHidden(true)
                 Text("Power Analysis")
                     .font(.ariseMono(size: 12))
             }
             .foregroundColor(.systemPrimary)
         }
+        .accessibilityLabel("Back to Power Analysis")
     }
 
     @ViewBuilder

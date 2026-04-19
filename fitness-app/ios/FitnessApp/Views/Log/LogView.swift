@@ -455,6 +455,7 @@ struct IdleQuestView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 14, weight: .semibold))
+                            .accessibilityHidden(true)
                         Text("Back")
                             .font(.ariseMono(size: 14, weight: .medium))
                     }
@@ -463,6 +464,8 @@ struct IdleQuestView: View {
                     .padding(.vertical, 12)
                 }
                 .zIndex(1)
+                .accessibilityLabel("Back")
+                .accessibilityHint("Returns to previous screen")
             }
 
             VStack(spacing: 32) {
@@ -525,6 +528,7 @@ struct IdleQuestView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "play.fill")
                         .font(.system(size: 14))
+                        .accessibilityHidden(true)
                     Text("BEGIN QUEST")
                         .font(.ariseHeader(size: 16, weight: .semibold))
                         .tracking(2)
@@ -541,6 +545,8 @@ struct IdleQuestView: View {
             .shadow(color: .systemPrimaryGlow, radius: 20, x: 0, y: 0)
             .padding(.horizontal, 24)
             .opacity(showContent ? 1 : 0)
+            .accessibilityLabel("Begin Quest")
+            .accessibilityHint("Starts a new workout session")
 
             // Scan Quest Log Button
             if let onScan = onScanQuestLog {
@@ -553,6 +559,7 @@ struct IdleQuestView: View {
                         HStack(spacing: 12) {
                             Image(systemName: "camera.viewfinder")
                                 .font(.system(size: 14))
+                                .accessibilityHidden(true)
                             Text("SCAN QUEST LOG")
                                 .font(.ariseHeader(size: 14, weight: .semibold))
                                 .tracking(2)
@@ -591,6 +598,8 @@ struct IdleQuestView: View {
                 }
                 .padding(.horizontal, 24)
                 .opacity(showContent ? 1 : 0)
+                .accessibilityLabel("Scan Quest Log")
+                .accessibilityHint("Opens camera to scan a workout screenshot")
             }
 
             Spacer()
@@ -818,6 +827,7 @@ struct ActiveQuestView: View {
                         } else {
                             Image(systemName: "checkmark.shield.fill")
                                 .font(.system(size: 16))
+                                .accessibilityHidden(true)
                             Text("COMPLETE QUEST")
                                 .font(.ariseHeader(size: 14, weight: .semibold))
                                 .tracking(2)
@@ -838,6 +848,8 @@ struct ActiveQuestView: View {
                 .padding(.horizontal)
                 .disabled(!viewModel.canSave || viewModel.isSaving)
                 .fadeIn(delay: 0.35)
+                .accessibilityLabel(viewModel.isSaving ? "Submitting workout" : "Complete Quest")
+                .accessibilityHint("Saves your workout session")
 
                 Spacer(minLength: 100)
             }

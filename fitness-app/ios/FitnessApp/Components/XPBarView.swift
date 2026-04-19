@@ -58,6 +58,9 @@ struct XPBarView: View {
             )
         }
         .frame(height: height)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Experience progress")
+        .accessibilityValue("\(Int(clampedProgress * 100)) percent, \(toNextLevel) XP to next level")
     }
 }
 
@@ -95,6 +98,9 @@ struct AriseProgressBar: View {
             }
         }
         .frame(height: height)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Progress")
+        .accessibilityValue("\(Int(clampedProgress * 100)) percent")
     }
 }
 
@@ -153,6 +159,9 @@ struct QuestProgressBar: View {
                 }
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label ?? "Quest progress")
+        .accessibilityValue("\(current) of \(target)\(isComplete ? ", complete" : "")")
     }
 }
 

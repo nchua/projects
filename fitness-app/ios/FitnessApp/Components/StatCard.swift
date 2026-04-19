@@ -16,9 +16,11 @@ struct StatCard: View {
                 Image(systemName: icon)
                     .font(.system(size: 20))
                     .foregroundColor(.textSecondary)
+                    .accessibilityHidden(true)
             } else {
                 Text(icon)
                     .font(.system(size: 20))
+                    .accessibilityHidden(true)
             }
 
             // Value
@@ -43,6 +45,9 @@ struct StatCard: View {
             RoundedRectangle(cornerRadius: 4)
                 .stroke(Color.systemPrimarySubtle, lineWidth: 1)
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue(value)
     }
 }
 
@@ -141,6 +146,9 @@ struct LiftStatCard: View {
         .padding(.vertical, 16)
         .padding(.trailing, 16)
         .background(Color.black.opacity(0.3))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(name)
+        .accessibilityValue(String(format: "%d pounds estimated one rep max, %.2f times bodyweight", Int(e1rm), bodyweightMultiplier))
     }
 }
 

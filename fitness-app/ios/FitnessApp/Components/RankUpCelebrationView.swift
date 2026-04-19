@@ -79,6 +79,7 @@ struct RankUpCelebrationView: View {
                         .foregroundColor(newRank.color)
                         .opacity(showTransition ? 1 : 0)
                         .scaleEffect(showTransition ? 1 : 0.5)
+                        .accessibilityHidden(true)
 
                     // New rank (appearing with glow)
                     VStack(spacing: 8) {
@@ -134,6 +135,7 @@ struct RankUpCelebrationView: View {
 
                         Image(systemName: "arrow.right")
                             .font(.system(size: 14, weight: .bold))
+                            .accessibilityHidden(true)
                     }
                     .foregroundColor(.voidBlack)
                     .frame(maxWidth: .infinity)
@@ -144,12 +146,17 @@ struct RankUpCelebrationView: View {
                 .padding(.horizontal, 32)
                 .opacity(showContinue ? 1 : 0)
                 .offset(y: showContinue ? 0 : 20)
+                .accessibilityLabel("Continue")
+                .accessibilityHint("Dismiss rank up celebration")
             }
             .padding(.bottom, 48)
         }
         .onAppear {
             startAnimationSequence()
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isModal)
+        .accessibilityLabel("Rank up. You are now a \(newRank.rawValue) rank \(newRank.title), at level \(newLevel).")
     }
 
     private func startAnimationSequence() {

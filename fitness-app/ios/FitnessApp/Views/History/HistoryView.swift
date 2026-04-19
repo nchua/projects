@@ -62,6 +62,7 @@ struct HistoryView: View {
                                     CompletedQuestRow(workout: workout)
                                         .fadeIn(delay: Double(index) * 0.05)
                                 }
+                                .accessibilityHint("Opens workout details")
                                 .listRowBackground(Color.voidMedium)
                                 .listRowSeparatorTint(Color.ariseBorder)
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -93,6 +94,7 @@ struct HistoryView: View {
                                                     .tracking(1)
                                                 Image(systemName: "chevron.down")
                                                     .font(.system(size: 10, weight: .bold))
+                                                    .accessibilityHidden(true)
                                             }
                                             .foregroundColor(.systemPrimary)
                                         }
@@ -101,6 +103,7 @@ struct HistoryView: View {
                                     .padding(.vertical, 16)
                                 }
                                 .listRowBackground(Color.voidDark)
+                                .accessibilityLabel("Load more workouts")
                             }
                         }
                         .listStyle(.plain)
@@ -164,8 +167,11 @@ struct QuestArchiveHeader: View {
                     Image(systemName: showCalendar ? "list.bullet" : "calendar")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(showCalendar ? .systemPrimary : .textSecondary)
+                        .accessibilityHidden(true)
                 }
             }
+            .accessibilityLabel(showCalendar ? "Show list view" : "Show calendar view")
+            .accessibilityHint("Toggles between workout list and calendar display")
         }
         .padding()
     }
@@ -202,8 +208,10 @@ struct AriseCalendarView: View {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.textSecondary)
+                            .accessibilityHidden(true)
                     }
                 }
+                .accessibilityLabel("Previous month")
 
                 Spacer()
 
@@ -227,8 +235,10 @@ struct AriseCalendarView: View {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.textSecondary)
+                            .accessibilityHidden(true)
                     }
                 }
+                .accessibilityLabel("Next month")
             }
 
             // Day Headers
