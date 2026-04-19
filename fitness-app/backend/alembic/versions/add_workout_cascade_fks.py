@@ -14,7 +14,7 @@ so that:
   - Deleting a workout_exercises row cascades to its sets rows.
 
 Revision ID: add_workout_cascade_fks
-Revises: f8a2c3d4e5b6, b2c3d4e5f6g7
+Revises: add_apple_workout_exercises
 Create Date: 2026-04-19
 """
 from alembic import op
@@ -23,8 +23,9 @@ from app.core.db_maintenance import purge_workout_orphans
 
 # revision identifiers, used by Alembic.
 revision = 'add_workout_cascade_fks'
-# Merges the two open heads so this can apply as a single head going forward.
-down_revision = ('f8a2c3d4e5b6', 'b2c3d4e5f6g7')
+# Chain off the apple-exercises merge migration, which already collapsed
+# f8a2c3d4e5b6 and b2c3d4e5f6g7 into a single head on main.
+down_revision = 'add_apple_workout_exercises'
 branch_labels = None
 depends_on = None
 
