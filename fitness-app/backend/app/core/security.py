@@ -1,8 +1,9 @@
 """
 Security utilities for password hashing and JWT token management
 """
+import hashlib
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import bcrypt
 from jose import JWTError, jwt
@@ -10,22 +11,73 @@ from jose import JWTError, jwt
 from app.core.config import settings
 
 
+def _prehash(password: str) -> bytes:
+    """
+    Pre-hash a password with SHA-256 before bcrypt.
+
+    bcrypt silently truncates inputs past 72 bytes, which means two distinct
+    passwords that share a 72-byte prefix would authenticate interchangeably.
+    Hashing with SHA-256 first collapses arbitrarily long inputs into a fixed
+    32-byte digest (hex-encoded to 64 printable ASCII chars) well under the
+    72-byte limit, while preserving entropy from the full input.
+    """
+    return hashlib.sha256(password.encode("utf-8")).hexdigest().encode("ascii")
+
+
 def hash_password(password: str) -> str:
-    """Hash a password using bcrypt"""
-    # Convert password to bytes and generate salt
-    password_bytes = password.encode('utf-8')
+    """Hash a password using SHA-256 pre-hash + bcrypt."""
     salt = bcrypt.gensalt()
-    # Hash the password
-    hashed = bcrypt.hashpw(password_bytes, salt)
-    # Return as string
-    return hashed.decode('utf-8')
+    hashed = bcrypt.hashpw(_prehash(password), salt)
+    return hashed.decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against a hash"""
-    password_bytes = plain_password.encode('utf-8')
-    hashed_bytes = hashed_password.encode('utf-8')
-    return bcrypt.checkpw(password_bytes, hashed_bytes)
+    """
+    Verify a password against a hash.
+
+    Tries the new sha256-prehash + bcrypt scheme first, then falls back to
+    the legacy raw-bcrypt scheme so existing users' stored hashes (from
+    before the prehash rollout) still authenticate. Callers that want to
+    transparently upgrade the stored hash should use
+    :func:`verify_password_with_rehash` instead.
+    """
+    ok, _ = verify_password_with_rehash(plain_password, hashed_password)
+    return ok
+
+
+def verify_password_with_rehash(
+    plain_password: str, hashed_password: str
+) -> Tuple[bool, bool]:
+    """
+    Verify a password and signal whether the stored hash should be upgraded.
+
+    Returns ``(ok, needs_rehash)``:
+
+    - ``ok`` is True when the password matches either the new (sha256-prehash
+      + bcrypt) format or the legacy (raw bcrypt) format.
+    - ``needs_rehash`` is True only when verification succeeded via the
+      legacy path — callers should re-store ``hash_password(plain_password)``
+      so the user is transparently migrated to the new scheme.
+    """
+    hashed_bytes = hashed_password.encode("utf-8")
+
+    # New format: sha256-prehash then bcrypt.
+    try:
+        if bcrypt.checkpw(_prehash(plain_password), hashed_bytes):
+            return True, False
+    except ValueError:
+        # Malformed hash — fall through to legacy attempt so we don't crash
+        # on historical bad data; the legacy path will also fail cleanly.
+        pass
+
+    # Legacy format: raw bcrypt over the password bytes (pre-prehash rollout).
+    try:
+        if bcrypt.checkpw(plain_password.encode("utf-8"), hashed_bytes):
+            return True, True
+    except ValueError:
+        return False, False
+
+    return False, False
 
 
 def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:

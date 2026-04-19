@@ -89,7 +89,12 @@ async def set_username(
 
 @router.get("/search", response_model=List[UserPublicResponse])
 async def search_users(
-    q: str = Query(..., min_length=1, max_length=50),
+    # min_length=3 prevents username enumeration via single-letter wildcards
+    # ("a", "b", ...) which would let an authed user walk the entire userbase
+    # in ~26 requests. Combined with the requires-auth gate, this keeps the
+    # feature useful for real "find my friend" flows while cutting the
+    # harvesting path.
+    q: str = Query(..., min_length=3, max_length=50),
     limit: int = Query(20, ge=1, le=50),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -98,7 +103,8 @@ async def search_users(
     Search for users by username
 
     Args:
-        q: Search query (matches usernames containing this string)
+        q: Search query (matches usernames containing this string). Minimum
+           3 characters to limit enumeration surface.
         limit: Maximum number of results (default 20)
 
     Returns:
