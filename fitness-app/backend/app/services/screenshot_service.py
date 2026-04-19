@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import anthropic
+import httpx
 from PIL import Image
 from PIL.ExifTags import TAGS
 from sqlalchemy import or_
@@ -287,8 +288,13 @@ async def extract_workout_from_screenshot(
         logger.error("ANTHROPIC_API_KEY not set")
         raise ValueError("ANTHROPIC_API_KEY environment variable not set")
 
-    # Initialize Anthropic client
-    client = anthropic.Anthropic(api_key=api_key)
+    # Initialize Anthropic client with an explicit 30-second timeout so a
+    # hung Claude call cannot pin a worker indefinitely. A timeout surfaces
+    # as anthropic.APITimeoutError, which the API layer maps to 504.
+    client = anthropic.Anthropic(
+        api_key=api_key,
+        timeout=httpx.Timeout(30.0),
+    )
 
     # Encode image
     image_base64 = encode_image_bytes(image_data)
@@ -319,6 +325,11 @@ async def extract_workout_from_screenshot(
                 }
             ]
         )
+    except anthropic.APITimeoutError:
+        # Propagate so the API layer can emit a 504 and rollback the
+        # credit reservation without swallowing into a generic 422.
+        logger.error("Claude API timeout — propagating to caller for 504 response")
+        raise
     except anthropic.APIError as e:
         logger.error(f"Claude API error: {e}")
         raise ValueError(f"Claude API error: {str(e)}")
@@ -379,6 +390,30 @@ async def extract_workout_from_screenshot(
     # Build exercise candidates for matching
     candidates = build_exercise_candidates(db, user_id)
 
+    # Prompt-injection defense: a crafted screenshot could convince Claude to
+    # return a `matched_exercise_id` pointing at another user's custom
+    # exercise. We build an allowlist of IDs that are either non-custom
+    # (library) or owned by the current user and drop any ID outside that
+    # set before it flows into the response / save pipeline.
+    allowed_exercise_ids = {eid for _, eid in candidates}
+
+    def _validate_exercise_id(candidate_id: Optional[str], context: str) -> Optional[str]:
+        """Drop IDs outside the user's allowlist. Log a warning on mismatch."""
+        if not candidate_id:
+            return None
+        if candidate_id in allowed_exercise_ids:
+            return candidate_id
+        # Defense in depth: also hit the DB so we stay correct if the
+        # candidate cache is stale (e.g. exercise created mid-request).
+        ex = db.query(Exercise).filter(Exercise.id == candidate_id).first()
+        if ex is not None and (ex.is_custom is False or ex.user_id == user_id):
+            return candidate_id
+        logger.warning(
+            "Dropping disallowed matched_exercise_id %s for user %s (%s) — possible prompt injection",
+            candidate_id, user_id, context,
+        )
+        return None
+
     # Match exercise names to database exercises
     exercises_with_matches = []
     overall_confidence = "high"
@@ -391,11 +426,30 @@ async def extract_workout_from_screenshot(
             exercise_name, candidates
         )
 
+        # If Claude's raw response included a matched_exercise_id (e.g. the
+        # prompt ever changes to ask for one, or a crafted image injects
+        # one), validate it against the allowlist. Our own match result is
+        # already constrained to `candidates`, but this guards the merged
+        # output too.
+        raw_claude_id = exercise.get("matched_exercise_id")
+        if raw_claude_id and raw_claude_id != exercise_id:
+            claude_id_validated = _validate_exercise_id(
+                raw_claude_id, f"exercise={exercise_name!r}"
+            )
+            # Never trust Claude over our own fuzzy match; just strip it if
+            # it's disallowed so it doesn't leak into the response.
+            if claude_id_validated is None:
+                exercise = {**exercise, "matched_exercise_id": None}
+
+        # Final guard: ensure our own match output is also on the allowlist
+        # (it should be by construction, but we validate defensively).
+        exercise_id = _validate_exercise_id(exercise_id, f"exercise={exercise_name!r}")
+
         exercise_result = {
             **exercise,
             "matched_exercise_id": exercise_id,
-            "matched_exercise_name": matched_name,
-            "match_confidence": confidence
+            "matched_exercise_name": matched_name if exercise_id else None,
+            "match_confidence": confidence if exercise_id else 0
         }
         exercises_with_matches.append(exercise_result)
 
