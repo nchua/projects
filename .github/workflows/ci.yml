@@ -32,13 +32,18 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Ruff lint
-        run: ruff check .
+        # Run ruff with diagnostics so a failure in CI shows the actual
+        # offending lines, not just an exit code.
+        run: ruff check . --output-format=github
 
       - name: Pytest
         env:
           SECRET_KEY: test-secret-key-for-ci-only
           JWT_SECRET_KEY: test-secret-key-for-ci-only
-        run: pytest tests/ -n auto
+        # -v prints each test's outcome; -rA prints short tracebacks for
+        # failures/errors at the end. Without this, "Process completed with
+        # exit code 1" is all we see.
+        run: pytest tests/ -n auto -v -rA
 
   alembic:
     name: Alembic — up/down/up on Postgres
@@ -79,7 +84,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Alembic migrations (upgrade heads)
+      - name: Alembic diagnostics
+        # Print the graph before upgrading so a failure shows which heads /
+        # chain were visible to alembic, not just the exit code.
+        run: |
+          echo "=== heads ==="
+          alembic heads
+          echo "=== branches ==="
+          alembic branches || true
+          echo "=== history ==="
+          alembic history --verbose | head -200
+
+      - name: Alembic upgrade heads
         # Use `heads` (plural) rather than `head` so CI tolerates multi-head
         # branches in flight. On main right now f8a2c3d4e5b6 and b2c3d4e5f6g7
         # are both heads; PRs #10 and #13 both introduce a merge migration
@@ -87,7 +103,6 @@ jobs:
         # "Multiple head revisions are present". `heads` applies all of them.
         run: |
           alembic upgrade heads
-          alembic history --verbose
           alembic current
 
   ios-build:
@@ -107,7 +122,20 @@ jobs:
         working-directory: fitness-app/ios
         run: xcodegen generate
 
+      - name: List available schemes
+        # If this changes vs. local, the fix is almost always xcodegen
+        # config drift. Print early so we don't blame xcodebuild for a
+        # scheme resolution problem.
+        run: |
+          xcodebuild -project fitness-app/ios/FitnessApp.xcodeproj -list
+
       - name: xcodebuild
+        # Fully disable code signing. project.yml declares
+        # DEVELOPMENT_TEAM=D69T4MH7XQ with Automatic signing — GitHub
+        # runners aren't enrolled in that team, so without these flags
+        # xcodebuild fails trying to fetch a provisioning profile even
+        # for a simulator build. All four flags together are the
+        # belt-and-suspenders combo that actually silences the signer.
         run: |
           set -o pipefail
           xcodebuild \
@@ -116,7 +144,11 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             -skipMacroValidation \
             CODE_SIGNING_ALLOWED=NO \
-            build 2>&1 | tail -200
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            DEVELOPMENT_TEAM="" \
+            build 2>&1 | tail -300
 
   entitlements-lint:
     name: iOS — entitlements lint
