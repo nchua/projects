@@ -157,6 +157,23 @@ EXERCISES_DATA = [
     {"name": "Basketball", "aliases": ["Basketball Game", "Hoops"], "category": "Sport", "primary_muscle": "Full Body", "secondary_muscles": []},
     {"name": "Soccer", "aliases": ["Football", "Soccer Match"], "category": "Sport", "primary_muscle": "Legs", "secondary_muscles": []},
     {"name": "Golf", "aliases": ["Golf Round", "Golfing"], "category": "Sport", "primary_muscle": "Core", "secondary_muscles": ["Back"]},
+    # Apple Watch / Fitness activity types — kept in sync with the
+    # add_apple_workout_exercises migration.
+    {"name": "Yoga", "aliases": ["Yoga Session", "Vinyasa", "Hatha Yoga"], "category": "Flexibility", "primary_muscle": "Full Body", "secondary_muscles": []},
+    {"name": "Pilates", "aliases": ["Pilates Session", "Mat Pilates", "Reformer Pilates"], "category": "Flexibility", "primary_muscle": "Core", "secondary_muscles": ["Full Body"]},
+    {"name": "Core Training", "aliases": ["Core Workout", "Ab Workout"], "category": "Flexibility", "primary_muscle": "Core", "secondary_muscles": []},
+    {"name": "Strength Training", "aliases": ["Traditional Strength Training", "Weight Training", "Lifting"], "category": "Strength", "primary_muscle": "Full Body", "secondary_muscles": []},
+    {"name": "Functional Strength Training", "aliases": ["Functional Training"], "category": "Strength", "primary_muscle": "Full Body", "secondary_muscles": []},
+    {"name": "Hiking", "aliases": ["Hike", "Trail Hike"], "category": "Cardio", "primary_muscle": "Legs", "secondary_muscles": []},
+    {"name": "Dance", "aliases": ["Dance Workout", "Dancing", "Zumba"], "category": "Cardio", "primary_muscle": "Full Body", "secondary_muscles": []},
+    {"name": "Boxing", "aliases": ["Boxing Workout", "Heavy Bag"], "category": "Sport", "primary_muscle": "Full Body", "secondary_muscles": []},
+    {"name": "Kickboxing", "aliases": ["Kickboxing Workout", "Muay Thai"], "category": "Sport", "primary_muscle": "Full Body", "secondary_muscles": []},
+    {"name": "Martial Arts", "aliases": ["Karate", "Taekwondo", "Judo", "BJJ", "Jiu-Jitsu"], "category": "Sport", "primary_muscle": "Full Body", "secondary_muscles": []},
+    {"name": "Climbing", "aliases": ["Bouldering", "Rock Climbing", "Indoor Climbing"], "category": "Sport", "primary_muscle": "Back", "secondary_muscles": ["Arms", "Full Body"]},
+    {"name": "Skiing", "aliases": ["Downhill Skiing", "Cross Country Skiing", "Ski"], "category": "Sport", "primary_muscle": "Legs", "secondary_muscles": []},
+    {"name": "Snowboarding", "aliases": ["Snowboard"], "category": "Sport", "primary_muscle": "Legs", "secondary_muscles": ["Core"]},
+    {"name": "Surfing", "aliases": ["Surf", "Paddleboard", "Stand Up Paddleboarding"], "category": "Sport", "primary_muscle": "Full Body", "secondary_muscles": []},
+    {"name": "Volleyball", "aliases": ["Beach Volleyball", "Volleyball Match"], "category": "Sport", "primary_muscle": "Full Body", "secondary_muscles": []},
 ]
 
 

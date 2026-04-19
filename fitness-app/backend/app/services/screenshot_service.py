@@ -216,15 +216,26 @@ def clean_json_response(response_text: str) -> str:
     return text.strip()
 
 
-# Canonical sport/cardio names seeded by add_sports_exercises.py. Aliases like
-# "Run"/"Jog"/"Pickleball Match" each live in their own Exercise row that shares
-# canonical_id with the primary — we use this set to resolve a fuzzy match back
-# to the primary so workout history shows "Running" instead of "Run".
+# Canonical sport/cardio/fitness names seeded by add_sports_exercises.py and
+# the add_apple_workout_exercises migration. Aliases like "Run"/"Jog"/"Bouldering"
+# each live in their own Exercise row that shares canonical_id with the primary
+# — we use this set to resolve a fuzzy match back to the primary so workout
+# history shows "Running" instead of "Run".
 SPORT_PRIMARY_NAMES = frozenset({
+    # add_sports_exercises.py / EXERCISES_DATA
     "Tennis", "Pickleball", "Padel", "Running", "Cycling", "Swimming",
     "Rowing", "Jump Rope", "Stair Climber", "Elliptical", "Walking",
     "HIIT", "Basketball", "Soccer", "Golf",
+    # add_apple_workout_exercises migration
+    "Yoga", "Pilates", "Core Training", "Strength Training",
+    "Functional Strength Training", "Hiking", "Dance", "Boxing",
+    "Kickboxing", "Martial Arts", "Climbing", "Skiing", "Snowboarding",
+    "Surfing", "Volleyball",
 })
+
+# Exercise categories that represent trackable standalone activities (vs. gym
+# movements like Push/Pull/Legs). The activity matcher only searches these.
+_ACTIVITY_CATEGORIES = ("Sport", "Cardio", "Flexibility", "Strength")
 
 # Apple Watch labels its workouts with location prefixes that aren't part of
 # the exercise name in our database (e.g., "Indoor Run", "Outdoor Cycle",
@@ -258,7 +269,7 @@ def match_activity_to_exercise(
 
     exercises = db.query(Exercise).filter(
         Exercise.is_custom == False,  # noqa: E712
-        Exercise.category.in_(["Sport", "Cardio"]),
+        Exercise.category.in_(_ACTIVITY_CATEGORIES),
     ).all()
     if not exercises:
         return None, None
