@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend — lint + tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: fitness-app/backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            fitness-app/backend/requirements.txt
+            fitness-app/backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Ruff lint
+        run: ruff check .
+
+      - name: Pytest
+        env:
+          SECRET_KEY: test-secret-key-for-ci-only
+          JWT_SECRET_KEY: test-secret-key-for-ci-only
+        run: pytest tests/ -n auto
+
+  alembic:
+    name: Alembic — up/down/up on Postgres
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: fitness
+          POSTGRES_PASSWORD: fitness
+          POSTGRES_DB: fitness_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fitness"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: fitness-app/backend
+    env:
+      DATABASE_URL: postgresql://fitness:fitness@localhost:5432/fitness_test
+      SECRET_KEY: test-secret-key-for-ci-only
+      JWT_SECRET_KEY: test-secret-key-for-ci-only
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: fitness-app/backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Alembic upgrade head
+        run: alembic upgrade head
+
+      - name: Alembic downgrade -1
+        run: alembic downgrade -1
+
+      - name: Alembic upgrade head (round-trip)
+        run: alembic upgrade head
+
+  ios-build:
+    name: iOS — xcodebuild
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: xcodebuild
+        run: |
+          xcodebuild \
+            -project fitness-app/ios/FitnessApp.xcodeproj \
+            -scheme FitnessApp \
+            -destination 'generic/platform=iOS Simulator' \
+            build
+
+  entitlements-lint:
+    name: iOS — entitlements lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint entitlements
+        run: bash fitness-app/ios/scripts/lint-entitlements.sh
+
+  secret-scan:
+    name: Secret scan — gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: zricethezav/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
