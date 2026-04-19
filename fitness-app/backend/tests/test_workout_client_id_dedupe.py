@@ -91,6 +91,30 @@ class TestClientIdDedupe:
 
         assert first_id != second_id
 
+    def test_deleted_client_id_returns_409(
+        self, client, auth_headers, seeded_exercise
+    ):
+        """POSTing a client_id that matches a SOFT-DELETED workout must return
+        409 — otherwise a client could delete a workout and replay the POST to
+        re-award XP/PRs for a workout the user explicitly removed.
+        """
+        headers, _ = auth_headers()
+        body = _sample_workout("dedupe-test-deleted", seeded_exercise)
+
+        # Create.
+        first = client.post("/workouts", json=body, headers=headers)
+        assert first.status_code == 201, first.text
+        workout_id = first.json()["workout"]["id"]
+
+        # Soft-delete.
+        deleted = client.delete(f"/workouts/{workout_id}", headers=headers)
+        assert deleted.status_code == 204, deleted.text
+
+        # Retry same client_id — should be rejected with 409.
+        retry = client.post("/workouts", json=body, headers=headers)
+        assert retry.status_code == 409, retry.text
+        assert "client_id" in retry.json()["detail"].lower()
+
     def test_omitted_client_id_always_creates(
         self, client, auth_headers, seeded_exercise
     ):

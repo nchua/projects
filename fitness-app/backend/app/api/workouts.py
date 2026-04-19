@@ -142,6 +142,10 @@ async def _create_workout_impl(
     # achievements) come back empty — the real ones were awarded on the
     # first successful save; re-awarding on retry would inflate counters.
     if workout_data.client_id:
+        # Check both active AND soft-deleted workouts for this (user, client_id).
+        # A soft-deleted match means the user already created-then-deleted this
+        # workout; re-accepting the same client_id would let a client replay
+        # the POST and re-award XP/PRs for a workout the user explicitly removed.
         existing = (
             db.query(WorkoutSession)
             .options(
@@ -153,11 +157,18 @@ async def _create_workout_impl(
             .filter(
                 WorkoutSession.user_id == current_user.id,
                 WorkoutSession.client_id == workout_data.client_id,
-                WorkoutSession.deleted_at.is_(None),
             )
             .first()
         )
         if existing:
+            if existing.deleted_at is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        "Workout with this client_id was deleted. "
+                        "Use a new client_id to create a workout."
+                    ),
+                )
             progress = get_or_create_user_progress(db, current_user.id)
             return WorkoutCreateResponse(
                 workout=_build_workout_response(existing),
