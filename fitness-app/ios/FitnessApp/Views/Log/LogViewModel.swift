@@ -17,6 +17,13 @@ class LogViewModel: ObservableObject {
     @Published var workoutSaved = false
     @Published var xpRewardResponse: WorkoutCreateResponse?
 
+    // Offline queue — observed by LogView to render the pending badge.
+    let pendingStore = PendingWorkoutStore.shared
+    @Published var pendingCount: Int = 0
+    @Published var pendingStaleWarning: Bool = false
+    @Published var queuedForLater: Bool = false  // Set after a save falls back to the queue
+    @Published var isRetryingPending: Bool = false
+
     var filteredExercises: [ExerciseResponse] {
         var result = exercises
 
@@ -169,6 +176,7 @@ class LogViewModel: ObservableObject {
 
         isSaving = true
         error = nil
+        queuedForLater = false
 
         // Use local timezone DateFormatter to ensure the date matches user's local date
         // ISO8601DateFormatter converts to UTC which can shift the date for users in timezones ahead of UTC
@@ -203,12 +211,49 @@ class LogViewModel: ObservableObject {
             let response = try await APIClient.shared.createWorkoutWithXP(workout)
             xpRewardResponse = response
             workoutSaved = true
+            // Successful network call — also attempt to drain any previously-queued workouts.
+            Task { await retryPendingWorkouts(silent: true) }
             // Don't reset yet - wait for XP popup dismissal
+        } catch let apiError as APIError {
+            if case .networkError = apiError {
+                // Network down — queue the workout for later and let the user move on.
+                pendingStore.enqueue(workout)
+                refreshPendingCount()
+                queuedForLater = true
+                resetWorkout()
+            } else {
+                self.error = apiError.localizedDescription
+            }
         } catch {
             self.error = error.localizedDescription
         }
 
         isSaving = false
+    }
+
+    /// Attempts to upload every queued workout. Called on app foreground,
+    /// after a successful save, and from the manual "Retry" button.
+    func retryPendingWorkouts(silent: Bool = false) async {
+        guard pendingStore.count > 0 else {
+            refreshPendingCount()
+            return
+        }
+        if !silent { isRetryingPending = true }
+        _ = await pendingStore.drain()
+        refreshPendingCount()
+        if !silent {
+            isRetryingPending = false
+            if let drainError = pendingStore.lastDrainError {
+                self.error = drainError
+            }
+        }
+    }
+
+    /// Sync local `@Published` mirror so views can show the badge without
+    /// needing a direct `@ObservedObject` on the store.
+    func refreshPendingCount() {
+        pendingCount = pendingStore.count
+        pendingStaleWarning = pendingStore.hasStaleWarning
     }
 
     func dismissXPReward() {

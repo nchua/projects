@@ -8,6 +8,10 @@ struct ScreenshotPreviewView: View {
     @State private var hasStartedProcessing = false
     @State private var showDatePicker = false
 
+    // Inline-edit state
+    @State private var editingExerciseId: UUID?
+    @State private var exerciseCatalog: [ExerciseResponse] = []
+
     private var buttonText: String {
         if viewModel.workoutSaved || viewModel.activitySaved {
             return "DONE"
@@ -55,7 +59,41 @@ struct ScreenshotPreviewView: View {
             }
             .toolbarBackground(Color.voidBlack, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+            .task {
+                // Lazy-load exercise catalog so the match picker is ready when the user opens edit.
+                if exerciseCatalog.isEmpty {
+                    if let fetched = try? await APIClient.shared.getExercises() {
+                        exerciseCatalog = fetched
+                    }
+                }
+            }
+            // fullScreenCover is over-kill for edit — a sheet is fine, and we use
+            // `item:` binding so `.id()` isolation per exercise is automatic.
+            .sheet(item: editingExerciseBinding) { editing in
+                // Safety: re-resolve index on every open in case list mutated.
+                if let idx = viewModel.editableIndex(for: editing.id) {
+                    ScreenshotExerciseEditView(
+                        exercises: exerciseCatalog,
+                        exercise: $viewModel.editableExercises[idx],
+                        onDeleteExercise: {
+                            viewModel.removeEditableExercise(id: editing.id)
+                            editingExerciseId = nil
+                        }
+                    )
+                } else {
+                    // Entry disappeared (e.g. deleted elsewhere) — close the sheet.
+                    Color.clear.onAppear { editingExerciseId = nil }
+                }
+            }
         }
+    }
+
+    /// Bridge `editingExerciseId: UUID?` ↔ `Identifiable` for the sheet-item binding.
+    private var editingExerciseBinding: Binding<EditingExerciseHandle?> {
+        Binding(
+            get: { editingExerciseId.map(EditingExerciseHandle.init) },
+            set: { editingExerciseId = $0?.id }
+        )
     }
 
     // MARK: - Date Selection View (shown before processing)
@@ -329,11 +367,13 @@ struct ScreenshotPreviewView: View {
             .padding()
             .background(Color.voidMedium)
 
-            // Exercises list
+            // Exercises list — driven off the EDITABLE copy so user changes show here.
             ScrollView {
                 VStack(spacing: 12) {
-                    ForEach(data.exercises) { exercise in
-                        ExercisePreviewCard(exercise: exercise)
+                    ForEach(viewModel.editableExercises) { exercise in
+                        EditableExercisePreviewCard(exercise: exercise) {
+                            editingExerciseId = exercise.id
+                        }
                     }
 
                     // Unmatched warning
@@ -342,7 +382,7 @@ struct ScreenshotPreviewView: View {
                             Image(systemName: "exclamationmark.circle")
                                 .foregroundColor(.yellow)
 
-                            Text("\(viewModel.unmatchedExerciseCount) exercise(s) could not be matched and will be skipped")
+                            Text("\(viewModel.unmatchedExerciseCount) exercise(s) could not be matched and will be skipped. Tap to re-match.")
                                 .font(.ariseBody(size: 12))
                                 .foregroundColor(.textSecondary)
                         }
@@ -350,6 +390,18 @@ struct ScreenshotPreviewView: View {
                         .background(Color.yellow.opacity(0.1))
                         .cornerRadius(8)
                     }
+
+                    // Tap-to-edit hint
+                    HStack(spacing: 8) {
+                        Image(systemName: "hand.tap")
+                            .font(.system(size: 11))
+                            .foregroundColor(.textMuted)
+                        Text("Tap any exercise to edit sets, reps, or the matched exercise.")
+                            .font(.ariseMono(size: 11))
+                            .foregroundColor(.textMuted)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 4)
                 }
                 .padding()
             }
@@ -546,19 +598,20 @@ struct ScreenshotPreviewView: View {
                                 .stroke(Color.systemPrimary.opacity(0.3), lineWidth: 1)
                         )
                     } else {
-                        // Gym workout exercises
-                        ForEach(batch.exercises) { exercise in
-                            ExercisePreviewCard(exercise: exercise)
+                        // Gym workout exercises — editable
+                        ForEach(viewModel.editableExercises) { exercise in
+                            EditableExercisePreviewCard(exercise: exercise) {
+                                editingExerciseId = exercise.id
+                            }
                         }
 
                         // Unmatched warning
-                        let unmatchedCount = batch.exercises.filter { $0.matchedExerciseId == nil }.count
-                        if unmatchedCount > 0 {
+                        if viewModel.unmatchedExerciseCount > 0 {
                             HStack(spacing: 12) {
                                 Image(systemName: "exclamationmark.circle")
                                     .foregroundColor(.yellow)
 
-                                Text("\(unmatchedCount) exercise(s) could not be matched and will be skipped")
+                                Text("\(viewModel.unmatchedExerciseCount) exercise(s) could not be matched and will be skipped. Tap to re-match.")
                                     .font(.ariseBody(size: 12))
                                     .foregroundColor(.textSecondary)
                             }
@@ -566,6 +619,18 @@ struct ScreenshotPreviewView: View {
                             .background(Color.yellow.opacity(0.1))
                             .cornerRadius(8)
                         }
+
+                        // Tap-to-edit hint
+                        HStack(spacing: 8) {
+                            Image(systemName: "hand.tap")
+                                .font(.system(size: 11))
+                                .foregroundColor(.textMuted)
+                            Text("Tap any exercise to edit sets, reps, or the matched exercise.")
+                                .font(.ariseMono(size: 11))
+                                .foregroundColor(.textMuted)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 4)
                     }
                 }
                 .padding()
@@ -634,6 +699,9 @@ struct ScreenshotPreviewView: View {
 }
 
 // MARK: - Exercise Preview Card
+
+/// Lightweight Identifiable handle for `sheet(item:)` binding off a UUID.
+private struct EditingExerciseHandle: Identifiable { let id: UUID }
 
 struct ExercisePreviewCard: View {
     let exercise: ExtractedExercise
@@ -730,6 +798,132 @@ struct SetPreviewBadge: View {
 
             if set.sets > 1 {
                 Text("×\(set.sets)")
+                    .font(.ariseMono(size: 8))
+                    .foregroundColor(.systemPrimary)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(set.isWarmup ? Color.yellow.opacity(0.1) : Color.voidMedium)
+        .cornerRadius(4)
+    }
+}
+
+// MARK: - Editable Exercise Preview Card
+
+/// Tap-to-edit version of `ExercisePreviewCard` backed by the view model's
+/// working copy. The source of truth for save is `viewModel.editableExercises`.
+struct EditableExercisePreviewCard: View {
+    let exercise: EditableExtractedExercise
+    let onTap: () -> Void
+
+    private var totalReps: Int {
+        exercise.sets.filter { !$0.isWarmup }
+            .reduce(0) { $0 + ($1.reps * max(1, $1.setsCount)) }
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 12) {
+                // Header
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            Text(exercise.displayName)
+                                .font(.ariseHeader(size: 14, weight: .semibold))
+                                .foregroundColor(.textPrimary)
+
+                            if !exercise.isMatched {
+                                Text("UNMATCHED")
+                                    .font(.ariseMono(size: 8, weight: .medium))
+                                    .foregroundColor(.red)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.red.opacity(0.2))
+                                    .cornerRadius(3)
+                            }
+                        }
+
+                        if let equipment = exercise.equipment {
+                            Text(equipment.capitalized)
+                                .font(.ariseMono(size: 10))
+                                .foregroundColor(.textMuted)
+                        }
+                    }
+
+                    Spacer()
+
+                    if totalReps > 0 {
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("\(totalReps)")
+                                .font(.ariseHeader(size: 18, weight: .bold))
+                                .foregroundColor(.systemPrimary)
+                            Text("REPS")
+                                .font(.ariseMono(size: 8))
+                                .foregroundColor(.textMuted)
+                        }
+                    }
+
+                    Image(systemName: "pencil")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.systemPrimary)
+                        .padding(.leading, 8)
+                }
+
+                // Sets strip
+                if exercise.sets.isEmpty {
+                    Text("No sets — tap to add")
+                        .font(.ariseMono(size: 11))
+                        .foregroundColor(.textMuted)
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, set in
+                                EditableSetBadge(set: set, index: index + 1)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding()
+            .background(Color.voidLight.opacity(exercise.isMatched ? 1 : 0.5))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(exercise.isMatched ? Color.ariseBorder : Color.red.opacity(0.3), lineWidth: 1)
+            )
+            .cornerRadius(8)
+            .opacity(exercise.isMatched ? 1 : 0.85)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct EditableSetBadge: View {
+    let set: EditableExtractedSet
+    let index: Int
+
+    var body: some View {
+        VStack(spacing: 2) {
+            if set.isWarmup {
+                Text("W")
+                    .font(.ariseMono(size: 8, weight: .bold))
+                    .foregroundColor(.yellow)
+            } else {
+                Text("\(index)")
+                    .font(.ariseMono(size: 8, weight: .medium))
+                    .foregroundColor(.textMuted)
+            }
+
+            Text(set.weightText.isEmpty ? "—" : set.weightText)
+                .font(.ariseMono(size: 12, weight: .semibold))
+                .foregroundColor(.textPrimary)
+
+            Text("×\(set.reps)")
+                .font(.ariseMono(size: 10))
+                .foregroundColor(.textSecondary)
+
+            if set.setsCount > 1 {
+                Text("×\(set.setsCount)")
                     .font(.ariseMono(size: 8))
                     .foregroundColor(.systemPrimary)
             }

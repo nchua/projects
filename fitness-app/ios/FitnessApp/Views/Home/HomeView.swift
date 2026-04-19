@@ -25,6 +25,20 @@ struct HomeView: View {
 
                 ScrollView {
                     VStack(spacing: 16) {
+                        // Load-error banner (partial failures across dashboard endpoints)
+                        if viewModel.hasDataLoadErrors {
+                            HomeDataErrorBanner(
+                                summary: viewModel.dataLoadErrorSummary,
+                                onRetry: {
+                                    Task { await viewModel.loadData() }
+                                },
+                                onDismiss: {
+                                    viewModel.dataLoadErrors = [:]
+                                }
+                            )
+                            .padding(.horizontal, 20)
+                        }
+
                         // 1. Hunter Header with XP (Edge Flow - gradient header)
                         HunterStatusHeader(
                             name: viewModel.hunterName,
@@ -2173,6 +2187,67 @@ struct WeeklyReportCard: View {
             .edgeFlowCard(accent: statusColor)
         }
         .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Home Data Error Banner
+
+/// Compact banner shown at the top of HomeView when one or more dashboard
+/// endpoints failed to load. Non-blocking — the rest of the dashboard still
+/// renders from whatever data succeeded.
+struct HomeDataErrorBanner: View {
+    let summary: String
+    let onRetry: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 14))
+                .foregroundColor(.yellow)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Some data couldn't load")
+                    .font(.ariseMono(size: 11, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+                    .tracking(0.5)
+
+                if !summary.isEmpty {
+                    Text(summary)
+                        .font(.ariseMono(size: 10))
+                        .foregroundColor(.textMuted)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            Button(action: onRetry) {
+                Text("Retry")
+                    .font(.ariseMono(size: 11, weight: .semibold))
+                    .tracking(1)
+                    .foregroundColor(.voidBlack)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.yellow)
+                    .cornerRadius(4)
+            }
+
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.textMuted)
+                    .frame(width: 22, height: 22)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color.yellow.opacity(0.1))
+        .cornerRadius(6)
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(Color.yellow.opacity(0.3), lineWidth: 1)
+        )
     }
 }
 
