@@ -10,7 +10,12 @@
 </head>
 <body class="screen-home">
   <main class="home">
-    <textarea class="paste" placeholder="Paste text..." spellcheck="false"></textarea>
+    <textarea class="paste" placeholder="Paste text..." spellcheck="false" autofocus></textarea>
+    <button class="home-play" aria-label="Start reading" disabled>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path d="M8 5 L19 12 L8 19 Z" fill="currentColor"></path>
+      </svg>
+    </button>
     <div class="home-icons">
       <button class="icon-btn" data-action="upload" aria-label="Upload file" disabled></button>
       <button class="icon-btn" data-action="url" aria-label="Paste URL" disabled></button>
@@ -30,11 +35,22 @@
     </div>
     <div class="rail rail-bottom"></div>
     <button class="tap-surface" aria-label="Toggle controls"></button>
-    <div class="controls" hidden>
-      <input type="range" class="wpm-slider" min="100" max="900" step="10" value="350">
-      <button class="play-pause" aria-label="Play / pause"></button>
-      <button class="close" aria-label="Close reader"></button>
+    <div class="controls">
+      <button class="play-pause" aria-label="Play / pause">
+        <svg class="ico-play" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+          <path d="M8 5 L19 12 L8 19 Z" fill="currentColor"></path>
+        </svg>
+        <svg class="ico-pause" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+          <path d="M7 5 H10 V19 H7 Z M14 5 H17 V19 H14 Z" fill="currentColor"></path>
+        </svg>
+      </button>
+      <input type="range" class="wpm-slider" min="100" max="900" step="10" value="350" aria-label="Words per minute">
     </div>
+    <button class="close" aria-label="Close reader">
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+        <path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" stroke-width="1.5" fill="none"></path>
+      </svg>
+    </button>
   </div>
 
   <script type="module" src="js/main.js"></script>
