@@ -14,18 +14,28 @@ export function splitWord(token) {
   return {
     pre: word.slice(0, idx),
     piv: word[idx] || '',
-    post: word.slice(idx + 1) + (token.trailing || ''),
+    post: word.slice(idx + 1) + token.trailing,
   };
 }
 
 let measureCtx = null;
+const halfCache = new Map();
+
 export function measurePivotHalf(ch, fontSpec) {
   if (!ch) return 0;
+  const key = fontSpec + '|' + ch;
+  const cached = halfCache.get(key);
+  if (cached !== undefined) return cached;
+
   if (!measureCtx) {
-    const canvas = document.createElement('canvas');
-    measureCtx = canvas.getContext('2d');
+    measureCtx = document.createElement('canvas').getContext('2d');
   }
   measureCtx.font = fontSpec;
-  const metrics = measureCtx.measureText(ch);
-  return metrics.width / 2;
+  const half = measureCtx.measureText(ch).width / 2;
+  halfCache.set(key, half);
+  return half;
+}
+
+export function clearMeasurementCache() {
+  halfCache.clear();
 }

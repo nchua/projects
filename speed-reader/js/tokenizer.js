@@ -1,38 +1,44 @@
 const WORD_RE = /[A-Za-z0-9][A-Za-z0-9'\u2019]*(?:-[A-Za-z0-9'\u2019]+)*/g;
-const TRAIL_RE = /[.,;:!?)"\u201D\u2014\u2013]+$/;
+const TRAIL_CHARS = `.,;:!?)"\u201D\u2014\u2013`;
+const LEADING_TRAIL_RE = new RegExp(`^[${TRAIL_CHARS.replace(/[-\]\\]/g, '\\$&')}]+`);
 const NUMERIC_RE = /^[0-9][0-9,.]*$/;
 
 function normalize(text) {
   return text.normalize('NFC').replace(/\r\n?/g, '\n').replace(/\f/g, '');
 }
 
-function analyse(word, trailing) {
-  const core = word.replace(/['\u2019]/g, '');
+function coreOf(word) {
+  return word.replace(/['\u2019-]/g, '');
+}
+
+function makeToken(word, trailing) {
+  const core = coreOf(word);
   return {
     word,
     trailing: trailing || '',
     isBreak: false,
     isNumeric: NUMERIC_RE.test(word),
     allCaps: core.length >= 3 && core === core.toUpperCase() && /[A-Z]/.test(core),
+    coreLen: core.length,
   };
+}
+
+function makeBreak() {
+  return { word: '', trailing: '', isBreak: true, isNumeric: false, allCaps: false, coreLen: 0 };
 }
 
 function tokenizeParagraph(para) {
   const tokens = [];
   const cleaned = para.replace(/\n/g, ' ');
-  let lastEnd = 0;
   const matches = [...cleaned.matchAll(WORD_RE)];
 
   for (let i = 0; i < matches.length; i++) {
     const m = matches[i];
-    const start = m.index;
-    const end = start + m[0].length;
+    const end = m.index + m[0].length;
     const nextStart = i + 1 < matches.length ? matches[i + 1].index : cleaned.length;
     const between = cleaned.slice(end, nextStart);
-    const trailMatch = between.match(/^[.,;:!?)"\u201D\u2014\u2013]+/);
-    const trailing = trailMatch ? trailMatch[0] : '';
-    tokens.push(analyse(m[0], trailing));
-    lastEnd = end;
+    const trailMatch = between.match(LEADING_TRAIL_RE);
+    tokens.push(makeToken(m[0], trailMatch ? trailMatch[0] : ''));
   }
   return tokens;
 }
@@ -46,8 +52,9 @@ export function tokenize(raw) {
   for (let i = 0; i < paragraphs.length; i++) {
     const p = paragraphs[i].trim();
     if (!p) continue;
-    if (tokens.length > 0) tokens.push({ word: '', trailing: '', isBreak: true, isNumeric: false, allCaps: false });
-    tokens.push(...tokenizeParagraph(p));
+    if (tokens.length > 0) tokens.push(makeBreak());
+    const sub = tokenizeParagraph(p);
+    for (let j = 0; j < sub.length; j++) tokens.push(sub[j]);
   }
   return tokens;
 }

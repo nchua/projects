@@ -1,11 +1,8 @@
 const state = {
   tokens: [],
-  index: 0,
   wpm: 350,
   playing: false,
-  chunkSize: 1,
   sourceId: null,
-  controlsVisible: false,
 };
 
 const subs = new Set();
@@ -13,8 +10,14 @@ const subs = new Set();
 export function get() { return state; }
 
 export function set(patch) {
-  Object.assign(state, patch);
-  subs.forEach(fn => fn(state));
+  let changed = false;
+  for (const k in patch) {
+    if (state[k] !== patch[k]) {
+      state[k] = patch[k];
+      changed = true;
+    }
+  }
+  if (changed) subs.forEach(fn => fn(state));
 }
 
 export function subscribe(fn) {

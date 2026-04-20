@@ -1,37 +1,60 @@
-import { splitWord, measurePivotHalf } from './orp.js';
+import { splitWord, measurePivotHalf, clearMeasurementCache } from './orp.js';
 
-const slot = () => document.querySelector('.word-slot');
-const elPre = () => document.querySelector('.word-slot .pre');
-const elPiv = () => document.querySelector('.word-slot .piv');
-const elPost = () => document.querySelector('.word-slot .post');
-const elWpm = () => document.querySelector('.wpm-label em');
+let slot = null;
+let elPre = null;
+let elPiv = null;
+let elPost = null;
+let elWpm = null;
+let fontSpec = '';
+let lastHalf = -1;
 
-function currentFontSpec() {
-  const el = slot();
-  if (!el) return '400 64px ui-serif, Georgia, serif';
-  const cs = getComputedStyle(el);
+function computeFontSpec() {
+  if (!slot) return '';
+  const cs = getComputedStyle(slot);
   return `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
 }
 
-export function renderToken(token) {
-  if (!slot()) return;
-  const { pre, piv, post } = splitWord(token);
-  elPre().textContent = pre;
-  elPiv().textContent = piv;
-  elPost().textContent = post;
+export function mount() {
+  slot = document.querySelector('.word-slot');
+  elPre = document.querySelector('.word-slot .pre');
+  elPiv = document.querySelector('.word-slot .piv');
+  elPost = document.querySelector('.word-slot .post');
+  elWpm = document.querySelector('.wpm-label em');
+  fontSpec = computeFontSpec();
 
-  const half = measurePivotHalf(piv, currentFontSpec());
-  slot().style.setProperty('--pivot-half', half + 'px');
+  window.addEventListener('resize', refreshFontSpec);
+}
+
+function refreshFontSpec() {
+  const next = computeFontSpec();
+  if (next !== fontSpec) {
+    fontSpec = next;
+    clearMeasurementCache();
+    lastHalf = -1;
+  }
+}
+
+export function renderToken(token) {
+  if (!slot) return;
+  const { pre, piv, post } = splitWord(token);
+  elPre.textContent = pre;
+  elPiv.textContent = piv;
+  elPost.textContent = post;
+
+  const half = measurePivotHalf(piv, fontSpec);
+  if (half !== lastHalf) {
+    slot.style.setProperty('--pivot-half', half + 'px');
+    lastHalf = half;
+  }
 }
 
 export function renderWpm(wpm) {
-  const el = elWpm();
-  if (el) el.textContent = `${wpm} wpm`;
+  if (elWpm) elWpm.textContent = `${wpm} wpm`;
 }
 
 export function clearWord() {
-  if (!slot()) return;
-  elPre().textContent = '';
-  elPiv().textContent = '';
-  elPost().textContent = '';
+  if (!slot) return;
+  elPre.textContent = '';
+  elPiv.textContent = '';
+  elPost.textContent = '';
 }

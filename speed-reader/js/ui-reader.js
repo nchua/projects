@@ -1,23 +1,13 @@
 import * as state from './state.js';
 import * as player from './player.js';
 import { renderWpm } from './renderer.js';
+import * as storage from './storage.js';
 
 const AUTO_HIDE_MS = 2000;
 
 let hideTimer = null;
 let onClose = null;
-
-function showControls() {
-  document.body.classList.add('controls-visible');
-  const controls = document.querySelector('.controls');
-  if (controls) controls.hidden = false;
-  resetHideTimer();
-}
-
-function hideControls() {
-  document.body.classList.remove('controls-visible');
-  clearHideTimer();
-}
+let playPauseEl = null;
 
 function clearHideTimer() {
   if (hideTimer !== null) {
@@ -33,45 +23,50 @@ function resetHideTimer() {
   }, AUTO_HIDE_MS);
 }
 
+export function showControls() {
+  document.body.classList.add('controls-visible');
+  resetHideTimer();
+}
+
+export function hideControls() {
+  document.body.classList.remove('controls-visible');
+  clearHideTimer();
+}
+
+function togglePlay() {
+  const nowPlaying = player.toggle();
+  if (nowPlaying) hideControls();
+  else showControls();
+}
+
+function close() {
+  player.pause();
+  hideControls();
+  if (onClose) onClose();
+}
+
 export function mount(opts) {
   onClose = opts.onClose;
 
   const tap = document.querySelector('.tap-surface');
-  const playPause = document.querySelector('.play-pause');
+  playPauseEl = document.querySelector('.play-pause');
   const closeBtn = document.querySelector('.close');
   const slider = document.querySelector('.wpm-slider');
 
-  if (tap) {
-    tap.addEventListener('click', () => {
-      if (state.get().playing) {
-        player.pause();
-        showControls();
-      } else {
-        hideControls();
-        player.start();
-      }
-    });
-  }
+  if (tap) tap.addEventListener('click', togglePlay);
 
-  if (playPause) {
-    playPause.addEventListener('click', (e) => {
+  if (playPauseEl) {
+    playPauseEl.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (state.get().playing) {
-        player.pause();
-        resetHideTimer();
-      } else {
-        player.start();
-        resetHideTimer();
-      }
+      togglePlay();
+      playPauseEl.blur();
     });
   }
 
   if (closeBtn) {
     closeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      player.pause();
-      hideControls();
-      if (onClose) onClose();
+      close();
     });
   }
 
@@ -79,33 +74,24 @@ export function mount(opts) {
     slider.addEventListener('input', () => {
       const wpm = parseInt(slider.value, 10);
       state.set({ wpm });
+      storage.patchSettings({ wpm });
       renderWpm(wpm);
       resetHideTimer();
     });
   }
 
   state.subscribe((s) => {
-    if (playPause) playPause.classList.toggle('is-playing', s.playing);
+    if (playPauseEl) playPauseEl.classList.toggle('is-playing', s.playing);
   });
 }
 
 export function handleKey(e) {
-  const s = state.get();
+  if (e.target && e.target.tagName === 'BUTTON') return;
   if (e.key === ' ') {
     e.preventDefault();
-    if (s.playing) {
-      player.pause();
-      showControls();
-    } else {
-      hideControls();
-      player.start();
-    }
+    togglePlay();
   } else if (e.key === 'Escape') {
     e.preventDefault();
-    player.pause();
-    hideControls();
-    if (onClose) onClose();
+    close();
   }
 }
-
-export { showControls, hideControls };
