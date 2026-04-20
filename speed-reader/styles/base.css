@@ -1,0 +1,107 @@
+:root {
+  --bg: #000000;
+  --fg: #ffffff;
+  --fg-dim: #6b6b6b;
+  --pivot: #e0342f;
+
+  --rail-weight: 1px;
+  --rail-inset: 22vh;
+  --tick-length: 14px;
+  --tick-weight: 1px;
+  --tick-gap: 18px;
+
+  --word-size: clamp(48px, 10vw, 128px);
+  --word-font: ui-serif, Georgia, "Times New Roman", serif;
+  --word-weight: 400;
+  --band-height: calc(var(--rail-inset) * 2);
+
+  --control-bg: rgba(20, 20, 20, 0.82);
+  --control-accent: #e0342f;
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --fade-dur: 180ms;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--word-font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+button:disabled { cursor: default; opacity: 0.4; }
+
+.home {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.paste {
+  width: min(720px, 80vw);
+  height: 40vh;
+  background: transparent;
+  color: var(--fg);
+  border: 0;
+  outline: 0;
+  resize: none;
+  font: 400 18px/1.5 var(--word-font);
+  text-align: center;
+  caret-color: var(--pivot);
+}
+
+.paste::placeholder { color: var(--fg-dim); font-style: italic; }
+
+.home-icons {
+  position: fixed;
+  right: calc(20px + env(safe-area-inset-right));
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  display: flex;
+  gap: 14px;
+}
+
+.icon-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--fg-dim);
+  opacity: 0.55;
+}
+
+.library-dot {
+  position: fixed;
+  left: calc(20px + env(safe-area-inset-left));
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fg-dim);
+  opacity: 0.55;
+}
+
+.reader { display: none; }
+body.screen-reader .home { display: none; }
+body.screen-reader .reader { display: block; }

@@ -1,0 +1,114 @@
+.reader {
+  position: fixed;
+  inset: 0;
+}
+
+.rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: var(--rail-weight);
+  background: var(--fg-dim);
+  opacity: 0.55;
+}
+
+.rail-top { top: calc(50% - var(--rail-inset)); }
+.rail-bottom { top: calc(50% + var(--rail-inset)); }
+
+.band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - var(--rail-inset));
+  height: var(--band-height);
+}
+
+.tick {
+  position: absolute;
+  left: 50%;
+  width: var(--tick-weight);
+  height: var(--tick-length);
+  background: var(--fg-dim);
+  opacity: 0.55;
+  transform: translateX(-50%);
+}
+
+.tick-top { top: calc(50% - var(--tick-gap) - var(--tick-length) - (var(--word-size) / 2)); }
+.tick-bottom { top: calc(50% + var(--tick-gap) + (var(--word-size) / 2)); }
+
+.word-slot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  font: var(--word-weight) var(--word-size)/1 var(--word-font);
+  white-space: pre;
+  color: var(--fg);
+}
+
+.word-slot .pre  { text-align: right; }
+.word-slot .piv  { color: var(--pivot); flex: 0 0 auto; text-align: center; }
+.word-slot .post { text-align: left; }
+
+.wpm-label {
+  position: absolute;
+  right: 16px;
+  bottom: 8px;
+  color: var(--fg-dim);
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.wpm-label em { font-style: italic; }
+
+.tap-surface {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px;
+  background: var(--control-bg);
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity var(--fade-dur) var(--ease-out), transform var(--fade-dur) var(--ease-out);
+  pointer-events: none;
+}
+
+body.controls-visible .controls {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.controls[hidden] { display: flex; }
+
+.wpm-slider { width: min(320px, 60vw); accent-color: var(--control-accent); }
+
+.play-pause,
+.close {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--fg-dim);
+}
+
+.close {
+  position: absolute;
+  right: calc(16px + env(safe-area-inset-right));
+  top: calc(16px + env(safe-area-inset-top));
+  bottom: auto;
+}

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title>Speed Reader</title>
+  <link rel="stylesheet" href="styles/base.css">
+  <link rel="stylesheet" href="styles/reader.css">
+</head>
+<body class="screen-home">
+  <main class="home">
+    <textarea class="paste" placeholder="Paste text..." spellcheck="false"></textarea>
+    <div class="home-icons">
+      <button class="icon-btn" data-action="upload" aria-label="Upload file" disabled></button>
+      <button class="icon-btn" data-action="url" aria-label="Paste URL" disabled></button>
+    </div>
+    <button class="library-dot" data-action="library" aria-label="Library" hidden></button>
+  </main>
+
+  <div class="reader" aria-hidden="true">
+    <div class="rail rail-top"></div>
+    <div class="band">
+      <div class="tick tick-top"></div>
+      <div class="word-slot">
+        <span class="pre"></span><span class="piv"></span><span class="post"></span>
+      </div>
+      <div class="tick tick-bottom"></div>
+      <div class="wpm-label"><em>0 wpm</em></div>
+    </div>
+    <div class="rail rail-bottom"></div>
+    <button class="tap-surface" aria-label="Toggle controls"></button>
+    <div class="controls" hidden>
+      <input type="range" class="wpm-slider" min="100" max="900" step="10" value="350">
+      <button class="play-pause" aria-label="Play / pause"></button>
+      <button class="close" aria-label="Close reader"></button>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

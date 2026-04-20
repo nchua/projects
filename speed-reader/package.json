@@ -1,0 +1,7 @@
+{
+  "name": "speed-reader",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Speed-reading web app with RSVP + ORP-style bionic highlight.",
+  "dependencies": {}
+}
