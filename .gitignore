@@ -30,3 +30,20 @@ node_modules/
 .coverage
 htmlcov/
 .claude/
+
+# Next.js build artefacts
+.next/
+next-env.d.ts
+
+# Scratch / ephemeral
+.tmp/
+
+# External repos cloned for reference (not this project's source)
+claude-cookbooks/
+claude-quickstarts/
+claude-skills-zips/
+
+# Nested / sub-project dirs not tracked here
+personal-website/github-repo/
+skills/job-search/
+
