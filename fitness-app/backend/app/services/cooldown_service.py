@@ -22,7 +22,7 @@ from typing import Dict, List, Tuple
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from app.core.utils import to_iso8601_utc
+from app.core.utils import ensure_utc, to_iso8601_utc
 from app.models.pr import PR, PRType
 from app.models.workout import WorkoutSession
 
@@ -668,8 +668,10 @@ def calculate_cooldowns(
         # Apply caps
         total_cooldown_hours = int(max(MIN_COOLDOWN_HOURS, min(MAX_COOLDOWN_HOURS, raw_cooldown)))
 
-        # Calculate hours since last trained
-        hours_since_trained = (now - data["last_trained"]).total_seconds() / 3600
+        # Calculate hours since last trained. WorkoutSession.date is stored as
+        # a naive DateTime on Postgres, so normalize both sides to aware UTC
+        # before subtracting.
+        hours_since_trained = (now - ensure_utc(data["last_trained"])).total_seconds() / 3600
 
         # Skip if fully ready
         if hours_since_trained >= total_cooldown_hours:
