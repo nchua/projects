@@ -17,9 +17,9 @@ Revision ID: add_workout_cascade_fks
 Revises: add_apple_workout_exercises
 Create Date: 2026-04-19
 """
-from alembic import op
 from sqlalchemy import inspect
 
+from alembic import op
 from app.core.db_maintenance import purge_workout_orphans
 
 # revision identifiers, used by Alembic.
