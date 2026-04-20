@@ -31,6 +31,17 @@
     <input type="file" class="file-input" accept=".pdf,.epub,.txt,.md,text/plain" hidden>
     <div class="status" role="status" aria-live="polite"></div>
     <button class="library-dot" data-action="library" aria-label="Library" hidden></button>
+    <aside class="library-panel" aria-hidden="true">
+      <div class="library-header">
+        <span>Library</span>
+        <button class="library-close" aria-label="Close library">
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+            <path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" stroke-width="1.5" fill="none"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="library-list"></div>
+    </aside>
   </main>
 
   <div class="reader" aria-hidden="true">
