@@ -14,6 +14,8 @@ export function dwellMs(token, wpm) {
   if (token.allCaps && mult < 1.3) mult = 1.3;
   if (token.isNumeric && mult < 1.4) mult = 1.4;
 
+  if (token.isFragment) mult *= 0.9;
+
   const trailing = token.trailing;
   if (trailing) {
     if (/[.!?]/.test(trailing)) { if (mult < 2.5) mult = 2.5; }

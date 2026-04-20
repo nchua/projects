@@ -95,6 +95,28 @@
   cursor: pointer;
 }
 
+.progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: transparent;
+  opacity: 0;
+  transition: opacity var(--fade-dur) var(--ease-out);
+  cursor: pointer;
+  z-index: 2;
+}
+
+body.controls-visible .progress { opacity: 0.7; }
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--fg-dim);
+  transition: width 120ms linear;
+}
+
 .controls {
   position: absolute;
   left: 50%;

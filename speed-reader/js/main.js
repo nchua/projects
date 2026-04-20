@@ -4,7 +4,7 @@ import * as player from './player.js';
 import * as home from './ui-home.js';
 import * as reader from './ui-reader.js';
 import * as rendererMod from './renderer.js';
-import { renderToken, renderWpm, clearWord } from './renderer.js';
+import { renderToken, renderWpm, renderProgress, clearWord } from './renderer.js';
 
 storage.init();
 
@@ -32,11 +32,18 @@ function toReader() {
   reader.showControls();
   player.resetIndex();
   const s = state.get();
-  if (s.tokens.length > 0) renderToken(s.tokens[0]);
+  if (s.tokens.length > 0) {
+    renderToken(s.tokens[0]);
+    renderProgress(0, s.tokens.length);
+  }
 }
 
 player.configure({
-  onAdvance: renderToken,
+  onAdvance: (token) => {
+    renderToken(token);
+    const s = state.get();
+    renderProgress(player.getIndex(), s.tokens.length);
+  },
   onEnd: () => reader.showControls(),
 });
 
