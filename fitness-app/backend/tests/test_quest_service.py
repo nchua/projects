@@ -57,7 +57,13 @@ class TestClaimQuestReward:
         # claim_quest_reward raises ValueError → 400 at the router layer.
         assert resp.status_code == 400
 
-    def test_claim_other_users_quest_blocked(self, client, auth_headers):
+    def test_claim_other_users_quest_blocked(self, client, auth_headers, db):
+        # Quest definitions aren't auto-seeded in the test DB, so generate_daily_quests
+        # would otherwise return an empty list. Seed them first.
+        from app.services.quest_service import seed_quest_definitions
+        seed_quest_definitions(db)
+        db.commit()
+
         headers_a, _user_a = auth_headers(email="a@example.com")
         quests_a = client.get("/quests", headers=headers_a).json()["quests"]
         assert quests_a, "Expected auto-generated quests for user A"
