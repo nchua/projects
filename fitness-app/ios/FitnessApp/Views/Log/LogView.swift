@@ -1061,7 +1061,7 @@ struct QuestTimerCard: View {
         .onDisappear {
             displayTimer?.invalidate()
         }
-        .onChange(of: totalCompletedSets) { newCount in
+        .onChange(of: totalCompletedSets) { _, newCount in
             if newCount > peakCompletedSets {
                 peakCompletedSets = newCount
                 withAnimation(.easeOut(duration: 0.3)) {

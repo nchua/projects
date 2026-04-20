@@ -437,18 +437,14 @@ struct ScanPaywallView: View {
     private var purchaseButton: some View {
         let isPremium = selectedTier == .srank
         let buttonText: String
-        let buttonColor: Color
 
         switch selectedTier {
         case .quick:
             buttonText = "PURCHASE — $1.99"
-            buttonColor = .systemPrimary
         case .power:
             buttonText = "PURCHASE — $3.99"
-            buttonColor = .systemPrimary
         case .srank:
             buttonText = "UNLOCK S-RANK — $9.99"
-            buttonColor = .gold
         }
 
         return Button {
