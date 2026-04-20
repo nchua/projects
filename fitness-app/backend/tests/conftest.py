@@ -54,6 +54,20 @@ def _set_sqlite_pragma(dbapi_connection, connection_record):
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.close()
+    # pysqlite driver workaround: disable its auto-BEGIN emission so that
+    # SQLAlchemy's explicit `BEGIN`/`ROLLBACK` actually takes effect.
+    # Without this, pysqlite commits implicitly on DDL/DML boundaries and
+    # the per-test outer `transaction.rollback()` below becomes a no-op,
+    # leaking committed rows (e.g. users.email UNIQUE violations) across
+    # tests. See https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#serializable-isolation-savepoints-transactional-ddl
+    dbapi_connection.isolation_level = None
+
+
+@event.listens_for(_test_engine, "begin")
+def _sqlite_emit_begin(conn):
+    # Pair with the isolation_level=None workaround above: we must emit
+    # BEGIN ourselves now that pysqlite no longer does it for us.
+    conn.exec_driver_sql("BEGIN")
 
 
 # Import the app AFTER patching so main.py's startup migration fallback
@@ -75,25 +89,21 @@ def db(_schema) -> Session:
     Yield a Session wrapped in a SAVEPOINT-style transaction that is rolled
     back at the end of each test, giving full isolation without recreating
     the schema between tests.
+
+    Uses SQLAlchemy 2.0's ``join_transaction_mode="create_savepoint"`` so
+    the session automatically begins a fresh SAVEPOINT on every
+    ``session.commit()`` in the app code — no manual event listener needed.
     """
     connection = _test_engine.connect()
     transaction = connection.begin()
-    session = _TestSessionLocal(bind=connection)
-
-    # Start a SAVEPOINT so nested commits in application code don't end the
-    # outer transaction. When a SAVEPOINT ends, start a new one.
-    session.begin_nested()
-
-    @event.listens_for(session, "after_transaction_end")
-    def _restart_savepoint(sess, trans):
-        if trans.nested and not trans._parent.nested:
-            sess.begin_nested()
+    session = Session(bind=connection, join_transaction_mode="create_savepoint")
 
     try:
         yield session
     finally:
         session.close()
-        transaction.rollback()
+        if transaction.is_active:
+            transaction.rollback()
         connection.close()
 
 
@@ -173,6 +183,24 @@ def auth_headers(client: TestClient, create_test_user):
         return {"Authorization": f"Bearer {token}"}, user
 
     return _auth
+
+
+@pytest.fixture
+def unique_email():
+    """
+    Factory fixture that returns a unique email per invocation.
+
+    Use this in any test that creates users and might collide with another
+    test's hardcoded email (especially under pytest-xdist parallelism).
+
+    Example:
+        def test_foo(unique_email, auth_headers):
+            headers, user = auth_headers(email=unique_email("alice"))
+    """
+    def _make(prefix: str = "test") -> str:
+        return f"{prefix}-{uuid.uuid4().hex[:8]}@example.com"
+
+    return _make
 
 
 @pytest.fixture

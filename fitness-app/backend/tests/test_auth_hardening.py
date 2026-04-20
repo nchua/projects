@@ -46,21 +46,27 @@ class TestPasswordPolicy:
 class TestUserSearchMinLength:
     def test_single_char_query_rejected(self, client, auth_headers):
         """Short queries enable userbase enumeration — must 422."""
-        response = client.get("/users/search?q=a", headers=auth_headers)
+        headers, _ = auth_headers()
+        response = client.get("/users/search?q=a", headers=headers)
         assert response.status_code == 422, response.text
 
     def test_two_char_query_rejected(self, client, auth_headers):
-        response = client.get("/users/search?q=ab", headers=auth_headers)
+        headers, _ = auth_headers()
+        response = client.get("/users/search?q=ab", headers=headers)
         assert response.status_code == 422, response.text
 
     def test_three_char_query_accepted(self, client, auth_headers):
         """Three characters is the minimum for a real 'find a friend' query."""
-        response = client.get("/users/search?q=abc", headers=auth_headers)
+        headers, _ = auth_headers()
+        response = client.get("/users/search?q=abc", headers=headers)
         assert response.status_code == 200, response.text
 
     def test_search_still_requires_auth(self, client):
+        # FastAPI's default HTTPBearer returns 403 when the Authorization
+        # header is missing (not 401). The important property is that
+        # unauthenticated callers cannot reach the search.
         response = client.get("/users/search?q=abc")
-        assert response.status_code == 401
+        assert response.status_code == 403
 
 
 class TestBcryptTruncation:
