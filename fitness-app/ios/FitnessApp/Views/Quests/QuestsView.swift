@@ -182,7 +182,10 @@ struct QuestsView: View {
             }
             .navigationBarHidden(true)
             .navigationDestination(isPresented: $navigateToLog) {
-                LogView(initialScreenshots: screenshotDataForLogView)
+                LogView(
+                    initialScreenshots: screenshotDataForLogView,
+                    initialWorkoutDate: viewModel.selectedDate
+                )
                     .onDisappear {
                         // Clear the screenshot data when coming back
                         screenshotDataForLogView = nil

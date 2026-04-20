@@ -427,21 +427,31 @@ async def process_screenshot(
             duration=zone.get("duration")
         ))
 
+    # If caller provided a manual date override, make it authoritative for both
+    # persistence and response payload (instead of the model-extracted date).
+    parsed_override_date = None
+    effective_session_date = result.get("session_date")
+    if session_date:
+        try:
+            parsed_override_date = datetime.strptime(session_date, "%Y-%m-%d")
+            effective_session_date = session_date
+            result["session_date"] = session_date
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid session_date format. Use YYYY-MM-DD."
+            )
+
     # Auto-save workout if requested (only for gym workouts with matched exercises)
     workout_id = None
     workout_saved = False
     if save_workout and screenshot_type == "gym_workout" and exercises:
         try:
-            # Parse session_date if provided
-            parsed_date = None
-            if session_date:
-                parsed_date = datetime.strptime(session_date, "%Y-%m-%d")
-
             workout_id = await save_extracted_workout(
                 db=db,
                 user_id=current_user.id,
                 extraction_result=result,
-                session_date=parsed_date,
+                session_date=parsed_override_date,
                 include_warmups=include_warmups
             )
             workout_saved = True
@@ -456,16 +466,11 @@ async def process_screenshot(
     activity_saved = False
     if screenshot_type == "whoop_activity":
         try:
-            # Parse session_date if provided (for manual date override)
-            parsed_date = None
-            if session_date:
-                parsed_date = datetime.strptime(session_date, "%Y-%m-%d")
-
             activity_id, whoop_workout_id = await save_whoop_activity(
                 db=db,
                 user_id=current_user.id,
                 extraction_result=result,
-                activity_date=parsed_date
+                activity_date=parsed_override_date
             )
             activity_saved = True
             # Set workout_id so it shows in quests calendar
@@ -478,7 +483,7 @@ async def process_screenshot(
 
     return ScreenshotProcessResponse(
         screenshot_type=screenshot_type,
-        session_date=result.get("session_date"),
+        session_date=effective_session_date,
         session_name=result.get("session_name") or result.get("activity_type"),
         duration_minutes=result.get("duration_minutes"),
         summary=result.get("summary"),
@@ -693,20 +698,31 @@ async def process_screenshots_batch(
             duration=zone.get("duration")
         ))
 
+    # If caller provided a manual date override, make it authoritative for both
+    # persistence and response payload (instead of merged model-extracted date).
+    parsed_override_date = None
+    effective_session_date = merged.get("session_date")
+    if session_date:
+        try:
+            parsed_override_date = datetime.strptime(session_date, "%Y-%m-%d")
+            effective_session_date = session_date
+            merged["session_date"] = session_date
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid session_date format. Use YYYY-MM-DD."
+            )
+
     # Auto-save workout if requested (only for gym workouts)
     workout_id = None
     workout_saved = False
     if save_workout and screenshot_type == "gym_workout" and exercises:
         try:
-            parsed_date = None
-            if session_date:
-                parsed_date = datetime.strptime(session_date, "%Y-%m-%d")
-
             workout_id = await save_extracted_workout(
                 db=db,
                 user_id=current_user.id,
                 extraction_result=merged,
-                session_date=parsed_date,
+                session_date=parsed_override_date,
                 include_warmups=include_warmups
             )
             workout_saved = True
@@ -726,16 +742,11 @@ async def process_screenshots_batch(
     activity_saved = False
     if screenshot_type == "whoop_activity":
         try:
-            # Parse session_date if provided (for manual date override)
-            parsed_activity_date = None
-            if session_date:
-                parsed_activity_date = datetime.strptime(session_date, "%Y-%m-%d")
-
             activity_id, whoop_workout_id = await save_whoop_activity(
                 db=db,
                 user_id=current_user.id,
                 extraction_result=merged,
-                activity_date=parsed_activity_date
+                activity_date=parsed_override_date
             )
             activity_saved = True
             # Set workout_id so it shows in quests calendar
@@ -749,7 +760,7 @@ async def process_screenshots_batch(
     return ScreenshotBatchResponse(
         screenshots_processed=len(files),
         screenshot_type=screenshot_type,
-        session_date=merged.get("session_date"),
+        session_date=effective_session_date,
         session_name=merged.get("session_name") or merged.get("activity_type"),
         duration_minutes=merged.get("duration_minutes"),
         summary=merged.get("summary"),

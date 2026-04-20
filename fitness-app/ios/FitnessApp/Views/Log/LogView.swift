@@ -4,6 +4,7 @@ import UIKit
 struct LogView: View {
     // Initial screenshots passed from QuestsView (or other callers)
     var initialScreenshots: [Data]?
+    var initialWorkoutDate: Date?
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
@@ -33,8 +34,9 @@ struct LogView: View {
     @State private var showDebugCelebration = false
     #endif
 
-    init(initialScreenshots: [Data]? = nil) {
+    init(initialScreenshots: [Data]? = nil, initialWorkoutDate: Date? = nil) {
         self.initialScreenshots = initialScreenshots
+        self.initialWorkoutDate = initialWorkoutDate
     }
 
     // MARK: - Credit label for IdleQuestView
@@ -309,6 +311,12 @@ struct LogView: View {
             await viewModel.loadExercises()
         }
         .onAppear {
+            // When launched from calendar selection, default screenshot session date
+            // to the selected day instead of "today".
+            if let initialWorkoutDate {
+                screenshotViewModel.selectedDate = initialWorkoutDate
+            }
+
             // Auto-trigger screenshot preview if initial screenshots were passed
             if !hasLoadedInitialScreenshots, let screenshots = initialScreenshots, !screenshots.isEmpty {
                 hasLoadedInitialScreenshots = true
