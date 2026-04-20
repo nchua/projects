@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import desc
 from sqlalchemy.orm import Session, joinedload
 
-from app.core.utils import to_iso8601_utc
+from app.core.utils import ensure_utc, to_iso8601_utc
 from app.models.mission import Goal, GoalStatus
 from app.models.pr import PR
 from app.models.pr import PRType as PRTypeModel
@@ -278,9 +278,10 @@ def _calc_actual_weekly_gain(
     # Sort by date ascending
     sorted_snaps = sorted(snapshots, key=lambda s: s.recorded_at)
 
-    # Only look at last 4 weeks of snapshots
+    # Only look at last 4 weeks of snapshots. recorded_at is naive on Postgres,
+    # so normalize to aware UTC before comparing against an aware cutoff.
     four_weeks_ago = datetime.now(timezone.utc) - timedelta(weeks=4)
-    recent = [s for s in sorted_snaps if s.recorded_at >= four_weeks_ago]
+    recent = [s for s in sorted_snaps if ensure_utc(s.recorded_at) >= four_weeks_ago]
 
     if len(recent) < 2:
         # Fall back to all snapshots if not enough recent ones
