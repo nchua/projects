@@ -10,22 +10,26 @@ async function load() {
   return pdfjsLib;
 }
 
-export async function extractText(file) {
+function renderPage(content) {
+  const parts = [];
+  let lastY = null;
+  for (const item of content.items) {
+    if (lastY !== null && item.transform[5] !== lastY) parts.push('\n');
+    parts.push(item.str);
+    lastY = item.transform[5];
+  }
+  return parts.join('');
+}
+
+export async function extract(file) {
   const lib = await load();
   const buf = await file.arrayBuffer();
   const pdf = await lib.getDocument({ data: buf }).promise;
-  const parts = [];
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    let pageText = '';
-    let lastY = null;
-    for (const item of content.items) {
-      if (lastY !== null && item.transform[5] !== lastY) pageText += '\n';
-      pageText += item.str;
-      lastY = item.transform[5];
-    }
-    parts.push(pageText);
-  }
-  return parts.join('\n\n');
+  const pageContents = await Promise.all(
+    Array.from({ length: pdf.numPages }, (_, i) =>
+      pdf.getPage(i + 1).then(p => p.getTextContent())
+    )
+  );
+  const text = pageContents.map(renderPage).join('\n\n');
+  return { title: file.name || '', text };
 }

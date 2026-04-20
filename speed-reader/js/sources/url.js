@@ -1,4 +1,4 @@
-export async function extractText(url) {
+export async function extract(url) {
   const res = await fetch('/api/extract', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

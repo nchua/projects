@@ -4,6 +4,7 @@ import { renderWpm, renderProgress } from './renderer.js';
 import * as storage from './storage.js';
 
 const AUTO_HIDE_MS = 2000;
+const SENTENCE_END_RE = /[.!?]/;
 
 let hideTimer = null;
 let onClose = null;
@@ -45,37 +46,31 @@ function close() {
   if (onClose) onClose();
 }
 
-function seekByWord(delta) {
-  const target = player.getIndex() + delta;
-  player.seek(target);
-  showControls();
-  const s = state.get();
-  if (s.tokens[target]) renderProgress(target, s.tokens.length);
+function isBoundary(t) {
+  return t.isBreak || SENTENCE_END_RE.test(t.trailing);
 }
 
-function seekBySentence(delta) {
-  const s = state.get();
-  const tokens = s.tokens;
-  let i = player.getIndex();
-  if (delta > 0) {
-    let found = false;
-    for (let j = i; j < tokens.length; j++) {
-      const t = tokens[j];
-      if (t.isBreak || /[.!?]/.test(t.trailing)) { i = j + 1; found = true; break; }
+function nextSentenceStart(tokens, from, dir) {
+  if (dir > 0) {
+    for (let j = from; j < tokens.length; j++) {
+      if (isBoundary(tokens[j])) return j + 1;
     }
-    if (!found) i = tokens.length - 1;
-  } else {
-    i -= 2;
-    while (i > 0) {
-      const t = tokens[i];
-      if (t.isBreak || /[.!?]/.test(t.trailing)) { i = i + 1; break; }
-      i--;
-    }
-    i = Math.max(0, i);
+    return tokens.length - 1;
   }
-  player.seek(i);
+  let i = from - 2;
+  while (i > 0) {
+    if (isBoundary(tokens[i])) return i + 1;
+    i--;
+  }
+  return 0;
+}
+
+function seekTo(target) {
+  const s = state.get();
+  const clamped = Math.max(0, Math.min(s.tokens.length - 1, target));
+  player.seek(clamped);
+  renderProgress(clamped, s.tokens.length);
   showControls();
-  if (tokens[i]) renderProgress(i, tokens.length);
 }
 
 export function mount(opts) {
@@ -118,11 +113,7 @@ export function mount(opts) {
     progressBar.addEventListener('click', (e) => {
       const rect = progressBar.getBoundingClientRect();
       const ratio = (e.clientX - rect.left) / rect.width;
-      const s = state.get();
-      const target = Math.floor(ratio * s.tokens.length);
-      player.seek(target);
-      renderProgress(target, s.tokens.length);
-      showControls();
+      seekTo(Math.floor(ratio * state.get().tokens.length));
     });
   }
 
@@ -139,13 +130,13 @@ export function handleKey(e) {
   } else if (e.key === 'Escape') {
     e.preventDefault();
     close();
-  } else if (e.key === 'ArrowLeft') {
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
     e.preventDefault();
-    if (e.shiftKey) seekByWord(-1);
-    else seekBySentence(-1);
-  } else if (e.key === 'ArrowRight') {
-    e.preventDefault();
-    if (e.shiftKey) seekByWord(1);
-    else seekBySentence(1);
+    const dir = e.key === 'ArrowRight' ? 1 : -1;
+    if (e.shiftKey) {
+      seekTo(player.getIndex() + dir);
+    } else {
+      seekTo(nextSentenceStart(state.get().tokens, player.getIndex(), dir));
+    }
   }
 }

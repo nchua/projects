@@ -32,17 +32,14 @@ function toReader() {
   reader.showControls();
   player.resetIndex();
   const s = state.get();
-  if (s.tokens.length > 0) {
-    renderToken(s.tokens[0]);
-    renderProgress(0, s.tokens.length);
-  }
+  if (s.tokens.length > 0) renderToken(s.tokens[0]);
+  renderProgress(0, s.tokens.length);
 }
 
 player.configure({
   onAdvance: (token) => {
     renderToken(token);
-    const s = state.get();
-    renderProgress(player.getIndex(), s.tokens.length);
+    renderProgress(player.getIndex(), state.get().tokens.length);
   },
   onEnd: () => reader.showControls(),
 });

@@ -2,8 +2,10 @@ const WORD_RE = /[A-Za-z0-9][A-Za-z0-9'\u2019]*(?:-[A-Za-z0-9'\u2019]+)*/g;
 const TRAIL_CHARS = `.,;:!?)"\u201D\u2014\u2013`;
 const LEADING_TRAIL_RE = new RegExp(`^[${TRAIL_CHARS.replace(/[-\]\\]/g, '\\$&')}]+`);
 const NUMERIC_RE = /^[0-9][0-9,.]*$/;
+const VOWEL_RE = /[aeiouy]/i;
 const MAX_CORE = 13;
 const CHUNK_TARGET = 8;
+const VOWEL_SEARCH_WINDOW = 3;
 
 function normalize(text) {
   return text.normalize('NFC').replace(/\r\n?/g, '\n').replace(/\f/g, '');
@@ -30,26 +32,23 @@ function makeBreak() {
   return { word: '', trailing: '', isBreak: true, isNumeric: false, allCaps: false, coreLen: 0, isFragment: false };
 }
 
-function splitLongWord(word, trailing) {
-  const parts = [];
-  let remaining = word;
-  while (remaining.length > MAX_CORE) {
-    let cut = CHUNK_TARGET;
-    for (let i = CHUNK_TARGET; i > CHUNK_TARGET - 3 && i > 1; i--) {
-      if (/[aeiouy]/i.test(remaining[i - 1])) { cut = i; break; }
-    }
-    parts.push(remaining.slice(0, cut) + '-');
-    remaining = remaining.slice(cut);
+function findVowelCut(word, start, target) {
+  for (let offset = 0; offset < VOWEL_SEARCH_WINDOW && (target - offset) > start + 1; offset++) {
+    const cutIdx = start + target - offset;
+    if (VOWEL_RE.test(word[cutIdx - 1])) return cutIdx;
   }
-  parts.push(remaining);
+  return start + target;
+}
 
+function splitLongWord(word, trailing) {
   const tokens = [];
-  for (let i = 0; i < parts.length; i++) {
-    const isLast = i === parts.length - 1;
-    const p = parts[i];
-    const trail = isLast ? trailing : '';
-    tokens.push(makeToken(p, trail, { isFragment: true }));
+  let start = 0;
+  while (word.length - start > MAX_CORE) {
+    const cut = findVowelCut(word, start, CHUNK_TARGET);
+    tokens.push(makeToken(word.slice(start, cut) + '-', '', { isFragment: true }));
+    start = cut;
   }
+  tokens.push(makeToken(word.slice(start), trailing, { isFragment: true }));
   return tokens;
 }
 
@@ -62,8 +61,7 @@ function tokenizeParagraph(para) {
     const m = matches[i];
     const end = m.index + m[0].length;
     const nextStart = i + 1 < matches.length ? matches[i + 1].index : cleaned.length;
-    const between = cleaned.slice(end, nextStart);
-    const trailMatch = between.match(LEADING_TRAIL_RE);
+    const trailMatch = cleaned.slice(end, nextStart).match(LEADING_TRAIL_RE);
     const trailing = trailMatch ? trailMatch[0] : '';
     const word = m[0];
 

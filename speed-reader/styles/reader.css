@@ -114,7 +114,6 @@ body.controls-visible .progress { opacity: 0.7; }
   height: 100%;
   width: 0%;
   background: var(--fg-dim);
-  transition: width 120ms linear;
 }
 
 .controls {

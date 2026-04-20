@@ -1,5 +1,7 @@
 import { splitWord, measurePivotHalf, clearMeasurementCache } from './orp.js';
 
+const PROGRESS_EPSILON = 0.3;
+
 let slot = null;
 let elPre = null;
 let elPiv = null;
@@ -58,7 +60,7 @@ export function renderWpm(wpm) {
 export function renderProgress(index, total) {
   if (!elProgress || total <= 0) return;
   const pct = Math.min(100, Math.max(0, (index / total) * 100));
-  if (Math.abs(pct - lastProgress) < 0.1) return;
+  if (Math.abs(pct - lastProgress) < PROGRESS_EPSILON) return;
   lastProgress = pct;
   elProgress.style.width = pct + '%';
 }

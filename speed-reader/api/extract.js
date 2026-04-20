@@ -2,20 +2,8 @@ import { Readability } from '@mozilla/readability';
 import { JSDOM } from 'jsdom';
 
 const FETCH_TIMEOUT_MS = 15000;
-const MAX_BYTES = 5 * 1024 * 1024;
+const MAX_HTML_BYTES = 2 * 1024 * 1024;
 const UA = 'Mozilla/5.0 (compatible; SpeedReaderBot/0.1; +https://github.com/nchua/projects)';
-
-function readBody(req) {
-  return new Promise((resolve, reject) => {
-    if (req.body && typeof req.body === 'object') return resolve(req.body);
-    let data = '';
-    req.on('data', chunk => { data += chunk; if (data.length > MAX_BYTES) req.destroy(); });
-    req.on('end', () => {
-      try { resolve(data ? JSON.parse(data) : {}); } catch (e) { reject(e); }
-    });
-    req.on('error', reject);
-  });
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -23,15 +11,9 @@ export default async function handler(req, res) {
     return;
   }
 
-  let body;
-  try {
-    body = await readBody(req);
-  } catch {
-    res.status(400).json({ error: 'invalid JSON body' });
-    return;
-  }
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const url = typeof body.url === 'string' ? body.url.trim() : '';
 
-  const url = body && typeof body.url === 'string' ? body.url.trim() : '';
   let parsed;
   try {
     parsed = new URL(url);
@@ -58,7 +40,7 @@ export default async function handler(req, res) {
       return;
     }
     const html = await upstream.text();
-    if (html.length > MAX_BYTES) {
+    if (html.length > MAX_HTML_BYTES) {
       res.status(413).json({ error: 'document too large' });
       return;
     }
