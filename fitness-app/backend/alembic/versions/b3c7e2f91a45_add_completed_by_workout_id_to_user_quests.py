@@ -1,7 +1,7 @@
 """Add completed_by_workout_id to user_quests
 
 Revision ID: b3c7e2f91a45
-Revises: da26ee9e5945
+Revises: c1a2b3d4e5f6
 Create Date: 2026-02-01 12:00:00.000000
 
 """
@@ -11,7 +11,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = 'b3c7e2f91a45'
-down_revision = 'da26ee9e5945'
+down_revision = 'c1a2b3d4e5f6'
 branch_labels = None
 depends_on = None
 
