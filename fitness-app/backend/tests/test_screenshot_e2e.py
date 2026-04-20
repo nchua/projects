@@ -15,7 +15,6 @@ Covers:
 """
 import io
 import os
-from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -27,7 +26,6 @@ from app.models.exercise import Exercise
 from app.models.pr import PR
 from app.models.scan_balance import ScanBalance
 from app.models.workout import Set, WorkoutExercise, WorkoutSession
-
 
 # ============ Fixtures ============
 

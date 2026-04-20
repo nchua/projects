@@ -6,7 +6,6 @@ import pytest
 
 from app.services.screenshot_service import detect_media_type_from_bytes
 
-
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16
 JPEG_MAGIC = b"\xff\xd8\xff\xe0" + b"\x00" * 16
 GIF87A_MAGIC = b"GIF87a" + b"\x00" * 16

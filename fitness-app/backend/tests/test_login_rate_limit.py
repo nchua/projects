@@ -6,7 +6,6 @@ IP. These tests verify the 6th attempt within the window gets a 429 with a
 Retry-After header, and that a reset (simulating window expiry) allows new
 attempts.
 """
-import pytest
 
 
 def _bad_login(client, email: str):

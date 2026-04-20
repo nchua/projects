@@ -6,9 +6,8 @@ API modules (to attach `@limiter.limit(...)` decorators) can reference the
 same instance. Without this, decorator and app-level state would diverge
 and slowapi header injection would silently fail.
 """
-from starlette.requests import Request
-
 from slowapi import Limiter
+from starlette.requests import Request
 
 
 def _client_ip(request: Request) -> str:
