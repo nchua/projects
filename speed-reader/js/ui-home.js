@@ -5,6 +5,7 @@ import * as pdfSrc from './sources/pdf.js';
 import * as epubSrc from './sources/epub.js';
 import * as urlSrc from './sources/url.js';
 import * as storage from './storage.js';
+import { SourceType } from './storage.js';
 
 const ONBOARDING_TEXT = 'Speed reading replaces the small hops your eyes make across a page with a fixed point. Words arrive where your focus already is. The red letter marks the optimal recognition point — rest your attention there and the rest of the word resolves on its own. Start at a pace that feels comfortable, then push past it.';
 
@@ -28,9 +29,9 @@ function isUrl(s) {
 
 function sourceInfoFor(file) {
   const name = (file.name || '').toLowerCase();
-  if (name.endsWith('.pdf')) return { mod: pdfSrc, sourceType: 'pdf' };
-  if (name.endsWith('.epub')) return { mod: epubSrc, sourceType: 'epub' };
-  return { mod: textSrc, sourceType: 'text' };
+  if (name.endsWith('.pdf')) return { mod: pdfSrc, sourceType: SourceType.PDF };
+  if (name.endsWith('.epub')) return { mod: epubSrc, sourceType: SourceType.EPUB };
+  return { mod: textSrc, sourceType: SourceType.TEXT };
 }
 
 function setStatus(msg, isError = false) {
@@ -52,45 +53,41 @@ function firstLine(text) {
   return line.trim().slice(0, 80);
 }
 
-function showQuotaToast(onAfterClear) {
-  setStatus('Storage full. Removed oldest saved item.', true);
-  const removed = storage.deleteOldestEntry();
-  renderLibrary();
-  if (removed && onAfterClear) onAfterClear();
+function trySaveWithEviction(payload) {
+  let res = storage.saveSource(payload);
+  if (!res.ok && res.quota && storage.deleteOldestEntry()) {
+    res = storage.saveSource(payload);
+  }
+  return res;
 }
 
-async function runPipeline({ loadingMsg, loader, titleFallback, sourceType, sourceUrl }) {
+async function runPipeline(loadingMsg, loader) {
   setStatus(loadingMsg);
   try {
-    const { title, text } = await loader();
-    if (!text || !text.trim()) throw new Error('No readable text found');
+    const result = await loader();
+    const text = result?.text || '';
+    if (!text.trim()) throw new Error('No readable text found');
     const tokens = tokenize(text);
     if (tokens.length === 0) throw new Error('No readable text found');
 
-    const save = storage.saveSource({
-      title: title || titleFallback || firstLine(text),
-      sourceType,
-      sourceUrl,
+    const payload = {
+      title: result.title || firstLine(text),
+      sourceType: result.sourceType || SourceType.TEXT,
+      sourceUrl: result.sourceUrl || null,
       text,
       tokens,
-    });
-    if (!save.ok && save.quota) {
-      if (storage.deleteOldestEntry()) {
-        const retry = storage.saveSource({ title: title || titleFallback || firstLine(text), sourceType, sourceUrl, text, tokens });
-        if (!retry.ok) { setStatus('Could not save — storage is full.', true); return; }
-        state.set({ tokens, sourceId: retry.entry.id });
-      } else {
-        setStatus('Could not save — storage is full.', true); return;
-      }
-    } else if (save.ok) {
-      state.set({ tokens, sourceId: save.entry.id });
-    } else {
+    };
+    const save = trySaveWithEviction(payload);
+    if (!save.ok) {
+      setStatus(save.quota ? 'Storage is full. Delete a saved item and try again.' : 'Could not save.', true);
       state.set({ tokens, sourceId: null });
+    } else {
+      state.set({ tokens, sourceId: save.entry.id });
     }
 
     textarea.value = '';
     updateEnabled();
-    setStatus('');
+    if (save.ok) setStatus('');
     renderLibrary();
     if (onStart) onStart();
   } catch (err) {
@@ -99,39 +96,48 @@ async function runPipeline({ loadingMsg, loader, titleFallback, sourceType, sour
   }
 }
 
+function textLoader(raw) {
+  return () => Promise.resolve({ text: raw, sourceType: SourceType.TEXT });
+}
+
+function urlLoader(url) {
+  return async () => {
+    const { title, text } = await urlSrc.extract(url);
+    return { title, text, sourceType: SourceType.URL, sourceUrl: url };
+  };
+}
+
+function fileLoader(file) {
+  const { mod, sourceType } = sourceInfoFor(file);
+  return async () => {
+    const { title, text } = await mod.extract(file);
+    return { title: title || file.name, text, sourceType };
+  };
+}
+
 function go() {
   if (!hasContent()) return;
   const raw = textarea.value;
   if (isUrl(raw)) {
-    const trimmed = raw.trim();
-    runPipeline({
-      loadingMsg: 'Fetching article…',
-      loader: () => urlSrc.extract(trimmed),
-      sourceType: 'url',
-      sourceUrl: trimmed,
-    });
+    runPipeline('Fetching article…', urlLoader(raw.trim()));
   } else {
-    runPipeline({
-      loadingMsg: '',
-      loader: () => Promise.resolve({ title: '', text: raw }),
-      sourceType: 'text',
-    });
+    runPipeline('', textLoader(raw));
   }
 }
 
 function resumeEntry(id) {
   const tokens = storage.getSourceTokens(id);
-  const lib = storage.getLibrary();
-  const entry = lib[id];
-  if (!tokens || !entry) {
-    setStatus('Saved item is no longer available.', true);
+  const entry = storage.getLibrary()[id];
+  if (!entry) return;
+  if (!tokens) {
+    setStatus('Saved item was evicted from storage — removed.', true);
     storage.deleteEntry(id);
     renderLibrary();
     return;
   }
   state.set({ tokens, sourceId: id });
   closeLibrary();
-  if (onStart) onStart({ startIndex: entry.lastIndex || 0 });
+  if (onStart) onStart({ startIndex: entry.lastIndex });
 }
 
 function formatAgo(ts) {
@@ -141,15 +147,47 @@ function formatAgo(ts) {
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.round(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.round(hrs / 24);
-  return `${days}d ago`;
+  return `${Math.round(hrs / 24)}d ago`;
+}
+
+function buildRow(entry) {
+  const row = document.createElement('div');
+  row.className = 'library-row';
+  row.dataset.id = entry.id;
+
+  const resume = document.createElement('button');
+  resume.type = 'button';
+  resume.className = 'library-resume';
+  resume.dataset.action = 'resume';
+
+  const titleEl = document.createElement('div');
+  titleEl.className = 'library-title';
+  titleEl.textContent = entry.title;
+  resume.appendChild(titleEl);
+
+  const metaEl = document.createElement('div');
+  metaEl.className = 'library-meta';
+  const pct = entry.tokenCount > 0 ? Math.round((entry.lastIndex / entry.tokenCount) * 100) : 0;
+  metaEl.textContent = `${pct}% · ${formatAgo(entry.updatedAt)}`;
+  resume.appendChild(metaEl);
+
+  const del = document.createElement('button');
+  del.type = 'button';
+  del.className = 'library-delete';
+  del.dataset.action = 'delete';
+  del.setAttribute('aria-label', 'Delete');
+  del.textContent = '×';
+
+  row.appendChild(resume);
+  row.appendChild(del);
+  return row;
 }
 
 function renderLibrary() {
-  if (!libraryListEl) return;
+  if (!libraryListEl || !libraryDot) return;
   const entries = storage.entriesByRecency();
   libraryDot.hidden = entries.length === 0;
-  libraryListEl.innerHTML = '';
+  libraryListEl.replaceChildren();
   if (entries.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'library-empty';
@@ -157,28 +195,21 @@ function renderLibrary() {
     libraryListEl.appendChild(empty);
     return;
   }
-  for (const e of entries) {
-    const pct = e.tokenCount > 0 ? Math.round((e.lastIndex / e.tokenCount) * 100) : 0;
-    const row = document.createElement('div');
-    row.className = 'library-row';
-    row.innerHTML = `
-      <button class="library-resume" type="button">
-        <div class="library-title">${escapeHtml(e.title)}</div>
-        <div class="library-meta">${pct}% · ${formatAgo(e.updatedAt)}</div>
-      </button>
-      <button class="library-delete" type="button" aria-label="Delete">×</button>
-    `;
-    row.querySelector('.library-resume').addEventListener('click', () => resumeEntry(e.id));
-    row.querySelector('.library-delete').addEventListener('click', () => {
-      storage.deleteEntry(e.id);
-      renderLibrary();
-    });
-    libraryListEl.appendChild(row);
-  }
+  for (const e of entries) libraryListEl.appendChild(buildRow(e));
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function handleLibraryClick(e) {
+  const resumeBtn = e.target.closest('[data-action="resume"]');
+  const deleteBtn = e.target.closest('[data-action="delete"]');
+  const row = e.target.closest('.library-row');
+  if (!row) return;
+  const id = row.dataset.id;
+  if (deleteBtn) {
+    storage.deleteEntry(id);
+    renderLibrary();
+  } else if (resumeBtn) {
+    resumeEntry(id);
+  }
 }
 
 function openLibrary() { if (libraryEl) libraryEl.classList.add('is-open'); }
@@ -230,15 +261,7 @@ export function mount(opts) {
     uploadBtn.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', () => {
       const file = fileInput.files?.[0];
-      if (file) {
-        const { mod, sourceType } = sourceInfoFor(file);
-        runPipeline({
-          loadingMsg: 'Reading file…',
-          loader: () => mod.extract(file),
-          titleFallback: file.name,
-          sourceType,
-        });
-      }
+      if (file) runPipeline('Reading file…', fileLoader(file));
       fileInput.value = '';
     });
   }
@@ -247,20 +270,13 @@ export function mount(opts) {
     urlBtn.disabled = false;
     urlBtn.addEventListener('click', () => {
       const url = prompt('Article URL:');
-      if (url) {
-        const trimmed = url.trim();
-        runPipeline({
-          loadingMsg: 'Fetching article…',
-          loader: () => urlSrc.extract(trimmed),
-          sourceType: 'url',
-          sourceUrl: trimmed,
-        });
-      }
+      if (url) runPipeline('Fetching article…', urlLoader(url.trim()));
     });
   }
 
   if (libraryDot) libraryDot.addEventListener('click', toggleLibrary);
   if (libraryClose) libraryClose.addEventListener('click', closeLibrary);
+  if (libraryListEl) libraryListEl.addEventListener('click', handleLibraryClick);
 
   renderLibrary();
 }

@@ -19,19 +19,23 @@ const slider = document.querySelector('.wpm-slider');
 if (slider) slider.value = String(state.get().wpm);
 renderWpm(state.get().wpm);
 
-let lastSavedIndex = 0;
+let lastPersistedIndex = 0;
 
-function saveProgress(force = false) {
+function saveProgress() {
+  const idx = player.getIndex();
+  if (Math.abs(idx - lastPersistedIndex) < PROGRESS_SAVE_EVERY) return;
+  flushProgress();
+}
+
+function flushProgress() {
   const s = state.get();
   if (!s.sourceId) return;
-  const idx = player.getIndex();
-  if (!force && Math.abs(idx - lastSavedIndex) < PROGRESS_SAVE_EVERY) return;
-  lastSavedIndex = idx;
-  storage.updateEntryProgress(s.sourceId, idx);
+  lastPersistedIndex = player.getIndex();
+  storage.updateEntryProgress(s.sourceId, lastPersistedIndex);
 }
 
 function toHome() {
-  saveProgress(true);
+  flushProgress();
   document.body.classList.remove('screen-reader');
   document.body.classList.add('screen-home');
   document.querySelector('.reader').setAttribute('aria-hidden', 'true');
@@ -49,9 +53,9 @@ function toReader(opts = {}) {
   const start = Math.max(0, Math.min(s.tokens.length - 1, opts.startIndex || 0));
   player.resetIndex();
   if (start > 0) player.seek(start);
-  lastSavedIndex = start;
+  lastPersistedIndex = start;
 
-  if (s.tokens.length > 0) renderToken(s.tokens[Math.min(start, s.tokens.length - 1)] || s.tokens[0]);
+  if (s.tokens.length > 0) renderToken(s.tokens[start] || s.tokens[0]);
   renderProgress(start, s.tokens.length);
 }
 
@@ -62,7 +66,7 @@ player.configure({
     saveProgress();
   },
   onEnd: () => {
-    saveProgress(true);
+    flushProgress();
     reader.showControls();
   },
 });
@@ -76,6 +80,6 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
-window.addEventListener('beforeunload', () => saveProgress(true));
+window.addEventListener('beforeunload', flushProgress);
 
 home.focus();

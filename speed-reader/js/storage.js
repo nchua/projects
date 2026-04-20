@@ -5,8 +5,16 @@ const K = {
   version: PREFIX + 'v',
   settings: PREFIX + 'settings',
   library: PREFIX + 'library',
+  progress: PREFIX + 'progress',
   sourcePrefix: PREFIX + 'source:',
 };
+
+export const SourceType = Object.freeze({
+  TEXT: 'text',
+  PDF: 'pdf',
+  EPUB: 'epub',
+  URL: 'url',
+});
 
 const DEFAULT_SETTINGS = { wpm: 350, lastSourceId: null, onboarded: false };
 
@@ -32,25 +40,31 @@ function trySafe(fn) {
 }
 
 export function init() {
-  const v = read(K.version, null);
-  if (v === null) {
+  if (read(K.version, null) === null) {
     trySafe(() => {
       write(K.version, VERSION);
       write(K.settings, DEFAULT_SETTINGS);
       write(K.library, {});
+      write(K.progress, {});
     });
   }
 }
 
 export function getSettings() { return read(K.settings, DEFAULT_SETTINGS); }
 export function patchSettings(patch) {
-  const next = { ...getSettings(), ...patch };
-  return trySafe(() => write(K.settings, next));
+  return trySafe(() => write(K.settings, { ...getSettings(), ...patch }));
 }
-export function getLibrary() { return read(K.library, {}); }
 
-function writeLibrary(lib) {
-  return trySafe(() => write(K.library, lib));
+function rawLibrary() { return read(K.library, {}); }
+function rawProgress() { return read(K.progress, {}); }
+
+export function getLibrary() {
+  const lib = rawLibrary();
+  const prog = rawProgress();
+  for (const id in lib) {
+    if (id in prog) lib[id] = { ...lib[id], lastIndex: prog[id] };
+  }
+  return lib;
 }
 
 function sourceKey(id) { return K.sourcePrefix + id; }
@@ -77,9 +91,9 @@ export function saveSource({ title, sourceType, text, tokens, sourceUrl }) {
   const tokensRes = trySafe(() => write(sourceKey(id), tokens));
   if (!tokensRes.ok) return { ok: false, quota: tokensRes.quota };
 
-  const lib = getLibrary();
+  const lib = rawLibrary();
   lib[id] = entry;
-  const libRes = writeLibrary(lib);
+  const libRes = trySafe(() => write(K.library, lib));
   if (!libRes.ok) {
     localStorage.removeItem(sourceKey(id));
     return { ok: false, quota: libRes.quota };
@@ -88,26 +102,25 @@ export function saveSource({ title, sourceType, text, tokens, sourceUrl }) {
   return { ok: true, entry };
 }
 
-export function getSourceTokens(id) {
-  return read(sourceKey(id), null);
-}
+export function getSourceTokens(id) { return read(sourceKey(id), null); }
 
 export function updateEntryProgress(id, lastIndex) {
-  const lib = getLibrary();
-  const entry = lib[id];
-  if (!entry) return { ok: false };
-  if (entry.lastIndex === lastIndex) return { ok: true };
-  entry.lastIndex = lastIndex;
-  entry.updatedAt = Date.now();
-  return writeLibrary(lib);
+  if (!id) return { ok: true };
+  const prog = rawProgress();
+  if (prog[id] === lastIndex) return { ok: true };
+  prog[id] = lastIndex;
+  return trySafe(() => write(K.progress, prog));
 }
 
 export function deleteEntry(id) {
-  const lib = getLibrary();
-  if (!lib[id]) return { ok: true };
+  const lib = rawLibrary();
+  const prog = rawProgress();
   delete lib[id];
+  delete prog[id];
   localStorage.removeItem(sourceKey(id));
-  return writeLibrary(lib);
+  const r1 = trySafe(() => write(K.library, lib));
+  trySafe(() => write(K.progress, prog));
+  return r1;
 }
 
 export function oldestEntryId() {
@@ -127,6 +140,5 @@ export function deleteOldestEntry() {
 }
 
 export function entriesByRecency() {
-  const lib = getLibrary();
-  return Object.values(lib).sort((a, b) => b.updatedAt - a.updatedAt);
+  return Object.values(getLibrary()).sort((a, b) => b.updatedAt - a.updatedAt);
 }
