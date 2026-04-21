@@ -7,8 +7,10 @@
   <title>Speed Reader</title>
   <link rel="stylesheet" href="styles/base.css">
   <link rel="stylesheet" href="styles/reader.css">
+  <link rel="stylesheet" href="styles/finish.css">
 </head>
 <body class="screen-home">
+  <a class="library-link" href="/library" data-action="library-link">library &rarr;</a>
   <main class="home">
     <textarea class="paste" placeholder="Paste text…" spellcheck="false" autofocus></textarea>
     <button class="home-play" aria-label="Start reading" disabled>
@@ -67,12 +69,66 @@
         </svg>
       </button>
       <input type="range" class="wpm-slider" min="100" max="900" step="10" value="350" aria-label="Words per minute">
+      <button class="finish-btn" data-action="finish-open" aria-label="Finish reading">
+        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+          <path d="M5 12 L10 17 L19 7" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+      </button>
     </div>
     <button class="close" aria-label="Close reader">
       <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
         <path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" stroke-width="1.5" fill="none"></path>
       </svg>
     </button>
+  </div>
+
+  <div class="finish-modal" role="dialog" aria-modal="true" aria-label="Finish reading" hidden>
+    <button class="finish-close" data-action="finish-close" aria-label="Close">
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+        <path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" stroke-width="1.5" fill="none"></path>
+      </svg>
+    </button>
+
+    <section class="finish-step" data-finish-step="recall">
+      <h1 class="finish-headline">What were the 2-3 ideas worth keeping?</h1>
+      <p class="finish-sub">Write something &mdash; anything &mdash; before seeing the AI summary. (This is for you, not the AI.)</p>
+      <textarea class="finish-recall" aria-label="Free recall notes" placeholder="Write in your own words…" spellcheck="false"></textarea>
+      <div class="finish-timer" aria-hidden="true"><div class="finish-timer-fill"></div></div>
+      <button class="finish-primary" data-action="finish-summarize" type="button">Summarize with AI &darr;</button>
+      <button class="finish-link" data-action="finish-skip" type="button">Skip for now</button>
+    </section>
+
+    <section class="finish-step" data-finish-step="loading" hidden>
+      <div class="finish-loading">
+        <div class="finish-spinner" aria-hidden="true">&bull;</div>
+        <div class="finish-loading-caption">Reading over your shoulder&hellip;</div>
+        <button class="finish-link" data-action="finish-cancel-loading" type="button">Cancel</button>
+      </div>
+    </section>
+
+    <section class="finish-step finish-result" data-finish-step="result" hidden>
+      <p class="finish-summary"></p>
+      <div class="finish-tags" role="list"></div>
+      <ul class="finish-quotes"></ul>
+      <div class="finish-actions">
+        <button class="finish-primary is-save" data-action="finish-save" type="button">Save to library</button>
+        <button class="finish-link" data-action="finish-discard" type="button">Discard</button>
+      </div>
+    </section>
+
+    <p class="finish-error" role="status" aria-live="polite"></p>
+  </div>
+
+  <div class="finish-disclosure" role="dialog" aria-modal="true" aria-label="Before we continue" hidden>
+    <div class="finish-disclosure-card">
+      <h2 class="finish-disclosure-title">Before we continue</h2>
+      <p class="finish-disclosure-body">Clicking Summarize sends the article text to Anthropic's API so Claude can extract a summary, tags, and quotes. The request is not logged on our server, and nothing about you is stored beyond what you keep on this device.</p>
+      <div class="finish-disclosure-actions">
+        <button class="finish-link" data-action="disclosure-cancel" type="button">Cancel</button>
+        <button class="finish-link" data-action="disclosure-never" type="button">Don't show again</button>
+        <button class="finish-primary" data-action="disclosure-continue" type="button">Continue</button>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="js/main.js"></script>

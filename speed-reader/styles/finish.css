@@ -1,0 +1,425 @@
+/* ---------------------------------------------------------------
+   finish.css — "Finish reading" flow
+   - Library link on the home header (top-right)
+   - Finish button inside the reader .controls bar
+   - Full-screen Finish modal (step1 -> loading -> result)
+   - Interstitial AI-disclosure modal (first-time only)
+
+   Aesthetic: black bg, reader-serif, #e0342f pivot accent,
+   mono kicker text where needed, 44px min tap targets.
+--------------------------------------------------------------- */
+
+/* -------- Library link on the home header -------- */
+.library-link {
+  position: fixed;
+  top: calc(20px + env(safe-area-inset-top));
+  right: calc(20px + env(safe-area-inset-right));
+  color: var(--fg-dim);
+  font: italic 13px/1.4 var(--word-font);
+  text-decoration: none;
+  padding: 10px 6px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  z-index: 5;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--fade-dur) var(--ease-out);
+}
+
+.library-link:hover,
+.library-link:focus-visible {
+  color: var(--fg);
+  outline: 0;
+}
+
+.library-link:active { transform: scale(0.96); }
+
+body.screen-reader .library-link { display: none; }
+
+/* -------- Finish button in the reader controls -------- */
+.finish-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--fg-dim);
+  color: var(--fg);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: color var(--fade-dur) var(--ease-out),
+              border-color var(--fade-dur) var(--ease-out),
+              transform 80ms;
+}
+
+.finish-btn.is-revealed {
+  display: inline-flex;
+}
+
+.finish-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.finish-btn:hover,
+.finish-btn:focus-visible {
+  color: var(--pivot);
+  border-color: var(--pivot);
+  outline: 0;
+}
+
+.finish-btn:active { transform: scale(0.96); }
+
+/* -------- Finish modal shell -------- */
+.finish-modal {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  color: var(--fg);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: calc(32px + env(safe-area-inset-top))
+           calc(24px + env(safe-area-inset-right))
+           calc(32px + env(safe-area-inset-bottom))
+           calc(24px + env(safe-area-inset-left));
+  overflow-y: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.finish-modal[hidden] { display: none; }
+
+.finish-close {
+  position: absolute;
+  top: calc(16px + env(safe-area-inset-top));
+  right: calc(16px + env(safe-area-inset-right));
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--fg-dim);
+  color: var(--fg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--fade-dur) var(--ease-out),
+              border-color var(--fade-dur) var(--ease-out),
+              transform 80ms;
+}
+
+.finish-close:hover,
+.finish-close:focus-visible {
+  color: var(--pivot);
+  border-color: var(--pivot);
+  outline: 0;
+}
+
+.finish-close:active { transform: scale(0.96); }
+
+/* Step wrapper */
+.finish-step {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 20px;
+}
+
+.finish-step[hidden] { display: none; }
+
+/* -------- Step 1: free recall -------- */
+.finish-headline {
+  font: italic 400 clamp(22px, 3.4vw, 28px)/1.25 var(--word-font);
+  color: var(--fg);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.finish-sub {
+  font: italic 400 14px/1.5 var(--word-font);
+  color: var(--fg-dim);
+  margin: 0;
+  max-width: 520px;
+}
+
+.finish-recall {
+  width: 100%;
+  min-height: 180px;
+  max-height: 40vh;
+  background: transparent;
+  color: var(--fg);
+  border: 0;
+  border-bottom: 1px solid var(--fg-dim);
+  outline: 0;
+  resize: none;
+  padding: 12px 4px;
+  font: 400 16px/1.55 var(--word-font);
+  text-align: left;
+  caret-color: var(--pivot);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.finish-recall::placeholder { color: var(--fg-dim); font-style: italic; }
+
+/* Soft 15s timer bar — visual feedback, non-blocking */
+.finish-timer {
+  width: 100%;
+  max-width: 520px;
+  height: 1px;
+  background: #1a1a1a;
+  position: relative;
+  overflow: hidden;
+}
+
+.finish-timer-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0%;
+  background: var(--fg-dim);
+  opacity: 0.6;
+}
+
+/* Primary action (Summarize, Save) */
+.finish-primary {
+  min-width: 220px;
+  min-height: 44px;
+  padding: 12px 22px;
+  background: transparent;
+  border: 1px solid var(--fg-dim);
+  color: var(--fg);
+  border-radius: 2px;
+  font: 400 14px/1 var(--word-font);
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: color var(--fade-dur) var(--ease-out),
+              border-color var(--fade-dur) var(--ease-out),
+              background var(--fade-dur) var(--ease-out),
+              transform 80ms;
+}
+
+.finish-primary:hover,
+.finish-primary:focus-visible {
+  color: var(--pivot);
+  border-color: var(--pivot);
+  outline: 0;
+}
+
+.finish-primary.is-save:hover,
+.finish-primary.is-save:focus-visible {
+  background: var(--pivot);
+  color: var(--fg);
+  border-color: var(--pivot);
+}
+
+.finish-primary:active { transform: scale(0.96); }
+
+/* Secondary / link action (Skip, Discard, Cancel) */
+.finish-link {
+  min-height: 44px;
+  padding: 10px 12px;
+  background: transparent;
+  border: 0;
+  color: var(--fg-dim);
+  font: italic 400 13px/1.4 var(--word-font);
+  text-decoration: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--fade-dur) var(--ease-out), transform 80ms;
+}
+
+.finish-link:hover,
+.finish-link:focus-visible {
+  color: var(--fg);
+  outline: 0;
+}
+
+.finish-link:active { transform: scale(0.96); }
+
+/* -------- Step 2: loading -------- */
+.finish-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.finish-spinner {
+  font: 400 32px/1 var(--word-font);
+  color: var(--pivot);
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  animation: finish-pulse 1400ms var(--ease-out) infinite;
+}
+
+@keyframes finish-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.92); }
+  50%      { opacity: 1;    transform: scale(1.08); }
+}
+
+.finish-loading-caption {
+  font: italic 400 14px/1.5 var(--word-font);
+  color: var(--fg-dim);
+}
+
+/* -------- Step 3: result -------- */
+.finish-result {
+  gap: 28px;
+  align-items: center;
+}
+
+.finish-summary {
+  font: 400 20px/1.5 var(--word-font);
+  color: var(--fg);
+  max-width: 600px;
+  margin: 0;
+  text-align: left;
+}
+
+.finish-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  max-width: 600px;
+}
+
+.finish-tag {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--fg-dim);
+  color: var(--fg);
+  font: 400 10px/1 ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 0 12px;
+  min-height: 32px;
+  border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.finish-quotes {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 600px;
+  width: 100%;
+  text-align: left;
+}
+
+.finish-quote {
+  font: italic 400 16px/1.5 var(--word-font);
+  color: var(--fg);
+  padding: 4px 0 4px 14px;
+  border-left: 2px solid var(--pivot);
+  margin: 0;
+}
+
+.finish-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.finish-error {
+  font: italic 400 13px/1.4 var(--word-font);
+  color: var(--pivot);
+  margin: 16px 0 0;
+  min-height: 1em;
+  text-align: center;
+  max-width: 600px;
+  width: 100%;
+}
+
+.finish-error:empty { min-height: 0; margin: 0; }
+
+/* -------- Interstitial disclosure modal -------- */
+.finish-disclosure {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.92);
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.finish-disclosure[hidden] { display: none; }
+
+.finish-disclosure-card {
+  width: 100%;
+  max-width: 440px;
+  background: #0a0a0a;
+  border: 1px solid #222;
+  border-radius: 4px;
+  padding: 28px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: center;
+}
+
+.finish-disclosure-title {
+  font: 400 20px/1.3 var(--word-font);
+  color: var(--fg);
+  margin: 0;
+}
+
+.finish-disclosure-body {
+  font: italic 400 14px/1.6 var(--word-font);
+  color: var(--fg-dim);
+  margin: 0;
+}
+
+.finish-disclosure-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+.finish-disclosure-actions .finish-primary {
+  min-width: 0;
+  padding: 10px 18px;
+  font-size: 13px;
+}
+
+.finish-disclosure-actions .finish-link {
+  padding: 10px 14px;
+  font-size: 13px;
+}

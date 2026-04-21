@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Speed-reading web app with RSVP + ORP-style bionic highlight.",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
     "@mozilla/readability": "^0.5.0",
     "jsdom": "^25.0.0"
   },

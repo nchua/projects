@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Mindmap — Timeline + Clusters</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="_fake-data.js"></script>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --bg-2: #12151d;
+    --bg-3: #181c26;
+    --text: #e6e8ef;
+    --muted: #8a93a6;
+    --line: #232838;
+    --accent: #7aa2ff;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", system-ui, sans-serif;
+    font-size: 14px; line-height: 1.4; overflow: hidden; height: 100%;
+  }
+  .app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--bg-2);
+    flex-wrap: wrap; gap: 12px;
+  }
+  header h1 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: 0.2px; }
+  header h1 .sub { color: var(--muted); font-weight: 400; margin-left: 8px; font-size: 13px; }
+  .toggle {
+    display: inline-flex; background: var(--bg-3); border: 1px solid var(--line);
+    border-radius: 10px; padding: 3px; gap: 2px;
+  }
+  .toggle button {
+    appearance: none; -webkit-appearance: none; background: transparent;
+    color: var(--muted); border: 0; padding: 10px 18px; min-height: 44px; min-width: 88px;
+    border-radius: 8px; font: inherit; cursor: pointer; touch-action: manipulation;
+    transition: background 120ms, color 120ms, transform 80ms;
+  }
+  .toggle button[aria-pressed="true"] { background: #2a3148; color: var(--text); }
+  .toggle button:active { transform: scale(0.96); }
+
+  main { flex: 1; position: relative; overflow: hidden; }
+  #chart { width: 100%; height: 100%; display: block; }
+
+  .lane-bg { fill: transparent; }
+  .lane-bg.alt { fill: rgba(255,255,255,0.015); }
+  .lane-label {
+    fill: var(--text); font-size: 12px; font-weight: 500;
+  }
+  .lane-swatch { stroke: rgba(255,255,255,0.15); stroke-width: 1; }
+  .grid line { stroke: var(--line); stroke-opacity: 0.6; shape-rendering: crispEdges; }
+  .grid path { stroke: none; }
+  .axis text { fill: var(--muted); font-size: 11px; }
+  .axis path, .axis line { stroke: var(--line); }
+  .link { fill: none; stroke-opacity: 0.22; stroke-width: 1; }
+  .node {
+    cursor: pointer; stroke: rgba(255,255,255,0.6); stroke-width: 1;
+    transition: stroke-width 120ms, opacity 120ms;
+  }
+  .node:hover { stroke-width: 2; }
+  .node.dim { opacity: 0.18; }
+  .node.selected { stroke: #fff; stroke-width: 2.5; }
+
+  .brush .selection { fill: var(--accent); fill-opacity: 0.12; stroke: var(--accent); stroke-opacity: 0.6; }
+  .brush .handle { fill: var(--accent); fill-opacity: 0.4; }
+
+  /* Tooltip */
+  .tooltip {
+    position: absolute; pointer-events: none;
+    background: rgba(20,24,34,0.96); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 10px; font-size: 12px; color: var(--text);
+    transform: translate(-50%, -120%); transition: opacity 100ms; opacity: 0;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.4); white-space: nowrap; max-width: 260px;
+  }
+  .tooltip .ttl { font-weight: 600; margin-bottom: 2px; }
+  .tooltip .meta { color: var(--muted); font-size: 11px; }
+
+  /* Side panel */
+  .panel {
+    position: absolute; top: 0; right: 0; height: 100%; width: 380px; max-width: 92vw;
+    background: var(--bg-2); border-left: 1px solid var(--line);
+    transform: translateX(100%); transition: transform 240ms cubic-bezier(0.2,0.8,0.2,1);
+    display: flex; flex-direction: column; z-index: 10;
+  }
+  .panel.open { transform: translateX(0); }
+  .panel header {
+    background: transparent; border-bottom: 1px solid var(--line);
+    padding: 16px 18px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  }
+  .panel h2 { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.3; }
+  .panel .close {
+    appearance: none; -webkit-appearance: none; background: var(--bg-3); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px; width: 44px; height: 44px;
+    cursor: pointer; font-size: 18px; touch-action: manipulation; flex-shrink: 0;
+  }
+  .panel .close:active { transform: scale(0.95); }
+  .panel .body { overflow: auto; padding: 16px 18px; flex: 1; }
+  .panel .meta-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .pill {
+    background: var(--bg-3); border: 1px solid var(--line); color: var(--muted);
+    padding: 4px 10px; border-radius: 999px; font-size: 11px;
+  }
+  .pill.strong { color: var(--text); }
+  .panel h3 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--muted); margin: 18px 0 6px; font-weight: 600;
+  }
+  .panel .summary { color: var(--text); font-size: 13px; line-height: 1.55; }
+  .panel ul { padding-left: 18px; margin: 6px 0; }
+  .panel ul li { font-style: italic; color: #c8cee0; margin-bottom: 6px; line-height: 1.45; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    border-radius: 999px; padding: 5px 10px; font-size: 11px;
+    background: var(--bg-3); border: 1px solid var(--line);
+  }
+  .panel footer {
+    border-top: 1px solid var(--line); padding: 14px 18px;
+  }
+  .btn-primary {
+    width: 100%; appearance: none; -webkit-appearance: none;
+    background: var(--accent); color: #0b0d12; border: 0;
+    border-radius: 10px; padding: 14px; min-height: 48px;
+    font: inherit; font-weight: 600; cursor: pointer; touch-action: manipulation;
+    transition: transform 80ms, filter 120ms;
+  }
+  .btn-primary:hover { filter: brightness(1.05); }
+  .btn-primary:active { transform: scale(0.98); }
+
+  /* Stats box */
+  .stats {
+    position: absolute; bottom: 96px; right: 18px;
+    background: rgba(18,21,29,0.92); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; min-width: 200px; backdrop-filter: blur(6px);
+    z-index: 5;
+  }
+  .stats h4 {
+    margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--muted); font-weight: 600;
+  }
+  .stats .row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+  .stats .row .v { color: var(--text); font-variant-numeric: tabular-nums; font-weight: 500; }
+  .stats .row .k { color: var(--muted); }
+
+  @media (max-width: 720px) {
+    header { padding: 12px 14px; }
+    header h1 { font-size: 14px; }
+    header h1 .sub { display: none; }
+    .stats { bottom: 88px; right: 10px; min-width: 160px; padding: 10px 12px; }
+    .panel { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Knowledge Timeline <span class="sub">how understanding builds across topics</span></h1>
+    <div class="toggle" role="tablist" aria-label="View mode">
+      <button data-action="mode" data-mode="notes" aria-pressed="true">Notes</button>
+      <button data-action="mode" data-mode="concepts" aria-pressed="false">Concepts</button>
+    </div>
+  </header>
+  <main>
+    <svg id="chart" aria-label="Timeline of reading notes by topic"></svg>
+    <div class="stats" id="stats">
+      <h4>Knowledge growth</h4>
+      <div class="row"><span class="k">Notes</span><span class="v" id="s-notes">–</span></div>
+      <div class="row"><span class="k">Concepts</span><span class="v" id="s-concepts">–</span></div>
+      <div class="row"><span class="k">Avg WPM</span><span class="v" id="s-wpm">–</span></div>
+      <div class="row"><span class="k">Reading time</span><span class="v" id="s-time">–</span></div>
+    </div>
+    <aside class="panel" id="panel" aria-hidden="true">
+      <header>
+        <h2 id="p-title">—</h2>
+        <button class="close" data-action="close-panel" aria-label="Close panel">×</button>
+      </header>
+      <div class="body">
+        <div class="meta-row" id="p-meta"></div>
+        <h3>Summary</h3>
+        <p class="summary" id="p-summary"></p>
+        <h3>Quotes</h3>
+        <ul id="p-quotes"></ul>
+        <h3>Concepts</h3>
+        <div class="chips" id="p-chips"></div>
+      </div>
+      <footer>
+        <button class="btn-primary" data-action="reread">Speed-read again</button>
+      </footer>
+    </aside>
+    <div class="tooltip" id="tooltip" role="status"></div>
+  </main>
+</div>
+
+<script>
+(function () {
+  const data = window.MINDMAP_DATA;
+  if (!data) { console.error('MINDMAP_DATA not loaded'); return; }
+  const { topics, concepts, notes } = data;
+
+  const conceptById = new Map(concepts.map(c => [c.id, c]));
+  const topicById = new Map(topics.map(t => [t.id, t]));
+
+  // Parse dates
+  notes.forEach(n => { n._date = new Date(n.date_read + 'T00:00:00'); });
+  notes.sort((a, b) => a._date - b._date);
+
+  // ---- Concept-mode dataset: first appearance of each concept ----
+  const conceptCounts = new Map(); // cid -> count
+  notes.forEach(n => n.concepts.forEach(cid => {
+    conceptCounts.set(cid, (conceptCounts.get(cid) || 0) + 1);
+  }));
+  const conceptFirst = []; // {id, label, topic, _date, count}
+  const seenC = new Set();
+  notes.forEach(n => {
+    n.concepts.forEach(cid => {
+      if (seenC.has(cid)) return;
+      seenC.add(cid);
+      const c = conceptById.get(cid);
+      if (!c) return;
+      conceptFirst.push({
+        id: cid, label: c.label, topic: c.topic,
+        _date: n._date, count: conceptCounts.get(cid) || 1,
+        _sourceNote: n,
+      });
+    });
+  });
+
+  // ---- DOM refs ----
+  const svgEl = document.getElementById('chart');
+  const tooltip = document.getElementById('tooltip');
+  const panel = document.getElementById('panel');
+  const svg = d3.select(svgEl);
+
+  // ---- State ----
+  let mode = 'notes'; // 'notes' | 'concepts'
+  let selectedId = null;
+  let xDomainFull = null;
+  let xDomain = null; // current (after brush)
+  let dims = null;
+
+  // ---- Layout ----
+  const margin = { top: 24, right: 24, bottom: 110, left: 170 };
+  const laneHeight = 56;
+  const brushHeight = 56;
+
+  // SVG groups
+  const gRoot = svg.append('g').attr('class', 'root');
+  const gLanes = gRoot.append('g').attr('class', 'lanes');
+  const gGrid = gRoot.append('g').attr('class', 'grid');
+  const gLinks = gRoot.append('g').attr('class', 'links');
+  const gNodes = gRoot.append('g').attr('class', 'nodes');
+  const gXAxis = gRoot.append('g').attr('class', 'axis x');
+  const gLaneLabels = gRoot.append('g').attr('class', 'lane-labels');
+  const gBrush = svg.append('g').attr('class', 'brush');
+  const gBrushAxis = svg.append('g').attr('class', 'axis brush-axis');
+
+  // Scales
+  const xMain = d3.scaleTime();
+  const xBrush = d3.scaleTime();
+  const yLane = d3.scaleBand().domain(topics.map(t => t.id)).padding(0.15);
+
+  // Date domain
+  const dateExt = d3.extent(notes, n => n._date);
+  // Pad
+  const pad = 1000 * 60 * 60 * 24 * 2;
+  xDomainFull = [new Date(dateExt[0].getTime() - pad), new Date(dateExt[1].getTime() + pad)];
+  xDomain = xDomainFull.slice();
+
+  function measure() {
+    const r = svgEl.getBoundingClientRect();
+    const width = r.width;
+    const innerHeight = topics.length * laneHeight;
+    const totalHeight = margin.top + innerHeight + margin.bottom;
+    const height = Math.max(r.height, totalHeight);
+    svg.attr('viewBox', `0 0 ${width} ${height}`)
+       .attr('width', width).attr('height', height);
+    dims = { width, height, innerHeight,
+             plotW: width - margin.left - margin.right,
+             plotH: innerHeight };
+    xMain.range([0, dims.plotW]);
+    xBrush.range([0, dims.plotW]);
+    yLane.range([0, innerHeight]);
+    gRoot.attr('transform', `translate(${margin.left},${margin.top})`);
+    gBrush.attr('transform',
+      `translate(${margin.left},${margin.top + innerHeight + 36})`);
+    gBrushAxis.attr('transform',
+      `translate(${margin.left},${margin.top + innerHeight + 36 + brushHeight})`);
+  }
+
+  // ---- Lane backgrounds + labels ----
+  function drawLanes() {
+    const sel = gLanes.selectAll('rect.lane-bg').data(topics, t => t.id);
+    sel.join(
+      enter => enter.append('rect').attr('class', 'lane-bg'),
+      update => update,
+      exit => exit.remove()
+    )
+      .attr('class', (t, i) => 'lane-bg' + (i % 2 ? ' alt' : ''))
+      .attr('x', 0).attr('y', t => yLane(t.id))
+      .attr('width', dims.plotW).attr('height', yLane.bandwidth());
+
+    // Labels (drawn outside main plot)
+    gLaneLabels.attr('transform', `translate(${-margin.left + 16},0)`);
+    const lab = gLaneLabels.selectAll('g.lane-lab').data(topics, t => t.id);
+    const labE = lab.enter().append('g').attr('class', 'lane-lab');
+    labE.append('rect').attr('class', 'lane-swatch')
+      .attr('width', 10).attr('height', 10).attr('rx', 2).attr('y', -5);
+    labE.append('text').attr('class', 'lane-label').attr('x', 18).attr('dy', '0.35em');
+    const labM = labE.merge(lab);
+    labM.attr('transform', t => `translate(0,${yLane(t.id) + yLane.bandwidth()/2})`);
+    labM.select('rect').attr('fill', t => t.color);
+    labM.select('text').text(t => t.label);
+    lab.exit().remove();
+  }
+
+  // ---- Grid + axis ----
+  function drawAxis() {
+    xMain.domain(xDomain);
+    const ticks = xMain.ticks(d3.timeWeek.every(1));
+    // grid
+    const g = gGrid.selectAll('line.gridline').data(ticks, d => +d);
+    g.join(
+      enter => enter.append('line').attr('class', 'gridline'),
+      update => update,
+      exit => exit.remove()
+    )
+      .attr('x1', d => xMain(d)).attr('x2', d => xMain(d))
+      .attr('y1', 0).attr('y2', dims.plotH)
+      .attr('stroke', 'var(--line)').attr('stroke-opacity', 0.5);
+
+    gXAxis.attr('transform', `translate(0,${dims.plotH + 6})`)
+      .call(d3.axisBottom(xMain)
+        .ticks(d3.timeWeek.every(1))
+        .tickFormat(d3.timeFormat('%b %d'))
+        .tickSizeOuter(0));
+  }
+
+  // ---- Nodes & links ----
+  function currentItems() {
+    return mode === 'notes' ? notes : conceptFirst;
+  }
+
+  function drawNodesAndLinks() {
+    const items = currentItems().filter(d =>
+      d._date >= xDomain[0] && d._date <= xDomain[1]
+    );
+
+    // Position
+    const cx = d => xMain(d._date);
+    const cy = d => yLane(d.topic) + yLane.bandwidth() / 2;
+    const color = d => topicById.get(d.topic)?.color || '#888';
+
+    let radius;
+    if (mode === 'notes') {
+      const rpeScale = d3.scaleLinear().domain([5, 9]).range([5, 12]).clamp(true);
+      radius = d => rpeScale(d.rpe);
+    } else {
+      const cExt = d3.extent(currentItems(), d => d.count);
+      const cs = d3.scaleSqrt().domain([Math.max(1, cExt[0]), cExt[1] || 1]).range([5, 12]);
+      radius = d => cs(d.count);
+    }
+
+    // ---- Links: between notes that share ≥1 concept (only in notes mode) ----
+    let links = [];
+    if (mode === 'notes') {
+      for (let i = 0; i < items.length; i++) {
+        for (let j = i + 1; j < items.length; j++) {
+          const a = items[i], b = items[j];
+          const shared = a.concepts.filter(c => b.concepts.includes(c));
+          if (shared.length === 0) continue;
+          // Avoid hairball: only link to the next ≤2 chronological matches per node
+          links.push({ source: a, target: b, weight: shared.length });
+        }
+      }
+      // Trim: per source-node keep at most 3 nearest later targets
+      const grouped = d3.group(links, l => l.source.id);
+      const trimmed = [];
+      for (const [, arr] of grouped) {
+        arr.sort((x, y) => x.target._date - y.target._date);
+        trimmed.push(...arr.slice(0, 3));
+      }
+      links = trimmed;
+    }
+
+    // Render links
+    const linkSel = gLinks.selectAll('path.link').data(links, l => l.source.id + '-' + l.target.id);
+    linkSel.join(
+      enter => enter.append('path').attr('class', 'link'),
+      update => update,
+      exit => exit.remove()
+    )
+      .attr('stroke', l => topicById.get(l.source.topic)?.color || '#888')
+      .attr('stroke-width', l => Math.min(2, 0.6 + l.weight * 0.4))
+      .attr('d', l => {
+        const x1 = cx(l.source), y1 = cy(l.source);
+        const x2 = cx(l.target), y2 = cy(l.target);
+        const mx = (x1 + x2) / 2;
+        const dy = y2 - y1;
+        const arch = Math.min(60, Math.max(20, Math.abs(x2 - x1) * 0.18));
+        const cy1 = y1 - arch * (dy === 0 ? 1 : 0.4);
+        const cy2 = y2 - arch * (dy === 0 ? 1 : 0.4);
+        return `M${x1},${y1} C${mx},${cy1} ${mx},${cy2} ${x2},${y2}`;
+      });
+
+    // Render nodes
+    const nodeSel = gNodes.selectAll('circle.node').data(items, d => d.id);
+    const nodeE = nodeSel.enter().append('circle').attr('class', 'node');
+    nodeE.merge(nodeSel)
+      .attr('cx', cx).attr('cy', cy)
+      .attr('r', radius)
+      .attr('fill', color)
+      .classed('selected', d => d.id === selectedId)
+      .on('mouseenter', (e, d) => showTip(e, d))
+      .on('mousemove', (e, d) => showTip(e, d))
+      .on('mouseleave', hideTip)
+      .on('click', (e, d) => { e.stopPropagation(); openPanel(d); });
+    nodeSel.exit().remove();
+  }
+
+  // ---- Tooltip ----
+  function showTip(e, d) {
+    const r = svgEl.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    const y = e.clientY - r.top;
+    const dateStr = d3.timeFormat('%b %d, %Y')(d._date);
+    if (mode === 'notes') {
+      tooltip.innerHTML =
+        `<div class="ttl">${escapeHtml(d.title)}</div>` +
+        `<div class="meta">${dateStr} · ${d.wpm} wpm · RPE ${d.rpe}</div>`;
+    } else {
+      tooltip.innerHTML =
+        `<div class="ttl">${escapeHtml(d.label)}</div>` +
+        `<div class="meta">First seen ${dateStr} · ${d.count} note${d.count===1?'':'s'}</div>`;
+    }
+    tooltip.style.left = x + 'px';
+    tooltip.style.top = y + 'px';
+    tooltip.style.opacity = 1;
+  }
+  function hideTip() { tooltip.style.opacity = 0; }
+
+  // ---- Side panel ----
+  function openPanel(d) {
+    let note;
+    if (mode === 'notes') note = d;
+    else note = d._sourceNote;
+    selectedId = d.id;
+    drawNodesAndLinks();
+
+    const t = topicById.get(note.topic);
+    document.getElementById('p-title').textContent = note.title;
+    const meta = document.getElementById('p-meta');
+    meta.innerHTML = '';
+    const addPill = (txt, strong) => {
+      const s = document.createElement('span');
+      s.className = 'pill' + (strong ? ' strong' : '');
+      s.textContent = txt;
+      meta.appendChild(s);
+    };
+    const swatch = document.createElement('span');
+    swatch.className = 'pill strong';
+    swatch.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${t.color};margin-right:6px;vertical-align:middle"></span>${escapeHtml(t.label)}`;
+    meta.appendChild(swatch);
+    addPill(note.source_type);
+    addPill(d3.timeFormat('%b %d, %Y')(new Date(note.date_read + 'T00:00:00')));
+    addPill(`${note.wpm} wpm`, true);
+    addPill(`RPE ${note.rpe}`, true);
+
+    document.getElementById('p-summary').textContent = note.summary;
+
+    const ul = document.getElementById('p-quotes');
+    ul.innerHTML = '';
+    (note.quotes || []).forEach(q => {
+      const li = document.createElement('li');
+      li.textContent = q;
+      ul.appendChild(li);
+    });
+
+    const chips = document.getElementById('p-chips');
+    chips.innerHTML = '';
+    note.concepts.forEach(cid => {
+      const c = conceptById.get(cid);
+      if (!c) return;
+      const tt = topicById.get(c.topic);
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.style.borderColor = tt.color + '55';
+      chip.style.color = tt.color;
+      chip.textContent = c.label;
+      chips.appendChild(chip);
+    });
+
+    panel.classList.add('open');
+    panel.setAttribute('aria-hidden', 'false');
+  }
+  function closePanel() {
+    panel.classList.remove('open');
+    panel.setAttribute('aria-hidden', 'true');
+    selectedId = null;
+    drawNodesAndLinks();
+  }
+
+  // ---- Stats ----
+  function updateStats() {
+    const items = notes.filter(n =>
+      n._date >= xDomain[0] && n._date <= xDomain[1]
+    );
+    const conceptSet = new Set();
+    items.forEach(n => n.concepts.forEach(c => conceptSet.add(c)));
+    const avgWpm = items.length
+      ? Math.round(d3.mean(items, n => n.wpm)) : 0;
+    const hours = Math.round((items.length * 8) / 60 * 10) / 10;
+    document.getElementById('s-notes').textContent = items.length;
+    document.getElementById('s-concepts').textContent = conceptSet.size;
+    document.getElementById('s-wpm').textContent = avgWpm;
+    document.getElementById('s-time').textContent = hours + ' h';
+  }
+
+  // ---- Brush ----
+  let brush;
+  function drawBrush() {
+    xBrush.domain(xDomainFull);
+
+    // axis under brush
+    gBrushAxis.call(d3.axisBottom(xBrush)
+      .ticks(d3.timeWeek.every(2))
+      .tickFormat(d3.timeFormat('%b %d'))
+      .tickSizeOuter(0));
+
+    // mini lane background for brush
+    const bg = gBrush.selectAll('rect.brush-bg').data([0]);
+    bg.enter().append('rect').attr('class', 'brush-bg')
+      .attr('fill', 'var(--bg-3)').attr('rx', 6)
+      .merge(bg)
+      .attr('x', 0).attr('y', 0)
+      .attr('width', dims.plotW).attr('height', brushHeight);
+
+    // mini dots (notes)
+    const mini = gBrush.selectAll('circle.mini').data(notes, n => n.id);
+    mini.join(
+      enter => enter.append('circle').attr('class', 'mini'),
+      update => update, exit => exit.remove()
+    )
+      .attr('cx', n => xBrush(n._date))
+      .attr('cy', n => 8 + (topics.findIndex(t => t.id === n.topic) / Math.max(1, topics.length - 1)) * (brushHeight - 16))
+      .attr('r', 2.2)
+      .attr('fill', n => topicById.get(n.topic)?.color || '#888')
+      .attr('opacity', 0.7);
+
+    brush = d3.brushX()
+      .extent([[0, 0], [dims.plotW, brushHeight]])
+      .on('brush end', (event) => {
+        const sel = event.selection;
+        if (!sel) {
+          xDomain = xDomainFull.slice();
+        } else {
+          xDomain = sel.map(xBrush.invert);
+        }
+        drawAxis();
+        drawNodesAndLinks();
+        updateStats();
+      });
+
+    // wipe and re-add brush group
+    let bgGroup = gBrush.selectAll('g.brush-group').data([0]);
+    bgGroup = bgGroup.enter().append('g').attr('class', 'brush-group').merge(bgGroup);
+    bgGroup.call(brush);
+  }
+
+  // ---- Helpers ----
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  // ---- Event delegation (HTML controls) ----
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-action]');
+    if (!t) return;
+    const a = t.getAttribute('data-action');
+    if (a === 'mode') {
+      const m = t.getAttribute('data-mode');
+      if (m === mode) return;
+      mode = m;
+      document.querySelectorAll('[data-action="mode"]').forEach(b => {
+        b.setAttribute('aria-pressed', b.getAttribute('data-mode') === mode ? 'true' : 'false');
+      });
+      drawNodesAndLinks();
+    } else if (a === 'close-panel') {
+      closePanel();
+    } else if (a === 'reread') {
+      console.log('Speed-read again:', selectedId);
+    }
+  });
+
+  svgEl.addEventListener('click', (e) => {
+    if (e.target === svgEl) closePanel();
+  });
+
+  // ---- Initial render ----
+  function renderAll() {
+    measure();
+    xMain.domain(xDomain);
+    drawLanes();
+    drawAxis();
+    drawNodesAndLinks();
+    drawBrush();
+    updateStats();
+  }
+  renderAll();
+
+  // Resize
+  let rId;
+  window.addEventListener('resize', () => {
+    clearTimeout(rId);
+    rId = setTimeout(renderAll, 120);
+  });
+})();
+</script>
+</body>
+</html>

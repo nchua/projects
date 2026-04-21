@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Library · Speed Reader</title>
+  <meta name="theme-color" content="#0a0906" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="styles/library.css" />
+  <!-- d3 (consumed by js/atlas.js) -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <!-- html2canvas (used for per-card PNG export) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+  <header class="lib-header">
+    <a class="back-link" href="/" aria-label="Back to speed reader">← speed reader</a>
+    <nav class="tabs" role="tablist" aria-label="Library view">
+      <button type="button" data-tab="list"  aria-pressed="true"  role="tab">List</button>
+      <button type="button" data-tab="atlas" aria-pressed="false" role="tab">Atlas</button>
+    </nav>
+    <span class="counter" data-counter>0 sources</span>
+  </header>
+
+  <main class="lib-main">
+    <section data-panel="list" aria-labelledby="list-tab"></section>
+    <section data-panel="atlas" aria-labelledby="atlas-tab" hidden></section>
+  </main>
+
+  <div class="scrim" aria-hidden="true"></div>
+
+  <aside class="detail-panel" aria-hidden="true" aria-label="Source detail">
+    <div class="panel-header">
+      <div>
+        <div class="panel-kicker" data-panel-kicker>&mdash;</div>
+        <h2 class="panel-title" data-panel-title>&mdash;</h2>
+        <div class="panel-sub" data-panel-sub></div>
+      </div>
+      <button type="button" class="close-btn" data-action="close" aria-label="Close panel">&times;</button>
+    </div>
+    <div class="panel-body" data-panel-body></div>
+  </aside>
+
+  <script type="module" src="js/library-page.js"></script>
+</body>
+</html>
