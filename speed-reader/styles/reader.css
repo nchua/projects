@@ -40,9 +40,10 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translate(-50%, -50%);
   height: calc(var(--word-size) * 1.2);
   width: 100%;
+  max-width: 100vw;
   font: var(--word-weight) var(--word-size)/1 var(--word-font);
   color: var(--fg);
   --pivot-half: 0px;
