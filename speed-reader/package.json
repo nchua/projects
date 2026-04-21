@@ -1,0 +1,14 @@
+{
+  "name": "speed-reader",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Speed-reading web app with RSVP + ORP-style bionic highlight.",
+  "dependencies": {
+    "@mozilla/readability": "^0.5.0",
+    "jsdom": "^25.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
