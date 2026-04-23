@@ -360,6 +360,17 @@ function openSourcePanel(sourceId) {
   const quotes = Array.isArray(src.key_quotes) ? src.key_quotes : [];
 
   let body = '';
+  if (src.url) {
+    body += `<div class="section-rule"><span class="kicker">Source</span><span class="line"></span></div>`;
+    body += `<p class="panel-source"><a href="${esc(src.url)}" target="_blank" rel="noreferrer noopener">${esc(src.url)}</a></p>`;
+    if (src.source_type === 'twitter') {
+      const m = src.url.match(/\/status(?:es)?\/(\d+)/);
+      if (m) {
+        const unroll = `https://threadreaderapp.com/thread/${m[1]}.html`;
+        body += `<p class="panel-source"><a href="${esc(unroll)}" target="_blank" rel="noreferrer noopener">View unrolled thread →</a></p>`;
+      }
+    }
+  }
   if (src.summary) {
     body += `<div class="section-rule"><span class="kicker">Summary</span><span class="line"></span></div>`;
     body += `<p class="panel-summary">${esc(src.summary)}</p>`;

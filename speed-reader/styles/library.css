@@ -845,6 +845,21 @@ section[data-panel] {
   margin: 0;
 }
 
+.panel-source {
+  margin: 0 0 6px;
+  font: 400 12px/1.5 var(--f-mono);
+  word-break: break-all;
+}
+.panel-source a {
+  color: var(--brass);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--brass-dim);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.panel-source a:hover { color: #e9c27e; border-bottom-style: solid; }
+.panel-source a:active { transform: scale(0.98); display: inline-block; }
+
 .panel-quotes {
   list-style: none;
   padding: 0;

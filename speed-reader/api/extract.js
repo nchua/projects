@@ -113,7 +113,8 @@ function renderTweetText(t) {
   // Heuristic: thread head + many replies + not a Note Tweet.
   if (!t.replying_to && !t.is_note_tweet && typeof t.replies === 'number' && t.replies >= 3) {
     parts.push('');
-    parts.push('(Note: this tweet may be the head of a thread. Twitter does not expose thread structure to free APIs, so only this single tweet was ingested. To capture the full thread, copy-paste the unrolled text into the reader.)');
+    parts.push('(Note: this tweet may be the head of a thread. Free APIs do not expose thread structure, so only this single tweet was ingested.');
+    parts.push(`To capture the full thread, open https://threadreaderapp.com/thread/${t.id}.html — wait for the unroll, then copy-paste the text into the reader.)`);
   }
 
   return parts.join('\n').trim();
