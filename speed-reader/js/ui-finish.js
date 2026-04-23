@@ -90,6 +90,15 @@ function deriveTitle(payload) {
   return first || 'Untitled';
 }
 
+const TWITTER_URL_RE = /^https?:\/\/(?:www\.|mobile\.|m\.)?(?:twitter|x|fxtwitter|vxtwitter|fixupx)\.com\/[^/]+\/status(?:es)?\/\d+/i;
+
+function deriveSourceType(payload) {
+  const declared = payload?.sourceType;
+  if (declared && declared !== 'text' && declared !== 'url') return declared;
+  if (payload?.url && TWITTER_URL_RE.test(payload.url)) return 'twitter';
+  return declared || 'text';
+}
+
 function setStep(step) {
   ctx.step = step;
   const { stepRecall, stepLoading, stepResult } = ctx.el;
@@ -308,7 +317,7 @@ async function doSave(opts = {}) {
   const input = {
     title,
     url: p.url || null,
-    source_type: p.sourceType || 'text',
+    source_type: deriveSourceType(p),
     wpm: p.wpm || null,
     text: p.text || '',
     user_recall: recall,

@@ -9,6 +9,7 @@ This document is the operator guide for the v1 knowledge-bank integration. If yo
 - **`/api/summarize`** — Vercel serverless function. Takes article text, returns `{ summary, tags[], key_quotes[] }` via Claude Sonnet 4.6 structured tool-use. Verbatim-quote validation drops any returned quote that isn't an exact substring of the submitted text.
 - **Finish-reading flow** — a new button on the reader appears at ≥80% progress or when playback ends. Opens a modal with: free-recall textarea → disclosure (first-time) → Summarize → Save to library.
 - **`/library.html`** — two-tab page (List / Atlas). List shows reading cards with one-tap PNG export (`html2canvas`). Atlas is gated: below 15 sources it shows a progress-ring counter; at ≥15 it renders a minimal radial concept graph.
+- **Twitter / X ingestion (v1.1)** — paste an `x.com` or `twitter.com` tweet URL into the URL fetcher and the reader pulls it via `api.fxtwitter.com`. Includes Note Tweets (the long-form essay tweets, e.g. Karpathy's). Quote-tweets are inlined. Multi-tweet thread heads are flagged in the body with a "(thread head — paste full text for the rest)" note since free APIs don't expose thread structure. Saved with `source_type: 'twitter'` so the library card kicker shows the source clearly.
 - **localStorage-only** — all reader content stays on the device. The only thing that leaves is the article text going to Anthropic for summarization, and only when the user explicitly clicks Summarize.
 
 ---
