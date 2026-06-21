@@ -116,6 +116,13 @@ looking broken. Note for the iOS session.
 
 ## 4. Phase 1A — iOS "Connect WHOOP" flow *(desktop / Xcode)*
 
+> **⚠️ DESKTOP PREREQUISITE (Nick): run a full council pass on the UI/UX *before* building these
+> source-connection flows.** Convene the engineer + designer + PM agents on the end-to-end UX of
+> **adding wearable sources** — the WHOOP connect/attach/dismiss flow (1A), the "Sync Apple Health"
+> import flow (1.7b), and HR display (1B). Decide the unified "connect a source" surface,
+> onboarding/empty states, where sync lives, and the async-credit UX (HR quests crediting after a
+> sync) before writing SwiftUI. This gates §4–§6.
+
 **Goal:** user can connect WHOOP from the app, trigger a sync, and see connection status.
 
 **Placement:** new row in `Views/Profile/ProfileView.swift` → `SystemSettingsSection`
@@ -282,6 +289,10 @@ chunks (**1.7a** HealthKit ingest, **D1** WHOOP attach/dismiss) are **deferred a
 their iOS counterparts on desktop** — build each backend+frontend pair together (1A+D1 endpoints;
 1.7a+1.7b) rather than pre-building the backend in a web session. Then **3** (analytics, later) →
 **2** (watchOS live HR, optional/later).
+
+**🛑 First action on desktop (Nick): run a full council pass (engineer + designer + PM agents) on
+the UI/UX of adding wearable sources** — WHOOP connect/attach/dismiss (1A), Apple Health import
+(1.7b), HR display (1B). This precedes any SwiftUI work in §4–§6. See the callout in §4.
 
 **Decisions to confirm before/while building:**
 1. **Live-HR appetite.** If live HR mid-workout is must-have *now*, Phase 2 jumps ahead of the
