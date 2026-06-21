@@ -168,7 +168,7 @@ def get_daily_quests(db: Session, user_id: str) -> Dict[str, Any]:
             "is_completed": uq.is_completed,
             "is_claimed": uq.is_claimed,
             "difficulty": quest_def.difficulty,
-            "completed_by_workout_id": uq.completed_by_workout_id if hasattr(uq, 'completed_by_workout_id') else None
+            "completed_by_workout_id": uq.completed_by_workout_id
         })
         if uq.is_completed:
             completed_count += 1
@@ -433,8 +433,7 @@ def update_quest_progress(db: Session, user_id: str, workout: WorkoutSession) ->
         if uq.progress >= quest_def.target_value and not uq.is_completed:
             uq.is_completed = True
             uq.completed_at = datetime.now(timezone.utc)
-            # TODO: Re-enable after migration runs
-            # uq.completed_by_workout_id = workout.id
+            uq.completed_by_workout_id = workout.id
             completed_quest_ids.append(uq.id)
 
     db.flush()

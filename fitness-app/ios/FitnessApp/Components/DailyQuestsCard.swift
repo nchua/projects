@@ -93,7 +93,7 @@ struct EdgeFlowQuestRow: View {
         case "total_reps": return "\u{1F4AA}"      // Flexed bicep
         case "compound_sets": return "\u{1F3AF}"  // Target
         case "total_volume": return "\u{1F4C8}"   // Chart
-        case "training_time": return "\u{23F1}"   // Stopwatch
+        case "workout_duration": return "\u{23F1}"   // Stopwatch
         case "hr_zone_time": return "\u{2764}\u{FE0F}"  // Red heart
         case "peak_hr": return "\u{1F525}"        // Fire
         case "session_strain": return "\u{26A1}"  // Lightning bolt

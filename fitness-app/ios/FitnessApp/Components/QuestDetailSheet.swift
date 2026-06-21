@@ -18,7 +18,7 @@ struct QuestDetailSheet: View {
         case "total_reps": return "\u{1F4AA}"      // Flexed bicep
         case "compound_sets": return "\u{1F3AF}"  // Target
         case "total_volume": return "\u{1F4C8}"   // Chart
-        case "training_time": return "\u{23F1}"   // Stopwatch
+        case "workout_duration": return "\u{23F1}"   // Stopwatch
         case "hr_zone_time": return "\u{2764}\u{FE0F}"  // Red heart
         case "peak_hr": return "\u{1F525}"        // Fire
         case "session_strain": return "\u{26A1}"  // Lightning bolt
@@ -43,7 +43,7 @@ struct QuestDetailSheet: View {
         switch quest.questType {
         case "total_volume":
             return "\(quest.progress.formatted()) / \(quest.targetValue.formatted()) lbs"
-        case "training_time":
+        case "workout_duration":
             return "\(quest.progress) / \(quest.targetValue) min"
         case "hr_zone_time":
             // Backend stores progress/target in minutes (elevated_zone_minutes).
@@ -141,13 +141,13 @@ struct QuestDetailSheet: View {
                                     // Filled portion
                                     RoundedRectangle(cornerRadius: 8)
                                         .fill(
-                                            LinearGradient(
-                                                colors: quest.isCompleted
-                                                    ? [Color(hex: "00FF88"), Color(hex: "00CC6A")]
-                                                    : [Color.systemPrimary, Color(hex: "7B61FF")],
-                                                startPoint: .leading,
-                                                endPoint: .trailing
-                                            )
+                                            quest.isCompleted
+                                                ? Color.gradientActionSuccess
+                                                : LinearGradient(
+                                                    colors: [Color.systemPrimary, Color(hex: "7B61FF")],
+                                                    startPoint: .leading,
+                                                    endPoint: .trailing
+                                                )
                                         )
                                         .frame(width: geometry.size.width * CGFloat(progressPercent))
                                         .shadow(
@@ -239,13 +239,7 @@ struct QuestDetailSheet: View {
                                     .foregroundColor(.black)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 16)
-                                    .background(
-                                        LinearGradient(
-                                            colors: [Color(hex: "00FF88"), Color(hex: "00CC6A")],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
+                                    .background(Color.gradientActionSuccess)
                                     .clipShape(RoundedRectangle(cornerRadius: 12))
                                     .shadow(color: Color(hex: "00FF88").opacity(0.4), radius: 15, x: 0, y: 0)
                                 }
@@ -298,7 +292,7 @@ struct QuestDetailSheet: View {
             return "\(remaining) sets remaining!"
         case "total_volume":
             return "\(remaining.formatted()) lbs to lift!"
-        case "training_time":
+        case "workout_duration":
             return "\(remaining) minutes left!"
         case "hr_zone_time":
             return "\(remaining) minutes in the zone to go!"

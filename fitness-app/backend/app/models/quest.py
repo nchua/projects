@@ -70,10 +70,9 @@ class UserQuest(Base):
 
     completed_at = Column(DateTime, nullable=True)
     claimed_at = Column(DateTime, nullable=True)
-    # TODO: Re-enable after migration runs on Railway
-    # completed_by_workout_id = Column(String, ForeignKey("workout_sessions.id"), nullable=True)
+    completed_by_workout_id = Column(String, ForeignKey("workout_sessions.id"), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     quest = relationship("QuestDefinition", back_populates="user_quests")
-    # completed_by_workout = relationship("WorkoutSession", foreign_keys=[completed_by_workout_id])
+    completed_by_workout = relationship("WorkoutSession", foreign_keys=[completed_by_workout_id])
