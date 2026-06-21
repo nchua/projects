@@ -1084,6 +1084,8 @@ struct HunterAttributesSection: View {
 
 struct SystemSettingsSection: View {
     @ObservedObject var viewModel: ProfileViewModel
+    @ObservedObject private var healthKit = HealthKitManager.shared
+    @StateObject private var whoopVM = WhoopConnectionViewModel()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1163,6 +1165,52 @@ struct SystemSettingsSection: View {
 
                 AriseDivider()
 
+                // Apple Health — Workouts & HR (Chunk C). Distinct from "Health Sync" above
+                // (daily steps/calories): different glyph (run vs heart) + color (cyan vs red).
+                NavigationLink {
+                    AppleHealthWorkoutSettingsView()
+                } label: {
+                    AriseSettingsRow(
+                        icon: "figure.run",
+                        iconColor: .systemPrimary,
+                        title: "Apple Health — Workouts & HR",
+                        trailing: {
+                            HStack(spacing: 8) {
+                                Circle()
+                                    .fill(healthKit.isAuthorized ? Color.systemPrimary : Color.textMuted)
+                                    .frame(width: 6, height: 6)
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.textMuted)
+                            }
+                        }
+                    )
+                }
+
+                AriseDivider()
+
+                // Connect WHOOP — disabled "coming soon" placeholder (Chunk C). Stays disabled
+                // for v1 regardless of backend `configured`; not a Button (non-interactive).
+                AriseSettingsRow(
+                    icon: "circle.circle",
+                    iconColor: .textMuted,
+                    title: "Connect WHOOP",
+                    titleColor: .textMuted,
+                    trailing: {
+                        Text("COMING SOON")
+                            .font(.ariseMono(size: 10, weight: .semibold))
+                            .foregroundColor(.textMuted)
+                            .tracking(1)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.voidLight)
+                            .cornerRadius(2)
+                    }
+                )
+                .opacity(0.5)
+
+                AriseDivider()
+
                 Button {
                     if let url = URL(string: "https://backend-production-e316.up.railway.app/privacy") {
                         UIApplication.shared.open(url)
@@ -1188,6 +1236,10 @@ struct SystemSettingsSection: View {
             )
             .padding(.horizontal)
         }
+        .task {
+            // Exercise the WHOOP status contract (row stays disabled for v1 regardless).
+            await whoopVM.load()
+        }
     }
 }
 
@@ -1197,6 +1249,7 @@ struct AriseSettingsRow<Trailing: View>: View {
     let icon: String
     let iconColor: Color
     let title: String
+    var titleColor: Color = .textPrimary
     @ViewBuilder let trailing: () -> Trailing
 
     var body: some View {
@@ -1213,7 +1266,7 @@ struct AriseSettingsRow<Trailing: View>: View {
 
             Text(title)
                 .font(.ariseHeader(size: 14, weight: .medium))
-                .foregroundColor(.textPrimary)
+                .foregroundColor(titleColor)
 
             Spacer()
 

@@ -27,6 +27,7 @@ struct FitnessApp: App {
     let modelContainer: ModelContainer
     @StateObject private var authManager = AuthManager.shared
     @StateObject private var notificationManager = NotificationManager.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         do {
@@ -52,6 +53,14 @@ struct FitnessApp: App {
                 .environmentObject(authManager)
                 .environmentObject(notificationManager)
                 .preferredColorScheme(.dark)
+                // Single global foreground observer: silently import new Apple-Watch workouts
+                // on every `.active`. Debounce + in-flight guard live in SyncCoordinator.
+                // (LogView's local scenePhase observer is a separate concern — left as-is.)
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active {
+                        Task { await SyncCoordinator.shared.syncOnForeground() }
+                    }
+                }
         }
         .modelContainer(modelContainer)
     }
