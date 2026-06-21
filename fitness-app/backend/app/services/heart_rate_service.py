@@ -11,7 +11,7 @@ Zone bucketing (hr_zone_seconds) is supplied by the client/provider:
   max HR from HealthKit.
 The backend stores whatever it's given rather than guessing max HR here.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Iterable, List, Optional
 
 from sqlalchemy.orm import Session as DBSession
@@ -24,7 +24,7 @@ def _aware(dt: Optional[datetime]) -> Optional[datetime]:
     if dt is None:
         return None
     if dt.tzinfo is not None:
-        return dt.astimezone(tz=None).replace(tzinfo=None)
+        return dt.astimezone(timezone.utc).replace(tzinfo=None)
     return dt
 
 

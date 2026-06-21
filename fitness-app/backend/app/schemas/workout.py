@@ -263,6 +263,11 @@ class WorkoutSummary(BaseModel):
     activity_type: Optional[str] = None
     strain: Optional[float] = None
     calories: Optional[int] = None
+    # Wearable HR summary for the History-row provenance badge + biometrics.
+    # Optional so rows without a wearable (and legacy data) render unchanged.
+    avg_heart_rate: Optional[int] = None
+    peak_heart_rate: Optional[int] = None
+    hr_source: Optional[str] = None
 
     class Config:
         from_attributes = True

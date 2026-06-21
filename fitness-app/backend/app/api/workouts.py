@@ -20,6 +20,10 @@ from app.models.exercise import Exercise
 from app.models.pr import PR, PRType
 from app.models.user import User
 from app.models.workout import Set, WorkoutExercise, WorkoutSession
+from app.schemas.healthkit import (
+    HealthKitImportRequest,
+    HealthKitImportResponse,
+)
 from app.schemas.workout import (
     AchievementUnlocked,
     DungeonProgressResponse,
@@ -33,6 +37,7 @@ from app.schemas.workout import (
     WorkoutSummary,
     WorkoutUpdate,
 )
+from app.services import healthkit_service
 from app.services.achievement_service import check_and_unlock_achievements
 from app.services.dungeon_service import maybe_spawn_dungeon, update_dungeon_progress
 from app.services.heart_rate_service import ingest_heart_rate
@@ -476,6 +481,49 @@ async def _create_workout_impl(
     )
 
 
+@router.post("/import-healthkit", response_model=HealthKitImportResponse)
+async def import_healthkit(
+    payload: HealthKitImportRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Import a batch of completed Apple-Watch HealthKit workouts.
+
+    Dedups by HealthKit UUID, routes cardio into synthetic sessions and
+    strength into existing logged sessions by time-overlap, ingests raw HR
+    samples, and idempotently re-credits HR-based quests. ``hr_source`` is
+    hard-stamped ``"apple_watch"`` server-side. The service flushes; this
+    endpoint owns the final ``db.commit()`` (mirrors the WHOOP sync path).
+
+    Args:
+        payload: Batch of HealthKit workouts to import.
+        current_user: Currently authenticated user.
+        db: Database session.
+
+    Returns:
+        HealthKitImportResponse summarizing imported/skipped/created/updated
+        sessions, unmatched strength workouts, and completed quests.
+
+    Raises:
+        HTTPException: 400 if the import fails.
+    """
+    try:
+        result = healthkit_service.import_healthkit_workouts(
+            db, current_user.id, payload.workouts
+        )
+        db.commit()
+        return result
+    except HTTPException:
+        raise
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="HealthKit import failed",
+        )
+
+
 @router.get("", response_model=List[WorkoutSummary])
 @router.get("/", response_model=List[WorkoutSummary])
 async def list_workouts(
@@ -548,7 +596,12 @@ async def list_workouts(
             is_whoop_activity=whoop_data.get("is_whoop_activity", False) if whoop_data else False,
             activity_type=whoop_data.get("activity_type") if whoop_data else None,
             strain=whoop_data.get("strain") if whoop_data else None,
-            calories=whoop_data.get("calories") if whoop_data else None
+            calories=whoop_data.get("calories") if whoop_data else None,
+            # Wearable HR provenance (read from session columns; populated by
+            # Apple Watch live sessions and the HealthKit/WHOOP import paths).
+            avg_heart_rate=workout.avg_heart_rate,
+            peak_heart_rate=workout.peak_heart_rate,
+            hr_source=workout.hr_source,
         ))
 
     return summaries
@@ -793,6 +846,10 @@ def _build_workout_response(workout: WorkoutSession) -> WorkoutResponse:
                 rir=s.rir,
                 set_number=s.set_number,
                 e1rm=s.e1rm,
+                start_time=to_iso8601_utc(s.start_time),
+                end_time=to_iso8601_utc(s.end_time),
+                avg_heart_rate=s.avg_heart_rate,
+                peak_heart_rate=s.peak_heart_rate,
                 created_at=to_iso8601_utc(s.created_at)
             )
             for s in we.sets
@@ -816,6 +873,13 @@ def _build_workout_response(workout: WorkoutSession) -> WorkoutResponse:
         session_rpe=workout.session_rpe,
         notes=workout.notes,
         exercises=exercises,
+        # Wearable session HR summary (Apple Watch / WHOOP / screenshot).
+        avg_heart_rate=workout.avg_heart_rate,
+        peak_heart_rate=workout.peak_heart_rate,
+        strain=workout.strain,
+        kilojoules=workout.kilojoules,
+        hr_zone_seconds=workout.hr_zone_seconds,
+        hr_source=workout.hr_source,
         created_at=to_iso8601_utc(workout.created_at),
         updated_at=to_iso8601_utc(workout.updated_at)
     )

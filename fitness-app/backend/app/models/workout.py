@@ -43,6 +43,13 @@ class WorkoutSession(Base):
     # one. Uniqueness is enforced at (user_id, client_id) via the index below.
     client_id = Column(String, nullable=True, index=True)
 
+    # HealthKit (Apple Watch) workout UUID — the dedup target for the
+    # `POST /workouts/import-healthkit` path. Cardio imports create a session
+    # stamped with it; strength imports backfill it onto the matched existing
+    # session. Nullable for every non-HealthKit row. Uniqueness is enforced at
+    # (user_id, hk_uuid) via the partial index below, mirroring client_id.
+    hk_uuid = Column(String, nullable=True, index=True)
+
     date = Column(DateTime, nullable=False, index=True)
     duration_minutes = Column(Integer, nullable=True)
     session_rpe = Column(Integer, nullable=True)  # Optional 1-10 rating for entire session
@@ -91,6 +98,16 @@ class WorkoutSession(Base):
             "client_id",
             unique=True,
             postgresql_where=text("client_id IS NOT NULL"),
+        ),
+        # Per-user HealthKit UUID uniqueness so re-imports are idempotent.
+        # Same partial-index pattern as client_id (raw sa.text, not a detached
+        # Column) so Postgres deploys and test create_all both stay valid.
+        Index(
+            "ix_workout_sessions_user_hk_uuid_unique",
+            "user_id",
+            "hk_uuid",
+            unique=True,
+            postgresql_where=text("hk_uuid IS NOT NULL"),
         ),
     )
 
