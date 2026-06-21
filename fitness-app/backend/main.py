@@ -376,6 +376,7 @@ from app.api import (
     sync,
     users,
     weekly_report,
+    whoop,
     workouts,
 )
 
@@ -399,6 +400,7 @@ app.include_router(missions.router, prefix="/missions", tags=["Missions"])
 app.include_router(weekly_report.router, prefix="/progress", tags=["Progress"])
 app.include_router(scan_balance.router, prefix="/scan-balance", tags=["Scan Balance"])
 app.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
+app.include_router(whoop.router, prefix="/whoop", tags=["WHOOP"])
 
 if __name__ == "__main__":
     import uvicorn

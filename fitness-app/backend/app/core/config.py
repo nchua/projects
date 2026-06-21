@@ -51,6 +51,24 @@ class Settings(BaseSettings):
     # dev and existing deploys don't break.
     ALLOWED_ORIGINS: str = Field(default="")
 
+    # ── WHOOP API integration (Phase 1 wearable HR) ──
+    # Register a WHOOP developer app at https://developer.whoop.com to obtain a
+    # client id/secret, then set these as env vars (never hardcode — see
+    # docs/whoop-setup.md). When CLIENT_ID/SECRET are empty the WHOOP endpoints
+    # return 503 so the rest of the app keeps working without credentials.
+    WHOOP_CLIENT_ID: str = Field(default="")
+    WHOOP_CLIENT_SECRET: str = Field(default="")
+    # Must exactly match a redirect URI registered on the WHOOP app, e.g.
+    # https://backend-production-e316.up.railway.app/whoop/callback
+    WHOOP_REDIRECT_URI: str = Field(default="")
+    # OAuth scopes. `offline` is required to receive a refresh token; the rest
+    # grant read access to the profile (for whoop_user_id) and workouts.
+    WHOOP_SCOPES: str = Field(default="offline read:profile read:workout")
+    # WHOOP API hosts (overridable for testing / future API changes).
+    WHOOP_AUTH_URL: str = Field(default="https://api.prod.whoop.com/oauth/oauth2/auth")
+    WHOOP_TOKEN_URL: str = Field(default="https://api.prod.whoop.com/oauth/oauth2/token")
+    WHOOP_API_BASE_URL: str = Field(default="https://api.prod.whoop.com/developer")
+
     class Config:
         env_file = ".env"
         case_sensitive = True

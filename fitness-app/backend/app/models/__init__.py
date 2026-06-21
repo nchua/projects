@@ -35,7 +35,14 @@ from app.models.scan_balance import PurchaseRecord, ScanBalance
 from app.models.screenshot_usage import ScreenshotUsage
 from app.models.user import E1RMFormula, TrainingExperience, User, UserProfile
 from app.models.user import WeightUnit as UserWeightUnit
-from app.models.workout import Set, WeightUnit, WorkoutExercise, WorkoutSession
+from app.models.whoop import WhoopConnection
+from app.models.workout import (
+    HeartRateSample,
+    Set,
+    WeightUnit,
+    WorkoutExercise,
+    WorkoutSession,
+)
 
 __all__ = [
     "User",
@@ -47,7 +54,9 @@ __all__ = [
     "WorkoutSession",
     "WorkoutExercise",
     "Set",
+    "HeartRateSample",
     "WeightUnit",
+    "WhoopConnection",
     "BodyweightEntry",
     "PR",
     "PRType",

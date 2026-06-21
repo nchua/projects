@@ -18,9 +18,27 @@ watchOS companion app (none exists today) for live HR.
   of the random daily pool — wearable-gated, follow-up); Alembic migration
   unifies the 4 divergent heads + adds the schema. Verified via the full
   backend test suite + an end-to-end HR-attribution test.
-- ⏳ **Phase 1 — WHOOP API:** not started (needs WHOOP developer credentials).
+- ✅ **Phase 1 — WHOOP API (DONE, backend; needs credentials to go live):**
+  `whoop_connections` table (tokens encrypted at rest with Fernet keyed off
+  `SECRET_KEY` — `app/core/crypto.py`); `whoop_service` with OAuth authorize-URL
+  generation, code→token exchange, token refresh, and a sync that pulls
+  `GET /v1/activity/workout` (httpx) and backfills each matching session's HR
+  summary (avg/peak HR, strain, kJ, `hr_zone_seconds` from WHOOP's
+  `zone_duration` milli fields) by **time overlap** — session-level only (WHOOP
+  gives a summary + zones, not raw samples; per-set is the Watch's job). After a
+  sync updates a session's HR it re-runs `recalculate_quest_progress` for that
+  day so HR quests credit (HR arrives after the workout was logged). Router
+  `app/api/whoop.py` (`GET /whoop/connect`, `GET /whoop/callback`,
+  `POST /whoop/sync`, `GET /whoop/status`); config in `app/core/config.py`
+  (`WHOOP_CLIENT_ID/SECRET/REDIRECT_URI` from env — never hardcoded); Alembic
+  migration `add_whoop_connections` chained off `add_wearable_hr`. Endpoints
+  return 503 until credentials are set, so this ships before WHOOP signup.
+  Setup: `docs/whoop-setup.md`. Verified via the backend test suite +
+  `tests/test_whoop_service.py` (encryption, OAuth state, zone mapping,
+  time-overlap matching, end-to-end sync crediting an HR quest).
 - ⏳ **Phase 2 — Apple Watch live HR + watchOS app:** not started (needs Xcode
-  to build — not possible in the Linux remote env).
+  to build — done on the desktop). iOS HealthKit live-HR reads,
+  `APITypes.swift` / display wiring, watchOS companion target.
 
 ### Refinements made during Phase 0 (supersede earlier notes below)
 - HR samples are attributed to sets **purely by timestamp window**, not by
