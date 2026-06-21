@@ -49,6 +49,32 @@ watchOS companion app (none exists today) for live HR.
 - HR quests are **excluded from the random daily pool** until wearable-gated
   generation exists, so non-wearable users don't get impossible quests.
 
+### Refinements made during Phase 1 (supersede earlier notes below)
+- **WHOOP is session-level only — there is NO per-set HR from WHOOP.** The
+  `/v1/activity/workout` endpoint returns an aggregate *summary* (avg/max HR,
+  strain, kJ) + HR-zone *durations* — **not** a per-second HR timeseries. So the
+  earlier "Phase 1 post-hoc per-set alignment" idea (slice a WHOOP HR series into
+  set windows) is **not possible** and was dropped. Per-set HR mapping is **Phase 2
+  (Apple Watch) only**, where the watch logs real set boundaries + raw samples.
+  Phase 1's deliverable is HR/strain in quests + **session-level** analytics for
+  WHOOP users, not per-set.
+- **Session matching is greatest-overlap, and unmatched WHOOP workouts are
+  counted, not absorbed.** `sync_recent_workouts` picks the app session with the
+  most time overlap; if none overlaps it increments `workouts_unmatched` and moves
+  on. The earlier idea to **create a synthetic session** for unmatched workouts (à
+  la the screenshot path) or **attach to the nearest within a tolerance** was **not
+  built** — see Open Decision D1 below. Backfill is **non-destructive** (won't
+  clobber existing Apple-Watch/screenshot HR) and **skips unscored** WHOOP workouts
+  (`score_state != "SCORED"`).
+- **Quest types built:** `HR_ZONE_TIME`, `PEAK_HR`, `SESSION_STRAIN`. The earlier
+  `HR_AVG_SESSION` candidate was **not** built (add later only if wanted).
+- **`whoop_connections` carries more than first scoped:** also `scope`,
+  `last_synced_at`, `whoop_user_id`; access/refresh tokens are **Fernet-encrypted
+  at rest** (`app/core/crypto.py`, keyed off `SECRET_KEY`). OAuth `state` is a
+  signed JWT so the browser callback recovers the user.
+- **WHOOP v1 + v2 key names** both handled for zone durations (`zone_duration` /
+  `zone_durations`).
+
 ## Goal
 
 Bring wearable heart-rate (and downstream exertion) data into the app so we can:
@@ -187,12 +213,12 @@ Given a session HR timeline and a set list, attribute samples to sets:
 - **Phase 2 (Apple Watch, best):** the watchOS app records each set's `start_time`/`end_time`
   as the user logs it during the live `HKWorkoutSession`. Mapping is exact — slice samples by
   `[start_time, end_time]`.
-- **Phase 1 (WHOOP / post-hoc, good enough):** WHOOP gives a session HR series with timestamps
-  but no set boundaries. Infer boundaries from `Set.created_at` ordering + `duration_minutes`:
-  treat each set as a window ending at its `created_at`, starting at the previous set's
-  `created_at` (or a default work interval). Store the inferred windows in `start_time`/`end_time`
-  so the attribution is transparent and editable. Per CLAUDE.md "add manual controls": let the
-  user nudge set timestamps if the auto-alignment looks off.
+- ~~**Phase 1 (WHOOP / post-hoc, good enough):** WHOOP gives a session HR series with timestamps
+  but no set boundaries. Infer boundaries from `Set.created_at` ordering + `duration_minutes`...~~
+  **SUPERSEDED (see Phase 1 refinements above):** WHOOP does **not** return an HR timeseries —
+  only an aggregate summary, so there is nothing to slice into per-set windows. Per-set HR is
+  **Phase 2 (Apple Watch) only**. The `Set.start_time/end_time` columns exist and are populated
+  by the Watch path (exact boundaries), not inferred from WHOOP.
 
 ### WHOOP API integration (Phase 1)
 
@@ -206,9 +232,11 @@ Given a session HR timeline and a set list, attribute samples to sets:
   vars (per CLAUDE.md: never hardcode; use `os.environ.get`). Tokens encrypted at rest.
 - **Network:** outbound calls to `api.prod.whoop.com` — confirm the remote/Railway egress
   policy allows it.
-- **Session matching:** match a WHOOP workout to an app `WorkoutSession` by overlapping time
-  window; if none, create a synthetic session (mirror the existing screenshot path) or attach
-  to the nearest session within a tolerance. Surface ambiguous matches to the user.
+- **Session matching (as built):** match a WHOOP workout to the app `WorkoutSession` with the
+  **greatest time overlap**. If none overlaps, the workout is **counted in
+  `workouts_unmatched` and skipped** — no synthetic session, no nearest-within-tolerance
+  fallback, no surfacing to the user yet. (The original "create a synthetic session / attach to
+  nearest / surface ambiguous matches" plan was **not** built — see **Open Decision D1**.)
 
 ### Apple Watch live HR (Phase 2)
 
@@ -246,7 +274,9 @@ When adding HR fields to sets/sessions, update **all** of:
 `schemas/workout.py` → `api/workouts.py` → `services/workout_stats.py` →
 `screenshot_service.py` (keep screenshot path consistent) → iOS `APITypes.swift` →
 `HomeView.swift` / `HistoryView.swift` (+ quest components). Add an Alembic migration
-(nullable columns, latest revision currently `e741d5fb553c`). Remember the
+(nullable columns; HR/WHOOP heads `add_wearable_hr` → `add_whoop_connections` are already
+applied — chain new migrations off the current head, don't hardcode an old revision).
+Remember the
 **`joinedload` rule** before passing refreshed sessions into `update_quest_progress`.
 
 ---
@@ -264,7 +294,8 @@ When adding HR fields to sets/sessions, update **all** of:
 - Post-hoc per-set HR alignment + session matching.
 - New HR quest types + seeds; quest recalculation on sync.
 - iOS: "Connect WHOOP" settings flow, HR display on workout detail + quest cards.
-- **Deliverable:** HR/strain in quests and per-set analytics for WHOOP users (post-workout).
+- **Deliverable:** HR/strain in quests and **session-level** HR analytics for WHOOP users
+  (post-workout). *(Per-set analytics need Apple Watch — Phase 2. WHOOP has no per-set data.)*
 
 ### Phase 2 — Apple Watch live HR
 - watchOS target + WatchConnectivity, `HKWorkoutSession` live HR, live set boundaries.
@@ -276,6 +307,18 @@ When adding HR fields to sets/sessions, update **all** of:
   efficiency trends; feed into the strength-coach reporting and progress views.
 
 ---
+
+## Open decisions (surfaced by the Phase 1 audit)
+
+- **D1 — Unmatched WHOOP workouts.** Today they're counted (`workouts_unmatched`) and dropped.
+  Options: (a) leave as-is — WHOOP only enriches workouts you logged in the app (simplest,
+  current); (b) create a **synthetic session** for unmatched WHOOP workouts (cardio/runs you
+  never logged), mirroring the screenshot path; (c) **surface** them in the app and let the user
+  attach/dismiss (matches CLAUDE.md "add manual controls"). Recommendation: ship (a), add (c)
+  when the iOS sync UI lands; (b) only if standalone-cardio tracking is wanted. **Needs Nick's
+  call.**
+- **D2 — `HR_AVG_SESSION` quest type.** Not built. Add it only if "average HR ≥ X for the
+  session" is a quest worth having beyond zone-time / peak / strain.
 
 ## Open questions / risks
 
@@ -289,9 +332,10 @@ When adding HR fields to sets/sessions, update **all** of:
    "minimal entitlements for personal team" decision — verify before Phase 2.
 5. **Raw sample volume & retention.** ~1 Hz HR → thousands of rows per session; decide
    downsampling/retention before scaling.
-6. **Set-timestamp accuracy for post-hoc alignment.** `Set.created_at` reflects log time, which
-   may lag the actual set, especially for screenshot/offline-queued workouts — inferred windows
-   need a manual-edit escape hatch.
+6. **Set-timestamp accuracy.** *(No longer applies to WHOOP — per-set inference was dropped.)*
+   For the **Apple Watch** path (Phase 2), set boundaries come from the live workout, so they're
+   accurate. `Set.created_at` still lags for screenshot/offline-queued workouts, but that only
+   matters if per-set HR inference is ever revisited.
 7. **Async quest crediting.** HR quests completing minutes after the workout (on WHOOP sync)
    needs UX thought (notification? silent backfill?) and idempotent recalculation.
 

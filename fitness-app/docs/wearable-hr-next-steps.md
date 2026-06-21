@@ -222,6 +222,10 @@ precisely so these can be recomputed without re-ingesting.
 4. **Async quest crediting UX.** HR quests complete on sync (minutes after the workout) —
    decide notification vs. silent backfill so the daily card at 0% pre-sync doesn't look broken.
 5. **HR-quest cap** in the daily pool (recommend ≤1 of 3).
+6. **Unmatched WHOOP workouts (Decision D1).** Sync currently counts and drops WHOOP workouts
+   with no overlapping app session. Decide: leave as-is / create synthetic sessions / surface
+   for manual attach. See `wearable-heart-rate-quest-integration.md` → Open Decisions. The iOS
+   sync UI (1A) is the natural place to add the "surface & attach" option if chosen.
 
 **Key files (quick reference):**
 `backend/app/services/quest_service.py` · `…/whoop_service.py` · `…/workout_stats.py` ·
