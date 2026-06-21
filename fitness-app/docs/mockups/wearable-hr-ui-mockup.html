@@ -27,6 +27,22 @@
     --lift-squat:#3B82F6;            /* exercise accent (squat) */
     --quest-purple:#7B61FF;          /* QuestDetailSheet bar gradient end */
     --easy-green:#4ADE80;            /* QuestDetailSheet difficulty: easy */
+    --normal-amber:#FBBF24;          /* QuestDetailSheet difficulty: normal */
+    --hard-red:#F87171;              /* QuestDetailSheet difficulty: hard */
+    --quest-green:#00FF88;           /* DailyQuestsCard claimable / detail-complete */
+
+    /* Exercise accent — Color.exerciseColor(for:) (objective-card left bar) */
+    --lift-bench:#EF4444;            /* bench (and muscle: chest) */
+    --lift-deadlift:#8B5CF6;         /* deadlift */
+    --lift-row:#22C55E;              /* row (and muscle: back) */
+    --lift-ohp:#EC4899;              /* overhead / press */
+    --lift-curl:#A855F7;             /* curl */
+    --lift-pullup:#F59E0B;           /* pull-up (amber) */
+
+    /* Power Levels — BigThreeLift.liftColor (the muted squat/bench/deadlift set) */
+    --pl-squat:#FF6B6B;              /* coral */
+    --pl-bench:#00D4FF;              /* cyan (== systemPrimary) */
+    --pl-deadlift:#7B61FF;           /* purple (== quest-purple) */
 
     --void-black:#0A0A0F;
     --void-dark:#12121A;
@@ -164,7 +180,7 @@
 
   /* ---- per-set table ---- */
   .obj { margin-top:0; border:1px solid var(--arise-border); border-radius:4px; overflow:hidden; }
-  .obj-head { display:flex; align-items:center; gap:12px; padding:14px; background:var(--void-medium); border-left:4px solid var(--lift-squat); }
+  .obj-head { display:flex; align-items:center; gap:12px; padding:14px; background:var(--void-medium); border-left:4px solid var(--lift-bench); }
   .obj-head .nm { font-family:var(--font-header); font-weight:600; font-size:16px; }
   .obj-head .fn { font-family:var(--font-mono); font-size:11px; color:var(--text-muted); font-style:italic; margin-top:2px; }
   .obj-head .best { margin-left:auto; text-align:right; }
@@ -227,6 +243,16 @@
   .setting.disabled { opacity:.5; }
   .chev { color:var(--text-muted); font-size:18px; }
   .dot-ok { color:var(--success-green); }
+
+  /* ---- palette reference (the "map") ---- */
+  .pal-group { font-family:var(--font-mono); font-size:9px; letter-spacing:1px; color:var(--text-muted); text-transform:uppercase; margin:16px 0 8px; }
+  .pal-group:first-child { margin-top:0; }
+  .pal-note { font-family:var(--font-mono); font-size:9.5px; color:var(--text-muted); line-height:1.6; margin:2px 0 8px; font-style:italic; }
+  .pal-row { display:flex; flex-wrap:wrap; gap:8px 10px; }
+  .sw { display:flex; flex-direction:column; gap:4px; width:80px; }
+  .sw i { display:block; height:30px; border-radius:4px; border:1px solid rgba(255,255,255,0.08); }
+  .sw b { font-family:var(--font-mono); font-size:9px; color:var(--text-secondary); font-weight:500; line-height:1.2; }
+  .sw u { font-family:var(--font-mono); font-size:8.5px; color:var(--text-muted); text-decoration:none; }
 
   .foot { margin-top:30px; font-family:var(--font-mono); font-size:9.5px; color:var(--text-muted); line-height:1.7; text-align:center; }
 </style>
@@ -351,9 +377,70 @@
     </div>
   </div>
 
+  <!-- Surface 6: Color palette map -->
+  <div class="surface-label">Color palette map (source: Colors.swift + component code)</div>
+  <div class="card">
+    <div class="pal-group">Core · status</div>
+    <div class="pal-row">
+      <span class="sw"><i style="background:var(--system-primary)"></i><b>systemPrimary</b><u>#00D4FF</u></span>
+      <span class="sw"><i style="background:var(--success-green)"></i><b>successGreen</b><u>#33FF88</u></span>
+      <span class="sw"><i style="background:var(--gold)"></i><b>gold</b><u>#FFD700</u></span>
+      <span class="sw"><i style="background:var(--warning-red)"></i><b>warningRed</b><u>#FF3333</u></span>
+      <span class="sw"><i style="background:var(--orange)"></i><b>orange ·strain</b><u>#FF9500</u></span>
+    </div>
+
+    <div class="pal-group">HR zones (AriseHRZoneBar — locked)</div>
+    <div class="pal-row">
+      <span class="sw"><i style="background:var(--system-primary)"></i><b>z1 recovery</b><u>#00D4FF</u></span>
+      <span class="sw"><i style="background:var(--success-green)"></i><b>z2 aerobic</b><u>#33FF88</u></span>
+      <span class="sw"><i style="background:var(--gold)"></i><b>z3 tempo</b><u>#FFD700</u></span>
+      <span class="sw"><i style="background:var(--hr-z4-orange)"></i><b>z4 thresh</b><u>#FF8C42</u></span>
+      <span class="sw"><i style="background:var(--warning-red)"></i><b>z5 max</b><u>#FF3333</u></span>
+    </div>
+
+    <div class="pal-group">Exercise accent — exerciseColor(for:) · objective-card left bar</div>
+    <div class="pal-row">
+      <span class="sw"><i style="background:var(--lift-squat)"></i><b>squat</b><u>#3B82F6</u></span>
+      <span class="sw"><i style="background:var(--lift-bench)"></i><b>bench ·chest</b><u>#EF4444</u></span>
+      <span class="sw"><i style="background:var(--lift-deadlift)"></i><b>deadlift</b><u>#8B5CF6</u></span>
+      <span class="sw"><i style="background:var(--lift-row)"></i><b>row ·back</b><u>#22C55E</u></span>
+      <span class="sw"><i style="background:var(--lift-ohp)"></i><b>ohp/press</b><u>#EC4899</u></span>
+      <span class="sw"><i style="background:var(--lift-curl)"></i><b>curl</b><u>#A855F7</u></span>
+      <span class="sw"><i style="background:var(--lift-pullup)"></i><b>pull-up</b><u>#F59E0B</u></span>
+    </div>
+
+    <div class="pal-group">Power Levels — BigThreeLift.liftColor (the muted set you flagged)</div>
+    <div class="pal-note">Note: the Status-screen "Power Levels" card uses a DIFFERENT, muted mapping than the exercise-accent bars above — squat/bench/deadlift = coral / cyan / purple.</div>
+    <div class="pal-row">
+      <span class="sw"><i style="background:var(--pl-squat)"></i><b>squat</b><u>#FF6B6B</u></span>
+      <span class="sw"><i style="background:var(--pl-bench)"></i><b>bench</b><u>#00D4FF</u></span>
+      <span class="sw"><i style="background:var(--pl-deadlift)"></i><b>deadlift</b><u>#7B61FF</u></span>
+    </div>
+
+    <div class="pal-group">Quests (DailyQuestsCard / QuestDetailSheet)</div>
+    <div class="pal-row">
+      <span class="sw"><i style="background:var(--quest-purple)"></i><b>detail bar→</b><u>#7B61FF</u></span>
+      <span class="sw"><i style="background:var(--quest-green)"></i><b>claimable</b><u>#00FF88</u></span>
+      <span class="sw"><i style="background:var(--easy-green)"></i><b>easy</b><u>#4ADE80</u></span>
+      <span class="sw"><i style="background:var(--normal-amber)"></i><b>normal</b><u>#FBBF24</u></span>
+      <span class="sw"><i style="background:var(--hard-red)"></i><b>hard</b><u>#F87171</u></span>
+    </div>
+
+    <div class="pal-group">Surfaces · text</div>
+    <div class="pal-row">
+      <span class="sw"><i style="background:var(--void-black)"></i><b>voidBlack</b><u>#0A0A0F</u></span>
+      <span class="sw"><i style="background:var(--void-dark)"></i><b>voidDark</b><u>#12121A</u></span>
+      <span class="sw"><i style="background:var(--void-medium)"></i><b>voidMedium</b><u>#1A1A24</u></span>
+      <span class="sw"><i style="background:var(--void-light)"></i><b>voidLight</b><u>#252530</u></span>
+      <span class="sw"><i style="background:var(--text-primary)"></i><b>textPrimary</b><u>#FFFFFF</u></span>
+      <span class="sw"><i style="background:var(--text-secondary)"></i><b>textSecondary</b><u>#A0A0B0</u></span>
+      <span class="sw"><i style="background:var(--text-muted)"></i><b>textMuted</b><u>#606070</u></span>
+    </div>
+  </div>
+
   <p class="foot">
     Mirrors ios/FitnessApp/Components/{AriseHRZoneBar,AriseSourceBadge,AriseWorkoutHRSection}.swift<br>
-    Colors.swift · Fonts.swift · spec docs/wearable-hr-v1-build-spec.md (Chunk D + E)
+    Colors.swift · Fonts.swift · PowerLevelsCard.swift · spec docs/wearable-hr-v1-build-spec.md (Chunk D + E)
   </p>
 </div>
 
@@ -392,10 +479,10 @@
 
   // ---- Mock workout data ----
   const SETS_HR = [
-    {n:1, w:225, reps:5, rpe:7,   e1rm:262, hr:128},
-    {n:2, w:245, reps:5, rpe:8,   e1rm:285, hr:145},
-    {n:3, w:245, reps:5, rpe:8.5, e1rm:285, hr:158, best:true},
-    {n:4, w:265, reps:3, rpe:9,   e1rm:291, hr:172},
+    {n:1, w:95,  reps:8, rpe:7,   e1rm:120, hr:128},
+    {n:2, w:135, reps:6, rpe:8,   e1rm:162, hr:145},
+    {n:3, w:155, reps:6, rpe:8.5, e1rm:186, hr:158, best:true},
+    {n:4, w:155, reps:5, rpe:9,   e1rm:181, hr:172},
   ];
   const SETS_NO_HR = SETS_HR.map(s => ({...s, hr:null}));
 
@@ -523,8 +610,8 @@
     }).join('');
     return `<div class="obj">
       <div class="obj-head">
-        <div><div class="nm">Barbell Squat</div><div class="fn">"Mountain Breaker"</div></div>
-        <div class="best"><div class="v">291</div><div class="l">BEST e1RM</div></div>
+        <div><div class="nm">Barbell Bench Press</div><div class="fn">"Titan's Press"</div></div>
+        <div class="best"><div class="v">186</div><div class="l">BEST e1RM</div></div>
       </div>
       <table class="sets"><thead>${head}</thead><tbody>${rows}</tbody></table>
     </div>`;
