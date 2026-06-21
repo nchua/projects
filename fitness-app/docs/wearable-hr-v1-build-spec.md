@@ -1,6 +1,6 @@
 # Wearable HR v1 — Build Spec (living document)
 
-**Status:** In progress · Chunk A `Done (304511f)` · Chunk B `Done (00c0cdc)` · Chunks C/D `Not started`
+**Status:** In progress · Chunk A `Done (304511f)` · Chunk B `Done (00c0cdc)` · Chunk C `Done (8996ab2)` · Chunk D `Not started`
 **Author:** Claude Code (spec-writing council: backend / iOS / design / PM), 2026-06-20
 **Branch:** `claude/next-steps-design-spec-83n3jo` → merges to `main`
 **Scope:** Apple Health import (1.7a backend + 1.7b iOS) + HR display (1B). WHOOP (1A) stubbed.
@@ -514,8 +514,45 @@ bash scripts/lint-entitlements.sh                                            # e
 
 ## Chunk C — iOS HealthKit read + foreground auto-sync + settings rows
 
-- **Status:** Not started
+- **Status:** Done (2026-06-21, `8996ab2`)
 - **Depends on:** Chunk B (request types + `APIClient.importHealthKitWorkouts` + `getWhoopStatus`).
+
+> **Build-note (2026-06-21, `8996ab2`):** Built exactly to this section against the **CONFIRMED v1**
+> Contract Registry — **no contract change**, so per the Amendment Protocol **no Amendment Log row** was
+> needed (Chunk B precedent). All seven files landed as specced: `WorkoutImportStore.swift` (UserDefaults
+> cursor + capped imported-uuid set, out of SwiftData), `HealthKitManager.swift` (enlarged `readTypes` =
+> `workoutType()` + `.heartRate` + best-effort `.restingHeartRate`/`.heartRateVariabilitySDNN`;
+> `importNewWorkouts(age:)` + helpers), `SyncCoordinator.swift` (`syncOnForeground()`, 5-min debounce +
+> in-flight guard), `FitnessApp.swift` (single global `scenePhase → .active` observer; LogView's local one
+> untouched), `WhoopConnectionViewModel.swift` (stub loading `getWhoopStatus()`), `AppleHealthWorkoutSettingsView.swift`
+> (state machine `.notAvailable/.notAuthorized/.idle/.importing/.imported/.upToDate/.error` + "Import now"),
+> and `ProfileView.swift` (`AriseSettingsRow.titleColor` param + the two new rows: cyan `figure.run`
+> "Apple Health — Workouts & HR" `NavigationLink`, and the disabled `circle.circle` "Connect WHOOP — COMING SOON"
+> row at `.opacity(0.5)`). **Payload builder is contract-faithful:** `HKWorkoutActivityType → activity_type`
+> emits fuzz-matchable (≥70) lowercase names — `running/walking/cycling/rowing/elliptical/yoga`=100,
+> `hiit`→"HIIT"=100, `core_training`→"Core Training"≈92; `strength_training` carries `is_strength=true` and
+> routes to the strength path (matcher unused); `"other"` is an accepted unlinked session (per the 2026-06-21
+> Chunk A amendment). kcal→kJ `×4.184`; ISO8601 UTC + fractional + `Z` (matches backend `parse_date`); zones
+> `z1<60…z5≥90` (matches Chunk D endpoints), **nil when age unknown**; HR samples decimated to ~1/5s (cap 720),
+> avg/peak from raw samples; `distance_meters` omitted. **No `project.yml`/entitlements change** (existing
+> HealthKit + `NSHealthShareUsageDescription` cover the read-only additions; **no** background-delivery, **no**
+> Apple Pay). The tracked `project.pbxproj` picked up the 4 new files (16-line additive diff, no churn) and is
+> in the commit. **Gate green:** `xcodegen generate` clean; `xcodebuild … build` → `** BUILD SUCCEEDED **`,
+> `grep "error:"` empty; `lint-entitlements.sh` → "All checks passed". (The SourceKit "Cannot find X in scope"/
+> "No such module 'UIKit'" diagnostics during editing were cross-file index false positives — `xcodebuild` is
+> authoritative, same as Chunk B.) **Independent `/evaluate`** (fresh agent, generator-evaluator separation,
+> diffed against the canonical backend Pydantic + matcher + seed list): **A− PASS WITH WARNINGS**, "would you
+> ship: YES". No Critical/Error/contract defects. Its W1/W2 (cursor advancing on empty/failed runs against a
+> 2-day buffer could drop a >2-day-late Watch sync) were **fixed before commit** by adding a **14-day
+> steady-state lookback floor** (`queryStart = min(cursor − buffer, now − 14d)`; dedup pre-filter keeps the
+> wider re-scan free on the wire) + deduping `quests_completed` across POST chunks (Info I3). Re-ran the gate
+> green after the fix. **Device acceptance still pending** — Simulator has no Watch workout/HR data, so
+> `importNewWorkouts()` returning empty there is expected, not a bug; real `HKWorkout`/HR reads, the single
+> permission sheet, silent foreground import, and dedup require a paired iPhone + Apple Watch.
+> **Deferred (not material, flagged to Nick):** `NSHealthShareUsageDescription` copy (`project.yml:58`) still
+> says "steps, calories, and activity data" — accurate-but-incomplete now that workouts/HR are read (Apple
+> needs only one share string, so functionally fine; the spec deliberately reused it). Update the copy if/when
+> a `project.yml` touch happens anyway.
 - **Goal:** Extend `HealthKitManager` to read completed `HKWorkout`s + raw HR samples, compute zones from
   `220−age`, dedup by `hk_uuid`, and POST; wire **one** global `scenePhase → .active` observer (debounced)
   that silently auto-imports new workouts on every foreground; add the distinct "Apple Health — Workouts & HR"
