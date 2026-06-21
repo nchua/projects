@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Wearable HR — UI Preview (Chunk E mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* ============================================================
+     ARISE design tokens — mirrored verbatim from
+     ios/FitnessApp/Utils/Colors.swift + Fonts.swift.
+     This is a STATIC, MOCK-DATA design preview (Chunk E). Not wired
+     to the backend, not shipped in the app.
+     ============================================================ */
+  :root {
+    --system-primary:#00D4FF;        /* cyan — main brand / z1 */
+    --system-primary-subtle:rgba(0,212,255,0.10);
+    --success-green:#33FF88;         /* z2 */
+    --gold:#FFD700;                  /* z3 */
+    --hr-z4-orange:#FF8C42;          /* z4 (local hrZ4Orange) */
+    --warning-red:#FF3333;           /* z5 (+glow) / peak */
+    --orange:#FF9500;                /* system orange — WHOOP / strain */
+    --void-black:#0A0A0F;
+    --void-dark:#12121A;
+    --void-medium:#1A1A24;
+    --void-light:#252530;
+    --text-primary:#FFFFFF;
+    --text-secondary:#A0A0B0;
+    --text-muted:#606070;
+    --arise-border:rgba(0,212,255,0.20);
+
+    --font-display:'Orbitron',monospace;   /* stat values, big numbers */
+    --font-header:'Rajdhani',sans-serif;   /* section headers, titles */
+    --font-body:'Inter',sans-serif;
+    --font-mono:'JetBrains Mono',monospace;/* labels, metrics, tags */
+  }
+
+  * { box-sizing:border-box; -webkit-tap-highlight-color:rgba(0,212,255,0.15); }
+  html,body { margin:0; padding:0; background:var(--void-black); color:var(--text-primary); }
+  body {
+    font-family:var(--font-body);
+    padding:20px 14px 64px;
+    background:
+      radial-gradient(900px 500px at 50% -120px, rgba(0,212,255,0.06), transparent 70%),
+      var(--void-black);
+    min-height:100vh;
+  }
+  .wrap { max-width:430px; margin:0 auto; }
+
+  /* ---- page header ---- */
+  .page-title {
+    font-family:var(--font-display); font-weight:700; font-size:18px;
+    letter-spacing:2px; color:var(--text-primary); margin:0 0 4px;
+  }
+  .page-sub { font-family:var(--font-mono); font-size:11px; color:var(--text-muted); letter-spacing:.5px; margin:0 0 18px; }
+  .page-sub b { color:var(--system-primary); font-weight:600; }
+
+  /* ---- controls (sticky) ---- */
+  .controls {
+    position:sticky; top:8px; z-index:20;
+    background:linear-gradient(180deg, var(--void-dark), rgba(18,18,26,0.92));
+    backdrop-filter:blur(8px);
+    border:1px solid var(--arise-border); border-radius:6px;
+    padding:12px; margin-bottom:18px;
+    box-shadow:0 8px 30px rgba(0,0,0,0.5);
+  }
+  .ctrl-label { font-family:var(--font-mono); font-size:9px; letter-spacing:1px; color:var(--text-muted); text-transform:uppercase; margin:0 0 6px; }
+  .seg { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .seg:last-of-type { margin-bottom:0; }
+  .seg button {
+    font-family:var(--font-mono); font-size:11px; font-weight:600; letter-spacing:.5px;
+    color:var(--text-secondary); background:var(--void-light);
+    border:1px solid transparent; border-radius:3px;
+    padding:0 10px; min-height:38px; flex:1 1 auto; min-width:64px;
+    cursor:pointer; touch-action:manipulation; transition:transform .06s ease, background .12s, color .12s, border-color .12s;
+  }
+  .seg button:active { transform:scale(0.95); }
+  .seg button.active {
+    color:var(--system-primary); background:var(--system-primary-subtle);
+    border-color:var(--arise-border);
+    box-shadow:0 0 12px rgba(0,212,255,0.18) inset;
+  }
+  .caption {
+    margin-top:10px; padding:8px 10px; border-left:2px solid var(--system-primary);
+    background:rgba(0,212,255,0.05); border-radius:0 3px 3px 0;
+    font-family:var(--font-mono); font-size:10.5px; line-height:1.5; color:var(--text-secondary);
+  }
+  .caption.warn { border-left-color:var(--gold); background:rgba(255,215,0,0.05); }
+
+  /* ---- surface section labels ---- */
+  .surface-label {
+    font-family:var(--font-mono); font-size:9px; letter-spacing:1.5px; color:var(--text-muted);
+    text-transform:uppercase; margin:26px 0 8px; display:flex; align-items:center; gap:8px;
+  }
+  .surface-label::before { content:""; width:5px; height:5px; background:var(--system-primary); transform:rotate(45deg); }
+  .surface-label::after { content:""; flex:1; height:1px; background:linear-gradient(90deg,var(--arise-border),transparent); }
+
+  /* ---- generic ARISE card ---- */
+  .card {
+    background:var(--void-medium); border:1px solid var(--arise-border);
+    border-radius:4px; padding:16px; position:relative; overflow:hidden;
+  }
+  .card.completed::before { content:""; position:absolute; top:0; left:0; right:0; height:1px; background:rgba(51,255,136,0.3); }
+
+  .row-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+  .quest-tag { font-family:var(--font-mono); font-size:10px; font-weight:600; letter-spacing:1px; color:var(--success-green); }
+  .date { font-family:var(--font-header); font-weight:700; font-size:20px; color:var(--text-primary); margin-top:2px; }
+  .check { width:38px; height:38px; border-radius:4px; background:var(--success-green); color:var(--void-black);
+           display:flex; align-items:center; justify-content:center; font-weight:800; font-size:18px; flex:none; }
+
+  .divider { height:1px; background:var(--arise-border); margin:16px 0; }
+
+  /* ---- mini stats row (top of recent card) ---- */
+  .ministats { display:flex; gap:24px; }
+  .ministat .v { font-family:var(--font-display); font-weight:700; font-size:20px; }
+  .ministat .l { font-family:var(--font-mono); font-size:9px; letter-spacing:.5px; color:var(--text-muted); }
+
+  /* ---- section header (◆ TITLE  + trailing badge) ---- */
+  .sechead { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .sechead .t {
+    font-family:var(--font-header); font-weight:600; font-size:14px; letter-spacing:2px;
+    color:var(--text-secondary); text-transform:uppercase; display:flex; align-items:center; gap:8px;
+  }
+  .sechead .t::before { content:"◆"; color:var(--system-primary); font-size:10px; }
+
+  /* ---- source badge ---- */
+  .srcbadge {
+    font-family:var(--font-mono); font-weight:600; letter-spacing:.5px;
+    border-radius:2px; white-space:nowrap; display:inline-flex; align-items:center; gap:3px;
+  }
+
+  /* ---- StatCard ---- */
+  .statrow { display:flex; gap:12px; }
+  .statcard {
+    flex:1; text-align:center; padding:14px 8px; border-radius:4px;
+    background:rgba(0,212,255,0.05); border:1px solid var(--system-primary-subtle);
+  }
+  .statcard .ic { font-size:18px; line-height:1; }
+  .statcard .v { font-family:var(--font-display); font-weight:700; font-size:24px; margin:6px 0 4px; }
+  .statcard .l { font-family:var(--font-mono); font-size:10px; letter-spacing:.5px; color:var(--text-muted); text-transform:uppercase; }
+
+  /* ---- HR zone bar ---- */
+  .zbar { display:flex; height:12px; background:var(--void-light); border-radius:2px; overflow:hidden; margin-top:14px; }
+  .zseg { height:100%; }
+  .zlegend { display:flex; flex-wrap:wrap; gap:12px; margin-top:8px; }
+  .zleg { font-family:var(--font-mono); font-size:9px; font-weight:500; letter-spacing:.5px; color:var(--text-secondary);
+          display:inline-flex; align-items:center; gap:4px; }
+  .zleg .dot { width:8px; height:8px; border-radius:50%; }
+  .zleg b { color:var(--text-muted); font-weight:500; }
+  .zleg u { color:var(--text-muted); text-decoration:none; }
+
+  /* ---- per-set table ---- */
+  .obj { margin-top:14px; border:1px solid var(--arise-border); border-radius:4px; overflow:hidden; }
+  .obj-head { display:flex; align-items:center; gap:12px; padding:12px 14px; background:var(--void-medium); border-left:4px solid var(--system-primary); }
+  .obj-head .nm { font-family:var(--font-header); font-weight:600; font-size:16px; }
+  .obj-head .fn { font-family:var(--font-mono); font-size:11px; color:var(--text-muted); font-style:italic; }
+  .obj-head .best { margin-left:auto; text-align:right; }
+  .obj-head .best .v { font-family:var(--font-display); font-weight:700; font-size:18px; color:var(--gold); }
+  .obj-head .best .l { font-family:var(--font-mono); font-size:8px; letter-spacing:.5px; color:var(--text-muted); }
+  table.sets { width:100%; border-collapse:collapse; }
+  table.sets th, table.sets td { font-family:var(--font-mono); font-size:12px; padding:9px 6px; }
+  table.sets thead th { font-size:10px; font-weight:600; letter-spacing:1px; color:var(--text-muted); background:var(--void-dark); text-transform:uppercase; }
+  table.sets td { border-top:1px solid var(--arise-border); color:var(--text-primary); }
+  table.sets .c { text-align:center; }
+  table.sets .r { text-align:right; }
+  table.sets .l { text-align:left; }
+  table.sets .rpe { color:var(--system-primary); }
+  table.sets .e1 { color:var(--text-secondary); }
+  table.sets tr.best td { background:rgba(255,215,0,0.05); }
+  table.sets tr.best .e1 { color:var(--gold); }
+  .setnum { display:inline-flex; width:20px; height:20px; border-radius:2px; background:var(--success-green); color:var(--void-black); align-items:center; justify-content:center; font-weight:800; font-size:9px; }
+  .cardio-note { font-family:var(--font-mono); font-size:11px; color:var(--text-muted); font-style:italic; padding:14px; }
+
+  /* ---- quests ---- */
+  .quest { display:flex; align-items:center; gap:12px; padding:12px 14px; }
+  .quest + .quest { border-top:1px solid var(--arise-border); }
+  .quest .qic { font-size:20px; width:26px; text-align:center; }
+  .quest .qmid { flex:1; min-width:0; }
+  .quest .qname { font-family:var(--font-header); font-weight:600; font-size:15px; }
+  .quest .qprog { font-family:var(--font-mono); font-size:10px; color:var(--text-muted); margin-top:1px; }
+  .qbar { height:6px; background:var(--void-light); border-radius:3px; overflow:hidden; margin-top:6px; }
+  .qbar > div { height:100%; background:linear-gradient(90deg, rgba(0,212,255,0.7), var(--system-primary)); }
+  .quest .qxp { font-family:var(--font-mono); font-size:10px; color:var(--gold); white-space:nowrap; }
+  .qdetail { margin-top:12px; padding:10px 14px; border-top:1px dashed var(--arise-border); font-family:var(--font-mono); font-size:11px; color:var(--text-secondary); line-height:1.6; }
+  .qdetail b { color:var(--text-primary); }
+
+  /* ---- settings rows ---- */
+  .setting { display:flex; align-items:center; gap:12px; padding:14px; }
+  .setting + .setting { border-top:1px solid var(--arise-border); }
+  .setting .sic { width:30px; height:30px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:15px; flex:none; }
+  .setting .smid { flex:1; }
+  .setting .stitle { font-family:var(--font-header); font-weight:600; font-size:15px; }
+  .setting .pill { font-family:var(--font-mono); font-size:9px; font-weight:600; letter-spacing:.5px; }
+  .setting.disabled { opacity:.5; }
+  .chev { color:var(--text-muted); font-size:16px; }
+  .dot-ok { color:var(--success-green); }
+
+  .foot { margin-top:30px; font-family:var(--font-mono); font-size:10px; color:var(--text-muted); line-height:1.7; text-align:center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="page-title">WEARABLE HR — UI PREVIEW</h1>
+  <p class="page-sub">Chunk E mockup · <b>ARISE</b> design tokens · mock data · not wired to backend</p>
+
+  <!-- Controls -->
+  <div class="controls" id="controls">
+    <p class="ctrl-label">Render state</p>
+    <div class="seg" data-group="state">
+      <button data-state="whoop" class="active">WHOOP</button>
+      <button data-state="watch">APPLE WATCH</button>
+      <button data-state="screenshot">SCREENSHOT</button>
+      <button data-state="legacy">LEGACY GYM</button>
+    </div>
+    <p class="ctrl-label">HR zone scheme</p>
+    <div class="seg" data-group="zone">
+      <button data-zone="five" class="active">5-zone</button>
+      <button data-zone="collapse">z1 · z3 · z5</button>
+      <button data-zone="lmh">low · mid · high</button>
+      <button data-zone="empty">empty</button>
+    </div>
+    <div class="caption" id="caption"></div>
+  </div>
+
+  <!-- Surface 1: Home recent card -->
+  <div class="surface-label">Home — recent workout card</div>
+  <div class="card completed">
+    <div class="row-head">
+      <div>
+        <div class="quest-tag">QUEST COMPLETED</div>
+        <div class="date">Jun 21, 2026</div>
+      </div>
+      <div class="check">✓</div>
+    </div>
+    <div class="divider"></div>
+    <div class="ministats">
+      <div class="ministat"><div class="v" style="color:var(--system-primary)">4</div><div class="l">OBJECTIVES</div></div>
+      <div class="ministat"><div class="v">14</div><div class="l">SETS</div></div>
+      <div class="ministat"><div class="v" style="color:var(--gold)">8</div><div class="l">RPE</div></div>
+    </div>
+    <!-- HR section carries its OWN leading divider, and only when hasHRData
+         (mirrors the real WorkoutSheetHeader: AriseDivider() + AriseWorkoutHRSection
+         inside `if workout.hasHRData`). No divider before Notes. -->
+    <div id="home-biometrics"></div>
+    <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);font-style:italic" id="home-notes">
+      <span style="color:var(--text-muted);letter-spacing:1px;font-size:10px;font-weight:600">HUNTER NOTES</span><br>Heavy squat day. Felt strong.
+    </div>
+  </div>
+
+  <!-- Surface 2: History row -->
+  <div class="surface-label">History — list row</div>
+  <div id="history-row"></div>
+
+  <!-- Surface 3: History detail -->
+  <div class="surface-label">History — workout detail</div>
+  <div class="card">
+    <div id="detail-hr"></div>
+    <div id="detail-objectives"></div>
+  </div>
+
+  <!-- Surface 4: Daily quests -->
+  <div class="surface-label">Daily quests + quest detail (HR quest types)</div>
+  <div class="card" style="padding:0">
+    <div class="quest">
+      <div class="qic">❤️</div>
+      <div class="qmid"><div class="qname">Heat Check</div><div class="qprog">18 / 30 min in elevated HR zones</div><div class="qbar"><div style="width:60%"></div></div></div>
+      <div class="qxp">+25 XP</div>
+    </div>
+    <div class="quest">
+      <div class="qic">🔥</div>
+      <div class="qmid"><div class="qname">Redline</div><div class="qprog">178 / 180 bpm peak</div><div class="qbar"><div style="width:98%"></div></div></div>
+      <div class="qxp">+30 XP</div>
+    </div>
+    <div class="quest">
+      <div class="qic">⚡</div>
+      <div class="qmid"><div class="qname">Strain Seeker</div><div class="qprog">14 / 16 strain</div><div class="qbar"><div style="width:87%"></div></div></div>
+      <div class="qxp">+40 XP</div>
+    </div>
+    <div class="qdetail">
+      QuestDetailSheet copy — <b>hr_zone_time</b> → "18 / 30 min" · "12 minutes in the zone to go!"<br>
+      <b>peak_hr</b> → "178 / 180 bpm" · "2 bpm to your peak target!"<br>
+      <b>session_strain</b> → "14 / 16 strain" · "2 strain to go!"
+    </div>
+  </div>
+
+  <!-- Surface 5: Settings rows (Chunk C) -->
+  <div class="surface-label">Settings rows (Chunk C)</div>
+  <div class="card" style="padding:0">
+    <div class="setting">
+      <div class="sic" style="background:rgba(255,51,51,0.12);color:var(--warning-red)">♥</div>
+      <div class="smid"><div class="stitle">Health Sync</div></div>
+      <div class="pill dot-ok">● CONNECTED</div>
+    </div>
+    <div class="setting">
+      <div class="sic" style="background:var(--system-primary-subtle);color:var(--system-primary)">🏃</div>
+      <div class="smid"><div class="stitle">Apple Health — Workouts &amp; HR</div></div>
+      <div class="pill dot-ok">● CONNECTED</div>
+      <div class="chev">›</div>
+    </div>
+    <div class="setting disabled">
+      <div class="sic" style="background:var(--void-light);color:var(--text-muted)">◎</div>
+      <div class="smid"><div class="stitle" style="color:var(--text-muted)">Connect WHOOP</div></div>
+      <div class="pill" style="color:var(--text-muted)">COMING SOON</div>
+    </div>
+  </div>
+
+  <p class="foot">
+    Source of truth: ios/FitnessApp/Components/{AriseHRZoneBar,AriseSourceBadge,AriseWorkoutHRSection}.swift<br>
+    Colors.swift · Fonts.swift · spec docs/wearable-hr-v1-build-spec.md (Chunk D + Chunk E)
+  </p>
+</div>
+
+<script>
+  // ---- Zone palette (LOCKED endpoints) — mirrors AriseHRZoneBar.zoneMeta ----
+  const ZONE_META = {
+    z1:{label:'RECOVERY',pct:'50–60%',color:'var(--system-primary)',glow:false},
+    z2:{label:'AEROBIC', pct:'60–70%',color:'var(--success-green)', glow:false},
+    z3:{label:'TEMPO',   pct:'70–80%',color:'var(--gold)',          glow:false},
+    z4:{label:'THRESHOLD',pct:'80–90%',color:'var(--hr-z4-orange)', glow:false},
+    z5:{label:'MAX',     pct:'90–100%',color:'var(--warning-red)',  glow:true },
+    low:{label:'LOW',  pct:'',color:'var(--system-primary)',glow:false},
+    mid:{label:'MID',  pct:'',color:'var(--gold)',          glow:false},
+    high:{label:'HIGH',pct:'',color:'var(--warning-red)',   glow:true },
+  };
+  const ORDER5=['z1','z2','z3','z4','z5'], ORDER3=['low','mid','high'];
+  const ZONE_DATA = {
+    five:    {z1:300,z2:600,z3:420,z4:180,z5:60},  // 26:00 total
+    collapse:{z1:200,z3:300,z5:120},               // z1/z3/z5 collapse
+    lmh:     {low:200,mid:300,high:100},           // low/mid/high scheme
+    empty:   {},                                   // -> bar renders nothing
+  };
+
+  // ---- Source badge (mirrors AriseSourceBadge map; canonical hr_source) ----
+  const SRC = {
+    whoop:      {glyph:'◎', color:'var(--orange)',        bg:'rgba(255,149,0,0.12)', label:'WHOOP'},
+    apple_watch:{glyph:'⌚', color:'var(--system-primary)',bg:'rgba(0,212,255,0.12)', label:'APPLE WATCH'},
+    screenshot: {glyph:'📷',color:'var(--text-muted)',    bg:'rgba(96,96,112,0.18)', label:'SCREENSHOT'},
+  };
+
+  // ---- Render states (mock data) ----
+  const SETS_HR = [
+    {n:1, w:225, reps:5, rpe:7,   e1rm:262, hr:128},
+    {n:2, w:245, reps:5, rpe:8,   e1rm:285, hr:145},
+    {n:3, w:245, reps:5, rpe:8.5, e1rm:285, hr:158, best:true},
+    {n:4, w:265, reps:3, rpe:9,   e1rm:291, hr:172},
+  ];
+  const SETS_NO_HR = SETS_HR.map(s => ({...s, hr:null}));
+
+  const STATES = {
+    whoop:     {source:'whoop',       avg:142, peak:178, strain:14.2, hasHR:true,  hasZones:true,  sets:SETS_HR,
+                caption:'<b>WHOOP</b> session — full HR + strain. Orange ◎ badge; <b>strain</b> card present; per-set HR column on.', warn:false},
+    watch:     {source:'apple_watch', avg:138, peak:171, strain:null, hasHR:true,  hasZones:true,  sets:SETS_HR,
+                caption:'<b>Apple Watch</b> session — HR only. Cyan ⌚ badge; <b>strain card absent</b> (not “—”) — strain never comes from Watch.', warn:false},
+    screenshot:{source:'screenshot',  avg:120, peak:150, strain:null, hasHR:true,  hasZones:false, sets:[],
+                caption:'<b>Screenshot</b> — forward-compatible camera badge (hr_source="screenshot"). NOTE: no backend path emits this yet, so a screenshot workout <b>today renders like Legacy</b>. Shown here to preview the badge.', warn:true},
+    legacy:    {source:null,          avg:null, peak:null, strain:null, hasHR:false, hasZones:false, sets:SETS_NO_HR,
+                caption:'<b>Legacy gym</b> — all HR nil. No Biometrics / Heart-Rate section, no badge, no HR column → <b>byte-identical to today</b>.', warn:false},
+  };
+
+  let current = {state:'whoop', zone:'five'};
+
+  // ---- helpers ----
+  function mmss(s){ const m=Math.floor(s/60), r=s%60; return m+':'+String(r).padStart(2,'0'); }
+
+  function orderedKeys(zones){
+    const present = Object.keys(zones).filter(k => zones[k] > 0);
+    const use3 = present.length>0 && present.every(k => ORDER3.includes(k));
+    const order = use3 ? ORDER3 : ORDER5;
+    return order.filter(k => present.includes(k));
+  }
+
+  function zoneBar(zones, showLegend){
+    const keys = orderedKeys(zones);
+    const total = keys.reduce((s,k)=>s+zones[k],0);
+    if (!keys.length || total<=0) return '';                  // EmptyView
+    const segs = keys.map(k=>{
+      const m = ZONE_META[k];
+      const w = (zones[k]/total*100).toFixed(3);
+      const glow = m.glow ? `box-shadow:0 0 8px ${m.color};` : '';
+      return `<div class="zseg" style="width:${w}%;background:${m.color};${glow}"></div>`;
+    }).join('');
+    let legend = '';
+    if (showLegend){
+      legend = `<div class="zlegend">` + keys.map(k=>{
+        const m = ZONE_META[k];
+        return `<span class="zleg"><i class="dot" style="background:${m.color}"></i>${m.label}<b>${mmss(zones[k])}</b>${m.pct?`<u>${m.pct}</u>`:''}</span>`;
+      }).join('') + `</div>`;
+    }
+    return `<div class="zbar">${segs}</div>${legend}`;
+  }
+
+  function hrZoneColor(bpm){
+    if (bpm<114) return ZONE_META.z1.color;
+    if (bpm<133) return ZONE_META.z2.color;
+    if (bpm<152) return ZONE_META.z3.color;
+    if (bpm<171) return ZONE_META.z4.color;
+    return ZONE_META.z5.color;
+  }
+
+  function sourceBadge(source, compact){
+    if (!source || !SRC[source]) return '';                  // nil / unknown -> EmptyView
+    const s = SRC[source], fs = compact?8:9, pad = compact?'2px 4px':'2px 6px';
+    return `<span class="srcbadge" style="color:${s.color};background:${s.bg};font-size:${fs}px;padding:${pad}">${s.glyph} ${s.label}</span>`;
+  }
+
+  function statCard(value, label, color, glow, icon){
+    const sh = glow ? `text-shadow:0 0 10px ${color};` : '';
+    return `<div class="statcard">
+      <div class="ic" style="color:${color}">${icon}</div>
+      <div class="v" style="color:${color};${sh}">${value}</div>
+      <div class="l">${label}</div>
+    </div>`;
+  }
+
+  // shared biometrics block (mirrors AriseWorkoutHRSection) — gated on hasHR
+  function biometrics(st, zoneKey, title){
+    if (!st.hasHR) return '';                                 // legacy -> nothing
+    const cards = [
+      statCard(st.avg, 'AVG BPM', 'var(--system-primary)', false, '♥'),
+      statCard(st.peak,'PEAK BPM','var(--warning-red)',    true,  '♥'),
+    ];
+    if (st.source==='whoop' && st.strain!=null)              // strain WHOOP-only
+      cards.push(statCard(st.strain.toFixed(1), 'STRAIN', 'var(--orange)', false, '⚡'));
+    const bar = st.hasZones ? zoneBar(ZONE_DATA[zoneKey], true) : '';
+    return `<div style="margin-top:16px">
+      <div class="sechead"><span class="t">${title}</span>${sourceBadge(st.source,false)}</div>
+      <div class="statrow">${cards.join('')}</div>
+      ${bar}
+    </div>`;
+  }
+
+  function historyRow(st){
+    const strain = (st.source==='whoop' && st.strain!=null)
+      ? `<span style="color:var(--orange);font-family:var(--font-mono);font-size:11px">⚡ ${st.strain.toFixed(1)}</span>` : '';
+    return `<div class="card">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="date" style="font-size:15px">Jun 21</span>
+        <span class="srcbadge" style="color:var(--success-green);background:rgba(51,255,136,0.1);font-size:9px;padding:2px 6px">✓ COMPLETED</span>
+        ${sourceBadge(st.source,true)}
+      </div>
+      <div style="display:flex;gap:16px;margin-top:8px;font-family:var(--font-mono);font-size:11px;color:var(--text-secondary)">
+        <span>📜 4 objectives</span><span>▦ 14 sets</span>${strain}
+      </div>
+    </div>`;
+  }
+
+  function objectives(st){
+    if (!st.sets.length){                                     // cardio / no sets
+      return `<div class="obj"><div class="obj-head" style="border-left-color:var(--orange)">
+        <div><div class="nm">Running</div><div class="fn">"Endless Pursuit"</div></div></div>
+        <div class="cardio-note">Cardio session — no per-set breakdown. (HR column appears only on workouts with sets.)</div></div>`;
+    }
+    const showHR = st.sets.some(s => s.hr != null);           // showHRCol
+    const head = `<tr>
+        <th class="l">SET</th><th class="l">WEIGHT</th><th class="c">REPS</th><th class="c">RPE</th>
+        ${showHR?'<th class="c">HR</th>':''}<th class="r">e1RM</th></tr>`;
+    const rows = st.sets.map(s=>{
+      const hrCell = showHR
+        ? `<td class="c" style="color:${s.hr!=null?hrZoneColor(s.hr):'var(--text-muted)'}">${s.hr!=null?s.hr:'-'}</td>`
+        : '';
+      return `<tr class="${s.best?'best':''}">
+        <td class="l"><span class="setnum">✓</span></td>
+        <td class="l">${s.w} lb</td>
+        <td class="c">${s.reps}</td>
+        <td class="c rpe">${s.rpe}</td>
+        ${hrCell}
+        <td class="r e1">${s.e1rm}</td></tr>`;
+    }).join('');
+    return `<div class="obj">
+      <div class="obj-head">
+        <div><div class="nm">Barbell Squat</div><div class="fn">"Mountain Breaker"</div></div>
+        <div class="best"><div class="v">291</div><div class="l">BEST e1RM</div></div>
+      </div>
+      <table class="sets"><thead>${head}</thead><tbody>${rows}</tbody></table>
+    </div>`;
+  }
+
+  function render(){
+    const st = STATES[current.state];
+    // Home: HR section gets a leading divider, ONLY when hasHRData (mirrors the real
+    // `if workout.hasHRData { AriseDivider(); AriseWorkoutHRSection() }`).
+    document.getElementById('home-biometrics').innerHTML  =
+      (st.hasHR ? '<div class="divider"></div>' : '') + biometrics(st, current.zone, 'BIOMETRICS');
+    document.getElementById('detail-hr').innerHTML        = biometrics(st, current.zone, 'HEART RATE') ||
+      `<div class="sechead"><span class="t">SESSION</span></div><div style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">No HR data — renders exactly like a pre-wearable workout.</div>`;
+    document.getElementById('detail-objectives').innerHTML = objectives(st);
+    document.getElementById('history-row').innerHTML      = historyRow(st);
+    const cap = document.getElementById('caption');
+    cap.className = 'caption' + (st.warn ? ' warn' : '');
+    cap.innerHTML = st.caption;
+  }
+
+  // ---- event delegation (mobile-safe: no inline onclick, closest()) ----
+  document.getElementById('controls').addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-state],button[data-zone]');
+    if (!btn) return;
+    const group = btn.dataset.state ? 'state' : 'zone';
+    const value = btn.dataset.state || btn.dataset.zone;
+    current[group] = value;
+    document.querySelectorAll(`.seg[data-group="${group}"] button`).forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  });
+
+  render();
+</script>
+</body>
+</html>
