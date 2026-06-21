@@ -675,7 +675,7 @@ sheet, silent foreground import, dedup. Simulator has no Watch data → `importN
 
 ## Chunk D — HR display (1B)
 
-- **Status:** Done (2026-06-21, `da940c5`)
+- **Status:** Done (2026-06-21, `da940c5`; QA fix `9a15a47`)
 - **Depends on:** Chunk A (response fields populated, incl. the `_build_workout_response` fix + `WorkoutSummary`
   HR additions) + Chunk B (Swift decodes them). Hard dependency — the iOS models carry **no** HR fields until B
   (`SetResponse:265`, `WorkoutSummaryResponse:190`, `WorkoutResponse:225`, `QuestResponse:848` all lack HR today).
@@ -742,6 +742,18 @@ sheet, silent foreground import, dedup. Simulator has no Watch data → `importN
 > "no member" diagnostics seen mid-edit were cross-file index false positives — `xcodebuild` is authoritative,
 > same as Chunks B & C. **Gate green:** `xcodegen generate` clean; `xcodebuild … build` → `** BUILD SUCCEEDED **`,
 > `grep "error:"` empty; `scripts/lint-entitlements.sh` → "All checks passed" (no Apple Pay, no background-delivery).
+>
+> **QA round (`/ship` → `/evaluate` + `/simplify`, `9a15a47`):** an independent evaluator (fresh agent,
+> generator-evaluator separation) diffed the Swift mirror/badge map against the **canonical backend Pydantic +
+> services** (not the spec prose) and graded **A (~9.6/10) · PASS WITH WARNINGS · ship-YES** — 0 Critical, 0 Error.
+> It confirmed every field/CodingKey/badge-key/quest-unit is an **exact** contract match (incl. `hr_zone_time` =
+> minutes and the dormant-but-canonical `"screenshot"` value). Its one Warning — `hasHRData`'s zone clause
+> returned true for an all-zero / unknown-only `hr_zone_seconds` map, which could render a header-only phantom
+> Biometrics/Heart-Rate section (+ a stray Home divider) when avg/peak/strain are all nil — was **fixed before
+> close** in `9a15a47`: new `AriseHRZoneBar.hasRenderableZones(_:)` (≥1 *known* zone key with secs>0, mirrors
+> `orderedKeys`); `hasHRData` + the section's inner zone guard both use it, preserving byte-identical degradation.
+> `/simplify` then found the code clean (made one equivalent clarity reorder). Re-ran the gate green
+> (BUILD SUCCEEDED, lint pass). No contract change → no Registry bump / no new Amendment Log row.
 > **Last chunk — wearable-HR v1 is now COMPLETE** (A live on Railway; B/C/D on `main`).
 - **Goal:** Surface avg/peak HR, HR-zone time breakdown, strain, and source provenance across Home recent card,
   History row + workout detail, and the per-set table; give the three HR quest types real icons/labels — all in
