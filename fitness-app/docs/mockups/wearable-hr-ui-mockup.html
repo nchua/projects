@@ -25,6 +25,8 @@
     --warning-red:#FF3333;           /* z5 (+glow) / peak */
     --orange:#FF9500;                /* system orange — WHOOP / strain */
     --lift-squat:#3B82F6;            /* exercise accent (squat) */
+    --quest-purple:#7B61FF;          /* QuestDetailSheet bar gradient end */
+    --easy-green:#4ADE80;            /* QuestDetailSheet difficulty: easy */
 
     --void-black:#0A0A0F;
     --void-dark:#12121A;
@@ -189,18 +191,31 @@
   .hrow .meta { display:flex; gap:16px; margin-top:8px; font-family:var(--font-mono); font-size:11px; color:var(--text-secondary); flex-wrap:wrap; }
   .badge-done { font-family:var(--font-mono); font-size:9px; font-weight:600; letter-spacing:.5px; color:var(--success-green); background:rgba(51,255,136,0.1); padding:2px 6px; border-radius:2px; }
 
-  /* ---- quests ---- */
-  .quest { display:flex; align-items:center; gap:12px; padding:13px 14px; }
-  .quest + .quest { border-top:1px solid var(--arise-border); }
-  .quest .qic { font-size:20px; width:26px; text-align:center; flex:none; }
-  .quest .qmid { flex:1; min-width:0; }
-  .quest .qname { font-family:var(--font-header); font-weight:600; font-size:15px; }
-  .quest .qprog { font-family:var(--font-mono); font-size:10px; color:var(--text-muted); margin-top:1px; }
-  .qbar { height:6px; background:var(--void-light); border-radius:3px; overflow:hidden; margin-top:6px; }
-  .qbar > div { height:100%; background:linear-gradient(90deg, rgba(0,212,255,0.7), var(--system-primary)); }
-  .quest .qxp { font-family:var(--font-mono); font-size:10px; color:var(--gold); white-space:nowrap; flex:none; }
-  .qdetail { padding:12px 14px; border-top:1px dashed var(--arise-border); font-family:var(--font-mono); font-size:11px; color:var(--text-secondary); line-height:1.7; }
-  .qdetail b { color:var(--text-primary); }
+  /* ---- daily quests (DailyQuestsCard): individual rounded cards, NO progress bar,
+         system font, MUTED xp, left 3px accent (in-progress = white@0.1) ---- */
+  .quest-list { display:flex; flex-direction:column; gap:10px; }
+  .qcard { position:relative; display:flex; align-items:center; gap:12px; padding:14px; background:var(--void-medium); border-radius:12px; overflow:hidden; }
+  .qcard .qaccent { position:absolute; left:0; top:0; bottom:0; width:3px; }
+  .qcard .qic { font-size:18px; width:24px; text-align:center; flex:none; }
+  .qcard .qmid { flex:1; min-width:0; }
+  .qcard .qname { font-family:var(--font-body); font-weight:500; font-size:14px; color:var(--text-primary); }
+  .qcard .qstatus { font-family:var(--font-body); font-size:12px; color:var(--text-muted); margin-top:2px; }
+  .qcard .qxp { font-family:var(--font-body); font-size:12px; color:var(--text-muted); white-space:nowrap; flex:none; }
+
+  /* ---- quest detail (QuestDetailSheet): gradient progress bar cyan -> purple ---- */
+  .qd-head { display:flex; align-items:center; gap:12px; }
+  .qd-emoji { font-size:30px; flex:none; }
+  .qd-name { font-family:var(--font-header); font-weight:700; font-size:18px; color:var(--text-primary); }
+  .qd-desc { font-family:var(--font-body); font-size:12px; color:var(--text-secondary); margin-top:2px; }
+  .qd-pill { font-family:var(--font-mono); font-size:9px; font-weight:600; letter-spacing:.5px; padding:3px 8px; border-radius:10px; flex:none; }
+  .qd-bar { height:16px; background:var(--void-light); border-radius:8px; overflow:hidden; margin-top:16px; }
+  .qd-fill { height:100%; background:linear-gradient(90deg, var(--system-primary), var(--quest-purple)); border-radius:8px; box-shadow:0 0 10px rgba(0,212,255,0.35); }
+  .qd-row { display:flex; justify-content:space-between; align-items:baseline; margin-top:10px; }
+  .qd-prog { font-family:var(--font-mono); font-size:13px; color:var(--text-primary); }
+  .qd-pct { font-family:var(--font-display); font-weight:700; font-size:14px; color:var(--system-primary); }
+  .qd-motiv { font-family:var(--font-body); font-size:12px; color:var(--text-secondary); margin-top:6px; font-style:italic; }
+  .qd-copy { margin-top:14px; padding-top:12px; border-top:1px dashed var(--arise-border); font-family:var(--font-mono); font-size:10.5px; color:var(--text-muted); line-height:1.7; }
+  .qd-copy b { color:var(--text-secondary); }
 
   /* ---- settings rows ---- */
   .setting { display:flex; align-items:center; gap:12px; padding:14px; }
@@ -278,27 +293,39 @@
     <div id="detail-objectives"></div>
   </div>
 
-  <!-- Surface 4: Daily quests -->
-  <div class="surface-label">Daily quests + quest detail (HR quest types)</div>
-  <div class="card flush">
-    <div class="quest">
+  <!-- Surface 4: Daily quests (DailyQuestsCard) — no progress bar, muted XP -->
+  <div class="surface-label">Daily quests (DailyQuestsCard)</div>
+  <div class="quest-list">
+    <div class="qcard"><div class="qaccent" style="background:rgba(255,255,255,0.1)"></div>
       <div class="qic">❤️</div>
-      <div class="qmid"><div class="qname">Heat Check</div><div class="qprog">18 / 30 min in elevated HR zones</div><div class="qbar"><div style="width:60%"></div></div></div>
-      <div class="qxp">+25 XP</div>
-    </div>
-    <div class="quest">
+      <div class="qmid"><div class="qname">Heat Check</div><div class="qstatus">9/15</div></div>
+      <div class="qxp">+25 XP</div></div>
+    <div class="qcard"><div class="qaccent" style="background:rgba(255,255,255,0.1)"></div>
       <div class="qic">🔥</div>
-      <div class="qmid"><div class="qname">Redline</div><div class="qprog">178 / 180 bpm peak</div><div class="qbar"><div style="width:98%"></div></div></div>
-      <div class="qxp">+30 XP</div>
-    </div>
-    <div class="quest">
+      <div class="qmid"><div class="qname">Redline</div><div class="qstatus">171/180</div></div>
+      <div class="qxp">+30 XP</div></div>
+    <div class="qcard"><div class="qaccent" style="background:rgba(255,255,255,0.1)"></div>
       <div class="qic">⚡</div>
-      <div class="qmid"><div class="qname">Strain Seeker</div><div class="qprog">14 / 16 strain</div><div class="qbar"><div style="width:87%"></div></div></div>
-      <div class="qxp">+40 XP</div>
+      <div class="qmid"><div class="qname">Strain Seeker</div><div class="qstatus">14/16</div></div>
+      <div class="qxp">+40 XP</div></div>
+  </div>
+
+  <!-- Surface 4b: Quest detail (QuestDetailSheet) — cyan->purple gradient bar -->
+  <div class="surface-label">Quest detail (QuestDetailSheet)</div>
+  <div class="card">
+    <div class="qd-head">
+      <div class="qd-emoji">❤️</div>
+      <div style="flex:1">
+        <div class="qd-name">Heat Check</div>
+        <div class="qd-desc">Spend 15 min in elevated HR zones</div>
+      </div>
+      <span class="qd-pill" style="color:var(--easy-green);background:rgba(74,222,128,0.12)">EASY</span>
     </div>
-    <div class="qdetail">
-      QuestDetailSheet copy — <b>hr_zone_time</b> → "18 / 30 min" · "12 minutes in the zone to go!"<br>
-      <b>peak_hr</b> → "178 / 180 bpm" · "2 bpm to your peak target!"<br>
+    <div class="qd-bar"><div class="qd-fill" style="width:60%"></div></div>
+    <div class="qd-row"><span class="qd-prog">9 / 15 min</span><span class="qd-pct">60%</span></div>
+    <div class="qd-motiv">6 minutes in the zone to go!</div>
+    <div class="qd-copy">
+      Other HR quest copy — <b>peak_hr</b> → "171 / 180 bpm" · "9 bpm to your peak target!"<br>
       <b>session_strain</b> → "14 / 16 strain" · "2 strain to go!"
     </div>
   </div>
