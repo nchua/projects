@@ -1,6 +1,6 @@
 # Wearable HR v1 — Build Spec (living document)
 
-**Status:** Ready to build · Chunk A `Not started` · Chunks B/C/D `Not started`
+**Status:** In progress · Chunk A `Done (304511f)` · Chunks B/C/D `Not started`
 **Author:** Claude Code (spec-writing council: backend / iOS / design / PM), 2026-06-20
 **Branch:** `claude/next-steps-design-spec-83n3jo` → merges to `main`
 **Scope:** Apple Health import (1.7a backend + 1.7b iOS) + HR display (1B). WHOOP (1A) stubbed.
@@ -75,7 +75,7 @@ against the built code on first build** (and bumps the version only if reality d
 - **Optionality is load-bearing.** Apple-Watch sessions have no `strain`; sets may have no HR; zones are
   null when age is unknown. Nil-safety is a v1 acceptance criterion.
 
-**Registry version:** `v1 (2026-06-20) — pre-filled from council; Chunk A to confirm against built code.`
+**Registry version:** `v1 (2026-06-21) — CONFIRMED against built code (Chunk A, 304511f). Contract holds as written: request/response field names + types as in §1–§2; backend is Pydantic v2 (snake_case keys, no alias generator); is_strength present; unmatched is objects; _build_workout_response + WorkoutSummary now return HR. No field changes.`
 
 ### 1. `POST /workouts/import-healthkit` — request
 
@@ -207,8 +207,10 @@ acceptance is on-device (`importNewWorkouts()` returns empty on Simulator — ex
 
 ## Chunk A — Backend HealthKit ingest (1.7a)
 
-- **Status:** Not started
+- **Status:** Done (2026-06-21, `304511f`)
 - **Depends on:** nothing (first chunk). Builds on shipped Phase 0 (`add_wearable_hr`) + Phase 1 WHOOP (`add_whoop_connections`).
+
+> **Build-note (2026-06-21, `304511f`):** Built by a 4-agent parallel team (data layer / service / API / tests). All tasks landed as specified — `schemas/healthkit.py`, `services/healthkit_service.py`, `hk_uuid` column + `add_healthkit_uuid` migration (single head, confirmed via `alembic heads`), the `POST /workouts/import-healthkit` route, the `_build_workout_response` HR-population fix, and `WorkoutSummary` HR fields. **Gate green:** `319 passed` (306 existing + 13 new), `ruff check` clean, single alembic head. Two integration bugs were found + fixed during verification (see Amendment Log 2026-06-21 rows): (1) a real shared-code bug in `heart_rate_service._aware` (normalized aware datetimes to system-LOCAL, not UTC, breaking per-set attribution on non-UTC hosts like this dev Mac — Railway is UTC so it was latent); (2) a test used an unrealistic `activity_type` (`"Outdoor Run"`, fuzz-score 60 < 70) — corrected to the canonical client string `"running"`. **Not yet deployed to Railway** (see Cross-cutting deployment note — deploy deliberately).
 - **Goal:** Add authenticated `POST /workouts/import-healthkit` that accepts a batch of completed
   Apple-Watch `HKWorkout`s + raw HR samples, dedups by HealthKit UUID, routes cardio/runs into synthetic
   `WorkoutSession`s (reusing the screenshot activity→exercise matcher) and strength into existing logged
@@ -508,7 +510,10 @@ under `FitnessApp/` are auto-included by `xcodegen` — no manual pbxproj edits.
    `workout.statistics(for: .activeEnergyBurned)` kcal → **kJ ×4.184**. Map `HKWorkoutActivityType` →
    `activity_type` string (lock the vocabulary against Chunk A): `traditional/functionalStrengthTraining →
    "strength_training"`, `running → "running"`, `walking/cycling/hiit/coreTraining/yoga/rowing/elliptical → …`,
-   else `"other"`; set `isStrength` from the activity type. Compute `hrZoneSeconds` from `220−age` (walk
+   else `"other"`; set `isStrength` from the activity type.
+   > **Amended 2026-06-21 (from Chunk A):** the backend cardio matcher (`match_activity_to_exercise`) fuzz-matches `activity_type` (≥70) against seeded Sport/Cardio exercise **names**. Emit strings that score ≥70 vs a seeded name — `"running"`→"Running"=100 ✓; avoid short/partial labels like `"Outdoor Run"`→"Run"=60 ✗ (creates an exerciseless session). Cardio types without a seeded exercise (e.g. `"hiit"`, `"elliptical"`) still create a session, just unlinked — fine. Confirm the seeded Sport/Cardio names cover what you emit.
+
+   Compute `hrZoneSeconds` from `220−age` (walk
    consecutive samples, attribute inter-sample interval to the earlier sample's zone); **nil the field if age
    unknown**. Build `HealthKitWorkoutImport` (`hkUuid = workout.uuid.uuidString`, ISO8601-UTC-fractional
    start/end via a cached formatter, `durationSeconds = Int(workout.duration)`, `distanceMeters = nil`).
@@ -776,7 +781,8 @@ Append-only. The first row is a **labeled template** (example, not a real change
 | Date | Surfaced in | Change | Downstream sections updated | By |
 |---|---|---|---|---|
 | _2026-06-21_ | _A (TEMPLATE — example, not a real change)_ | _Per-set HR attribution needs client-supplied set boundaries; added `set_boundaries[]` to import request. Registry v1→v1.1._ | _Registry (request table + version); Chunk B (`SetBoundary` struct); Chunk C (payload builder). Chunk D: confirmed no change._ | _Claude (session, sha)_ |
-| | | | | |
+| 2026-06-21 | A | **Shared-code bug:** `heart_rate_service._aware()` did `astimezone(tz=None)` (system-LOCAL) despite a "naive UTC" docstring, so aware-UTC samples landed outside set windows on non-UTC hosts → per-set HR never attributed. Fixed to `astimezone(timezone.utc).replace(tzinfo=None)`. **No contract change.** Also fixes the existing Apple-Watch live-session per-set path. | None to contracts. Noted here because it's a reused function that behaved differently than assumed. Re-verified full suite (319 pass). | Claude (304511f) |
+| 2026-06-21 | A | **Contract clarification for Chunk C:** the matcher `match_activity_to_exercise` fuzz-matches `activity_type` (≥70) against seeded Sport/Cardio exercise **names**. The iOS `HKWorkoutActivityType → activity_type` map (Chunk C task 2) MUST emit strings that score ≥70 vs a seeded exercise name (e.g. `"running"`→"Running"=100). Short/partial labels like `"Outdoor Run"`→"Run" score 60 and won't link. | Chunk C task 2 (dated note added). No Registry change. | Claude (304511f) |
 
 ---
 
