@@ -513,6 +513,16 @@ class APIClient {
         return try await get("/activity/last-sync?source=\(source)")
     }
 
+    // MARK: - HealthKit Workout Import
+
+    func importHealthKitWorkouts(_ workouts: [HealthKitWorkoutImport]) async throws -> HealthKitImportResponse {
+        return try await post("/workouts/import-healthkit", body: HealthKitImportRequest(workouts: workouts))
+    }
+
+    func getWhoopStatus() async throws -> WhoopStatusResponse {
+        return try await get("/whoop/status")
+    }
+
     // MARK: - Scan Balance
 
     func getScanBalance() async throws -> ScanBalanceResponse {

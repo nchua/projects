@@ -205,6 +205,10 @@ struct WorkoutSummaryResponse: Decodable, Identifiable {
     let activityType: String?
     let strain: Double?
     let calories: Int?
+    // Heart rate (additive — Apple Watch / WHOOP). Missing keys decode to nil.
+    let avgHeartRate: Int?
+    let peakHeartRate: Int?
+    let hrSource: String?
 
     enum CodingKeys: String, CodingKey {
         case id, date, notes, strain, calories
@@ -219,6 +223,9 @@ struct WorkoutSummaryResponse: Decodable, Identifiable {
         case updatedAt = "updated_at"
         case isWhoopActivity = "is_whoop_activity"
         case activityType = "activity_type"
+        case avgHeartRate = "avg_heart_rate"
+        case peakHeartRate = "peak_heart_rate"
+        case hrSource = "hr_source"
     }
 }
 
@@ -232,14 +239,26 @@ struct WorkoutResponse: Decodable, Identifiable {
     let exercises: [WorkoutExerciseResponse]
     let createdAt: String
     let updatedAt: String
+    // Heart rate (additive — Apple Watch / WHOOP). Missing keys decode to nil.
+    let avgHeartRate: Int?
+    let peakHeartRate: Int?
+    let hrZoneSeconds: [String: Int]?
+    let kilojoules: Double?
+    let hrSource: String?
+    let hkUuid: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, date, notes, exercises
+        case id, date, notes, exercises, kilojoules
         case userId = "user_id"
         case durationMinutes = "duration_minutes"
         case sessionRpe = "session_rpe"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+        case avgHeartRate = "avg_heart_rate"
+        case peakHeartRate = "peak_heart_rate"
+        case hrZoneSeconds = "hr_zone_seconds"
+        case hrSource = "hr_source"
+        case hkUuid = "hk_uuid"
     }
 }
 
@@ -272,13 +291,98 @@ struct SetResponse: Decodable, Identifiable {
     let setNumber: Int
     let e1rm: Double?
     let createdAt: String
+    // Heart rate + set timing (additive — populated by HealthKit/WHOOP per-set attribution). Missing keys decode to nil.
+    let startTime: String?
+    let endTime: String?
+    let avgHeartRate: Int?
+    let peakHeartRate: Int?
 
     enum CodingKeys: String, CodingKey {
         case id, weight, reps, rpe, rir, e1rm
         case weightUnit = "weight_unit"
         case setNumber = "set_number"
         case createdAt = "created_at"
+        case startTime = "start_time"
+        case endTime = "end_time"
+        case avgHeartRate = "avg_heart_rate"
+        case peakHeartRate = "peak_heart_rate"
     }
+}
+
+// MARK: - HealthKit Workout Import
+
+struct HealthKitHRSample: Encodable {
+    let timestamp: String   // ISO8601 UTC + fractional seconds
+    let bpm: Int
+}
+
+struct HealthKitWorkoutImport: Encodable {
+    let hkUuid: String
+    let activityType: String
+    let isStrength: Bool
+    let start: String                 // ISO8601 UTC w/ fractional seconds
+    let end: String
+    let durationSeconds: Int
+    let kilojoules: Double?
+    let avgHeartRate: Int?
+    let peakHeartRate: Int?
+    let hrZoneSeconds: [String: Int]? // dict, matches backend storage; nil if age unknown
+    let heartRateSamples: [HealthKitHRSample]?
+    let distanceMeters: Double?       // deferred v1 — send nil
+
+    enum CodingKeys: String, CodingKey {
+        case start, end, kilojoules
+        case hkUuid = "hk_uuid"
+        case activityType = "activity_type"
+        case isStrength = "is_strength"
+        case durationSeconds = "duration_seconds"
+        case avgHeartRate = "avg_heart_rate"
+        case peakHeartRate = "peak_heart_rate"
+        case hrZoneSeconds = "hr_zone_seconds"
+        case heartRateSamples = "heart_rate_samples"
+        case distanceMeters = "distance_meters"
+    }
+}
+
+struct HealthKitImportRequest: Encodable {
+    let workouts: [HealthKitWorkoutImport]
+}
+
+struct HealthKitUnmatched: Decodable {
+    let hkUuid: String
+    let activityType: String
+    let start: String
+    let end: String
+
+    enum CodingKeys: String, CodingKey {
+        case start, end
+        case hkUuid = "hk_uuid"
+        case activityType = "activity_type"
+    }
+}
+
+struct HealthKitImportResponse: Decodable {
+    let imported: [String]
+    let skippedDuplicates: [String]
+    let sessionsCreated: [String]
+    let sessionsUpdated: [String]
+    let unmatched: [HealthKitUnmatched]
+    let questsCompleted: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case imported, unmatched
+        case skippedDuplicates = "skipped_duplicates"
+        case sessionsCreated = "sessions_created"
+        case sessionsUpdated = "sessions_updated"
+        case questsCompleted = "quests_completed"
+    }
+}
+
+// MARK: - WHOOP status (for the disabled "coming soon" row in Chunk C)
+
+struct WhoopStatusResponse: Decodable {
+    let connected: Bool
+    let configured: Bool
 }
 
 // MARK: - Bodyweight
