@@ -1,6 +1,6 @@
 # Wearable HR v1 — Build Spec (living document)
 
-**Status:** In progress · Chunk A `Done (304511f)` · Chunk B `Done (00c0cdc)` · Chunk C `Done (8996ab2)` · Chunk D `Not started`
+**Status:** COMPLETE · Chunk A `Done (304511f)` · Chunk B `Done (00c0cdc)` · Chunk C `Done (8996ab2)` · Chunk D `Done (da940c5)`
 **Author:** Claude Code (spec-writing council: backend / iOS / design / PM), 2026-06-20
 **Branch:** `claude/next-steps-design-spec-83n3jo` → merges to `main`
 **Scope:** Apple Health import (1.7a backend + 1.7b iOS) + HR display (1B). WHOOP (1A) stubbed.
@@ -149,7 +149,10 @@ Deltas applied while merging the four drafts so the chunks are internally consis
 5. **`WorkoutSummary` gains `avg/peak_heart_rate` + `hr_source`** (Chunk A scope) — required by Chunk D History-row rendering.
 6. **`_build_workout_response` HR-population fix is Chunk A scope** — without it sets/sessions never return HR.
 7. **`WhoopStatusResponse` + `getWhoopStatus()` belong to Chunk B** (Chunk C consumes them).
-8. **Open — `hr_zone_time` quest unit** (seconds vs minutes for `target_value`/`progress`): Chunk A to confirm; Chunk D formats accordingly. Tracked in the Amendment Log if it forces a copy change.
+8. **RESOLVED (2026-06-21, Chunk D) — `hr_zone_time` quest unit = MINUTES.** Confirmed against built backend:
+   `quest_service.calculate_workout_stats` → `elevated_zone_minutes = sum(secs // 60 …)`; progress is set to that
+   value; targets are 15/30/45 (`quest_service.py:542–547`). Chunk D's hardcoded `"X / Y min"` copy is correct →
+   **no copy change → Amendment Protocol not triggered.**
 
 ---
 
@@ -672,10 +675,74 @@ sheet, silent foreground import, dedup. Simulator has no Watch data → `importN
 
 ## Chunk D — HR display (1B)
 
-- **Status:** Not started
+- **Status:** Done (2026-06-21, `da940c5`)
 - **Depends on:** Chunk A (response fields populated, incl. the `_build_workout_response` fix + `WorkoutSummary`
   HR additions) + Chunk B (Swift decodes them). Hard dependency — the iOS models carry **no** HR fields until B
   (`SetResponse:265`, `WorkoutSummaryResponse:190`, `WorkoutResponse:225`, `QuestResponse:848` all lack HR today).
+
+> **Build-note (2026-06-21, `da940c5`):** Built to this section against the **CONFIRMED v1** Contract Registry.
+> **Three components created** (grepped first per the naming rule — none pre-existed): `AriseHRZoneBar.swift`
+> (segmented cold→hot bar with the locked palette z1 cyan…z5 red+glow; iterates a fixed ordered key list so
+> **unknown keys are dropped**; supports the 5-zone scheme **and** the 3-zone collapse — `low/mid/high` via a
+> parallel order, and `z1/z3/z5` for free as a subset of the 5-order → cyan/gold/red; `EmptyView` when empty;
+> z5 glow; wrapping legend; + the `static hrZoneColor(forHR:maxHR:)` tint helper with the spec's absolute-bpm
+> fallback), `AriseSourceBadge.swift` (provenance badge keyed on the canonical `hr_source` strings —
+> `"whoop"`→`circle.circle` orange, `"apple_watch"`→`applewatch` cyan, `"screenshot"`→`camera.fill` muted,
+> `nil`/other→`EmptyView`; chrome pixel-matched to the old inline badge), and **one factoring component**,
+> `AriseWorkoutHRSection.swift` — a shared biometrics block (avg/peak `StatCard`s, WHOOP-only strain card,
+> `AriseHRZoneBar`) used by **both** the Home recent card and the History detail. Extracting it (the spec
+> describes the two surfaces as "same structure") removes copy-paste and is the exact cross-surface drift the
+> touch-all rule guards against; immaterial (view-internal), no contract impact. **Per-surface edits landed as
+> specced:** Home `WorkoutSheetHeader` Biometrics section below the stats row (gated on `hasHRData`);
+> History row badge now driven by `hr_source` (replaced the inline WHOOP `HStack`, which self-gated on
+> `isWhoopActivity && hasExercises`); History detail "Heart Rate" block after the summary card; per-set HR
+> column inserted between RPE and e1RM **only when ≥1 set carries HR** (zone-tinted, `"-"` for missing cells,
+> width 40 — WEIGHT flexes to absorb, fits iPhone SE: fixed cols 212pt + 32 padding < 375); `hr_zone_time`/
+> `peak_hr`/`session_strain` quest icons (❤️/🔥/⚡) in `DailyQuestsCard` + `QuestDetailSheet`, with
+> `progressText`/`motivationalText` cases. `WorkoutResponse` got two **computed** (non-Codable) helpers,
+> `hasHRData` + `isWhoopActivity` (= `hr_source == "whoop"`) — no contract/decode change.
+>
+> **Spec-shorthand reconciliations (immaterial):** (1) `StatCard` takes `icon` + `useSystemIcon: Bool` — the
+> spec's `StatCard("heart.fill", …)` shorthand becomes `useSystemIcon: true` for SF Symbols. (2) The spec's
+> peak `StatCard` omitted an icon; uses `heart.fill` (same as avg), differentiated by color (cyan avg / red+glow
+> peak). (3) `WorkoutResponse` has **no `maxHR`/age field**, so `AriseHRZoneBar`'s optional `maxHR` is omitted
+> (defaults `nil`) — the `%MaxHR` legend annotation simply doesn't render, and per-set tint uses the absolute-bpm
+> thresholds (`maxHR: nil`), exactly as the spec's part-C example calls for. (4) The wrapping legend reuses the
+> existing `FlowLayout` (`RecoveryStatusSection.swift:189`) rather than a new struct — avoids a duplicate layout.
+> (5) WHOOP glyph = `circle.circle` per the Registry table (the spec flagged "confirm preferred WHOOP glyph in
+> review"; the old inline badge wrongly used the `applewatch` glyph for WHOOP — fixed).
+>
+> **Open item RESOLVED — `hr_zone_time` quest unit = MINUTES** (closes Reconciliation note #8 + the risk-register
+> row). Confirmed against the built backend: `quest_service.calculate_workout_stats` computes
+> `elevated_zone_minutes = sum(secs // 60 …)` and `recalculate_quest_progress`/`update_quest_progress` set
+> `progress = stats["elevated_zone_minutes"]`; the seeded targets are 15/30/45 (`quest_service.py:542–547`). So
+> the spec's hardcoded `"X / Y min"` copy is **correct → no copy change → Amendment Protocol not triggered**
+> (per note #8's "log only if it forces a copy change"). Recorded inline at note #8 + the risk register.
+>
+> **Finding (logged, no code/contract change) — `hr_source = "screenshot"` is canonical-but-dormant.** While
+> verifying the badge map I traced every backend `hr_source` writer: `healthkit_service` stamps `"apple_watch"`,
+> `whoop_service` stamps `"whoop"`, the live-create path defaults to `"apple_watch"`. **No path stamps
+> `"screenshot"`** — screenshot-created `WorkoutSession`s (`screenshot_service.py:775/1025`) leave `hr_source`
+> NULL (the `"whoop_screenshot"` literal at `:1000` is `DailyActivity.source`, a different model — unrelated).
+> The value `"screenshot"` is still canonical (model comment `workout.py:69` + schema `workout.py:96` + Registry
+> §3 all list it), so the badge maps it per the Registry: **forward-compatible** and **nil-safe today** (a
+> screenshot workout renders no badge, matching "nil → none"). No Chunk D change; no Registry version bump (the
+> value remains valid). Logged in the Amendment Log (2026-06-21, Chunk D) so a future reader knows why the
+> screenshot badge is dormant. Wiring a screenshot HR-provenance path is backend (Chunk A) scope, out of v1.
+>
+> **Four render states verified by code-path trace** (the Simulator has no HR-carrying workout to display, and
+> seeding the user's live Railway account with test workouts was deliberately avoided): **(1) WHOOP** (`hr_source
+> = "whoop"`, strain present) → orange `circle.circle` badge; avg(cyan)+peak(red+glow)+**strain**(orange, since
+> `isWhoopActivity`) cards + zone bar. **(2) Apple Watch** (`hr_source = "apple_watch"`, no strain) → cyan
+> `applewatch` badge; avg+peak cards; **strain card absent** (`isWhoopActivity == false` *and* `strain == nil`),
+> not "—". **(3) Screenshot** → today `hr_source` is NULL → **no badge** (dormant per the finding above); avg/peak
+> render if present. **(4) Legacy gym** (all HR nil) → `hasHRData == false` → **no Biometrics/Heart-Rate section**,
+> no badge, no per-set HR column → **byte-identical to today**. Real-data visual acceptance (HR-populated states
+> 1–3) is the user's on-device step, as the chunk's nature intends. The SourceKit "cannot find X in scope" /
+> "no member" diagnostics seen mid-edit were cross-file index false positives — `xcodebuild` is authoritative,
+> same as Chunks B & C. **Gate green:** `xcodegen generate` clean; `xcodebuild … build` → `** BUILD SUCCEEDED **`,
+> `grep "error:"` empty; `scripts/lint-entitlements.sh` → "All checks passed" (no Apple Pay, no background-delivery).
+> **Last chunk — wearable-HR v1 is now COMPLETE** (A live on Railway; B/C/D on `main`).
 - **Goal:** Surface avg/peak HR, HR-zone time breakdown, strain, and source provenance across Home recent card,
   History row + workout detail, and the per-set table; give the three HR quest types real icons/labels — all in
   the ARISE language. Every HR field is optional; the UI must degrade to today's exact layout when all are nil.
@@ -866,6 +933,8 @@ Append-only. The first row is a **labeled template** (example, not a real change
 | 2026-06-21 | A | **Shared-code bug:** `heart_rate_service._aware()` did `astimezone(tz=None)` (system-LOCAL) despite a "naive UTC" docstring, so aware-UTC samples landed outside set windows on non-UTC hosts → per-set HR never attributed. Fixed to `astimezone(timezone.utc).replace(tzinfo=None)`. **No contract change.** Also fixes the existing Apple-Watch live-session per-set path. | None to contracts. Noted here because it's a reused function that behaved differently than assumed. Re-verified full suite (319 pass). | Claude (304511f) |
 | 2026-06-21 | A | **Contract clarification for Chunk C:** the matcher `match_activity_to_exercise` fuzz-matches `activity_type` (≥70) against seeded Sport/Cardio exercise **names**. The iOS `HKWorkoutActivityType → activity_type` map (Chunk C task 2) MUST emit strings that score ≥70 vs a seeded exercise name (e.g. `"running"`→"Running"=100). Short/partial labels like `"Outdoor Run"`→"Run" score 60 and won't link. | Chunk C task 2 (dated note added). No Registry change. | Claude (304511f) |
 | 2026-06-21 | A (`/evaluate`) | **Dedup-clobber bug fixed:** two strength HKWorkouts overlapping one logged session in a single batch overwrote the session's `hk_uuid` (lost a dedup key → duplicate `HeartRateSample` rows on re-import) + duplicated `sessions_updated`. Fix: candidate query excludes `hk_uuid IS NOT NULL` sessions; matched sessions are removed from the candidate pool per batch (second overlapping workout → `unmatched`). +regression test. Also: endpoint now logs the swallowed exception; `_local_day`→`_session_day`; `set[date]`/`set[str]` hints. **No contract change.** | `healthkit_service.py`, `api/workouts.py`, `tests/`. No Registry/Chunk B/C/D change. | Claude (9b49409) |
+| 2026-06-21 | D | **Finding — `hr_source = "screenshot"` is canonical-but-dormant (no code/contract change).** Tracing every backend `hr_source` writer while verifying the badge map: `healthkit_service`→`"apple_watch"`, `whoop_service`→`"whoop"`, live-create defaults `"apple_watch"`; **no path stamps `"screenshot"`** — screenshot-created `WorkoutSession`s (`screenshot_service.py:775/1025`) leave `hr_source` NULL (the `"whoop_screenshot"` at `:1000` is `DailyActivity.source`, unrelated). `"screenshot"` remains canonical (model `workout.py:69` + schema `:96` + Registry §3 list it), so `AriseSourceBadge` maps it per the Registry — **forward-compatible + nil-safe** (screenshot workouts render no badge today, matching "nil → none"). **No Registry version bump** (value still valid); no Chunk D change. Wiring a screenshot HR-provenance path is Chunk A scope, out of v1. | Chunk D build-note (logged); this Log row. No Registry/code change. | Claude (da940c5) |
+| 2026-06-21 | D | **Open item closed — `hr_zone_time` quest unit = MINUTES** (Reconciliation note #8 + risk register). Confirmed against built backend (`elevated_zone_minutes = sum(secs // 60)`; targets 15/30/45). Spec's hardcoded `"X / Y min"` copy correct → **no copy change** → Amendment Protocol not triggered (note #8: "log only if it forces a copy change"). Recorded for closure since it was a tracked open item. | Reconciliation note #8 (RESOLVED); risk register row; Chunk D build-note. No code/Registry change. | Claude (da940c5) |
 | 2026-06-21 | B (`/evaluate`) | **Spec-vs-Registry consistency fix (no contract change):** the **Chunk B body's** additive list for `WorkoutResponse` read `…hrSource, hkUuid` — it omitted `strain` (which Registry §3 + the built backend `WorkoutResponse`, `schemas/workout.py:138`, both carry) and added `hkUuid` (the backend emits **no** `hk_uuid` on `WorkoutResponse`, so it could only ever decode to nil). Independent `/evaluate` caught it by diffing the Swift mirror against the canonical Pydantic. Per the precedence rule (Registry wins), the Swift `WorkoutResponse` now carries `strain: Double?` and drops `hkUuid`. **Registry §3 unchanged** (it was already correct). Chunk A unaffected (already emits `strain`, no `hk_uuid`) → no re-verify. | Chunk B body (additive list + dated note); this Log row. No Registry change; no Chunk C/D change (D consumes `strain` off `WorkoutResponse` as already specced). | Claude (b931690) |
 
 ---
@@ -917,7 +986,7 @@ workout; open the app and confirm 1–5 on real data; confirm the permission cop
 | Touch-all field rule missed (HR field in one place only) | Med | Med | Registry checklist: `schemas/workout.py` → `api/workouts.py` → `APITypes.swift` → Home/History; `WorkoutSummary` HR fields included | A defines, B/C/D mirror |
 | Entitlement surprise (missing usage string; forbidden entitlement) | Low | High | `lint-entitlements.sh` in gate (no Apple Pay / bg-delivery); HealthKit usage strings already present | C |
 | Nil-safe display (missing strain/zones/samples → "broken") | Med | Med | Strain absent (not "—") off-WHOOP; HRZoneBar 5→3 + EmptyView; per-set HR column only when present | D |
-| `hr_zone_time` quest unit ambiguity (seconds vs minutes) | Med | Low | A confirms unit; D formats to match; Amendment Log if copy changes | A + D |
+| `hr_zone_time` quest unit ambiguity (seconds vs minutes) | Med | Low | **RESOLVED (Chunk D, `da940c5`): unit = MINUTES** (`elevated_zone_minutes`, targets 15/30/45); D copy `"X / Y min"` correct; no change | A + D |
 
 ---
 
