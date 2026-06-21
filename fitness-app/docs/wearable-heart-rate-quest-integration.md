@@ -316,16 +316,19 @@ Remember the
 - watchOS target + WatchConnectivity, `HKWorkoutSession`/`HKLiveWorkoutBuilder` live HR.
 - **Deliverable:** true live HR mid-workout; most accurate (live) set boundaries.
 
-### Phase 3 — Exertion analytics + custom strain (long-term)
-- Per-set work density, HR recovery between sets, cardiovascular cost per lift, session
-  efficiency trends; feed into the strength-coach reporting and progress views.
-- **Custom "ARISE" strain metric (see D4).** Our own session-strain score that works across
-  **all** sources (Apple Watch, WHOOP, manual) instead of depending on WHOOP's proprietary 0-21.
-  Combine cardiovascular load (time-in-HR-zone weighted by HR reserve / Karvonen) with mechanical
-  load from strength (volume = Σ weight·reps, intensity vs. e1RM, RPE/RIR) and per-exercise
-  weighting (compounds and high-HR movements cost more). Personalize to the user's resting/max HR
-  and historical response. The Phase-0 data model already stores everything this needs (raw
-  `heart_rate_samples`, per-set HR + load, exercise category) — no new ingestion required.
+### Phase 3 — Exertion analytics + personalized strain (long-term)
+- **Per-exercise cardiac cost / efficiency trend (D4a) — the headline personalized metric.**
+  Track per-set HR response `ΔHR = peak − pre-set baseline` (window `[start, end+~30s]` for lag),
+  normalized per exercise (matched sets / per-unit-work / %e1RM), trended over weeks; a falling
+  ΔHR for the same external load = improved conditioning for that lift. Pair with HR recovery
+  (`hr_recovery_60s`). Control rest-interval / set-position / RPE confounders.
+- Supporting analytics: per-set work density, HR recovery between sets, cardiovascular cost per
+  lift, session-efficiency trends; feed into strength-coach reporting + Progress views.
+- **Custom "ARISE" session strain (D4b).** Aggregate cross-source internal-load score (HR-zone
+  time × HR reserve/Karvonen + mechanical load + per-exercise weighting), personalized to
+  resting/max HR; can roll up the D4a per-set costs and back a cross-source strain quest.
+- **All inputs already exist** (Phase 0: raw `heart_rate_samples`, per-set HR + load, exercise
+  category) — pure analytics, no new ingestion.
 
 ---
 
@@ -373,21 +376,48 @@ Remember the
   - *Optional later:* add `distance_meters` / `pace` columns to `WorkoutSession` for richer run
     records (HealthKit provides `totalDistance`). Not required for HR/quests.
 
-- **D4 — Strain strategy: don't depend on WHOOP strain; design our own later. ✅ RESOLVED
-  (2026-06-21, Nick).**
+- **D4 — Strain strategy: don't depend on WHOOP strain; build our own personalized metrics later.
+  ✅ RESOLVED (2026-06-21, Nick).**
   - **Now:** do **not** treat WHOOP's 0-21 strain as a universal/first-class metric. Keep the
     `strain` column populated *only* when WHOOP provides it (provenance), and leave it `null` for
     Apple Watch / manual. `SESSION_STRAIN` quests stay **WHOOP-gated** (don't promote them into the
     cross-source pool). No new work.
-  - **Later (Phase 3):** build a **custom "ARISE" strain** that works across all sources —
-    cardiovascular load (HR-zone time weighted by HR reserve / Karvonen) + mechanical load
-    (volume, intensity vs. e1RM, RPE/RIR) + **per-exercise weighting**, personalized to the user's
-    resting/max HR. Once it exists, a custom-strain quest can replace/augment `SESSION_STRAIN`
-    cross-source. The data foundation already supports it (see Phase 3).
-  - *Open design Qs for when we build it:* what's the formula/units (keep 0-21 to feel familiar,
-    or our own scale?); how to weight cardio vs. mechanical for a hybrid session; per-exercise
-    coefficients (hand-tuned seed vs. learned from the user's HR response); does it need the
-    max-HR setting from D3/§9.
+  - **Later (Phase 3) — two related metrics:**
+
+    **(D4a) Per-exercise cardiac cost / efficiency trend — THE headline personalized signal.**
+    Nick's framing: hold the *external* load constant and watch the *internal* cost fall over time.
+    > e.g. Bench 155 lb × 6: HR 95→135 today; a month later 95→125 for the same set ⇒ that load is
+    > less cardiovascularly strenuous ⇒ improved work capacity / conditioning for that lift.
+
+    Concrete definition:
+    - **Per-set HR response `ΔHR = peakHR − pre-set baselineHR`.** Baseline = HR from samples just
+      before `Set.start_time`; measure peak over `[start_time, end_time + ~30s]` to catch HR lag
+      (peak often lands just after the set). *Use ΔHR, not absolute peak, because between-set
+      baseline drifts upward through a session.* (Example: Δ40 → Δ30.)
+    - **Normalize** for non-identical sets: compare matched sets (same exercise + weight + reps
+      within a tolerance), or track **cardiac cost per unit work** (ΔHR per weight·reps) or ΔHR at a
+      given **%e1RM**. Trend the normalized value per exercise over weeks.
+    - **Confounders to match-on or record** (else a longer rest fakes "improvement"): rest interval
+      before the set, set position in the session, proximity to failure (RPE/RIR).
+    - **Pair with HR recovery** (`hr_recovery_60s`, already a scoped column): faster post-set HR
+      drop over weeks = second, independent adaptation marker.
+    - **All inputs already exist** from Phase 0: per-set `start_time`/`end_time`, per-set avg/peak
+      HR, raw `heart_rate_samples`, `weight`/`reps`/`rpe`/`rir`/`e1rm`, exercise category. No new
+      ingestion — pure analytics. **Output/UX:** per-exercise "cardiac efficiency" trend in Progress
+      ("Bench is 25% less cardiovascularly costly than 8 weeks ago"); could feed a conditioning/
+      "engine" stat in the gamification.
+
+    **(D4b) Custom "ARISE" session strain — aggregate, cross-source.** A one-number internal-load
+    score that works across all sources (replaces reliance on WHOOP's 0-21): cardiovascular load
+    (HR-zone time × HR reserve / Karvonen) + mechanical load (volume, intensity vs. e1RM, RPE/RIR)
+    + per-exercise weighting, personalized to resting/max HR. Can roll up the D4a per-set cardiac
+    costs. Once it exists, a custom-strain quest can replace/augment `SESSION_STRAIN` cross-source.
+
+  - *Open design Qs for when we build it:* normalization choice for D4a (matched sets vs.
+    per-unit-work vs. %e1RM curve); how to fairly handle rest-interval/set-position confounders;
+    units/scale for D4b (keep 0-21 familiar or our own?); cardio-vs-mechanical weighting for hybrid
+    sessions; per-exercise coefficients (hand-tuned seed vs. learned from the user's HR response);
+    both need the max-HR setting from D3/§9.
 
 ## Open questions / risks
 
