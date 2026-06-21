@@ -122,6 +122,8 @@ looking broken. Note for the iOS session.
 > import flow (1.7b), and HR display (1B). Decide the unified "connect a source" surface,
 > onboarding/empty states, where sync lives, and the async-credit UX (HR quests crediting after a
 > sync) before writing SwiftUI. This gates §4–§6.
+>
+> **✅ Council ran 2026-06-20 (engineer + designer + PM). Decisions locked in §10 below.**
 
 **Goal:** user can connect WHOOP from the app, trigger a sync, and see connection status.
 
@@ -329,6 +331,74 @@ the UI/UX of adding wearable sources** — WHOOP connect/attach/dismiss (1A), Ap
    time overlap, one provenance per session (prefer Apple Watch for runs). Don't double-credit.
 9. **`hr_zone_seconds` for Apple Watch** is computed on-device from the user's **max HR** — need a
    max-HR setting (or estimate `220−age`). Decide where that lives (profile setting vs. estimate).
+
+---
+
+## 10. Council resolution (2026-06-20) — locked v1 decisions
+
+> **▶ Build spec:** the full file-by-file, build-ready spec for all four chunks (A→D) — with a contract
+> registry and an amendment protocol so it survives across sessions — lives in
+> [`wearable-hr-v1-build-spec.md`](./wearable-hr-v1-build-spec.md). That is the doc to open when building.
+
+Full council pass (engineer + designer + PM) on the wearable-source UX. Resolved:
+
+**Scope — v1 = Apple Health import + HR display; WHOOP stubbed (Nick).**
+- Build **1.7a (backend HealthKit ingest)** + **1.7b (iOS HealthKit read)** + **1B (HR display)** now —
+  testable on Nick's own devices today and his primary run path (D3).
+- **WHOOP (1A)** renders as a disabled "Connect WHOOP — coming soon" row driven by
+  `GET /whoop/status.configured == false`; full connect/attach/dismiss (+ D1 endpoints) is **v2**,
+  once Railway `WHOOP_*` creds + an approved WHOOP dev app exist. Don't build OAuth/attach/dismiss
+  against an endpoint that can't be exercised end-to-end.
+
+**Sync model — connect once, auto-sync on foreground (Nick): "don't make me sync every time."**
+- After a one-time Apple Health permission grant, the app **auto-imports new completed `HKWorkout`s
+  on app foreground** (`scenePhase` → `.active`, debounced) — opening the app pulls anything new with
+  no manual tap. A manual "Import now" stays as a fallback.
+- **Silent by default — no toast/notification on every sync.** Quest cards update in place; surface
+  only the existing quest-complete affordance when one actually credits. No completion notifications
+  in v1. (Resolves §9 Q4 toward silent foreground backfill.)
+- **Constraint:** true background sync (app *closed*) needs the HealthKit background-delivery
+  entitlement intentionally removed for personal-team provisioning. Foreground-on-open auto-sync is
+  the closest available and meets the intent; re-adding background delivery is a later option.
+- **Drop the bespoke "AWAITING SYNC" quest state** — foreground auto-sync keeps quests fresh by the
+  time the user looks; not worth building.
+
+**Import payload — lean / HR-focused (Nick): "ok if there's not much besides HR data saved."**
+- Persist HR-relevant fields only: session avg/peak HR, `hr_zone_seconds`, `kilojoules`,
+  `hr_source="apple_watch"`, raw `heart_rate_samples[]` (for per-set attribution), per-set avg/peak HR.
+  Defer `distance_meters`/pace/extra metadata.
+
+**Max HR — estimate `220 − age` on-device** (age already captured in the profile attributes); **no
+setting screen in v1.** Compute `hr_zone_seconds` on-device from the estimate; backend stores the
+supplied zones (no new `max_hr` column needed for v1). Editable override deferred (§9 Q9).
+
+**HR display (1B) — shared foundation, build in v1.**
+- New `HRZoneBar` (data-driven segment count: 5 zones when available, collapse to 3; fixed cold→hot
+  palette so it always looks intentional), `StatCard`s for avg/peak HR.
+- **Strain is WHOOP-only** — shown only on WHOOP sessions; simply **absent** (not "—"/"N/A") on
+  Apple-Watch sessions so a missing slot never reads as broken data.
+- **Provenance badges** off `hr_source`: WHOOP orange (exists), Apple Watch cyan, screenshot gray —
+  one `hr_source → badge` helper.
+- Per-set HR column added to the set table only when sets carry HR; HR quest types
+  (`hr_zone_time`/`peak_hr`/`session_strain`) get icons/labels in `DailyQuestsCard`/`QuestDetailSheet`.
+
+**Surface placement — the Apple Health workout import is a DISTINCT surface from the existing daily
+"Health Sync" row** (steps/calories): different scope, different HealthKit read types — never two
+identical-looking Health rows. v1 ships it as a lightweight settings row/section (not a full hub);
+generalize into a "Data Sources" hub in v2 when WHOOP is a real second source.
+
+**Dedup:** persist the HealthKit workout UUID (`hk_uuid`) per user; re-import skips known ids
+(idempotent, same as WHOOP sync).
+
+**Deferred (anti-gold-plating):** watchOS live-HR app; completion notifications; D4/D4a/D4b analytics
++ custom strain; celebration animations; synthetic sessions for unmatched workouts; multi-source
+conflict resolution beyond id-skip; editable max-HR/zone config; the full "Data Sources" hub.
+
+**v1 build order (chunked):** A) backend ingest `POST /workouts/import-healthkit` (1.7a) →
+B) iOS API plumbing (`APITypes`/`APIClient`) → C) iOS HealthKit read + foreground auto-sync +
+settings row + stubbed WHOOP row → D) HR display (1B). Each chunk ends at its build/test gate.
+
+---
 
 **Key files (quick reference):**
 `backend/app/services/quest_service.py` · `…/whoop_service.py` · `…/workout_stats.py` ·
