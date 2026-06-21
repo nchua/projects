@@ -54,10 +54,10 @@ watchOS companion app (none exists today) for live HR.
   `/v1/activity/workout` endpoint returns an aggregate *summary* (avg/max HR,
   strain, kJ) + HR-zone *durations* — **not** a per-second HR timeseries. So the
   earlier "Phase 1 post-hoc per-set alignment" idea (slice a WHOOP HR series into
-  set windows) is **not possible** and was dropped. Per-set HR mapping is **Phase 2
-  (Apple Watch) only**, where the watch logs real set boundaries + raw samples.
-  Phase 1's deliverable is HR/strain in quests + **session-level** analytics for
-  WHOOP users, not per-set.
+  set windows) is **not possible** for WHOOP and was dropped. Phase 1's WHOOP
+  deliverable is HR/strain in quests + **session-level** analytics, not per-set.
+  *(Per-set HR **is** possible from Apple Watch — see Decision D3 below — because
+  HealthKit exposes raw HR samples even without a companion app.)*
 - **Session matching is greatest-overlap, and unmatched WHOOP workouts are
   counted, not absorbed.** `sync_recent_workouts` picks the app session with the
   most time overlap; if none overlaps it increments `workouts_unmatched` and moves
@@ -289,18 +289,32 @@ Remember the
 - Extend `workout_stats` + quest recalculation to be HR-aware (no-ops until data arrives).
 - **Deliverable:** DB + API can store and serve per-set HR; nothing user-visible yet.
 
-### Phase 1 — WHOOP API (no watchOS app)
+### Phase 1 — WHOOP API (no watchOS app) — ✅ backend done
 - `whoop_connections` table, OAuth connect/callback, `whoop_service`, `POST /whoop/sync`.
-- Post-hoc per-set HR alignment + session matching.
+- Session matching (greatest time overlap) — **session-level only** (WHOOP has no samples).
 - New HR quest types + seeds; quest recalculation on sync.
-- iOS: "Connect WHOOP" settings flow, HR display on workout detail + quest cards.
+- iOS (remaining): "Connect WHOOP" settings flow, HR display on workout detail + quest cards.
 - **Deliverable:** HR/strain in quests and **session-level** HR analytics for WHOOP users
-  (post-workout). *(Per-set analytics need Apple Watch — Phase 2. WHOOP has no per-set data.)*
+  (post-workout). *(Per-set analytics need raw samples — see Phase 1.7.)*
 
-### Phase 2 — Apple Watch live HR
-- watchOS target + WatchConnectivity, `HKWorkoutSession` live HR, live set boundaries.
-- Live HR UI during an active workout; exact per-set mapping.
-- **Deliverable:** true live HR mid-workout and the most accurate per-set data.
+### Phase 1.7 — Apple Watch workout import via HealthKit (iOS, **no watchOS app**) — primary path for runs (D3)
+- iOS `HealthKitManager`: add `.heartRate` + `HKObjectType.workoutType()` to read types; query
+  completed `HKWorkout`s since last import and their raw HR samples
+  (`HKQuery.predicateForObjects(from: workout)`); compute `hr_zone_seconds` on-device from max HR.
+- Backend ingest endpoint (web-session-doable) that **reuses the screenshot path's
+  activity→Cardio-exercise matching + session builder**: runs/cardio → `WorkoutSession` with a
+  Cardio exercise + session HR summary (`hr_source="apple_watch"`); strength → match to a logged
+  session by time overlap and attribute samples to sets via Phase-0 timestamp windows (per-set HR,
+  no companion app). Dedup by HealthKit workout UUID.
+- Reuse the D1 attach/dismiss flow for `HKWorkout`s that don't match a logged session.
+- **Deliverable:** Apple-Watch runs logged with HR summaries + quest credit; **per-set HR for
+  strength** — all without a watchOS target.
+
+### Phase 2 (optional) — watchOS companion: live HR only
+- Only needed for **live** mid-workout HR display + exact live set boundaries. Per-set HR is
+  already covered by Phase 1.7, so this is a lower-priority enhancement.
+- watchOS target + WatchConnectivity, `HKWorkoutSession`/`HKLiveWorkoutBuilder` live HR.
+- **Deliverable:** true live HR mid-workout; most accurate (live) set boundaries.
 
 ### Phase 3 — Exertion analytics (long-term)
 - Per-set work density, HR recovery between sets, cardiovascular cost per lift, session
@@ -308,7 +322,7 @@ Remember the
 
 ---
 
-## Resolved decisions (from the Phase 1 audit)
+## Resolved decisions (Phase 1 audit + roadmap)
 
 - **D1 — Unmatched WHOOP workouts. ✅ RESOLVED (2026-06-21, Nick).** Phased approach:
   - **Now (a):** keep current behavior — WHOOP only enriches workouts you logged in the app;
@@ -326,6 +340,32 @@ Remember the
 - **D2 — `HR_AVG_SESSION` quest type.** Not built. Add it only if "average HR ≥ X for the
   session" is a quest worth having beyond zone-time / peak / strain.
 
+- **D3 — Apple Watch is the primary path for runs/cardio; ingest completed `HKWorkout`s via
+  HealthKit (no watchOS companion app). ✅ RESOLVED (2026-06-21, Nick).** Nick logs runs on the
+  Apple Watch, which produces good post-workout summaries. Key fact: the **iPhone's** HealthKit
+  can read completed Apple-Watch workouts *and their raw HR samples* (`HKWorkout` +
+  `HKQuantityType(.heartRate)` via `HKQuery.predicateForObjects(from: workout)`) — **no watchOS
+  target required.** This reshapes the roadmap:
+  - **Runs / cardio:** import the `HKWorkout` and represent it the way the screenshot path already
+    does — match the activity (e.g. `RUNNING`) to a **seeded Cardio/Sport exercise**, create a
+    `WorkoutSession` with that exercise + session HR summary (`hr_source = "apple_watch"`,
+    avg/peak HR, `kilojoules`, `hr_zone_seconds` computed on-device from the user's max HR). This
+    is the **primary** way runs get logged. *(WHOOP stays for strain/recovery + as an alt source.)*
+  - **Strength done on the watch:** because HealthKit gives **raw HR samples**, a post-hoc import
+    can attribute them to logged sets via the **existing Phase-0 timestamp-window logic** — i.e.
+    **per-set HR with no companion app.** Match the `HKWorkout` to the logged session by time
+    overlap (same matcher as WHOOP); reuse the D1 attach/dismiss flow for non-matches.
+  - **`strain` is WHOOP-only** (0-21). Apple Watch sets `strain = null`; `SESSION_STRAIN` quests
+    won't credit from Apple-Watch data (HR_ZONE_TIME / PEAK_HR do). Acceptable.
+  - **Dedup across sources:** store the HealthKit workout UUID per user to avoid re-importing, and
+    avoid double-counting a workout present in **both** WHOOP and Apple Watch (prefer the
+    Apple-Watch import for runs since it carries samples). See risk #8.
+  - **Demotes old "Phase 2".** The watchOS companion app is no longer required for per-set HR; it
+    becomes an **optional** enhancement that only adds **live** mid-workout HR + exact live set
+    boundaries. Lower priority given Nick's post-hoc, summary-first usage.
+  - *Optional later:* add `distance_meters` / `pace` columns to `WorkoutSession` for richer run
+    records (HealthKit provides `totalDistance`). Not required for HR/quests.
+
 ## Open questions / risks
 
 1. **Live vs. post-hoc expectation.** Confirm the near-term "live HR during workout" appetite —
@@ -338,12 +378,17 @@ Remember the
    "minimal entitlements for personal team" decision — verify before Phase 2.
 5. **Raw sample volume & retention.** ~1 Hz HR → thousands of rows per session; decide
    downsampling/retention before scaling.
-6. **Set-timestamp accuracy.** *(No longer applies to WHOOP — per-set inference was dropped.)*
-   For the **Apple Watch** path (Phase 2), set boundaries come from the live workout, so they're
-   accurate. `Set.created_at` still lags for screenshot/offline-queued workouts, but that only
-   matters if per-set HR inference is ever revisited.
-7. **Async quest crediting.** HR quests completing minutes after the workout (on WHOOP sync)
-   needs UX thought (notification? silent backfill?) and idempotent recalculation.
+6. **Set-timestamp accuracy.** *(N/A for WHOOP — per-set inference dropped.)* For the **Apple
+   Watch HealthKit import** (D3), raw samples are attributed to logged sets by **timestamp
+   window** (Phase-0 logic), so accuracy depends on how promptly sets were logged vs. performed.
+   The watchOS companion app (optional) would give exact live boundaries. `Set.created_at` lag on
+   screenshot/offline-queued workouts is the main error source — keep a manual nudge in mind.
+7. **Async quest crediting.** HR quests completing minutes after the workout (on WHOOP sync **or**
+   an Apple-Watch HealthKit import) needs UX thought (notification? silent backfill?) and
+   idempotent recalculation. Same recalc path serves both.
+8. **Dedup across HR sources.** A single workout can appear in **both** WHOOP and Apple Watch.
+   Dedup by HealthKit/WHOOP id + time overlap; pick one provenance per session (prefer Apple
+   Watch for runs since it carries raw samples). Don't double-count toward quests.
 
 ---
 

@@ -61,14 +61,21 @@ HR fields now present on workout responses (`schemas/workout.py`):
 |---|---|---|
 | **1.5 — Wearable-gated quest generation** | ✅ Web session (backend-only) | Pure Python; no Xcode. Closes the "HR quests for connected users" TODO. |
 | **1.6 — Sync scheduling / freshness** (optional) | ✅ Web session (backend-only) | Background/cron sync; no Xcode. |
-| **1A — iOS WHOOP connect flow** | 🖥️ Desktop (Xcode) | SwiftUI + `xcodegen` + build check. |
+| **1A — iOS WHOOP connect flow** (+ D1 attach/dismiss) | 🖥️ Desktop (Xcode) | SwiftUI + `xcodegen` + build check. |
 | **1B — iOS HR display wiring** | 🖥️ Desktop (Xcode) | `APITypes.swift` + views; build check. |
-| **2 — Apple Watch live HR (watchOS target)** | 🖥️ Desktop (Xcode) | New target, provisioning, on-device HealthKit. |
+| **1.7a — HealthKit import: backend ingest endpoint** | ✅ Web session (backend-only) | Reuses screenshot activity-matching; no Xcode. |
+| **1.7b — HealthKit import: iOS read + post** | 🖥️ Desktop (Xcode) | `HealthKitManager` `HKWorkout` reads; no watchOS target. |
+| **2 (optional) — watchOS companion (live HR only)** | 🖥️ Desktop (Xcode) | New target, provisioning. Lower priority — per-set HR already covered by 1.7. |
 | **3 — Exertion analytics** | Mixed | Backend math = web; charts = desktop. |
 
-> Recommendation: knock out **1.5** in this/next web session (it makes the feature
-> actually useful for a connected WHOOP user), then do **1A + 1B** together on desktop
-> as the first Xcode sitting. **Phase 2 (watchOS)** is the big desktop project.
+> **Decision D3 (Nick): Apple Watch is the primary path for runs/cardio.** Because iPhone
+> HealthKit exposes completed `HKWorkout`s *with raw HR samples*, **1.7 needs no watchOS app** and
+> delivers both run summaries and per-set HR for strength. The watchOS companion (old "Phase 2")
+> is demoted to an optional live-HR enhancement.
+>
+> Recommendation: do the web-session backend chunks (**1.5**, **1.7a**, the **D1 sync-detail
+> endpoints**) now; then on desktop do **1A + 1B + 1.7b** together. Treat **Phase 2 (watchOS)**
+> as optional/later.
 
 ---
 
@@ -180,36 +187,70 @@ Simulator build clean.
 
 ---
 
-## 6. Phase 2 — Apple Watch live HR *(desktop / Xcode — the big one)*
+## 6. Phase 1.7 — Apple Watch workout import via HealthKit *(no watchOS app — Decision D3)*
 
-True live HR during a workout **requires a watchOS companion app** (the one hard constraint
-from the scoping doc — iPhone HealthKit alone cannot stream live HR).
+**This is Nick's preferred path for runs.** iPhone HealthKit can read completed Apple-Watch
+workouts **and their raw HR samples**, so this delivers run summaries *and* per-set HR for
+strength without a watchOS target. The backend HR ingestion (Phase 0) is already built; what's
+new is (a) a thin backend ingest endpoint that reuses the screenshot path's activity matching,
+and (b) the iOS HealthKit read.
 
-**Scope:**
-- New **watchOS app target** + shared-models setup in `ios/project.yml` (xcodegen).
-- watchOS app runs `HKWorkoutSession` + `HKLiveWorkoutBuilder`, subscribes to
-  `HKQuantityType(.heartRate)`, streams BPM to the phone via `WCSession`, and records **set
-  boundaries live** (exact per-set mapping — the best-case alignment).
-- `Services/HealthKitManager.swift`: add `.heartRate` (and `.restingHeartRate`,
-  `.heartRateVariabilitySDNN`) to `readTypes` (currently only steps/energy/exercise time).
-- iOS batches samples + per-set `start_time`/`end_time` + summaries into the workout
-  create/update payload (`heart_rate_samples[]` + set timing are **already accepted** by
-  `schemas/workout.py` / `POST /workouts` from Phase 0 — backend is ready).
-- Live HR UI during an active workout.
+### 6a. Backend ingest endpoint *(web-session-doable)*
+- New `POST /workouts/import-healthkit` (or extend `POST /workouts`) accepting a completed-workout
+  payload: `hk_uuid`, `activity_type`, `start`, `end`, `duration`, `kilojoules`/energy,
+  `avg/peak_heart_rate`, `hr_zone_seconds`, `heart_rate_samples[]`, optional `distance_meters`.
+- **Reuse** `screenshot_service`'s `_match_activity_to_exercise` + synthetic-session builder:
+  - **Cardio/run:** create a `WorkoutSession` with the matched Cardio/Sport exercise + session HR
+    summary, `hr_source="apple_watch"`. (Mirror how the WHOOP-screenshot path already logs runs.)
+  - **Strength:** match to an existing logged session by **time overlap** (reuse the WHOOP
+    matcher); attribute `heart_rate_samples[]` to sets via the **Phase-0 timestamp-window** logic
+    → per-set HR. No match → reuse the **D1 attach/dismiss** flow.
+- **Dedup:** persist `hk_uuid` per user; skip re-imports. Don't double-count a workout already
+  ingested from WHOOP (see open question 8 / risk D3).
+- Run quest recalculation after ingest (same idempotent path as WHOOP sync).
+- *Refactor note:* lift `_match_activity_to_exercise` + the synthetic-session builder out of
+  `screenshot_service.py` into a shared helper so screenshot + WHOOP + HealthKit stay consistent.
 
-**Provisioning gotcha (verify first):** watchOS workout background entitlements vs. the
-existing "minimal entitlements for personal team" decision (`FitnessApp.entitlements`,
-`ios/scripts/lint-entitlements.sh`). **No Apple Pay entitlement, ever** (CLAUDE.md). Confirm
-the workout-processing background mode is available on the current provisioning before
-committing the target.
+### 6b. iOS HealthKit read *(desktop / Xcode)*
+- `Services/HealthKitManager.swift`: add `HKObjectType.workoutType()` + `.heartRate`
+  (and `.restingHeartRate`, `.heartRateVariabilitySDNN`) to `readTypes` (currently only
+  steps/energy/exercise time).
+- Query completed `HKWorkout`s since the last import; for each, read HR samples via
+  `HKQuery.predicateForObjects(from: workout)`; compute `hr_zone_seconds` on-device from the
+  user's max HR; POST to the ingest endpoint. Track the last-import date + imported `hk_uuid`s.
+- Trigger: a "Sync Apple Health" button in the same settings area as WHOOP connect, and/or on
+  app foreground. (Background delivery needs an entitlement that was intentionally removed — keep
+  it manual/foreground for now; see scoping-doc risk on background delivery.)
 
-**Acceptance:** start a workout on the watch → live BPM on-wrist and mirrored to phone →
-finish → samples + per-set HR land via `POST /workouts` → per-set analytics populate with
-exact (not inferred) set windows.
+**Acceptance:** an Apple-Watch run appears in History as a cardio session with HR summary + zone
+breakdown and credits HR quests; a strength workout recorded on the watch backfills per-set HR via
+timestamp windows; re-running import doesn't duplicate. No watchOS target added. Simulator build
+clean.
 
 ---
 
-## 7. Phase 3 — Exertion analytics *(later; backend math = web, charts = desktop)*
+## 7. Phase 2 (optional) — watchOS companion: live HR only *(desktop / Xcode — lower priority)*
+
+With Phase 1.7 covering per-set HR post-hoc, the watchOS app is **no longer required** — it only
+adds **live** mid-workout HR display + exact live set boundaries. Build it only if live-on-wrist
+HR is wanted.
+
+**Scope (if pursued):** new watchOS target + shared models in `ios/project.yml`; `HKWorkoutSession`
++ `HKLiveWorkoutBuilder` streaming `.heartRate` to the phone via `WCSession`; live set boundaries;
+live HR UI. Samples + per-set timing flow into the **already-built** `POST /workouts`
+(`heart_rate_samples[]` + set `start_time/end_time`).
+
+**Provisioning gotcha (verify first):** watchOS workout background entitlements vs. the existing
+"minimal entitlements for personal team" decision (`FitnessApp.entitlements`,
+`ios/scripts/lint-entitlements.sh`). **No Apple Pay entitlement, ever** (CLAUDE.md).
+
+**Acceptance:** live BPM on-wrist + mirrored to phone during a workout; exact (live) set windows.
+
+---
+
+## 8. Phase 3 — Exertion analytics *(later; backend math = web, charts = desktop)*
+<!-- numbering: §7 = optional watchOS, §8 = analytics, §9 = sequencing -->
+
 
 Per-set work density, HR recovery between sets (`hr_recovery_60s` already scoped as a
 nullable column), cardiovascular cost per lift, session-efficiency trends. Feed into the
@@ -220,10 +261,10 @@ precisely so these can be recomputed without re-ingesting.
 
 ---
 
-## 8. Sequencing & open questions
+## 9. Sequencing & open questions
 
-**Suggested order:** 1.5 (web) → 1A + 1B (desktop, one sitting) → 2 (desktop, multi-session)
-→ 3 (later).
+**Suggested order:** **web session** — 1.5 + 1.7a + D1 sync-detail endpoints → **desktop** —
+1A + 1B + 1.7b (one sitting) → **3** (analytics, later) → **2** (watchOS live HR, optional/later).
 
 **Decisions to confirm before/while building:**
 1. **Live-HR appetite.** If live HR mid-workout is must-have *now*, Phase 2 jumps ahead of the
@@ -238,10 +279,19 @@ precisely so these can be recomputed without re-ingesting.
 6. **Unmatched WHOOP workouts (Decision D1). ✅ RESOLVED.** Keep current drop-and-count behavior
    now; add a **surface & attach/dismiss** UI as part of Phase 1A (below); synthetic sessions
    deferred. See `wearable-heart-rate-quest-integration.md` → Resolved decisions.
+7. **Apple Watch = primary run/cardio path (Decision D3). ✅ RESOLVED.** Import completed
+   `HKWorkout`s via HealthKit (no watchOS app); per-set HR for strength via timestamp windows.
+   See §6 + scoping-doc D3.
+8. **Dedup across sources.** A workout may exist in both WHOOP and Apple Watch — dedup by id +
+   time overlap, one provenance per session (prefer Apple Watch for runs). Don't double-credit.
+9. **`hr_zone_seconds` for Apple Watch** is computed on-device from the user's **max HR** — need a
+   max-HR setting (or estimate `220−age`). Decide where that lives (profile setting vs. estimate).
 
 **Key files (quick reference):**
 `backend/app/services/quest_service.py` · `…/whoop_service.py` · `…/workout_stats.py` ·
-`backend/app/api/whoop.py` · `backend/app/schemas/workout.py` ·
+`…/services/screenshot_service.py` (activity→exercise matching to reuse for HealthKit) ·
+`…/services/heart_rate_service.py` (per-set sample attribution) ·
+`backend/app/api/whoop.py` · `…/api/workouts.py` · `backend/app/schemas/workout.py` ·
 `ios/FitnessApp/Services/APITypes.swift` · `…/APIClient.swift` ·
 `…/Services/HealthKitManager.swift` · `…/Views/Profile/ProfileView.swift` ·
 `…/Components/DailyQuestsCard.swift` · `ios/project.yml` · `docs/whoop-setup.md`
