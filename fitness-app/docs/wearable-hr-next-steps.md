@@ -277,8 +277,11 @@ D4 for open normalization/weighting questions.
 
 ## 9. Sequencing & open questions
 
-**Suggested order:** **web session** — 1.5 + 1.7a + D1 sync-detail endpoints → **desktop** —
-1A + 1B + 1.7b (one sitting) → **3** (analytics, later) → **2** (watchOS live HR, optional/later).
+**Status / order (updated 2026-06-21):** **1.5 ✅ done** (web). Per Nick, the remaining backend
+chunks (**1.7a** HealthKit ingest, **D1** WHOOP attach/dismiss) are **deferred and batched with
+their iOS counterparts on desktop** — build each backend+frontend pair together (1A+D1 endpoints;
+1.7a+1.7b) rather than pre-building the backend in a web session. Then **3** (analytics, later) →
+**2** (watchOS live HR, optional/later).
 
 **Decisions to confirm before/while building:**
 1. **Live-HR appetite.** If live HR mid-workout is must-have *now*, Phase 2 jumps ahead of the
