@@ -183,43 +183,94 @@ def get_daily_quests(db: Session, user_id: str) -> Dict[str, Any]:
     }
 
 
+def user_has_wearable(db: Session, user_id: str, lookback_days: int = 30) -> bool:
+    """
+    True if the user has a usable wearable HR source:
+      - a connected WHOOP account, OR
+      - any recent (non-deleted) workout carrying wearable HR (``hr_source`` set,
+        e.g. from an Apple Watch HealthKit import or WHOOP sync).
+
+    Used to gate HR-driven quests into the daily pool so non-wearable users never
+    get impossible quests.
+    """
+    # Local import: whoop_service imports this module, so a top-level import
+    # would create a cycle.
+    from app.services import whoop_service
+
+    if whoop_service.get_connection(db, user_id) is not None:
+        return True
+
+    # Naive UTC to match how WorkoutSession.date is stored (see whoop_service /
+    # the rest of the schema) — comparing naive vs. aware breaks under SQLite.
+    cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=lookback_days)
+    recent_hr_session = (
+        db.query(WorkoutSession.id)
+        .filter(
+            WorkoutSession.user_id == user_id,
+            WorkoutSession.hr_source.isnot(None),
+            WorkoutSession.date >= cutoff,
+            WorkoutSession.deleted_at.is_(None),
+        )
+        .first()
+    )
+    return recent_hr_session is not None
+
+
 def generate_daily_quests(db: Session, user_id: str, count: int = 3) -> List[UserQuest]:
     """
     Generate new daily quests for a user.
     Picks one quest from each difficulty (easy, normal, hard) if available.
+
+    HR-driven quests (``hr_zone_time`` / ``peak_hr`` / ``session_strain``) require a
+    connected wearable, so they're only offered to users with one — and capped at a
+    single HR quest per day so the set isn't all-cardio. Non-wearable users get the
+    original behavior (HR quests excluded).
     """
     today = get_today_utc()
 
-    # Get all active daily quest definitions. Excludes duration-based quests
-    # (speed) and HR-based quests — the latter require a connected wearable, so
-    # they're assigned via missions / wearable-gated generation rather than the
-    # random daily pool (TODO: include for users with a connected wearable).
     HR_QUEST_TYPES = ("hr_zone_time", "peak_hr", "session_strain")
-    quest_defs = db.query(QuestDefinition).filter(
+
+    # Base pool: active daily quests, excluding duration-based (speed) and the
+    # wearable-gated HR quests.
+    base_defs = db.query(QuestDefinition).filter(
         QuestDefinition.is_daily == True,
         QuestDefinition.is_active == True,
         QuestDefinition.quest_type != "workout_duration",  # Exclude speed-based quests
-        QuestDefinition.quest_type.notin_(HR_QUEST_TYPES),  # Exclude wearable-gated quests
+        QuestDefinition.quest_type.notin_(HR_QUEST_TYPES),  # Wearable-gated, added below
     ).all()
 
-    if not quest_defs:
+    # Wearable users can also receive HR quests (at most one — see cap below).
+    hr_defs = []
+    if user_has_wearable(db, user_id):
+        hr_defs = db.query(QuestDefinition).filter(
+            QuestDefinition.is_daily == True,
+            QuestDefinition.is_active == True,
+            QuestDefinition.quest_type.in_(HR_QUEST_TYPES),
+        ).all()
+
+    if not base_defs and not hr_defs:
         return []
 
-    # Group by difficulty
+    selected_quests = []
+
+    # Cap: at most one HR quest in the daily set.
+    if hr_defs:
+        selected_quests.append(random.choice(hr_defs))
+
+    # Fill remaining slots from the base pool, one per difficulty for variety.
     by_difficulty = {"easy": [], "normal": [], "hard": []}
-    for qd in quest_defs:
+    for qd in base_defs:
         if qd.difficulty in by_difficulty:
             by_difficulty[qd.difficulty].append(qd)
-
-    # Select one from each difficulty
-    selected_quests = []
     for difficulty in ["easy", "normal", "hard"]:
+        if len(selected_quests) >= count:
+            break
         if by_difficulty[difficulty]:
             selected_quests.append(random.choice(by_difficulty[difficulty]))
 
-    # If we don't have 3 yet, pick more randomly
-    while len(selected_quests) < count and quest_defs:
-        remaining = [q for q in quest_defs if q not in selected_quests]
+    # If we don't have `count` yet, pick more randomly from the base pool.
+    while len(selected_quests) < count:
+        remaining = [q for q in base_defs if q not in selected_quests]
         if remaining:
             selected_quests.append(random.choice(remaining))
         else:
@@ -486,8 +537,8 @@ def seed_quest_definitions(db: Session) -> int:
          "quest_type": "total_volume", "target_value": 20000, "xp_reward": 70, "difficulty": "hard"},
 
         # ── Wearable heart-rate quests (require Apple Watch or WHOOP) ──
-        # Kept out of the random daily pool (see generate_daily_quests); assigned
-        # via missions or wearable-gated generation.
+        # Offered to wearable users only, capped at one per day — see
+        # user_has_wearable() / generate_daily_quests().
         {"id": "hr_zone_15", "name": "Heat Check", "description": "Spend 15 min in elevated HR zones",
          "quest_type": "hr_zone_time", "target_value": 15, "xp_reward": 25, "difficulty": "easy"},
         {"id": "hr_zone_30", "name": "Cardio Base", "description": "Spend 30 min in elevated HR zones",

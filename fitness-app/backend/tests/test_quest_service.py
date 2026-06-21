@@ -76,6 +76,102 @@ class TestClaimQuestReward:
         assert resp.status_code == 400
 
 
+HR_QUEST_TYPES = ("hr_zone_time", "peak_hr", "session_strain")
+
+
+class TestWearableGatedQuests:
+    """user_has_wearable() + HR-quest gating in generate_daily_quests()."""
+
+    def _seed(self, db):
+        from app.services.quest_service import seed_quest_definitions
+        seed_quest_definitions(db)
+        db.flush()
+
+    def _quest_types(self, db, user_quests):
+        from app.models.quest import QuestDefinition
+        ids = [uq.quest_id for uq in user_quests]
+        defs = db.query(QuestDefinition).filter(QuestDefinition.id.in_(ids)).all()
+        return [d.quest_type for d in defs]
+
+    def test_no_wearable_for_fresh_user(self, db, create_test_user):
+        from app.services.quest_service import user_has_wearable
+        user, _ = create_test_user(email="fresh@example.com")
+        assert user_has_wearable(db, user.id) is False
+
+    def test_wearable_via_whoop_connection(self, db, create_test_user):
+        from app.models.whoop import WhoopConnection
+        from app.services.quest_service import user_has_wearable
+        user, _ = create_test_user(email="whoop@example.com")
+        db.add(WhoopConnection(user_id=user.id))
+        db.flush()
+        assert user_has_wearable(db, user.id) is True
+
+    def test_wearable_via_recent_hr_session(self, db, create_test_user):
+        from datetime import datetime, timezone
+
+        from app.models.workout import WorkoutSession
+        from app.services.quest_service import user_has_wearable
+        user, _ = create_test_user(email="watch@example.com")
+        db.add(WorkoutSession(
+            user_id=user.id,
+            date=datetime.now(timezone.utc).replace(tzinfo=None),
+            hr_source="apple_watch",
+        ))
+        db.flush()
+        assert user_has_wearable(db, user.id) is True
+
+    def test_old_hr_session_does_not_count(self, db, create_test_user):
+        from datetime import datetime, timedelta, timezone
+
+        from app.models.workout import WorkoutSession
+        from app.services.quest_service import user_has_wearable
+        user, _ = create_test_user(email="stale@example.com")
+        old = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=40)
+        db.add(WorkoutSession(user_id=user.id, date=old, hr_source="apple_watch"))
+        db.flush()
+        assert user_has_wearable(db, user.id) is False
+
+    def test_session_without_hr_source_does_not_count(self, db, create_test_user):
+        from datetime import datetime, timezone
+
+        from app.models.workout import WorkoutSession
+        from app.services.quest_service import user_has_wearable
+        user, _ = create_test_user(email="nohr@example.com")
+        db.add(WorkoutSession(
+            user_id=user.id,
+            date=datetime.now(timezone.utc).replace(tzinfo=None),
+            hr_source=None,
+        ))
+        db.flush()
+        assert user_has_wearable(db, user.id) is False
+
+    def test_non_wearable_user_gets_no_hr_quests(self, db, create_test_user):
+        from app.services.quest_service import generate_daily_quests
+        self._seed(db)
+        user, _ = create_test_user(email="base@example.com")
+
+        quests = generate_daily_quests(db, user.id)
+
+        assert len(quests) == 3
+        types = self._quest_types(db, quests)
+        assert all(t not in HR_QUEST_TYPES for t in types), types
+
+    def test_wearable_user_gets_exactly_one_hr_quest(self, db, create_test_user):
+        from app.models.whoop import WhoopConnection
+        from app.services.quest_service import generate_daily_quests
+        self._seed(db)
+        user, _ = create_test_user(email="geared@example.com")
+        db.add(WhoopConnection(user_id=user.id))
+        db.flush()
+
+        quests = generate_daily_quests(db, user.id)
+
+        assert len(quests) == 3
+        types = self._quest_types(db, quests)
+        hr = [t for t in types if t in HR_QUEST_TYPES]
+        assert len(hr) == 1, types  # capped at one, but present for wearable users
+
+
 # ============================================================================
 # TODO: Previous pseudo-tests removed because they asserted on hand-built
 # Mock objects rather than real service behavior. These gaps need coverage
