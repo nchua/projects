@@ -53,7 +53,8 @@ struct AriseWorkoutHRSection: View {
                     }
                 }
 
-                if let zones = workout.hrZoneSeconds, !zones.isEmpty {
+                if let zones = workout.hrZoneSeconds,
+                   AriseHRZoneBar.hasRenderableZones(zones) {
                     AriseHRZoneBar(zoneSeconds: zones)
                 }
             }

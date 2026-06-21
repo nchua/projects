@@ -271,7 +271,7 @@ extension WorkoutResponse {
         avgHeartRate != nil
             || peakHeartRate != nil
             || strain != nil
-            || (hrZoneSeconds.map { !$0.isEmpty } ?? false)
+            || AriseHRZoneBar.hasRenderableZones(hrZoneSeconds)
     }
 
     /// Strain originates from WHOOP only; Apple-Watch sessions never carry it.

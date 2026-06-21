@@ -70,6 +70,15 @@ struct AriseHRZoneBar: View {
         return order.filter { present.contains($0) }
     }
 
+    /// True when a map would render at least one segment — i.e. it has ≥1 *known*
+    /// zone key with seconds > 0. Callers use this to gate the surrounding section
+    /// so an all-zero / unknown-only map doesn't leave a header with nothing under it.
+    static func hasRenderableZones(_ zones: [String: Int]?) -> Bool {
+        guard let zones else { return false }
+        let known = Set(zoneOrder5).union(zoneOrder3)
+        return zones.contains { known.contains($0.key) && $0.value > 0 }
+    }
+
     var body: some View {
         let keys = orderedKeys
         let total = keys.reduce(0) { $0 + (zoneSeconds[$1] ?? 0) }
