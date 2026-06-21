@@ -1,6 +1,6 @@
 # Wearable HR v1 — Build Spec (living document)
 
-**Status:** In progress · Chunk A `Done (304511f)` · Chunks B/C/D `Not started`
+**Status:** In progress · Chunk A `Done (304511f)` · Chunk B `Done (00c0cdc)` · Chunks C/D `Not started`
 **Author:** Claude Code (spec-writing council: backend / iOS / design / PM), 2026-06-20
 **Branch:** `claude/next-steps-design-spec-83n3jo` → merges to `main`
 **Scope:** Apple Health import (1.7a backend + 1.7b iOS) + HR display (1B). WHOOP (1A) stubbed.
@@ -356,8 +356,32 @@ Use **`backend/venv`** (per memory: system 3.9 can't import the app; 3.13 needs 
 
 ## Chunk B — iOS API plumbing
 
-- **Status:** Not started
+- **Status:** Done (2026-06-21, `00c0cdc`)
 - **Depends on:** Chunk A (confirmed contract).
+
+> **Build-note (2026-06-21, `00c0cdc`):** Implemented exactly as specced against the **CONFIRMED v1**
+> Contract Registry — no contract changes, so **no Amendment Protocol / Log row** was needed. Verified
+> the decoder still has `keyDecodingStrategy = .convertFromSnakeCase` commented out (`APIClient.swift:838–841`)
+> and the encoder is a plain `JSONEncoder()` (`:810`), so every new field carries an explicit snake_case
+> `CodingKey`. **`APITypes.swift`:** added `HealthKitHRSample`/`HealthKitWorkoutImport`/`HealthKitImportRequest`
+> (Encodable) + `HealthKitUnmatched`/`HealthKitImportResponse`/`WhoopStatusResponse` (Decodable), verbatim from
+> the spec (`unmatched: [HealthKitUnmatched]` objects; `hrZoneSeconds: [String:Int]?`; `isStrength: Bool`).
+> Additive optional HR fields (additive-only, missing keys → nil): `WorkoutResponse` += `avg/peakHeartRate`,
+> `hrZoneSeconds`, `kilojoules`, `hrSource`, `hkUuid`; `WorkoutSummaryResponse` += `avg/peakHeartRate`, `hrSource`;
+> `SetResponse` += `startTime`, `endTime`, `avg/peakHeartRate`. **`APIClient.swift`:** added a `// MARK: - HealthKit
+> Workout Import` section after Activity (`:514`) with `importHealthKitWorkouts(_:)` → `post("/workouts/import-healthkit")`
+> and `getWhoopStatus()` → `get("/whoop/status")` (routes through the private `request(...)` → Bearer/401-refresh/`APIError`).
+> No view code touches these yet; no `project.yml`/entitlement change; no new files (xcodegen auto-includes — pbxproj untracked, no churn).
+> **Gate green:** `xcodegen generate` clean; `xcodebuild … build` → `** BUILD SUCCEEDED **`, `grep "error:"` empty;
+> `scripts/lint-entitlements.sh` → "All checks passed" (no Apple Pay, no background-delivery). **Contract proof:**
+> a standalone `swift` decode/encode harness (exact struct copies) ran **19/19 green** — full + empty
+> `HealthKitImportResponse` decode, `unmatched` as objects, `WhoopStatusResponse`, `WorkoutResponse`/`SetResponse`
+> **with** new keys decode, **legacy** `WorkoutResponse`/`SetResponse` JSON **without** the new keys still decode
+> (all HR → nil, no throw), `hr_source == "apple_watch"` (underscore), and `HealthKitImportRequest` encodes
+> snake_case with the nil `distance_meters` optional **omitted** and no camelCase leakage. Two SourceKit
+> diagnostics seen mid-edit (`parseISO8601Date` "no member", `UIKit` "no such module") were cross-file
+> indexing false positives — the authoritative `xcodebuild` is clean. **Downstream unblocked:** C (request
+> types + `importHealthKitWorkouts` + `getWhoopStatus`) and D (HR fields decode on the workout/set structs).
 - **Goal:** Add the Swift request/response types for the import endpoint to `APITypes.swift`, an
   `importHealthKitWorkouts(...)` method to `APIClient` mirroring the existing JSON POST, the
   `WhoopStatusResponse` + `getWhoopStatus()` the stub row needs, and backward-compatible optional HR fields
