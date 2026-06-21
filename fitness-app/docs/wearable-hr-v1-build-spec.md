@@ -907,6 +907,15 @@ badge/segment mapping breaks).
 > `if workout.hasHRData { AriseDivider(); AriseWorkoutHRSection() }`) and there is no divider before Notes.
 > No console errors. **Mock data only — not wired to the backend, not shipped in the app.** Iterations that
 > change the *real* UI fold back into Chunk D (+ Amendment Protocol if they touch a locked contract).
+>
+> **Theme-fidelity revision (2026-06-21, `77f5c47`):** after review (numbers glowed too much; read as "several
+> themes"), re-matched to the live components: StatCard value glow softened to a faint same-color halo
+> (~0.28–0.30 / 7px vs the app's `.shadow(0.4, radius:10)`); StatCard icons are monochrome **gray** SVGs
+> (heart/bolt = `textSecondary`), not multicolor emoji; dividers are gradients (`AriseDivider`); background uses
+> the faint `VoidBackground` radials (0.02); `AriseSourceBadge` glyphs are tinted monochrome SVGs that take the
+> badge color; the HR-zone legend drops `%MaxHR` (live app passes `maxHR=nil`); the History row gained its green
+> left indicator bar. Quest icons stay colorful emoji (the app's `DailyQuestsCard` uses emoji). Re-verified in
+> Chrome across all states.
 - **Type:** **Design-preview artifact, NOT part of the v1 functional ship.** A–D are COMPLETE and shippable
   without this. Non-blocking; build it when you want to eyeball + iterate the HR UI *before* real Watch/WHOOP
   data flows on device. A fresh session following "How to use this spec" (scan A→D) should **not** treat E as
