@@ -282,6 +282,21 @@ D4 for open normalization/weighting questions.
 
 ---
 
+## Deployment / merge status
+
+- **Everything on `claude/next-steps-design-spec-83n3jo` is meant to land on `main`** (Nick).
+  Deferred to the **desktop session** — do NOT auto-merge from web.
+- ⚠️ **`main` is behind:** as of 2026-06-21 `origin/main` is at `d452c20`, which **predates the
+  stage-one build** (Phase 0 + WHOOP backend `b39fb9b`). So merging this branch is a **clean
+  fast-forward** but it is the **first production deploy of stage one** — Railway auto-deploys on
+  push to `main` and will run **two new migrations** on the prod DB (`add_wearable_hr`,
+  `add_whoop_connections`). Migration chain verified **single head** (`add_whoop_connections`).
+- Changes are backward-compatible (nullable columns + new tables; WHOOP endpoints 503 until
+  `WHOOP_*` env vars set; Phase 1.5 tested, 306 backend tests green). Still — deploy intentionally
+  from desktop and watch the Railway deploy + a smoke test after.
+
+---
+
 ## 9. Sequencing & open questions
 
 **Status / order (updated 2026-06-21):** **1.5 ✅ done** (web). Per Nick, the remaining backend
