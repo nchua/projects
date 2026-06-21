@@ -3,7 +3,33 @@
 **Status:** Scoping / design — no code written yet
 **Branch:** `claude/wearable-health-quest-integration-li4wah`
 **Author:** Claude Code session, 2026-06-20
-**Decision locked:** Both sources, phased (WHOOP API first, Apple Watch live HR second)
+**Decision locked:** Both sources (user wears Apple Watch + WHOOP). Build the
+watchOS companion app (none exists today) for live HR.
+
+## Build progress
+
+- ✅ **Phase 0 — backend foundation (DONE, verified, committed):** per-set
+  timing + avg/peak HR on `sets`; session HR summary on `workout_sessions`
+  (avg/peak HR, strain, kilojoules, `hr_zone_seconds`, `hr_source`); new
+  `heart_rate_samples` table; `heart_rate_service.ingest_heart_rate` (persists
+  samples, attributes to sets **by timestamp window**, rolls up avg/peak);
+  wired into `POST /workouts`; HR-aware `workout_stats` + `quest_service` with
+  `HR_ZONE_TIME` / `PEAK_HR` / `SESSION_STRAIN` quest types + seeds (kept out
+  of the random daily pool — wearable-gated, follow-up); Alembic migration
+  unifies the 4 divergent heads + adds the schema. Verified via the full
+  backend test suite + an end-to-end HR-attribution test.
+- ⏳ **Phase 1 — WHOOP API:** not started (needs WHOOP developer credentials).
+- ⏳ **Phase 2 — Apple Watch live HR + watchOS app:** not started (needs Xcode
+  to build — not possible in the Linux remote env).
+
+### Refinements made during Phase 0 (supersede earlier notes below)
+- HR samples are attributed to sets **purely by timestamp window**, not by
+  `set_number` (which is only unique within an exercise).
+- `hr_zone_seconds` is supplied by the client/provider (WHOOP returns zones;
+  the Watch app computes them on-device from the user's max HR). The backend
+  stores them rather than guessing max HR.
+- HR quests are **excluded from the random daily pool** until wearable-gated
+  generation exists, so non-wearable users don't get impossible quests.
 
 ## Goal
 
