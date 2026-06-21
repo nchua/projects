@@ -316,9 +316,16 @@ Remember the
 - watchOS target + WatchConnectivity, `HKWorkoutSession`/`HKLiveWorkoutBuilder` live HR.
 - **Deliverable:** true live HR mid-workout; most accurate (live) set boundaries.
 
-### Phase 3 — Exertion analytics (long-term)
+### Phase 3 — Exertion analytics + custom strain (long-term)
 - Per-set work density, HR recovery between sets, cardiovascular cost per lift, session
   efficiency trends; feed into the strength-coach reporting and progress views.
+- **Custom "ARISE" strain metric (see D4).** Our own session-strain score that works across
+  **all** sources (Apple Watch, WHOOP, manual) instead of depending on WHOOP's proprietary 0-21.
+  Combine cardiovascular load (time-in-HR-zone weighted by HR reserve / Karvonen) with mechanical
+  load from strength (volume = Σ weight·reps, intensity vs. e1RM, RPE/RIR) and per-exercise
+  weighting (compounds and high-HR movements cost more). Personalize to the user's resting/max HR
+  and historical response. The Phase-0 data model already stores everything this needs (raw
+  `heart_rate_samples`, per-set HR + load, exercise category) — no new ingestion required.
 
 ---
 
@@ -365,6 +372,22 @@ Remember the
     boundaries. Lower priority given Nick's post-hoc, summary-first usage.
   - *Optional later:* add `distance_meters` / `pace` columns to `WorkoutSession` for richer run
     records (HealthKit provides `totalDistance`). Not required for HR/quests.
+
+- **D4 — Strain strategy: don't depend on WHOOP strain; design our own later. ✅ RESOLVED
+  (2026-06-21, Nick).**
+  - **Now:** do **not** treat WHOOP's 0-21 strain as a universal/first-class metric. Keep the
+    `strain` column populated *only* when WHOOP provides it (provenance), and leave it `null` for
+    Apple Watch / manual. `SESSION_STRAIN` quests stay **WHOOP-gated** (don't promote them into the
+    cross-source pool). No new work.
+  - **Later (Phase 3):** build a **custom "ARISE" strain** that works across all sources —
+    cardiovascular load (HR-zone time weighted by HR reserve / Karvonen) + mechanical load
+    (volume, intensity vs. e1RM, RPE/RIR) + **per-exercise weighting**, personalized to the user's
+    resting/max HR. Once it exists, a custom-strain quest can replace/augment `SESSION_STRAIN`
+    cross-source. The data foundation already supports it (see Phase 3).
+  - *Open design Qs for when we build it:* what's the formula/units (keep 0-21 to feel familiar,
+    or our own scale?); how to weight cardio vs. mechanical for a hybrid session; per-exercise
+    coefficients (hand-tuned seed vs. learned from the user's HR response); does it need the
+    max-HR setting from D3/§9.
 
 ## Open questions / risks
 

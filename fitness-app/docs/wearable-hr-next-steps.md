@@ -257,6 +257,13 @@ nullable column), cardiovascular cost per lift, session-efficiency trends. Feed 
 strength-coach reporting + iOS Progress views. The raw `heart_rate_samples` table exists
 precisely so these can be recomputed without re-ingesting.
 
+**Custom "ARISE" strain (Decision D4).** A cross-source session-strain metric to replace reliance
+on WHOOP's proprietary 0-21: cardiovascular load (HR-zone time × HR reserve / Karvonen) +
+mechanical load (volume, intensity vs. e1RM, RPE/RIR) + per-exercise weighting, personalized to
+the user's resting/max HR. Backend math = web-session-doable when we get to it; the data model
+already has everything it needs. Until then `strain` stays WHOOP-only and `SESSION_STRAIN` quests
+stay WHOOP-gated. See scoping-doc D4 for the open formula/weighting questions.
+
 **Open:** raw-sample retention/downsampling (~1 Hz → ~3,600 rows/hr) before this scales.
 
 ---
