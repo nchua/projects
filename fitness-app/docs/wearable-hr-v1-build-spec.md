@@ -1,6 +1,6 @@
 # Wearable HR v1 — Build Spec (living document)
 
-**Status:** COMPLETE · Chunk A `Done (304511f)` · Chunk B `Done (00c0cdc)` · Chunk C `Done (8996ab2)` · Chunk D `Done (da940c5)`
+**Status:** v1 functional COMPLETE (A–D) · Chunk A `Done (304511f)` · Chunk B `Done (00c0cdc)` · Chunk C `Done (8996ab2)` · Chunk D `Done (da940c5)` · Chunk E (HTML mockup, optional/post-v1) `Not started`
 **Author:** Claude Code (spec-writing council: backend / iOS / design / PM), 2026-06-20
 **Branch:** `claude/next-steps-design-spec-83n3jo` → merges to `main`
 **Scope:** Apple Health import (1.7a backend + 1.7b iOS) + HR display (1B). WHOOP (1A) stubbed.
@@ -886,6 +886,86 @@ gym workout (all HR nil) — confirm the four surfaces + nil-degradation.
 Last chunk — none downstream. Upstream coupling: any rename of zone keys / `hr_source` / the HR field names in
 A/B, or an `hr_zone_time` unit change, forces a Chunk D edit (the `if let`/`hasHRData` props won't compile, or the
 badge/segment mapping breaks).
+
+---
+
+## Chunk E — HTML mockup (design preview & iteration) — OPTIONAL, post-v1
+
+- **Status:** Not started
+- **Type:** **Design-preview artifact, NOT part of the v1 functional ship.** A–D are COMPLETE and shippable
+  without this. Non-blocking; build it when you want to eyeball + iterate the HR UI *before* real Watch/WHOOP
+  data flows on device. A fresh session following "How to use this spec" (scan A→D) should **not** treat E as
+  required v1 work — pick it up only if explicitly asked for the mockup.
+- **Depends on:** nothing at runtime (standalone HTML, mock data). References Chunk D's components + the ARISE
+  design tokens as the source of truth for fidelity.
+- **Why:** the Simulator has no HealthKit/Watch HR data, so the live app can't show the HR-populated states until
+  a device imports a workout (per Chunk C/D notes). A self-contained HTML mockup lets you **see and iterate** the
+  new look — zone palette, source badges, strain placement, per-set HR column, quest icons, and the all-nil
+  degradation — without waiting on device data, and feed changes back into Chunk D before going fully live.
+
+### Goal
+One **self-contained, single-file** HTML mockup (no build step; opens in any browser / on a phone) that renders
+every new Chunk D surface + the Chunk C settings rows with **mock data**, in the **ARISE design language**, plus a
+small control to flip the whole preview between the **four render states** so the design can be reviewed quickly.
+
+### Surfaces to render (mirror Chunk D 1:1)
+1. **Home recent card** — Biometrics section: avg (cyan) + peak (red+glow) `StatCard`s, strain (orange,
+   **WHOOP-only**), `AriseHRZoneBar` + legend.
+2. **History row** — provenance badge (driven by `hr_source`) + row strain (WHOOP only).
+3. **History workout detail** — "Heart Rate" block (StatCards + zone bar w/ legend) above the objectives list.
+4. **Per-set table** — HR column (zone-tinted values, `"-"` for missing), shown only when ≥1 set has HR.
+5. **Daily quests + quest detail** — `hr_zone_time` ❤️ / `peak_hr` 🔥 / `session_strain` ⚡ with progress bars +
+   copy (`X / Y min`, `X / Y bpm`, `X / Y strain`).
+6. **Settings rows (Chunk C)** — "Health Sync ● CONNECTED" (red heart) · "Apple Health — Workouts & HR
+   ● CONNECTED" (cyan run) · "Connect WHOOP — COMING SOON" (disabled, opacity .5).
+
+### Render states (the headline iteration aid)
+A toggle switching the whole preview between:
+- **WHOOP** — all HR + strain → orange `circle.circle` badge; strain card present.
+- **Apple Watch** — HR, **no strain** → cyan `applewatch` badge; **strain card absent (not "—")**.
+- **Screenshot** — show both: today (`hr_source` NULL → no badge) *and* the forward-compatible `camera.fill` badge.
+- **Legacy gym** — all HR nil → **byte-identical to today** (no Biometrics/Heart-Rate section, no badge, no HR column).
+
+Plus a **zone-scheme switch** to preview the bar as: 5-zone (`z1..z5`), the `z1/z3/z5` collapse, `low/mid/high`,
+and empty.
+
+### Design fidelity (the contract for "looks right" — pull exact values, don't eyeball)
+- **Colors** (`ios/FitnessApp/Utils/Colors.swift`): void blacks, `systemPrimary` `#00D4FF` (cyan),
+  `successGreen` `#33FF88`, `gold` `#FFD700`, `warningRed` `#FF3333`, `voidLight` `#252530`,
+  `textMuted` `#606070`, + the local `hrZ4Orange` `#FF8C42`.
+- **Zone palette (LOCKED endpoints):** z1 cyan · z2 green · z3 gold · z4 orange · z5 red (+glow);
+  labels RECOVERY/AEROBIC/TEMPO/THRESHOLD/MAX; 50–60 … 90–100 %MaxHR.
+- **Badges:** `whoop`→circle glyph orange · `apple_watch`→watch glyph cyan · `screenshot`→camera glyph muted;
+  mono uppercase label, 10%-opacity pill, 2px radius.
+- **Fonts** (`ios/FitnessApp/Utils/Fonts.swift`): mono for labels/values, header/display for titles; uppercase +
+  letter-spacing on labels; the ◆ diamond section-header marker.
+- Component chrome matches `StatCard`, `AriseSectionHeader`, `AriseHRZoneBar`, `AriseSourceBadge`, the per-set
+  table, and the quest cards as built in Chunk D.
+
+### Build rules
+- **Single file**, self-contained (inline CSS/JS; system or Google fonts ok); no external build step.
+- **Mobile-tappable** per the global CLAUDE.md HTML rules: event delegation (no inline `onclick`),
+  `e.target.closest('[data-*]')`, `touch-action: manipulation`, `-webkit-tap-highlight-color`, `:active`
+  transforms, 44×44 targets, `data-*` attrs. (The state/zone toggles are the interactive bits.)
+- Author it with the **design-work / impeccable / playground** skills; treat `Colors.swift` + `Fonts.swift` +
+  the Chunk D components as the design source of truth.
+- **Mock data only — not wired to the backend, not shipped in the app.**
+
+### Files
+- **Create** `docs/mockups/wearable-hr-ui-mockup.html` (single file). Optional: reference screenshots alongside.
+
+### Acceptance
+- Opens in a browser and on a phone; all six surfaces render; the four render-state toggle + zone-scheme switch work.
+- Colors / fonts / zone palette / badges match the ARISE tokens (spot-check against `Colors.swift` / `Fonts.swift`).
+- The **Legacy-gym (all-nil)** state is visually identical to a non-HR workout — no phantom sections/badges/columns
+  (the same nil-degradation Chunk D guarantees).
+- Strain appears **only** in the WHOOP state.
+- Reviewed with Nick; iterations that change the *real* UI get folded back into Chunk D — and if an iteration
+  touches a locked contract (zone palette, `hr_source` mapping, quest units), run the **Amendment Protocol**.
+
+### Out of scope
+- Backend wiring, real data, app integration, pixel-exact SwiftUI parity (it's a preview, not a port);
+  watchOS / live-HR previews (see the v1 Out-of-scope table).
 
 ---
 
