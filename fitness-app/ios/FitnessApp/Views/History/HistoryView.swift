@@ -418,21 +418,9 @@ struct CompletedQuestRow: View {
                         .background(indicatorColor.opacity(0.1))
                         .cornerRadius(2)
 
-                        // WHOOP indicator for activities with exercises
-                        if isWhoopActivity && hasExercises {
-                            HStack(spacing: 2) {
-                                Image(systemName: "applewatch")
-                                    .font(.system(size: 7, weight: .semibold))
-                                Text("WHOOP")
-                                    .font(.ariseMono(size: 8, weight: .semibold))
-                                    .tracking(0.5)
-                            }
-                            .foregroundColor(.orange)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 2)
-                            .background(Color.orange.opacity(0.1))
-                            .cornerRadius(2)
-                        }
+                        // Provenance badge — drives WHOOP / Apple Watch / Screenshot
+                        // from the single hr_source field (EmptyView when nil/unknown).
+                        AriseSourceBadge(source: workout.hrSource, compact: true)
                     }
 
                     if isWhoopActivity && !hasExercises {
@@ -656,6 +644,14 @@ struct QuestDetailView: View {
                             .padding(.horizontal)
                             .fadeIn(delay: 0)
 
+                        // Session-level heart rate (avg/peak/strain + zone bar) —
+                        // only when HR data exists; absent for legacy workouts.
+                        if workout.hasHRData {
+                            AriseWorkoutHRSection(workout: workout, title: "Heart Rate")
+                                .padding(.horizontal)
+                                .fadeIn(delay: 0.05)
+                        }
+
                         // Section Header
                         AriseSectionHeader(title: "Completed Objectives")
                             .padding(.horizontal)
@@ -821,6 +817,11 @@ struct ObjectiveDetailCard: View {
         exercise.sets.max(by: { ($0.e1rm ?? 0) < ($1.e1rm ?? 0) })
     }
 
+    /// Show the per-set HR column only when at least one set carries HR.
+    var showHRCol: Bool {
+        exercise.sets.contains { $0.avgHeartRate != nil || $0.peakHeartRate != nil }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Header with left color border
@@ -874,6 +875,10 @@ struct ObjectiveDetailCard: View {
                     .frame(width: 44, alignment: .center)
                 Text("RPE")
                     .frame(width: 36, alignment: .center)
+                if showHRCol {
+                    Text("HR")
+                        .frame(width: 40, alignment: .center)
+                }
                 Text("e1RM")
                     .frame(width: 56, alignment: .trailing)
             }
@@ -912,6 +917,13 @@ struct ObjectiveDetailCard: View {
                     Text(set.rpe.map { "\($0)" } ?? "-")
                         .frame(width: 36, alignment: .center)
                         .foregroundColor(.systemPrimary)
+
+                    if showHRCol {
+                        let setHR = set.avgHeartRate ?? set.peakHeartRate
+                        Text(setHR.map { "\($0)" } ?? "-")
+                            .frame(width: 40, alignment: .center)
+                            .foregroundColor(setHR.map { AriseHRZoneBar.hrZoneColor(forHR: $0, maxHR: nil) } ?? .textMuted)
+                    }
 
                     Text(set.e1rm.map { "\($0.formattedWeight)" } ?? "-")
                         .frame(width: 56, alignment: .trailing)

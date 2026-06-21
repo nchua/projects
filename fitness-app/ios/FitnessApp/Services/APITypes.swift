@@ -262,6 +262,22 @@ struct WorkoutResponse: Decodable, Identifiable {
     }
 }
 
+// MARK: - HR display helpers (wearable-HR v1, Chunk D)
+// Computed only — not Codable fields, so they don't affect the decode contract.
+extension WorkoutResponse {
+    /// True when any heart-rate metric is present. Gates the Biometrics section so
+    /// a legacy / non-HR workout renders byte-identically to before.
+    var hasHRData: Bool {
+        avgHeartRate != nil
+            || peakHeartRate != nil
+            || strain != nil
+            || (hrZoneSeconds.map { !$0.isEmpty } ?? false)
+    }
+
+    /// Strain originates from WHOOP only; Apple-Watch sessions never carry it.
+    var isWhoopActivity: Bool { hrSource == "whoop" }
+}
+
 struct WorkoutExerciseResponse: Decodable, Identifiable {
     let id: String
     let exerciseId: String

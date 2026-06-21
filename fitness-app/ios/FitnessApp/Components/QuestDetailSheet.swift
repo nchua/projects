@@ -19,6 +19,9 @@ struct QuestDetailSheet: View {
         case "compound_sets": return "\u{1F3AF}"  // Target
         case "total_volume": return "\u{1F4C8}"   // Chart
         case "training_time": return "\u{23F1}"   // Stopwatch
+        case "hr_zone_time": return "\u{2764}\u{FE0F}"  // Red heart
+        case "peak_hr": return "\u{1F525}"        // Fire
+        case "session_strain": return "\u{26A1}"  // Lightning bolt
         default: return "\u{2694}"                // Crossed swords
         }
     }
@@ -42,6 +45,13 @@ struct QuestDetailSheet: View {
             return "\(quest.progress.formatted()) / \(quest.targetValue.formatted()) lbs"
         case "training_time":
             return "\(quest.progress) / \(quest.targetValue) min"
+        case "hr_zone_time":
+            // Backend stores progress/target in minutes (elevated_zone_minutes).
+            return "\(quest.progress) / \(quest.targetValue) min"
+        case "peak_hr":
+            return "\(quest.progress) / \(quest.targetValue) bpm"
+        case "session_strain":
+            return "\(quest.progress) / \(quest.targetValue) strain"
         default:
             return "\(quest.progress) / \(quest.targetValue)"
         }
@@ -290,6 +300,12 @@ struct QuestDetailSheet: View {
             return "\(remaining.formatted()) lbs to lift!"
         case "training_time":
             return "\(remaining) minutes left!"
+        case "hr_zone_time":
+            return "\(remaining) minutes in the zone to go!"
+        case "peak_hr":
+            return "\(remaining) bpm to your peak target!"
+        case "session_strain":
+            return "\(remaining) strain to go!"
         default:
             return "You're \(Int(progressPercent * 100))% there!"
         }

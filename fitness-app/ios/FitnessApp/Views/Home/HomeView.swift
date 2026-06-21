@@ -1645,6 +1645,13 @@ struct WorkoutSheetHeader: View {
                 Spacer()
             }
 
+            // Biometrics (avg/peak HR, strain, zone bar) — only when HR data exists;
+            // degrades to nothing for legacy / non-HR workouts.
+            if workout.hasHRData {
+                AriseDivider()
+                AriseWorkoutHRSection(workout: workout, title: "Biometrics")
+            }
+
             // Notes
             if let notes = workout.notes, !notes.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
