@@ -356,7 +356,7 @@ Use **`backend/venv`** (per memory: system 3.9 can't import the app; 3.13 needs 
 
 ## Chunk B — iOS API plumbing
 
-- **Status:** Done (2026-06-21, `00c0cdc`)
+- **Status:** Done (2026-06-21, `00c0cdc`; QA fix `b931690`)
 - **Depends on:** Chunk A (confirmed contract).
 
 > **Build-note (2026-06-21, `00c0cdc`):** Implemented exactly as specced against the **CONFIRMED v1**
@@ -382,6 +382,19 @@ Use **`backend/venv`** (per memory: system 3.9 can't import the app; 3.13 needs 
 > diagnostics seen mid-edit (`parseISO8601Date` "no member", `UIKit` "no such module") were cross-file
 > indexing false positives — the authoritative `xcodebuild` is clean. **Downstream unblocked:** C (request
 > types + `importHealthKitWorkouts` + `getWhoopStatus`) and D (HR fields decode on the workout/set structs).
+>
+> **QA round (`/ship` → `/evaluate`, `b931690`):** an independent evaluator diffed the Swift mirror against
+> the **canonical backend Pydantic schemas** (not just this spec's prose) and found the Chunk B body's
+> `WorkoutResponse` additive list diverged from its own Registry §3 + the built backend: it omitted `strain`
+> (backend `schemas/workout.py:138` has it; Chunk D needs it) and added `hkUuid` (backend emits no `hk_uuid`
+> on `WorkoutResponse` → dead nil-only field). Both non-breaking (decode-safe), but they violated the
+> field-for-field rule. Resolved per the precedence rule (Registry wins): `WorkoutResponse` now carries
+> `strain: Double?`, drops `hkUuid`. Re-ran the gate (BUILD SUCCEEDED, lint pass) + a decode re-check
+> (strain decodes; legacy + apple-watch-strain-absent JSON still nil-safe). All other structs verified an
+> **exact** field/type/optionality/key match to the backend (request `HealthKitWorkout`, `HeartRateSampleCreate`
+> `{timestamp,bpm}`, `HealthKitUnmatched`/`HealthKitImportResponse`, `SetResponse`/`WorkoutSummary` additions,
+> and `WhoopStatusResponse` decode-safe vs `whoop_status()` which returns `connected`+`configured` in both branches).
+> Spec amended (Chunk B body + Amendment Log 2026-06-21 Chunk B row); Registry unchanged. Evaluator verdict: **B+ → PASS**.
 - **Goal:** Add the Swift request/response types for the import endpoint to `APITypes.swift`, an
   `importHealthKitWorkouts(...)` method to `APIClient` mirroring the existing JSON POST, the
   `WhoopStatusResponse` + `getWhoopStatus()` the stub row needs, and backward-compatible optional HR fields
@@ -439,8 +452,16 @@ struct WhoopStatusResponse: Decodable { let connected: Bool; let configured: Boo
 ```
 
 **Additive optional HR fields** (additive-only; missing keys → nil, cannot break existing decode):
-- `WorkoutResponse` += `avgHeartRate: Int?`, `peakHeartRate: Int?`, `hrZoneSeconds: [String:Int]?`,
-  `kilojoules: Double?`, `hrSource: String?`, `hkUuid: String?` (+ CodingKeys).
+- `WorkoutResponse` += `avgHeartRate: Int?`, `peakHeartRate: Int?`, `strain: Double?`,
+  `kilojoules: Double?`, `hrZoneSeconds: [String:Int]?`, `hrSource: String?` (+ CodingKeys).
+  > **Amended 2026-06-21 (from Chunk B, `b931690`):** this list originally read `…hrSource, hkUuid` and
+  > omitted `strain`. That contradicted **Registry §3** (which lists `strain`, not `hk_uuid`) and the
+  > **built backend** `WorkoutResponse` (`schemas/workout.py:127–143` — has `strain: Optional[float]`, has
+  > **no** `hk_uuid` field). Per the precedence rule (Registry wins on a contract-field disagreement), the
+  > Swift mirror now carries **`strain`** and **drops `hkUuid`** (a `hk_uuid` key is never emitted by the
+  > backend, so the field could only ever decode to nil). Chunk D reads `strain` off `WorkoutResponse` for
+  > the workout-detail HR block; `hkUuid` on the workout response was unused. No Registry change (§3 was
+  > already correct). See Amendment Log 2026-06-21 (Chunk B).
 - `WorkoutSummaryResponse` += `avgHeartRate: Int?`, `peakHeartRate: Int?`, `hrSource: String?` (+ CodingKeys).
 - `SetResponse` += `startTime: String?`, `endTime: String?`, `avgHeartRate: Int?`, `peakHeartRate: Int?` (+ CodingKeys).
 
@@ -808,6 +829,7 @@ Append-only. The first row is a **labeled template** (example, not a real change
 | 2026-06-21 | A | **Shared-code bug:** `heart_rate_service._aware()` did `astimezone(tz=None)` (system-LOCAL) despite a "naive UTC" docstring, so aware-UTC samples landed outside set windows on non-UTC hosts → per-set HR never attributed. Fixed to `astimezone(timezone.utc).replace(tzinfo=None)`. **No contract change.** Also fixes the existing Apple-Watch live-session per-set path. | None to contracts. Noted here because it's a reused function that behaved differently than assumed. Re-verified full suite (319 pass). | Claude (304511f) |
 | 2026-06-21 | A | **Contract clarification for Chunk C:** the matcher `match_activity_to_exercise` fuzz-matches `activity_type` (≥70) against seeded Sport/Cardio exercise **names**. The iOS `HKWorkoutActivityType → activity_type` map (Chunk C task 2) MUST emit strings that score ≥70 vs a seeded exercise name (e.g. `"running"`→"Running"=100). Short/partial labels like `"Outdoor Run"`→"Run" score 60 and won't link. | Chunk C task 2 (dated note added). No Registry change. | Claude (304511f) |
 | 2026-06-21 | A (`/evaluate`) | **Dedup-clobber bug fixed:** two strength HKWorkouts overlapping one logged session in a single batch overwrote the session's `hk_uuid` (lost a dedup key → duplicate `HeartRateSample` rows on re-import) + duplicated `sessions_updated`. Fix: candidate query excludes `hk_uuid IS NOT NULL` sessions; matched sessions are removed from the candidate pool per batch (second overlapping workout → `unmatched`). +regression test. Also: endpoint now logs the swallowed exception; `_local_day`→`_session_day`; `set[date]`/`set[str]` hints. **No contract change.** | `healthkit_service.py`, `api/workouts.py`, `tests/`. No Registry/Chunk B/C/D change. | Claude (9b49409) |
+| 2026-06-21 | B (`/evaluate`) | **Spec-vs-Registry consistency fix (no contract change):** the **Chunk B body's** additive list for `WorkoutResponse` read `…hrSource, hkUuid` — it omitted `strain` (which Registry §3 + the built backend `WorkoutResponse`, `schemas/workout.py:138`, both carry) and added `hkUuid` (the backend emits **no** `hk_uuid` on `WorkoutResponse`, so it could only ever decode to nil). Independent `/evaluate` caught it by diffing the Swift mirror against the canonical Pydantic. Per the precedence rule (Registry wins), the Swift `WorkoutResponse` now carries `strain: Double?` and drops `hkUuid`. **Registry §3 unchanged** (it was already correct). Chunk A unaffected (already emits `strain`, no `hk_uuid`) → no re-verify. | Chunk B body (additive list + dated note); this Log row. No Registry change; no Chunk C/D change (D consumes `strain` off `WorkoutResponse` as already specced). | Claude (b931690) |
 
 ---
 
