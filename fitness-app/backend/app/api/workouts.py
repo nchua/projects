@@ -35,6 +35,7 @@ from app.schemas.workout import (
 )
 from app.services.achievement_service import check_and_unlock_achievements
 from app.services.dungeon_service import maybe_spawn_dungeon, update_dungeon_progress
+from app.services.heart_rate_service import ingest_heart_rate
 from app.services.mission_service import update_goal_progress
 from app.services.notification_service import (
     notify_achievement_unlocked,
@@ -193,7 +194,15 @@ async def _create_workout_impl(
         date=workout_data.date,
         duration_minutes=workout_data.duration_minutes,
         session_rpe=workout_data.session_rpe,
-        notes=workout_data.notes
+        notes=workout_data.notes,
+        # Wearable HR summary (from Apple Watch live session; WHOOP backfills
+        # via its own endpoint). Per-set avg/peak are derived from samples below.
+        avg_heart_rate=workout_data.avg_heart_rate,
+        peak_heart_rate=workout_data.peak_heart_rate,
+        strain=workout_data.strain,
+        kilojoules=workout_data.kilojoules,
+        hr_zone_seconds=workout_data.hr_zone_seconds,
+        hr_source=workout_data.hr_source,
     )
     db.add(workout_session)
     db.flush()  # Get workout_session.id
@@ -249,7 +258,11 @@ async def _create_workout_impl(
                 rpe=set_data.rpe,
                 rir=set_data.rir,
                 set_number=set_data.set_number,
-                e1rm=round(e1rm, 2)
+                e1rm=round(e1rm, 2),
+                start_time=set_data.start_time,
+                end_time=set_data.end_time,
+                avg_heart_rate=set_data.avg_heart_rate,
+                peak_heart_rate=set_data.peak_heart_rate,
             )
             db.add(set_obj)
             exercise_sets.append(set_obj)
@@ -335,6 +348,17 @@ async def _create_workout_impl(
     # Check for newly unlocked achievements (uses context dict but also
     # reads progress — kept after eager-load for consistency)
     newly_unlocked = check_and_unlock_achievements(db, current_user.id, achievement_context)
+
+    # Ingest raw HR samples (Apple Watch live session): persist them and roll
+    # up avg/peak onto sets + session so HR-based quests can read them. Runs
+    # before quest progress. WHOOP samples arrive later via the WHOOP sync path.
+    if workout_data.heart_rate_samples:
+        ingest_heart_rate(
+            db,
+            workout,
+            workout_data.heart_rate_samples,
+            source=workout_data.hr_source or "apple_watch",
+        )
 
     # Update quest progress based on this workout (requires loaded relationships)
     update_quest_progress(db, current_user.id, workout)

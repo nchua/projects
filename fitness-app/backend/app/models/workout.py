@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import (
+    JSON,
     Column,
     DateTime,
     Enum,
@@ -46,6 +47,19 @@ class WorkoutSession(Base):
     duration_minutes = Column(Integer, nullable=True)
     session_rpe = Column(Integer, nullable=True)  # Optional 1-10 rating for entire session
     notes = Column(Text, nullable=True)
+
+    # ── Wearable heart-rate summary (rolled up from heart_rate_samples) ──
+    # Populated by the Apple Watch companion app (live, in the create payload)
+    # or backfilled from the WHOOP API after the session syncs to WHOOP's
+    # cloud. All nullable for legacy rows and workouts logged without a
+    # wearable. `hr_zone_seconds` is a JSON map of seconds spent per HR zone,
+    # e.g. {"z1": 120, "z2": 540, "z3": 300, "z4": 90, "z5": 0}.
+    avg_heart_rate = Column(Integer, nullable=True)
+    peak_heart_rate = Column(Integer, nullable=True)
+    strain = Column(Float, nullable=True)          # WHOOP strain 0-21
+    kilojoules = Column(Float, nullable=True)       # Energy expenditure
+    hr_zone_seconds = Column(JSON, nullable=True)
+    hr_source = Column(String, nullable=True)       # "apple_watch" | "whoop" | "screenshot"
 
     # Sync tracking
     synced_at = Column(DateTime, nullable=True)
@@ -132,7 +146,57 @@ class Set(Base):
     set_number = Column(Integer, nullable=False)  # Order within the exercise
     e1rm = Column(Float, nullable=True)  # Computed estimated 1RM
 
+    # ── Set timing + heart-rate (for per-set exertion analytics) ──
+    # `start_time`/`end_time` bound the set so HR samples can be attributed to
+    # it. The Apple Watch app records exact boundaries live; the WHOOP backfill
+    # path infers them post-hoc from set ordering + created_at and stores them
+    # here so the attribution is transparent and editable. avg/peak HR are
+    # rolled up from the samples that fall inside [start_time, end_time].
+    start_time = Column(DateTime, nullable=True)
+    end_time = Column(DateTime, nullable=True)
+    avg_heart_rate = Column(Integer, nullable=True)
+    peak_heart_rate = Column(Integer, nullable=True)
+
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     workout_exercise = relationship("WorkoutExercise", back_populates="sets")
+
+
+class HeartRateSample(Base):
+    """
+    Raw heart-rate sample tied to a workout session (and optionally a set).
+
+    Storing raw samples alongside the rolled-up summaries on WorkoutSession/Set
+    lets us recompute per-set exertion metrics as the analytics evolve without
+    re-ingesting from the wearable. Samples arrive from the Apple Watch
+    companion app (live, ~1 Hz) or from the WHOOP API HR series (post-workout).
+    """
+    __tablename__ = "heart_rate_samples"
+    __table_args__ = (
+        Index("ix_heart_rate_samples_session_ts", "session_id", "timestamp"),
+    )
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    session_id = Column(
+        String,
+        ForeignKey("workout_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # Nullable: a sample may not align to a specific set (e.g. rest periods, or
+    # before per-set boundaries are computed). ondelete SET NULL keeps the
+    # sample if a set is removed.
+    set_id = Column(
+        String,
+        ForeignKey("sets.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    timestamp = Column(DateTime, nullable=False)  # UTC
+    bpm = Column(Integer, nullable=False)
+    source = Column(String, nullable=False)  # "apple_watch" | "whoop"
+
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)

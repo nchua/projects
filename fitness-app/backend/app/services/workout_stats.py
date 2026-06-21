@@ -45,6 +45,15 @@ def calculate_workout_stats(workout: WorkoutSession) -> Dict[str, Any]:
             if any(compound in exercise_name for compound in COMPOUND_EXERCISES):
                 compound_sets += 1
 
+    # Wearable HR metrics (None when no wearable data is attached to the session).
+    # hr_zone_seconds is a {"z1": secs, ...} map; expose minutes per zone for
+    # HR_ZONE_TIME quests, plus total elevated-zone minutes (z2 and above).
+    zone_seconds = workout.hr_zone_seconds or {}
+    zone_minutes = {z: int(secs) // 60 for z, secs in zone_seconds.items()}
+    elevated_zone_minutes = sum(
+        m for z, m in zone_minutes.items() if z in ("z2", "z3", "z4", "z5")
+    )
+
     return {
         "total_sets": total_sets,
         "total_reps": total_reps,
@@ -52,4 +61,10 @@ def calculate_workout_stats(workout: WorkoutSession) -> Dict[str, Any]:
         "total_volume": int(total_volume),
         "unique_exercises": len(exercise_names),
         "exercise_names": exercise_names,
+        # Heart-rate / exertion
+        "avg_heart_rate": workout.avg_heart_rate,
+        "peak_heart_rate": workout.peak_heart_rate,
+        "strain": workout.strain,
+        "zone_minutes": zone_minutes,
+        "elevated_zone_minutes": elevated_zone_minutes,
     }

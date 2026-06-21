@@ -18,6 +18,10 @@ class QuestType(str, enum.Enum):
     WORKOUT_DURATION = "workout_duration"  # Complete workout in under X minutes
     TOTAL_VOLUME = "total_volume"       # Lift X lbs total
     EXERCISE_SPECIFIC = "exercise_specific"  # Do X sets of specific exercise
+    # ── Wearable heart-rate driven (require Apple Watch or WHOOP data) ──
+    HR_ZONE_TIME = "hr_zone_time"       # Spend X minutes in elevated HR zones (z2+)
+    PEAK_HR = "peak_hr"                 # Reach a peak HR of X BPM in a session
+    SESSION_STRAIN = "session_strain"   # Hit a WHOOP strain of X in a session
 
 
 class QuestDifficulty(str, enum.Enum):

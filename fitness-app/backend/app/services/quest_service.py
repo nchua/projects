@@ -57,6 +57,11 @@ def calculate_todays_workout_stats(db: Session, user_id: str, target_date: date)
     total_reps = 0
     compound_sets = 0
     total_volume = 0
+    # Wearable HR: time-in-zone sums across the day, peak HR / strain take the
+    # best (max) of the day's sessions.
+    elevated_zone_minutes = 0
+    peak_heart_rate = 0
+    strain = 0.0
 
     for workout in matching_workouts:
         for workout_exercise in workout.workout_exercises:
@@ -69,11 +74,24 @@ def calculate_todays_workout_stats(db: Session, user_id: str, target_date: date)
                 if any(compound in exercise_name for compound in COMPOUND_EXERCISES):
                     compound_sets += 1
 
+        zone_seconds = workout.hr_zone_seconds or {}
+        elevated_zone_minutes += sum(
+            int(secs) // 60 for z, secs in zone_seconds.items()
+            if z in ("z2", "z3", "z4", "z5")
+        )
+        if workout.peak_heart_rate:
+            peak_heart_rate = max(peak_heart_rate, workout.peak_heart_rate)
+        if workout.strain:
+            strain = max(strain, workout.strain)
+
     return {
         "total_reps": total_reps,
         "compound_sets": compound_sets,
         "total_volume": int(total_volume),
-        "workout_count": len(matching_workouts)
+        "workout_count": len(matching_workouts),
+        "elevated_zone_minutes": elevated_zone_minutes,
+        "peak_heart_rate": peak_heart_rate,
+        "strain": strain,
     }
 
 
@@ -172,11 +190,16 @@ def generate_daily_quests(db: Session, user_id: str, count: int = 3) -> List[Use
     """
     today = get_today_utc()
 
-    # Get all active daily quest definitions (excluding duration-based quests)
+    # Get all active daily quest definitions. Excludes duration-based quests
+    # (speed) and HR-based quests — the latter require a connected wearable, so
+    # they're assigned via missions / wearable-gated generation rather than the
+    # random daily pool (TODO: include for users with a connected wearable).
+    HR_QUEST_TYPES = ("hr_zone_time", "peak_hr", "session_strain")
     quest_defs = db.query(QuestDefinition).filter(
         QuestDefinition.is_daily == True,
         QuestDefinition.is_active == True,
-        QuestDefinition.quest_type != "workout_duration"  # Exclude speed-based quests
+        QuestDefinition.quest_type != "workout_duration",  # Exclude speed-based quests
+        QuestDefinition.quest_type.notin_(HR_QUEST_TYPES),  # Exclude wearable-gated quests
     ).all()
 
     if not quest_defs:
@@ -256,6 +279,12 @@ def recalculate_quest_progress(db: Session, user_id: str, user_quests: List[User
             progress = stats["compound_sets"]
         elif quest_def.quest_type == "total_volume":
             progress = stats["total_volume"]
+        elif quest_def.quest_type == "hr_zone_time":
+            progress = stats["elevated_zone_minutes"]
+        elif quest_def.quest_type == "peak_hr":
+            progress = stats["peak_heart_rate"]
+        elif quest_def.quest_type == "session_strain":
+            progress = int(stats["strain"])
         # Note: workout_duration quests have been removed
 
         # Update progress (don't exceed target)
@@ -335,6 +364,15 @@ def update_quest_progress(db: Session, user_id: str, workout: WorkoutSession) ->
             progress = compound_sets
         elif quest_def.quest_type == "total_volume":
             progress = int(total_volume)
+        elif quest_def.quest_type == "hr_zone_time":
+            # HR from the Apple Watch live session arrives in the create payload,
+            # so it can be credited immediately. WHOOP HR arrives later via the
+            # WHOOP sync path, which re-runs recalculate_quest_progress.
+            progress = stats["elevated_zone_minutes"]
+        elif quest_def.quest_type == "peak_hr":
+            progress = stats["peak_heart_rate"]
+        elif quest_def.quest_type == "session_strain":
+            progress = int(stats["strain"])
         # Note: workout_duration quests have been removed
 
         # Update progress (don't exceed target)
@@ -446,6 +484,24 @@ def seed_quest_definitions(db: Session) -> int:
          "quest_type": "total_volume", "target_value": 15000, "xp_reward": 55, "difficulty": "normal"},
         {"id": "volume_20k", "name": "Tonnage King", "description": "Lift 20,000 lbs total",
          "quest_type": "total_volume", "target_value": 20000, "xp_reward": 70, "difficulty": "hard"},
+
+        # ── Wearable heart-rate quests (require Apple Watch or WHOOP) ──
+        # Kept out of the random daily pool (see generate_daily_quests); assigned
+        # via missions or wearable-gated generation.
+        {"id": "hr_zone_15", "name": "Heat Check", "description": "Spend 15 min in elevated HR zones",
+         "quest_type": "hr_zone_time", "target_value": 15, "xp_reward": 25, "difficulty": "easy"},
+        {"id": "hr_zone_30", "name": "Cardio Base", "description": "Spend 30 min in elevated HR zones",
+         "quest_type": "hr_zone_time", "target_value": 30, "xp_reward": 40, "difficulty": "normal"},
+        {"id": "hr_zone_45", "name": "Engine Builder", "description": "Spend 45 min in elevated HR zones",
+         "quest_type": "hr_zone_time", "target_value": 45, "xp_reward": 60, "difficulty": "hard"},
+        {"id": "peak_hr_150", "name": "Push the Pace", "description": "Reach a peak heart rate of 150 BPM",
+         "quest_type": "peak_hr", "target_value": 150, "xp_reward": 30, "difficulty": "normal"},
+        {"id": "peak_hr_170", "name": "Redline", "description": "Reach a peak heart rate of 170 BPM",
+         "quest_type": "peak_hr", "target_value": 170, "xp_reward": 50, "difficulty": "hard"},
+        {"id": "strain_12", "name": "Strain Seeker", "description": "Hit a WHOOP strain of 12",
+         "quest_type": "session_strain", "target_value": 12, "xp_reward": 35, "difficulty": "normal"},
+        {"id": "strain_16", "name": "All Out", "description": "Hit a WHOOP strain of 16",
+         "quest_type": "session_strain", "target_value": 16, "xp_reward": 55, "difficulty": "hard"},
     ]
 
     created_count = 0

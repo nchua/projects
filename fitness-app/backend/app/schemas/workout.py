@@ -17,6 +17,12 @@ class SetCreate(BaseModel):
     rpe: Optional[int] = Field(None, ge=1, le=10, description="Rate of Perceived Exertion (1-10)")
     rir: Optional[int] = Field(None, ge=0, le=5, description="Reps in Reserve (0-5)")
     set_number: int = Field(..., ge=1, description="Set number/order")
+    # Wearable timing + HR (Apple Watch records boundaries live; WHOOP backfill
+    # may infer them). All optional so existing clients are unaffected.
+    start_time: Optional[datetime] = Field(None, description="Set start time (UTC)")
+    end_time: Optional[datetime] = Field(None, description="Set end time (UTC)")
+    avg_heart_rate: Optional[int] = Field(None, ge=20, le=250, description="Avg BPM during set")
+    peak_heart_rate: Optional[int] = Field(None, ge=20, le=250, description="Peak BPM during set")
 
 
 class SetResponse(BaseModel):
@@ -29,10 +35,25 @@ class SetResponse(BaseModel):
     rir: Optional[int]
     set_number: int
     e1rm: Optional[float]
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    avg_heart_rate: Optional[int] = None
+    peak_heart_rate: Optional[int] = None
     created_at: str
 
     class Config:
         from_attributes = True
+
+
+class HeartRateSampleCreate(BaseModel):
+    """A single raw HR sample sent with a workout (from Watch or WHOOP).
+
+    Samples are attributed to a specific set server-side by timestamp window
+    (matched against each set's start_time/end_time), not by index, since
+    set_number is only unique within an exercise.
+    """
+    timestamp: datetime = Field(..., description="Sample time (UTC)")
+    bpm: int = Field(..., ge=20, le=250, description="Heart rate in BPM")
 
 
 class WorkoutExerciseCreate(BaseModel):
@@ -64,6 +85,18 @@ class WorkoutCreate(BaseModel):
     session_rpe: Optional[int] = Field(None, ge=1, le=10, description="Overall session RPE")
     notes: Optional[str] = Field(None, max_length=1000, description="Workout notes")
     exercises: List[WorkoutExerciseCreate] = Field(..., min_length=1, description="Exercises in workout")
+    # ── Wearable HR (from Apple Watch live session; WHOOP backfills via its own
+    # endpoint). All optional. Session summary fields are stored as-is; raw
+    # samples are persisted and attributed to sets by timestamp window. ──
+    avg_heart_rate: Optional[int] = Field(None, ge=20, le=250, description="Avg session BPM")
+    peak_heart_rate: Optional[int] = Field(None, ge=20, le=250, description="Peak session BPM")
+    strain: Optional[float] = Field(None, ge=0, le=21, description="WHOOP strain 0-21")
+    kilojoules: Optional[float] = Field(None, ge=0, description="Energy expenditure (kJ)")
+    hr_zone_seconds: Optional[dict] = Field(None, description="Seconds per HR zone, e.g. {\"z2\": 540}")
+    hr_source: Optional[str] = Field(None, description="apple_watch | whoop | screenshot")
+    heart_rate_samples: Optional[List[HeartRateSampleCreate]] = Field(
+        None, description="Raw HR series for the session (attributed to sets server-side)"
+    )
     # Optional client-generated idempotency key. iOS offline queue stamps one
     # per enqueued workout; if the same key re-arrives (e.g. network blip that
     # actually succeeded server-side), we return the existing row instead of
@@ -100,6 +133,12 @@ class WorkoutResponse(BaseModel):
     session_rpe: Optional[int]
     notes: Optional[str]
     exercises: List[WorkoutExerciseResponse]
+    avg_heart_rate: Optional[int] = None
+    peak_heart_rate: Optional[int] = None
+    strain: Optional[float] = None
+    kilojoules: Optional[float] = None
+    hr_zone_seconds: Optional[dict] = None
+    hr_source: Optional[str] = None
     created_at: str
     updated_at: str
 
