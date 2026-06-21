@@ -59,7 +59,7 @@ HR fields now present on workout responses (`schemas/workout.py`):
 
 | Item | Where | Why |
 |---|---|---|
-| **1.5 — Wearable-gated quest generation** | ✅ Web session (backend-only) | Pure Python; no Xcode. Closes the "HR quests for connected users" TODO. |
+| **1.5 — Wearable-gated quest generation** | ✅ **DONE** (web session) | Shipped: `user_has_wearable` + HR quests capped at 1/day for wearable users. |
 | **1.6 — Sync scheduling / freshness** (optional) | ✅ Web session (backend-only) | Background/cron sync; no Xcode. |
 | **1A — iOS WHOOP connect flow** (+ D1 attach/dismiss) | 🖥️ Desktop (Xcode) | SwiftUI + `xcodegen` + build check. |
 | **1B — iOS HR display wiring** | 🖥️ Desktop (Xcode) | `APITypes.swift` + views; build check. |
