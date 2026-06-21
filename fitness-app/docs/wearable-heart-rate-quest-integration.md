@@ -308,15 +308,21 @@ Remember the
 
 ---
 
-## Open decisions (surfaced by the Phase 1 audit)
+## Resolved decisions (from the Phase 1 audit)
 
-- **D1 — Unmatched WHOOP workouts.** Today they're counted (`workouts_unmatched`) and dropped.
-  Options: (a) leave as-is — WHOOP only enriches workouts you logged in the app (simplest,
-  current); (b) create a **synthetic session** for unmatched WHOOP workouts (cardio/runs you
-  never logged), mirroring the screenshot path; (c) **surface** them in the app and let the user
-  attach/dismiss (matches CLAUDE.md "add manual controls"). Recommendation: ship (a), add (c)
-  when the iOS sync UI lands; (b) only if standalone-cardio tracking is wanted. **Needs Nick's
-  call.**
+- **D1 — Unmatched WHOOP workouts. ✅ RESOLVED (2026-06-21, Nick).** Phased approach:
+  - **Now (a):** keep current behavior — WHOOP only enriches workouts you logged in the app;
+    unmatched workouts stay counted in `workouts_unmatched` and are dropped. No code change.
+  - **With the iOS sync UI (Phase 1A) (c):** surface unmatched WHOOP workouts in the app and
+    let the user **attach** one to an existing session or **dismiss** it (CLAUDE.md "add manual
+    controls"). This is the only path that creates set/session associations from WHOOP.
+  - **Deferred (b):** auto-creating synthetic sessions for unmatched workouts is **not** planned
+    — revisit only if standalone WHOOP-cardio tracking becomes a goal.
+  - *Implementation note for 1A:* `POST /whoop/sync` already returns `workouts_unmatched` as a
+    count. To support (c), extend the sync response to include unmatched workout **details**
+    (WHOOP id, sport, start/end, strain, avg/peak HR) so the client can render them for
+    attach/dismiss; persist a dismissed/attached state so they don't reappear each sync.
+
 - **D2 — `HR_AVG_SESSION` quest type.** Not built. Add it only if "average HR ≥ X for the
   session" is a quest worth having beyond zone-time / peak / strain.
 

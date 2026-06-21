@@ -138,9 +138,22 @@ styling (ARISE aesthetic).
 - Handle `configured == false` (503): show "WHOOP not available yet" disabled state instead
   of an error.
 
+**Unmatched-workout attach UI (Decision D1, option c):** when a sync returns WHOOP workouts
+with no matching app session, let the user **attach** one to an existing session or **dismiss**
+it — don't auto-create sessions.
+- *Backend prerequisite (web-session-doable, do before 1A):* extend `POST /whoop/sync` to return
+  unmatched workout **details** (WHOOP id, sport/activity, start/end, strain, avg/peak HR), and
+  add a way to **attach** a WHOOP workout to a chosen session (e.g. `POST /whoop/attach`
+  `{whoop_workout_id, session_id}` → applies the HR summary + recalcs quests) and to **dismiss**
+  one so it stops resurfacing (persist dismissed WHOOP ids per user). Today sync only returns
+  `workouts_unmatched` as a count.
+- *iOS:* after "Sync now", if unmatched details are present, show a small review list →
+  Attach (pick a recent session) / Dismiss. Non-blocking; matched workouts still backfill silently.
+
 **Acceptance:** connect → browser → backend confirmation → app shows Connected; "Sync now"
-returns a result and any completed HR quests surface. `xcodegen generate` + simulator build
-clean (`error:` grep empty) per `fitness-app/CLAUDE.md` build rule. Lint entitlements.
+returns a result and any completed HR quests surface; unmatched WHOOP workouts appear for
+attach/dismiss and, once attached, backfill HR + credit quests. `xcodegen generate` + simulator
+build clean (`error:` grep empty) per `fitness-app/CLAUDE.md` build rule. Lint entitlements.
 
 ---
 
@@ -222,10 +235,9 @@ precisely so these can be recomputed without re-ingesting.
 4. **Async quest crediting UX.** HR quests complete on sync (minutes after the workout) —
    decide notification vs. silent backfill so the daily card at 0% pre-sync doesn't look broken.
 5. **HR-quest cap** in the daily pool (recommend ≤1 of 3).
-6. **Unmatched WHOOP workouts (Decision D1).** Sync currently counts and drops WHOOP workouts
-   with no overlapping app session. Decide: leave as-is / create synthetic sessions / surface
-   for manual attach. See `wearable-heart-rate-quest-integration.md` → Open Decisions. The iOS
-   sync UI (1A) is the natural place to add the "surface & attach" option if chosen.
+6. **Unmatched WHOOP workouts (Decision D1). ✅ RESOLVED.** Keep current drop-and-count behavior
+   now; add a **surface & attach/dismiss** UI as part of Phase 1A (below); synthetic sessions
+   deferred. See `wearable-heart-rate-quest-integration.md` → Resolved decisions.
 
 **Key files (quick reference):**
 `backend/app/services/quest_service.py` · `…/whoop_service.py` · `…/workout_stats.py` ·
