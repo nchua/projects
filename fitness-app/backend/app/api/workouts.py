@@ -1,6 +1,7 @@
 """
 Workout API endpoints
 """
+import logging
 from datetime import datetime, timezone
 from typing import List
 
@@ -51,6 +52,8 @@ from app.services.notification_service import (
 from app.services.pr_detection import detect_and_create_prs
 from app.services.quest_service import update_quest_progress
 from app.services.xp_service import award_xp, calculate_workout_xp, get_or_create_user_progress
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -518,6 +521,9 @@ async def import_healthkit(
         raise
     except Exception:
         db.rollback()
+        logger.exception(
+            "HealthKit import failed for user %s", current_user.id
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="HealthKit import failed",

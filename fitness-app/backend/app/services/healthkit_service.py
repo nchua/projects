@@ -75,11 +75,13 @@ def _iso_utc(dt: datetime) -> str:
     return ensure_utc(dt).astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _local_day(session: WorkoutSession) -> date:
-    """The LOCAL date a session is filed under (for quest day-bucketing).
+def _session_day(session: WorkoutSession) -> date:
+    """The calendar date a session is filed under, for quest day-bucketing.
 
-    Session dates are stored as local dates/datetimes; coerce a datetime to its
-    ``date`` so it lines up with ``UserQuest.assigned_date``.
+    Coerce the session's stored ``date`` (datetime or date) to a ``date`` so it
+    lines up with how ``UserQuest.assigned_date`` / ``calculate_todays_workout_stats``
+    bucket the day. (Sessions are stored in naive UTC, so this is the UTC
+    calendar day — consistent with the quest path, which buckets the same way.)
     """
     sd = session.date
     return sd.date() if isinstance(sd, datetime) else sd
@@ -215,9 +217,9 @@ def import_healthkit_workouts(
         .all()
     }
 
-    # Sessions created or updated this call, by the LOCAL day they file under,
-    # so we can recalc quests once per affected day at the end.
-    affected_days: set = set()
+    # Sessions created or updated this call, by the calendar day they file
+    # under, so we can recalc quests once per affected day at the end.
+    affected_days: set[date] = set()
 
     # ── Lazily load candidate sessions for the strength path (once) ──
     candidate_sessions: Optional[List[WorkoutSession]] = None
@@ -233,6 +235,11 @@ def import_healthkit_workouts(
             .filter(
                 WorkoutSession.user_id == user_id,
                 WorkoutSession.deleted_at.is_(None),
+                # Only attach to sessions not already linked to a HealthKit
+                # workout, so a new HK workout never clobbers an existing
+                # session's hk_uuid (which would drop a dedup key and let a
+                # later re-import duplicate HR samples).
+                WorkoutSession.hk_uuid.is_(None),
                 WorkoutSession.date >= window_start,
                 WorkoutSession.date <= window_end,
             )
@@ -253,7 +260,7 @@ def import_healthkit_workouts(
             session = _build_cardio_session(db, user_id, workout)
             sessions_created.append(session.id)
             imported.append(hk_uuid)
-            affected_days.add(_local_day(session))
+            affected_days.add(_session_day(session))
 
             # Persist raw cardio samples (no sets -> all set_id=None) so the
             # series is available even though there's no per-set attribution.
@@ -285,13 +292,20 @@ def import_healthkit_workouts(
             })
             continue
 
+        # One session ↔ one HK workout per batch: remove the matched session
+        # from the candidate pool so a second strength workout overlapping the
+        # same session can't re-match it (which would overwrite hk_uuid, double
+        # the sessions_updated entry, and lose a dedup key). The second workout
+        # then falls through to `unmatched` — correct, it has no free session.
+        candidate_sessions.remove(match)
+
         # Match: stamp the uuid + backfill HR non-destructively.
         match.hk_uuid = hk_uuid
         _backfill_session_hr(match, workout)
         db.flush()
         sessions_updated.append(match.id)
         imported.append(hk_uuid)
-        affected_days.add(_local_day(match))
+        affected_days.add(_session_day(match))
 
         # Per-set HR attribution: re-query with joinedload(exercises->sets) so
         # the relationship collections are populated before ingest_heart_rate
@@ -314,7 +328,7 @@ def import_healthkit_workouts(
 
     # ── 4. Idempotent quest recalc per affected LOCAL day ──
     quests_completed: List[str] = []
-    seen_quest_ids: set = set()
+    seen_quest_ids: set[str] = set()
     for day in affected_days:
         unclaimed = (
             db.query(UserQuest)

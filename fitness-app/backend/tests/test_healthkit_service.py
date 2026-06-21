@@ -466,6 +466,75 @@ class TestStrengthImport:
             WorkoutSession.hk_uuid == hk_uuid,
         ).count() == 0
 
+    def test_two_strength_workouts_one_session_match_once(self, db, create_test_user):
+        """Two strength workouts overlapping ONE logged session in a batch.
+
+        Regression for the dedup-key-clobber bug: only one workout may attach;
+        the other must be reported as unmatched (a session is claimed by exactly
+        one HK workout). The matched session must appear once in
+        ``sessions_updated``, carry exactly the attached uuid, and have its HR
+        samples ingested once (no double-ingest), and a re-import of the same
+        batch must fully dedup the attached uuid.
+        """
+        from app.models.workout import HeartRateSample
+
+        user, _ = create_test_user(email=f"str5-{uuid.uuid4().hex[:8]}@example.com")
+        base = _utc(2026, 6, 1, 10, 0)
+        session, _set = _seed_strength_session(
+            db, user.id, base, with_set_times=True
+        )
+
+        u1, u2 = str(uuid.uuid4()), str(uuid.uuid4())
+        # Identical samples on both, so whichever attaches ingests the same 2.
+        samples = [
+            {"timestamp": _iso_z(base + timedelta(minutes=5, seconds=30)), "bpm": 150},
+            {"timestamp": _iso_z(base + timedelta(minutes=6, seconds=30)), "bpm": 170},
+        ]
+        workouts = [
+            _make_workout(
+                hk_uuid=u1, activity_type="Functional Strength Training",
+                is_strength=True, start=base + timedelta(minutes=5),
+                duration_minutes=30, samples=samples,
+            ),
+            _make_workout(
+                hk_uuid=u2, activity_type="Functional Strength Training",
+                is_strength=True, start=base + timedelta(minutes=6),
+                duration_minutes=30, samples=samples,
+            ),
+        ]
+
+        result = import_healthkit_workouts(db, user.id, workouts)
+        db.commit()
+
+        # Exactly one attaches; the other is unmatched (NOT double-matched).
+        assert result["sessions_updated"] == [session.id]
+        assert len(result["imported"]) == 1
+        assert len(result["unmatched"]) == 1
+        attached = result["imported"][0]
+        unmatched_uuid = result["unmatched"][0]["hk_uuid"]
+        assert {attached, unmatched_uuid} == {u1, u2}
+
+        db.refresh(session)
+        assert session.hk_uuid == attached
+
+        # Samples ingested once (2), not doubled (4) by a second spurious match.
+        assert db.query(HeartRateSample).filter(
+            HeartRateSample.session_id == session.id
+        ).count() == 2
+
+        # Re-import: the attached uuid is fully deduped (no re-ingest); the
+        # unmatched one stays unmatched (no session free to attach to).
+        result2 = import_healthkit_workouts(db, user.id, workouts)
+        db.commit()
+        assert attached in result2["skipped_duplicates"]
+        assert result2["sessions_created"] == []
+        assert result2["sessions_updated"] == []
+        assert len(result2["unmatched"]) == 1
+        assert result2["unmatched"][0]["hk_uuid"] == unmatched_uuid
+        assert db.query(HeartRateSample).filter(
+            HeartRateSample.session_id == session.id
+        ).count() == 2
+
 
 # ── TestQuestRecredit ─────────────────────────────────────────────────────────
 
