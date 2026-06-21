@@ -1,6 +1,6 @@
 # Wearable HR v1 — Build Spec (living document)
 
-**Status:** v1 functional COMPLETE (A–D) · Chunk A `Done (304511f)` · Chunk B `Done (00c0cdc)` · Chunk C `Done (8996ab2)` · Chunk D `Done (da940c5)` · Chunk E (HTML mockup, optional/post-v1) `Not started`
+**Status:** v1 functional COMPLETE (A–D) · Chunk A `Done (304511f)` · Chunk B `Done (00c0cdc)` · Chunk C `Done (8996ab2)` · Chunk D `Done (da940c5)` · Chunk E (HTML mockup, optional/post-v1) `Done (28858e9)`
 **Author:** Claude Code (spec-writing council: backend / iOS / design / PM), 2026-06-20
 **Branch:** `claude/next-steps-design-spec-83n3jo` → merges to `main`
 **Scope:** Apple Health import (1.7a backend + 1.7b iOS) + HR display (1B). WHOOP (1A) stubbed.
@@ -891,7 +891,22 @@ badge/segment mapping breaks).
 
 ## Chunk E — HTML mockup (design preview & iteration) — OPTIONAL, post-v1
 
-- **Status:** Not started
+- **Status:** Done (2026-06-21, `28858e9`) — `docs/mockups/wearable-hr-ui-mockup.html`
+
+> **Build-note (2026-06-21, `28858e9`):** Built `docs/mockups/wearable-hr-ui-mockup.html` — a single,
+> self-contained file (Orbitron/Rajdhani/Inter/JetBrains-Mono via Google Fonts; all colors mirrored verbatim
+> from `Colors.swift`/`Fonts.swift`). Renders all six surfaces (Home recent card, History row, History detail
+> Heart-Rate block, per-set table, daily quests + quest-detail copy, Chunk C settings rows) with an interactive
+> **render-state toggle** (WHOOP / Apple Watch / Screenshot / Legacy) + **zone-scheme switch**
+> (5-zone / z1·z3·z5 / low·mid·high / empty). Mobile-safe per the global HTML rules (event delegation, `data-*`,
+> `touch-action`, 44px targets, `:active`). **Verified in Chrome across all states:** WHOOP shows the orange ◎
+> badge + avg/peak/**strain** cards + cold→hot zone bar; Apple Watch shows the cyan ⌚ badge + avg/peak only
+> (**strain card absent, not "—"**); Legacy degrades to **no HR section / no badge / no HR column**; per-set HR
+> values are zone-tinted; the per-set HR column appears only when sets carry HR; the `empty` scheme drops the bar.
+> One fidelity fix during review: the Home card's leading divider now renders **only** with HR (mirrors
+> `if workout.hasHRData { AriseDivider(); AriseWorkoutHRSection() }`) and there is no divider before Notes.
+> No console errors. **Mock data only — not wired to the backend, not shipped in the app.** Iterations that
+> change the *real* UI fold back into Chunk D (+ Amendment Protocol if they touch a locked contract).
 - **Type:** **Design-preview artifact, NOT part of the v1 functional ship.** A–D are COMPLETE and shippable
   without this. Non-blocking; build it when you want to eyeball + iterate the HR UI *before* real Watch/WHOOP
   data flows on device. A fresh session following "How to use this spec" (scan A→D) should **not** treat E as
