@@ -240,15 +240,16 @@ struct WorkoutResponse: Decodable, Identifiable {
     let createdAt: String
     let updatedAt: String
     // Heart rate (additive — Apple Watch / WHOOP). Missing keys decode to nil.
+    // Mirrors backend WorkoutResponse field-for-field (Registry §3): strain included; no hk_uuid.
     let avgHeartRate: Int?
     let peakHeartRate: Int?
-    let hrZoneSeconds: [String: Int]?
+    let strain: Double?
     let kilojoules: Double?
+    let hrZoneSeconds: [String: Int]?
     let hrSource: String?
-    let hkUuid: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, date, notes, exercises, kilojoules
+        case id, date, notes, exercises, strain, kilojoules
         case userId = "user_id"
         case durationMinutes = "duration_minutes"
         case sessionRpe = "session_rpe"
@@ -258,7 +259,6 @@ struct WorkoutResponse: Decodable, Identifiable {
         case peakHeartRate = "peak_heart_rate"
         case hrZoneSeconds = "hr_zone_seconds"
         case hrSource = "hr_source"
-        case hkUuid = "hk_uuid"
     }
 }
 
