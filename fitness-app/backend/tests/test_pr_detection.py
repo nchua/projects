@@ -319,3 +319,55 @@ class TestMixedPRs:
 
         assert any(p.pr_type == PRType.E1RM for p in prs)
         assert any(p.pr_type == PRType.REP_PR for p in prs)
+
+
+class TestNonLoadableGuard:
+    """Explosive/ballistic/conditioning movements (and cardio/sport) must not
+    mint PRs — a 1RM or "more reps at a weight" carries no strength signal there.
+    See is_loadable_exercise / _NON_LOADABLE_* in pr_detection."""
+
+    def test_named_ballistic_movement_creates_no_pr(self, db, create_test_user):
+        """A Box Jump (Legs category, in the name denylist) logged with a weight
+        and reps must produce neither an e1RM nor a rep PR."""
+        user, _ = create_test_user(email="boxjump@example.com")
+        ex = _mk_exercise(db, "Box Jump", category="Legs")
+        we = _mk_workout(db, user.id, ex)
+        s = _mk_set(db, we, 24, 10)  # 24" box, 10 reps
+        prs = detect_and_create_prs(db, user.id, we, [s])
+        db.commit()
+        assert prs == []
+
+    def test_cardio_category_creates_no_pr(self, db, create_test_user):
+        """Anything in the Cardio category is non-loadable regardless of name."""
+        user, _ = create_test_user(email="burpees@example.com")
+        ex = _mk_exercise(db, "Burpees", category="Cardio")
+        we = _mk_workout(db, user.id, ex)
+        s = _mk_set(db, we, 0, 50)  # 50 bodyweight reps
+        prs = detect_and_create_prs(db, user.id, we, [s])
+        db.commit()
+        assert prs == []
+
+    def test_alias_of_non_loadable_is_also_suppressed(self, db, create_test_user):
+        """Logging an alias row ("Box Jumps") that shares a canonical group with a
+        denylisted name ("Box Jump") is suppressed too."""
+        user, _ = create_test_user(email="boxjumpalias@example.com")
+        canonical = "boxjump-canon-1"
+        _mk_exercise(db, "Box Jump", canonical_id=canonical, category="Legs")
+        alias = _mk_exercise(db, "Box Jumps", canonical_id=canonical, category="Legs")
+        we = _mk_workout(db, user.id, alias)
+        s = _mk_set(db, we, 30, 8)
+        prs = detect_and_create_prs(db, user.id, we, [s])
+        db.commit()
+        assert prs == []
+
+    def test_loadable_legs_movement_still_creates_pr(self, db, create_test_user):
+        """Guard must not over-suppress: a normal Legs lift (Back Squat) still
+        produces PRs — category Legs is not blanket-blocked."""
+        user, _ = create_test_user(email="squatloadable@example.com")
+        ex = _mk_exercise(db, "Back Squat", category="Legs")
+        we = _mk_workout(db, user.id, ex)
+        s = _mk_set(db, we, 315, 3)
+        prs = detect_and_create_prs(db, user.id, we, [s])
+        db.commit()
+        assert any(p.pr_type == PRType.E1RM for p in prs)
+        assert any(p.pr_type == PRType.REP_PR for p in prs)
