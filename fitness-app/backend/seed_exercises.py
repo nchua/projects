@@ -141,6 +141,93 @@ exercises_data = [
     {"name": "Basketball", "aliases": ["Basketball Game", "Hoops"], "category": "Sport", "primary_muscle": "Full Body", "secondary_muscles": []},
     {"name": "Soccer", "aliases": ["Football", "Soccer Match"], "category": "Sport", "primary_muscle": "Legs", "secondary_muscles": []},
     {"name": "Golf", "aliases": ["Golf Round", "Golfing"], "category": "Sport", "primary_muscle": "Core", "secondary_muscles": ["Back"]},
+
+    # Restored Variations (the previous cleanup pass removed genuine variations,
+    # not just abbreviations/plurals). These are distinct movements that warrant
+    # their own PR tracking — barbell vs dumbbell vs machine, bilateral vs
+    # single-leg, etc. — NOT pure aliases of an existing canonical exercise.
+
+    # Shoulder Press variations (was missing seated barbell / smith / push / landmine)
+    {"name": "Seated Barbell Shoulder Press", "aliases": ["Seated Barbell Press", "Seated Military Press", "Seated BB Shoulder Press", "Seated Overhead Press"], "category": "Push", "primary_muscle": "Shoulders", "secondary_muscles": ["Triceps", "Upper Chest"]},
+    {"name": "Smith Machine Shoulder Press", "aliases": ["Smith Shoulder Press", "Smith Machine Overhead Press"], "category": "Push", "primary_muscle": "Shoulders", "secondary_muscles": ["Triceps"]},
+    {"name": "Push Press", "aliases": ["Barbell Push Press", "Overhead Push Press"], "category": "Push", "primary_muscle": "Shoulders", "secondary_muscles": ["Triceps", "Legs"]},
+    {"name": "Landmine Press", "aliases": ["Landmine Shoulder Press", "Half-Kneeling Landmine Press"], "category": "Push", "primary_muscle": "Shoulders", "secondary_muscles": ["Triceps", "Upper Chest"]},
+
+    # Squat variations
+    {"name": "Box Squat", "aliases": ["Box Squats", "Barbell Box Squat"], "category": "Legs", "primary_muscle": "Quads", "secondary_muscles": ["Glutes", "Hamstrings"]},
+    {"name": "Safety Bar Squat", "aliases": ["SSB Squat", "Safety Squat Bar Squat", "Safety Bar Squats"], "category": "Legs", "primary_muscle": "Quads", "secondary_muscles": ["Glutes", "Hamstrings"]},
+    {"name": "Pause Squat", "aliases": ["Paused Squat", "Tempo Squat"], "category": "Legs", "primary_muscle": "Quads", "secondary_muscles": ["Glutes", "Hamstrings"]},
+    {"name": "Sissy Squat", "aliases": ["Sissy Squats"], "category": "Legs", "primary_muscle": "Quads", "secondary_muscles": []},
+    {"name": "Belt Squat", "aliases": ["Belt Squats", "Belt Squat Machine"], "category": "Legs", "primary_muscle": "Quads", "secondary_muscles": ["Glutes"]},
+
+    # Deadlift variations
+    {"name": "Deficit Deadlift", "aliases": ["Deficit DL", "Deficit Deadlifts"], "category": "Pull", "primary_muscle": "Back", "secondary_muscles": ["Glutes", "Hamstrings", "Traps"]},
+
+    # Lunge / unilateral leg variations
+    {"name": "Reverse Lunge", "aliases": ["Reverse Lunges", "Barbell Reverse Lunge", "Dumbbell Reverse Lunge"], "category": "Legs", "primary_muscle": "Quads", "secondary_muscles": ["Glutes"]},
+    {"name": "Curtsy Lunge", "aliases": ["Curtsy Lunges"], "category": "Legs", "primary_muscle": "Glutes", "secondary_muscles": ["Quads"]},
+    {"name": "Cossack Squat", "aliases": ["Cossack Squats"], "category": "Legs", "primary_muscle": "Quads", "secondary_muscles": ["Glutes", "Adductors"]},
+    {"name": "Single-Leg Hip Thrust", "aliases": ["Single Leg Hip Thrust", "B-Stance Hip Thrust"], "category": "Legs", "primary_muscle": "Glutes", "secondary_muscles": ["Hamstrings"]},
+
+    # Posterior chain / hamstring & glute accessories
+    # (hamstring coverage was the worst gap — the library had been pruned down to
+    #  essentially just the leg curl, so restore a full set of hamstring movements)
+    {"name": "Lying Leg Curl", "aliases": ["Lying Hamstring Curl", "Prone Leg Curl", "Lying Leg Curls"], "category": "Legs", "primary_muscle": "Hamstrings", "secondary_muscles": ["Calves"]},
+    {"name": "Seated Leg Curl", "aliases": ["Seated Hamstring Curl", "Seated Leg Curls"], "category": "Legs", "primary_muscle": "Hamstrings", "secondary_muscles": ["Calves"]},
+    {"name": "Nordic Hamstring Curl", "aliases": ["Nordic Curl", "Nordic Ham Curl", "Nordics"], "category": "Legs", "primary_muscle": "Hamstrings", "secondary_muscles": ["Calves"]},
+    {"name": "Glute Ham Raise", "aliases": ["GHR", "Glute-Ham Raise"], "category": "Legs", "primary_muscle": "Hamstrings", "secondary_muscles": ["Glutes"]},
+    {"name": "Cable Pull-Through", "aliases": ["Pull-Through", "Cable Pull Through", "Rope Pull-Through"], "category": "Legs", "primary_muscle": "Glutes", "secondary_muscles": ["Hamstrings"]},
+    {"name": "Back Extension", "aliases": ["Hyperextension", "Hyperextensions", "45 Degree Back Extension", "Back Extensions"], "category": "Pull", "primary_muscle": "Lower Back", "secondary_muscles": ["Glutes", "Hamstrings"]},
+    {"name": "Kettlebell Swing", "aliases": ["KB Swing", "Russian Kettlebell Swing", "Kettlebell Swings"], "category": "Legs", "primary_muscle": "Glutes", "secondary_muscles": ["Hamstrings", "Core"]},
+    {"name": "Cable Glute Kickback", "aliases": ["Glute Kickback", "Cable Glute Kickbacks", "Donkey Kick"], "category": "Legs", "primary_muscle": "Glutes", "secondary_muscles": []},
+
+    # Row variations
+    {"name": "Pendlay Row", "aliases": ["Pendlay Rows", "Dead-Stop Row"], "category": "Pull", "primary_muscle": "Back", "secondary_muscles": ["Biceps"]},
+    {"name": "Meadows Row", "aliases": ["Landmine Row", "Meadows Rows"], "category": "Pull", "primary_muscle": "Back", "secondary_muscles": ["Biceps"]},
+    {"name": "Seal Row", "aliases": ["Seal Rows", "Bench Seal Row"], "category": "Pull", "primary_muscle": "Back", "secondary_muscles": ["Biceps"]},
+
+    # Chest variations
+    {"name": "Floor Press", "aliases": ["Barbell Floor Press", "Dumbbell Floor Press", "DB Floor Press"], "category": "Push", "primary_muscle": "Chest", "secondary_muscles": ["Triceps"]},
+    {"name": "Dumbbell Pullover", "aliases": ["DB Pullover", "Pullover", "Cross-Bench Pullover"], "category": "Push", "primary_muscle": "Chest", "secondary_muscles": ["Lats"]},
+
+    # Arm variations
+    {"name": "Reverse Curl", "aliases": ["Reverse Barbell Curl", "Reverse Grip Curl", "Reverse Curls"], "category": "Pull", "primary_muscle": "Forearms", "secondary_muscles": ["Biceps"]},
+    {"name": "Cable Hammer Curl", "aliases": ["Rope Hammer Curl", "Rope Curl"], "category": "Pull", "primary_muscle": "Biceps", "secondary_muscles": ["Forearms"]},
+
+    # Calf variations
+    {"name": "Leg Press Calf Raise", "aliases": ["Calf Press", "Leg Press Calf Press"], "category": "Legs", "primary_muscle": "Calves", "secondary_muscles": []},
+    {"name": "Donkey Calf Raise", "aliases": ["Donkey Calf Raises"], "category": "Legs", "primary_muscle": "Calves", "secondary_muscles": []},
+
+    # Other staples that were thin or absent (traps, forearms, upper chest,
+    # unilateral quad, basic ab work)
+    {"name": "Upright Row", "aliases": ["Barbell Upright Row", "Cable Upright Row", "Dumbbell Upright Row", "Upright Rows"], "category": "Pull", "primary_muscle": "Traps", "secondary_muscles": ["Side Delts"]},
+    {"name": "Reverse Wrist Curl", "aliases": ["Wrist Extension", "Reverse Wrist Curls", "Wrist Extensions"], "category": "Accessories", "primary_muscle": "Forearms", "secondary_muscles": []},
+    {"name": "Incline Cable Fly", "aliases": ["Low-to-High Cable Fly", "Low Cable Fly", "Incline Cable Flyes"], "category": "Push", "primary_muscle": "Upper Chest", "secondary_muscles": []},
+    {"name": "Pistol Squat", "aliases": ["Single-Leg Squat", "Pistol Squats"], "category": "Legs", "primary_muscle": "Quads", "secondary_muscles": ["Glutes", "Core"]},
+    {"name": "Sit-ups", "aliases": ["Sit-up", "Situps", "Sit Ups"], "category": "Core", "primary_muscle": "Abs", "secondary_muscles": []},
+
+    # Medicine ball, rollout & functional/conditioning work (core + carries +
+    # plyometrics that the library was missing entirely)
+    {"name": "Medicine Ball Slam", "aliases": ["Med Ball Slam", "Ball Slam", "Medicine Ball Slams", "Med Ball Slams"], "category": "Core", "primary_muscle": "Core", "secondary_muscles": ["Shoulders", "Lats"]},
+    {"name": "Wall Ball", "aliases": ["Wall Balls", "Wall Ball Shot", "Medicine Ball Wall Throw"], "category": "Legs", "primary_muscle": "Quads", "secondary_muscles": ["Shoulders", "Core"]},
+    {"name": "Medicine Ball Chest Pass", "aliases": ["Med Ball Chest Pass", "Medicine Ball Throw"], "category": "Push", "primary_muscle": "Chest", "secondary_muscles": ["Triceps", "Core"]},
+    {"name": "Medicine Ball Overhead Throw", "aliases": ["Med Ball Overhead Throw", "Overhead Medicine Ball Throw"], "category": "Core", "primary_muscle": "Core", "secondary_muscles": ["Shoulders", "Lats"]},
+    {"name": "Medicine Ball Sit-up", "aliases": ["Med Ball Sit-up", "Medicine Ball Situp", "Med Ball Situp"], "category": "Core", "primary_muscle": "Abs", "secondary_muscles": []},
+    {"name": "Barbell Rollout", "aliases": ["BB Rollout", "Barbell Ab Rollout"], "category": "Core", "primary_muscle": "Core", "secondary_muscles": []},
+    {"name": "Stability Ball Rollout", "aliases": ["Swiss Ball Rollout", "Stability Ball Ab Rollout"], "category": "Core", "primary_muscle": "Core", "secondary_muscles": []},
+    {"name": "Reverse Crunch", "aliases": ["Reverse Crunches"], "category": "Core", "primary_muscle": "Lower Abs", "secondary_muscles": []},
+    {"name": "Flutter Kicks", "aliases": ["Flutter Kick"], "category": "Core", "primary_muscle": "Lower Abs", "secondary_muscles": []},
+    {"name": "Hollow Hold", "aliases": ["Hollow Body Hold", "Hollow Body"], "category": "Core", "primary_muscle": "Core", "secondary_muscles": []},
+    {"name": "Bird Dog", "aliases": ["Bird Dogs"], "category": "Core", "primary_muscle": "Core", "secondary_muscles": ["Glutes"]},
+    {"name": "Toes to Bar", "aliases": ["Toes-to-Bar", "T2B"], "category": "Core", "primary_muscle": "Lower Abs", "secondary_muscles": ["Lats"]},
+    {"name": "Hanging Knee Raise", "aliases": ["Hanging Knee Raises", "Knee Raise"], "category": "Core", "primary_muscle": "Lower Abs", "secondary_muscles": []},
+    {"name": "Burpees", "aliases": ["Burpee"], "category": "Cardio", "primary_muscle": "Full Body", "secondary_muscles": []},
+    {"name": "Box Jump", "aliases": ["Box Jumps"], "category": "Legs", "primary_muscle": "Quads", "secondary_muscles": ["Glutes", "Calves"]},
+    {"name": "Battle Ropes", "aliases": ["Battle Rope", "Rope Slams"], "category": "Cardio", "primary_muscle": "Full Body", "secondary_muscles": ["Shoulders", "Core"]},
+    {"name": "Sled Push", "aliases": ["Prowler Push", "Sled Pushes"], "category": "Legs", "primary_muscle": "Quads", "secondary_muscles": ["Glutes", "Hamstrings"]},
+    {"name": "Turkish Get-up", "aliases": ["TGU", "Turkish Getup", "Turkish Get Up"], "category": "Core", "primary_muscle": "Core", "secondary_muscles": ["Shoulders", "Glutes"]},
+    {"name": "Wall Sit", "aliases": ["Wall Sits", "Wall Squat Hold"], "category": "Legs", "primary_muscle": "Quads", "secondary_muscles": []},
+    {"name": "Jumping Jacks", "aliases": ["Jumping Jack", "Star Jumps"], "category": "Cardio", "primary_muscle": "Full Body", "secondary_muscles": []},
 ]
 
 
