@@ -50,6 +50,16 @@ struct AriseWorkoutHRSection: View {
                             useSystemIcon: true,
                             valueColor: .orange
                         )
+                    } else if let exertion = workout.exertionScore {
+                        // Apple-Watch sessions carry no strain; show the HR-zone
+                        // exertion proxy in its place.
+                        StatCard(
+                            icon: "bolt.fill",
+                            value: String(format: "%.1f", exertion),
+                            label: "EXERTION",
+                            useSystemIcon: true,
+                            valueColor: .orange
+                        )
                     }
                 }
 

@@ -205,6 +205,11 @@ struct WorkoutSummaryResponse: Decodable, Identifiable {
     let activityType: String?
     let strain: Double?
     let calories: Int?
+    // True for any pure cardio/sport session (WHOOP or Apple Watch). Drives the
+    // History row's activity rendering regardless of data source.
+    let isActivity: Bool?
+    // 0-21 exertion score derived from HR zones (Apple-Watch strain proxy).
+    let exertionScore: Double?
     // Heart rate (additive — Apple Watch / WHOOP). Missing keys decode to nil.
     let avgHeartRate: Int?
     let peakHeartRate: Int?
@@ -223,6 +228,8 @@ struct WorkoutSummaryResponse: Decodable, Identifiable {
         case updatedAt = "updated_at"
         case isWhoopActivity = "is_whoop_activity"
         case activityType = "activity_type"
+        case isActivity = "is_activity"
+        case exertionScore = "exertion_score"
         case avgHeartRate = "avg_heart_rate"
         case peakHeartRate = "peak_heart_rate"
         case hrSource = "hr_source"
@@ -247,9 +254,16 @@ struct WorkoutResponse: Decodable, Identifiable {
     let kilojoules: Double?
     let hrZoneSeconds: [String: Int]?
     let hrSource: String?
+    // 0-21 exertion score derived from HR zones (Apple-Watch strain proxy).
+    let exertionScore: Double?
+    // Activity classification (mirrors WorkoutSummary) so the detail screen can
+    // render a cardio session as an activity instead of a 0-set quest.
+    let isActivity: Bool?
+    let activityType: String?
+    let calories: Int?
 
     enum CodingKeys: String, CodingKey {
-        case id, date, notes, exercises, strain, kilojoules
+        case id, date, notes, exercises, strain, kilojoules, calories
         case userId = "user_id"
         case durationMinutes = "duration_minutes"
         case sessionRpe = "session_rpe"
@@ -259,6 +273,9 @@ struct WorkoutResponse: Decodable, Identifiable {
         case peakHeartRate = "peak_heart_rate"
         case hrZoneSeconds = "hr_zone_seconds"
         case hrSource = "hr_source"
+        case exertionScore = "exertion_score"
+        case isActivity = "is_activity"
+        case activityType = "activity_type"
     }
 }
 

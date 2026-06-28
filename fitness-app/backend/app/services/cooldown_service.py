@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 from app.core.utils import ensure_utc, to_iso8601_utc
 from app.models.pr import PR, PRType
 from app.models.workout import WorkoutSession
+from app.services.activity_muscles import get_activity_muscles
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,10 @@ def get_age_modifier(age: int | None) -> float:
         return 1.5
 
 
-# Base cooldown times in hours for each muscle group
+# Base cooldown times in hours for each muscle group.
+# calves/glutes were added for cardio attribution (running/cycling/jumping); the
+# strength muscle maps don't emit them, so they're reached only via the cardio
+# activity proxy — keeping the strength path's behavior unchanged.
 COOLDOWN_TIMES = {
     "chest": 72,
     "quads": 48,
@@ -59,6 +63,8 @@ COOLDOWN_TIMES = {
     "biceps": 36,
     "triceps": 36,
     "shoulders": 48,
+    "glutes": 48,
+    "calves": 36,
 }
 
 # Secondary muscle fatigue transfer percentage (50%)
@@ -103,6 +109,29 @@ MAX_VOLUME_MULTIPLIER = 2.0   # Cap at 2x
 # =============================================================================
 MAX_COOLDOWN_HOURS = 120      # 5 days maximum
 MIN_COOLDOWN_HOURS = 12       # Minimum even for light work
+
+# =============================================================================
+# CARDIO / SPORT FATIGUE (set-less Apple-Watch / WHOOP activities)
+# =============================================================================
+# Cardio sessions carry no sets, so time drives "volume" and the HR-zone mix
+# drives "intensity". 15 min of activity ≈ one effective set of load; a single
+# session is capped so a long easy walk can't dominate the recovery model.
+# The cap is deliberately low: endurance recovery is driven by central/glycogen
+# factors more than the eccentric muscle damage the strength curve models, so
+# duration must not stack into multi-day muscle cooldowns.
+CARDIO_MINUTES_PER_EFFECTIVE_SET = 15.0
+CARDIO_MAX_EFFECTIVE_SETS = 5.0      # ~75 min before volume saturates
+
+# Intensity multiplier mapped from the average HR zone (1-5). The low floor keeps
+# easy aerobic work (z1-z2 walks/jogs) cheap — true low-intensity cardio causes
+# little local muscle damage and should recover fast — while sustained high zones
+# approach the strength path's heavy-set factor.
+CARDIO_MIN_INTENSITY = 0.35          # easy / low zones (z1-z2)
+CARDIO_BASE_INTENSITY = 0.7          # moderate (default when no zone data)
+CARDIO_MAX_INTENSITY = 1.4           # sustained high zones
+
+# Per-zone weight for deriving average intensity (separate from exertion scoring).
+CARDIO_ZONE_WEIGHTS = {"z1": 1.0, "z2": 2.0, "z3": 3.0, "z4": 4.0, "z5": 5.0}
 
 
 INTENSITY_LEVELS = [
@@ -503,6 +532,83 @@ def map_primary_muscle(muscle_name: str) -> str | None:
     return PRIMARY_MUSCLE_MAP.get(name_lower)
 
 
+def cardio_intensity_from_zones(hr_zone_seconds: dict | None) -> float:
+    """Map a time-in-zone breakdown to a cardio intensity multiplier.
+
+    Returns ``CARDIO_BASE_INTENSITY`` when no zone data is present. Otherwise the
+    average zone (1-5, weighted by seconds) is scaled onto
+    ``[CARDIO_MIN_INTENSITY, CARDIO_MAX_INTENSITY]`` — so an easy z1-z2 session
+    cools down faster than a hard z4-z5 session of the same duration.
+    """
+    if not hr_zone_seconds:
+        return CARDIO_BASE_INTENSITY
+
+    total = 0.0
+    weighted = 0.0
+    for zone, seconds in hr_zone_seconds.items():
+        if not isinstance(seconds, (int, float)) or seconds <= 0:
+            continue
+        total += seconds
+        weighted += CARDIO_ZONE_WEIGHTS.get(str(zone).lower(), 0.0) * seconds
+
+    if total <= 0:
+        return CARDIO_BASE_INTENSITY
+
+    avg_zone = weighted / total  # 1.0 .. 5.0
+    intensity = CARDIO_MIN_INTENSITY + (avg_zone - 1.0) / 4.0 * (
+        CARDIO_MAX_INTENSITY - CARDIO_MIN_INTENSITY
+    )
+    return round(intensity, 3)
+
+
+def _apply_cardio_fatigue(
+    muscle_fatigue: Dict[str, dict],
+    muscle: str,
+    workout_date: datetime,
+    intensity: float,
+    effective_sets: float,
+) -> None:
+    """Accumulate time-based cardio fatigue onto a tracked muscle group.
+
+    ``intensity`` is the per-effective-set fatigue (so ``avg_fatigue_score``
+    resolves to ``intensity`` downstream) and ``effective_sets`` is the
+    time-derived volume (already halved by the caller for secondary muscles).
+    """
+    if muscle not in COOLDOWN_TIMES:
+        return
+    data = muscle_fatigue[muscle]
+    if data["last_trained"] is None or workout_date > data["last_trained"]:
+        data["last_trained"] = workout_date
+    data["total_fatigue_score"] += intensity * effective_sets
+    data["total_effective_sets"] += effective_sets
+    data["set_count"] += int(round(effective_sets))
+
+
+def _add_cardio_exercise_entries(
+    muscle_fatigue: Dict[str, dict],
+    primary_muscles: List[str],
+    secondary_muscles: List[str],
+    exercise_id: str,
+    exercise_name: str,
+    workout_date: datetime,
+) -> None:
+    """Record the cardio activity under each affected muscle's exercise list."""
+    iso_date = to_iso8601_utc(workout_date)
+    for muscles, fatigue_type in ((primary_muscles, "primary"), (secondary_muscles, "secondary")):
+        for muscle in muscles:
+            key = muscle.lower()
+            if key not in COOLDOWN_TIMES:
+                continue
+            entry = {
+                "exercise_id": exercise_id,
+                "exercise_name": exercise_name,
+                "workout_date": iso_date,
+                "fatigue_type": fatigue_type,
+            }
+            if entry not in muscle_fatigue[key]["exercises"]:
+                muscle_fatigue[key]["exercises"].append(entry)
+
+
 def calculate_cooldowns(
     db: Session,
     user_id: str,
@@ -586,6 +692,35 @@ def calculate_cooldowns(
 
             # Process each set in this exercise
             sets = we.sets or []
+
+            # ── Cardio / sport path ──
+            # Apple-Watch (and WHOOP) cardio sessions are linked to a Sport/Cardio
+            # exercise but carry no sets, so the per-set loop below contributes
+            # nothing. Instead, attribute time-based fatigue to a proxy muscle set
+            # and skip the (empty) set loop.
+            if not sets:
+                cardio_primary, cardio_secondary = get_activity_muscles(exercise_name)
+                if (cardio_primary or cardio_secondary) and workout.duration_minutes:
+                    effective_sets = min(
+                        CARDIO_MAX_EFFECTIVE_SETS,
+                        max(1.0, workout.duration_minutes / CARDIO_MINUTES_PER_EFFECTIVE_SET),
+                    )
+                    intensity = cardio_intensity_from_zones(workout.hr_zone_seconds)
+                    for muscle in cardio_primary:
+                        _apply_cardio_fatigue(
+                            muscle_fatigue, muscle.lower(), workout_date,
+                            intensity, effective_sets,
+                        )
+                    for muscle in cardio_secondary:
+                        _apply_cardio_fatigue(
+                            muscle_fatigue, muscle.lower(), workout_date,
+                            intensity, effective_sets * SECONDARY_FATIGUE_PERCENT,
+                        )
+                    _add_cardio_exercise_entries(
+                        muscle_fatigue, cardio_primary, cardio_secondary,
+                        exercise_id, exercise_name, workout_date,
+                    )
+                continue
 
             for s in sets:
                 # Calculate fatigue score for this set

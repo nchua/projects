@@ -369,24 +369,26 @@ struct CompletedQuestRow: View {
         workout.exerciseCount > 0
     }
 
-    /// Color for the left indicator - orange for pure cardio WHOOP, green for workouts with sets
+    /// Whether this is a pure cardio/sport activity (WHOOP or Apple Watch).
+    /// Falls back to the legacy WHOOP heuristic for older backends that don't
+    /// send `is_activity`.
+    private var isCardioActivity: Bool {
+        if let isActivity = workout.isActivity { return isActivity }
+        return isWhoopActivity && !hasExercises
+    }
+
+    /// Color for the left indicator - orange for cardio activities, green for workouts with sets
     private var indicatorColor: Color {
-        (isWhoopActivity && !hasExercises) ? .orange : .successGreen
+        isCardioActivity ? .orange : .successGreen
     }
 
     /// Badge text and icon depend on activity type
     private var badgeText: String {
-        if isWhoopActivity && !hasExercises {
-            return "ACTIVITY"
-        }
-        return "COMPLETE"
+        isCardioActivity ? "ACTIVITY" : "COMPLETE"
     }
 
     private var badgeIcon: String {
-        if isWhoopActivity && !hasExercises {
-            return "flame.fill"
-        }
-        return "checkmark"
+        isCardioActivity ? "flame.fill" : "checkmark"
     }
 
     var body: some View {
@@ -423,41 +425,52 @@ struct CompletedQuestRow: View {
                         AriseSourceBadge(source: workout.hrSource, compact: true)
                     }
 
-                    if isWhoopActivity && !hasExercises {
-                        // Pure cardio WHOOP activity: show activity type, strain, calories
-                        HStack(spacing: 16) {
-                            if let activityType = workout.activityType {
-                                HStack(spacing: 4) {
-                                    Image(systemName: activityIconName(for: activityType))
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.orange)
-                                    Text(activityType)
-                                        .font(.ariseMono(size: 11, weight: .semibold))
-                                        .foregroundColor(.textPrimary)
+                    if isCardioActivity {
+                        // Cardio/sport activity (WHOOP or Apple Watch): show type,
+                        // heart rate, exertion/strain, calories, and worked muscles.
+                        VStack(alignment: .leading, spacing: 6) {
+                            // Primary metrics: type, duration, heart rate.
+                            HStack(spacing: 16) {
+                                if let activityType = workout.activityType {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: activityIconName(for: activityType))
+                                            .font(.system(size: 10))
+                                            .foregroundColor(.orange)
+                                        Text(activityType)
+                                            .font(.ariseMono(size: 11, weight: .semibold))
+                                            .foregroundColor(.textPrimary)
+                                    }
+                                }
+
+                                if let duration = workout.durationMinutes {
+                                    metricChip(icon: "clock", text: "\(duration) min")
+                                }
+
+                                if let hr = workout.avgHeartRate {
+                                    metricChip(icon: "heart.fill", text: "\(hr) bpm", iconColor: .systemPrimary)
                                 }
                             }
 
-                            if let strain = workout.strain {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "bolt.fill")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.textMuted)
-                                    Text(String(format: "%.1f strain", strain))
-                                        .font(.ariseMono(size: 11))
-                                        .foregroundColor(.textSecondary)
+                            // Secondary metrics on their own row so the line
+                            // doesn't overflow on narrow devices. Strain is
+                            // WHOOP-only; Apple Watch shows the HR-zone exertion
+                            // proxy instead.
+                            if workout.strain != nil || workout.exertionScore != nil || workout.calories != nil {
+                                HStack(spacing: 16) {
+                                    if let strain = workout.strain {
+                                        metricChip(icon: "bolt.fill", text: String(format: "%.1f strain", strain))
+                                    } else if let exertion = workout.exertionScore {
+                                        metricChip(icon: "bolt.fill", text: String(format: "%.1f exertion", exertion))
+                                    }
+
+                                    if let calories = workout.calories {
+                                        metricChip(icon: "flame", text: "\(calories) cal")
+                                    }
                                 }
                             }
 
-                            if let calories = workout.calories {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "flame")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.textMuted)
-                                    Text("\(calories) cal")
-                                        .font(.ariseMono(size: 11))
-                                        .foregroundColor(.textSecondary)
-                                }
-                            }
+                            // Muscles worked (proxy for cardio/sport activities)
+                            musclePills(workout.primaryMuscles)
                         }
                     } else {
                         // Gym workout or WHOOP weightlifting: show objectives and sets
@@ -494,34 +507,7 @@ struct CompletedQuestRow: View {
                         }
 
                         // Muscle group pills
-                        if let muscles = workout.primaryMuscles, !muscles.isEmpty {
-                            HStack(spacing: 6) {
-                                ForEach(muscles.prefix(3), id: \.self) { muscle in
-                                    HStack(spacing: 4) {
-                                        Circle()
-                                            .fill(muscleColor(for: muscle))
-                                            .frame(width: 6, height: 6)
-                                        Text(muscle)
-                                            .font(.system(size: 11, weight: .medium))
-                                            .foregroundColor(.textSecondary)
-                                    }
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 3)
-                                    .background(Color.voidLight)
-                                    .cornerRadius(10)
-                                }
-
-                                if muscles.count > 3 {
-                                    Text("+\(muscles.count - 3)")
-                                        .font(.system(size: 11, weight: .medium))
-                                        .foregroundColor(.textMuted)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 3)
-                                        .background(Color.voidLight)
-                                        .cornerRadius(10)
-                                }
-                            }
-                        }
+                        musclePills(workout.primaryMuscles)
 
                         // Only show notes for non-WHOOP workouts (WHOOP notes contain metadata)
                         if !isWhoopActivity, let notes = workout.notes, !notes.isEmpty {
@@ -546,6 +532,53 @@ struct CompletedQuestRow: View {
 
     private func formatDate(_ dateString: String) -> String {
         dateString.parseISO8601Date()?.formattedMedium ?? dateString
+    }
+
+    /// A small icon + mono-text metric chip used across the cardio metric rows.
+    @ViewBuilder
+    private func metricChip(icon: String, text: String, iconColor: Color = .textMuted) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 10))
+                .foregroundColor(iconColor)
+            Text(text)
+                .font(.ariseMono(size: 11))
+                .foregroundColor(.textSecondary)
+        }
+    }
+
+    /// Muscle-group pills (max 3 + overflow count), shared by the activity and
+    /// gym branches so cardio sessions show their worked muscles the same way.
+    @ViewBuilder
+    private func musclePills(_ muscles: [String]?) -> some View {
+        if let muscles = muscles, !muscles.isEmpty {
+            HStack(spacing: 6) {
+                ForEach(muscles.prefix(3), id: \.self) { muscle in
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(muscleColor(for: muscle))
+                            .frame(width: 6, height: 6)
+                        Text(muscle)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.textSecondary)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.voidLight)
+                    .cornerRadius(10)
+                }
+
+                if muscles.count > 3 {
+                    Text("+\(muscles.count - 3)")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.textMuted)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color.voidLight)
+                        .cornerRadius(10)
+                }
+            }
+        }
     }
 
     /// Map muscle group name to a display color
@@ -652,16 +685,19 @@ struct QuestDetailView: View {
                                 .fadeIn(delay: 0.05)
                         }
 
-                        // Section Header
-                        AriseSectionHeader(title: "Completed Objectives")
-                            .padding(.horizontal)
-                            .fadeIn(delay: 0.1)
-
-                        // Exercises
-                        ForEach(Array(workout.exercises.enumerated()), id: \.element.id) { index, exercise in
-                            ObjectiveDetailCard(exercise: exercise)
+                        // Objectives — a cardio/sport activity has no real sets to
+                        // show, so suppress this section for activities (the HR
+                        // block above carries the meaningful detail).
+                        if !(workout.isActivity ?? false) {
+                            AriseSectionHeader(title: "Completed Objectives")
                                 .padding(.horizontal)
-                                .fadeIn(delay: 0.15 + Double(index) * 0.05)
+                                .fadeIn(delay: 0.1)
+
+                            ForEach(Array(workout.exercises.enumerated()), id: \.element.id) { index, exercise in
+                                ObjectiveDetailCard(exercise: exercise)
+                                    .padding(.horizontal)
+                                    .fadeIn(delay: 0.15 + Double(index) * 0.05)
+                            }
                         }
                     }
                     .padding(.vertical)
@@ -696,9 +732,9 @@ struct QuestSummaryCard: View {
             // Header with date and status
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("QUEST COMPLETED")
+                    Text(headerLabel)
                         .font(.ariseMono(size: 10, weight: .semibold))
-                        .foregroundColor(.successGreen)
+                        .foregroundColor(accentColor)
                         .tracking(1)
 
                     Text(formatDate(workout.date))
@@ -708,13 +744,13 @@ struct QuestSummaryCard: View {
 
                 Spacer()
 
-                // Completion checkmark
+                // Completion / activity marker
                 ZStack {
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.successGreen)
+                        .fill(accentColor)
                         .frame(width: 40, height: 40)
 
-                    Image(systemName: "checkmark")
+                    Image(systemName: isActivity ? "flame.fill" : "checkmark")
                         .font(.system(size: 18, weight: .bold))
                         .foregroundColor(.voidBlack)
                 }
@@ -722,40 +758,26 @@ struct QuestSummaryCard: View {
 
             AriseDivider()
 
-            // Stats row
+            // Stats row — duration/calories/exertion for activities, otherwise
+            // objectives/sets/RPE for a logged strength quest.
             HStack(spacing: 24) {
-                // Objectives
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(workout.exercises.count)")
-                        .font(.ariseDisplay(size: 20, weight: .bold))
-                        .foregroundColor(.systemPrimary)
-                    Text("OBJECTIVES")
-                        .font(.ariseMono(size: 9, weight: .medium))
-                        .foregroundColor(.textMuted)
-                        .tracking(0.5)
-                }
-
-                // Total Sets
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(totalSets)")
-                        .font(.ariseDisplay(size: 20, weight: .bold))
-                        .foregroundColor(.textPrimary)
-                    Text("SETS")
-                        .font(.ariseMono(size: 9, weight: .medium))
-                        .foregroundColor(.textMuted)
-                        .tracking(0.5)
-                }
-
-                // Session RPE
-                if let rpe = workout.sessionRpe {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("\(rpe)")
-                            .font(.ariseDisplay(size: 20, weight: .bold))
-                            .foregroundColor(.gold)
-                        Text("RPE")
-                            .font(.ariseMono(size: 9, weight: .medium))
-                            .foregroundColor(.textMuted)
-                            .tracking(0.5)
+                if isActivity {
+                    if let duration = workout.durationMinutes {
+                        statCell(value: "\(duration)", label: "MINUTES", color: .systemPrimary)
+                    }
+                    if let calories = workout.calories {
+                        statCell(value: "\(calories)", label: "CALORIES", color: .textPrimary)
+                    }
+                    if let strain = workout.strain {
+                        statCell(value: String(format: "%.1f", strain), label: "STRAIN", color: .gold)
+                    } else if let exertion = workout.exertionScore {
+                        statCell(value: String(format: "%.1f", exertion), label: "EXERTION", color: .gold)
+                    }
+                } else {
+                    statCell(value: "\(workout.exercises.count)", label: "OBJECTIVES", color: .systemPrimary)
+                    statCell(value: "\(totalSets)", label: "SETS", color: .textPrimary)
+                    if let rpe = workout.sessionRpe {
+                        statCell(value: "\(rpe)", label: "RPE", color: .gold)
                     }
                 }
 
@@ -781,7 +803,7 @@ struct QuestSummaryCard: View {
         .background(Color.voidMedium)
         .overlay(
             Rectangle()
-                .fill(Color.successGreen.opacity(0.3))
+                .fill(accentColor.opacity(0.3))
                 .frame(height: 1),
             alignment: .top
         )
@@ -790,6 +812,28 @@ struct QuestSummaryCard: View {
             RoundedRectangle(cornerRadius: 4)
                 .stroke(Color.ariseBorder, lineWidth: 1)
         )
+    }
+
+    private var isActivity: Bool { workout.isActivity ?? false }
+
+    /// Orange for cardio/sport activities, green for completed strength quests.
+    private var accentColor: Color { isActivity ? .orange : .successGreen }
+
+    private var headerLabel: String {
+        isActivity ? (workout.activityType?.uppercased() ?? "ACTIVITY LOGGED") : "QUEST COMPLETED"
+    }
+
+    @ViewBuilder
+    private func statCell(value: String, label: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.ariseDisplay(size: 20, weight: .bold))
+                .foregroundColor(color)
+            Text(label)
+                .font(.ariseMono(size: 9, weight: .medium))
+                .foregroundColor(.textMuted)
+                .tracking(0.5)
+        }
     }
 
     private var totalSets: Int {

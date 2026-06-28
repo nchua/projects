@@ -16,6 +16,7 @@ from app.core.e1rm import (
     calculate_e1rm_from_rpe,
     get_user_e1rm_formula,
 )
+from app.core.exertion import compute_exertion_score
 from app.core.utils import to_iso8601_utc
 from app.models.exercise import Exercise
 from app.models.pr import PR, PRType
@@ -40,6 +41,7 @@ from app.schemas.workout import (
 )
 from app.services import healthkit_service
 from app.services.achievement_service import check_and_unlock_achievements
+from app.services.activity_muscles import get_activity_muscles
 from app.services.dungeon_service import maybe_spawn_dungeon, update_dungeon_progress
 from app.services.heart_rate_service import ingest_heart_rate
 from app.services.mission_service import update_goal_progress
@@ -56,6 +58,83 @@ from app.services.xp_service import award_xp, calculate_workout_xp, get_or_creat
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+# Energy conversion: HealthKit reports active energy in kilojoules; the UI shows
+# kilocalories (1 kcal ≈ 4.184 kJ).
+KJ_TO_KCAL = 0.239006
+
+
+def parse_apple_watch_activity_type(notes: str) -> str | None:
+    """Extract the activity type from an Apple-Watch cardio session's notes.
+
+    Cardio sessions imported from HealthKit are saved with notes shaped like
+    ``"Tennis - Apple Watch | Distance: 5000m"`` (see
+    ``healthkit_service._build_cardio_session``). Returns the activity type
+    (``"Tennis"``) or ``None`` when the notes aren't an Apple-Watch activity.
+    """
+    if not notes or " - Apple Watch" not in notes:
+        return None
+    activity_type = notes.split(" - Apple Watch", 1)[0].strip()
+    return activity_type or None
+
+
+def _derive_activity_fields(workout: WorkoutSession, total_sets: int) -> dict:
+    """Resolve activity fields for a session from either data source.
+
+    WHOOP activities encode type/strain/calories in notes; Apple-Watch cardio
+    imports are set-less sessions with ``hr_source="apple_watch"`` and a
+    ``"{type} - Apple Watch"`` note (calories derived from kilojoules). A pure
+    cardio/sport session is one with no sets but a known activity type.
+
+    Returns a dict with keys ``is_whoop_activity``, ``activity_type``,
+    ``strain``, ``calories``, ``is_activity``.
+    """
+    whoop_data = parse_whoop_notes(workout.notes)
+    if whoop_data:
+        activity_type = whoop_data.get("activity_type")
+        return {
+            "is_whoop_activity": whoop_data.get("is_whoop_activity", False),
+            "activity_type": activity_type,
+            "strain": whoop_data.get("strain"),
+            "calories": whoop_data.get("calories"),
+            "is_activity": total_sets == 0 and activity_type is not None,
+        }
+
+    activity_type = None
+    calories = None
+    if workout.hr_source == "apple_watch" and total_sets == 0:
+        activity_type = parse_apple_watch_activity_type(workout.notes)
+        if workout.kilojoules:
+            calories = round(workout.kilojoules * KJ_TO_KCAL)
+    return {
+        "is_whoop_activity": False,
+        "activity_type": activity_type,
+        "strain": None,
+        "calories": calories,
+        "is_activity": total_sets == 0 and activity_type is not None,
+    }
+
+
+def _activity_primary_muscles(sorted_exercises: list, activity_type: str | None) -> list | None:
+    """Muscle proxy for a cardio/sport activity (Quads/Hamstrings…).
+
+    Prefers the linked Sport/Cardio exercise name, falling back to the parsed
+    activity type. Returns ``None`` when no proxy matches so callers keep the
+    session's existing muscles.
+    """
+    proxy_primary, proxy_secondary = [], []
+    for we in sorted_exercises:
+        if we.exercise:
+            primary, secondary = get_activity_muscles(we.exercise.name)
+            if primary or secondary:
+                proxy_primary, proxy_secondary = primary, secondary
+                break
+    if not proxy_primary and not proxy_secondary and activity_type:
+        proxy_primary, proxy_secondary = get_activity_muscles(activity_type)
+    if proxy_primary or proxy_secondary:
+        return proxy_primary + [m for m in proxy_secondary if m not in proxy_primary]
+    return None
 
 
 def parse_whoop_notes(notes: str) -> dict:
@@ -582,8 +661,14 @@ async def list_workouts(
                     seen_muscles.add(m)
                     primary_muscles.append(m)
 
-        # Parse WHOOP activity data from notes
-        whoop_data = parse_whoop_notes(workout.notes)
+        # Resolve activity fields (WHOOP notes or Apple-Watch cardio import) and,
+        # for activities, surface the muscle proxy (Quads/Hamstrings…) instead of
+        # the coarse seeded primary_muscle ("Full Body"/"Legs").
+        activity = _derive_activity_fields(workout, total_sets)
+        if activity["is_activity"]:
+            proxy_muscles = _activity_primary_muscles(sorted_exercises, activity["activity_type"])
+            if proxy_muscles:
+                primary_muscles = proxy_muscles
 
         summaries.append(WorkoutSummary(
             id=workout.id,
@@ -598,11 +683,13 @@ async def list_workouts(
             primary_muscles=primary_muscles,
             created_at=to_iso8601_utc(workout.created_at),
             updated_at=to_iso8601_utc(workout.updated_at),
-            # WHOOP fields
-            is_whoop_activity=whoop_data.get("is_whoop_activity", False) if whoop_data else False,
-            activity_type=whoop_data.get("activity_type") if whoop_data else None,
-            strain=whoop_data.get("strain") if whoop_data else None,
-            calories=whoop_data.get("calories") if whoop_data else None,
+            # Activity fields (WHOOP notes or Apple-Watch cardio import)
+            is_whoop_activity=activity["is_whoop_activity"],
+            activity_type=activity["activity_type"],
+            strain=activity["strain"],
+            calories=activity["calories"],
+            is_activity=activity["is_activity"],
+            exertion_score=compute_exertion_score(workout.hr_zone_seconds),
             # Wearable HR provenance (read from session columns; populated by
             # Apple Watch live sessions and the HealthKit/WHOOP import paths).
             avg_heart_rate=workout.avg_heart_rate,
@@ -871,6 +958,11 @@ def _build_workout_response(workout: WorkoutSession) -> WorkoutResponse:
             created_at=to_iso8601_utc(we.created_at)
         ))
 
+    # Activity classification so the detail screen renders cardio as an activity
+    # (type + calories) rather than a 0-set "quest".
+    total_sets = sum(len(we.sets) for we in workout.workout_exercises)
+    activity = _derive_activity_fields(workout, total_sets)
+
     return WorkoutResponse(
         id=workout.id,
         user_id=workout.user_id,
@@ -886,6 +978,10 @@ def _build_workout_response(workout: WorkoutSession) -> WorkoutResponse:
         kilojoules=workout.kilojoules,
         hr_zone_seconds=workout.hr_zone_seconds,
         hr_source=workout.hr_source,
+        exertion_score=compute_exertion_score(workout.hr_zone_seconds),
+        is_activity=activity["is_activity"],
+        activity_type=activity["activity_type"],
+        calories=activity["calories"],
         created_at=to_iso8601_utc(workout.created_at),
         updated_at=to_iso8601_utc(workout.updated_at)
     )
