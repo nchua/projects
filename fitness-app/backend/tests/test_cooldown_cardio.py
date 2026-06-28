@@ -18,7 +18,6 @@ from app.models.workout import WorkoutExercise, WorkoutSession
 from app.services.activity_muscles import get_activity_muscles
 from app.services.cooldown_service import calculate_cooldowns
 
-
 # ── Proxy unit tests ────────────────────────────────────────────────────────
 
 def test_running_maps_to_legs_including_calves():
