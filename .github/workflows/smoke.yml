@@ -1,0 +1,30 @@
+name: Prod smoke
+
+# Post-deploy / scheduled smoke check against the live backend. Exercises the
+# new-user -> first-workout path (register -> log strength -> import cardio ->
+# delete) that the SQLite unit suite can't cover, so prod schema drift surfaces
+# instead of being found by hand (see the 2026-06-28 incident).
+on:
+  workflow_dispatch: {}        # run manually right after a deploy
+  schedule:
+    - cron: "0 */6 * * *"      # safety net every 6 hours
+
+jobs:
+  smoke:
+    name: New-user → workout smoke (prod)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install httpx
+        run: pip install httpx
+
+      - name: Run smoke check
+        env:
+          API_BASE_URL: https://backend-production-e316.up.railway.app
+        run: python fitness-app/backend/scripts/post_deploy_smoke.py
