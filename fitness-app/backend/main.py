@@ -125,6 +125,7 @@ async def _rate_limit_handler(request: Request, exc: RateLimitExceeded):
 
 
 # Add validation error handler to log details
+from fastapi.encoders import jsonable_encoder  # noqa: E402
 from fastapi.exceptions import RequestValidationError  # noqa: E402
 from starlette.exceptions import HTTPException as StarletteHTTPException  # noqa: E402
 
@@ -139,10 +140,15 @@ def _error_headers(request: Request) -> dict:
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
-    print(f"VALIDATION ERROR on {request.url.path}: {exc.errors()}", flush=True)
+    # jsonable_encoder is required: Pydantic v2 embeds the original exception
+    # object in each error's `ctx` (e.g. the ValueError raised by a custom
+    # password-strength validator), which JSONResponse can't serialize directly
+    # — without this, a failed custom validator 500s instead of returning 422.
+    errors = jsonable_encoder(exc.errors())
+    print(f"VALIDATION ERROR on {request.url.path}: {errors}", flush=True)
     return JSONResponse(
         status_code=422,
-        content={"detail": exc.errors()},
+        content={"detail": errors},
         headers=_error_headers(request),
     )
 
