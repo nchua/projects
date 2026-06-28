@@ -139,6 +139,14 @@ class WorkoutResponse(BaseModel):
     kilojoules: Optional[float] = None
     hr_zone_seconds: Optional[dict] = None
     hr_source: Optional[str] = None
+    # 0-21 exertion score derived from hr_zone_seconds (Apple-Watch strain proxy).
+    # None when no zone data; clients fall back to WHOOP strain.
+    exertion_score: Optional[float] = None
+    # Activity classification (mirrors WorkoutSummary) so the detail screen can
+    # render a cardio session as an activity rather than a 0-set "quest".
+    is_activity: bool = False
+    activity_type: Optional[str] = None
+    calories: Optional[int] = None
     created_at: str
     updated_at: str
 
@@ -263,6 +271,12 @@ class WorkoutSummary(BaseModel):
     activity_type: Optional[str] = None
     strain: Optional[float] = None
     calories: Optional[int] = None
+    # True for any pure cardio/sport session (WHOOP or Apple Watch) — i.e. a
+    # set-less activity with a known activity_type. Drives the History row's
+    # "activity" rendering regardless of data source.
+    is_activity: bool = False
+    # 0-21 exertion score derived from hr_zone_seconds (Apple-Watch strain proxy).
+    exertion_score: Optional[float] = None
     # Wearable HR summary for the History-row provenance badge + biometrics.
     # Optional so rows without a wearable (and legacy data) render unchanged.
     avg_heart_rate: Optional[int] = None
