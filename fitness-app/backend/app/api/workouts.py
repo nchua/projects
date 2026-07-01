@@ -533,7 +533,8 @@ async def _create_workout_impl(
             is_stretch_dungeon=d["is_stretch_dungeon"],
             stretch_bonus_percent=d.get("stretch_bonus_percent"),
             time_remaining_seconds=d["time_remaining_seconds"],
-            message=dungeon_spawn_result["message"]
+            message=dungeon_spawn_result["message"],
+            is_rare_gate=d["is_rare_gate"]
         )
 
     # Build dungeon progress response
