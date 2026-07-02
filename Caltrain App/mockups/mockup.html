@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e1114">
-<title>Caltrain — Mockup</title>
+<title>Bay Rail — Mockup</title>
 <style>
 /* ============================================================
-   Caltrain Commute Helper — visual mockup (hardcoded data)
+   Bay Rail (Caltrain + BART commute helper) — visual mockup
    Dark departure-board. Signature: the amber LED time column.
    ============================================================ */
 :root {
@@ -267,25 +267,10 @@ main { max-width: 640px; margin: 0 auto; padding: 14px 16px 0; }
   border-radius: 16px;
   padding: 14px 16px 16px;
 }
-.agency-toggle {
-  display: inline-flex; gap: 4px;
-  padding: 3px;
-  background: var(--bg);
-  border: 1px solid var(--edge);
-  border-radius: 12px;
-  margin-bottom: 12px;
-}
-.agency-toggle button {
-  min-height: 44px; padding: 0 18px;
-  border-radius: 9px;
-  font: 600 13.5px var(--sans);
-  color: var(--ink-dim);
-}
-.agency-toggle button[aria-pressed="true"] {
-  background: var(--surface-2);
-  color: var(--ink);
-  box-shadow: inset 0 0 0 1px var(--edge);
-}
+/* transfer itineraries */
+.leg-arrow { color: var(--ink-faint); font-size: 11px; }
+.dep-xfer { font-size: 12px; color: var(--ink-faint); }
+.dep-xfer strong { color: var(--ink-dim); font-weight: 600; }
 .add-controls {
   display: grid;
   grid-template-columns: 1fr 44px 1fr;
@@ -360,8 +345,8 @@ footer {
 
 <header class="topbar">
   <div class="brand">
-    <span class="brand-mark" aria-hidden="true">C</span>
-    <h1>Caltrain
+    <span class="brand-mark" aria-hidden="true">B</span>
+    <h1>Bay Rail
       <span class="sub">Tue Jul 1 · 8:05 AM</span>
     </h1>
   </div>
@@ -589,10 +574,6 @@ footer {
   <!-- add a pair -->
   <h2 class="section-label">Add a pair</h2>
   <section class="add-row" id="add-row">
-    <div class="agency-toggle" role="group" aria-label="Transit system">
-      <button class="pressable" data-action="pick-agency" data-agency="ct" aria-pressed="true">Caltrain</button>
-      <button class="pressable" data-action="pick-agency" data-agency="ba" aria-pressed="false">BART</button>
-    </div>
     <div class="add-controls">
       <div class="sel">
         <select id="sel-origin" aria-label="Origin station"></select>
@@ -633,6 +614,8 @@ footer {
       </div>
     </article>
 
+    <!-- transfer itinerary (no direct line): two legs, delay-aware connection.
+         Second row shows a late leg 1 rolling the itinerary to a later connection. -->
     <article class="card">
       <header class="card-head">
         <div class="pair">
@@ -640,9 +623,36 @@ footer {
           <span class="dir-tag">BART</span>
         </div>
       </header>
-      <div class="card-empty">
-        <p><strong>No direct trains — this pair needs a transfer.</strong><br>
-        This app shows single-train trips only (for now).</p>
+
+      <div class="dep">
+        <div class="dep-time"><span class="t-big">8:12</span></div>
+        <div class="dep-info">
+          <div class="dep-line">
+            <span class="type type-b-yellow">Yellow</span>
+            <span class="leg-arrow">▸</span>
+            <span class="type type-b-blue">Blue</span>
+          </div>
+          <div class="dep-xfer">change at <strong>West Oakland</strong> · 5 min wait</div>
+          <div class="dep-arr">arrives <strong>9:14 AM</strong></div>
+        </div>
+        <div class="dep-status"><span class="badge b-ok">On time</span></div>
+      </div>
+
+      <div class="dep is-late">
+        <div class="dep-time">
+          <span class="t-big">8:31</span>
+          <span class="t-was">8:27</span>
+        </div>
+        <div class="dep-info">
+          <div class="dep-line">
+            <span class="type type-b-yellow">Yellow</span>
+            <span class="leg-arrow">▸</span>
+            <span class="type type-b-blue">Blue</span>
+          </div>
+          <div class="dep-xfer">change at <strong>West Oakland</strong> · 13 min wait</div>
+          <div class="dep-arr">arrives <strong>9:44 AM</strong></div>
+        </div>
+        <div class="dep-status"><span class="badge b-late">+4 min</span></div>
       </div>
     </article>
   </section>
@@ -681,23 +691,33 @@ const BART_STATIONS = [
 
 const selOrigin = document.getElementById("sel-origin");
 const selDest = document.getElementById("sel-dest");
-let addAgency = "ct";
 
-function populateSelects(agency) {
-  const list = agency === "ba" ? BART_STATIONS : STATIONS;
-  for (const sel of [selOrigin, selDest]) {
-    sel.length = 0;
-    for (const name of list) sel.add(new Option(name, name));
+// Unified pickers: one list, two optgroups; option values carry "agency:name".
+// Picking an origin narrows the destination list to that agency (SPEC-BART §9.4).
+const GROUPS = [["ct", "Caltrain", STATIONS], ["ba", "BART", BART_STATIONS]];
+
+function fillSelect(sel, agencyFilter) {
+  const previous = sel.value;
+  sel.replaceChildren(); // not `length = 0`, which strips options but leaves empty optgroups
+  for (const [agency, label, list] of GROUPS) {
+    if (agencyFilter && agency !== agencyFilter) continue;
+    const group = document.createElement("optgroup");
+    group.label = label;
+    for (const name of list) group.appendChild(new Option(name, `${agency}:${name}`));
+    sel.appendChild(group);
   }
-  if (agency === "ba") {
-    selOrigin.value = "Embarcadero";
-    selDest.value = "Walnut Creek";
-  } else {
-    selOrigin.value = "Hillsdale";
-    selDest.value = "San Francisco";
-  }
+  if ([...sel.options].some((o) => o.value === previous)) sel.value = previous;
 }
-populateSelects(addAgency);
+
+const agencyOf = (value) => value.split(":")[0];
+const nameOf = (value) => value.slice(value.indexOf(":") + 1);
+
+fillSelect(selOrigin, null);
+selOrigin.value = "ct:Hillsdale";
+fillSelect(selDest, "ct");
+selDest.value = "ct:San Francisco";
+
+selOrigin.addEventListener("change", () => fillSelect(selDest, agencyOf(selOrigin.value)));
 
 function makeEmptyCard(origin, destination, agency) {
   const dir = agency === "ba"
@@ -753,30 +773,23 @@ document.body.addEventListener("click", (e) => {
       document.getElementById(el.dataset.alert)?.remove();
       break;
     }
-    case "pick-agency": {
-      addAgency = el.dataset.agency;
-      for (const btn of el.parentElement.querySelectorAll("[data-action='pick-agency']")) {
-        btn.setAttribute("aria-pressed", String(btn === el));
-      }
-      populateSelects(addAgency);
-      break;
-    }
     case "swap-add": {
       const a = selOrigin.value;
       selOrigin.value = selDest.value;
+      fillSelect(selDest, agencyOf(selOrigin.value));
       selDest.value = a;
       break;
     }
     case "add-favorite": {
-      const origin = selOrigin.value, destination = selDest.value;
-      if (origin === destination) {
+      if (selOrigin.value === selDest.value) {
         const row = document.getElementById("add-row");
         row.classList.remove("shake");
         void row.offsetWidth;
         row.classList.add("shake");
         return;
       }
-      document.getElementById("favorites").appendChild(makeEmptyCard(origin, destination, addAgency));
+      const card = makeEmptyCard(nameOf(selOrigin.value), nameOf(selDest.value), agencyOf(selOrigin.value));
+      document.getElementById("favorites").appendChild(card);
       break;
     }
     case "swap-card": {
