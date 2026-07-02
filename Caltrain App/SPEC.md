@@ -20,9 +20,11 @@ behavior; the mockup describes look and feel.
 - No accounts, no database — favorites live in `localStorage`.
 - No service worker / offline mode (PWA manifest only, for add-to-home-screen).
 - No map, no routing API — walking time is a haversine estimate.
-- No static-GTFS schedule engine (24:xx times + calendar/holiday complexity trap).
-  Realtime StopMonitoring is the only trip data source. If a pair has no upcoming
-  realtime trains, the app says so — that is normal on weekends / South County.
+- No static-GTFS schedule *engine* (24:xx times + calendar/holiday complexity trap).
+  Realtime StopMonitoring is the only source of *which trains are running*. If a pair
+  has no upcoming realtime trains, the app says so — normal on weekends / South County.
+  (A narrow static *lookup* — scheduled arrival by realtime-supplied trip_id — IS in
+  scope; see §8a. It involves zero calendar inference.)
 - No push notifications, no multi-agency support.
 
 ---
@@ -72,11 +74,13 @@ Caltrain App/
 │   ├── main.py                  # FastAPI app, routes, static mount
 │   ├── transit511.py            # upstream client: TTL cache, locks, rate guard, BOM decode
 │   ├── departures.py            # StopMonitoring parsing + pair-join logic (pure functions)
+│   ├── schedule.py              # static per-trip arrival lookup (see §8a)
 │   └── stations.py              # loads data/stations.json, lookups, direction calc
 ├── data/
-│   └── stations.json            # checked in, ~30 stations (see §4)
+│   ├── stations.json            # checked in, 30 stations (see §4)
+│   └── trip_arrivals.json       # checked in, {trip_id: {stop_code: arrival_seconds}}
 ├── scripts/
-│   └── generate_stations.py     # regenerates stations.json from Trillium GTFS
+│   └── generate_data.py         # regenerates both data files from Trillium GTFS
 ├── frontend/
 │   ├── index.html
 │   ├── app.js
@@ -146,7 +150,7 @@ shuttle/elevator/entrance stops. Broadway appears but has weekend-only service; 
 County branch (Capitol→Gilroy) is weekday-rush only — empty results for these pairs are
 normal, not bugs.
 
-### 4.3 `scripts/generate_stations.py`
+### 4.3 `scripts/generate_data.py`
 
 1. Download `https://data.trilliumtransit.com/gtfs/caltrain-ca-us/caltrain-ca-us.zip`
    (no API key needed).
@@ -157,9 +161,10 @@ normal, not bugs.
    station lacking both. Skip Stanford Stadium (`70181/70182`). Strip suffixes like
    " Caltrain Station" / " Station" from names.
 4. Emit `data/stations.json` sorted by `order`, with parent-station lat/lon.
+5. Also emit `data/trip_arrivals.json` from `stop_times.txt` (see §8a).
 
-The script is run manually when Caltrain changes stations; its output is checked in so
-the deployed app never needs GTFS at runtime.
+The script is run manually when Caltrain changes stations or schedules; its outputs are
+checked in so the deployed app never needs GTFS at runtime.
 
 ---
 
@@ -171,7 +176,7 @@ the deployed app never needs GTFS at runtime.
 |---|---|
 | **Primary — realtime, all Caltrain stops in ONE call** | `https://api.511.org/transit/StopMonitoring?api_key=KEY&agency=CT&format=json` (omit `stopcode` entirely) |
 | **Service alerts** (GTFS-RT JSON) | `https://api.511.org/transit/servicealerts?api_key=KEY&agency=CT&format=json` |
-| **Fallback only** — if the all-stops response turns out to be capped (see §12 flags): GTFS-RT trip updates, JSON, active trips only, no protobuf needed | `https://api.511.org/transit/tripupdates?api_key=KEY&agency=CT&format=json` |
+| ~~TripUpdates fallback~~ **REJECTED (verified live 2026-07-01):** each TripUpdate carries only ONE StopTimeUpdate — the trip's *next* stop. It cannot resolve terminal or beyond-horizon arrivals. Use the bundled schedule lookup (§8a) instead. | `https://api.511.org/transit/tripupdates?api_key=KEY&agency=CT&format=json` |
 
 ### 5.2 Transport quirks (all confirmed live)
 
@@ -215,6 +220,14 @@ ServiceDelivery                        (or Siri.ServiceDelivery — accept both)
 - `Expected*` **may be null** → render as a scheduled-only row (gray badge), never drop.
 - Timestamps are RFC3339 with zone info — compare as full datetimes, **never clock
   times** (midnight-crossing trips exist and are safe under full-datetime comparison).
+- **StopMonitoring omits arrival-only stops (verified live 2026-07-01):** it is a
+  *departures* board, so a trip's terminal stop never appears as a visit — e.g. San
+  Francisco (70011) has NO inbound visits even for trains whose `DestinationRef` is
+  70011. Any pair ending at a terminal (including the flagship San Carlos → SF commute)
+  must resolve arrivals via §8a.
+- **Visit horizon ≈ 90 minutes (verified same capture):** a train's future visits are
+  truncated ~90 min out, so even mid-route destination visits can be missing for
+  later departures. Same §8a fallback applies.
 
 ### 5.4 Train types (GTFS `routes.txt`, 2026)
 
@@ -324,8 +337,9 @@ startup. 200 always.
 
 - `as_of` = when the underlying StopMonitoring payload was fetched (cache timestamp) —
   the frontend uses it for "Updated Xs ago" and the stale pill.
-- `arrival` is `null` when unresolvable (train exists at origin, visit exists at
-  destination, but times are missing/unparseable) — frontend renders "—".
+- `arrival` is `null` when unresolvable (times missing/unparseable, or trip unknown to
+  the bundled GTFS) — frontend renders "—". Schedule-derived arrivals (§8a) carry an
+  extra `"estimated": true` field; the frontend renders them identically today.
 - `status`: `"late"` (realtime, `delay_seconds >= 120`), `"on_time"` (realtime,
   `< 120`), `"scheduled"` (no `Expected*` → `delay_seconds: null`).
   `LATE_THRESHOLD_SECONDS = 120` is a named constant.
@@ -377,15 +391,42 @@ Given the all-stops StopMonitoring payload plus origin/destination station recor
 3. **Upcoming at origin**: visits at the origin platform whose effective departure
    (`Expected` if present, else `Aimed`) ≥ now − 30s grace. Sort by effective departure,
    take `limit`.
-4. **Join to destination**: for each train, look up the same train number at the
-   destination platform → arrival = its `AimedArrivalTime`/`ExpectedArrivalTime`.
-   - **No visit at the destination → the train doesn't stop there → exclude the row
-     entirely** (this is the natural express-skips-station filter).
-   - Visit exists but arrival times missing/unparseable → keep the row with
-     `arrival: null` — **never drop it**.
+4. **Join to destination** — arrival resolution in priority order:
+   1. The train's realtime visit at the destination platform →
+      `AimedArrivalTime`/`ExpectedArrivalTime`. (Visit exists but times
+      missing/unparseable → keep the row with `arrival: null` — **never drop it**.)
+   2. No destination visit (terminal stop or beyond the ~90-min horizon, §5.3) →
+      the bundled schedule lookup (§8a): if the trip's GTFS stop list *contains* the
+      destination, arrival = scheduled arrival + the train's current `delay_seconds`,
+      marked `"estimated": true`; if it does *not*, **exclude the row** (the
+      express-skips-station filter, now schedule-authoritative).
+   3. Trip unknown to the bundled GTFS (revision rotated): keep the row with
+      `arrival: null` if `MonitoredVehicleJourney.DestinationRef` equals the
+      destination stop code, else exclude.
 5. Compute `delay_seconds`, `status`, `train_type` per §5.4/§7.3.
 
-No schedule math, no day-of-week logic, no clock-time comparison — full datetimes only.
+No day-of-week logic, no clock-time comparison — full datetimes only.
+
+## 8a. Static per-trip arrival lookup (`app/schedule.py` + `data/trip_arrivals.json`)
+
+Exists because neither realtime feed carries terminal arrivals (§5.1, §5.3). This is
+**not** a schedule engine: trips are looked up only by trip_id + service date that the
+realtime feed itself supplies, so no calendar/service-day inference ever happens.
+
+- `data/trip_arrivals.json`: `{trip_id: {platform_stop_code: arrival_seconds}}`,
+  generated by `scripts/generate_data.py` from GTFS `stop_times.txt` (70xxx stops
+  only; ~260 trips, ~77 KB). Checked in alongside `stations.json`.
+- GTFS trip_id == train number == `DatedVehicleJourneyRef` (verified: realtime train
+  169 ↔ GTFS trip 169, terminal 70011 arr 23:16).
+- GTFS times may exceed 24:00 (204 such rows) — convert to a datetime by anchoring at
+  **noon − 12 h** on the service date in `America/Los_Angeles` (DST-safe), where the
+  service date is the visit's `FramedVehicleJourneyRef.DataFrameRef` (fall back to the
+  departure's PT date).
+- Estimated expected arrival = scheduled + origin `delay_seconds`; scheduled-only rows
+  get `expected: null`. Sanity guard: a schedule-derived arrival earlier than the
+  aimed departure → `arrival: null` instead.
+- trip_ids rotate with GTFS revisions → unknown trips degrade to `arrival: null`
+  ("—" in the UI). Re-run `scripts/generate_data.py` when Caltrain changes schedules.
 
 ---
 
@@ -544,15 +585,21 @@ curl -s --compressed "https://api.511.org/transit/servicealerts?api_key=$TRANSIT
 ```
 
 Save **raw bytes** (BOM intact — verify with `xxd tests/fixtures/*.json | head -1`,
-expect `efbb bf`). Then inspect the fixtures to resolve every **⚠ VERIFY** flag:
+expect `efbb bf`). All ⚠ VERIFY flags were **resolved against live captures on
+2026-07-01** (fixtures in `tests/fixtures/`):
 
-1. **All-stops cap/horizon** — count distinct trains and visits; check how far ahead
-   departures extend. If the response is capped or the horizon is under ~90 min, add the
-   TripUpdates-JSON fallback (§5.1) for arrival resolution.
-2. **Exact `LineRef` strings** — list distinct values; pin them in a test.
-3. **`MonitoredCall.StopPointRef`** — confirm the stop-code field name in all-stops mode.
-4. **Alerts GTFS-RT JSON casing** — snake_case vs camelCase keys.
-5. (Opportunistic) 429 shape — only if ever observed; never trigger deliberately.
+1. **All-stops cap/horizon** — RESOLVED: visits truncate ~90 min out AND arrival-only
+   (terminal) stops are omitted entirely. TripUpdates was verified useless as a
+   fallback (next-stop only) → the bundled schedule lookup (§8a) fills both gaps.
+2. **Exact `LineRef` strings** — observed `"Local Weekday"` live; substring
+   normalization handles LOC/LIM/EXP/SCC codes and long forms. Pinned in tests.
+3. **`MonitoredCall.StopPointRef`** — CONFIRMED present in all-stops mode (visit-level
+   `MonitoringRef` also present; parser accepts either).
+4. **Alerts GTFS-RT JSON casing** — RESOLVED: PascalCase with lowercase exceptions
+   (`Entities`, `Alert`, `ActivePeriods{Start,End}`, `HeaderText.Translations
+   {Text,Language}`, lowercase `cause`/`effect`). Parser reads PascalCase and
+   GTFS-spec snake_case.
+5. 429 shape — never observed; any non-200 is treated as failure → stale.
 
 ### Step 1 — unit tests (pytest + respx, fixtures fed as verbatim bytes)
 

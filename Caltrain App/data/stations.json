@@ -1,0 +1,276 @@
+{
+  "generated_at": "2026-07-01",
+  "source": "https://data.trilliumtransit.com/gtfs/caltrain-ca-us/caltrain-ca-us.zip",
+  "stations": [
+    {
+      "id": "san_francisco",
+      "name": "San Francisco",
+      "lat": 37.776404,
+      "lon": -122.394911,
+      "stop_nb": "70011",
+      "stop_sb": "70012",
+      "order": 0
+    },
+    {
+      "id": "22nd_street",
+      "name": "22nd Street",
+      "lat": 37.756972,
+      "lon": -122.392492,
+      "stop_nb": "70021",
+      "stop_sb": "70022",
+      "order": 1
+    },
+    {
+      "id": "bayshore",
+      "name": "Bayshore",
+      "lat": 37.70766,
+      "lon": -122.401665,
+      "stop_nb": "70031",
+      "stop_sb": "70032",
+      "order": 2
+    },
+    {
+      "id": "south_san_francisco",
+      "name": "South San Francisco",
+      "lat": 37.655941,
+      "lon": -122.404979,
+      "stop_nb": "70041",
+      "stop_sb": "70042",
+      "order": 3
+    },
+    {
+      "id": "san_bruno",
+      "name": "San Bruno",
+      "lat": 37.63046,
+      "lon": -122.411709,
+      "stop_nb": "70051",
+      "stop_sb": "70052",
+      "order": 4
+    },
+    {
+      "id": "millbrae",
+      "name": "Millbrae",
+      "lat": 37.5999,
+      "lon": -122.38675,
+      "stop_nb": "70061",
+      "stop_sb": "70062",
+      "order": 5
+    },
+    {
+      "id": "broadway",
+      "name": "Broadway",
+      "lat": 37.58726,
+      "lon": -122.362,
+      "stop_nb": "70071",
+      "stop_sb": "70072",
+      "order": 6
+    },
+    {
+      "id": "burlingame",
+      "name": "Burlingame",
+      "lat": 37.57985,
+      "lon": -122.34418,
+      "stop_nb": "70081",
+      "stop_sb": "70082",
+      "order": 7
+    },
+    {
+      "id": "san_mateo",
+      "name": "San Mateo",
+      "lat": 37.56824,
+      "lon": -122.3239,
+      "stop_nb": "70091",
+      "stop_sb": "70092",
+      "order": 8
+    },
+    {
+      "id": "hayward_park",
+      "name": "Hayward Park",
+      "lat": 37.553161,
+      "lon": -122.309494,
+      "stop_nb": "70101",
+      "stop_sb": "70102",
+      "order": 9
+    },
+    {
+      "id": "hillsdale",
+      "name": "Hillsdale",
+      "lat": 37.542393,
+      "lon": -122.301612,
+      "stop_nb": "70111",
+      "stop_sb": "70112",
+      "order": 10
+    },
+    {
+      "id": "belmont",
+      "name": "Belmont",
+      "lat": 37.52133,
+      "lon": -122.2763,
+      "stop_nb": "70121",
+      "stop_sb": "70122",
+      "order": 11
+    },
+    {
+      "id": "san_carlos",
+      "name": "San Carlos",
+      "lat": 37.508033,
+      "lon": -122.2602,
+      "stop_nb": "70131",
+      "stop_sb": "70132",
+      "order": 12
+    },
+    {
+      "id": "redwood_city",
+      "name": "Redwood City",
+      "lat": 37.485865,
+      "lon": -122.2315,
+      "stop_nb": "70141",
+      "stop_sb": "70142",
+      "order": 13
+    },
+    {
+      "id": "menlo_park",
+      "name": "Menlo Park",
+      "lat": 37.4548,
+      "lon": -122.18245,
+      "stop_nb": "70161",
+      "stop_sb": "70162",
+      "order": 15
+    },
+    {
+      "id": "palo_alto",
+      "name": "Palo Alto",
+      "lat": 37.44322,
+      "lon": -122.16429,
+      "stop_nb": "70171",
+      "stop_sb": "70172",
+      "order": 16
+    },
+    {
+      "id": "california_avenue",
+      "name": "California Avenue",
+      "lat": 37.428834,
+      "lon": -122.14113,
+      "stop_nb": "70191",
+      "stop_sb": "70192",
+      "order": 18
+    },
+    {
+      "id": "san_antonio",
+      "name": "San Antonio",
+      "lat": 37.407239,
+      "lon": -122.107116,
+      "stop_nb": "70201",
+      "stop_sb": "70202",
+      "order": 19
+    },
+    {
+      "id": "mountain_view",
+      "name": "Mountain View",
+      "lat": 37.395067,
+      "lon": -122.07722,
+      "stop_nb": "70211",
+      "stop_sb": "70212",
+      "order": 20
+    },
+    {
+      "id": "sunnyvale",
+      "name": "Sunnyvale",
+      "lat": 37.378934,
+      "lon": -122.0315,
+      "stop_nb": "70221",
+      "stop_sb": "70222",
+      "order": 21
+    },
+    {
+      "id": "lawrence",
+      "name": "Lawrence",
+      "lat": 37.3707,
+      "lon": -121.9969,
+      "stop_nb": "70231",
+      "stop_sb": "70232",
+      "order": 22
+    },
+    {
+      "id": "santa_clara",
+      "name": "Santa Clara",
+      "lat": 37.353384,
+      "lon": -121.936465,
+      "stop_nb": "70241",
+      "stop_sb": "70242",
+      "order": 23
+    },
+    {
+      "id": "college_park",
+      "name": "College Park",
+      "lat": 37.34289,
+      "lon": -121.91565,
+      "stop_nb": "70251",
+      "stop_sb": "70252",
+      "order": 24
+    },
+    {
+      "id": "san_jose_diridon",
+      "name": "San Jose Diridon",
+      "lat": 37.329694,
+      "lon": -121.903208,
+      "stop_nb": "70261",
+      "stop_sb": "70262",
+      "order": 25
+    },
+    {
+      "id": "tamien",
+      "name": "Tamien",
+      "lat": 37.31269,
+      "lon": -121.8847,
+      "stop_nb": "70271",
+      "stop_sb": "70272",
+      "order": 26
+    },
+    {
+      "id": "capitol",
+      "name": "Capitol",
+      "lat": 37.284016,
+      "lon": -121.841899,
+      "stop_nb": "70281",
+      "stop_sb": "70282",
+      "order": 27
+    },
+    {
+      "id": "blossom_hill",
+      "name": "Blossom Hill",
+      "lat": 37.252606,
+      "lon": -121.797907,
+      "stop_nb": "70291",
+      "stop_sb": "70292",
+      "order": 28
+    },
+    {
+      "id": "morgan_hill",
+      "name": "Morgan Hill",
+      "lat": 37.129644,
+      "lon": -121.650558,
+      "stop_nb": "70301",
+      "stop_sb": "70302",
+      "order": 29
+    },
+    {
+      "id": "san_martin",
+      "name": "San Martin",
+      "lat": 37.085984,
+      "lon": -121.61048,
+      "stop_nb": "70311",
+      "stop_sb": "70312",
+      "order": 30
+    },
+    {
+      "id": "gilroy",
+      "name": "Gilroy",
+      "lat": 37.004466,
+      "lon": -121.566727,
+      "stop_nb": "70321",
+      "stop_sb": "70322",
+      "order": 31
+    }
+  ]
+}

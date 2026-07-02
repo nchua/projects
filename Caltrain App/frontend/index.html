@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1114">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Caltrain">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+<title>Caltrain</title>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">C</span>
+    <h1>Caltrain
+      <span class="sub" id="today"></span>
+    </h1>
+  </div>
+  <div class="top-right">
+    <span class="updated" id="updated"></span>
+    <button class="icon-btn pressable" data-action="refresh" aria-label="Refresh departures">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+        <path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="stale-pill" id="stale-pill" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+    </svg>
+    <span id="stale-text">Live data unavailable</span>
+  </div>
+
+  <section id="alerts" aria-label="Service alerts"></section>
+
+  <section class="chip-row" id="chip-row" hidden aria-label="Nearest station">
+    <div class="chip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>
+      </svg>
+      Nearest station: <strong id="chip-station"></strong> <span class="dot">·</span> <span id="chip-walk"></span>
+    </div>
+  </section>
+
+  <h2 class="section-label">Your pairs</h2>
+  <p class="hint" id="no-favorites" hidden>No pairs yet — add your commute below and it will remember it on this device.</p>
+  <section class="favorites" id="favorites"></section>
+
+  <h2 class="section-label">Add a pair</h2>
+  <section class="add-row" id="add-row">
+    <div class="add-controls">
+      <div class="sel">
+        <select id="sel-origin" aria-label="Origin station"></select>
+      </div>
+      <button class="icon-btn pressable" data-action="swap-add" aria-label="Swap origin and destination">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/>
+        </svg>
+      </button>
+      <div class="sel">
+        <select id="sel-dest" aria-label="Destination station"></select>
+      </div>
+      <button class="btn-add pressable" data-action="add-favorite">Add</button>
+    </div>
+  </section>
+</main>
+
+<footer id="footer-note"></footer>
+
+<!-- templates -->
+<template id="tpl-card">
+  <article class="card">
+    <header class="card-head">
+      <div class="pair">
+        <span class="pair-names"><span class="o"></span> <span class="arrow">→</span> <span class="d"></span></span>
+        <span class="dir-tag"></span>
+      </div>
+      <div class="card-actions">
+        <button class="icon-btn pressable" data-action="swap-card" aria-label="Reverse direction">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 16V4M7 4 3.5 7.5M7 4l3.5 3.5"/><path d="M17 8v12m0 0 3.5-3.5M17 20l-3.5-3.5"/>
+          </svg>
+        </button>
+        <button class="icon-btn pressable" data-action="remove-card" aria-label="Remove pair">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <path d="M5 5l14 14M19 5 5 19"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+    <div class="card-body"></div>
+  </article>
+</template>
+
+<template id="tpl-dep">
+  <div class="dep">
+    <div class="dep-time">
+      <span class="t-big"></span>
+      <span class="t-was" hidden></span>
+    </div>
+    <div class="dep-info">
+      <div class="dep-line"><span class="type"></span><span class="tno"></span></div>
+      <div class="dep-arr">arrives <strong></strong></div>
+    </div>
+    <div class="dep-status">
+      <span class="badge"></span>
+      <span class="leave" hidden>leave by <strong></strong></span>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-alert">
+  <div class="alert">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+    <p><strong class="alert-header"></strong> <span class="alert-desc"></span></p>
+    <button class="alert-x pressable" data-action="dismiss-alert" aria-label="Dismiss alert">✕</button>
+  </div>
+</template>
+
+<script src="app.js"></script>
+</body>
+</html>
