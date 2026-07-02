@@ -192,6 +192,7 @@ class DungeonSpawnedResponse(BaseModel):
     stretch_bonus_percent: Optional[int] = None
     time_remaining_seconds: int
     message: str
+    is_rare_gate: bool = False
 
 
 class DungeonProgressResponse(BaseModel):
