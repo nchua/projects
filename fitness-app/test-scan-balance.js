@@ -7,7 +7,10 @@
 const http = require('http');
 const https = require('https');
 
-const BASE_URL = process.env.API_BASE_URL || 'https://backend-production-e316.up.railway.app';
+// Default to localhost: verify-purchase does no App Store validation, so a
+// default run against production would silently add real scan credits to the
+// prod seed account. Set API_BASE_URL explicitly to target another server.
+const BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
 
 let authToken = null;
 

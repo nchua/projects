@@ -30,7 +30,7 @@ fitness-app/
 │   │   ├── Models/           # Data models
 │   │   ├── Components/       # Reusable UI (XPBar, StatCard, RankBadge, etc.)
 │   │   └── Utils/            # Colors, Fonts, Extensions
-│   └── *.js                  # Test scripts (test-auth.js, test-workouts.js, etc.)
+│   └── *.js                  # Manual live-server test scripts (test-sync.js, etc.)
 │
 ├── Fitness/                  # Legacy fitness tracking
 │   ├── scripts/              # Screenshot processing Python scripts
@@ -66,9 +66,9 @@ open FitnessApp.xcodeproj                   # Open in Xcode
 
 ### Testing
 ```bash
-node fitness-app/test-auth.js               # Test authentication
-node fitness-app/test-workouts.js           # Test workout endpoints
-node fitness-app/test-exercises.js          # Test exercise endpoints
+cd fitness-app/backend && venv/bin/python -m pytest tests/ -n auto -q   # Backend suite (also runs in CI)
+node fitness-app/test-sync.js               # Manual live-server scripts for endpoints
+node fitness-app/test-exercises.js          # where a live server matters (see fitness-app/CLAUDE.md)
 ```
 
 ### Strength Coach CLI

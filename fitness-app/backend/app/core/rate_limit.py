@@ -60,6 +60,3 @@ LOGIN_RATE_LIMIT = "5/10minutes"
 # would lock out signup bursts from a team demo or family sharing a
 # connection. Still tight enough to deter mass account creation.
 REGISTER_RATE_LIMIT = "20/10minutes"
-
-# Back-compat alias: older test file still imports AUTH_RATE_LIMIT.
-AUTH_RATE_LIMIT = LOGIN_RATE_LIMIT

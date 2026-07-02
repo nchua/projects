@@ -42,9 +42,17 @@ open FitnessApp.xcodeproj         # Open in Xcode
 
 ### Testing
 ```bash
-node test-auth.js                 # Test authentication
-node test-workouts.js             # Test workout endpoints
-node test-exercises.js            # Test exercise endpoints
+# Backend unit/integration tests (run in CI on every push)
+cd backend && SECRET_KEY=test JWT_SECRET_KEY=test venv/bin/python -m pytest tests/ -n auto -q
+
+# Manual live-server scripts (default to localhost:8000; API_BASE_URL to override).
+# Only kept for endpoints where a live server matters — everything else is pytest now.
+node test-sync.js                 # Offline-queue bulk sync
+node test-bodyweight.js           # Bodyweight CRUD + trends
+node test-exercises.js            # Exercise list/search + custom isolation
+node test-analytics.js            # Analytics endpoints
+node test-notifications.js        # Device tokens + preferences (prod-safe, self-reverting)
+node test-scan-balance.js         # IAP credit flow (NEVER run against prod: verify-purchase has no App Store validation)
 ```
 
 ---

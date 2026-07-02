@@ -33,106 +33,70 @@ def seeded_db(db):
     return db
 
 
-class TestWorkoutCountUnlocks:
-    def test_first_workout_unlocks_first_steps(self, seeded_db, create_test_user):
-        user, _ = create_test_user(email="wc1@example.com")
+class TestThresholdUnlocks:
+    """workout_count / prs_count / streak_days unlock thresholds."""
+
+    @pytest.mark.parametrize(
+        ("context", "must_include", "must_exclude"),
+        [
+            pytest.param(
+                {"workout_count": 1},
+                {"First Steps"},
+                {"Dedicated"},
+                id="first-workout",
+            ),
+            pytest.param(
+                {"workout_count": 10},
+                {"First Steps", "Dedicated"},
+                {"Committed"},  # requires 25
+                id="10-workouts",
+            ),
+            pytest.param(
+                {"workout_count": 0},
+                set(),
+                {"First Steps"},  # no workout_count achievement has requirement 0
+                id="below-threshold",
+            ),
+            pytest.param(
+                {"prs_count": 1},
+                {"Breaking Limits"},
+                {"Record Breaker"},
+                id="first-pr",
+            ),
+            pytest.param(
+                {"prs_count": 10},
+                {"Breaking Limits", "Record Breaker"},
+                set(),
+                id="10-prs",
+            ),
+            pytest.param(
+                {"current_streak": 7},
+                {"7-Day Warrior"},
+                {"Fortnight Fighter"},
+                id="7-day-streak",
+            ),
+            pytest.param(
+                {"current_streak": 30},
+                {"7-Day Warrior", "Fortnight Fighter", "30-Day Legend"},
+                set(),
+                id="30-day-streak",
+            ),
+        ],
+    )
+    def test_threshold_unlocks(
+        self, seeded_db, create_test_user, unique_email, context, must_include, must_exclude
+    ):
+        """check_and_unlock unlocks every achievement at/below the context value and nothing above."""
+        user, _ = create_test_user(email=unique_email("thresh"))
         get_or_create_user_progress(seeded_db, user.id)
         seeded_db.commit()
 
-        unlocked = check_and_unlock_achievements(
-            seeded_db, user.id, {"workout_count": 1}
-        )
+        unlocked = check_and_unlock_achievements(seeded_db, user.id, context)
         seeded_db.commit()
 
         names = {a["name"] for a in unlocked}
-        assert "First Steps" in names
-
-    def test_10_workouts_unlocks_first_steps_and_dedicated(self, seeded_db, create_test_user):
-        user, _ = create_test_user(email="wc10@example.com")
-        get_or_create_user_progress(seeded_db, user.id)
-        seeded_db.commit()
-
-        unlocked = check_and_unlock_achievements(
-            seeded_db, user.id, {"workout_count": 10}
-        )
-        seeded_db.commit()
-
-        names = {a["name"] for a in unlocked}
-        assert "First Steps" in names
-        assert "Dedicated" in names
-        assert "Committed" not in names  # requires 25
-
-    def test_workout_count_below_threshold_unlocks_nothing_new(self, seeded_db, create_test_user):
-        user, _ = create_test_user(email="wc0@example.com")
-        get_or_create_user_progress(seeded_db, user.id)
-        seeded_db.commit()
-
-        unlocked = check_and_unlock_achievements(
-            seeded_db, user.id, {"workout_count": 0}
-        )
-        # no workout_count achievements have requirement 0
-        names = {a["name"] for a in unlocked}
-        assert "First Steps" not in names
-
-
-class TestPRCountUnlocks:
-    def test_first_pr_unlocks_breaking_limits(self, seeded_db, create_test_user):
-        user, _ = create_test_user(email="pr1@example.com")
-        get_or_create_user_progress(seeded_db, user.id)
-        seeded_db.commit()
-
-        unlocked = check_and_unlock_achievements(
-            seeded_db, user.id, {"prs_count": 1}
-        )
-        seeded_db.commit()
-
-        names = {a["name"] for a in unlocked}
-        assert "Breaking Limits" in names
-
-    def test_10_prs_unlocks_record_breaker(self, seeded_db, create_test_user):
-        user, _ = create_test_user(email="pr10@example.com")
-        get_or_create_user_progress(seeded_db, user.id)
-        seeded_db.commit()
-
-        unlocked = check_and_unlock_achievements(
-            seeded_db, user.id, {"prs_count": 10}
-        )
-        seeded_db.commit()
-
-        names = {a["name"] for a in unlocked}
-        assert "Breaking Limits" in names
-        assert "Record Breaker" in names
-
-
-class TestStreakUnlocks:
-    def test_7_day_streak_unlocks_7_day_warrior(self, seeded_db, create_test_user):
-        user, _ = create_test_user(email="st7@example.com")
-        get_or_create_user_progress(seeded_db, user.id)
-        seeded_db.commit()
-
-        unlocked = check_and_unlock_achievements(
-            seeded_db, user.id, {"current_streak": 7}
-        )
-        seeded_db.commit()
-
-        names = {a["name"] for a in unlocked}
-        assert "7-Day Warrior" in names
-        assert "Fortnight Fighter" not in names
-
-    def test_30_day_streak_unlocks_all_streaks(self, seeded_db, create_test_user):
-        user, _ = create_test_user(email="st30@example.com")
-        get_or_create_user_progress(seeded_db, user.id)
-        seeded_db.commit()
-
-        unlocked = check_and_unlock_achievements(
-            seeded_db, user.id, {"current_streak": 30}
-        )
-        seeded_db.commit()
-
-        names = {a["name"] for a in unlocked}
-        assert "7-Day Warrior" in names
-        assert "Fortnight Fighter" in names
-        assert "30-Day Legend" in names
+        assert must_include <= names, f"expected {must_include} in {names}"
+        assert not (must_exclude & names), f"expected none of {must_exclude} in {names}"
 
 
 class TestLevelAndRankUnlocks:

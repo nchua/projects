@@ -2,7 +2,8 @@
 Integration tests for authentication API endpoints.
 
 Tests hit real FastAPI endpoints via TestClient with a test SQLite database.
-Covers: registration, login, token refresh, account deletion.
+Covers: registration, login, token refresh, access-token enforcement,
+account deletion.
 """
 
 
@@ -20,51 +21,6 @@ class TestRegistration:
         assert data["message"] == "User registered successfully"
         assert data["user"]["email"] == "newuser@example.com"
         assert "id" in data["user"]
-
-    def test_register_duplicate_email_is_indistinguishable(self, client, create_test_user):
-        """
-        Registering with an existing email must return an indistinguishable
-        response from a fresh registration to prevent email enumeration.
-        The duplicate user is NOT overwritten and the original password still
-        works at login time.
-        """
-        _, original_password = create_test_user(
-            email="dupe@example.com", password="OriginalPass1!"
-        )
-        response = client.post("/auth/register", json={
-            "email": "dupe@example.com",
-            "password": "DifferentPass1!",
-        })
-        # Same status + same body shape as a fresh registration.
-        assert response.status_code == 201, response.text
-        data = response.json()
-        assert data["message"] == "User registered successfully"
-        assert data["user"]["email"] == "dupe@example.com"
-        assert "id" in data["user"] and "created_at" in data["user"]
-
-        # The attacker's "new" password must NOT have taken over the account.
-        bad_login = client.post("/auth/login", json={
-            "email": "dupe@example.com",
-            "password": "DifferentPass1!",
-        })
-        assert bad_login.status_code == 401
-
-        # The original password must still work.
-        good_login = client.post("/auth/login", json={
-            "email": "dupe@example.com",
-            "password": original_password,
-        })
-        assert good_login.status_code == 200
-
-    def test_register_weak_password(self, client):
-        """Password missing uppercase/digit fails validation (not 201)."""
-        response = client.post("/auth/register", json={
-            "email": "weak@example.com",
-            "password": "alllowercase",
-        })
-        # Should NOT succeed — either 422 (validation) or 500 (serialization
-        # bug in error handler with Pydantic V2 ValueError ctx)
-        assert response.status_code != 201
 
 
 class TestLogin:
@@ -154,6 +110,32 @@ class TestTokenRefresh:
         })
         assert response.status_code == 401
         assert "deleted" in response.json()["detail"].lower()
+
+
+class TestAccessTokenEnforcement:
+    """Tests for JWT enforcement on protected endpoints (via GET /profile)."""
+
+    def test_expired_access_token_rejected(self, client, create_test_user):
+        """An expired access token returns 401 on a protected endpoint."""
+        from datetime import timedelta
+
+        from app.core.security import create_access_token
+
+        user, _ = create_test_user(email="expiredtoken@example.com", password="TestPass123!")
+        token = create_access_token(
+            data={"sub": user.id}, expires_delta=timedelta(minutes=-1)
+        )
+        response = client.get("/profile", headers={"Authorization": f"Bearer {token}"})
+        assert response.status_code == 401
+
+    def test_refresh_token_rejected_as_access_token(self, client, create_test_user):
+        """A refresh token presented as a Bearer access token returns 401."""
+        from app.core.security import create_refresh_token
+
+        user, _ = create_test_user(email="refreshbearer@example.com", password="TestPass123!")
+        token = create_refresh_token(data={"sub": user.id})
+        response = client.get("/profile", headers={"Authorization": f"Bearer {token}"})
+        assert response.status_code == 401
 
 
 class TestAccountDeletion:

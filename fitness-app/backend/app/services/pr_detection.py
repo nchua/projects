@@ -210,28 +210,3 @@ def detect_and_create_prs(
             rep_pr_map[weight_key] = reps  # Update for subsequent sets
 
     return new_prs
-
-
-def check_first_time_exercise(
-    db: Session,
-    user_id: str,
-    exercise_id: str
-) -> bool:
-    """
-    Check if this is the user's first time performing an exercise.
-    Considers all canonical aliases (e.g., "Squat" and "Back Squat" are the same).
-
-    Args:
-        db: Database session
-        user_id: User ID
-        exercise_id: Exercise ID
-
-    Returns:
-        True if this is the first time for this canonical exercise
-    """
-    related_exercise_ids = get_canonical_exercise_ids(db, exercise_id)
-    existing = db.query(func.count(PR.id)).filter(
-        PR.user_id == user_id,
-        PR.exercise_id.in_(related_exercise_ids)
-    ).scalar()
-    return existing == 0

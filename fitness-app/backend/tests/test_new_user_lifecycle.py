@@ -154,12 +154,3 @@ def test_register_invalid_email_rejected(client):
 def test_register_weak_password_rejected(client, unique_email, password, reason):
     r = client.post("/auth/register", json={"email": unique_email("weak"), "password": password})
     assert r.status_code == 422, f"{reason!r} should be rejected: {r.text}"
-
-
-def test_delete_account_requires_password(client, unique_email):
-    headers = _register_and_login(client, unique_email("del"))
-    # No body -> validation error.
-    assert client.request("DELETE", "/auth/account", headers=headers).status_code == 422
-    # Wrong password -> unauthorized.
-    assert client.request("DELETE", "/auth/account", headers=headers,
-                          json={"password": "WrongPass123!"}).status_code == 401

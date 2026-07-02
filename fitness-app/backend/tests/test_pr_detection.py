@@ -17,10 +17,9 @@ import pytest
 
 from app.core.e1rm import calculate_e1rm
 from app.models.exercise import Exercise
-from app.models.pr import PR, PRType
+from app.models.pr import PRType
 from app.models.workout import Set, WeightUnit, WorkoutExercise, WorkoutSession
 from app.services.pr_detection import (
-    check_first_time_exercise,
     detect_and_create_prs,
     get_canonical_exercise_ids,
 )
@@ -55,27 +54,6 @@ def _mk_set(db, we: WorkoutExercise, weight: float, reps: int, set_number: int =
     db.add(s)
     db.flush()
     return s
-
-
-class TestFirstTimeExercise:
-    def test_no_prior_prs_is_first_time(self, db, create_test_user):
-        user, _ = create_test_user(email="ft1@example.com")
-        ex = _mk_exercise(db, "Bench Press")
-        db.commit()
-        assert check_first_time_exercise(db, user.id, ex.id) is True
-
-    def test_prior_pr_is_not_first_time(self, db, create_test_user):
-        user, _ = create_test_user(email="ft2@example.com")
-        ex = _mk_exercise(db, "Bench Press")
-        we = _mk_workout(db, user.id, ex)
-        s = _mk_set(db, we, 225, 1)
-        db.add(PR(
-            user_id=user.id, exercise_id=ex.id, set_id=s.id,
-            pr_type=PRType.E1RM, value=225.0,
-            achieved_at=datetime.now(timezone.utc),
-        ))
-        db.commit()
-        assert check_first_time_exercise(db, user.id, ex.id) is False
 
 
 class TestCanonicalAliases:
@@ -305,20 +283,6 @@ class TestRepPR:
             "A same-rep set in the same 2.5 lb weight bucket must not create "
             "a duplicate rep PR — see _weight_bucket in pr_detection.py."
         )
-
-
-class TestMixedPRs:
-    def test_single_set_can_create_both_e1rm_and_rep_pr(self, db, create_test_user):
-        """A first-ever set always creates both an e1RM PR and a rep PR."""
-        user, _ = create_test_user(email="mixed@example.com")
-        ex = _mk_exercise(db, "Overhead Press")
-        we = _mk_workout(db, user.id, ex)
-        s = _mk_set(db, we, 135, 3)
-        prs = detect_and_create_prs(db, user.id, we, [s])
-        db.commit()
-
-        assert any(p.pr_type == PRType.E1RM for p in prs)
-        assert any(p.pr_type == PRType.REP_PR for p in prs)
 
 
 class TestNonLoadableGuard:

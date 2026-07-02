@@ -37,16 +37,6 @@ def seeded_exercise(db):
 
 
 class TestClientIdDedupe:
-    def test_first_post_creates_workout(self, client, auth_headers, seeded_exercise):
-        headers, _ = auth_headers()
-        body = _sample_workout("dedupe-test-1", seeded_exercise)
-        r = client.post("/workouts", json=body, headers=headers)
-        assert r.status_code == 201, r.text
-        data = r.json()
-        assert data["workout"]["id"]
-        # First save: full celebration payload may be present.
-        assert data["xp_earned"] >= 0
-
     def test_retry_with_same_client_id_returns_existing(
         self, client, auth_headers, seeded_exercise
     ):

@@ -41,13 +41,21 @@ async function runTests() {
 
     const token = loginRes.data.access_token;
 
-    // Create profile with bodyweight for percentile calculations
-    await request('PUT', '/profile', {
+    // Create profile with bodyweight for percentile calculations.
+    // Schema (backend/app/schemas/profile.py): sex must match ^[MF]$ and
+    // the weight field is bodyweight_lb — wrong names 422 and silently
+    // degrade the percentile test.
+    const profileRes = await request('PUT', '/profile', {
         age: 30,
-        sex: 'male',
-        bodyweight: 180,
+        sex: 'M',
+        bodyweight_lb: 180,
         preferred_unit: 'lb'
     }, token);
+
+    if (profileRes.status !== 200) {
+        console.error('  ❌ Failed to set up profile:', profileRes.data);
+        process.exit(1);
+    }
 
     console.log('  ✅ Test user created with profile\n');
 

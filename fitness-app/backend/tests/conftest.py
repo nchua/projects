@@ -8,11 +8,12 @@ Provides shared fixtures for:
 - Test users and auth headers
 - Mock models + sample fixtures for pure-logic unit tests
 """
+import json
 import os
 import uuid
 from datetime import date, datetime, timedelta, timezone
-from typing import List, Tuple
-from unittest.mock import Mock
+from typing import Optional, Tuple
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
@@ -225,6 +226,120 @@ def deleted_user(db: Session):
     return user
 
 
+# ============ Screenshot / scan-credit scaffolding ============
+#
+# Shared by tests/test_screenshot_e2e.py, tests/test_screenshot_batch.py and
+# tests/test_scan_balance_api.py. Mirrors the private helpers in
+# tests/test_scan_credit_transaction.py so that file can adopt these later.
+
+
+def make_png_bytes() -> bytes:
+    """Return a minimal valid PNG (1x1 transparent pixel, 67 bytes)."""
+    return bytes.fromhex(
+        "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4"
+        "890000000d49444154789c636000010000000500010d0a2db40000000049454e"
+        "44ae426082"
+    )
+
+
+@pytest.fixture
+def png_bytes() -> bytes:
+    """Minimal valid PNG bytes — passes UploadFile checks and magic-byte sniffing."""
+    return make_png_bytes()
+
+
+@pytest.fixture
+def anthropic_api_key(monkeypatch):
+    """Set a dummy API key so extract_workout_from_screenshot doesn't bail."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+
+@pytest.fixture
+def mock_anthropic():
+    """
+    Factory that builds a mocked ``anthropic.Anthropic`` constructor.
+
+    Each argument is one ``messages.create()`` outcome, in call order:
+    - dict — JSON-encoded and wrapped in a Claude message mock
+    - str  — used verbatim as the response text (e.g. malformed JSON)
+    - Exception instance — raised by that call
+
+    A single outcome repeats for every call. Patch the returned mock over
+    ``app.services.screenshot_service.anthropic.Anthropic``; the client
+    instance is available as ``ctor.return_value``.
+    """
+    def _to_message(payload) -> MagicMock:
+        text = payload if isinstance(payload, str) else json.dumps(payload)
+        message = MagicMock()
+        message.content = [MagicMock(text=text)]
+        return message
+
+    def _build(*payloads) -> MagicMock:
+        client = MagicMock()
+        if len(payloads) == 1 and not isinstance(payloads[0], BaseException):
+            client.messages.create.return_value = _to_message(payloads[0])
+        elif len(payloads) == 1:
+            client.messages.create.side_effect = payloads[0]
+        else:
+            client.messages.create.side_effect = [
+                p if isinstance(p, BaseException) else _to_message(p)
+                for p in payloads
+            ]
+        return MagicMock(return_value=client)
+
+    return _build
+
+
+@pytest.fixture
+def seed_scan_balance(db: Session):
+    """Factory: create a ScanBalance row for a user."""
+    from app.models.scan_balance import ScanBalance
+
+    def _seed(
+        user_id: str,
+        credits: int = 3,
+        has_unlimited: bool = False,
+        free_scans_reset_at: Optional[datetime] = None,
+    ) -> ScanBalance:
+        kwargs = {}
+        if free_scans_reset_at is not None:
+            kwargs["free_scans_reset_at"] = free_scans_reset_at
+        balance = ScanBalance(
+            user_id=user_id,
+            scan_credits=credits,
+            has_unlimited=has_unlimited,
+            **kwargs,
+        )
+        db.add(balance)
+        db.commit()
+        db.refresh(balance)
+        return balance
+
+    return _seed
+
+
+@pytest.fixture
+def seeded_exercises(db: Session):
+    """Seed the exercise library from EXERCISES_DATA. Needed for fuzzy matching."""
+    from app.api.exercises import EXERCISES_DATA
+    from app.models.exercise import Exercise
+
+    for ex_data in EXERCISES_DATA:
+        ex = Exercise(
+            id=str(uuid.uuid4()),
+            name=ex_data["name"],
+            canonical_id=str(uuid.uuid4()),
+            category=ex_data["category"],
+            primary_muscle=ex_data["primary_muscle"],
+            secondary_muscles=ex_data["secondary_muscles"],
+            is_custom=False,
+            user_id=None,
+        )
+        db.add(ex)
+    db.commit()
+    return db
+
+
 # ============ Mock Models ============
 
 class MockExercise:
@@ -266,53 +381,6 @@ class MockGoal:
         self.achieved_at = None
         self.abandoned_at = None
         self.notes = None
-
-
-class MockSet:
-    """Mock Set model for testing"""
-    def __init__(self, weight: float, reps: int, rpe: int = None):
-        self.weight = weight
-        self.reps = reps
-        self.rpe = rpe
-        self.rir = None
-        self.e1rm = weight * (1 + reps / 30)  # Epley formula
-
-
-class MockWorkoutExercise:
-    """Mock WorkoutExercise model for testing"""
-    def __init__(self, exercise_id: str, exercise: MockExercise, sets: List[MockSet] = None):
-        self.id = str(uuid.uuid4())
-        self.exercise_id = exercise_id
-        self.exercise = exercise
-        self.sets = sets or []
-
-
-class MockWorkoutSession:
-    """Mock WorkoutSession model for testing"""
-    def __init__(
-        self,
-        id: str = None,
-        user_id: str = None,
-        workout_exercises: List[MockWorkoutExercise] = None,
-        workout_date: date = None,
-    ):
-        from datetime import date as date_type
-        self.id = id or str(uuid.uuid4())
-        self.user_id = user_id or "test-user-1"
-        self.workout_exercises = workout_exercises or []
-        self.date = workout_date or date_type.today()
-        self.duration_minutes = 60
-
-
-class MockMissionGoal:
-    """Mock MissionGoal junction table entry"""
-    def __init__(self, goal: MockGoal, workouts_completed: int = 0, is_satisfied: bool = False):
-        self.id = str(uuid.uuid4())
-        self.mission_id = None
-        self.goal_id = goal.id
-        self.goal = goal
-        self.workouts_completed = workouts_completed
-        self.is_satisfied = is_satisfied
 
 
 # ============ Fixtures ============
@@ -366,32 +434,6 @@ def test_exercises():
         "curl": MockExercise("ex-curl-001", "Barbell Curl", "isolation"),
     }
     return exercises
-
-
-@pytest.fixture
-def exercise_db(test_exercises):
-    """
-    Mock database query for exercises.
-    Returns a function that simulates db.query(Exercise).filter(...).first()
-    """
-    def query_exercise_by_id(exercise_id: str) -> MockExercise:
-        for exercise in test_exercises.values():
-            if exercise.id == exercise_id:
-                return exercise
-        return None
-
-    def query_all_exercises() -> List[MockExercise]:
-        return list(test_exercises.values())
-
-    # Return object with both methods
-    class ExerciseDB:
-        def get_by_id(self, exercise_id):
-            return query_exercise_by_id(exercise_id)
-
-        def get_all(self):
-            return query_all_exercises()
-
-    return ExerciseDB()
 
 
 @pytest.fixture
@@ -486,39 +528,6 @@ def sample_goals(test_user_id, test_exercises):
     }
 
 
-@pytest.fixture
-def sample_workout(test_user_id, test_exercises):
-    """
-    Create a sample workout with bench and squat exercises.
-    """
-    bench = test_exercises["bench_press"]
-    squat = test_exercises["squat"]
-
-    bench_sets = [
-        MockSet(185, 5),
-        MockSet(205, 3),
-        MockSet(225, 1),
-    ]
-
-    squat_sets = [
-        MockSet(225, 5),
-        MockSet(275, 3),
-        MockSet(315, 1),
-    ]
-
-    workout = MockWorkoutSession(
-        id="workout-001",
-        user_id=test_user_id,
-        workout_exercises=[
-            MockWorkoutExercise(bench.id, bench, bench_sets),
-            MockWorkoutExercise(squat.id, squat, squat_sets),
-        ],
-        date=date.today(),
-    )
-
-    return workout
-
-
 # ============ Helper Functions ============
 
 def create_goal(
@@ -537,29 +546,4 @@ def create_goal(
         target_weight=target_weight,
         target_reps=target_reps,
         **{k: v for k, v in kwargs.items() if k not in ["id"]}
-    )
-
-
-def create_workout(
-    user_id: str,
-    exercises_with_sets: List[tuple],  # [(exercise, [(weight, reps), ...]), ...]
-) -> MockWorkoutSession:
-    """
-    Helper to create a workout with exercises and sets.
-
-    Args:
-        user_id: User ID
-        exercises_with_sets: List of (MockExercise, [(weight, reps), ...]) tuples
-
-    Returns:
-        MockWorkoutSession
-    """
-    workout_exercises = []
-    for exercise, sets_data in exercises_with_sets:
-        sets = [MockSet(weight, reps) for weight, reps in sets_data]
-        workout_exercises.append(MockWorkoutExercise(exercise.id, exercise, sets))
-
-    return MockWorkoutSession(
-        user_id=user_id,
-        workout_exercises=workout_exercises,
     )

@@ -56,7 +56,9 @@ async function testExercises() {
     // Generate unique email for testing
     const timestamp = Date.now();
     const testEmail = `exercises${timestamp}@example.com`;
-    const testPassword = 'TestPass123';
+    // Must satisfy the password policy in backend/app/schemas/auth.py:
+    // >= 12 chars with uppercase, lowercase, digit, and symbol.
+    const testPassword = 'TestPass123!x';
 
     let accessToken = '';
     let customExerciseId = '';

@@ -1,101 +1,39 @@
 """
 End-to-end tests for the screenshot processing pipeline.
 
-Mocks `anthropic.Anthropic` to return deterministic fixtures so we can test
-the real extraction -> matching -> save flow against a real SQLite DB.
+Mocks `anthropic.Anthropic` (via the shared `mock_anthropic` conftest fixture)
+to return deterministic fixtures so we can test the real
+extraction -> matching -> save flow against a real SQLite DB.
 
 Covers:
 - Gym workout multi-exercise, multi-set extraction saved as a WorkoutSession
 - Warmup set handling (include_warmups=False strips warmup sets)
 - WHOOP/Pickleball activity extraction (PR #3 regression) saved as
-  both a DailyActivity AND a WorkoutSession
+  both a DailyActivity AND a WorkoutSession, with heart-rate zones
+  passed through in the response
 - Exercises matched by fuzzy name ("Bench Press" -> canonical DB row)
 - PR detection is wired in (first-ever set generates a PR row)
-- Scope: matched exercise IDs always belong to the user's workout_session
 """
-import io
-import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-from PIL import Image
 
-from app.api.exercises import EXERCISES_DATA
 from app.models.activity import DailyActivity
 from app.models.exercise import Exercise
 from app.models.pr import PR
-from app.models.scan_balance import ScanBalance
 from app.models.workout import Set, WorkoutExercise, WorkoutSession
 
-# ============ Fixtures ============
-
-def _png_bytes() -> bytes:
-    """Produce a minimal valid PNG file so FastAPI's UploadFile accepts it."""
-    buf = io.BytesIO()
-    Image.new("RGB", (8, 8), color=(255, 255, 255)).save(buf, format="PNG")
-    return buf.getvalue()
+pytestmark = pytest.mark.usefixtures("anthropic_api_key")
 
 
 @pytest.fixture
-def seeded_exercises(db):
-    """Seed exercise library from EXERCISES_DATA. Needed for fuzzy matching."""
-    import uuid as _uuid
-
-    for ex_data in EXERCISES_DATA:
-        canonical_id = str(_uuid.uuid4())
-        ex = Exercise(
-            id=str(_uuid.uuid4()),
-            name=ex_data["name"],
-            canonical_id=canonical_id,
-            category=ex_data["category"],
-            primary_muscle=ex_data["primary_muscle"],
-            secondary_muscles=ex_data["secondary_muscles"],
-            is_custom=False,
-            user_id=None,
-        )
-        db.add(ex)
-    db.commit()
-    return db
-
-
-@pytest.fixture(autouse=True)
-def _anthropic_api_key():
-    """Set a dummy API key so extract_workout_from_screenshot doesn't bail."""
-    original = os.environ.get("ANTHROPIC_API_KEY")
-    os.environ["ANTHROPIC_API_KEY"] = "test-key-e2e"
-    yield
-    if original is None:
-        os.environ.pop("ANTHROPIC_API_KEY", None)
-    else:
-        os.environ["ANTHROPIC_API_KEY"] = original
-
-
-@pytest.fixture
-def grant_unlimited_scans(db):
+def grant_unlimited_scans(seed_scan_balance):
     """Give a user unlimited scans so the rate-limiter doesn't block tests."""
 
     def _grant(user_id: str):
-        balance = ScanBalance(user_id=user_id, scan_credits=999, has_unlimited=True)
-        db.add(balance)
-        db.commit()
-        return balance
+        return seed_scan_balance(user_id, credits=999, has_unlimited=True)
 
     return _grant
-
-
-def _mock_anthropic_response(payload_json: str):
-    """
-    Build a MagicMock that mimics the anthropic.Anthropic client's
-    messages.create() return shape.
-    """
-    mock_message = MagicMock()
-    mock_message.content = [MagicMock(text=payload_json)]
-
-    mock_client = MagicMock()
-    mock_client.messages.create.return_value = mock_message
-
-    mock_ctor = MagicMock(return_value=mock_client)
-    return mock_ctor, mock_client
 
 
 # ============ Fixtures: extraction payloads ============
@@ -160,18 +98,19 @@ WHOOP_PICKLEBALL_PAYLOAD = """
 
 class TestScreenshotGymWorkout:
     def test_gym_workout_saves_session_exercises_and_sets(
-        self, client, db, auth_headers, seeded_exercises, grant_unlimited_scans
+        self, client, db, auth_headers, seeded_exercises, grant_unlimited_scans,
+        mock_anthropic, png_bytes
     ):
         headers, user = auth_headers(email="gym@example.com")
         grant_unlimited_scans(user.id)
 
-        mock_ctor, _ = _mock_anthropic_response(GYM_WORKOUT_PAYLOAD)
+        mock_ctor = mock_anthropic(GYM_WORKOUT_PAYLOAD)
 
         with patch("app.services.screenshot_service.anthropic.Anthropic", mock_ctor):
             response = client.post(
                 "/screenshot/process",
                 headers=headers,
-                files={"file": ("workout.png", _png_bytes(), "image/png")},
+                files={"file": ("workout.png", png_bytes, "image/png")},
                 data={"save_workout": "true", "include_warmups": "true"},
             )
 
@@ -230,18 +169,19 @@ class TestScreenshotGymWorkout:
         assert len(prs) >= 1
 
     def test_gym_workout_excludes_warmups_when_flag_false(
-        self, client, db, auth_headers, seeded_exercises, grant_unlimited_scans
+        self, client, db, auth_headers, seeded_exercises, grant_unlimited_scans,
+        mock_anthropic, png_bytes
     ):
         headers, user = auth_headers(email="nowarmup@example.com")
         grant_unlimited_scans(user.id)
 
-        mock_ctor, _ = _mock_anthropic_response(GYM_WORKOUT_PAYLOAD)
+        mock_ctor = mock_anthropic(GYM_WORKOUT_PAYLOAD)
 
         with patch("app.services.screenshot_service.anthropic.Anthropic", mock_ctor):
             response = client.post(
                 "/screenshot/process",
                 headers=headers,
-                files={"file": ("workout.png", _png_bytes(), "image/png")},
+                files={"file": ("workout.png", png_bytes, "image/png")},
                 data={"save_workout": "true", "include_warmups": "false"},
             )
 
@@ -259,52 +199,24 @@ class TestScreenshotGymWorkout:
         assert len(bench_sets) == 3
         assert all(s.weight >= 185 for s in bench_sets)
 
-    def test_matched_exercises_belong_to_user_workout(
-        self, client, db, auth_headers, seeded_exercises, grant_unlimited_scans
-    ):
-        """Sanity: every WorkoutExercise saved from a screenshot must point
-        to the uploading user's WorkoutSession."""
-        headers, user = auth_headers(email="scope@example.com")
-        grant_unlimited_scans(user.id)
-
-        mock_ctor, _ = _mock_anthropic_response(GYM_WORKOUT_PAYLOAD)
-        with patch("app.services.screenshot_service.anthropic.Anthropic", mock_ctor):
-            response = client.post(
-                "/screenshot/process",
-                headers=headers,
-                files={"file": ("workout.png", _png_bytes(), "image/png")},
-                data={"save_workout": "true"},
-            )
-        assert response.status_code == 200
-        workout_id = response.json()["workout_id"]
-
-        # Every exercise row linked to this workout_id is owned by `user`
-        rows = (
-            db.query(WorkoutExercise, WorkoutSession)
-            .join(WorkoutSession, WorkoutExercise.session_id == WorkoutSession.id)
-            .filter(WorkoutExercise.session_id == workout_id)
-            .all()
-        )
-        assert len(rows) > 0
-        for _, session in rows:
-            assert session.user_id == user.id
-
 
 class TestScreenshotWhoopActivity:
     def test_pickleball_whoop_screenshot_creates_activity_and_workout(
-        self, client, db, auth_headers, seeded_exercises, grant_unlimited_scans
+        self, client, db, auth_headers, seeded_exercises, grant_unlimited_scans,
+        mock_anthropic, png_bytes
     ):
         """Regression for PR #3: Pickleball WHOOP screenshot should save
-        a DailyActivity AND a WorkoutSession so it shows on the calendar."""
+        a DailyActivity AND a WorkoutSession so it shows on the calendar,
+        and pass heart-rate zones through in the response."""
         headers, user = auth_headers(email="pickle@example.com")
         grant_unlimited_scans(user.id)
 
-        mock_ctor, _ = _mock_anthropic_response(WHOOP_PICKLEBALL_PAYLOAD)
+        mock_ctor = mock_anthropic(WHOOP_PICKLEBALL_PAYLOAD)
         with patch("app.services.screenshot_service.anthropic.Anthropic", mock_ctor):
             response = client.post(
                 "/screenshot/process",
                 headers=headers,
-                files={"file": ("whoop.png", _png_bytes(), "image/png")},
+                files={"file": ("whoop.png", png_bytes, "image/png")},
                 data={"save_workout": "true"},
             )
 
@@ -315,6 +227,12 @@ class TestScreenshotWhoopActivity:
         assert body["strain"] == 11.4
         assert body["activity_saved"] is True
         assert body["workout_saved"] is True  # WHOOP also creates a calendar-visible workout
+
+        # Heart-rate zones passed through untouched
+        zones = body["heart_rate_zones"]
+        assert len(zones) == 2
+        assert zones[0]["zone"] == 2
+        assert zones[0]["bpm_range"] == "110-130"
 
         # DailyActivity row persisted with strain/calories
         activity = db.query(DailyActivity).filter_by(id=body["activity_id"]).first()
@@ -330,27 +248,6 @@ class TestScreenshotWhoopActivity:
         assert session.user_id == user.id
         assert session.duration_minutes == 75
         assert "Pickleball" in (session.notes or "")
-
-    def test_whoop_activity_heart_rate_zones_passed_through(
-        self, client, db, auth_headers, seeded_exercises, grant_unlimited_scans
-    ):
-        headers, user = auth_headers(email="hr@example.com")
-        grant_unlimited_scans(user.id)
-
-        mock_ctor, _ = _mock_anthropic_response(WHOOP_PICKLEBALL_PAYLOAD)
-        with patch("app.services.screenshot_service.anthropic.Anthropic", mock_ctor):
-            response = client.post(
-                "/screenshot/process",
-                headers=headers,
-                files={"file": ("whoop.png", _png_bytes(), "image/png")},
-                data={"save_workout": "false"},
-            )
-
-        body = response.json()
-        zones = body["heart_rate_zones"]
-        assert len(zones) == 2
-        assert zones[0]["zone"] == 2
-        assert zones[0]["bpm_range"] == "110-130"
 
 
 class TestScreenshotErrorHandling:
@@ -369,24 +266,19 @@ class TestScreenshotErrorHandling:
         assert "Invalid file type" in response.json()["detail"]
 
     def test_anthropic_json_decode_error_returns_422(
-        self, client, auth_headers, seeded_exercises, grant_unlimited_scans
+        self, client, auth_headers, seeded_exercises, grant_unlimited_scans,
+        mock_anthropic, png_bytes
     ):
         """If Claude returns garbage the API should surface a 422."""
         headers, user = auth_headers(email="garbage@example.com")
         grant_unlimited_scans(user.id)
 
-        mock_ctor, _ = _mock_anthropic_response("this is not json {")
+        mock_ctor = mock_anthropic("this is not json {")
         with patch("app.services.screenshot_service.anthropic.Anthropic", mock_ctor):
             response = client.post(
                 "/screenshot/process",
                 headers=headers,
-                files={"file": ("workout.png", _png_bytes(), "image/png")},
+                files={"file": ("workout.png", png_bytes, "image/png")},
             )
         assert response.status_code == 422
         assert "JSON" in response.json()["detail"] or "parse" in response.json()["detail"].lower()
-
-
-# TODO(PR C): Once prompt-injection allowlist lands, add tests that
-# assert EXTRACTION_PROMPT rejects/escapes user-controlled strings
-# embedded in screenshots. This PR (G) only adds coverage for the
-# existing extraction + save path.

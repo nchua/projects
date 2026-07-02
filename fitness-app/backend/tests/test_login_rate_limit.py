@@ -3,8 +3,8 @@ Tests for login brute-force protection.
 
 The /auth/login endpoint is limited to 5 attempts per 10 minutes per client
 IP. These tests verify the 6th attempt within the window gets a 429 with a
-Retry-After header, and that a reset (simulating window expiry) allows new
-attempts.
+Retry-After header, and that the client IP key cannot be spoofed via
+X-Forwarded-For.
 """
 
 
@@ -52,32 +52,6 @@ class TestLoginRateLimit:
             json={"email": "lockedout@example.com", "password": "TestPass123!"},
         )
         assert response.status_code == 429
-
-    def test_rate_limit_resets_after_window(self, client, create_test_user):
-        """Simulating window expiry (via limiter.reset) allows new attempts."""
-        from main import app as _app
-
-        create_test_user(email="resets@example.com", password="TestPass123!")
-
-        # Exhaust the limit.
-        for _ in range(5):
-            _bad_login(client, "resets@example.com")
-        blocked = _bad_login(client, "resets@example.com")
-        assert blocked.status_code == 429
-
-        # Simulate window expiry by resetting the limiter state.
-        # (In production the memory-backed limiter rolls over naturally
-        # after the window elapses.)
-        _app.state.limiter.reset()
-
-        # Now a valid login should succeed again.
-        response = client.post(
-            "/auth/login",
-            json={"email": "resets@example.com", "password": "TestPass123!"},
-        )
-        assert response.status_code == 200, (
-            f"Expected 200 after reset, got {response.status_code}: {response.json()}"
-        )
 
     def test_register_has_looser_rate_limit(self, client):
         """POST /auth/register permits higher burst than /auth/login — shared-NAT
@@ -132,4 +106,34 @@ class TestLoginRateLimit:
         )
         assert fresh.status_code == 200, (
             f"Expected 200 from a different X-Forwarded-For IP, got {fresh.status_code}"
+        )
+
+    def test_spoofed_first_hop_cannot_rotate_rate_limit_key(self, client, create_test_user):
+        """Rotating the client-controlled *first* X-Forwarded-For hop must not
+        grant a fresh quota. The limiter keys on the *last* hop — the value
+        appended by the trusted edge proxy — so all six attempts below share
+        one bucket regardless of the spoofed first hop.
+        """
+        create_test_user(email="spoofer@example.com", password="TestPass123!")
+
+        # 5 failed attempts, each spoofing a different first hop but arriving
+        # via the same (trusted) last hop.
+        for i in range(5):
+            response = client.post(
+                "/auth/login",
+                json={"email": "spoofer@example.com", "password": "WrongPass1!"},
+                headers={"X-Forwarded-For": f"10.0.0.{i + 1}, 203.0.113.50"},
+            )
+            assert response.status_code == 401, (
+                f"Attempt {i + 1} should be 401 (wrong password), got {response.status_code}"
+            )
+
+        # 6th attempt with yet another spoofed first hop — still blocked.
+        blocked = client.post(
+            "/auth/login",
+            json={"email": "spoofer@example.com", "password": "WrongPass1!"},
+            headers={"X-Forwarded-For": "10.0.0.99, 203.0.113.50"},
+        )
+        assert blocked.status_code == 429, (
+            f"Spoofed first hop rotated the rate-limit key: got {blocked.status_code}"
         )

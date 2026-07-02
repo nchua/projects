@@ -132,6 +132,46 @@ class TestVerifyPasswordReset:
         assert "too many" in response.json()["detail"].lower()
 
     @patch("app.api.password_reset.send_password_reset_email", return_value=True)
+    def test_reset_code_is_single_use(self, mock_email, client, db, create_test_user):
+        """A consumed code cannot be replayed, and the password change sticks."""
+        create_test_user(email="singleuse@example.com", password="OldPass123!")
+
+        # Request a reset and capture the emailed code from the mock.
+        response = client.post("/auth/password-reset/request", json={
+            "email": "singleuse@example.com",
+        })
+        assert response.status_code == 200
+        code = mock_email.call_args[0][1]
+
+        # First verify succeeds and changes the password.
+        first = client.post("/auth/password-reset/verify", json={
+            "email": "singleuse@example.com",
+            "code": code,
+            "new_password": "NewPass456!",
+        })
+        assert first.status_code == 200
+
+        # Replaying the same code must fail — the token was marked used.
+        replay = client.post("/auth/password-reset/verify", json={
+            "email": "singleuse@example.com",
+            "code": code,
+            "new_password": "AttackerPass789!",
+        })
+        assert replay.status_code == 400
+
+        # Old password no longer logs in; the new one does.
+        old_login = client.post("/auth/login", json={
+            "email": "singleuse@example.com",
+            "password": "OldPass123!",
+        })
+        assert old_login.status_code == 401
+        new_login = client.post("/auth/login", json={
+            "email": "singleuse@example.com",
+            "password": "NewPass456!",
+        })
+        assert new_login.status_code == 200
+
+    @patch("app.api.password_reset.send_password_reset_email", return_value=True)
     def test_verify_deleted_user(self, mock_email, client, db, deleted_user):
         """Deleted user code returns 400."""
         self._create_reset_token(db, deleted_user, code="123456")

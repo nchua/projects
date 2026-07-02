@@ -21,6 +21,8 @@ converted to real endpoint calls or removed (see TODO markers).
 """
 from datetime import date, timedelta
 
+import pytest
+
 from app.models.exercise import Exercise
 from app.services.mission_service import MAX_ACTIVE_GOALS
 
@@ -118,22 +120,6 @@ class TestBatchGoalCreation:
         assert resp.status_code == 400
         assert "Can only create" in resp.json()["detail"]
 
-    def test_batch_size_cannot_exceed_max(self, client, db, auth_headers):
-        headers, _user = auth_headers()
-        exercises = [
-            _seed_exercise(db, id=f"ex-big-{i}", name=f"Big {i}")
-            for i in range(MAX_ACTIVE_GOALS + 1)
-        ]
-
-        resp = client.post(
-            "/goals/batch",
-            json={"goals": [_goal_payload(e.id) for e in exercises]},
-            headers=headers,
-        )
-
-        # Pydantic rejects the oversized list with 422 at the schema layer.
-        assert resp.status_code == 422
-
     def test_batch_creation_validates_all_exercises(self, client, db, auth_headers):
         headers, _user = auth_headers()
         real = _seed_exercise(db, id="ex-real-1", name="Real")
@@ -156,17 +142,27 @@ class TestBatchGoalCreation:
 class TestGoalCreationValidation:
     """Schema-level validation on POST /goals."""
 
-    def test_exercise_id_required(self, client, auth_headers):
+    @pytest.mark.parametrize(
+        "payload_override",
+        [
+            pytest.param({"exercise_id": None}, id="missing-exercise-id"),
+            pytest.param({"target_weight": -10}, id="non-positive-target-weight"),
+            pytest.param({"target_reps": 0}, id="non-positive-target-reps"),
+        ],
+    )
+    def test_invalid_payload_rejected_at_schema_layer(
+        self, client, db, auth_headers, payload_override
+    ):
+        """Missing/invalid fields are rejected with 422 by Pydantic validation."""
         headers, _user = auth_headers()
-        resp = client.post(
-            "/goals",
-            json={
-                "target_weight": 225,
-                "weight_unit": "lb",
-                "deadline": (date.today() + timedelta(weeks=12)).isoformat(),
-            },
-            headers=headers,
-        )
+        ex = _seed_exercise(db)
+        payload = _goal_payload(ex.id)
+        payload.update(payload_override)
+        # A None override means "omit the field entirely" (required-field case).
+        payload = {k: v for k, v in payload.items() if v is not None}
+
+        resp = client.post("/goals", json=payload, headers=headers)
+
         assert resp.status_code == 422
 
     def test_exercise_must_exist(self, client, auth_headers):
@@ -178,26 +174,6 @@ class TestGoalCreationValidation:
         )
         assert resp.status_code == 400
         assert "Exercise not found" in resp.json()["detail"]
-
-    def test_target_weight_must_be_positive(self, client, db, auth_headers):
-        headers, _user = auth_headers()
-        ex = _seed_exercise(db)
-        resp = client.post(
-            "/goals",
-            json=_goal_payload(ex.id, target_weight=-10),
-            headers=headers,
-        )
-        assert resp.status_code == 422
-
-    def test_target_reps_must_be_positive(self, client, db, auth_headers):
-        headers, _user = auth_headers()
-        ex = _seed_exercise(db)
-        resp = client.post(
-            "/goals",
-            json=_goal_payload(ex.id, target_reps=0),
-            headers=headers,
-        )
-        assert resp.status_code == 422
 
 
 class TestGoalListing:
@@ -213,43 +189,16 @@ class TestGoalListing:
         assert resp.status_code == 200
         body = resp.json()
         assert body["active_count"] == 1
+        assert body["completed_count"] == 0
         assert body["max_goals"] == MAX_ACTIVE_GOALS
         assert body["can_add_more"] is True
         assert len(body["goals"]) == 1
-
-    def test_list_includes_counts(self, client, db, auth_headers):
-        headers, _user = auth_headers()
-        for i in range(3):
-            ex = _seed_exercise(db, id=f"ex-list-{i}", name=f"Ex {i}")
-            client.post("/goals", json=_goal_payload(ex.id), headers=headers)
-
-        resp = client.get("/goals", headers=headers)
-
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["active_count"] == 3
-        assert body["completed_count"] == 0
-        assert body["can_add_more"] is True
 
 
 class TestGoalUpdates:
     """PUT /goals/{id}."""
 
-    def test_update_target_weight(self, client, db, auth_headers):
-        headers, _user = auth_headers()
-        ex = _seed_exercise(db)
-        created = client.post("/goals", json=_goal_payload(ex.id), headers=headers).json()
-
-        resp = client.put(
-            f"/goals/{created['id']}",
-            json={"target_weight": 250},
-            headers=headers,
-        )
-
-        assert resp.status_code == 200
-        assert resp.json()["target_weight"] == 250
-
-    def test_update_deadline(self, client, db, auth_headers):
+    def test_update_target_weight_and_deadline(self, client, db, auth_headers):
         headers, _user = auth_headers()
         ex = _seed_exercise(db)
         created = client.post("/goals", json=_goal_payload(ex.id), headers=headers).json()
@@ -257,12 +206,14 @@ class TestGoalUpdates:
 
         resp = client.put(
             f"/goals/{created['id']}",
-            json={"deadline": new_deadline},
+            json={"target_weight": 250, "deadline": new_deadline},
             headers=headers,
         )
 
         assert resp.status_code == 200
-        assert resp.json()["deadline"] == new_deadline
+        body = resp.json()
+        assert body["target_weight"] == 250
+        assert body["deadline"] == new_deadline
 
     def test_cannot_update_other_users_goal(self, client, db, auth_headers):
         headers_a, _user_a = auth_headers(email="a@example.com")

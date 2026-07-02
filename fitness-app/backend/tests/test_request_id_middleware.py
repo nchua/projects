@@ -5,8 +5,11 @@ Covers:
 - A generated UUID is attached when no X-Request-ID header is sent.
 - The client-provided ID is echoed back when supplied.
 - The header is present on error responses (e.g. 404).
+- Malformed/overlong client IDs are replaced, not echoed.
 """
 import re
+
+import pytest
 
 UUID_HEX_RE = re.compile(r"^[0-9a-f]{32}$")
 
@@ -33,7 +36,20 @@ class TestRequestIdMiddleware:
         assert response.status_code == 404
         request_id = response.headers.get("x-request-id")
         assert request_id is not None
-        assert UUID_HEX_RE.match(request_id) or len(request_id) > 0
+        assert UUID_HEX_RE.match(request_id), f"Expected 32-char hex id, got {request_id!r}"
+
+    @pytest.mark.parametrize("injected", [
+        "evil id!{injection}",  # chars outside the [A-Za-z0-9._-] whitelist
+        "x" * 65,               # one past the 64-char length cap
+    ])
+    def test_malformed_or_overlong_id_is_replaced(self, client, injected):
+        """IDs failing the whitelist are discarded and replaced with a fresh
+        UUID — never echoed back (log-injection / trace-spam defense)."""
+        response = client.get("/health", headers={"X-Request-ID": injected})
+        assert response.status_code == 200
+        request_id = response.headers.get("x-request-id")
+        assert request_id != injected, "Middleware echoed a non-whitelisted request ID"
+        assert UUID_HEX_RE.match(request_id), f"Expected fresh 32-char hex id, got {request_id!r}"
 
     def test_distinct_ids_across_requests(self, client):
         """Each request without a supplied ID gets its own fresh UUID."""

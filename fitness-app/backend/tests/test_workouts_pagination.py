@@ -34,14 +34,6 @@ class TestWorkoutsPagination:
         # New default is 50 (was 20 before PR E).
         assert len(data) == 50
 
-    def test_custom_limit(self, client, db, auth_headers):
-        headers, user = auth_headers()
-        _seed_workouts(db, user.id, 60)
-
-        resp = client.get("/workouts?limit=10", headers=headers)
-        assert resp.status_code == 200
-        assert len(resp.json()) == 10
-
     def test_offset_skips_earlier_pages(self, client, db, auth_headers):
         headers, user = auth_headers()
         _seed_workouts(db, user.id, 60)

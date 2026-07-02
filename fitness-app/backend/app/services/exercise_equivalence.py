@@ -261,26 +261,3 @@ def get_equivalent_exercise_ids(goal_exercise_id: str, db: Session) -> Set[str]:
                 break
 
     return equivalent_ids
-
-
-def exercises_are_equivalent(exercise1_name: str, exercise2_name: str) -> bool:
-    """
-    Check if two exercises are equivalent (belong to same category).
-
-    Args:
-        exercise1_name: First exercise name
-        exercise2_name: Second exercise name
-
-    Returns:
-        True if exercises are equivalent
-    """
-    canonical1 = get_canonical_exercise(exercise1_name)
-    canonical2 = get_canonical_exercise(exercise2_name)
-
-    if canonical1 and canonical2:
-        return canonical1 == canonical2
-
-    # Direct name match
-    name1 = normalize_exercise_name(exercise1_name)
-    name2 = normalize_exercise_name(exercise2_name)
-    return name1 in name2 or name2 in name1

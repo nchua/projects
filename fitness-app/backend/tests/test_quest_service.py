@@ -17,30 +17,43 @@ as a TODO at the bottom of this file.
 class TestQuestsEndpoint:
     """GET /quests — today's daily quests."""
 
-    def test_list_quests_returns_three_by_default(self, client, auth_headers):
+    def test_list_quests_returns_three_by_default(self, client, auth_headers, db):
+        # Quest definitions aren't auto-seeded in the test DB — without them the
+        # endpoint returns an empty list and the assertions are vacuous.
+        from app.services.quest_service import seed_quest_definitions
+        seed_quest_definitions(db)
+        db.commit()
+
         headers, _user = auth_headers()
 
         resp = client.get("/quests", headers=headers)
 
         assert resp.status_code == 200, resp.json()
         body = resp.json()
-        assert "quests" in body
+        # Service auto-generates exactly 3 quests on first fetch of the day.
+        assert body["total_count"] == 3
+        assert len(body["quests"]) == 3
+        assert body["completed_count"] == 0  # fresh user, no workouts logged
         assert "refresh_at" in body
-        # Service auto-generates 3 quests on first fetch of the day.
-        assert body["total_count"] == len(body["quests"])
-        assert 0 <= body["completed_count"] <= body["total_count"]
 
     def test_list_quests_requires_auth(self, client):
         resp = client.get("/quests")
         assert resp.status_code in (401, 403)
 
-    def test_list_quests_is_idempotent_same_day(self, client, auth_headers):
-        """Calling GET /quests twice the same day returns the same quest IDs."""
+    def test_list_quests_is_idempotent_same_day(self, client, auth_headers, db):
+        """Calling GET /quests twice the same day returns the same assigned quests, not a re-roll."""
+        from app.services.quest_service import seed_quest_definitions
+        seed_quest_definitions(db)
+        db.commit()
+
         headers, _user = auth_headers()
 
         first = client.get("/quests", headers=headers).json()
         second = client.get("/quests", headers=headers).json()
 
+        # Non-vacuous: quests were actually generated on the first call...
+        assert len(first["quests"]) == 3
+        # ...and the second same-day fetch returns the very same UserQuest rows.
         first_ids = sorted(q["id"] for q in first["quests"])
         second_ids = sorted(q["id"] for q in second["quests"])
         assert first_ids == second_ids

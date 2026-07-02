@@ -1,31 +1,14 @@
 """
 Tests for security utilities and app-level security endpoints.
 
-Covers: password hashing, JWT token types, privacy policy endpoint.
+Covers: JWT token types, privacy policy endpoint.
 """
 from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
-    hash_password,
-    verify_password,
     verify_token,
 )
-
-
-class TestPasswordHashing:
-    """Tests for bcrypt password hashing utilities."""
-
-    def test_hash_and_verify_password(self):
-        """Round-trip: hash then verify succeeds."""
-        plain = "SecurePass123!"
-        hashed = hash_password(plain)
-        assert verify_password(plain, hashed)
-
-    def test_verify_wrong_password(self):
-        """Verify with wrong password returns False."""
-        hashed = hash_password("CorrectPass1!")
-        assert verify_password("WrongPass1!", hashed) is False
 
 
 class TestJWTTokenTypes:

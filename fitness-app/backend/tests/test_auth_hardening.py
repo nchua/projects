@@ -18,25 +18,16 @@ from app.schemas.auth import UserRegister
 
 
 class TestPasswordPolicy:
-    def test_rejects_short_password(self):
-        with pytest.raises(ValueError, match="at least 12 characters"):
-            UserRegister(email="t@example.com", password="Ab1!abcd")  # 8 chars
-
-    def test_rejects_missing_symbol(self):
-        with pytest.raises(ValueError, match="symbol"):
-            UserRegister(email="t@example.com", password="Abcdefgh12ab")  # 12 but no symbol
-
-    def test_rejects_missing_digit(self):
-        with pytest.raises(ValueError, match="digit"):
-            UserRegister(email="t@example.com", password="Abcdefghijk!")
-
-    def test_rejects_missing_uppercase(self):
-        with pytest.raises(ValueError, match="uppercase"):
-            UserRegister(email="t@example.com", password="abcdefgh1234!")
-
-    def test_rejects_missing_lowercase(self):
-        with pytest.raises(ValueError, match="lowercase"):
-            UserRegister(email="t@example.com", password="ABCDEFGH1234!")
+    @pytest.mark.parametrize("password, error_match", [
+        ("Ab1!abcd", "at least 12 characters"),  # 8 chars
+        ("Abcdefgh12ab", "symbol"),  # 12 chars but no symbol
+        ("Abcdefghijk!", "digit"),
+        ("abcdefgh1234!", "uppercase"),
+        ("ABCDEFGH1234!", "lowercase"),
+    ])
+    def test_rejects_weak_password(self, password, error_match):
+        with pytest.raises(ValueError, match=error_match):
+            UserRegister(email="t@example.com", password=password)
 
     def test_accepts_strong_password(self):
         u = UserRegister(email="t@example.com", password="Str0ng-Pass1234")
@@ -44,22 +35,15 @@ class TestPasswordPolicy:
 
 
 class TestUserSearchMinLength:
-    def test_single_char_query_rejected(self, client, auth_headers):
-        """Short queries enable userbase enumeration — must 422."""
+    @pytest.mark.parametrize("q, expected_status", [
+        ("a", 422),   # short queries enable userbase enumeration — must 422
+        ("ab", 422),
+        ("abc", 200),  # three chars is the minimum for a real 'find a friend' query
+    ])
+    def test_query_length_boundary(self, client, auth_headers, q, expected_status):
         headers, _ = auth_headers()
-        response = client.get("/users/search?q=a", headers=headers)
-        assert response.status_code == 422, response.text
-
-    def test_two_char_query_rejected(self, client, auth_headers):
-        headers, _ = auth_headers()
-        response = client.get("/users/search?q=ab", headers=headers)
-        assert response.status_code == 422, response.text
-
-    def test_three_char_query_accepted(self, client, auth_headers):
-        """Three characters is the minimum for a real 'find a friend' query."""
-        headers, _ = auth_headers()
-        response = client.get("/users/search?q=abc", headers=headers)
-        assert response.status_code == 200, response.text
+        response = client.get(f"/users/search?q={q}", headers=headers)
+        assert response.status_code == expected_status, response.text
 
     def test_search_still_requires_auth(self, client):
         # FastAPI's default HTTPBearer returns 403 when the Authorization
@@ -86,12 +70,6 @@ class TestBcryptTruncation:
         hashed_a = hash_password(pw_a)
         assert verify_password(pw_a, hashed_a) is True
         assert verify_password(pw_b, hashed_a) is False
-
-    def test_password_longer_than_72_bytes_still_verifies(self):
-        pw = "P@ssword1" + ("x" * 200)  # well over 72 bytes
-        hashed = hash_password(pw)
-        assert verify_password(pw, hashed) is True
-        assert verify_password(pw[:-1], hashed) is False
 
     def test_multibyte_unicode_password_round_trip(self):
         # 100 chars of multibyte UTF-8 blows past 72 bytes easily.
