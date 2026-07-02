@@ -26,6 +26,9 @@ behavior; the mockup describes look and feel.
   (A narrow static *lookup* — scheduled arrival by realtime-supplied trip_id — IS in
   scope; see §8a. It involves zero calendar inference.)
 - No push notifications, no multi-agency support.
+  (Multi-agency is no longer a non-goal: the BART expansion is specced in
+  **`SPEC-BART.md`** — verified 2026-07-02 against BART's native GTFS-Realtime feeds,
+  which need no API key and don't touch the 511 rate budget.)
 
 ---
 
