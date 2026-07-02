@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1114">
+<title>Caltrain — Mockup</title>
+<style>
+/* ============================================================
+   Caltrain Commute Helper — visual mockup (hardcoded data)
+   Dark departure-board. Signature: the amber LED time column.
+   ============================================================ */
+:root {
+  --bg:        #0e1114;
+  --surface:   #171b20;
+  --surface-2: #1d222a;
+  --edge:      #262c34;
+  --ink:       #e9ecef;
+  --ink-dim:   #98a1ab;
+  --ink-faint: #5b646e;
+  --red:       #ce202f;   /* Caltrain brand */
+  --red-tint:  rgba(206, 32, 47, .16);
+  --red-text:  #ff6b76;
+  --amber:     #f2b135;   /* platform LED sign */
+  --amber-tint:rgba(242, 177, 53, .13);
+  --green:     #3fc981;
+  --green-tint:rgba(63, 201, 129, .13);
+  /* GTFS route colors, adapted for dark bg */
+  --t-local:   #c8cdd2;
+  --t-limited: #99d7dc;
+  --t-express: #ff8791;
+  --t-scc:     #fae4a7;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.45;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
+button, select {
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pressable { transition: transform .12s ease, background-color .12s ease; cursor: pointer; }
+.pressable:active { transform: scale(.96); }
+
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; border-radius: 6px; }
+
+/* ---------- header ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  background: rgba(14, 17, 20, .88);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--edge);
+}
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand-mark {
+  width: 30px; height: 30px; border-radius: 8px; flex: none;
+  background: var(--red);
+  display: grid; place-items: center;
+  font: 800 17px/1 var(--sans); color: #fff;
+}
+.brand h1 { font: 700 17px/1.2 var(--sans); letter-spacing: -.01em; }
+.brand .sub {
+  display: block; font: 500 10.5px/1.4 var(--sans);
+  color: var(--ink-faint); letter-spacing: .08em; text-transform: uppercase;
+}
+.top-right { display: flex; align-items: center; gap: 8px; }
+.updated { font: 500 12px/1 var(--sans); color: var(--ink-dim); white-space: nowrap; }
+
+.icon-btn {
+  width: 44px; height: 44px; border-radius: 12px; flex: none;
+  display: grid; place-items: center;
+  color: var(--ink-dim);
+  border: 1px solid var(--edge);
+  background: var(--surface);
+}
+.icon-btn:active { background: var(--surface-2); }
+.icon-btn svg { width: 18px; height: 18px; }
+.icon-btn.spinning svg { animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* stale pill (header variant) */
+.stale-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px;
+  background: var(--amber-tint); color: var(--amber);
+  border: 1px solid rgba(242, 177, 53, .35);
+  font: 600 12px/1.2 var(--sans);
+}
+.stale-pill svg { width: 13px; height: 13px; flex: none; }
+
+/* ---------- page scaffold ---------- */
+main { max-width: 640px; margin: 0 auto; padding: 14px 16px 0; }
+
+.section-label {
+  font: 600 11px/1 var(--sans); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 22px 2px 10px;
+}
+
+/* ---------- alerts ---------- */
+.alert {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: var(--amber-tint);
+  border: 1px solid rgba(242, 177, 53, .3);
+  border-left: 3px solid var(--amber);
+  border-radius: 12px;
+  padding: 12px 6px 12px 12px;
+  margin-bottom: 12px;
+}
+.alert svg { width: 17px; height: 17px; flex: none; color: var(--amber); margin-top: 1px; }
+.alert p { font-size: 13.5px; color: var(--ink); }
+.alert p strong { color: var(--amber); font-weight: 650; }
+.alert-x {
+  width: 44px; height: 44px; margin: -12px 0; flex: none;
+  display: grid; place-items: center;
+  color: var(--ink-faint); font-size: 15px; border-radius: 10px;
+}
+
+/* ---------- nearest chip ---------- */
+.chip-row { display: flex; margin-bottom: 4px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 13px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--edge);
+  font-size: 13px; color: var(--ink-dim);
+}
+.chip svg { width: 13px; height: 13px; color: var(--red-text); flex: none; }
+.chip strong { color: var(--ink); font-weight: 600; }
+.chip .dot { color: var(--ink-faint); }
+
+/* ---------- favorite cards ---------- */
+.favorites { display: grid; gap: 14px; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.card.leaving { opacity: 0; transform: scale(.97); transition: opacity .2s, transform .2s; }
+.card.arriving { animation: arrive .25s ease; }
+@keyframes arrive { from { opacity: 0; transform: translateY(6px); } }
+
+.card-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 12px 8px 12px 16px;
+  border-bottom: 1px solid var(--edge);
+  background: var(--surface-2);
+}
+.pair { display: flex; align-items: center; gap: 9px; min-width: 0; flex-wrap: wrap; }
+.pair-names { font: 650 15px/1.3 var(--sans); letter-spacing: -.01em; }
+.pair-names .arrow { color: var(--ink-faint); padding: 0 2px; }
+.dir-tag {
+  font: 700 10px/1 var(--mono); letter-spacing: .1em;
+  color: var(--ink-dim);
+  border: 1px solid var(--edge); border-radius: 5px;
+  padding: 4px 6px; background: var(--bg);
+}
+.card-actions { display: flex; flex: none; }
+.card-actions .icon-btn { width: 44px; height: 44px; border: none; background: none; border-radius: 10px; }
+.card-actions .icon-btn svg { width: 16px; height: 16px; }
+
+/* ----- departure rows: the board ----- */
+.dep {
+  display: grid;
+  grid-template-columns: 76px 1fr auto;
+  gap: 4px 14px;
+  align-items: center;
+  min-height: 64px;
+  padding: 11px 16px;
+}
+.dep + .dep { border-top: 1px solid var(--edge); }
+
+.dep-time { display: flex; flex-direction: column; gap: 2px; }
+.t-big {
+  font: 700 27px/1 var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .01em;
+  color: var(--ink);
+}
+.dep.is-late .t-big {
+  color: var(--amber);
+  text-shadow: 0 0 14px rgba(242, 177, 53, .4);
+}
+.dep.is-sched .t-big { color: var(--ink-dim); }
+.t-was {
+  font: 500 12px/1 var(--mono); font-variant-numeric: tabular-nums;
+  color: var(--ink-faint); text-decoration: line-through;
+}
+
+.dep-info { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.dep-line { display: flex; align-items: center; gap: 7px; }
+.type {
+  font: 650 11px/1 var(--sans); letter-spacing: .02em;
+  padding: 4px 7px; border-radius: 6px;
+}
+.type-local   { color: var(--t-local);   background: rgba(200, 205, 210, .1); }
+.type-limited { color: var(--t-limited); background: rgba(153, 215, 220, .12); }
+.type-express { color: var(--t-express); background: var(--red-tint); }
+.type-scc     { color: var(--t-scc);     background: rgba(250, 228, 167, .12); }
+.tno { font: 500 12px/1 var(--mono); color: var(--ink-faint); }
+.dep-arr { font-size: 13px; color: var(--ink-dim); }
+.dep-arr strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.dep-status { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.badge {
+  font: 650 11.5px/1 var(--sans);
+  padding: 5px 9px; border-radius: 999px; white-space: nowrap;
+}
+.b-late  { color: var(--red-text); background: var(--red-tint); }
+.b-ok    { color: var(--green); background: var(--green-tint); }
+.b-sched { color: var(--ink-dim); background: rgba(152, 161, 171, .1); }
+.leave { font-size: 12px; color: var(--ink-dim); white-space: nowrap; }
+.leave strong { color: var(--amber); font: 650 12.5px var(--mono); font-variant-numeric: tabular-nums; }
+
+/* empty state */
+.card-empty { padding: 22px 16px; }
+.card-empty p { font-size: 13.5px; color: var(--ink-dim); }
+.card-empty p strong { color: var(--ink); font-weight: 600; }
+
+/* ---------- add a pair ---------- */
+.add-row {
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  border-radius: 16px;
+  padding: 14px 16px 16px;
+}
+.add-controls {
+  display: grid;
+  grid-template-columns: 1fr 44px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+.sel { position: relative; min-width: 0; }
+.sel select {
+  width: 100%; height: 44px;
+  padding: 0 28px 0 12px;
+  background: var(--bg);
+  border: 1px solid var(--edge);
+  border-radius: 11px;
+  font-size: 14px; color: var(--ink);
+  touch-action: manipulation;
+}
+.sel::after {
+  content: ""; position: absolute; right: 12px; top: 50%;
+  width: 7px; height: 7px; pointer-events: none;
+  border-right: 1.5px solid var(--ink-faint);
+  border-bottom: 1.5px solid var(--ink-faint);
+  transform: translateY(-70%) rotate(45deg);
+}
+.btn-add {
+  grid-column: 1 / -1;
+  height: 46px; margin-top: 2px;
+  background: var(--red);
+  border-radius: 12px;
+  font: 650 14.5px var(--sans); color: #fff;
+}
+.btn-add:active { background: #b31c29; }
+.add-row.shake { animation: shake .3s; }
+@keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+
+/* ---------- variants strip (review only) ---------- */
+.variants {
+  border: 1px dashed var(--edge);
+  border-radius: 16px;
+  padding: 14px 16px 16px;
+  margin-top: 26px;
+}
+.variants .section-label { margin: 0 0 12px; }
+.variants > * + * { margin-top: 12px; }
+
+footer {
+  max-width: 640px; margin: 26px auto 0; padding: 0 16px;
+  font-size: 11.5px; color: var(--ink-faint); text-align: center;
+}
+
+/* ---------- desktop ≥900px ---------- */
+@media (min-width: 900px) {
+  main, footer { max-width: 1120px; }
+  main { padding: 20px 28px 0; }
+  .topbar { padding-left: 28px; padding-right: 28px; }
+  .brand h1 { font-size: 19px; }
+  .favorites { grid-template-columns: repeat(auto-fill, minmax(430px, 1fr)); gap: 16px; }
+  .dep { grid-template-columns: 88px 1fr auto; padding: 13px 20px; }
+  .t-big { font-size: 30px; }
+  .card-head { padding-left: 20px; }
+  .add-controls { grid-template-columns: 1fr 44px 1fr auto; }
+  .btn-add { grid-column: auto; margin-top: 0; padding: 0 28px; }
+  .card { transition: border-color .15s; }
+  .card:hover { border-color: #333b46; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">C</span>
+    <h1>Caltrain
+      <span class="sub">Tue Jul 1 · 8:05 AM</span>
+    </h1>
+  </div>
+  <div class="top-right">
+    <span class="updated" id="updated">Updated just now</span>
+    <button class="icon-btn pressable" data-action="refresh" aria-label="Refresh departures">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+        <path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<main>
+
+  <!-- alerts -->
+  <section aria-label="Service alerts">
+    <div class="alert" id="alert-1">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <p><strong>Signal maintenance near Millbrae.</strong> Northbound trains may be delayed up to 15 minutes between Millbrae and San Francisco.</p>
+      <button class="alert-x pressable" data-action="dismiss-alert" data-alert="alert-1" aria-label="Dismiss alert">✕</button>
+    </div>
+  </section>
+
+  <!-- nearest station -->
+  <section class="chip-row" aria-label="Nearest station">
+    <div class="chip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>
+      </svg>
+      Nearest station: <strong>San Carlos</strong> <span class="dot">·</span> ~7 min walk
+    </div>
+  </section>
+
+  <h2 class="section-label">Your pairs</h2>
+
+  <section class="favorites" id="favorites">
+
+    <!-- San Carlos → San Francisco -->
+    <article class="card" data-origin="San Carlos" data-destination="San Francisco" data-dir="NB">
+      <header class="card-head">
+        <div class="pair">
+          <span class="pair-names"><span class="o">San Carlos</span> <span class="arrow">→</span> <span class="d">San Francisco</span></span>
+          <span class="dir-tag">NB</span>
+        </div>
+        <div class="card-actions">
+          <button class="icon-btn pressable" data-action="swap-card" aria-label="Reverse direction">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 16V4M7 4 3.5 7.5M7 4l3.5 3.5"/><path d="M17 8v12m0 0 3.5-3.5M17 20l-3.5-3.5"/>
+            </svg>
+          </button>
+          <button class="icon-btn pressable" data-action="remove-card" aria-label="Remove pair">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <path d="M5 5l14 14M19 5 5 19"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="dep is-late">
+        <div class="dep-time">
+          <span class="t-big">8:19</span>
+          <span class="t-was">8:14</span>
+        </div>
+        <div class="dep-info">
+          <div class="dep-line"><span class="type type-limited">Limited</span><span class="tno">417</span></div>
+          <div class="dep-arr">arrives <strong>9:02 AM</strong></div>
+        </div>
+        <div class="dep-status">
+          <span class="badge b-late">+5 min</span>
+          <span class="leave">leave by <strong>8:10</strong></span>
+        </div>
+      </div>
+
+      <div class="dep">
+        <div class="dep-time"><span class="t-big">8:31</span></div>
+        <div class="dep-info">
+          <div class="dep-line"><span class="type type-local">Local</span><span class="tno">421</span></div>
+          <div class="dep-arr">arrives <strong>9:21 AM</strong></div>
+        </div>
+        <div class="dep-status">
+          <span class="badge b-ok">On time</span>
+          <span class="leave">leave by <strong>8:22</strong></span>
+        </div>
+      </div>
+
+      <div class="dep">
+        <div class="dep-time"><span class="t-big">8:44</span></div>
+        <div class="dep-info">
+          <div class="dep-line"><span class="type type-limited">Limited</span><span class="tno">425</span></div>
+          <div class="dep-arr">arrives <strong>9:27 AM</strong></div>
+        </div>
+        <div class="dep-status">
+          <span class="badge b-ok">On time</span>
+          <span class="leave">leave by <strong>8:35</strong></span>
+        </div>
+      </div>
+
+      <div class="dep is-sched">
+        <div class="dep-time"><span class="t-big">9:01</span></div>
+        <div class="dep-info">
+          <div class="dep-line"><span class="type type-local">Local</span><span class="tno">429</span></div>
+          <div class="dep-arr">arrives <strong>9:51 AM</strong></div>
+        </div>
+        <div class="dep-status">
+          <span class="badge b-sched">Scheduled</span>
+          <span class="leave">leave by <strong>8:52</strong></span>
+        </div>
+      </div>
+    </article>
+
+    <!-- San Francisco → San Carlos (no leave-by: origin isn't the nearest station) -->
+    <article class="card" data-origin="San Francisco" data-destination="San Carlos" data-dir="SB">
+      <header class="card-head">
+        <div class="pair">
+          <span class="pair-names"><span class="o">San Francisco</span> <span class="arrow">→</span> <span class="d">San Carlos</span></span>
+          <span class="dir-tag">SB</span>
+        </div>
+        <div class="card-actions">
+          <button class="icon-btn pressable" data-action="swap-card" aria-label="Reverse direction">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 16V4M7 4 3.5 7.5M7 4l3.5 3.5"/><path d="M17 8v12m0 0 3.5-3.5M17 20l-3.5-3.5"/>
+            </svg>
+          </button>
+          <button class="icon-btn pressable" data-action="remove-card" aria-label="Remove pair">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <path d="M5 5l14 14M19 5 5 19"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="dep">
+        <div class="dep-time"><span class="t-big">8:24</span></div>
+        <div class="dep-info">
+          <div class="dep-line"><span class="type type-limited">Limited</span><span class="tno">412</span></div>
+          <div class="dep-arr">arrives <strong>9:05 AM</strong></div>
+        </div>
+        <div class="dep-status"><span class="badge b-ok">On time</span></div>
+      </div>
+
+      <div class="dep">
+        <div class="dep-time"><span class="t-big">8:39</span></div>
+        <div class="dep-info">
+          <div class="dep-line"><span class="type type-local">Local</span><span class="tno">416</span></div>
+          <div class="dep-arr">arrives <strong>9:29 AM</strong></div>
+        </div>
+        <div class="dep-status"><span class="badge b-ok">On time</span></div>
+      </div>
+
+      <div class="dep is-sched">
+        <div class="dep-time"><span class="t-big">9:09</span></div>
+        <div class="dep-info">
+          <div class="dep-line"><span class="type type-local">Local</span><span class="tno">420</span></div>
+          <div class="dep-arr">arrives <strong>9:59 AM</strong></div>
+        </div>
+        <div class="dep-status"><span class="badge b-sched">Scheduled</span></div>
+      </div>
+    </article>
+
+  </section>
+
+  <!-- add a pair -->
+  <h2 class="section-label">Add a pair</h2>
+  <section class="add-row" id="add-row">
+    <div class="add-controls">
+      <div class="sel">
+        <select id="sel-origin" aria-label="Origin station"></select>
+      </div>
+      <button class="icon-btn pressable" data-action="swap-add" aria-label="Swap origin and destination">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/>
+        </svg>
+      </button>
+      <div class="sel">
+        <select id="sel-dest" aria-label="Destination station"></select>
+      </div>
+      <button class="btn-add pressable" data-action="add-favorite">Add</button>
+    </div>
+  </section>
+
+  <!-- variants strip: shown here for design review only -->
+  <section class="variants">
+    <h2 class="section-label">UI state variants — review only</h2>
+
+    <div class="stale-pill">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+      </svg>
+      Live data unavailable — showing 8:03 AM data
+    </div>
+
+    <article class="card">
+      <header class="card-head">
+        <div class="pair">
+          <span class="pair-names"><span class="o">Tamien</span> <span class="arrow">→</span> <span class="d">Gilroy</span></span>
+          <span class="dir-tag">SB</span>
+        </div>
+      </header>
+      <div class="card-empty">
+        <p><strong>No upcoming trains for this pair right now.</strong><br>
+        Weekend and South County service is sparse — this is often normal. Trains appear here as soon as they're in the live feed.</p>
+      </div>
+    </article>
+  </section>
+
+</main>
+
+<footer>Mockup — hardcoded sample data, no live API. Tuesday July 1, 8:05 AM.</footer>
+
+<script>
+// Stations north → south (document order = line order; index compares as `order`)
+const STATIONS = [
+  "San Francisco", "22nd Street", "Bayshore", "South San Francisco", "San Bruno",
+  "Millbrae", "Broadway", "Burlingame", "San Mateo", "Hayward Park", "Hillsdale",
+  "Belmont", "San Carlos", "Redwood City", "Menlo Park", "Palo Alto",
+  "California Avenue", "San Antonio", "Mountain View", "Sunnyvale", "Lawrence",
+  "Santa Clara", "College Park", "San Jose Diridon", "Tamien", "Capitol",
+  "Blossom Hill", "Morgan Hill", "San Martin", "Gilroy"
+];
+
+const selOrigin = document.getElementById("sel-origin");
+const selDest = document.getElementById("sel-dest");
+for (const name of STATIONS) {
+  selOrigin.add(new Option(name, name));
+  selDest.add(new Option(name, name));
+}
+selOrigin.value = "Hillsdale";
+selDest.value = "San Francisco";
+
+function makeEmptyCard(origin, destination) {
+  const dir = STATIONS.indexOf(origin) > STATIONS.indexOf(destination) ? "NB" : "SB";
+  const card = document.createElement("article");
+  card.className = "card arriving";
+  card.dataset.origin = origin;
+  card.dataset.destination = destination;
+  card.dataset.dir = dir;
+  card.innerHTML = `
+    <header class="card-head">
+      <div class="pair">
+        <span class="pair-names"><span class="o"></span> <span class="arrow">→</span> <span class="d"></span></span>
+        <span class="dir-tag">${dir}</span>
+      </div>
+      <div class="card-actions">
+        <button class="icon-btn pressable" data-action="swap-card" aria-label="Reverse direction">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 16V4M7 4 3.5 7.5M7 4l3.5 3.5"/><path d="M17 8v12m0 0 3.5-3.5M17 20l-3.5-3.5"/>
+          </svg>
+        </button>
+        <button class="icon-btn pressable" data-action="remove-card" aria-label="Remove pair">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <path d="M5 5l14 14M19 5 5 19"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+    <div class="card-empty">
+      <p><strong>Loading departures…</strong><br>(In the real app this card fills with live trains.)</p>
+    </div>`;
+  card.querySelector(".o").textContent = origin;
+  card.querySelector(".d").textContent = destination;
+  return card;
+}
+
+// Single delegated listener — no inline onclick anywhere.
+document.body.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-action]");
+  if (!el) return;
+
+  switch (el.dataset.action) {
+    case "refresh": {
+      el.classList.add("spinning");
+      setTimeout(() => {
+        el.classList.remove("spinning");
+        document.getElementById("updated").textContent = "Updated just now";
+      }, 700);
+      break;
+    }
+    case "dismiss-alert": {
+      document.getElementById(el.dataset.alert)?.remove();
+      break;
+    }
+    case "swap-add": {
+      const a = selOrigin.value;
+      selOrigin.value = selDest.value;
+      selDest.value = a;
+      break;
+    }
+    case "add-favorite": {
+      const origin = selOrigin.value, destination = selDest.value;
+      if (origin === destination) {
+        const row = document.getElementById("add-row");
+        row.classList.remove("shake");
+        void row.offsetWidth;
+        row.classList.add("shake");
+        return;
+      }
+      document.getElementById("favorites").appendChild(makeEmptyCard(origin, destination));
+      break;
+    }
+    case "swap-card": {
+      const card = el.closest(".card");
+      const o = card.querySelector(".o"), d = card.querySelector(".d");
+      [o.textContent, d.textContent] = [d.textContent, o.textContent];
+      const tag = card.querySelector(".dir-tag");
+      tag.textContent = tag.textContent === "NB" ? "SB" : "NB";
+      break;
+    }
+    case "remove-card": {
+      const card = el.closest(".card");
+      card.classList.add("leaving");
+      setTimeout(() => card.remove(), 200);
+      break;
+    }
+  }
+});
+</script>
+</body>
+</html>
