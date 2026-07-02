@@ -226,6 +226,18 @@ main { max-width: 640px; margin: 0 auto; padding: 14px 16px 0; }
 .leave { font-size: 12px; color: var(--ink-dim); white-space: nowrap; }
 .leave strong { color: var(--amber); font: 650 12.5px var(--mono); font-variant-numeric: tabular-nums; }
 
+/* card footer: expand control + feed-exhausted note */
+.card-foot { border-top: 1px solid var(--edge); }
+.foot-note {
+  padding: 10px 16px 12px;
+  font-size: 12px; color: var(--ink-faint);
+}
+.btn-foot {
+  display: block; width: 100%; min-height: 44px;
+  font: 600 13px var(--sans); color: var(--ink-dim);
+}
+.btn-foot:active { background: var(--surface-2); }
+
 /* empty / error / loading states */
 .card-empty { padding: 22px 16px; }
 .card-empty p { font-size: 13.5px; color: var(--ink-dim); }

@@ -6,6 +6,8 @@
 const TZ = "America/Los_Angeles";
 const STORAGE_KEY = "caltrain:favorites:v1";
 const MAX_FAVORITES = 6;
+const COLLAPSED_LIMIT = 4;
+const EXPANDED_LIMIT = 10;
 const REFRESH_INTERVAL_MS = 60_000;
 const VISIBILITY_REFRESH_AFTER_MS = 30_000;
 const WALK_DETOUR_FACTOR = 1.3;
@@ -19,6 +21,7 @@ const state = {
   favorites: [],
   nearest: null, // { station, walkMinutes }
   lastData: new Map(), // pairKey -> departures payload (for re-render on geolocate)
+  expanded: new Set(), // pairKeys showing up to EXPANDED_LIMIT rows (session-only)
   staleness: new Map(), // source -> { stale, asOf }
   dismissedAlerts: new Set(),
   lastFetchMs: 0,
@@ -161,9 +164,12 @@ function renderCardBody(fav, data) {
     nearest.station.id === fav.origin &&
     nearest.walkMinutes <= MAX_WALK_MIN_FOR_HINTS;
 
+  const expanded = state.expanded.has(pairKey(fav));
+  const shownLimit = expanded ? EXPANDED_LIMIT : COLLAPSED_LIMIT;
+
   const body = card.querySelector(".card-body");
   body.textContent = "";
-  for (const dep of data.departures) {
+  for (const dep of data.departures.slice(0, shownLimit)) {
     const row = $("tpl-dep").content.firstElementChild.cloneNode(true);
     const effective = dep.departure.expected || dep.departure.aimed;
 
@@ -209,6 +215,29 @@ function renderCardBody(fav, data) {
 
     body.append(row);
   }
+
+  const foot = document.createElement("div");
+  foot.className = "card-foot";
+  if (data.departures.length < shownLimit) {
+    const note = document.createElement("p");
+    note.className = "foot-note";
+    note.textContent = "That's every upcoming train in the live feed right now.";
+    foot.append(note);
+  }
+  if (!expanded && data.departures.length >= COLLAPSED_LIMIT) {
+    foot.append(makeFootButton("expand-card", "Show more"));
+  } else if (expanded) {
+    foot.append(makeFootButton("collapse-card", "Show fewer"));
+  }
+  if (foot.childNodes.length) body.append(foot);
+}
+
+function makeFootButton(action, label) {
+  const btn = document.createElement("button");
+  btn.className = "btn-foot pressable";
+  btn.dataset.action = action;
+  btn.textContent = label;
+  return btn;
 }
 
 function renderAlerts(alerts) {
@@ -261,7 +290,12 @@ function renderStalePill() {
 
 async function fetchPair(fav) {
   const key = pairKey(fav);
-  const params = new URLSearchParams({ origin: fav.origin, destination: fav.destination });
+  const limit = state.expanded.has(key) ? EXPANDED_LIMIT : COLLAPSED_LIMIT;
+  const params = new URLSearchParams({
+    origin: fav.origin,
+    destination: fav.destination,
+    limit: String(limit),
+  });
   try {
     const resp = await fetch(`/api/departures?${params}`, { cache: "no-store" });
     if (!resp.ok) throw new Error(`http ${resp.status}`);
@@ -367,6 +401,7 @@ function favFromCard(el) {
 function dropPairState(key) {
   state.lastData.delete(key);
   state.staleness.delete(key);
+  state.expanded.delete(key);
   renderStalePill();
 }
 
@@ -434,6 +469,21 @@ document.body.addEventListener("click", (e) => {
       if (!fav) return;
       setCardMessage(card, "Loading departures…", "");
       fetchPair(fav);
+      break;
+    }
+    case "expand-card": {
+      const { card, fav } = favFromCard(el);
+      if (!fav) return;
+      state.expanded.add(card.dataset.pair);
+      fetchPair(fav); // refetch at the higher limit; rows update in place
+      break;
+    }
+    case "collapse-card": {
+      const { card, fav } = favFromCard(el);
+      if (!fav) return;
+      state.expanded.delete(card.dataset.pair);
+      const cached = state.lastData.get(card.dataset.pair);
+      if (cached) renderCardBody(fav, cached);
       break;
     }
   }

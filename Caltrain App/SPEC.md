@@ -448,7 +448,11 @@ Mobile-first single column ≤640px; desktop ≥900px renders favorites as a car
 
 Per card (see mockup): pair title ("San Carlos → San Francisco"), direction tag (NB/SB),
 per-card **swap** (reverse the pair, persist, refetch) and **remove** (✕, immediate)
-buttons, and up to 4 departure rows:
+buttons, and up to 4 departure rows (default; a **"Show more"** footer button expands the
+card to 10 rows session-only, "Show fewer" collapses it). When the feed returns fewer
+rows than the shown limit, the card footer notes *"That's every upcoming train in the
+live feed right now."* — expected late at night, when the last trains of the day are the
+only ones the realtime feed knows about:
 
 - Big tabular-numeral **effective departure time** (expected, else aimed). When late,
   show struck-through scheduled time beside it.
