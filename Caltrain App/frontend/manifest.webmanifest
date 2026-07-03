@@ -1,6 +1,6 @@
 {
-  "name": "Caltrain Commute",
-  "short_name": "Caltrain",
+  "name": "Bay Rail",
+  "short_name": "Bay Rail",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0e1114",

@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e1114">
-<title>Caltrain — Mockup</title>
+<title>Bay Rail — Mockup</title>
 <style>
 /* ============================================================
-   Caltrain Commute Helper — visual mockup (hardcoded data)
+   Bay Rail (Caltrain + BART commute helper) — visual mockup
    Dark departure-board. Signature: the amber LED time column.
    ============================================================ */
 :root {
@@ -30,6 +30,13 @@
   --t-limited: #99d7dc;
   --t-express: #ff8791;
   --t-scc:     #fae4a7;
+  /* BART line colors, adapted for dark bg (SPEC-BART §4.4) */
+  --b-yellow:  #ffe14d;
+  --b-orange:  #ffa64d;
+  --b-green:   #55c975;
+  --b-red:     #ff7070;
+  --b-blue:    #4db8e8;
+  --b-grey:    #b0bec7;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
 }
@@ -132,6 +139,12 @@ main { max-width: 640px; margin: 0 auto; padding: 14px 16px 0; }
 .alert svg { width: 17px; height: 17px; flex: none; color: var(--amber); margin-top: 1px; }
 .alert p { font-size: 13.5px; color: var(--ink); }
 .alert p strong { color: var(--amber); font-weight: 650; }
+.alert .src-tag {
+  display: inline-block; vertical-align: 1px; margin-right: 6px;
+  font: 700 9.5px/1 var(--mono); letter-spacing: .1em;
+  color: var(--ink-dim); border: 1px solid var(--edge); border-radius: 4px;
+  padding: 3px 5px; background: var(--bg);
+}
 .alert-x {
   width: 44px; height: 44px; margin: -12px 0; flex: none;
   display: grid; place-items: center;
@@ -220,6 +233,13 @@ main { max-width: 640px; margin: 0 auto; padding: 14px 16px 0; }
 .type-limited { color: var(--t-limited); background: rgba(153, 215, 220, .12); }
 .type-express { color: var(--t-express); background: var(--red-tint); }
 .type-scc     { color: var(--t-scc);     background: rgba(250, 228, 167, .12); }
+/* BART line pills (same slot as the Caltrain type pill) */
+.type-b-yellow { color: var(--b-yellow); background: rgba(255, 225, 77, .12); }
+.type-b-orange { color: var(--b-orange); background: rgba(255, 166, 77, .12); }
+.type-b-green  { color: var(--b-green);  background: rgba(85, 201, 117, .12); }
+.type-b-red    { color: var(--b-red);    background: rgba(255, 112, 112, .12); }
+.type-b-blue   { color: var(--b-blue);   background: rgba(77, 184, 232, .12); }
+.type-b-grey   { color: var(--b-grey);   background: rgba(176, 190, 199, .12); }
 .tno { font: 500 12px/1 var(--mono); color: var(--ink-faint); }
 .dep-arr { font-size: 13px; color: var(--ink-dim); }
 .dep-arr strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -247,6 +267,10 @@ main { max-width: 640px; margin: 0 auto; padding: 14px 16px 0; }
   border-radius: 16px;
   padding: 14px 16px 16px;
 }
+/* transfer itineraries */
+.leg-arrow { color: var(--ink-faint); font-size: 11px; }
+.dep-xfer { font-size: 12px; color: var(--ink-faint); }
+.dep-xfer strong { color: var(--ink-dim); font-weight: 600; }
 .add-controls {
   display: grid;
   grid-template-columns: 1fr 44px 1fr;
@@ -321,8 +345,8 @@ footer {
 
 <header class="topbar">
   <div class="brand">
-    <span class="brand-mark" aria-hidden="true">C</span>
-    <h1>Caltrain
+    <span class="brand-mark" aria-hidden="true">B</span>
+    <h1>Bay Rail
       <span class="sub">Tue Jul 1 · 8:05 AM</span>
     </h1>
   </div>
@@ -346,6 +370,13 @@ footer {
       </svg>
       <p><strong>Signal maintenance near Millbrae.</strong> Northbound trains may be delayed up to 15 minutes between Millbrae and San Francisco.</p>
       <button class="alert-x pressable" data-action="dismiss-alert" data-alert="alert-1" aria-label="Dismiss alert">✕</button>
+    </div>
+    <div class="alert" id="alert-2">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <p><span class="src-tag">BART</span><strong>Expect 30-minute delays after 9 PM</strong> between Millbrae, SFO and Daly City due to planned train control modernization work.</p>
+      <button class="alert-x pressable" data-action="dismiss-alert" data-alert="alert-2" aria-label="Dismiss alert">✕</button>
     </div>
   </section>
 
@@ -485,6 +516,59 @@ footer {
       </div>
     </article>
 
+    <!-- Embarcadero → Walnut Creek (BART: line pill + headsign replace type pill + train number;
+         no NB/SB tag — the dir-tag slot carries the agency) -->
+    <article class="card" data-agency="ba" data-origin="Embarcadero" data-destination="Walnut Creek">
+      <header class="card-head">
+        <div class="pair">
+          <span class="pair-names"><span class="o">Embarcadero</span> <span class="arrow">→</span> <span class="d">Walnut Creek</span></span>
+          <span class="dir-tag">BART</span>
+        </div>
+        <div class="card-actions">
+          <button class="icon-btn pressable" data-action="swap-card" aria-label="Reverse direction">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 16V4M7 4 3.5 7.5M7 4l3.5 3.5"/><path d="M17 8v12m0 0 3.5-3.5M17 20l-3.5-3.5"/>
+            </svg>
+          </button>
+          <button class="icon-btn pressable" data-action="remove-card" aria-label="Remove pair">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <path d="M5 5l14 14M19 5 5 19"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="dep">
+        <div class="dep-time"><span class="t-big">8:12</span></div>
+        <div class="dep-info">
+          <div class="dep-line"><span class="type type-b-yellow">Yellow</span><span class="tno">to Antioch</span></div>
+          <div class="dep-arr">arrives <strong>8:47 AM</strong></div>
+        </div>
+        <div class="dep-status"><span class="badge b-ok">On time</span></div>
+      </div>
+
+      <div class="dep is-late">
+        <div class="dep-time">
+          <span class="t-big">8:29</span>
+          <span class="t-was">8:24</span>
+        </div>
+        <div class="dep-info">
+          <div class="dep-line"><span class="type type-b-yellow">Yellow</span><span class="tno">to Pittsburg/Bay Point</span></div>
+          <div class="dep-arr">arrives <strong>9:04 AM</strong></div>
+        </div>
+        <div class="dep-status"><span class="badge b-late">+5 min</span></div>
+      </div>
+
+      <div class="dep">
+        <div class="dep-time"><span class="t-big">8:42</span></div>
+        <div class="dep-info">
+          <div class="dep-line"><span class="type type-b-yellow">Yellow</span><span class="tno">to Antioch</span></div>
+          <div class="dep-arr">arrives <strong>9:17 AM</strong></div>
+        </div>
+        <div class="dep-status"><span class="badge b-ok">On time</span></div>
+      </div>
+    </article>
+
   </section>
 
   <!-- add a pair -->
@@ -529,6 +613,48 @@ footer {
         Weekend and South County service is sparse — this is often normal. Trains appear here as soon as they're in the live feed.</p>
       </div>
     </article>
+
+    <!-- transfer itinerary (no direct line): two legs, delay-aware connection.
+         Second row shows a late leg 1 rolling the itinerary to a later connection. -->
+    <article class="card">
+      <header class="card-head">
+        <div class="pair">
+          <span class="pair-names"><span class="o">Walnut Creek</span> <span class="arrow">→</span> <span class="d">Dublin/Pleasanton</span></span>
+          <span class="dir-tag">BART</span>
+        </div>
+      </header>
+
+      <div class="dep">
+        <div class="dep-time"><span class="t-big">8:12</span></div>
+        <div class="dep-info">
+          <div class="dep-line">
+            <span class="type type-b-yellow">Yellow</span>
+            <span class="leg-arrow">▸</span>
+            <span class="type type-b-blue">Blue</span>
+          </div>
+          <div class="dep-xfer">change at <strong>West Oakland</strong> · 5 min wait</div>
+          <div class="dep-arr">arrives <strong>9:14 AM</strong></div>
+        </div>
+        <div class="dep-status"><span class="badge b-ok">On time</span></div>
+      </div>
+
+      <div class="dep is-late">
+        <div class="dep-time">
+          <span class="t-big">8:31</span>
+          <span class="t-was">8:27</span>
+        </div>
+        <div class="dep-info">
+          <div class="dep-line">
+            <span class="type type-b-yellow">Yellow</span>
+            <span class="leg-arrow">▸</span>
+            <span class="type type-b-blue">Blue</span>
+          </div>
+          <div class="dep-xfer">change at <strong>West Oakland</strong> · 13 min wait</div>
+          <div class="dep-arr">arrives <strong>9:44 AM</strong></div>
+        </div>
+        <div class="dep-status"><span class="badge b-late">+4 min</span></div>
+      </div>
+    </article>
   </section>
 
 </main>
@@ -536,7 +662,7 @@ footer {
 <footer>Mockup — hardcoded sample data, no live API. Tuesday July 1, 8:05 AM.</footer>
 
 <script>
-// Stations north → south (document order = line order; index compares as `order`)
+// Caltrain stations north → south (document order = line order; index compares as `order`)
 const STATIONS = [
   "San Francisco", "22nd Street", "Bayshore", "South San Francisco", "San Bruno",
   "Millbrae", "Broadway", "Burlingame", "San Mateo", "Hayward Park", "Hillsdale",
@@ -546,17 +672,57 @@ const STATIONS = [
   "Blossom Hill", "Morgan Hill", "San Martin", "Gilroy"
 ];
 
+// BART stations, alphabetical — a branching network has no line order
+const BART_STATIONS = [
+  "12th St. Oakland City Center", "16th St. Mission", "19th St. Oakland", "24th St. Mission",
+  "Antioch", "Ashby", "Balboa Park", "Bay Fair",
+  "Berryessa/North San Jose", "Castro Valley", "Civic Center/UN Plaza", "Coliseum",
+  "Colma", "Concord", "Daly City", "Downtown Berkeley",
+  "Dublin/Pleasanton", "El Cerrito Plaza", "El Cerrito del Norte", "Embarcadero",
+  "Fremont", "Fruitvale", "Glen Park", "Hayward",
+  "Lafayette", "Lake Merritt", "MacArthur", "Millbrae",
+  "Milpitas", "Montgomery St.", "North Berkeley", "North Concord/Martinez",
+  "Oakland International Airport", "Orinda", "Pittsburg Center", "Pittsburg/Bay Point",
+  "Pleasant Hill/Contra Costa Centre", "Powell St.", "Richmond", "Rockridge",
+  "San Bruno", "San Francisco International Airport", "San Leandro", "South Hayward",
+  "South San Francisco", "Union City", "Walnut Creek", "Warm Springs/South Fremont",
+  "West Dublin/Pleasanton", "West Oakland"
+];
+
 const selOrigin = document.getElementById("sel-origin");
 const selDest = document.getElementById("sel-dest");
-for (const name of STATIONS) {
-  selOrigin.add(new Option(name, name));
-  selDest.add(new Option(name, name));
-}
-selOrigin.value = "Hillsdale";
-selDest.value = "San Francisco";
 
-function makeEmptyCard(origin, destination) {
-  const dir = STATIONS.indexOf(origin) > STATIONS.indexOf(destination) ? "NB" : "SB";
+// Unified pickers: one list, two optgroups; option values carry "agency:name".
+// Picking an origin narrows the destination list to that agency (SPEC-BART §9.4).
+const GROUPS = [["ct", "Caltrain", STATIONS], ["ba", "BART", BART_STATIONS]];
+
+function fillSelect(sel, agencyFilter) {
+  const previous = sel.value;
+  sel.replaceChildren(); // not `length = 0`, which strips options but leaves empty optgroups
+  for (const [agency, label, list] of GROUPS) {
+    if (agencyFilter && agency !== agencyFilter) continue;
+    const group = document.createElement("optgroup");
+    group.label = label;
+    for (const name of list) group.appendChild(new Option(name, `${agency}:${name}`));
+    sel.appendChild(group);
+  }
+  if ([...sel.options].some((o) => o.value === previous)) sel.value = previous;
+}
+
+const agencyOf = (value) => value.split(":")[0];
+const nameOf = (value) => value.slice(value.indexOf(":") + 1);
+
+fillSelect(selOrigin, null);
+selOrigin.value = "ct:Hillsdale";
+fillSelect(selDest, "ct");
+selDest.value = "ct:San Francisco";
+
+selOrigin.addEventListener("change", () => fillSelect(selDest, agencyOf(selOrigin.value)));
+
+function makeEmptyCard(origin, destination, agency) {
+  const dir = agency === "ba"
+    ? "BART"
+    : STATIONS.indexOf(origin) > STATIONS.indexOf(destination) ? "NB" : "SB";
   const card = document.createElement("article");
   card.className = "card arriving";
   card.dataset.origin = origin;
@@ -610,19 +776,20 @@ document.body.addEventListener("click", (e) => {
     case "swap-add": {
       const a = selOrigin.value;
       selOrigin.value = selDest.value;
+      fillSelect(selDest, agencyOf(selOrigin.value));
       selDest.value = a;
       break;
     }
     case "add-favorite": {
-      const origin = selOrigin.value, destination = selDest.value;
-      if (origin === destination) {
+      if (selOrigin.value === selDest.value) {
         const row = document.getElementById("add-row");
         row.classList.remove("shake");
         void row.offsetWidth;
         row.classList.add("shake");
         return;
       }
-      document.getElementById("favorites").appendChild(makeEmptyCard(origin, destination));
+      const card = makeEmptyCard(nameOf(selOrigin.value), nameOf(selDest.value), agencyOf(selOrigin.value));
+      document.getElementById("favorites").appendChild(card);
       break;
     }
     case "swap-card": {
@@ -630,7 +797,9 @@ document.body.addEventListener("click", (e) => {
       const o = card.querySelector(".o"), d = card.querySelector(".d");
       [o.textContent, d.textContent] = [d.textContent, o.textContent];
       const tag = card.querySelector(".dir-tag");
-      tag.textContent = tag.textContent === "NB" ? "SB" : "NB";
+      if (tag.textContent !== "BART") {
+        tag.textContent = tag.textContent === "NB" ? "SB" : "NB";
+      }
       break;
     }
     case "remove-card": {
