@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -61,11 +62,13 @@ def payload_of(*visits: dict, siri_wrapper: bool = False, collapse_single: bool 
 
 @pytest.fixture(autouse=True)
 def _reset_transit511():
-    from app import transit511
+    from app import bart, transit511
 
     transit511.reset()
+    bart.reset()
     yield
     transit511.reset()
+    bart.reset()
 
 
 @pytest.fixture
@@ -87,3 +90,26 @@ def stopmonitoring_payload(stopmonitoring_bytes) -> dict:
 @pytest.fixture
 def servicealerts_payload(servicealerts_bytes) -> dict:
     return json.loads(servicealerts_bytes.decode("utf-8-sig"))
+
+
+# --- BART fixtures (captured 2026-07-02 ~22:03 UTC — see fixtures/bart/README) ---
+
+BART_CAPTURE_NOW = datetime(2026, 7, 2, 22, 3, tzinfo=timezone.utc)
+
+
+@pytest.fixture
+def bart_tripupdate_bytes() -> bytes:
+    """Raw GTFS-RT protobuf exactly as BART served it."""
+    return (FIXTURES / "bart" / "tripupdate.pb").read_bytes()
+
+
+@pytest.fixture
+def bart_alerts_bytes() -> bytes:
+    return (FIXTURES / "bart" / "alerts.pb").read_bytes()
+
+
+@pytest.fixture
+def bart_feed(bart_tripupdate_bytes) -> dict:
+    from app import bart
+
+    return bart.parse_trip_updates(bart_tripupdate_bytes)

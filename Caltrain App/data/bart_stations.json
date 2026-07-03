@@ -1,0 +1,823 @@
+{
+ "generated_at": "2026-07-02",
+ "source": "https://www.bart.gov/dev/schedules/google_transit.zip",
+ "feed_version": "72",
+ "stations": [
+  {
+   "id": "12th_street_oakland_city_center",
+   "abbr": "12TH",
+   "name": "12th Street / Oakland City Center",
+   "lat": 37.803482,
+   "lon": -122.27163,
+   "lines": [
+    "Orange",
+    "Red",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "16th_street_mission",
+   "abbr": "16TH",
+   "name": "16th Street / Mission",
+   "lat": 37.765173,
+   "lon": -122.419704,
+   "lines": [
+    "Blue",
+    "Green",
+    "Red",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "19th_street_oakland",
+   "abbr": "19TH",
+   "name": "19th Street Oakland",
+   "lat": 37.808078,
+   "lon": -122.268758,
+   "lines": [
+    "Orange",
+    "Red",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "24th_street_mission",
+   "abbr": "24TH",
+   "name": "24th Street / Mission",
+   "lat": 37.752419,
+   "lon": -122.418468,
+   "lines": [
+    "Blue",
+    "Green",
+    "Red",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "antioch",
+   "abbr": "ANTC",
+   "name": "Antioch",
+   "lat": 37.995373,
+   "lon": -121.780346,
+   "lines": [
+    "Yellow"
+   ]
+  },
+  {
+   "id": "ashby",
+   "abbr": "ASHB",
+   "name": "Ashby",
+   "lat": 37.853072,
+   "lon": -122.269771,
+   "lines": [
+    "Orange",
+    "Red"
+   ]
+  },
+  {
+   "id": "balboa_park",
+   "abbr": "BALB",
+   "name": "Balboa Park",
+   "lat": 37.721747,
+   "lon": -122.447457,
+   "lines": [
+    "Blue",
+    "Green",
+    "Red",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "bay_fair",
+   "abbr": "BAYF",
+   "name": "Bay Fair",
+   "lat": 37.696908,
+   "lon": -122.126446,
+   "lines": [
+    "Blue",
+    "Green",
+    "Orange",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "berryessa_north_san_jose",
+   "abbr": "BERY",
+   "name": "Berryessa / North San Jose",
+   "lat": 37.368473,
+   "lon": -121.874681,
+   "lines": [
+    "Green",
+    "Orange",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "castro_valley",
+   "abbr": "CAST",
+   "name": "Castro Valley",
+   "lat": 37.690737,
+   "lon": -122.075601,
+   "lines": [
+    "Blue"
+   ]
+  },
+  {
+   "id": "civic_center_un_plaza",
+   "abbr": "CIVC",
+   "name": "Civic Center / UN Plaza",
+   "lat": 37.779408,
+   "lon": -122.413826,
+   "lines": [
+    "Blue",
+    "Green",
+    "Red",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "coliseum",
+   "abbr": "COLS",
+   "name": "Coliseum",
+   "lat": 37.753576,
+   "lon": -122.196716,
+   "lines": [
+    "Blue",
+    "Green",
+    "Grey",
+    "Orange",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "colma",
+   "abbr": "COLM",
+   "name": "Colma",
+   "lat": 37.684635,
+   "lon": -122.466157,
+   "lines": [
+    "Red",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "concord",
+   "abbr": "CONC",
+   "name": "Concord",
+   "lat": 37.973757,
+   "lon": -122.029072,
+   "lines": [
+    "Yellow"
+   ]
+  },
+  {
+   "id": "daly_city",
+   "abbr": "DALY",
+   "name": "Daly City",
+   "lat": 37.706259,
+   "lon": -122.468908,
+   "lines": [
+    "Blue",
+    "Green",
+    "Red",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "downtown_berkeley",
+   "abbr": "DBRK",
+   "name": "Downtown Berkeley",
+   "lat": 37.87011,
+   "lon": -122.268109,
+   "lines": [
+    "Orange",
+    "Red"
+   ]
+  },
+  {
+   "id": "dublin_pleasanton",
+   "abbr": "DUBL",
+   "name": "Dublin / Pleasanton",
+   "lat": 37.701646,
+   "lon": -121.899229,
+   "lines": [
+    "Blue"
+   ]
+  },
+  {
+   "id": "el_cerrito_del_norte",
+   "abbr": "DELN",
+   "name": "El Cerrito Del Norte",
+   "lat": 37.925184,
+   "lon": -122.316892,
+   "lines": [
+    "Orange",
+    "Red"
+   ]
+  },
+  {
+   "id": "el_cerrito_plaza",
+   "abbr": "PLZA",
+   "name": "El Cerrito Plaza",
+   "lat": 37.90261,
+   "lon": -122.29892,
+   "lines": [
+    "Orange",
+    "Red"
+   ]
+  },
+  {
+   "id": "embarcadero",
+   "abbr": "EMBR",
+   "name": "Embarcadero",
+   "lat": 37.792762,
+   "lon": -122.397037,
+   "lines": [
+    "Blue",
+    "Green",
+    "Red",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "fremont",
+   "abbr": "FRMT",
+   "name": "Fremont",
+   "lat": 37.55748,
+   "lon": -121.976619,
+   "lines": [
+    "Green",
+    "Orange",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "fruitvale",
+   "abbr": "FTVL",
+   "name": "Fruitvale",
+   "lat": 37.774841,
+   "lon": -122.224081,
+   "lines": [
+    "Blue",
+    "Green",
+    "Orange",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "glen_park",
+   "abbr": "GLEN",
+   "name": "Glen Park",
+   "lat": 37.733235,
+   "lon": -122.433515,
+   "lines": [
+    "Blue",
+    "Green",
+    "Red",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "hayward",
+   "abbr": "HAYW",
+   "name": "Hayward",
+   "lat": 37.669699,
+   "lon": -122.086958,
+   "lines": [
+    "Green",
+    "Orange",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "lafayette",
+   "abbr": "LAFY",
+   "name": "Lafayette",
+   "lat": 37.893183,
+   "lon": -122.12462,
+   "lines": [
+    "Yellow"
+   ]
+  },
+  {
+   "id": "lake_merritt",
+   "abbr": "LAKE",
+   "name": "Lake Merritt",
+   "lat": 37.797322,
+   "lon": -122.265247,
+   "lines": [
+    "Blue",
+    "Green",
+    "Orange",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "macarthur",
+   "abbr": "MCAR",
+   "name": "MacArthur",
+   "lat": 37.828803,
+   "lon": -122.267105,
+   "lines": [
+    "Orange",
+    "Red",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "millbrae",
+   "abbr": "MLBR",
+   "name": "Millbrae",
+   "lat": 37.600237,
+   "lon": -122.386757,
+   "lines": [
+    "Red",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "milpitas",
+   "abbr": "MLPT",
+   "name": "Milpitas",
+   "lat": 37.410277,
+   "lon": -121.891081,
+   "lines": [
+    "Green",
+    "Orange",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "montgomery_street",
+   "abbr": "MONT",
+   "name": "Montgomery Street",
+   "lat": 37.789173,
+   "lon": -122.401587,
+   "lines": [
+    "Blue",
+    "Green",
+    "Red",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "north_berkeley",
+   "abbr": "NBRK",
+   "name": "North Berkeley",
+   "lat": 37.874005,
+   "lon": -122.283523,
+   "lines": [
+    "Orange",
+    "Red"
+   ]
+  },
+  {
+   "id": "north_concord_martinez",
+   "abbr": "NCON",
+   "name": "North Concord / Martinez",
+   "lat": 38.003383,
+   "lon": -122.024512,
+   "lines": [
+    "Yellow"
+   ]
+  },
+  {
+   "id": "oakland_international_airport",
+   "abbr": "OAKL",
+   "name": "Oakland International Airport",
+   "lat": 37.713256,
+   "lon": -122.212237,
+   "lines": [
+    "Grey"
+   ]
+  },
+  {
+   "id": "orinda",
+   "abbr": "ORIN",
+   "name": "Orinda",
+   "lat": 37.878481,
+   "lon": -122.183667,
+   "lines": [
+    "Yellow"
+   ]
+  },
+  {
+   "id": "pittsburg_bay_point",
+   "abbr": "PITT",
+   "name": "Pittsburg / Bay Point",
+   "lat": 38.01891,
+   "lon": -121.944236,
+   "lines": [
+    "Yellow"
+   ]
+  },
+  {
+   "id": "pittsburg_center",
+   "abbr": "PCTR",
+   "name": "Pittsburg Center",
+   "lat": 38.016847,
+   "lon": -121.889062,
+   "lines": [
+    "Yellow"
+   ]
+  },
+  {
+   "id": "pleasant_hill_contra_costa_centre",
+   "abbr": "PHIL",
+   "name": "Pleasant Hill / Contra Costa Centre",
+   "lat": 37.928434,
+   "lon": -122.055971,
+   "lines": [
+    "Yellow"
+   ]
+  },
+  {
+   "id": "powell_street",
+   "abbr": "POWL",
+   "name": "Powell Street",
+   "lat": 37.784606,
+   "lon": -122.407331,
+   "lines": [
+    "Blue",
+    "Green",
+    "Red",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "richmond",
+   "abbr": "RICH",
+   "name": "Richmond",
+   "lat": 37.936758,
+   "lon": -122.353047,
+   "lines": [
+    "Orange",
+    "Red"
+   ]
+  },
+  {
+   "id": "rockridge",
+   "abbr": "ROCK",
+   "name": "Rockridge",
+   "lat": 37.844755,
+   "lon": -122.251235,
+   "lines": [
+    "Yellow"
+   ]
+  },
+  {
+   "id": "san_bruno",
+   "abbr": "SBRN",
+   "name": "San Bruno",
+   "lat": 37.63773,
+   "lon": -122.416326,
+   "lines": [
+    "Red",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "san_francisco_international_airport",
+   "abbr": "SFIA",
+   "name": "San Francisco International Airport",
+   "lat": 37.616091,
+   "lon": -122.391954,
+   "lines": [
+    "Red",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "san_leandro",
+   "abbr": "SANL",
+   "name": "San Leandro",
+   "lat": 37.721784,
+   "lon": -122.16074,
+   "lines": [
+    "Blue",
+    "Green",
+    "Orange",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "south_hayward",
+   "abbr": "SHAY",
+   "name": "South Hayward",
+   "lat": 37.63434,
+   "lon": -122.057182,
+   "lines": [
+    "Green",
+    "Orange",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "south_san_francisco",
+   "abbr": "SSAN",
+   "name": "South San Francisco",
+   "lat": 37.664462,
+   "lon": -122.444211,
+   "lines": [
+    "Red",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "union_city",
+   "abbr": "UCTY",
+   "name": "Union City",
+   "lat": 37.590735,
+   "lon": -122.017248,
+   "lines": [
+    "Green",
+    "Orange",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "walnut_creek",
+   "abbr": "WCRK",
+   "name": "Walnut Creek",
+   "lat": 37.905791,
+   "lon": -122.067327,
+   "lines": [
+    "Yellow"
+   ]
+  },
+  {
+   "id": "warm_springs_south_fremont",
+   "abbr": "WARM",
+   "name": "Warm Springs / South Fremont",
+   "lat": 37.502285,
+   "lon": -121.939395,
+   "lines": [
+    "Green",
+    "Orange",
+    "Yellow"
+   ]
+  },
+  {
+   "id": "west_dublin_pleasanton",
+   "abbr": "WDUB",
+   "name": "West Dublin / Pleasanton",
+   "lat": 37.699721,
+   "lon": -121.928277,
+   "lines": [
+    "Blue"
+   ]
+  },
+  {
+   "id": "west_oakland",
+   "abbr": "WOAK",
+   "name": "West Oakland",
+   "lat": 37.804888,
+   "lon": -122.295151,
+   "lines": [
+    "Blue",
+    "Green",
+    "Red",
+    "Yellow"
+   ]
+  }
+ ],
+ "platforms": {
+  "A10-1": "LAKE",
+  "A10-2": "LAKE",
+  "A20-1": "FTVL",
+  "A20-2": "FTVL",
+  "A30-1": "COLS",
+  "A30-2": "COLS",
+  "H10": "COLS",
+  "A40-1": "SANL",
+  "A40-2": "SANL",
+  "A50-1": "BAYF",
+  "A50-2": "BAYF",
+  "A60-1": "HAYW",
+  "A60-2": "HAYW",
+  "A70-1": "SHAY",
+  "A70-2": "SHAY",
+  "A80-1": "UCTY",
+  "A80-2": "UCTY",
+  "A90-1": "FRMT",
+  "A90-2": "FRMT",
+  "C10-1": "ROCK",
+  "C10-2": "ROCK",
+  "C20-1": "ORIN",
+  "C20-2": "ORIN",
+  "C30-1": "LAFY",
+  "C30-2": "LAFY",
+  "C40-1": "WCRK",
+  "C40-2": "WCRK",
+  "C50-1": "PHIL",
+  "C50-2": "PHIL",
+  "C60-1": "CONC",
+  "C60-2": "CONC",
+  "C70-1": "NCON",
+  "C70-2": "NCON",
+  "C80-1": "PITT",
+  "C80-2": "PITT",
+  "E20-1": "PCTR",
+  "E20-2": "PCTR",
+  "E30-1": "ANTC",
+  "E30-2": "ANTC",
+  "H40": "OAKL",
+  "K10-1": "12TH",
+  "K10-2": "12TH",
+  "K10-3": "12TH",
+  "K20-1": "19TH",
+  "K20-2": "19TH",
+  "K20-3": "19TH",
+  "K30-1": "MCAR",
+  "K30-2": "MCAR",
+  "K30-3": "MCAR",
+  "K30-4": "MCAR",
+  "L10-1": "CAST",
+  "L10-2": "CAST",
+  "L20-1": "WDUB",
+  "L20-2": "WDUB",
+  "L30-1": "DUBL",
+  "L30-2": "DUBL",
+  "M10-1": "WOAK",
+  "M10-2": "WOAK",
+  "M16-1": "EMBR",
+  "M16-2": "EMBR",
+  "M20-1": "MONT",
+  "M20-2": "MONT",
+  "M30-1": "POWL",
+  "M30-2": "POWL",
+  "M40-1": "CIVC",
+  "M40-2": "CIVC",
+  "M50-1": "16TH",
+  "M50-2": "16TH",
+  "M60-1": "24TH",
+  "M60-2": "24TH",
+  "M70-1": "GLEN",
+  "M70-2": "GLEN",
+  "M80-1": "BALB",
+  "M80-2": "BALB",
+  "M90-1": "DALY",
+  "M90-2": "DALY",
+  "M90-3": "DALY",
+  "R10-1": "ASHB",
+  "R10-2": "ASHB",
+  "R20-1": "DBRK",
+  "R20-2": "DBRK",
+  "R30-1": "NBRK",
+  "R30-2": "NBRK",
+  "R40-1": "PLZA",
+  "R40-2": "PLZA",
+  "R50-1": "DELN",
+  "R50-2": "DELN",
+  "R60-1": "RICH",
+  "R60-2": "RICH",
+  "S20-1": "WARM",
+  "S20-2": "WARM",
+  "S40-1": "MLPT",
+  "S40-2": "MLPT",
+  "S50-1": "BERY",
+  "S50-2": "BERY",
+  "W10-1": "COLM",
+  "W10-2": "COLM",
+  "W20-1": "SSAN",
+  "W20-2": "SSAN",
+  "W30-1": "SBRN",
+  "W30-2": "SBRN",
+  "W40-3": "MLBR",
+  "Y10-1": "SFIA",
+  "Y10-2": "SFIA",
+  "Y10-3": "SFIA",
+  "12TH_1": "12TH",
+  "12TH_2": "12TH",
+  "12TH_3": "12TH",
+  "12TH_4": "12TH",
+  "12TH_5": "12TH",
+  "12TH_6": "12TH",
+  "12TH_7": "12TH",
+  "12TH_8": "12TH",
+  "16TH_1": "16TH",
+  "16TH_2": "16TH",
+  "16TH_3": "16TH",
+  "19TH_1": "19TH",
+  "19TH_2": "19TH",
+  "19TH_3": "19TH",
+  "19TH_4": "19TH",
+  "19TH_5": "19TH",
+  "19TH_6": "19TH",
+  "24TH_1": "24TH",
+  "24TH_2": "24TH",
+  "24TH_3": "24TH",
+  "ANTC_1": "ANTC",
+  "ASHB_1": "ASHB",
+  "ASHB_2": "ASHB",
+  "ASHB_3": "ASHB",
+  "BALB_1": "BALB",
+  "BALB_2": "BALB",
+  "BALB_3": "BALB",
+  "BALB_4": "BALB",
+  "BALB_5": "BALB",
+  "BALB_6": "BALB",
+  "BAYF_1": "BAYF",
+  "BAYF_2": "BAYF",
+  "BERY_1": "BERY",
+  "BERY_2": "BERY",
+  "BERY_3": "BERY",
+  "CAST_1": "CAST",
+  "CIVC_1": "CIVC",
+  "CIVC_2": "CIVC",
+  "CIVC_3": "CIVC",
+  "CIVC_4": "CIVC",
+  "CIVC_5": "CIVC",
+  "CIVC_6": "CIVC",
+  "CIVC_7": "CIVC",
+  "COLM_1": "COLM",
+  "COLM_2": "COLM",
+  "COLS_1": "COLS",
+  "COLS_2": "COLS",
+  "COLS_3": "COLS",
+  "COLS_4": "COLS",
+  "COLS_5": "COLS",
+  "COLS_6": "COLS",
+  "CONC_1": "CONC",
+  "CONC_2": "CONC",
+  "DALY_1": "DALY",
+  "DALY_2": "DALY",
+  "DALY_3": "DALY",
+  "DBRK_1": "DBRK",
+  "DBRK_2": "DBRK",
+  "DBRK_3": "DBRK",
+  "DBRK_4": "DBRK",
+  "DBRK_5": "DBRK",
+  "DELN_1": "DELN",
+  "DELN_2": "DELN",
+  "DUBL_1": "DUBL",
+  "EMBR_1": "EMBR",
+  "EMBR_2": "EMBR",
+  "EMBR_3": "EMBR",
+  "EMBR_4": "EMBR",
+  "EMBR_5": "EMBR",
+  "EMBR_6": "EMBR",
+  "FRMT_1": "FRMT",
+  "FRMT_2": "FRMT",
+  "FRMT_3": "FRMT",
+  "FTVL_1": "FTVL",
+  "GLEN_1": "GLEN",
+  "HAYW_1": "HAYW",
+  "LAFY_1": "LAFY",
+  "LAFY_2": "LAFY",
+  "LAKE_1": "LAKE",
+  "LAKE_2": "LAKE",
+  "LAKE_3": "LAKE",
+  "LAKE_4": "LAKE",
+  "MCAR_1": "MCAR",
+  "MLBR_1": "MLBR",
+  "MLPT_1": "MLPT",
+  "MLPT_2": "MLPT",
+  "MONT_1": "MONT",
+  "MONT_2": "MONT",
+  "MONT_3": "MONT",
+  "MONT_4": "MONT",
+  "MONT_5": "MONT",
+  "MONT_6": "MONT",
+  "MONT_7": "MONT",
+  "NBRK_1": "NBRK",
+  "NBRK_2": "NBRK",
+  "NCON_1": "NCON",
+  "OAKL_1": "OAKL",
+  "ORIN_1": "ORIN",
+  "PCTR_1": "PCTR",
+  "PHIL_1": "PHIL",
+  "PITT_1": "PITT",
+  "PLZA_1": "PLZA",
+  "PLZA_2": "PLZA",
+  "PLZA_3": "PLZA",
+  "POWL_1": "POWL",
+  "POWL_2": "POWL",
+  "POWL_3": "POWL",
+  "POWL_4": "POWL",
+  "POWL_5": "POWL",
+  "POWL_6": "POWL",
+  "POWL_7": "POWL",
+  "POWL_8": "POWL",
+  "RICH_1": "RICH",
+  "RICH_2": "RICH",
+  "ROCK_1": "ROCK",
+  "ROCK_2": "ROCK",
+  "SANL_1": "SANL",
+  "SANL_2": "SANL",
+  "SBRN_1": "SBRN",
+  "SBRN_2": "SBRN",
+  "SFIA_1": "SFIA",
+  "SHAY_1": "SHAY",
+  "SSAN_1": "SSAN",
+  "SSAN_2": "SSAN",
+  "UCTY_1": "UCTY",
+  "WARM_1": "WARM",
+  "WARM_2": "WARM",
+  "WCRK_1": "WCRK",
+  "WDUB_1": "WDUB",
+  "WDUB_2": "WDUB",
+  "WOAK_1": "WOAK",
+  "WOAK_2": "WOAK"
+ }
+}

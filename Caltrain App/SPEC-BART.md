@@ -656,6 +656,34 @@ run for.
 
 ---
 
+## 13a. Implementation amendments (2026-07-03, Phase 2)
+
+Findings from building against the live feeds; each is reflected in code comments too.
+
+1. **The OAK airport people-mover never appears in GTFS-RT** (verified live twice:
+   zero Grey trips in the capture and in a fresh fetch). §5.5-5's "fixed Coliseum
+   stitch" therefore synthesizes the shuttle leg from generation-time constants
+   (`oak_shuttle` in `bart_trips.json`: p90 headway 420 s, per-direction max ride) —
+   rows are marked `estimated`, status `scheduled`, and the first rung sits a full
+   headway out so a rider is guaranteed aboard by the shown time. When the last leg
+   is the shuttle, rungs anchor at each connection's arrival (not `now`), so distant
+   origins (ANTC→OAKL) resolve. If BART ever adds the shuttle to RT, realtime rows
+   take precedence automatically.
+2. **eBART shuttle STUs never include the PITT stop**, so §5.4's "self-heal via
+   §5.5" could not work as written. Instead, §5.2-4 gained a fallback: unknown
+   trips project arrivals via the smallest static delta over patterns that are
+   (a) order-consistent with ≥2 observed stops and (b) unanimous about reaching the
+   destination (any consistent short-turn candidate → excluded, no phantom rows).
+   This also keeps every pair alive (estimated) after a GTFS rotation.
+   *Known limitation:* ANTC/PCTR→mainline rides render as one estimated through-row,
+   so a mainline-only delay past PITT is not reflected in the arrival. Fast-follow
+   candidate: force such pairs through the transfer machinery instead.
+3. **`transfers.txt` has 34 rows but 30 unique directed platform pairs** (repeats
+   carry identical seconds); the bundle stores the 30.
+4. **`status: "scheduled"` is BART-reachable only on synthesized shuttle rows** —
+   every live STU carried times, and a row with no departure time at the origin has
+   nothing to sort or render, so it is dropped rather than kept as `scheduled`.
+
 ## 13. Decisions (user review, 2026-07-02)
 
 1. **Rename with the BART launch** → **Bay Rail** (§9.7). User is open to names;

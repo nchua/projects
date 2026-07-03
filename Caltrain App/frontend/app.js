@@ -1,10 +1,11 @@
-/* Caltrain Commute Helper — vanilla JS, no build step.
+/* Bay Rail (Caltrain + BART) commute helper — vanilla JS, no build step.
    All dynamic text is set via textContent (never innerHTML with API data).
    All times render in America/Los_Angeles — the server runs UTC. */
 "use strict";
 
 const TZ = "America/Los_Angeles";
-const STORAGE_KEY = "caltrain:favorites:v1";
+const STORAGE_KEY = "transit:favorites:v2";
+const LEGACY_STORAGE_KEY = "caltrain:favorites:v1"; // migrated, left in place (§9.1)
 const MAX_FAVORITES = 6;
 const COLLAPSED_LIMIT = 4;
 const EXPANDED_LIMIT = 10;
@@ -16,10 +17,11 @@ const LEAVE_BUFFER_MIN = 2;
 const MAX_WALK_MIN_FOR_HINTS = 30;
 
 const state = {
-  stations: [],
-  byId: new Map(),
-  favorites: [],
-  nearest: null, // { station, walkMinutes }
+  stations: [], // Caltrain, north→south (line order)
+  bartStations: [], // BART, alphabetical (a branching network has no line order)
+  byAgency: { ct: new Map(), ba: new Map() },
+  favorites: [], // [{ agency, origin, destination }]
+  nearest: null, // { station (carries .agency), walkMinutes }
   lastData: new Map(), // pairKey -> departures payload (for re-render on geolocate)
   expanded: new Set(), // pairKeys showing up to EXPANDED_LIMIT rows (session-only)
   staleness: new Map(), // source -> { stale, asOf }
@@ -53,16 +55,26 @@ function clockFull(value) {
 /* ---------- favorites persistence ---------- */
 
 function pairKey(fav) {
-  return `${fav.origin}:${fav.destination}`;
+  return `${fav.agency}:${fav.origin}:${fav.destination}`;
 }
 
 function loadFavorites() {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return Array.isArray(parsed) ? parsed : [];
+    if (Array.isArray(parsed)) return parsed;
   } catch {
-    return [];
+    /* fall through to migration */
   }
+  // one-time v1 → v2 migration; v1 stays behind for rollback safety
+  try {
+    const legacy = JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY));
+    if (Array.isArray(legacy)) {
+      return legacy.map((fav) => ({ agency: "ct", ...fav }));
+    }
+  } catch {
+    /* corrupt legacy data — start fresh */
+  }
+  return [];
 }
 
 function saveFavorites() {
@@ -75,9 +87,13 @@ function saveFavorites() {
 
 /* ---------- rendering ---------- */
 
+function stationName(agency, id) {
+  return state.byAgency[agency]?.get(id)?.name ?? id;
+}
+
 function directionOf(originId, destinationId) {
-  const o = state.byId.get(originId);
-  const d = state.byId.get(destinationId);
+  const o = state.byAgency.ct.get(originId);
+  const d = state.byAgency.ct.get(destinationId);
   return o && d && o.order > d.order ? "NB" : "SB";
 }
 
@@ -87,11 +103,14 @@ function cardFor(fav) {
 
 function renderCardHead(card, fav) {
   card.dataset.pair = pairKey(fav);
+  card.dataset.agency = fav.agency;
   card.dataset.origin = fav.origin;
   card.dataset.destination = fav.destination;
-  card.querySelector(".o").textContent = state.byId.get(fav.origin)?.name ?? fav.origin;
-  card.querySelector(".d").textContent = state.byId.get(fav.destination)?.name ?? fav.destination;
-  card.querySelector(".dir-tag").textContent = directionOf(fav.origin, fav.destination);
+  card.querySelector(".o").textContent = stationName(fav.agency, fav.origin);
+  card.querySelector(".d").textContent = stationName(fav.agency, fav.destination);
+  // the dir-tag slot carries the agency for BART — no NB/SB on a network
+  card.querySelector(".dir-tag").textContent =
+    fav.agency === "ba" ? "BART" : directionOf(fav.origin, fav.destination);
 }
 
 function ensureCards() {
@@ -142,18 +161,72 @@ function typeClass(trainType) {
   }
 }
 
+function paintLinePill(el, name, colorHex) {
+  el.textContent = name;
+  if (/^#[0-9a-fA-F]{6}$/.test(colorHex || "")) {
+    el.style.color = colorHex;
+    el.style.background = colorHex + "1f"; // ≈12% tint, matches the mockup pills
+  }
+}
+
+function renderDepInfo(row, dep) {
+  const line = row.querySelector(".dep-line");
+  const type = row.querySelector(".type");
+  const tno = row.querySelector(".tno");
+
+  if (dep.legs) {
+    // transfer itinerary: leg pills joined by ▸, then the change-at line —
+    // no headsign (the card title already names the destination)
+    line.textContent = "";
+    dep.legs.forEach((leg, i) => {
+      if (i > 0) {
+        const arrow = document.createElement("span");
+        arrow.className = "leg-arrow";
+        arrow.textContent = "▸";
+        line.append(arrow);
+      }
+      const pill = document.createElement("span");
+      pill.className = "type";
+      paintLinePill(pill, leg.line, leg.line_color);
+      line.append(pill);
+    });
+    const xfer = row.querySelector(".dep-xfer");
+    xfer.hidden = false;
+    xfer.textContent = "change at ";
+    dep.transfers.forEach((transfer, i) => {
+      if (i > 0) xfer.append(", then ");
+      const name = document.createElement("strong");
+      name.textContent = transfer.station_name;
+      xfer.append(name, ` · ${transfer.wait_minutes} min wait`);
+    });
+  } else if (dep.line) {
+    // BART direct: line pill + headsign replace type pill + train number
+    paintLinePill(type, dep.line, dep.line_color);
+    tno.textContent = dep.headsign;
+  } else {
+    type.textContent = dep.train_type;
+    const extra = typeClass(dep.train_type);
+    if (extra) type.classList.add(extra);
+    tno.textContent = dep.train;
+  }
+}
+
 function renderCardBody(fav, data) {
   const card = cardFor(fav);
   if (!card) return;
-  // the server's direction is authoritative; the local calc only covers the
-  // pre-fetch skeleton
-  card.querySelector(".dir-tag").textContent = data.direction;
+  if (data.agency !== "ba") {
+    // the server's direction is authoritative; the local calc only covers
+    // the pre-fetch skeleton (BART cards keep the static agency tag)
+    card.querySelector(".dir-tag").textContent = data.direction;
+  }
 
   if (!data.departures.length) {
     setCardMessage(
       card,
       "No upcoming trains for this pair right now.",
-      "Weekend and South County service is sparse — this is often normal.",
+      data.agency === "ba"
+        ? "BART runs roughly 4 AM–midnight — overnight emptiness is normal."
+        : "Weekend and South County service is sparse — this is often normal.",
     );
     return;
   }
@@ -161,6 +234,7 @@ function renderCardBody(fav, data) {
   const nearest = state.nearest;
   const showLeaveBy =
     nearest &&
+    nearest.station.agency === fav.agency &&
     nearest.station.id === fav.origin &&
     nearest.walkMinutes <= MAX_WALK_MIN_FOR_HINTS;
 
@@ -183,11 +257,7 @@ function renderCardBody(fav, data) {
       row.classList.add("is-sched");
     }
 
-    const type = row.querySelector(".type");
-    type.textContent = dep.train_type;
-    const extra = typeClass(dep.train_type);
-    if (extra) type.classList.add(extra);
-    row.querySelector(".tno").textContent = dep.train;
+    renderDepInfo(row, dep);
 
     row.querySelector(".dep-arr strong").textContent = dep.arrival
       ? clockFull(dep.arrival.expected || dep.arrival.aimed)
@@ -247,6 +317,11 @@ function renderAlerts(alerts) {
     if (state.dismissedAlerts.has(alert.id)) continue;
     const node = $("tpl-alert").content.firstElementChild.cloneNode(true);
     node.dataset.alertId = alert.id;
+    if (alert.agency === "ba") {
+      const tag = node.querySelector(".src-tag");
+      tag.hidden = false;
+      tag.textContent = "BART"; // Caltrain alerts stay untagged, as today
+    }
     node.querySelector(".alert-header").textContent = alert.header;
     node.querySelector(".alert-desc").textContent = alert.description;
     holder.append(node);
@@ -292,6 +367,7 @@ async function fetchPair(fav) {
   const key = pairKey(fav);
   const limit = state.expanded.has(key) ? EXPANDED_LIMIT : COLLAPSED_LIMIT;
   const params = new URLSearchParams({
+    agency: fav.agency,
     origin: fav.origin,
     destination: fav.destination,
     limit: String(limit),
@@ -312,7 +388,7 @@ async function fetchPair(fav) {
 
 async function fetchAlerts() {
   try {
-    const resp = await fetch("/api/alerts", { cache: "no-store" });
+    const resp = await fetch("/api/alerts?agency=all", { cache: "no-store" });
     if (!resp.ok) throw new Error(`http ${resp.status}`);
     const data = await resp.json();
     state.staleness.set("alerts", { stale: data.stale, asOf: data.as_of });
@@ -323,7 +399,7 @@ async function fetchAlerts() {
 }
 
 async function refresh() {
-  if (state.refreshing || !state.stations.length) return;
+  if (state.refreshing || !allStations().length) return;
   state.refreshing = true;
   const btn = document.querySelector('[data-action="refresh"]');
   btn.classList.add("spinning");
@@ -351,13 +427,21 @@ function haversineMeters(lat1, lon1, lat2, lon2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+function allStations() {
+  // nearest-station search runs over the union of both agencies (§9.5)
+  return [
+    ...state.stations.map((s) => ({ ...s, agency: "ct" })),
+    ...state.bartStations.map((s) => ({ ...s, agency: "ba" })),
+  ];
+}
+
 function locate() {
   if (!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       let best = null;
       let bestMeters = Infinity;
-      for (const s of state.stations) {
+      for (const s of allStations()) {
         const m = haversineMeters(pos.coords.latitude, pos.coords.longitude, s.lat, s.lon);
         if (m < bestMeters) {
           bestMeters = m;
@@ -423,11 +507,18 @@ document.body.addEventListener("click", (e) => {
     case "swap-add": {
       const a = $("sel-origin").value;
       $("sel-origin").value = $("sel-dest").value;
+      fillSelect($("sel-dest"), agencyOf($("sel-origin").value));
       $("sel-dest").value = a;
       break;
     }
     case "add-favorite": {
-      const fav = { origin: $("sel-origin").value, destination: $("sel-dest").value };
+      const originValue = $("sel-origin").value;
+      const destValue = $("sel-dest").value;
+      const fav = {
+        agency: agencyOf(originValue),
+        origin: idOf(originValue),
+        destination: idOf(destValue),
+      };
       const exists = state.favorites.some((f) => pairKey(f) === pairKey(fav));
       if (fav.origin === fav.destination || exists || state.favorites.length >= MAX_FAVORITES) {
         shakeAddRow();
@@ -489,11 +580,36 @@ document.body.addEventListener("click", (e) => {
   }
 });
 
+/* ---------- unified station pickers (§9.4) ---------- */
+
+// Option values carry "agency:id" — picking a station IS picking the agency,
+// so invalid mixed pairs are unpickable rather than validated after the fact.
+const agencyOf = (value) => value.split(":", 1)[0];
+const idOf = (value) => value.slice(value.indexOf(":") + 1);
+
+function fillSelect(sel, agencyFilter) {
+  const previous = sel.value;
+  const groups = [
+    ["ct", "Caltrain", state.stations],
+    ["ba", "BART", state.bartStations],
+  ];
+  sel.replaceChildren(); // not `length = 0`, which leaves empty optgroups behind
+  for (const [agency, label, list] of groups) {
+    if (agencyFilter && agency !== agencyFilter) continue;
+    const group = document.createElement("optgroup");
+    group.label = label;
+    for (const s of list) group.appendChild(new Option(s.name, `${agency}:${s.id}`));
+    sel.appendChild(group);
+  }
+  if ([...sel.options].some((option) => option.value === previous)) sel.value = previous;
+}
+
 /* ---------- startup ---------- */
 
 async function init() {
   $("today").textContent = dateFmt.format(new Date());
-  $("footer-note").textContent = "Times shown in Pacific Time · realtime data from 511.org";
+  $("footer-note").textContent =
+    "Times shown in Pacific Time · realtime data from 511.org and bart.gov";
 
   let stationsPayload;
   try {
@@ -506,19 +622,22 @@ async function init() {
   }
 
   state.stations = stationsPayload.stations;
-  state.byId = new Map(state.stations.map((s) => [s.id, s]));
+  state.bartStations = stationsPayload.bart_stations ?? [];
+  state.byAgency.ct = new Map(state.stations.map((s) => [s.id, s]));
+  state.byAgency.ba = new Map(state.bartStations.map((s) => [s.id, s]));
 
   const selOrigin = $("sel-origin");
   const selDest = $("sel-dest");
-  for (const s of state.stations) {
-    selOrigin.add(new Option(s.name, s.id));
-    selDest.add(new Option(s.name, s.id));
-  }
-  if (state.byId.has("san_carlos")) selOrigin.value = "san_carlos";
-  if (state.byId.has("san_francisco")) selDest.value = "san_francisco";
+  fillSelect(selOrigin, null);
+  if (state.byAgency.ct.has("san_carlos")) selOrigin.value = "ct:san_carlos";
+  // destination narrows to the origin's agency; the ⇄ swap is unaffected
+  fillSelect(selDest, agencyOf(selOrigin.value));
+  if (state.byAgency.ct.has("san_francisco")) selDest.value = "ct:san_francisco";
+  selOrigin.addEventListener("change", () => fillSelect(selDest, agencyOf(selOrigin.value)));
 
   state.favorites = loadFavorites()
-    .filter((f) => f && state.byId.has(f.origin) && state.byId.has(f.destination))
+    .map((f) => f && { agency: "ct", ...f }) // tolerate agencyless v1-shaped entries
+    .filter((f) => f && state.byAgency[f.agency]?.has(f.origin) && state.byAgency[f.agency]?.has(f.destination))
     .slice(0, MAX_FAVORITES);
   saveFavorites();
   ensureCards();

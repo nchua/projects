@@ -6,19 +6,19 @@
 <meta name="theme-color" content="#0e1114">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Caltrain">
+<meta name="apple-mobile-web-app-title" content="Bay Rail">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="style.css">
-<title>Caltrain</title>
+<title>Bay Rail</title>
 </head>
 <body>
 
 <header class="topbar">
   <div class="brand">
-    <span class="brand-mark" aria-hidden="true">C</span>
-    <h1>Caltrain
+    <span class="brand-mark" aria-hidden="true">B</span>
+    <h1>Bay Rail
       <span class="sub" id="today"></span>
     </h1>
   </div>
@@ -109,6 +109,7 @@
     </div>
     <div class="dep-info">
       <div class="dep-line"><span class="type"></span><span class="tno"></span></div>
+      <div class="dep-xfer" hidden>change at <strong></strong></div>
       <div class="dep-arr">arrives <strong></strong></div>
     </div>
     <div class="dep-status">
@@ -123,7 +124,7 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
     </svg>
-    <p><strong class="alert-header"></strong> <span class="alert-desc"></span></p>
+    <p><span class="src-tag" hidden></span><strong class="alert-header"></strong> <span class="alert-desc"></span></p>
     <button class="alert-x pressable" data-action="dismiss-alert" aria-label="Dismiss alert">✕</button>
   </div>
 </template>
