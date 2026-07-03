@@ -98,18 +98,28 @@ def test_parse_alerts_overrides_generic_header_and_treats_no_period_as_active(ba
     assert len(alerts) == 2  # no periods at all → always active
     for alert in alerts:
         assert alert["header"] != "BART.gov Alert"
-        assert alert["description"].startswith(alert["header"][:20])
+        # header + description split the feed text — the banner never repeats itself
+        assert not alert["description"].startswith(alert["header"][:30])
         assert len(alert["header"]) <= 121
         assert alert["id"].startswith("BSA_")
 
 
-def test_parse_alerts_sentence_truncates_long_descriptions():
+def test_parse_alerts_sentence_truncates_and_splits_long_descriptions():
     sentence = "Expect delays between stations tonight. " * 5
     parsed = {"alerts": [{"id": "x", "header": "", "description": sentence.strip(), "periods": []}]}
     [alert] = bart_pairs.parse_alerts(parsed)
-    # three full sentences fit inside the ~120-char banner window
+    # three full sentences fit inside the ~120-char banner window; the
+    # remaining two become the description — nothing renders twice
     assert alert["header"] == ("Expect delays between stations tonight. " * 3).strip()
-    assert alert["header"].endswith(".")
+    assert alert["description"] == ("Expect delays between stations tonight. " * 2).strip()
+
+
+def test_parse_alerts_short_description_becomes_header_only():
+    parsed = {"alerts": [{"id": "x", "header": "BART.gov Alert",
+                          "description": "Short advisory.", "periods": []}]}
+    [alert] = bart_pairs.parse_alerts(parsed)
+    assert alert["header"] == "Short advisory."
+    assert alert["description"] == ""
 
 
 def test_parse_alerts_word_truncates_when_no_sentence_boundary_fits():
@@ -118,6 +128,7 @@ def test_parse_alerts_word_truncates_when_no_sentence_boundary_fits():
     [alert] = bart_pairs.parse_alerts(parsed)
     assert alert["header"].endswith("…")
     assert len(alert["header"]) <= 121
+    assert alert["description"].startswith("word")  # remainder, not a repeat
 
 
 def test_parse_alerts_filters_by_active_period():

@@ -483,17 +483,20 @@ _BANNER_MAX_CHARS = 120
 _SENTENCE_ENDS = (". ", "! ", "? ")
 
 
-def _banner_header(description: str) -> str:
-    """First ~120 chars of the description, sentence-boundary truncated —
-    the feed's own header_text is a useless generic 'BART.gov Alert'."""
+def _split_banner(description: str) -> tuple[str, str]:
+    """(header, remainder): the first ~120 chars of the description,
+    sentence-boundary truncated, plus whatever follows — the feed's own
+    header_text is a useless generic 'BART.gov Alert'. Splitting (rather than
+    copying) keeps the banner from reading the same text twice."""
     if len(description) <= _BANNER_MAX_CHARS:
-        return description
+        return description, ""
     window = description[: _BANNER_MAX_CHARS + 1]
     cut = max(window.rfind(end) + len(end.rstrip()) for end in _SENTENCE_ENDS)
     if cut > 0:
-        return window[:cut].strip()
+        return window[:cut].strip(), description[cut:].strip()
     space = window.rfind(" ")
-    return window[: space if space > 0 else _BANNER_MAX_CHARS].strip() + "…"
+    cut = space if space > 0 else _BANNER_MAX_CHARS
+    return window[:cut].strip() + "…", description[cut:].strip()
 
 
 def parse_alerts(parsed: dict, now: datetime | None = None) -> list[dict]:
@@ -516,7 +519,7 @@ def parse_alerts(parsed: dict, now: datetime | None = None) -> list[dict]:
         description = alert["description"].strip()
         header = alert["header"].strip()
         if not header or header.lower() == _GENERIC_HEADER:
-            header = _banner_header(description)
+            header, description = _split_banner(description)
         if not header and not description:
             continue
 
