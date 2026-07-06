@@ -25,6 +25,10 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Author display rules (e.g. .stale-pill's inline-flex) override the UA's
+   [hidden] { display: none }, so JS-toggled `hidden` needs this to win. */
+[hidden] { display: none !important; }
+
 html { -webkit-text-size-adjust: 100%; }
 
 body {
