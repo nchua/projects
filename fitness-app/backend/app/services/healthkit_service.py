@@ -24,8 +24,8 @@ the **endpoint owns the final ``db.commit()``** (and rollback on error).
 
 Datetime discipline: the DB stores **naive UTC**; the WHOOP overlap matchers
 expect **aware UTC** (``ensure_utc``); ``ingest_heart_rate`` normalizes samples
-to naive UTC itself. New session dates are stored naive-UTC so quest
-day-bucketing files them on the correct local day.
+to naive UTC itself. New session dates are stored naive-UTC so day-stat
+helpers bucket them on the correct local day.
 """
 import logging
 from datetime import datetime, timedelta, timezone

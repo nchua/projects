@@ -4,7 +4,8 @@
 //
 //  Workout detail (quest summary + per-exercise objective cards).
 //  Extracted from HistoryView.swift when the History tab was removed
-//  (ARISE v2 Phase 0) — still used by HuntView and StatsView.
+//  (ARISE v2 Phase 0). QuestDetailView itself is presented by StatsView;
+//  the summary/objective cards are shared with HuntView.
 //
 
 import SwiftUI

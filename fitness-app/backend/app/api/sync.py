@@ -34,6 +34,73 @@ from app.services.xp_service import award_xp, calculate_workout_xp, get_or_creat
 router = APIRouter()
 
 
+def _award_workout_xp(db: Session, user: User, workout_session: WorkoutSession) -> None:
+    """
+    Award XP for a newly synced workout, mirroring the POST /workouts pipeline.
+
+    Counts the workout's PRs, awards XP, updates progress totals
+    (volume, PR count), and re-checks achievements. The caller must only
+    invoke this for brand-new workouts — retries of an already-synced
+    date must stay XP-neutral.
+
+    Args:
+        db: Database session
+        user: Owner of the workout
+        workout_session: Flushed (but not yet committed) workout session
+    """
+    workout_prs = db.query(PR).filter(
+        PR.user_id == user.id,
+        PR.set_id.in_([
+            s.id
+            for we in workout_session.workout_exercises
+            for s in we.sets
+        ])
+    ).count()
+
+    # Eager re-load so calculate_workout_xp can walk exercises/sets
+    # (relationship collections are unreliable right after flushes —
+    # see CLAUDE.md SQLAlchemy joinedload rule).
+    loaded_workout = db.query(WorkoutSession).options(
+        joinedload(WorkoutSession.workout_exercises)
+        .joinedload(WorkoutExercise.sets),
+        joinedload(WorkoutSession.workout_exercises)
+        .joinedload(WorkoutExercise.exercise)
+    ).filter(WorkoutSession.id == workout_session.id).first()
+
+    xp_result = calculate_workout_xp(db, loaded_workout, prs_achieved=workout_prs)
+    award_xp(
+        db,
+        user.id,
+        xp_result["xp_earned"],
+        workout_date=workout_session.date
+    )
+
+    progress = get_or_create_user_progress(db, user.id)
+    progress.total_volume_lb += xp_result["total_volume"]
+    progress.total_prs += workout_prs
+
+    # Build the per-exercise PR map the same way POST /workouts does
+    # so exercise-milestone achievements can unlock via sync.
+    all_prs = db.query(PR).options(joinedload(PR.exercise)).filter(
+        PR.user_id == user.id
+    ).all()
+    exercise_prs: dict[str, float] = {}
+    for pr in all_prs:
+        exercise_name = pr.exercise.name.lower() if pr.exercise else ""
+        pr_weight = pr.weight if pr.weight is not None else pr.value
+        if pr_weight is not None and pr_weight > exercise_prs.get(exercise_name, 0):
+            exercise_prs[exercise_name] = pr_weight
+
+    check_and_unlock_achievements(db, user.id, {
+        "workout_count": progress.total_workouts,
+        "level": progress.level,
+        "rank": progress.rank,
+        "prs_count": progress.total_prs,
+        "current_streak": progress.current_streak,
+        "exercise_prs": exercise_prs,
+    })
+
+
 @router.post("", response_model=SyncResponse)
 @router.post("/", response_model=SyncResponse)
 async def sync_data(
@@ -143,45 +210,12 @@ async def sync_data(
 
             # Award XP for the synced workout, mirroring the POST /workouts
             # pipeline (offline-logged workouts previously earned nothing).
-            workout_prs = db.query(PR).filter(
-                PR.user_id == current_user.id,
-                PR.set_id.in_([
-                    s.id
-                    for we in workout_session.workout_exercises
-                    for s in we.sets
-                ])
-            ).count()
-
-            # Eager re-load so calculate_workout_xp can walk exercises/sets
-            # (relationship collections are unreliable right after flushes —
-            # see CLAUDE.md SQLAlchemy joinedload rule).
-            loaded_workout = db.query(WorkoutSession).options(
-                joinedload(WorkoutSession.workout_exercises)
-                .joinedload(WorkoutExercise.sets),
-                joinedload(WorkoutSession.workout_exercises)
-                .joinedload(WorkoutExercise.exercise)
-            ).filter(WorkoutSession.id == workout_session.id).first()
-
-            xp_result = calculate_workout_xp(db, loaded_workout, prs_achieved=workout_prs)
-            award_xp(
-                db,
-                current_user.id,
-                xp_result["xp_earned"],
-                workout_date=workout_session.date
-            )
-
-            progress = get_or_create_user_progress(db, current_user.id)
-            progress.total_volume_lb += xp_result["total_volume"]
-            progress.total_prs += workout_prs
-
-            check_and_unlock_achievements(db, current_user.id, {
-                "workout_count": progress.total_workouts,
-                "level": progress.level,
-                "rank": progress.rank,
-                "prs_count": progress.total_prs,
-                "current_streak": progress.current_streak,
-                "exercise_prs": {},
-            })
+            # Skipped on the conflict path: the replaced same-date workout
+            # already earned its XP, so a retry/re-send of the same batch
+            # must stay XP-neutral (POST /workouts gets this from client_id
+            # dedupe; sync has no client_id, so the conflict flag is the guard).
+            if existing is None:
+                _award_workout_xp(db, current_user, workout_session)
 
             results.append(SyncResult(
                 entity_type="workout",

@@ -1,11 +1,11 @@
 """
-Shared workout statistics calculations used by quest, dungeon, and XP services.
+Shared workout statistics calculations used by the XP service and day-stat helpers.
 """
 from typing import Any, Dict
 
 from app.models.workout import WorkoutSession
 
-# Compound exercises for quest/dungeon checking (lowercase for matching)
+# Compound exercises for stat aggregation (lowercase for matching)
 COMPOUND_EXERCISES = [
     "back squat", "squat", "front squat",
     "bench press", "flat bench", "incline bench",
@@ -47,7 +47,7 @@ def calculate_workout_stats(workout: WorkoutSession) -> Dict[str, Any]:
 
     # Wearable HR metrics (None when no wearable data is attached to the session).
     # hr_zone_seconds is a {"z1": secs, ...} map; expose minutes per zone for
-    # HR_ZONE_TIME quests, plus total elevated-zone minutes (z2 and above).
+    # day-stat consumers, plus total elevated-zone minutes (z2 and above).
     zone_seconds = workout.hr_zone_seconds or {}
     zone_minutes = {z: int(secs) // 60 for z, secs in zone_seconds.items()}
     elevated_zone_minutes = sum(

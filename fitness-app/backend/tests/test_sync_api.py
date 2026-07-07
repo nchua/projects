@@ -130,6 +130,25 @@ class TestBulkSync:
         assert after["total_xp"] >= before["total_xp"] + 50
         assert after["total_workouts"] == before["total_workouts"] + 1
 
+    def test_resync_same_date_does_not_double_award_xp(self, client, db, auth_headers, unique_email):
+        """A retry/re-send of the same batch is XP-neutral (conflict path skips the award)."""
+        headers, _user = auth_headers(email=unique_email("sync"))
+        exercise = _seed_exercise(db)
+        payload = _sync_payload(workouts=[_workout_payload(exercise.id)])
+
+        first = client.post("/sync", json=payload, headers=headers)
+        assert first.status_code == 200, first.json()
+        after_first = client.get("/progress", headers=headers).json()
+
+        second = client.post("/sync", json=payload, headers=headers)
+        assert second.status_code == 200, second.json()
+        assert len(second.json()["conflicts"]) == 1  # replacement happened...
+
+        after_second = client.get("/progress", headers=headers).json()
+        # ...but XP and workout count did not double.
+        assert after_second["total_xp"] == after_first["total_xp"]
+        assert after_second["total_workouts"] == after_first["total_workouts"]
+
     def test_same_date_workout_conflict_client_wins(self, client, db, auth_headers, unique_email):
         headers, _user = auth_headers(email=unique_email("sync"))
         exercise = _seed_exercise(db)

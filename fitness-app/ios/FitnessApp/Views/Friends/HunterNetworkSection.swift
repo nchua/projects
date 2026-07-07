@@ -46,8 +46,20 @@ struct HunterNetworkSection: View {
                     )
                 }
 
+                // Outgoing requests (visible + cancellable, parity with the old Friends tab)
+                ForEach(viewModel.sentRequests) { request in
+                    FriendRequestCard(
+                        request: request,
+                        isIncoming: false,
+                        onCancel: {
+                            Task { await viewModel.cancelRequest(id: request.id) }
+                        }
+                    )
+                }
+
                 // Friend list
-                if viewModel.friends.isEmpty && viewModel.incomingRequests.isEmpty && !viewModel.isLoading {
+                if viewModel.friends.isEmpty && viewModel.incomingRequests.isEmpty
+                    && viewModel.sentRequests.isEmpty && !viewModel.isLoading {
                     EmptyFriendsView()
                 } else {
                     ForEach(viewModel.friends) { friend in

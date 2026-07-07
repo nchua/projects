@@ -155,7 +155,7 @@ def award_xp(
         user_id: User ID
         xp_amount: Amount of XP to award
         workout_date: Date of workout for streak tracking
-        count_workout: Whether to increment total_workouts (False for quest/dungeon rewards)
+        count_workout: Whether to increment total_workouts (False for non-workout rewards, e.g. achievements)
 
     Returns:
         Dict with new totals, level up info, rank up info
