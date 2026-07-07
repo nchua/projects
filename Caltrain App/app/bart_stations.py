@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -185,3 +186,20 @@ def transfer_min_s(from_platform: str | None, to_platform: str | None, default: 
     if from_platform is None or to_platform is None:
         return default
     return TRANSFERS.get(from_platform, {}).get(to_platform, default)
+
+
+@lru_cache(maxsize=512)
+def pair_max_service_s(origin_abbr: str, destination_abbr: str) -> int | None:
+    """Static pair-max for the last-train badge (SPEC-V2 §4.2): the latest
+    origin departure in seconds-after-midnight (may exceed 86400) over ALL
+    bundled trips serving origin-before-destination, every day type pooled.
+    None when no bundled trip serves the pair."""
+    best: int | None = None
+    for pattern_index, first_arrival, _route in TRIPS.values():
+        index = _PATTERN_INDEX[pattern_index]
+        origin = index.get(origin_abbr)
+        destination = index.get(destination_abbr)
+        if origin and destination and origin[0] < destination[0]:
+            departure = first_arrival + origin[1]
+            best = departure if best is None else max(best, departure)
+    return best

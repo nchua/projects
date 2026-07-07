@@ -11,14 +11,47 @@ from __future__ import annotations
 
 import json
 from datetime import date, datetime, timedelta
+from functools import lru_cache
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "trip_arrivals.json"
 PACIFIC = ZoneInfo("America/Los_Angeles")
 
+# Service-day clock arithmetic (SPEC-V2 §4.3): most last trains carry 24:xx+
+# GTFS times, so time-of-day comparisons happen in service-day seconds. The
+# 3 AM cutover is safe — zero bundled stop events (either agency) fall in
+# [03:00, 04:00) or beyond 27:00, verified 2026-07-06. This is arithmetic on
+# a timestamp, not calendar inference.
+SERVICE_DAY_CUTOVER_S = 3 * 3600
+LAST_TRAIN_EPSILON_S = 300
+
 # {trip_id: {stop_code: arrival_seconds_since_midnight}} — may exceed 24h.
 _DATA: dict[str, dict[str, int]] = json.loads(DATA_PATH.read_text(encoding="utf-8"))
+
+
+def service_day_seconds(dt: datetime) -> int:
+    """Seconds since PT midnight, mapped into the service day: a clock time
+    before the cutover belongs to the previous service day (24:xx+)."""
+    local = dt.astimezone(PACIFIC)
+    t = local.hour * 3600 + local.minute * 60 + local.second
+    return t + 86400 if t < SERVICE_DAY_CUTOVER_S else t
+
+
+@lru_cache(maxsize=512)
+def pair_max_service_s(origin_stop: str, destination_stop: str) -> int | None:
+    """Static pair-max (SPEC-V2 §4.2): the latest origin departure time-of-day
+    over ALL bundled trips serving origin-before-destination, every day type
+    pooled — no calendar lookup. Origin *arrival* seconds stand in for the
+    departure (the file stores arrivals only); the badge epsilon absorbs the
+    dwell. None when no bundled trip serves the pair."""
+    best: int | None = None
+    for stops in _DATA.values():
+        origin = stops.get(origin_stop)
+        destination = stops.get(destination_stop)
+        if origin is not None and destination is not None and origin < destination:
+            best = origin if best is None else max(best, origin)
+    return best
 
 
 def trip_stops(trip_id: str) -> dict[str, int] | None:

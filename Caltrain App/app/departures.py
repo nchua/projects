@@ -187,7 +187,26 @@ def pair_departures(
         )
 
     rows.sort(key=lambda pair: pair[0])
-    return [row for _, row in rows[:limit]]
+    selected = [row for _, row in rows[:limit]]
+    if selected and len(selected) < limit:
+        _flag_last_train(selected[-1], origin_stop, destination_stop)
+    return selected
+
+
+def _flag_last_train(row: dict, origin_stop: str, destination_stop: str) -> None:
+    """Last-train-tonight badge (SPEC-V2 §4.4). Called only when the feed is
+    exhausted below the limit; flags the final row when its aimed departure
+    sits within epsilon of the static pair-max AND the trip is known to the
+    bundle (post-GTFS-rotation degrade suppresses the badge — a wrong badge
+    strands someone, a missing one costs nothing)."""
+    if schedule.trip_stops(row["train"]) is None:
+        return
+    pair_max = schedule.pair_max_service_s(origin_stop, destination_stop)
+    aimed = parse_time(row["departure"]["aimed"]) or parse_time(row["departure"]["expected"])
+    if pair_max is None or aimed is None:
+        return
+    if schedule.service_day_seconds(aimed) >= pair_max - schedule.LAST_TRAIN_EPSILON_S:
+        row["last_train"] = True
 
 
 # --- service alerts (GTFS-RT JSON) -----------------------------------------

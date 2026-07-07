@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from app import bart_stations
+from app import bart_stations, schedule
 from app.departures import (  # same thresholds as Caltrain (§8)
     DEPARTURE_GRACE_S,
     LATE_THRESHOLD_SECONDS,
@@ -471,6 +471,22 @@ def _itinerary_payload(itinerary: dict) -> dict:
     }
 
 
+def _flag_last_train(row: dict, origin_abbr: str, destination_abbr: str) -> None:
+    """Last-train-tonight badge, BART direct rows (SPEC-V2 §4.4). Same rules
+    as the Caltrain flag: feed exhausted below limit (checked by the caller),
+    aimed departure within epsilon of the static pair-max, trip known to the
+    bundle (synthesized shuttle rows carry trip None and are skipped here)."""
+    if row["trip"] is None or bart_stations.trip_pattern(row["trip"]) is None:
+        return
+    pair_max = bart_stations.pair_max_service_s(origin_abbr, destination_abbr)
+    if pair_max is None:
+        return
+    aimed_epoch = row["_dep_epoch"] - (row["delay_seconds"] or 0)
+    aimed = datetime.fromtimestamp(aimed_epoch, tz=timezone.utc)
+    if schedule.service_day_seconds(aimed) >= pair_max - schedule.LAST_TRAIN_EPSILON_S:
+        row["last_train"] = True
+
+
 def pair_departures(
     feed: dict,
     origin: bart_stations.Station,
@@ -487,6 +503,8 @@ def pair_departures(
     if not rows and {origin.abbr, destination.abbr} == set(_OAK_SHUTTLE_ABBRS):
         rows = _shuttle_rows(origin.abbr, destination.abbr, now_epoch, limit)
     if rows:
+        if len(rows) < limit:
+            _flag_last_train(rows[-1], origin.abbr, destination.abbr)
         return [strip_meta(row) for row in rows]
 
     itineraries = transfer_itineraries(index, origin, destination, limit, now_epoch)

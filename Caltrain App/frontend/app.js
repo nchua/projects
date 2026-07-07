@@ -229,12 +229,13 @@ function renderCardBody(fav, data) {
   }
 
   if (!data.departures.length) {
+    // static copy only (SPEC-V2 §4.6) — never a computed "first train at HH:MM"
     setCardMessage(
       card,
       "No upcoming trains for this pair right now.",
       data.agency === "ba"
-        ? "BART runs roughly 4 AM–midnight — overnight emptiness is normal."
-        : "Weekend and South County service is sparse — this is often normal.",
+        ? "BART runs roughly 4 AM (6 AM Saturday, 8 AM Sunday) to midnight — overnight emptiness is normal."
+        : "Caltrain's first weekday trains leave around 4–5 AM; weekend and South County service is sparse — this is often normal.",
     );
     return;
   }
@@ -266,6 +267,13 @@ function renderCardBody(fav, data) {
     }
 
     renderDepInfo(row, dep);
+
+    if (dep.last_train) {
+      const tag = document.createElement("span");
+      tag.className = "tag-last";
+      tag.textContent = "Last train tonight";
+      row.querySelector(".dep-arr").before(tag);
+    }
 
     row.querySelector(".dep-arr strong").textContent = dep.arrival
       ? clockFull(dep.arrival.expected || dep.arrival.aimed)
