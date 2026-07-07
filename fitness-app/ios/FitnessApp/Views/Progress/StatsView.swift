@@ -2290,25 +2290,6 @@ struct SkillPickerSheet: View {
     }
 }
 
-// MARK: - Legacy Aliases
-
-typealias ProgressHeader = PowerAnalysisHeader
-typealias StrengthProgressView = PowerProgressView
-typealias TimeRangeButton = AriseTimeRangeButton
-typealias E1RMTrendChart = AriseE1RMChart
-typealias ProgressTrendBadge = AriseTrendBadge
-typealias PercentileCard = RankClassificationCard
-typealias StatsSummaryCard = PowerStatsCard
-typealias BodyweightProgressView = VesselProgressView
-typealias BodyweightChart = AriseBodyweightChart
-typealias AverageCard = VesselStatCard
-typealias RangeCard = VesselStatCard
-typealias PRsView = RecordsView
-typealias FilterChip = AriseFilterChip
-typealias ProgressPRCard = RecordCard
-typealias NoDataCard = NoDataPanel
-typealias ExercisePickerSheet = SkillPickerSheet
-
 #Preview {
     SwiftUI.ProgressView()
 }

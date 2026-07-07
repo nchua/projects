@@ -29,49 +29,6 @@ enum BigThree {
     ]
 }
 
-// MARK: - Dungeon Display Protocol
-
-protocol DungeonDisplayable {
-    var rank: String { get }
-    var status: String { get }
-}
-
-extension DungeonDisplayable {
-    var rankColor: Color {
-        switch rank {
-        case "E": return .rankE
-        case "D": return .rankD
-        case "C": return .rankC
-        case "B": return .rankB
-        case "A": return .rankA
-        case "S", "S+", "S++": return .rankS
-        default: return .textMuted
-        }
-    }
-
-    var statusColor: Color {
-        switch status {
-        case "available": return .systemPrimary
-        case "active": return .gold
-        case "completed": return .successGreen
-        case "failed", "expired", "abandoned": return .warningRed
-        default: return .textMuted
-        }
-    }
-
-    var statusLabel: String {
-        switch status {
-        case "available": return "AVAILABLE"
-        case "active": return "IN PROGRESS"
-        case "completed": return "COMPLETED"
-        case "failed": return "FAILED"
-        case "expired": return "EXPIRED"
-        case "abandoned": return "ABANDONED"
-        default: return status.uppercased()
-        }
-    }
-}
-
 // MARK: - ARISE View Extensions
 
 extension View {

@@ -27,13 +27,6 @@ struct NotificationSettingsView: View {
                     accent: .gold,
                     types: NotificationSettingsViewModel.progressionTypes
                 )
-
-                // Missions & Dungeons section
-                notificationSection(
-                    title: "Missions & Dungeons",
-                    accent: .successGreen,
-                    types: NotificationSettingsViewModel.missionTypes
-                )
             }
             .padding(.bottom, 32)
         }

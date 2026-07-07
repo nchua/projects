@@ -64,12 +64,6 @@ struct MainTabView: View {
                 }
                 .tag(1)
 
-            DungeonsView()
-                .tabItem {
-                    Label("Dungeons", systemImage: "door.left.hand.open")
-                }
-                .tag(2)
-
             FriendsView()
                 .tabItem {
                     Label("Friends", systemImage: "person.2.fill")
@@ -378,21 +372,6 @@ struct AriseTextFieldStyle: TextFieldStyle {
             .cornerRadius(4)
             .foregroundColor(.textPrimary)
             .font(.ariseMono(size: 15))
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(Color.ariseBorder, lineWidth: 1)
-            )
-    }
-}
-
-// Legacy text field style (backward compatibility)
-struct AppTextFieldStyle: TextFieldStyle {
-    func _body(configuration: TextField<Self._Label>) -> some View {
-        configuration
-            .padding(16)
-            .background(Color.voidLight)
-            .cornerRadius(4)
-            .foregroundColor(.textPrimary)
             .overlay(
                 RoundedRectangle(cornerRadius: 4)
                     .stroke(Color.ariseBorder, lineWidth: 1)

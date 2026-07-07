@@ -125,59 +125,6 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         }
     }
 
-    func scheduleDungeonExpiringNotification(name: String, expiresAt: Date) {
-        let identifier = "dungeon_expiring_\(name.hashValue)"
-        cancelNotification(identifier: identifier)
-
-        // 6 hours before expiry
-        let fireDate = expiresAt.addingTimeInterval(-6 * 3600)
-        guard fireDate > Date() else { return }
-
-        let content = UNMutableNotificationContent()
-        content.title = "DUNGEON EXPIRING"
-        content.body = "\"\(name)\" closes in 6 hours. Enter before the gate seals."
-        content.sound = .default
-        content.userInfo = ["type": "dungeon_expiring"]
-
-        let trigger = UNTimeIntervalNotificationTrigger(
-            timeInterval: fireDate.timeIntervalSinceNow,
-            repeats: false
-        )
-        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
-
-        UNUserNotificationCenter.current().add(request) { error in
-            #if DEBUG
-            if let error { print("DEBUG: Failed to schedule dungeon expiring notification: \(error)") }
-            #endif
-        }
-    }
-
-    func scheduleMissionExpiringNotification(weekEnd: Date) {
-        cancelNotification(identifier: "mission_expiring")
-
-        // 1 day before week end
-        let fireDate = weekEnd.addingTimeInterval(-24 * 3600)
-        guard fireDate > Date() else { return }
-
-        let content = UNMutableNotificationContent()
-        content.title = "MISSION EXPIRING"
-        content.body = "Your weekly mission ends tomorrow. Complete remaining workouts."
-        content.sound = .default
-        content.userInfo = ["type": "mission_expiring"]
-
-        let trigger = UNTimeIntervalNotificationTrigger(
-            timeInterval: fireDate.timeIntervalSinceNow,
-            repeats: false
-        )
-        let request = UNNotificationRequest(identifier: "mission_expiring", content: content, trigger: trigger)
-
-        UNUserNotificationCenter.current().add(request) { error in
-            #if DEBUG
-            if let error { print("DEBUG: Failed to schedule mission expiring notification: \(error)") }
-            #endif
-        }
-    }
-
     func sendQuestCompletedNotification(questName: String, xpReward: Int) {
         let content = UNMutableNotificationContent()
         content.title = "QUEST COMPLETED"

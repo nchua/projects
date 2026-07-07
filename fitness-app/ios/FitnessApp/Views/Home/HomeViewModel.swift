@@ -20,19 +20,15 @@ class HomeViewModel: ObservableObject {
     @Published var weeklyStats = WeeklyStats()
     @Published var userProgress: UserProgressResponse?
     @Published var recentAchievements: [AchievementResponse] = []
-    @Published var dailyQuests: DailyQuestsResponse?
     @Published var profile: ProfileResponse?
     @Published var cooldownStatus: [MuscleCooldownStatus] = []
     @Published var cooldownAgeModifier: Double = 1.0
-    @Published var currentMission: CurrentMissionResponse?
-    @Published var missionLoadError: String?
-    @Published var goalForEdit: GoalResponse?
     @Published var weeklyProgressReport: WeeklyProgressReportResponse?
     @Published var isLoading = false
     @Published var error: String?
 
     /// Errors from individual endpoints in `loadData()`. Keyed by a short endpoint
-    /// name (e.g. "workouts", "quests"); value is a user-visible message.
+    /// name (e.g. "workouts", "PRs"); value is a user-visible message.
     /// Surfaced in a compact banner on HomeView so users see partial failures
     /// instead of blank dashboards.
     @Published var dataLoadErrors: [String: String] = [:]
@@ -40,7 +36,7 @@ class HomeViewModel: ObservableObject {
     /// True when at least one endpoint failed during the most recent load.
     var hasDataLoadErrors: Bool { !dataLoadErrors.isEmpty }
 
-    /// Human-readable summary for the banner (e.g. "Quests, PRs").
+    /// Human-readable summary for the banner (e.g. "Workouts, PRs").
     var dataLoadErrorSummary: String {
         let names = dataLoadErrors.keys.sorted().map { $0.capitalized }
         return names.joined(separator: ", ")
@@ -245,15 +241,6 @@ class HomeViewModel: ObservableObject {
 
             group.addTask { @MainActor in
                 do {
-                    let quests = try await APIClient.shared.getDailyQuests()
-                    self.dailyQuests = quests
-                } catch {
-                    self.recordLoadError("quests", error)
-                }
-            }
-
-            group.addTask { @MainActor in
-                do {
                     let profileResult = try await APIClient.shared.getProfile()
                     self.profile = profileResult
                 } catch {
@@ -277,16 +264,6 @@ class HomeViewModel: ObservableObject {
                     self.exercises = exercisesResult
                 } catch {
                     self.recordLoadError("exercises", error)
-                }
-            }
-
-            group.addTask { @MainActor in
-                do {
-                    self.currentMission = try await APIClient.shared.getCurrentMission()
-                    self.missionLoadError = nil
-                } catch {
-                    self.missionLoadError = error.localizedDescription
-                    self.recordLoadError("mission", error)
                 }
             }
 
@@ -359,16 +336,6 @@ class HomeViewModel: ObservableObject {
                 nm.cancelStreakReminder()
             }
         }
-
-        // Schedule daily quest reset notification
-        nm.scheduleQuestResetNotification()
-
-        // Schedule mission expiring if mission is active
-        if let mission = currentMission?.mission {
-            if let weekEnd = mission.weekEnd.parseISO8601Date() {
-                nm.scheduleMissionExpiringNotification(weekEnd: weekEnd)
-            }
-        }
     }
 
     // MARK: - HealthKit
@@ -423,103 +390,12 @@ class HomeViewModel: ObservableObject {
         isHealthKitSyncing = false
     }
 
-    // MARK: - Mission Actions
-
-    func acceptMission(missionId: String) async {
-        do {
-            let _ = try await APIClient.shared.acceptMission(id: missionId)
-            // Reload mission data
-            self.currentMission = try await APIClient.shared.getCurrentMission()
-            // Reload quests (they'll now show mission objectives)
-            self.dailyQuests = try await APIClient.shared.getDailyQuests()
-        } catch {
-            #if DEBUG
-            print("DEBUG: Failed to accept mission: \(error)")
-            #endif
-            self.error = error.localizedDescription
-        }
-    }
-
-    func declineMission(missionId: String) async {
-        do {
-            let _ = try await APIClient.shared.declineMission(id: missionId)
-            // Reload mission data
-            self.currentMission = try await APIClient.shared.getCurrentMission()
-        } catch {
-            #if DEBUG
-            print("DEBUG: Failed to decline mission: \(error)")
-            #endif
-            self.error = error.localizedDescription
-        }
-    }
-
     // MARK: - Goal Actions
-
-    func loadGoalForEdit(goalId: String) async {
-        do {
-            // Load the full goal details for editing
-            let goals = try await APIClient.shared.getGoals()
-            // Find the matching goal from the list
-            if let goal = goals.goals.first(where: { $0.id == goalId }) {
-                // Convert GoalSummaryResponse to GoalResponse by fetching full details
-                // For now, create a GoalResponse from summary data
-                self.goalForEdit = GoalResponse(
-                    id: goal.id,
-                    exerciseId: "",  // Not needed for editing
-                    exerciseName: goal.exerciseName,
-                    targetWeight: goal.targetWeight,
-                    targetReps: goal.targetReps,
-                    targetE1rm: goal.targetE1rm,
-                    weightUnit: goal.weightUnit,
-                    deadline: goal.deadline,
-                    startingE1rm: nil,
-                    currentE1rm: nil,
-                    status: goal.status,
-                    notes: nil,
-                    createdAt: "",
-                    progressPercent: goal.progressPercent,
-                    weightToGo: 0,
-                    weeksRemaining: 0
-                )
-            }
-        } catch {
-            #if DEBUG
-            print("DEBUG: Failed to load goal for edit: \(error)")
-            #endif
-            self.error = error.localizedDescription
-        }
-    }
-
-    func abandonGoal() async {
-        guard let goalId = currentMission?.goal?.id else {
-            #if DEBUG
-            print("DEBUG: No goal to abandon")
-            #endif
-            return
-        }
-
-        do {
-            try await APIClient.shared.deleteGoal(id: goalId)
-            // Reload mission data (should now show empty state)
-            self.currentMission = try await APIClient.shared.getCurrentMission()
-            // Also reload quests
-            self.dailyQuests = try await APIClient.shared.getDailyQuests()
-        } catch {
-            #if DEBUG
-            print("DEBUG: Failed to abandon goal: \(error)")
-            #endif
-            self.error = error.localizedDescription
-        }
-    }
 
     /// Delete a specific goal by ID (used by GoalsListSheet swipe-to-delete)
     func deleteGoal(id: String) async {
         do {
             try await APIClient.shared.deleteGoal(id: id)
-            // Reload mission data
-            self.currentMission = try await APIClient.shared.getCurrentMission()
-            // Also reload quests
-            self.dailyQuests = try await APIClient.shared.getDailyQuests()
         } catch {
             #if DEBUG
             print("DEBUG: Failed to delete goal: \(error)")
@@ -530,95 +406,15 @@ class HomeViewModel: ObservableObject {
 
     /// Delete all goals (used by GoalsListSheet menu)
     func deleteAllGoals() async {
-        guard let goals = currentMission?.goals else { return }
-
-        for goal in goals {
-            do {
-                try await APIClient.shared.deleteGoal(id: goal.id)
-            } catch {
-                #if DEBUG
-                print("DEBUG: Failed to delete goal \(goal.id): \(error)")
-                #endif
-            }
-        }
-
-        // Reload mission data after all deletions
         do {
-            self.currentMission = try await APIClient.shared.getCurrentMission()
-            self.dailyQuests = try await APIClient.shared.getDailyQuests()
+            let goals = try await APIClient.shared.getGoals().goals
+            for goal in goals {
+                try await APIClient.shared.deleteGoal(id: goal.id)
+            }
         } catch {
             #if DEBUG
-            print("DEBUG: Failed to reload data after deleting all goals: \(error)")
+            print("DEBUG: Failed to delete all goals: \(error)")
             #endif
-            self.error = error.localizedDescription
-        }
-    }
-
-    // MARK: - Quest Actions
-
-    func claimQuest(_ questId: String) async {
-        do {
-            let response = try await APIClient.shared.claimQuestReward(questId: questId)
-
-            // Update local quests state
-            if var quests = dailyQuests?.quests {
-                if let index = quests.firstIndex(where: { $0.id == questId }) {
-                    // Create updated quest with isClaimed = true
-                    let oldQuest = quests[index]
-                    let updatedQuest = QuestResponse(
-                        id: oldQuest.id,
-                        questId: oldQuest.questId,
-                        name: oldQuest.name,
-                        description: oldQuest.description,
-                        questType: oldQuest.questType,
-                        targetValue: oldQuest.targetValue,
-                        xpReward: oldQuest.xpReward,
-                        progress: oldQuest.progress,
-                        isCompleted: oldQuest.isCompleted,
-                        isClaimed: true,
-                        difficulty: oldQuest.difficulty,
-                        completedByWorkoutId: oldQuest.completedByWorkoutId
-                    )
-                    quests[index] = updatedQuest
-
-                    dailyQuests = DailyQuestsResponse(
-                        quests: quests,
-                        refreshAt: dailyQuests?.refreshAt ?? "",
-                        completedCount: dailyQuests?.completedCount ?? 0,
-                        totalCount: dailyQuests?.totalCount ?? 0
-                    )
-                }
-            }
-
-            // Update user progress with new XP
-            if response.leveledUp || response.rankChanged {
-                // Reload all progress data to get updated values
-                if let newProgress = try? await APIClient.shared.getUserProgress() {
-                    userProgress = newProgress
-                }
-            } else {
-                // Just update XP locally
-                if let progress = userProgress {
-                    // Create a new response with updated XP
-                    userProgress = UserProgressResponse(
-                        totalXp: response.totalXp,
-                        level: response.level,
-                        rank: response.rank,
-                        currentStreak: progress.currentStreak,
-                        longestStreak: progress.longestStreak,
-                        totalWorkouts: progress.totalWorkouts,
-                        totalVolumeLb: progress.totalVolumeLb,
-                        totalPrs: progress.totalPrs,
-                        xpToNextLevel: progress.xpToNextLevel,
-                        levelProgress: progress.levelProgress,
-                        lastWorkoutDate: progress.lastWorkoutDate
-                    )
-                }
-            }
-        } catch let apiError as APIError {
-            if case .unauthorized = apiError { return }
-            self.error = apiError.localizedDescription
-        } catch {
             self.error = error.localizedDescription
         }
     }

@@ -13,11 +13,6 @@ class MockAPIClient {
     var mockGoalBatchResponse: GoalBatchCreateResponse?
     var mockGoalsError: Error?
 
-    /// Mission endpoints
-    var mockCurrentMissionResponse: CurrentMissionResponse?
-    var mockMissionAcceptResponse: MissionAcceptResponse?
-    var mockMissionError: Error?
-
     // MARK: - Call Tracking
 
     /// Track which methods were called and with what arguments
@@ -27,10 +22,6 @@ class MockAPIClient {
 
     var listGoalsCalled = false
     var lastIncludeInactive: Bool?
-
-    var fetchCurrentMissionCalled = false
-    var acceptMissionCalled = false
-    var lastAcceptedMissionId: String?
 
     // MARK: - Configuration
 
@@ -98,45 +89,6 @@ class MockAPIClient {
         return response
     }
 
-    // MARK: - Mission API
-
-    func fetchCurrentMission() async throws -> CurrentMissionResponse {
-        fetchCurrentMissionCalled = true
-
-        if simulatedDelay > 0 {
-            try await Task.sleep(nanoseconds: UInt64(simulatedDelay * 1_000_000_000))
-        }
-
-        if shouldSimulateError, let error = mockMissionError {
-            throw error
-        }
-
-        guard let response = mockCurrentMissionResponse else {
-            throw MockAPIError.noMockResponse
-        }
-
-        return response
-    }
-
-    func acceptMission(_ missionId: String) async throws -> MissionAcceptResponse {
-        acceptMissionCalled = true
-        lastAcceptedMissionId = missionId
-
-        if simulatedDelay > 0 {
-            try await Task.sleep(nanoseconds: UInt64(simulatedDelay * 1_000_000_000))
-        }
-
-        if shouldSimulateError, let error = mockMissionError {
-            throw error
-        }
-
-        guard let response = mockMissionAcceptResponse else {
-            throw MockAPIError.noMockResponse
-        }
-
-        return response
-    }
-
     // MARK: - Reset
 
     /// Reset all mock state for clean test runs
@@ -146,9 +98,6 @@ class MockAPIClient {
         mockGoalResponse = nil
         mockGoalBatchResponse = nil
         mockGoalsError = nil
-        mockCurrentMissionResponse = nil
-        mockMissionAcceptResponse = nil
-        mockMissionError = nil
 
         // Reset call tracking
         createGoalsCalled = false
@@ -156,9 +105,6 @@ class MockAPIClient {
         lastBatchGoals = nil
         listGoalsCalled = false
         lastIncludeInactive = nil
-        fetchCurrentMissionCalled = false
-        acceptMissionCalled = false
-        lastAcceptedMissionId = nil
 
         // Reset configuration
         simulatedDelay = 0

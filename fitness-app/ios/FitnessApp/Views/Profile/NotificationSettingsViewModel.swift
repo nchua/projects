@@ -19,20 +19,12 @@ class NotificationSettingsViewModel: ObservableObject {
         ("level_up", "Level Up", "arrow.up.circle.fill"),
         ("rank_promotion", "Rank Promotion", "shield.lefthalf.filled"),
         ("quest_completed", "Quest Completed", "checkmark.seal.fill"),
-    ]
-
-    static let missionTypes = [
-        ("dungeon_spawned", "Dungeon Spawned", "door.left.hand.open"),
         ("weekly_report_ready", "Weekly Report Ready", "chart.bar.fill"),
-        ("mission_offered", "Mission Offered", "scroll.fill"),
         ("streak_at_risk", "Streak at Risk", "flame.fill"),
-        ("quest_reset", "Quest Reset", "arrow.clockwise"),
-        ("dungeon_expiring", "Dungeon Expiring", "clock.badge.exclamationmark"),
-        ("mission_expiring", "Mission Expiring", "calendar.badge.clock"),
     ]
 
     var allEnabled: Bool {
-        let allTypes = Self.socialTypes + Self.progressionTypes + Self.missionTypes
+        let allTypes = Self.socialTypes + Self.progressionTypes
         return allTypes.allSatisfy { preferences[$0.0] ?? true }
     }
 
@@ -79,7 +71,7 @@ class NotificationSettingsViewModel: ObservableObject {
 
     func toggleAll() {
         let newValue = !allEnabled
-        let allTypes = Self.socialTypes + Self.progressionTypes + Self.missionTypes
+        let allTypes = Self.socialTypes + Self.progressionTypes
 
         // Optimistically update all
         for (type, _, _) in allTypes {

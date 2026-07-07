@@ -176,10 +176,10 @@ final class PendingWorkoutStore: ObservableObject {
 
         for entry in snapshot {
             do {
-                // Use the XP-aware endpoint so the server awards XP, PRs,
-                // achievements, quest credit, and dungeon progress for the
-                // drained workout. The bare `createWorkout` path skips all of
-                // that, silently losing every reward for offline-queued work.
+                // Use the XP-aware endpoint so the server awards XP, PRs, and
+                // achievements for the drained workout. The bare
+                // `createWorkout` path skips all of that, silently losing
+                // every reward for offline-queued work.
                 //
                 // We intentionally discard the `WorkoutCreateResponse` payload
                 // here — the UI isn't active during a background drain, so

@@ -85,101 +85,6 @@ struct HunterAvatarView: View {
     }
 }
 
-/// Level display with glow effect
-struct LevelDisplayView: View {
-    let level: Int
-    var showGlow: Bool = true
-
-    var body: some View {
-        VStack(spacing: 2) {
-            Text("\(level)")
-                .font(.ariseDisplay(size: 32, weight: .bold))
-                .foregroundColor(.systemPrimary)
-                .if(showGlow) { view in
-                    view.shadow(color: .systemPrimaryGlow, radius: 10, x: 0, y: 0)
-                }
-
-            Text("LEVEL")
-                .font(.ariseMono(size: 10, weight: .medium))
-                .foregroundColor(.textMuted)
-                .tracking(1)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Level \(level)")
-    }
-}
-
-/// Hunter title display
-struct HunterTitleView: View {
-    let name: String
-    let title: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(name)
-                .font(.ariseHeader(size: 24, weight: .bold))
-                .foregroundColor(.textPrimary)
-
-            Text("\"\(title)\"")
-                .font(.ariseMono(size: 12, weight: .regular))
-                .foregroundColor(.textMuted)
-                .italic()
-        }
-    }
-}
-
-/// Complete hunter header (avatar + info + level)
-struct HunterHeaderView: View {
-    let name: String
-    let rank: HunterRank
-    let level: Int
-    var initial: String? = nil
-
-    var displayInitial: String {
-        initial ?? String(name.prefix(1))
-    }
-
-    var body: some View {
-        HStack(spacing: 16) {
-            HunterAvatarView(initial: displayInitial, rank: rank)
-
-            HunterTitleView(name: name, title: rank.title)
-
-            Spacer()
-
-            LevelDisplayView(level: level)
-        }
-    }
-}
-
-/// Streak display with flame icon
-struct StreakDisplayView: View {
-    let days: Int
-
-    var body: some View {
-        HStack(spacing: 4) {
-            Text("\u{1F525}") // Fire emoji
-                .font(.system(size: 16))
-                .accessibilityHidden(true)
-
-            Text("\(days)")
-                .font(.ariseDisplay(size: 20, weight: .bold))
-                .foregroundColor(.gold)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(Color.gold.opacity(0.05))
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.gold.opacity(0.2), lineWidth: 1)
-        )
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Streak")
-        .accessibilityValue("\(days) \(days == 1 ? "day" : "days")")
-    }
-}
-
 #Preview {
     ZStack {
         VoidBackground()
@@ -192,20 +97,12 @@ struct StreakDisplayView: View {
                 }
             }
 
-            // Hunter header
-            HunterHeaderView(name: "Nick", rank: .e, level: 7)
-                .padding()
-                .systemPanelStyle()
-
             // Avatar examples
             HStack(spacing: 24) {
                 HunterAvatarView(initial: "N", rank: .e)
                 HunterAvatarView(initial: "A", rank: .a)
                 HunterAvatarView(initial: "S", rank: .s)
             }
-
-            // Streak
-            StreakDisplayView(days: 12)
         }
         .padding()
     }

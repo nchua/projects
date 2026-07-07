@@ -129,61 +129,6 @@ struct RecoveryPill: View {
     }
 }
 
-// MARK: - Legacy Recovery Muscle Tag (kept for compatibility)
-
-struct RecoveryMuscleTag: View {
-    let muscle: MuscleCooldownStatus
-    let isRecovering: Bool
-    let onTap: () -> Void
-
-    var statusText: String {
-        if isRecovering {
-            return muscle.timeRemainingFormatted
-        } else {
-            return "Ready"
-        }
-    }
-
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 6) {
-                Text(muscle.displayName)
-                    .font(.ariseMono(size: 12, weight: .medium))
-
-                Text("-")
-                    .font(.ariseMono(size: 12))
-                    .opacity(0.5)
-
-                Text(statusText)
-                    .font(.ariseMono(size: 12, weight: .semibold))
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .semibold))
-                    .opacity(0.6)
-            }
-            .foregroundColor(isRecovering ? .warningRed : .successGreen)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(
-                isRecovering
-                    ? Color.warningRed.opacity(0.15)
-                    : Color.successGreen.opacity(0.15)
-            )
-            .cornerRadius(4)
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(
-                        isRecovering
-                            ? Color.warningRed.opacity(0.3)
-                            : Color.successGreen.opacity(0.3),
-                        lineWidth: 1
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 // MARK: - Flow Layout for wrapping tags
 
 struct FlowLayout: Layout {

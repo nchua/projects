@@ -1399,21 +1399,6 @@ struct VesselEntrySheet: View {
     }
 }
 
-// MARK: - Legacy Aliases
-
-typealias ProfileHeader = HunterProfileHeader
-typealias ProfileStatsCard = HunterStatsPanel
-typealias ProfileStatItem = HunterStatItem
-typealias AchievementsSection = HunterAchievementsSection
-typealias AchievementBadge = HunterAchievementBadge
-typealias BodyweightSection = VesselSection
-typealias BodyweightHistorySheet = VesselHistorySheet
-typealias StatBox = VesselStatBox
-typealias PersonalInfoSection = HunterAttributesSection
-typealias SettingsSection = SystemSettingsSection
-typealias SettingsRow = AriseSettingsRow
-typealias BodyweightEntrySheet = VesselEntrySheet
-
 #Preview {
     ProfileView()
         .environmentObject(AuthManager.shared)

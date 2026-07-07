@@ -312,93 +312,7 @@ class APIClient {
         return try await post("/workouts", body: workout)
     }
 
-    // MARK: - Quests
-
-    func getDailyQuests() async throws -> DailyQuestsResponse {
-        return try await get("/quests")
-    }
-
-    func claimQuestReward(questId: String) async throws -> QuestClaimResponse {
-        return try await post("/quests/\(questId)/claim", body: EmptyBody())
-    }
-
-    func refreshQuests() async throws -> DailyQuestsResponse {
-        return try await post("/quests/refresh", body: EmptyBody())
-    }
-
-    func seedQuests() async throws {
-        struct SeedResponse: Decodable {
-            let message: String
-            let questsCreated: Int
-
-            enum CodingKeys: String, CodingKey {
-                case message
-                case questsCreated = "quests_created"
-            }
-        }
-        let _: SeedResponse = try await post("/quests/seed", body: EmptyBody())
-    }
-
-    // MARK: - Dungeons
-
-    func getDungeons() async throws -> DungeonsResponse {
-        return try await get("/dungeons")
-    }
-
-    func getDungeon(id: String) async throws -> DungeonResponse {
-        return try await get("/dungeons/\(id)")
-    }
-
-    func acceptDungeon(id: String) async throws -> DungeonAcceptResponse {
-        return try await post("/dungeons/\(id)/accept", body: EmptyBody())
-    }
-
-    func abandonDungeon(id: String) async throws -> DungeonAbandonResponse {
-        return try await post("/dungeons/\(id)/abandon", body: EmptyBody())
-    }
-
-    func claimDungeonReward(id: String) async throws -> DungeonClaimResponse {
-        return try await post("/dungeons/\(id)/claim", body: EmptyBody())
-    }
-
-    func getDungeonHistory(skip: Int = 0, limit: Int = 20) async throws -> DungeonHistoryResponse {
-        return try await get("/dungeons/history?skip=\(skip)&limit=\(limit)")
-    }
-
-    func forceSpawnDungeon() async throws -> DungeonSpawnedResponse? {
-        struct SpawnResponse: Decodable {
-            let spawned: Bool
-            let dungeon: DungeonSpawnedResponse?
-            let message: String?
-        }
-        let response: SpawnResponse = try await post("/dungeons/spawn/force", body: EmptyBody())
-        return response.dungeon
-    }
-
-    func forceSpawnRareDungeon() async throws -> DungeonSpawnedResponse? {
-        struct SpawnResponse: Decodable {
-            let spawned: Bool
-            let dungeon: DungeonSpawnedResponse?
-            let message: String?
-        }
-        let response: SpawnResponse = try await post("/dungeons/spawn/force-rare", body: EmptyBody())
-        return response.dungeon
-    }
-
-    func seedDungeons() async throws {
-        struct SeedResponse: Decodable {
-            let message: String
-            let dungeonsCreated: Int
-
-            enum CodingKeys: String, CodingKey {
-                case message
-                case dungeonsCreated = "dungeons_created"
-            }
-        }
-        let _: SeedResponse = try await post("/dungeons/seed", body: EmptyBody())
-    }
-
-    // MARK: - Goals & Missions
+    // MARK: - Goals
 
     func getGoals() async throws -> GoalsListResponse {
         return try await get("/goals")
@@ -423,22 +337,6 @@ class APIClient {
 
     func getGoalProgress(goalId: String) async throws -> GoalProgressResponse {
         return try await get("/goals/\(goalId)/progress")
-    }
-
-    func getCurrentMission() async throws -> CurrentMissionResponse {
-        return try await get("/missions/current")
-    }
-
-    func getMission(id: String) async throws -> WeeklyMissionResponse {
-        return try await get("/missions/\(id)")
-    }
-
-    func acceptMission(id: String) async throws -> MissionAcceptResponse {
-        return try await post("/missions/\(id)/accept", body: EmptyBody())
-    }
-
-    func declineMission(id: String) async throws -> MissionDeclineResponse {
-        return try await post("/missions/\(id)/decline", body: EmptyBody())
     }
 
     // MARK: - Friends
