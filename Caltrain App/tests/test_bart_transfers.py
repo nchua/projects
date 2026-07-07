@@ -187,6 +187,60 @@ def test_distant_origin_to_oakl_reaches_beyond_the_shuttle_ladder(bart_feed):
         assert 0 <= row["transfers"][-1]["wait_minutes"] <= 15
 
 
+# --- connection-at-risk flag (SPEC-V2 §2) ------------------------------------
+
+
+def test_tight_connection_is_flagged_at_risk():
+    # default min-transfer is 180 s; a 2200 departure against a 2000 arrival
+    # leaves 20 s of slack — feasible but flagged
+    feed = _wcrk_dubl_synthetic(leg2_departures=[2200])
+    [row] = rows_for(feed, "walnut_creek", "dublin_pleasanton", now=now_at(900), limit=4)
+    assert row["transfers"][0]["at_risk"] is True
+
+
+def test_comfortable_realtime_connection_is_not_flagged():
+    # 2400 departure → 220 s slack over the 180 s minimum, realtime leg 1
+    feed = _wcrk_dubl_synthetic(leg2_departures=[2400])
+    [row] = rows_for(feed, "walnut_creek", "dublin_pleasanton", now=now_at(900), limit=4)
+    assert "at_risk" not in row["transfers"][0]
+
+
+def _stitch_with_leg1_arrival(arrival_payload: dict | None, leg2_dep: int):
+    station = bart_stations.by_abbr("WOAK")
+    first = {
+        "legs": [{"trip": "a", "arrival": arrival_payload}],
+        "transfers": [],
+        "_dep_epoch": 1000, "_arr_epoch": 2000,
+        "_dep_platform": None, "_arr_platform": None,
+    }
+    second = {
+        "legs": [{"trip": "b", "arrival": {"aimed": None, "expected": None}}],
+        "transfers": [],
+        "_dep_epoch": leg2_dep, "_arr_epoch": leg2_dep + 1000,
+        "_dep_platform": None, "_arr_platform": None,
+    }
+    [stitched] = bart_pairs._stitch([first], [second], station)
+    return stitched["transfers"][0]
+
+
+def test_estimated_leg1_arrival_widens_the_at_risk_band():
+    estimated = {"aimed": None, "expected": None, "estimated": True}
+    # 2400 dep → 220 s slack: fine for realtime, at risk when leg 1 is estimated
+    assert "at_risk" not in _stitch_with_leg1_arrival({"aimed": None, "expected": None}, 2400)
+    assert _stitch_with_leg1_arrival(estimated, 2400)["at_risk"] is True
+    # 2600 dep → 420 s slack: comfortable even for an estimated arrival
+    assert "at_risk" not in _stitch_with_leg1_arrival(estimated, 2600)
+
+
+def test_at_risk_itinerary_is_still_ranked_and_kept():
+    # the flag warns, it never filters (§2.2): a tight itinerary that wins on
+    # arrival is returned, flagged
+    feed = _wcrk_dubl_synthetic(leg2_departures=[2200, 3400])
+    [row] = rows_for(feed, "walnut_creek", "dublin_pleasanton", now=now_at(900), limit=4)
+    assert dep_epoch(row["legs"][1]) == 2200
+    assert row["transfers"][0]["at_risk"] is True
+
+
 def test_oakl_to_walnut_creek_allows_three_legs(bart_feed):
     rows = rows_for(bart_feed, "oakland_international_airport", "walnut_creek")
     assert rows

@@ -198,6 +198,12 @@ function renderDepInfo(row, dep) {
       const name = document.createElement("strong");
       name.textContent = transfer.station_name;
       xfer.append(name, ` · ${transfer.wait_minutes} min wait`);
+      if (transfer.at_risk) {
+        const risk = document.createElement("span");
+        risk.className = "xfer-risk";
+        risk.textContent = " · tight connection";
+        xfer.append(risk);
+      }
     });
   } else if (dep.line) {
     // BART direct: line pill + headsign replace type pill + train number

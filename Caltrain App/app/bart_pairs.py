@@ -22,6 +22,12 @@ from app.departures import (  # same thresholds as Caltrain (§8)
 
 TRANSFER_DEFAULT_MIN_S = 180
 TRANSFER_LEG1_CANDIDATES = 10
+# Connection-at-risk thresholds (SPEC-V2 §2): slack below 120 s flags any
+# connection; an *estimated* (schedule-projected) leg-1 arrival carries error
+# a realtime one doesn't, so it widens the band to 300 s instead of always
+# flagging — estimation with plenty of slack is not at risk.
+TRANSFER_AT_RISK_SLACK_S = 120
+TRANSFER_AT_RISK_ESTIMATED_SLACK_S = 300
 
 _OAK_SHUTTLE_ABBRS = ("OAKL", "COLS")
 
@@ -292,38 +298,49 @@ def _stitch(
     firsts: list[dict],
     seconds: list[dict],
     at_station: bart_stations.Station,
+    default_min_s: int = TRANSFER_DEFAULT_MIN_S,
 ) -> list[dict]:
     """Join two itinerary lists at a station: for each first, the earliest
     second whose departure clears the min-transfer window computed on
     *expected* times — so a late first leg rolls to the next feasible
-    connection with no extra code (§5.5-3)."""
+    connection with no extra code (§5.5-3). default_min_s covers platform
+    pairs absent from the bundled table (the CT↔BA stitch passes its own —
+    SPEC-V2 §7.3).
+
+    A connection that clears the minimum with little to spare is kept but
+    flagged at_risk on the transfer entry (SPEC-V2 §2) — the flag warns, it
+    never filters."""
     stitched = []
     for first in firsts:
         if first["_arr_epoch"] is None:
             continue
-        best = None
+        best = best_min_s = None
         for second in seconds:
             min_s = bart_stations.transfer_min_s(
-                first["_arr_platform"], second["_dep_platform"], TRANSFER_DEFAULT_MIN_S
+                first["_arr_platform"], second["_dep_platform"], default_min_s
             )
             if second["_dep_epoch"] >= first["_arr_epoch"] + min_s:
                 if best is None or second["_dep_epoch"] < best["_dep_epoch"]:
-                    best = second
+                    best, best_min_s = second, min_s
         if best is None or best["_arr_epoch"] is None:
             continue
         wait_minutes = round((best["_dep_epoch"] - first["_arr_epoch"]) / 60)
+        transfer = {
+            "station": at_station.id,
+            "station_name": at_station.name,
+            "wait_minutes": wait_minutes,
+        }
+        slack_s = best["_dep_epoch"] - (first["_arr_epoch"] + best_min_s)
+        leg1_arrival = first["legs"][-1].get("arrival") if first["legs"] else None
+        leg1_estimated = bool(leg1_arrival and leg1_arrival.get("estimated"))
+        if slack_s < TRANSFER_AT_RISK_SLACK_S or (
+            leg1_estimated and slack_s < TRANSFER_AT_RISK_ESTIMATED_SLACK_S
+        ):
+            transfer["at_risk"] = True
         stitched.append(
             {
                 "legs": first["legs"] + best["legs"],
-                "transfers": first["transfers"]
-                + [
-                    {
-                        "station": at_station.id,
-                        "station_name": at_station.name,
-                        "wait_minutes": wait_minutes,
-                    }
-                ]
-                + best["transfers"],
+                "transfers": first["transfers"] + [transfer] + best["transfers"],
                 "_dep_epoch": first["_dep_epoch"],
                 "_arr_epoch": best["_arr_epoch"],
                 "_dep_platform": first["_dep_platform"],
