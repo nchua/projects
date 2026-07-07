@@ -39,14 +39,20 @@ def ba_feed(*trips) -> dict:
     return {"trips": list(trips)}
 
 
-def ba_trip(from_abbr: str, to_abbr: str, dep: int, arr: int, skip: int = 0) -> dict:
+def ba_trip(
+    from_abbr: str, to_abbr: str, dep: int, arr: int, skip: int = 0,
+    exclude_abbr: str | None = None,
+) -> dict:
     """A synthetic BA leg on a real bundled trip; skip picks a later distinct
-    trip_id (index_feed keeps one entry per trip)."""
+    trip_id (index_feed keeps one entry per trip); exclude_abbr avoids
+    patterns that also serve that station (short-turn selection)."""
     trip_id = None
     for candidate in bart_stations.TRIPS:
         pattern = bart_stations.trip_pattern(candidate)
         origin, destination = pattern.get(from_abbr), pattern.get(to_abbr)
         if origin and destination and origin[0] < destination[0]:
+            if exclude_abbr is not None and exclude_abbr in pattern:
+                continue
             if skip == 0:
                 trip_id = candidate
                 break
@@ -149,6 +155,36 @@ def test_ba_internal_transfer_extends_to_three_legs():
     assert [leg["agency"] for leg in row["legs"]] == ["ct", "ba", "ba"]
     assert [t["station"] for t in row["transfers"]] == ["millbrae", "west_oakland"]
     assert len(row["legs"]) <= 3
+
+
+def test_infeasible_directs_fall_through_to_ba_transfer_candidates():
+    # live-verified gap (SPEC-V2 §13-2): direct MLBR→EMBR trips exist but all
+    # depart before the CT leg arrives; the SFO-wye shuttle (a real MLBR→SFIA
+    # short-turn pattern) with a later Millbrae departure must still stitch
+    sm = ct_payload(dep=BASE + 600, arr=BASE + 1500)
+    feed = ba_feed(
+        ba_trip("MLBR", "EMBR", dep=BASE + 900, arr=BASE + 3000),  # departs before CT arrives
+        ba_trip("MLBR", "SFIA", dep=BASE + 2400, arr=BASE + 2700, exclude_abbr="EMBR"),
+        ba_trip("SFIA", "EMBR", dep=BASE + 3900, arr=BASE + 5400, skip=1),
+    )
+    [row] = itineraries(sm, feed, "san_carlos", "embarcadero", True, BASE)
+    assert [leg["agency"] for leg in row["legs"]] == ["ct", "ba", "ba"]
+    assert [t["station"] for t in row["transfers"]] == [
+        "millbrae", "san_francisco_international_airport",
+    ]
+
+
+def test_direct_ba_leg_beats_pointless_same_line_transfer():
+    # when a feasible direct exists, candidate mixing must not surface a
+    # dominated hop-off-hop-on itinerary
+    sm = ct_payload(dep=BASE + 600, arr=BASE + 1500)
+    feed = ba_feed(
+        ba_trip("MLBR", "EMBR", dep=BASE + 2400, arr=BASE + 4200),
+        ba_trip("MLBR", "SBRN", dep=BASE + 2400, arr=BASE + 3000, skip=1),
+        ba_trip("SBRN", "EMBR", dep=BASE + 3600, arr=BASE + 5400, skip=2),
+    )
+    [row] = itineraries(sm, feed, "san_carlos", "embarcadero", True, BASE)
+    assert [leg["agency"] for leg in row["legs"]] == ["ct", "ba"]  # direct won
 
 
 def test_oakl_destination_produces_no_itineraries():

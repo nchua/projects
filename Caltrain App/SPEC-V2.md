@@ -780,6 +780,16 @@ deploy.
    runs only when there is nothing at all (live or canceled) to show. A
    genuine transfer-only pair (no pattern serves it directly) still never
    shows canceled rows.
+2. **xa BART-side candidates always include the transfer machinery** (§7.3-2
+   refined; live-verified 2026-07-06, 8:20 PM). "Direct rows, else transfers"
+   failed in the real evening pattern: direct MLBR→EMBR trips existed in the
+   feed but every one departed *before* the Caltrain leg arrived, while the
+   SFO-wye transfer (a later Millbrae departure) still ran — the stitch got
+   zero itineraries. Implemented behavior: the BA side offers direct rows AND
+   §5.5 one-transfer itineraries as stitch candidates, directs listed first
+   (a same-departure tie prefers the direct), with dominated combinations
+   pruned as usual. Same-line hop-off-hop-on noise loses those ties or the
+   domination pass (test-pinned).
 
 ### ⚠ VERIFY ledger (open items carried into Phase 2)
 

@@ -66,19 +66,22 @@ def _ba_leg_itineraries(
     from_millbrae: bool,
     now_epoch: int,
 ) -> list[dict]:
-    """The BART side: direct rows from/to Millbrae, else the existing
-    one-transfer machinery (§7.3-2) — this is what reaches the 15 stations
-    beyond Millbrae's direct corridors and the late-evening SFO-wye pattern."""
+    """The BART side: direct rows from/to Millbrae PLUS the existing
+    one-transfer machinery (§7.3-2, amended — SPEC-V2 §13-2). Both candidate
+    sets are always offered: direct trips can exist yet all be infeasible for
+    the stitch (live-verified: late evening, every direct MLBR→EMBR departure
+    precedes the Caltrain arrival while the SFO-wye transfer still runs).
+    Directs come first so a same-departure tie prefers them; dominated
+    combinations are pruned at the top level."""
     index = bart_pairs.index_feed(ba_feed)
     millbrae = bart_stations.get(BA_MILLBRAE_ID)
     origin, destination = (millbrae, ba_station) if from_millbrae else (ba_station, millbrae)
     direct = bart_pairs.direct_rows(
         index, origin.abbr, destination.abbr, bart_pairs.TRANSFER_LEG1_CANDIDATES, now_epoch
     )
-    if direct:
-        itineraries = [bart_pairs._as_itinerary(row, origin.id, destination.id) for row in direct]
-    else:
-        itineraries = bart_pairs._one_transfer_itineraries(index, origin, destination, now_epoch)
+    itineraries = [
+        bart_pairs._as_itinerary(row, origin.id, destination.id) for row in direct
+    ] + bart_pairs._one_transfer_itineraries(index, origin, destination, now_epoch)
     for itinerary in itineraries:
         for leg in itinerary["legs"]:
             leg["agency"] = "ba"
