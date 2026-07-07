@@ -770,6 +770,17 @@ push; `ct` response byte-pins around the §7.4 refactor; live cross-checks
 before calling any feature done; `BART_API_KEY` in Railway before the feature-5
 deploy.
 
+## 13. Implementation amendments (2026-07-06, Phase 2)
+
+1. **Canceled rows stand alone when every live option is gone** (§5.4 refined).
+   As written, canceled rows merged only into a non-empty live direct list —
+   which hid the row in exactly the highest-stakes case, "the only train
+   tonight got canceled." Implemented behavior: canceled rows for a
+   direct-served pair return even with zero live rows; the transfer fallback
+   runs only when there is nothing at all (live or canceled) to show. A
+   genuine transfer-only pair (no pattern serves it directly) still never
+   shows canceled rows.
+
 ### ⚠ VERIFY ledger (open items carried into Phase 2)
 
 | Item | Where | How it resolves |

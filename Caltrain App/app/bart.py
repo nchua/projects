@@ -47,10 +47,14 @@ def _event(stu, name: str) -> dict | None:
 
 
 def parse_trip_updates(raw: bytes) -> dict:
-    """Protobuf bytes → {'trips': [{'trip_id', 'stops': [...]}]}.
+    """Protobuf bytes → {'trips': [...], 'canceled_trips': [...]}, each entry
+    {'trip_id', 'stops': [...]}.
 
-    CANCELED trips and SKIPPED stops are dropped here (SPEC-BART §5.3);
-    everything downstream can assume the trains listed actually run.
+    CANCELED trips move to their own list (SPEC-V2 §5.2) so every existing
+    consumer of 'trips' — the pair join, transfer stitching — is untouched and
+    canceled trips can never leak into itineraries. Their stops are kept if
+    the feed supplies them (never observed live; the synthetic fixture pins
+    both shapes). SKIPPED stops are dropped as before.
     """
     feed = gtfs_realtime_pb2.FeedMessage()
     try:
@@ -59,12 +63,11 @@ def parse_trip_updates(raw: bytes) -> dict:
         raise ValueError(f"undecodable GTFS-RT feed: {exc}") from exc
 
     trips = []
+    canceled = []
     for entity in feed.entity:
         if not entity.HasField("trip_update"):
             continue
         update = entity.trip_update
-        if update.trip.schedule_relationship == _CANCELED:
-            continue
         stops = [
             {
                 "stop_id": stu.stop_id,
@@ -74,9 +77,11 @@ def parse_trip_updates(raw: bytes) -> dict:
             for stu in update.stop_time_update
             if stu.schedule_relationship != _STU_SKIPPED
         ]
-        if stops:
+        if update.trip.schedule_relationship == _CANCELED:
+            canceled.append({"trip_id": update.trip.trip_id, "stops": stops})
+        elif stops:
             trips.append({"trip_id": update.trip.trip_id, "stops": stops})
-    return {"trips": trips}
+    return {"trips": trips, "canceled_trips": canceled}
 
 
 def _translation_text(block) -> str:

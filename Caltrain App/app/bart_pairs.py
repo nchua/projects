@@ -12,7 +12,7 @@ compass direction lies) is handled for free.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from app import bart_stations, schedule
 from app.departures import (  # same thresholds as Caltrain (§8)
@@ -28,6 +28,9 @@ TRANSFER_LEG1_CANDIDATES = 10
 # flagging — estimation with plenty of slack is not at risk.
 TRANSFER_AT_RISK_SLACK_S = 120
 TRANSFER_AT_RISK_ESTIMATED_SLACK_S = 300
+# A mass cancellation reads better as an alert banner than as a wall of
+# struck-through rows (SPEC-V2 §5.4).
+MAX_CANCELED_ROWS = 3
 
 _OAK_SHUTTLE_ABBRS = ("OAKL", "COLS")
 
@@ -471,6 +474,100 @@ def _itinerary_payload(itinerary: dict) -> dict:
     }
 
 
+def _service_anchor_epoch(now_epoch: int) -> int:
+    """Epoch of noon−12 h PT on the inferred service day (SPEC-V2 §5.3):
+    BART's feed populates neither trip.start_date nor start_time (verified
+    0/85 in the capture), so the service day is the PT date of `now`, shifted
+    back one day before the 3 AM cutover. Clock arithmetic, not calendar
+    inference — and the only code path that anchors the bundle's absolute
+    first_arrival_seconds to a date."""
+    now_local = datetime.fromtimestamp(now_epoch, tz=schedule.PACIFIC)
+    day = now_local.date()
+    tod = now_local.hour * 3600 + now_local.minute * 60 + now_local.second
+    if tod < schedule.SERVICE_DAY_CUTOVER_S:
+        day -= timedelta(days=1)
+    noon = datetime(day.year, day.month, day.day, 12, tzinfo=schedule.PACIFIC)
+    return int(noon.timestamp()) - 12 * 3600
+
+
+def _canceled_rows(
+    canceled_trips: list[dict],
+    origin_abbr: str,
+    destination_abbr: str,
+    now_epoch: int,
+    max_dep_epoch: int | None,
+) -> list[dict]:
+    """Rows for canceled trips that would have served the pair (SPEC-V2 §5.3).
+
+    Times come from the feed's own STUs when kept, else from the bundle
+    anchored on the inferred service day (arrival then marked estimated).
+    Trips unknown to the bundle are suppressed — no scheduled times are
+    resolvable, and a bare "something was canceled" row is noise.
+    max_dep_epoch bounds insertions to the shown window when the live rows
+    filled the limit (§5.4); None means unbounded.
+    """
+    rows: list[dict] = []
+    anchor: int | None = None
+    for trip in canceled_trips:
+        trip_id = trip["trip_id"]
+        pattern = bart_stations.trip_pattern(trip_id)
+        if pattern is None:
+            continue
+        origin = pattern.get(origin_abbr)
+        destination = pattern.get(destination_abbr)
+        if origin is None or destination is None or destination[0] <= origin[0]:
+            continue
+
+        stus = {}
+        for stu in trip["stops"]:
+            parent = bart_stations.parent_of_platform(stu["stop_id"])
+            if parent is not None:
+                stus.setdefault(parent, stu)
+        origin_stu = stus.get(origin_abbr)
+        destination_stu = stus.get(destination_abbr)
+        dep_epoch = arr_epoch = None
+        if origin_stu is not None:
+            dep_epoch = _event_time(origin_stu["departure"]) or _event_time(origin_stu["arrival"])
+        if destination_stu is not None:
+            arr_epoch = _event_time(destination_stu["arrival"]) or _event_time(destination_stu["departure"])
+
+        first_arrival = bart_stations.TRIPS[trip_id][1]
+        estimated = arr_epoch is None
+        if dep_epoch is None or arr_epoch is None:
+            if anchor is None:
+                anchor = _service_anchor_epoch(now_epoch)
+            if dep_epoch is None:
+                dep_epoch = anchor + first_arrival + origin[1]
+            if arr_epoch is None:
+                arr_epoch = anchor + first_arrival + destination[1]
+
+        if now_epoch - dep_epoch > DEPARTURE_GRACE_S:
+            continue  # expired off the board, like any row
+        if max_dep_epoch is not None and dep_epoch > max_dep_epoch:
+            continue  # outside the shown window — never displaces a live row
+
+        line, line_color = bart_stations.trip_line(trip_id)
+        terminus = bart_stations.trip_terminus(trip_id)
+        arrival = {"aimed": _iso(arr_epoch), "expected": None}
+        if estimated:
+            arrival["estimated"] = True
+        rows.append(
+            {
+                "trip": trip_id,
+                "line": line,
+                "line_color": line_color,
+                "headsign": f"to {terminus}" if terminus else "",
+                "departure": {"aimed": _iso(dep_epoch), "expected": None},
+                "arrival": arrival,
+                "delay_seconds": None,
+                "status": "canceled",
+                "_dep_epoch": dep_epoch,
+            }
+        )
+    rows.sort(key=lambda row: row["_dep_epoch"])
+    return rows[:MAX_CANCELED_ROWS]
+
+
 def _flag_last_train(row: dict, origin_abbr: str, destination_abbr: str) -> None:
     """Last-train-tonight badge, BART direct rows (SPEC-V2 §4.4). Same rules
     as the Caltrain flag: feed exhausted below limit (checked by the caller),
@@ -502,10 +599,19 @@ def pair_departures(
     rows = direct_rows(index, origin.abbr, destination.abbr, limit, now_epoch)
     if not rows and {origin.abbr, destination.abbr} == set(_OAK_SHUTTLE_ABBRS):
         rows = _shuttle_rows(origin.abbr, destination.abbr, now_epoch, limit)
-    if rows:
-        if len(rows) < limit:
-            _flag_last_train(rows[-1], origin.abbr, destination.abbr)
-        return [strip_meta(row) for row in rows]
+    if rows and len(rows) < limit:
+        _flag_last_train(rows[-1], origin.abbr, destination.abbr)
+    # Canceled rows are additive to the limit and interleave by scheduled
+    # departure (§5.4). They stand alone when every live option is gone —
+    # "your last train was canceled" is exactly when the row matters most —
+    # so transfer fallback only runs when there is nothing at all to show.
+    bound = rows[-1]["_dep_epoch"] if rows and len(rows) >= limit else None
+    canceled = _canceled_rows(
+        feed.get("canceled_trips", []), origin.abbr, destination.abbr, now_epoch, bound
+    )
+    if rows or canceled:
+        merged = sorted(rows + canceled, key=lambda row: row["_dep_epoch"])
+        return [strip_meta(row) for row in merged]
 
     itineraries = transfer_itineraries(index, origin, destination, limit, now_epoch)
     return [_itinerary_payload(itinerary) for itinerary in itineraries]

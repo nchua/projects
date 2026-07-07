@@ -264,6 +264,8 @@ function renderCardBody(fav, data) {
       was.textContent = clockShort(dep.departure.aimed);
     } else if (dep.status === "scheduled") {
       row.classList.add("is-sched");
+    } else if (dep.status === "canceled") {
+      row.classList.add("is-canceled");
     }
 
     renderDepInfo(row, dep);
@@ -286,12 +288,15 @@ function renderCardBody(fav, data) {
     } else if (dep.status === "on_time") {
       badge.textContent = "On time";
       badge.classList.add("b-ok");
+    } else if (dep.status === "canceled") {
+      badge.textContent = "Canceled";
+      badge.classList.add("b-canceled");
     } else {
       badge.textContent = "Scheduled";
       badge.classList.add("b-sched");
     }
 
-    if (showLeaveBy) {
+    if (showLeaveBy && dep.status !== "canceled") {
       const leave = row.querySelector(".leave");
       const leaveMs =
         Date.parse(effective) - (nearest.walkMinutes + LEAVE_BUFFER_MIN) * 60_000;
