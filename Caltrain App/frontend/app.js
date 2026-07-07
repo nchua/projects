@@ -102,16 +102,26 @@ function cardFor(fav) {
   return document.querySelector(`.card[data-pair="${CSS.escape(pairKey(fav))}"]`);
 }
 
+function endName(fav, key) {
+  // xa favorites store agency-prefixed ends ("ct:san_carlos" — SPEC-V2 §7.6)
+  return fav.agency === "xa"
+    ? stationName(agencyOf(fav[key]), idOf(fav[key]))
+    : stationName(fav.agency, fav[key]);
+}
+
 function renderCardHead(card, fav) {
   card.dataset.pair = pairKey(fav);
   card.dataset.agency = fav.agency;
   card.dataset.origin = fav.origin;
   card.dataset.destination = fav.destination;
-  card.querySelector(".o").textContent = stationName(fav.agency, fav.origin);
-  card.querySelector(".d").textContent = stationName(fav.agency, fav.destination);
-  // the dir-tag slot carries the agency for BART — no NB/SB on a network
+  card.querySelector(".o").textContent = endName(fav, "origin");
+  card.querySelector(".d").textContent = endName(fav, "destination");
+  // the dir-tag slot carries the agency for BART (no NB/SB on a network) and
+  // the leg order for cross-agency pairs
   card.querySelector(".dir-tag").textContent =
-    fav.agency === "ba" ? "BART" : directionOf(fav.origin, fav.destination);
+    fav.agency === "ba" ? "BART"
+    : fav.agency === "xa" ? (agencyOf(fav.origin) === "ct" ? "CT ▸ BART" : "BART ▸ CT")
+    : directionOf(fav.origin, fav.destination);
 }
 
 function ensureCards() {
@@ -178,7 +188,9 @@ function renderDepInfo(row, dep) {
 
   if (dep.legs) {
     // transfer itinerary: leg pills joined by ▸, then the change-at line —
-    // no headsign (the card title already names the destination)
+    // no headsign (the card title already names the destination). Legs are
+    // agency-tagged on xa itineraries: ct legs render the type pill, ba legs
+    // the line-color pill (SPEC-V2 §7.5).
     line.textContent = "";
     dep.legs.forEach((leg, i) => {
       if (i > 0) {
@@ -189,7 +201,13 @@ function renderDepInfo(row, dep) {
       }
       const pill = document.createElement("span");
       pill.className = "type";
-      paintLinePill(pill, leg.line, leg.line_color);
+      if (leg.agency === "ct") {
+        pill.textContent = leg.train_type;
+        const extra = typeClass(leg.train_type);
+        if (extra) pill.classList.add(extra);
+      } else {
+        paintLinePill(pill, leg.line, leg.line_color);
+      }
       line.append(pill);
     });
     const xfer = row.querySelector(".dep-xfer");
@@ -222,9 +240,9 @@ function renderDepInfo(row, dep) {
 function renderCardBody(fav, data) {
   const card = cardFor(fav);
   if (!card) return;
-  if (data.agency !== "ba") {
+  if (data.agency === "ct") {
     // the server's direction is authoritative; the local calc only covers
-    // the pre-fetch skeleton (BART cards keep the static agency tag)
+    // the pre-fetch skeleton (BART and xa cards keep their static tags)
     card.querySelector(".dir-tag").textContent = data.direction;
   }
 
@@ -235,16 +253,21 @@ function renderCardBody(fav, data) {
       "No upcoming trains for this pair right now.",
       data.agency === "ba"
         ? "BART runs roughly 4 AM (6 AM Saturday, 8 AM Sunday) to midnight — overnight emptiness is normal."
-        : "Caltrain's first weekday trains leave around 4–5 AM; weekend and South County service is sparse — this is often normal.",
+        : data.agency === "xa"
+          ? "Cross-agency trips connect at Millbrae, and Caltrain's live feed only sees ~90 minutes ahead — itineraries appear as the connection gets closer."
+          : "Caltrain's first weekday trains leave around 4–5 AM; weekend and South County service is sparse — this is often normal.",
     );
     return;
   }
 
   const nearest = state.nearest;
+  const originEnd = fav.agency === "xa"
+    ? { agency: agencyOf(fav.origin), id: idOf(fav.origin) }
+    : { agency: fav.agency, id: fav.origin };
   const showLeaveBy =
     nearest &&
-    nearest.station.agency === fav.agency &&
-    nearest.station.id === fav.origin &&
+    nearest.station.agency === originEnd.agency &&
+    nearest.station.id === originEnd.id &&
     nearest.walkMinutes <= MAX_WALK_MIN_FOR_HINTS;
 
   const expanded = state.expanded.has(pairKey(fav));
@@ -604,22 +627,27 @@ document.body.addEventListener("click", (e) => {
       break;
     }
     case "swap-add": {
+      // both selects always carry both groups (SPEC-V2 §7.6) — plain swap
       const a = $("sel-origin").value;
       $("sel-origin").value = $("sel-dest").value;
-      fillSelect($("sel-dest"), agencyOf($("sel-origin").value));
       $("sel-dest").value = a;
       break;
     }
     case "add-favorite": {
       const originValue = $("sel-origin").value;
       const destValue = $("sel-dest").value;
-      const fav = {
-        agency: agencyOf(originValue),
-        origin: idOf(originValue),
-        destination: idOf(destValue),
-      };
+      const mixed = agencyOf(originValue) !== agencyOf(destValue);
+      // a Millbrae endpoint on a mixed pair is a single-agency pair in
+      // disguise (SPEC-V2 §7.2) — same shake as the other violations
+      const millbraeEnd = idOf(originValue) === "millbrae" || idOf(destValue) === "millbrae";
+      const fav = mixed
+        ? { agency: "xa", origin: originValue, destination: destValue }
+        : { agency: agencyOf(originValue), origin: idOf(originValue), destination: idOf(destValue) };
       const exists = state.favorites.some((f) => pairKey(f) === pairKey(fav));
-      if (fav.origin === fav.destination || exists || state.favorites.length >= MAX_FAVORITES) {
+      if (
+        originValue === destValue || (mixed && millbraeEnd) ||
+        exists || state.favorites.length >= MAX_FAVORITES
+      ) {
         shakeAddRow();
         return;
       }
@@ -727,16 +755,25 @@ async function init() {
 
   const selOrigin = $("sel-origin");
   const selDest = $("sel-dest");
+  // v2 (SPEC-V2 §7.6): no destination narrowing — both selects always list
+  // both agency groups; ends in different agencies make a cross-agency pair
   fillSelect(selOrigin, null);
   if (state.byAgency.ct.has("san_carlos")) selOrigin.value = "ct:san_carlos";
-  // destination narrows to the origin's agency; the ⇄ swap is unaffected
-  fillSelect(selDest, agencyOf(selOrigin.value));
+  fillSelect(selDest, null);
   if (state.byAgency.ct.has("san_francisco")) selDest.value = "ct:san_francisco";
-  selOrigin.addEventListener("change", () => fillSelect(selDest, agencyOf(selOrigin.value)));
 
+  const validEnd = (agency, id) => state.byAgency[agency]?.has(id);
+  const validFav = (f) => {
+    if (!f || !f.agency) return false;
+    if (f.agency === "xa") {
+      const ends = [f.origin, f.destination].map((v) => [agencyOf(v || ""), idOf(v || "")]);
+      return ends[0][0] !== ends[1][0] && ends.every(([agency, id]) => validEnd(agency, id));
+    }
+    return validEnd(f.agency, f.origin) && validEnd(f.agency, f.destination);
+  };
   state.favorites = loadFavorites()
     .map((f) => f && { agency: "ct", ...f }) // tolerate agencyless v1-shaped entries
-    .filter((f) => f && state.byAgency[f.agency]?.has(f.origin) && state.byAgency[f.agency]?.has(f.destination))
+    .filter(validFav)
     .slice(0, MAX_FAVORITES);
   saveFavorites();
   ensureCards();

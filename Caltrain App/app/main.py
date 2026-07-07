@@ -17,7 +17,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app import bart, bart_pairs, bart_stations, departures, stations, transit511
+from app import bart, bart_pairs, bart_stations, cross, departures, stations, transit511
 from app.upstream import UpstreamNeverFetchedError
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -160,6 +160,63 @@ async def _bart_departures(origin: str, destination: str, limit: int) -> dict:
     }
 
 
+def _parse_cross_end(value: str):
+    """'ct:san_carlos' → ('ct', Station) — the frontend's option-value format
+    (SPEC-V2 §7.2)."""
+    agency, _, ident = value.partition(":")
+    if agency == "ct":
+        station = stations.get(ident)
+    elif agency == "ba":
+        station = bart_stations.get(ident)
+    else:
+        raise _error(
+            400, "unknown_agency",
+            f"Cross-agency endpoints must be 'ct:<id>' or 'ba:<id>', got {value!r}.",
+        )
+    if station is None:
+        raise _error(400, "unknown_station", f"Unknown station id: {ident!r}")
+    return agency, station
+
+
+async def _cross_departures(origin: str, destination: str, limit: int) -> dict:
+    """Caltrain↔BART itineraries connecting at Millbrae (SPEC-V2 §7)."""
+    origin_agency, origin_station = _parse_cross_end(origin)
+    destination_agency, destination_station = _parse_cross_end(destination)
+    if origin_agency == destination_agency:
+        raise _error(
+            400, "unknown_agency",
+            "Cross-agency pairs need one Caltrain and one BART station.",
+        )
+    if cross.CT_MILLBRAE_ID in (origin_station.id, destination_station.id):
+        raise _error(
+            400, "degenerate_pair",
+            "Board at Millbrae directly — add a single-agency pair instead.",
+        )
+
+    (sm_payload, sm_fetched, sm_stale), (ba_feed, ba_fetched, ba_stale) = await asyncio.gather(
+        transit511.get_stop_monitoring(), bart.get_trip_updates()
+    )
+    ct_first = origin_agency == "ct"
+    ct_station = origin_station if ct_first else destination_station
+    ba_station = destination_station if ct_first else origin_station
+
+    def _end(agency: str, station) -> dict:
+        if agency == "ct":
+            return {"agency": "ct", "id": station.id, "name": station.name}
+        return {"agency": "ba", "id": station.id, "abbr": station.abbr, "name": station.name}
+
+    return {
+        "agency": "xa",
+        "origin": _end(origin_agency, origin_station),
+        "destination": _end(destination_agency, destination_station),
+        "as_of": min(sm_fetched, ba_fetched).isoformat(),
+        "stale": sm_stale or ba_stale,
+        "departures": cross.pair_itineraries(
+            sm_payload, ba_feed, ct_station, ba_station, ct_first, limit
+        ),
+    }
+
+
 @app.get("/api/departures")
 async def get_departures(
     origin: str,
@@ -172,7 +229,9 @@ async def get_departures(
         return await _caltrain_departures(origin, destination, limit)
     if agency == "ba":
         return await _bart_departures(origin, destination, limit)
-    raise _error(400, "unknown_agency", f"Unknown agency: {agency!r} (expected 'ct' or 'ba').")
+    if agency == "xa":
+        return await _cross_departures(origin, destination, limit)
+    raise _error(400, "unknown_agency", f"Unknown agency: {agency!r} (expected 'ct', 'ba', or 'xa').")
 
 
 async def _caltrain_alerts() -> dict:

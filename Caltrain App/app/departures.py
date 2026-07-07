@@ -137,10 +137,27 @@ def pair_departures(
     limit: int,
     now: datetime | None = None,
 ) -> list[dict]:
+    """Public pair rows — pair_rows with the internal epoch meta stripped,
+    so the ct response shape is byte-identical to pre-v2 (SPEC-V2 §7.4)."""
+    return [
+        {key: value for key, value in row.items() if not key.startswith("_")}
+        for row in pair_rows(payload, origin_stop, destination_stop, limit, now)
+    ]
+
+
+def pair_rows(
+    payload: dict,
+    origin_stop: str,
+    destination_stop: str,
+    limit: int,
+    now: datetime | None = None,
+) -> list[dict]:
     """Upcoming departures at origin_stop joined to the same train's arrival
     at destination_stop (resolution order: see _resolve_arrival).
 
     No ExpectedDepartureTime → scheduled-only row, never dropped.
+    Rows carry _dep_epoch/_arr_epoch meta for cross-agency stitching
+    (SPEC-V2 §7.4); pair_departures strips them at the output boundary.
     """
     now = now or datetime.now(timezone.utc)
     rows: list[tuple[datetime, dict]] = []
@@ -171,6 +188,9 @@ def pair_departures(
             status = "on_time"
 
         line_ref = journey.get("LineRef")
+        arrival_dt = None
+        if arrival:
+            arrival_dt = parse_time(arrival.get("expected") or arrival.get("aimed"))
         rows.append(
             (
                 effective,
@@ -182,6 +202,8 @@ def pair_departures(
                     "arrival": arrival,
                     "delay_seconds": delay,
                     "status": status,
+                    "_dep_epoch": int(effective.timestamp()),
+                    "_arr_epoch": int(arrival_dt.timestamp()) if arrival_dt else None,
                 },
             )
         )
