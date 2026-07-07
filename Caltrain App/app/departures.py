@@ -227,8 +227,23 @@ def _epoch(value: Any) -> datetime | None:
         return None
 
 
+def _informed_stops(alert: dict) -> list[str]:
+    """Stop ids from informed entities (SPEC-V2 §3.2). 511 serves PascalCase
+    `InformedEntities`/`StopId` (verified in the fixture); read GTFS-spec
+    snake_case defensively like everything else. Non-platform ids (the fixture
+    carries 'MIL-03-NB' beside '70061') pass through verbatim — the frontend
+    matches against known platform codes, so unknowns are inert."""
+    stops: list[str] = []
+    for informed in ensure_list(_first(alert, "InformedEntities", "informed_entity")):
+        stop_id = _first(informed, "StopId", "stop_id")
+        if stop_id is not None and str(stop_id) not in stops:
+            stops.append(str(stop_id))
+    return stops
+
+
 def parse_alerts(payload: dict, now: datetime | None = None) -> list[dict]:
-    """Flatten currently-active alerts to {id, header, description, active_period}."""
+    """Flatten currently-active alerts to {id, header, description,
+    active_period, stops}."""
     now = now or datetime.now(timezone.utc)
     alerts = []
     for entity in ensure_list(_first(payload, "Entities", "entity")):
@@ -253,12 +268,17 @@ def parse_alerts(payload: dict, now: datetime | None = None) -> list[dict]:
         if not header and not description:
             continue
 
-        alerts.append(
-            {
-                "id": str(_first(entity, "Id", "id") or ""),
-                "header": header,
-                "description": description,
-                "active_period": {"start": _iso(active_start), "end": _iso(active_end)},
-            }
-        )
+        flattened = {
+            "id": str(_first(entity, "Id", "id") or ""),
+            "header": header,
+            "description": description,
+            "active_period": {"start": _iso(active_start), "end": _iso(active_end)},
+            "stops": _informed_stops(alert),
+        }
+        # cosmetic tag driving the frontend's ELEVATOR badge (SPEC-V2 §6.1);
+        # nothing filters on it
+        text = f"{header} {description}".lower()
+        if "elevator" in text or "escalator" in text:
+            flattened["type"] = "elevator"
+        alerts.append(flattened)
     return alerts

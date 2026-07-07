@@ -48,6 +48,7 @@ def test_snake_case_gtfs_spec_keys_also_parse():
             "header": "Snake alert",
             "description": "Details",
             "active_period": {"start": alerts[0]["active_period"]["start"], "end": None},
+            "stops": [],
         }
     ]
 
@@ -76,3 +77,44 @@ def test_expired_alerts_filtered():
 def test_alert_without_text_is_skipped():
     payload = {"Entities": [{"Id": "empty", "Alert": {"ActivePeriods": []}}]}
     assert parse_alerts(payload) == []
+
+
+# --- stop-scoped informed entities (SPEC-V2 §3) -------------------------------
+
+
+def test_real_fixture_millbrae_alert_carries_platform_stop_ids(servicealerts_payload):
+    # the fixture's elevator alert is scoped to Millbrae NB: StopId 70061
+    # joins directly to the favorite pair's platform codes (§3.1)
+    alerts = parse_alerts(servicealerts_payload, now=CAPTURE_NOW)
+    millbrae = next(a for a in alerts if "Millbrae" in a["header"])
+    assert "70061" in millbrae["stops"]
+    assert "MIL-03-NB" in millbrae["stops"]  # non-platform ids pass through, inert
+
+
+def test_unscoped_alert_has_empty_stops(servicealerts_payload):
+    alerts = parse_alerts(servicealerts_payload, now=CAPTURE_NOW)
+    unscoped = [a for a in alerts if "Millbrae" not in a["header"]]
+    assert unscoped
+    assert all(a["stops"] == [] for a in unscoped)
+
+
+def test_snake_case_informed_entities_and_dedupe():
+    now = datetime.now(timezone.utc)
+    payload = {
+        "entity": [
+            {
+                "id": "x2",
+                "alert": {
+                    "informed_entity": [
+                        {"agency_id": "CT", "stop_id": "70061"},
+                        {"agency_id": "CT", "stop_id": "70061"},  # duplicate
+                        {"agency_id": "CT"},  # no stop reference
+                        {"agency_id": "CT", "stop_id": 70062},  # numeric → str
+                    ],
+                    "header_text": {"translation": [{"text": "Scoped", "language": "en"}]},
+                },
+            }
+        ]
+    }
+    [alert] = parse_alerts(payload, now=now)
+    assert alert["stops"] == ["70061", "70062"]

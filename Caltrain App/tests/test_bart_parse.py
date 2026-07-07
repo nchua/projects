@@ -104,6 +104,23 @@ def test_parse_alerts_overrides_generic_header_and_treats_no_period_as_active(ba
         assert alert["id"].startswith("BSA_")
 
 
+def test_alerts_fixture_informed_entities_carry_no_stops(bart_alerts_bytes):
+    # verified agency-only in the capture (SPEC-V2 §3.1) — plumbed through as
+    # empty so BART alerts stay banner-only until BART populates the field
+    parsed = bart.parse_alerts_feed(bart_alerts_bytes)
+    assert all(alert["stops"] == [] for alert in parsed["alerts"])
+    alerts = bart_pairs.parse_alerts(parsed, now=BART_CAPTURE_NOW)
+    assert all(alert["stops"] == [] for alert in alerts)
+
+
+def test_parse_alerts_normalizes_platform_stop_ids_to_parent_abbrs():
+    parsed = {"alerts": [{"id": "x", "header": "", "description": "Scoped advisory.",
+                          "periods": [], "stops": ["M16-1", "M16-2", "ZZZZ"]}]}
+    [alert] = bart_pairs.parse_alerts(parsed)
+    # both Embarcadero platforms collapse to EMBR; unknown ids pass through
+    assert alert["stops"] == ["EMBR", "ZZZZ"]
+
+
 def test_parse_alerts_sentence_truncates_and_splits_long_descriptions():
     sentence = "Expect delays between stations tonight. " * 5
     parsed = {"alerts": [{"id": "x", "header": "", "description": sentence.strip(), "periods": []}]}

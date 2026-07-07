@@ -25,6 +25,7 @@ const state = {
   lastData: new Map(), // pairKey -> departures payload (for re-render on geolocate)
   expanded: new Set(), // pairKeys showing up to EXPANDED_LIMIT rows (session-only)
   staleness: new Map(), // source -> { stale, asOf }
+  lastAlerts: null, // latest alerts payload (re-applied when cards change)
   dismissedAlerts: new Set(),
   lastFetchMs: 0,
   refreshing: false,
@@ -129,6 +130,7 @@ function ensureCards() {
     }
   }
   $("no-favorites").hidden = state.favorites.length > 0;
+  if (state.lastAlerts) renderAlerts(state.lastAlerts); // re-apply card chips
 }
 
 function setCardMessage(card, strong, rest, withRetry = false) {
@@ -316,11 +318,83 @@ function makeFootButton(action, label) {
   return btn;
 }
 
+/* per-pair alert linkage (SPEC-V2 §3): a stop-scoped alert chips every
+   favorite card whose match set intersects its stops, and is then suppressed
+   from the global banner — the chip is the better surface. */
+
+function matchSet(fav) {
+  const codes = new Set();
+  const addCt = (id) => {
+    const s = state.byAgency.ct.get(id);
+    if (s) { codes.add(s.stop_nb); codes.add(s.stop_sb); }
+  };
+  const addBa = (id) => {
+    const s = state.byAgency.ba.get(id);
+    if (s) codes.add(s.abbr);
+  };
+  if (fav.agency === "ct") {
+    addCt(fav.origin); addCt(fav.destination);
+  } else if (fav.agency === "ba") {
+    addBa(fav.origin); addBa(fav.destination);
+  } else {
+    // xa: both ends plus the Millbrae transfer codes — the rider passes
+    // through Millbrae on every cross-agency trip (§3.3)
+    for (const value of [fav.origin, fav.destination]) {
+      (agencyOf(value) === "ct" ? addCt : addBa)(idOf(value));
+    }
+    addCt("millbrae");
+    codes.add("MLBR");
+  }
+  codes.delete(undefined);
+  return codes;
+}
+
+function stationNameForCode(code) {
+  for (const s of state.stations) {
+    if (s.stop_nb === code || s.stop_sb === code) return s.name;
+  }
+  const bart = state.bartStations.find((s) => s.abbr === code);
+  return bart ? bart.name : code;
+}
+
+function makeCardAlert(alert, matchedCodes) {
+  const node = $("tpl-card-alert").content.firstElementChild.cloneNode(true);
+  const lead = node.querySelector(".chip-lead");
+  const strong = node.querySelector("strong");
+  if (alert.type === "elevator" && alert.agency === "ba") {
+    // the BART advisory is one shared prose blob — compose a per-card chip
+    const names = [...new Set(matchedCodes.map(stationNameForCode))];
+    lead.textContent = "Elevator out at ";
+    strong.textContent = names.join(", ");
+  } else {
+    lead.textContent = alert.header; // 511 headers are per-outage prose
+  }
+  return node;
+}
+
 function renderAlerts(alerts) {
+  state.lastAlerts = alerts;
   const holder = $("alerts");
   holder.textContent = "";
+  const chipped = new Set();
+
+  for (const card of document.querySelectorAll("#favorites .card")) {
+    const chipHolder = card.querySelector(".card-alerts");
+    if (!chipHolder) continue;
+    chipHolder.textContent = "";
+    const fav = state.favorites.find((f) => pairKey(f) === card.dataset.pair);
+    if (!fav) continue;
+    const codes = matchSet(fav);
+    for (const alert of alerts) {
+      const matched = (alert.stops || []).filter((code) => codes.has(code));
+      if (!matched.length) continue;
+      chipped.add(alert.id);
+      chipHolder.append(makeCardAlert(alert, matched));
+    }
+  }
+
   for (const alert of alerts) {
-    if (state.dismissedAlerts.has(alert.id)) continue;
+    if (state.dismissedAlerts.has(alert.id) || chipped.has(alert.id)) continue;
     const node = $("tpl-alert").content.firstElementChild.cloneNode(true);
     node.dataset.alertId = alert.id;
     if (alert.agency === "ba") {

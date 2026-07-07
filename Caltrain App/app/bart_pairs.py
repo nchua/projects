@@ -540,12 +540,21 @@ def parse_alerts(parsed: dict, now: datetime | None = None) -> list[dict]:
         if not header and not description:
             continue
 
+        # normalize any platform-level stop ids to parent abbrs so the
+        # frontend's match sets (which hold abbrs) work either way (§3.2)
+        stops: list[str] = []
+        for stop_id in alert.get("stops", []):
+            abbr = bart_stations.parent_of_platform(stop_id) or stop_id
+            if abbr not in stops:
+                stops.append(abbr)
+
         alerts.append(
             {
                 "id": alert["id"],
                 "header": header,
                 "description": description,
                 "active_period": {"start": _iso(active_start), "end": _iso(active_end)},
+                "stops": stops,
             }
         )
     return alerts

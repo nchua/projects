@@ -108,6 +108,13 @@ def parse_alerts_feed(raw: bytes) -> dict:
         if not entity.HasField("alert"):
             continue
         alert = entity.alert
+        # informed_entity stop_ids were empty in every capture (agency-only —
+        # SPEC-V2 §3.1) but are plumbed through for a uniform alert shape;
+        # they start working the day BART populates them
+        stops: list[str] = []
+        for informed in alert.informed_entity:
+            if informed.stop_id and informed.stop_id not in stops:
+                stops.append(informed.stop_id)
         alerts.append(
             {
                 "id": entity.id,
@@ -120,6 +127,7 @@ def parse_alerts_feed(raw: bytes) -> dict:
                     }
                     for period in alert.active_period
                 ],
+                "stops": stops,
             }
         )
     return {"alerts": alerts}

@@ -142,6 +142,8 @@ def test_alerts_endpoint_flattens_active_alerts():
             "header": "Elevator out",
             "description": "Use the ramp",
             "active_period": body["alerts"][0]["active_period"],
+            "stops": [],
+            "type": "elevator",  # tagged by header/description text (SPEC-V2 §6.1)
         }
     ]
 
