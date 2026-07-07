@@ -64,10 +64,15 @@ def ba_trip(
     }
 
 
-def itineraries(sm, feed, ct_id: str, ba_id: str, ct_first: bool, now: int, limit: int = 4):
+def itineraries_with_reason(sm, feed, ct_id, ba_id, ct_first, now, limit=4):
     return cross.pair_itineraries(
         sm, feed, stations.get(ct_id), bart_stations.get(ba_id), ct_first, limit, now=at(now)
     )
+
+
+def itineraries(sm, feed, ct_id: str, ba_id: str, ct_first: bool, now: int, limit: int = 4):
+    rows, _reason = itineraries_with_reason(sm, feed, ct_id, ba_id, ct_first, now, limit)
+    return rows
 
 
 # --- stitching -------------------------------------------------------------------
@@ -185,6 +190,32 @@ def test_direct_ba_leg_beats_pointless_same_line_transfer():
     )
     [row] = itineraries(sm, feed, "san_carlos", "embarcadero", True, BASE)
     assert [leg["agency"] for leg in row["legs"]] == ["ct", "ba"]  # direct won
+
+
+def test_empty_reason_flags_the_connection_horizon():
+    # the CT leg is running but every visible BA departure precedes its
+    # arrival → empty board with reason (SPEC-V2 §13-3 callout)
+    sm = ct_payload(dep=BASE + 600, arr=BASE + 1500)
+    feed = ba_feed(ba_trip("MLBR", "EMBR", dep=BASE + 900, arr=BASE + 3000))
+    rows, reason = itineraries_with_reason(sm, feed, "san_carlos", "embarcadero", True, BASE)
+    assert rows == []
+    assert reason == "connection_horizon"
+
+
+def test_empty_reason_absent_when_nothing_runs_at_the_origin():
+    # overnight emptiness is just emptiness — no callout
+    sm = payload_of()  # no CT visits at all
+    feed = ba_feed(ba_trip("MLBR", "EMBR", dep=BASE + 900, arr=BASE + 3000))
+    rows, reason = itineraries_with_reason(sm, feed, "san_carlos", "embarcadero", True, BASE)
+    assert rows == []
+    assert reason is None
+
+
+def test_empty_reason_absent_when_itineraries_exist():
+    sm = ct_payload(dep=BASE + 600, arr=BASE + 1500)
+    feed = ba_feed(ba_trip("MLBR", "EMBR", dep=BASE + 2400, arr=BASE + 4200))
+    rows, reason = itineraries_with_reason(sm, feed, "san_carlos", "embarcadero", True, BASE)
+    assert rows and reason is None
 
 
 def test_oakl_destination_produces_no_itineraries():

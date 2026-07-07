@@ -164,6 +164,17 @@ function setCardMessage(card, strong, rest, withRetry = false) {
   body.append(wrap);
 }
 
+function setCardCallout(card, strong, rest) {
+  // amber limitation callout (SPEC-V2 §13-3) — visually distinct from the
+  // plain empty state: this is "check back soon", not "no service"
+  const body = card.querySelector(".card-body");
+  body.textContent = "";
+  const note = $("tpl-callout").content.firstElementChild.cloneNode(true);
+  note.querySelector("strong").textContent = strong;
+  note.querySelector(".callout-rest").textContent = rest;
+  body.append(note);
+}
+
 function typeClass(trainType) {
   switch (trainType) {
     case "Limited": return "type-limited";
@@ -247,6 +258,16 @@ function renderCardBody(fav, data) {
   }
 
   if (!data.departures.length) {
+    if (data.empty_reason === "connection_horizon") {
+      // the origin leg IS running — this is a feed-horizon limitation, not
+      // missing service, and it deserves a callout (SPEC-V2 §13-3)
+      setCardCallout(
+        card,
+        "No connection visible yet.",
+        "Your first train is running, but its Millbrae connection isn't in the live feeds yet — they only see 30–90 minutes ahead. Check back closer to departure.",
+      );
+      return;
+    }
     // static copy only (SPEC-V2 §4.6) — never a computed "first train at HH:MM"
     setCardMessage(
       card,
@@ -254,7 +275,7 @@ function renderCardBody(fav, data) {
       data.agency === "ba"
         ? "BART runs roughly 4 AM (6 AM Saturday, 8 AM Sunday) to midnight — overnight emptiness is normal."
         : data.agency === "xa"
-          ? "Cross-agency trips connect at Millbrae, and Caltrain's live feed only sees ~90 minutes ahead — itineraries appear as the connection gets closer."
+          ? "Cross-agency trips connect at Millbrae. Live feeds only see 30–90 minutes ahead, so itineraries appear closer to departure."
           : "Caltrain's first weekday trains leave around 4–5 AM; weekend and South County service is sparse — this is often normal.",
     );
     return;
@@ -348,7 +369,10 @@ function renderCardBody(fav, data) {
   if (liveTotal < shownLimit) {
     const note = document.createElement("p");
     note.className = "foot-note";
-    note.textContent = "That's every upcoming train in the live feed right now.";
+    // xa boards thin out at the feed horizon, not at end-of-service — say so
+    note.textContent = fav.agency === "xa"
+      ? "More connections may appear as departure gets closer — live feeds only see 30–90 minutes ahead."
+      : "That's every upcoming train in the live feed right now.";
     foot.append(note);
   }
   if (!expanded && liveTotal >= COLLAPSED_LIMIT) {

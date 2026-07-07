@@ -205,16 +205,20 @@ async def _cross_departures(origin: str, destination: str, limit: int) -> dict:
             return {"agency": "ct", "id": station.id, "name": station.name}
         return {"agency": "ba", "id": station.id, "abbr": station.abbr, "name": station.name}
 
-    return {
+    itineraries, empty_reason = cross.pair_itineraries(
+        sm_payload, ba_feed, ct_station, ba_station, ct_first, limit
+    )
+    response = {
         "agency": "xa",
         "origin": _end(origin_agency, origin_station),
         "destination": _end(destination_agency, destination_station),
         "as_of": min(sm_fetched, ba_fetched).isoformat(),
         "stale": sm_stale or ba_stale,
-        "departures": cross.pair_itineraries(
-            sm_payload, ba_feed, ct_station, ba_station, ct_first, limit
-        ),
+        "departures": itineraries,
     }
+    if empty_reason:  # additive, only on empty xa boards (SPEC-V2 §13-3)
+        response["empty_reason"] = empty_reason
+    return response
 
 
 @app.get("/api/departures")

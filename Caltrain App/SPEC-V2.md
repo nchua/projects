@@ -790,6 +790,20 @@ deploy.
    (a same-departure tie prefers the direct), with dominated combinations
    pruned as usual. Same-line hop-off-hop-on noise loses those ties or the
    domination pass (test-pinned).
+3. **Feed-horizon callout on empty xa boards** (user decision, post-launch
+   same day). Evening xa boards are often legitimately empty because the
+   live feeds see only 30–90 minutes ahead (Caltrain's window; BART carries
+   assigned trips only) — a real limitation that deserves a visible callout,
+   but ONLY when it is actually the cause. Contract: when the origin leg has
+   departing trips but nothing stitches, the empty xa response carries an
+   additive `"empty_reason": "connection_horizon"`; the frontend renders an
+   amber callout ("No connection visible yet … check back closer to
+   departure") instead of the generic no-service copy. When nothing runs at
+   the origin either (overnight), no reason is emitted and the plain empty
+   state shows. Partially-filled xa cards swap the feed-exhausted footer for
+   horizon wording ("More connections may appear as departure gets closer")
+   — the "that's every upcoming train" phrasing would misread as
+   end-of-service. Mockup shows both treatments.
 
 ### ⚠ VERIFY ledger (open items carried into Phase 2)
 

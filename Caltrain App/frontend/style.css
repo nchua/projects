@@ -248,6 +248,21 @@ main { max-width: 640px; margin: 0 auto; padding: 14px 16px 0; }
 .dep.is-canceled .dep-arr strong { color: var(--ink-faint); font-weight: 500; }
 .b-canceled { color: var(--red-text); background: var(--red-tint); letter-spacing: .05em; }
 
+/* v2: feed-horizon callout on empty xa boards (SPEC-V2 §13-3) — amber
+   "check back soon", visually distinct from the plain no-service state */
+.card-callout {
+  display: flex; align-items: flex-start; gap: 10px;
+  margin: 14px 16px;
+  padding: 12px 14px;
+  background: var(--amber-tint);
+  border: 1px solid rgba(242, 177, 53, .3);
+  border-left: 3px solid var(--amber);
+  border-radius: 12px;
+}
+.card-callout svg { width: 16px; height: 16px; flex: none; color: var(--amber); margin-top: 2px; }
+.card-callout p { font-size: 13px; color: var(--ink-dim); line-height: 1.45; }
+.card-callout strong { color: var(--amber); font-weight: 650; }
+
 /* v2: per-pair alert chip strip under the card head (SPEC-V2 §3) */
 .card-alert {
   display: flex; align-items: center; gap: 8px;

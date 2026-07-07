@@ -112,13 +112,18 @@ def pair_itineraries(
     ct_first: bool,
     limit: int,
     now: datetime | None = None,
-) -> list[dict]:
-    """Cross-agency itineraries, always legs+transfers (there is no through
-    train, ever). ct_first: Caltrain origin → BART destination; else mirror.
+) -> tuple[list[dict], str | None]:
+    """(itineraries, empty_reason) — itineraries are always legs+transfers
+    (there is no through train, ever). ct_first: Caltrain origin → BART
+    destination; else mirror.
 
-    Honest 90-minute behavior (§7.3): Caltrain's feed sees ~90 min ahead, so
-    CT legs simply thin out late in the window — BA legs landing at Millbrae
-    beyond it find no visible CT departure to stitch and produce nothing.
+    Honest horizon behavior (§7.3, SPEC-V2 §13-3): the live feeds see only
+    30–90 minutes ahead (Caltrain's window; BART carries assigned trips
+    only), so connections thin out or vanish beyond that. When the ORIGIN
+    leg is demonstrably running but nothing stitches, empty_reason is
+    "connection_horizon" — the frontend shows a callout instead of the
+    generic no-service copy. When nothing runs at the origin either, the
+    reason stays None (overnight emptiness is just emptiness).
     """
     now = now or datetime.now(timezone.utc)
     now_epoch = int(now.timestamp())
@@ -133,4 +138,5 @@ def pair_itineraries(
 
     stitched = bart_pairs._stitch(firsts, seconds, millbrae, default_min_s=CT_BA_TRANSFER_MIN_S)
     pruned = bart_pairs._prune_dominated(stitched)[:limit]
-    return [_itinerary_payload(itinerary) for itinerary in pruned]
+    empty_reason = "connection_horizon" if firsts and not pruned else None
+    return [_itinerary_payload(itinerary) for itinerary in pruned], empty_reason

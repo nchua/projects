@@ -299,6 +299,21 @@ main { max-width: 640px; margin: 0 auto; padding: 14px 16px 0; }
 .dep.is-canceled .dep-arr strong { color: var(--ink-faint); font-weight: 500; }
 .b-canceled { color: var(--red-text); background: var(--red-tint); letter-spacing: .05em; }
 
+/* v2: feed-horizon callout on empty xa boards (SPEC-V2 §13-3) — amber
+   "check back soon", visually distinct from the plain no-service state */
+.card-callout {
+  display: flex; align-items: flex-start; gap: 10px;
+  margin: 14px 16px;
+  padding: 12px 14px;
+  background: var(--amber-tint);
+  border: 1px solid rgba(242, 177, 53, .3);
+  border-left: 3px solid var(--amber);
+  border-radius: 12px;
+}
+.card-callout svg { width: 16px; height: 16px; flex: none; color: var(--amber); margin-top: 2px; }
+.card-callout p { font-size: 13px; color: var(--ink-dim); line-height: 1.45; }
+.card-callout strong { color: var(--amber); font-weight: 650; }
+
 /* v2: per-pair alert chip strip under the card head (SPEC-V2 §3) */
 .card-alert {
   display: flex; align-items: center; gap: 8px;
@@ -817,6 +832,52 @@ footer {
 
       <div class="card-foot">
         <p class="foot-note">That's every upcoming train in the live feed right now.</p>
+      </div>
+    </article>
+
+    <!-- v2: feed-horizon callout (SPEC-V2 §13-3) — shown ONLY when the origin leg is
+         running but no Millbrae connection is visible (empty_reason:
+         connection_horizon). Overnight emptiness gets the plain copy instead. -->
+    <article class="card">
+      <header class="card-head">
+        <div class="pair">
+          <span class="pair-names"><span class="o">San Carlos</span> <span class="arrow">→</span> <span class="d">Embarcadero</span></span>
+          <span class="dir-tag">CT ▸ BART</span>
+        </div>
+      </header>
+      <div class="card-callout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+        </svg>
+        <p><strong>No connection visible yet.</strong><br>
+        Your first train is running, but its Millbrae connection isn't in the live feeds yet — they only see 30–90 minutes ahead. Check back closer to departure.</p>
+      </div>
+    </article>
+
+    <!-- v2: xa feed-horizon footer — partial results use horizon wording, not the
+         "every upcoming train" note (which would misread as end-of-service). -->
+    <article class="card">
+      <header class="card-head">
+        <div class="pair">
+          <span class="pair-names"><span class="o">San Carlos</span> <span class="arrow">→</span> <span class="d">Embarcadero</span></span>
+          <span class="dir-tag">CT ▸ BART</span>
+        </div>
+      </header>
+      <div class="dep">
+        <div class="dep-time"><span class="t-big">9:05</span></div>
+        <div class="dep-info">
+          <div class="dep-line">
+            <span class="type type-local">Local</span>
+            <span class="leg-arrow">▸</span>
+            <span class="type type-b-yellow">Yellow</span>
+          </div>
+          <div class="dep-xfer">change at <strong>Millbrae</strong> · 7 min wait</div>
+          <div class="dep-arr">arrives <strong>10:04 PM</strong></div>
+        </div>
+        <div class="dep-status"><span class="badge b-ok">On time</span></div>
+      </div>
+      <div class="card-foot">
+        <p class="foot-note">More connections may appear as departure gets closer — live feeds only see 30–90 minutes ahead.</p>
       </div>
     </article>
 
