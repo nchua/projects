@@ -160,7 +160,7 @@ async def _bart_departures(origin: str, destination: str, limit: int) -> dict:
     }
 
 
-def _parse_cross_end(value: str):
+def _parse_cross_end(value: str) -> tuple[str, stations.Station | bart_stations.Station]:
     """'ct:san_carlos' → ('ct', Station) — the frontend's option-value format
     (SPEC-V2 §7.2)."""
     agency, _, ident = value.partition(":")
@@ -200,7 +200,7 @@ async def _cross_departures(origin: str, destination: str, limit: int) -> dict:
     ct_station = origin_station if ct_first else destination_station
     ba_station = destination_station if ct_first else origin_station
 
-    def _end(agency: str, station) -> dict:
+    def _end(agency: str, station: stations.Station | bart_stations.Station) -> dict:
         if agency == "ct":
             return {"agency": "ct", "id": station.id, "name": station.name}
         return {"agency": "ba", "id": station.id, "abbr": station.abbr, "name": station.name}
@@ -246,11 +246,12 @@ async def _caltrain_alerts() -> dict:
 
 async def _bart_alerts() -> dict:
     payload, fetched_at, stale = await bart.get_alerts()
-    # elevator advisories are best-effort (SPEC-V2 §6.2): key-gated, and a
-    # failing bsa endpoint never degrades the GTFS-RT alerts
+    # elevator advisories are best-effort (SPEC-V2 §6.2): key-gated, and NO
+    # failure of the legacy bsa endpoint — unreachable, malformed, or an
+    # unexpected shape — may ever degrade the GTFS-RT alerts
     try:
         advisories, _, _ = await bart.get_elevator_advisories()
-    except UpstreamNeverFetchedError:
+    except Exception:  # noqa: BLE001
         advisories = []
     return {
         "agency": "ba",

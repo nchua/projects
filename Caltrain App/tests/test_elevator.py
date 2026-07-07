@@ -63,6 +63,23 @@ def test_unresolvable_prose_degrades_to_unscoped_alert():
     assert advisory["header"] == text  # never dropped (§6.2)
 
 
+def test_negated_zero_outage_phrasing_fails_closed():
+    # the zero-outage shape is unverified (§6.2 ⚠ VERIFY) — a "no elevators
+    # out of service" variant must not ship a spurious unscoped banner
+    payload = _payload("There are no elevators out of service at this time.")
+    assert bart.parse_elevator_advisories(payload) == []
+
+
+def test_malformed_shapes_never_crash():
+    # unexpected XML→JSON shapes: never raise, never advise (§6.2)
+    assert bart.parse_elevator_advisories(None) == []
+    assert bart.parse_elevator_advisories({}) == []
+    assert bart.parse_elevator_advisories({"root": None}) == []
+    assert bart.parse_elevator_advisories({"root": "gone"}) == []
+    assert bart.parse_elevator_advisories({"root": {"bsa": "plain string"}}) == []
+    assert bart.parse_elevator_advisories({"root": {"bsa": [None, 42, "x"]}}) == []
+
+
 # --- key gating + merge ----------------------------------------------------------
 
 

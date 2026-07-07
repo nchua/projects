@@ -273,9 +273,21 @@ function renderCardBody(fav, data) {
   const expanded = state.expanded.has(pairKey(fav));
   const shownLimit = expanded ? EXPANDED_LIMIT : COLLAPSED_LIMIT;
 
+  // Canceled rows are additive to the limit (SPEC-V2 §5.4): cap live rows at
+  // shownLimit and let in-window canceled rows ride along — a canceled train
+  // must never push a live train off the board. Once the live cap is hit,
+  // later canceled rows are outside the shown window too.
+  const shown = [];
+  let liveCount = 0;
+  for (const dep of data.departures) {
+    if (liveCount >= shownLimit) break;
+    if (dep.status !== "canceled") liveCount++;
+    shown.push(dep);
+  }
+
   const body = card.querySelector(".card-body");
   body.textContent = "";
-  for (const dep of data.departures.slice(0, shownLimit)) {
+  for (const dep of shown) {
     const row = $("tpl-dep").content.firstElementChild.cloneNode(true);
     const effective = dep.departure.expected || dep.departure.aimed;
 
@@ -332,13 +344,14 @@ function renderCardBody(fav, data) {
 
   const foot = document.createElement("div");
   foot.className = "card-foot";
-  if (data.departures.length < shownLimit) {
+  const liveTotal = data.departures.filter((dep) => dep.status !== "canceled").length;
+  if (liveTotal < shownLimit) {
     const note = document.createElement("p");
     note.className = "foot-note";
     note.textContent = "That's every upcoming train in the live feed right now.";
     foot.append(note);
   }
-  if (!expanded && data.departures.length >= COLLAPSED_LIMIT) {
+  if (!expanded && liveTotal >= COLLAPSED_LIMIT) {
     foot.append(makeFootButton("expand-card", "Show more"));
   } else if (expanded) {
     foot.append(makeFootButton("collapse-card", "Show fewer"));
@@ -679,6 +692,9 @@ document.body.addEventListener("click", (e) => {
       setTimeout(() => {
         card.remove();
         $("no-favorites").hidden = state.favorites.length > 0;
+        // an alert chipped only on this card must return to the banner —
+        // visibility is never lost (SPEC-V2 §3.3)
+        if (state.lastAlerts) renderAlerts(state.lastAlerts);
       }, 200);
       break;
     }
@@ -767,7 +783,9 @@ async function init() {
     if (!f || !f.agency) return false;
     if (f.agency === "xa") {
       const ends = [f.origin, f.destination].map((v) => [agencyOf(v || ""), idOf(v || "")]);
-      return ends[0][0] !== ends[1][0] && ends.every(([agency, id]) => validEnd(agency, id));
+      return ends[0][0] !== ends[1][0]
+        && ends.every(([agency, id]) => validEnd(agency, id))
+        && !ends.some(([, id]) => id === "millbrae"); // degenerate pair (§7.2)
     }
     return validEnd(f.agency, f.origin) && validEnd(f.agency, f.destination);
   };

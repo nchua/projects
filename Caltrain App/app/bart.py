@@ -164,13 +164,13 @@ async def _fetch(endpoint: str) -> dict:
 # as 511) and text hides under #cdata-section.
 
 
-def _ensure_list(value) -> list:
+def _ensure_list(value: object) -> list:
     if value is None:
         return []
     return value if isinstance(value, list) else [value]
 
 
-def _cdata(value) -> str:
+def _cdata(value: object) -> str:
     if isinstance(value, dict):
         return str(value.get("#cdata-section") or "").strip()
     return str(value or "").strip()
@@ -191,15 +191,21 @@ def parse_elevator_advisories(payload: dict) -> list[dict]:
     are in service") produces no advisories; prose with no resolvable
     station degrades to an unscoped banner alert, never dropped.
     """
+    root = payload.get("root") if isinstance(payload, dict) else None
     advisories = []
-    for entry in _ensure_list((payload.get("root") or {}).get("bsa")):
+    for entry in _ensure_list(root.get("bsa") if isinstance(root, dict) else None):
+        if not isinstance(entry, dict):
+            continue  # unexpected XML→JSON shape — skip, never crash (§6.2)
         description = _cdata(entry.get("description"))
-        if not description or "out of service" not in description.lower():
-            continue
+        lowered = description.lower()
+        if not description or "out of service" not in lowered:
+            continue  # zero-outage message ("all elevators are in service") or noise
         abbrs: list[str] = []
         for token in _ELEV_ABBR_RE.findall(description):
             if bart_stations.by_abbr(token) and token not in abbrs:
                 abbrs.append(token)
+        if not abbrs and re.search(r"\bno (?:elevators?|escalators?)\b", lowered):
+            continue  # negated zero-outage phrasing — fail closed (§6.2 ⚠ VERIFY)
         if abbrs:
             names = ", ".join(bart_stations.by_abbr(a).name for a in abbrs)
             header = f"Elevator out of service at {names}"

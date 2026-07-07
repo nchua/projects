@@ -151,6 +151,19 @@ def test_ba_internal_transfer_extends_to_three_legs():
     assert len(row["legs"]) <= 3
 
 
+def test_oakl_destination_produces_no_itineraries():
+    # OAK Airport is excluded from xa (SPEC-V2 §7.1): the shuttle appendage
+    # would need a 4th leg, and _ba_leg_itineraries must never synthesize
+    # shuttle rungs the way the BA-internal path does
+    sm = ct_payload(dep=BASE + 600, arr=BASE + 1500)
+    feed = ba_feed(
+        ba_trip("MLBR", "WOAK", dep=BASE + 2400, arr=BASE + 4200),
+        ba_trip("WOAK", "COLS", dep=BASE + 4800, arr=BASE + 6600),
+    )
+    rows = itineraries(sm, feed, "san_carlos", "oakland_international_airport", True, BASE)
+    assert rows == []
+
+
 def test_ct_public_rows_carry_no_meta_keys():
     # byte-identity guard for the §7.4 refactor: the ct response path strips
     # the stitch meta entirely
