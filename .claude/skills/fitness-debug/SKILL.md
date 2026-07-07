@@ -24,6 +24,8 @@ description: Debug fitness app issues across iOS, backend, and screenshot proces
 | PR calculations | `backend/app/api/progress.py`, `backend/app/core/e1rm.py` |
 | Screenshot extraction | `backend/app/services/screenshot_service.py` |
 | Database issues | `backend/app/core/database.py`, `backend/alembic/versions/` |
+| Gamification (quests/dungeons/achievements) | `backend/app/services/` — relationships are EMPTY after `db.commit()`; re-query with `joinedload()` before `update_quest_progress()` / `update_dungeon_progress()` / `check_and_unlock_achievements()` |
+| Wearable-HR / HealthKit import | `backend/app/schemas/workout.py` ↔ `ios/FitnessApp/Services/APITypes.swift` — run the `contract-mirror-check` agent (2026-06-21: `strain` missing, `hkUuid` dead) |
 
 ### iOS (SwiftUI)
 | Issue Type | Files to Check |
@@ -33,7 +35,8 @@ description: Debug fitness app issues across iOS, backend, and screenshot proces
 | Home screen | `ios/FitnessApp/Views/Home/HomeView.swift`, `HomeViewModel.swift` |
 | Workout history | `ios/FitnessApp/Views/History/HistoryView.swift`, `HistoryViewModel.swift` |
 | Screenshot upload | `ios/FitnessApp/Views/Log/ScreenshotProcessingViewModel.swift` |
-| Data decoding | `ios/FitnessApp/Services/APITypes.swift` (check Decodable structs) |
+| Data decoding | `ios/FitnessApp/Services/APITypes.swift` (check Decodable structs against backend Pydantic — contract-mirror-check agent) |
+| HealthKit sync | `ios/FitnessApp/Services/HealthKitManager.swift` |
 
 ## Common Debugging Commands
 
@@ -42,14 +45,13 @@ description: Debug fitness app issues across iOS, backend, and screenshot proces
 # Health check
 curl https://backend-production-e316.up.railway.app/health
 
-# Test auth
-node fitness-app/test-auth.js
+# Backend test suite (auth, workouts, and most endpoints are pytest now — test-auth.js/test-workouts.js were retired)
+cd fitness-app/backend && SECRET_KEY=test JWT_SECRET_KEY=test venv/bin/python -m pytest tests/ -n auto -q
 
-# Test workouts
-node fitness-app/test-workouts.js
-
-# Test exercises
+# Live-server scripts (only kept where a live server matters)
+node fitness-app/test-sync.js
 node fitness-app/test-exercises.js
+node fitness-app/test-scan-balance.js   # IAP credits — NEVER against prod (verify-purchase has no App Store validation)
 
 # Manual API call with auth
 curl -H "Authorization: Bearer $TOKEN" \
@@ -140,7 +142,7 @@ PostgreSQL (Railway)
 
 ### Railway Backend
 - `DATABASE_URL` - PostgreSQL connection
-- `SECRET_KEY` - JWT signing (must match between deploys)
+- `JWT_SECRET_KEY` (and legacy `SECRET_KEY`) - JWT signing (must match between deploys)
 - `ANTHROPIC_API_KEY` - For screenshot processing
 
 ### Local Testing
