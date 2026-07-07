@@ -1,18 +1,17 @@
 """
-Quest Service - Daily quest generation, progress tracking, and rewards
+Quest Service - workout stat aggregation and wearable detection.
+
+Daily-quest generation/claim was removed in ARISE v2 Phase 0; the helpers
+below survive because the Phase 1 Directive system reuses them. The
+quest_definitions / user_quests tables also stay until Phase 1.
 """
-import random
-import uuid
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from sqlalchemy.orm import Session, joinedload
 
-from app.core.utils import to_iso8601_utc
-from app.models.quest import QuestDefinition, UserQuest
 from app.models.workout import WorkoutExercise, WorkoutSession
-from app.services.workout_stats import COMPOUND_EXERCISES, calculate_workout_stats
-from app.services.xp_service import award_xp
+from app.services.workout_stats import COMPOUND_EXERCISES
 
 
 def get_midnight_utc_tomorrow() -> datetime:
@@ -22,12 +21,17 @@ def get_midnight_utc_tomorrow() -> datetime:
     return datetime(tomorrow.year, tomorrow.month, tomorrow.day, 0, 0, 0, tzinfo=timezone.utc)
 
 
+def get_today_utc() -> date:
+    """Get today's date in UTC"""
+    return datetime.now(timezone.utc).date()
+
+
 def calculate_todays_workout_stats(db: Session, user_id: str, target_date: date) -> Dict[str, Any]:
     """
-    Calculate aggregate stats from workouts for a specific date's quests.
+    Calculate aggregate stats from workouts for a specific date.
 
     Only workouts matching the exact target_date are included. Earlier workouts
-    from the week do NOT count toward daily quests.
+    from the week do NOT count.
 
     Args:
         db: Database session
@@ -95,94 +99,6 @@ def calculate_todays_workout_stats(db: Session, user_id: str, target_date: date)
     }
 
 
-def get_today_utc() -> date:
-    """Get today's date in UTC"""
-    return datetime.now(timezone.utc).date()
-
-
-def get_daily_quests(db: Session, user_id: str) -> Dict[str, Any]:
-    """
-    Get today's daily quests for a user. Generate new ones if needed.
-    Recalculates progress from all workouts logged today.
-
-    If the user has an active weekly mission, returns mission objectives
-    instead of regular daily quests.
-
-    Returns:
-        Dict with quests list, refresh timestamp, and counts
-    """
-    # Check for active mission first
-    from app.services.mission_service import (
-        format_mission_as_quests,
-        get_active_mission_for_quests,
-    )
-
-    active_mission = get_active_mission_for_quests(db, user_id)
-    if active_mission:
-        # Return mission objectives as quests
-        mission_quests = format_mission_as_quests(active_mission)
-        completed_count = sum(1 for q in mission_quests if q["is_completed"])
-
-        return {
-            "quests": mission_quests,
-            "refresh_at": to_iso8601_utc(get_midnight_utc_tomorrow()),
-            "completed_count": completed_count,
-            "total_count": len(mission_quests),
-            "is_mission_mode": True,
-            "mission_id": active_mission.id
-        }
-
-    today = get_today_utc()
-
-    # Check for existing quests assigned today
-    user_quests = db.query(UserQuest).filter(
-        UserQuest.user_id == user_id,
-        UserQuest.assigned_date == today
-    ).all()
-
-    # If no quests for today, generate new ones
-    if not user_quests:
-        user_quests = generate_daily_quests(db, user_id)
-
-    # Recalculate progress from all today's workouts for unclaimed quests
-    # This ensures progress is accurate even if workouts were logged before quests existed
-    unclaimed_quests = [uq for uq in user_quests if not uq.is_claimed]
-    if unclaimed_quests:
-        recalculate_quest_progress(db, user_id, unclaimed_quests, today)
-
-    # Build response
-    quests = []
-    completed_count = 0
-
-    for uq in user_quests:
-        quest_def = uq.quest
-        quests.append({
-            "id": uq.id,
-            "quest_id": quest_def.id,
-            "name": quest_def.name,
-            "description": quest_def.description,
-            "quest_type": quest_def.quest_type,
-            "target_value": quest_def.target_value,
-            "xp_reward": quest_def.xp_reward,
-            "progress": uq.progress,
-            "is_completed": uq.is_completed,
-            "is_claimed": uq.is_claimed,
-            "difficulty": quest_def.difficulty,
-            "completed_by_workout_id": uq.completed_by_workout_id
-        })
-        if uq.is_completed:
-            completed_count += 1
-
-    return {
-        "quests": quests,
-        "refresh_at": to_iso8601_utc(get_midnight_utc_tomorrow()),
-        "completed_count": completed_count,
-        "total_count": len(quests),
-        "is_mission_mode": False,
-        "mission_id": None
-    }
-
-
 def user_has_wearable(db: Session, user_id: str, lookback_days: int = 30) -> bool:
     """
     True if the user has a usable wearable HR source:
@@ -190,8 +106,8 @@ def user_has_wearable(db: Session, user_id: str, lookback_days: int = 30) -> boo
       - any recent (non-deleted) workout carrying wearable HR (``hr_source`` set,
         e.g. from an Apple Watch HealthKit import or WHOOP sync).
 
-    Used to gate HR-driven quests into the daily pool so non-wearable users never
-    get impossible quests.
+    Used to gate HR-driven content so non-wearable users never get
+    impossible objectives.
     """
     # Local import: whoop_service imports this module, so a top-level import
     # would create a cycle.
@@ -214,364 +130,3 @@ def user_has_wearable(db: Session, user_id: str, lookback_days: int = 30) -> boo
         .first()
     )
     return recent_hr_session is not None
-
-
-def generate_daily_quests(db: Session, user_id: str, count: int = 3) -> List[UserQuest]:
-    """
-    Generate new daily quests for a user.
-    Picks one quest from each difficulty (easy, normal, hard) if available.
-
-    HR-driven quests (``hr_zone_time`` / ``peak_hr`` / ``session_strain``) require a
-    connected wearable, so they're only offered to users with one — and capped at a
-    single HR quest per day so the set isn't all-cardio. Non-wearable users get the
-    original behavior (HR quests excluded).
-    """
-    today = get_today_utc()
-
-    HR_QUEST_TYPES = ("hr_zone_time", "peak_hr", "session_strain")
-
-    # Base pool: active daily quests, excluding duration-based (speed) and the
-    # wearable-gated HR quests.
-    base_defs = db.query(QuestDefinition).filter(
-        QuestDefinition.is_daily == True,
-        QuestDefinition.is_active == True,
-        QuestDefinition.quest_type != "workout_duration",  # Exclude speed-based quests
-        QuestDefinition.quest_type.notin_(HR_QUEST_TYPES),  # Wearable-gated, added below
-    ).all()
-
-    # Wearable users can also receive HR quests (at most one — see cap below).
-    hr_defs = []
-    if user_has_wearable(db, user_id):
-        hr_defs = db.query(QuestDefinition).filter(
-            QuestDefinition.is_daily == True,
-            QuestDefinition.is_active == True,
-            QuestDefinition.quest_type.in_(HR_QUEST_TYPES),
-        ).all()
-
-    if not base_defs and not hr_defs:
-        return []
-
-    selected_quests = []
-
-    # Cap: at most one HR quest in the daily set.
-    if hr_defs:
-        selected_quests.append(random.choice(hr_defs))
-
-    # Fill remaining slots from the base pool, one per difficulty for variety.
-    by_difficulty = {"easy": [], "normal": [], "hard": []}
-    for qd in base_defs:
-        if qd.difficulty in by_difficulty:
-            by_difficulty[qd.difficulty].append(qd)
-    for difficulty in ["easy", "normal", "hard"]:
-        if len(selected_quests) >= count:
-            break
-        if by_difficulty[difficulty]:
-            selected_quests.append(random.choice(by_difficulty[difficulty]))
-
-    # If we don't have `count` yet, pick more randomly from the base pool.
-    while len(selected_quests) < count:
-        remaining = [q for q in base_defs if q not in selected_quests]
-        if remaining:
-            selected_quests.append(random.choice(remaining))
-        else:
-            break
-
-    # Create UserQuest records
-    user_quests = []
-    for quest_def in selected_quests:
-        user_quest = UserQuest(
-            id=str(uuid.uuid4()),
-            user_id=user_id,
-            quest_id=quest_def.id,
-            assigned_date=today,
-            progress=0,
-            is_completed=False,
-            is_claimed=False
-        )
-        db.add(user_quest)
-        user_quests.append(user_quest)
-
-    db.flush()
-    return user_quests
-
-
-def recalculate_quest_progress(db: Session, user_id: str, user_quests: List[UserQuest], today: date) -> List[str]:
-    """
-    Recalculate quest progress based on ALL workouts logged today.
-    This ensures progress is accurate even if workouts were logged before quests existed.
-
-    Args:
-        db: Database session
-        user_id: User ID
-        user_quests: List of UserQuest objects to update
-        today: Today's date
-
-    Returns:
-        List of quest IDs that are now completed
-    """
-    # Get aggregate stats from all today's workouts
-    stats = calculate_todays_workout_stats(db, user_id, today)
-
-    if stats["workout_count"] == 0:
-        return []
-
-    completed_quest_ids = []
-
-    for uq in user_quests:
-        if uq.is_claimed:
-            continue  # Don't update claimed quests
-
-        quest_def = uq.quest
-        progress = 0
-
-        if quest_def.quest_type == "total_reps":
-            progress = stats["total_reps"]
-        elif quest_def.quest_type == "compound_sets":
-            progress = stats["compound_sets"]
-        elif quest_def.quest_type == "total_volume":
-            progress = stats["total_volume"]
-        elif quest_def.quest_type == "hr_zone_time":
-            progress = stats["elevated_zone_minutes"]
-        elif quest_def.quest_type == "peak_hr":
-            progress = stats["peak_heart_rate"]
-        elif quest_def.quest_type == "session_strain":
-            progress = int(stats["strain"])
-        # Note: workout_duration quests have been removed
-
-        # Update progress (don't exceed target)
-        uq.progress = min(progress, quest_def.target_value)
-
-        # Check if quest is now completed
-        if uq.progress >= quest_def.target_value and not uq.is_completed:
-            uq.is_completed = True
-            uq.completed_at = datetime.now(timezone.utc)
-            completed_quest_ids.append(uq.id)
-
-    db.flush()
-    return completed_quest_ids
-
-
-def update_quest_progress(db: Session, user_id: str, workout: WorkoutSession) -> List[str]:
-    """
-    Update quest progress based on a completed workout.
-
-    The workout's LOCAL date determines which quests are affected. This ensures
-    a workout logged for "Jan 31" affects "Jan 31" quests, even if the current
-    UTC date is "Feb 1".
-
-    Args:
-        db: Database session
-        user_id: User ID
-        workout: The completed workout session
-
-    Returns:
-        List of quest IDs that were completed by this workout
-    """
-    # Use the workout's date to find matching quests
-    # Workout dates are LOCAL dates (the day the user worked out in their timezone)
-    workout_date = workout.date.date() if hasattr(workout.date, 'date') else workout.date
-    today_utc = get_today_utc()
-
-    # Get quests for the workout's date
-    user_quests = db.query(UserQuest).filter(
-        UserQuest.user_id == user_id,
-        UserQuest.assigned_date == workout_date,
-        UserQuest.is_claimed == False
-    ).all()
-
-    # If no quests exist for the workout's date and it matches today (UTC),
-    # generate new quests. Only generate for today, not past dates.
-    if not user_quests and workout_date == today_utc:
-        # Check if any quests exist at all for today (including claimed ones)
-        any_quests_today = db.query(UserQuest).filter(
-            UserQuest.user_id == user_id,
-            UserQuest.assigned_date == workout_date
-        ).first()
-
-        # Only generate if no quests exist for today (not if all were claimed)
-        if not any_quests_today:
-            user_quests = generate_daily_quests(db, user_id)
-
-        # If still no unclaimed quests, return early
-        if not user_quests:
-            return []
-
-    # Calculate workout stats for quest checking
-    stats = calculate_workout_stats(workout)
-    total_reps = stats["total_reps"]
-    compound_sets = stats["compound_sets"]
-    total_volume = stats["total_volume"]
-
-    # Update each quest's progress
-    completed_quest_ids = []
-
-    for uq in user_quests:
-        quest_def = uq.quest
-        progress = 0
-
-        if quest_def.quest_type == "total_reps":
-            progress = total_reps
-        elif quest_def.quest_type == "compound_sets":
-            progress = compound_sets
-        elif quest_def.quest_type == "total_volume":
-            progress = int(total_volume)
-        elif quest_def.quest_type == "hr_zone_time":
-            # HR from the Apple Watch live session arrives in the create payload,
-            # so it can be credited immediately. WHOOP HR arrives later via the
-            # WHOOP sync path, which re-runs recalculate_quest_progress.
-            progress = stats["elevated_zone_minutes"]
-        elif quest_def.quest_type == "peak_hr":
-            progress = stats["peak_heart_rate"]
-        elif quest_def.quest_type == "session_strain":
-            progress = int(stats["strain"])
-        # Note: workout_duration quests have been removed
-
-        # Update progress (don't exceed target)
-        uq.progress = min(progress, quest_def.target_value)
-
-        # Check if quest is now completed
-        if uq.progress >= quest_def.target_value and not uq.is_completed:
-            uq.is_completed = True
-            uq.completed_at = datetime.now(timezone.utc)
-            uq.completed_by_workout_id = workout.id
-            completed_quest_ids.append(uq.id)
-
-    db.flush()
-    return completed_quest_ids
-
-
-def claim_quest_reward(db: Session, user_id: str, user_quest_id: str) -> Dict[str, Any]:
-    """
-    Claim XP reward for a completed quest.
-
-    Args:
-        db: Database session
-        user_id: User ID
-        user_quest_id: UserQuest ID to claim
-
-    Returns:
-        Dict with XP earned, new totals, level up info
-
-    Raises:
-        ValueError: If quest not found, not completed, or already claimed
-    """
-    user_quest = db.query(UserQuest).filter(
-        UserQuest.id == user_quest_id,
-        UserQuest.user_id == user_id
-    ).first()
-
-    if not user_quest:
-        raise ValueError("Quest not found")
-
-    if not user_quest.is_completed:
-        raise ValueError("Quest not completed yet")
-
-    if user_quest.is_claimed:
-        raise ValueError("Quest already claimed")
-
-    # Get XP reward from quest definition
-    quest_def = user_quest.quest
-    xp_reward = quest_def.xp_reward
-
-    # Award XP (no workout count/streak for reward claims)
-    xp_result = award_xp(db, user_id, xp_reward, count_workout=False)
-
-    # Mark quest as claimed
-    user_quest.is_claimed = True
-    user_quest.claimed_at = datetime.now(timezone.utc)
-
-    db.flush()
-
-    return {
-        "success": True,
-        "xp_earned": xp_reward,
-        "total_xp": xp_result["total_xp"],
-        "level": xp_result["new_level"],
-        "leveled_up": xp_result["leveled_up"],
-        "new_level": xp_result["new_level"] if xp_result["leveled_up"] else None,
-        "rank": xp_result["new_rank"],
-        "rank_changed": xp_result["rank_changed"],
-        "new_rank": xp_result["new_rank"] if xp_result["rank_changed"] else None
-    }
-
-
-def seed_quest_definitions(db: Session) -> int:
-    """
-    Seed the database with quest definitions.
-
-    Returns:
-        Number of quests created
-    """
-    quest_definitions = [
-        # Rep-based quests
-        {"id": "reps_50", "name": "Rep It Out", "description": "Complete 50 total reps",
-         "quest_type": "total_reps", "target_value": 50, "xp_reward": 15, "difficulty": "easy"},
-        {"id": "reps_100", "name": "Century Club", "description": "Complete 100 total reps",
-         "quest_type": "total_reps", "target_value": 100, "xp_reward": 25, "difficulty": "normal"},
-        {"id": "reps_150", "name": "Rep Warrior", "description": "Complete 150 total reps",
-         "quest_type": "total_reps", "target_value": 150, "xp_reward": 35, "difficulty": "normal"},
-        {"id": "reps_200", "name": "Rep Machine", "description": "Complete 200 total reps",
-         "quest_type": "total_reps", "target_value": 200, "xp_reward": 50, "difficulty": "hard"},
-
-        # Compound lift quests
-        {"id": "compound_3", "name": "Foundation Builder", "description": "Do 3 sets of compound lifts",
-         "quest_type": "compound_sets", "target_value": 3, "xp_reward": 20, "difficulty": "easy"},
-        {"id": "compound_5", "name": "Compound Focus", "description": "Do 5 sets of compound lifts",
-         "quest_type": "compound_sets", "target_value": 5, "xp_reward": 30, "difficulty": "normal"},
-        {"id": "compound_8", "name": "Strength Builder", "description": "Do 8 sets of compound lifts",
-         "quest_type": "compound_sets", "target_value": 8, "xp_reward": 45, "difficulty": "normal"},
-        {"id": "compound_12", "name": "Powerhouse", "description": "Do 12 sets of compound lifts",
-         "quest_type": "compound_sets", "target_value": 12, "xp_reward": 60, "difficulty": "hard"},
-
-        # Volume-based quests
-        {"id": "volume_3k", "name": "Volume Starter", "description": "Lift 3,000 lbs total",
-         "quest_type": "total_volume", "target_value": 3000, "xp_reward": 15, "difficulty": "easy"},
-        {"id": "volume_5k", "name": "Volume Builder", "description": "Lift 5,000 lbs total",
-         "quest_type": "total_volume", "target_value": 5000, "xp_reward": 25, "difficulty": "easy"},
-        {"id": "volume_10k", "name": "Heavy Lifter", "description": "Lift 10,000 lbs total",
-         "quest_type": "total_volume", "target_value": 10000, "xp_reward": 40, "difficulty": "normal"},
-        {"id": "volume_15k", "name": "Volume Warrior", "description": "Lift 15,000 lbs total",
-         "quest_type": "total_volume", "target_value": 15000, "xp_reward": 55, "difficulty": "normal"},
-        {"id": "volume_20k", "name": "Tonnage King", "description": "Lift 20,000 lbs total",
-         "quest_type": "total_volume", "target_value": 20000, "xp_reward": 70, "difficulty": "hard"},
-
-        # ── Wearable heart-rate quests (require Apple Watch or WHOOP) ──
-        # Offered to wearable users only, capped at one per day — see
-        # user_has_wearable() / generate_daily_quests().
-        {"id": "hr_zone_15", "name": "Heat Check", "description": "Spend 15 min in elevated HR zones",
-         "quest_type": "hr_zone_time", "target_value": 15, "xp_reward": 25, "difficulty": "easy"},
-        {"id": "hr_zone_30", "name": "Cardio Base", "description": "Spend 30 min in elevated HR zones",
-         "quest_type": "hr_zone_time", "target_value": 30, "xp_reward": 40, "difficulty": "normal"},
-        {"id": "hr_zone_45", "name": "Engine Builder", "description": "Spend 45 min in elevated HR zones",
-         "quest_type": "hr_zone_time", "target_value": 45, "xp_reward": 60, "difficulty": "hard"},
-        {"id": "peak_hr_150", "name": "Push the Pace", "description": "Reach a peak heart rate of 150 BPM",
-         "quest_type": "peak_hr", "target_value": 150, "xp_reward": 30, "difficulty": "normal"},
-        {"id": "peak_hr_170", "name": "Redline", "description": "Reach a peak heart rate of 170 BPM",
-         "quest_type": "peak_hr", "target_value": 170, "xp_reward": 50, "difficulty": "hard"},
-        {"id": "strain_12", "name": "Strain Seeker", "description": "Hit a WHOOP strain of 12",
-         "quest_type": "session_strain", "target_value": 12, "xp_reward": 35, "difficulty": "normal"},
-        {"id": "strain_16", "name": "All Out", "description": "Hit a WHOOP strain of 16",
-         "quest_type": "session_strain", "target_value": 16, "xp_reward": 55, "difficulty": "hard"},
-    ]
-
-    created_count = 0
-    for quest_data in quest_definitions:
-        # Check if quest already exists
-        existing = db.query(QuestDefinition).filter(QuestDefinition.id == quest_data["id"]).first()
-        if not existing:
-            quest = QuestDefinition(
-                id=quest_data["id"],
-                name=quest_data["name"],
-                description=quest_data["description"],
-                quest_type=quest_data["quest_type"],
-                target_value=quest_data["target_value"],
-                xp_reward=quest_data["xp_reward"],
-                difficulty=quest_data["difficulty"],
-                is_daily=True,
-                is_active=True
-            )
-            db.add(quest)
-            created_count += 1
-
-    db.commit()
-    return created_count

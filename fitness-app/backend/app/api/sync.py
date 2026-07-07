@@ -4,7 +4,7 @@ Sync API endpoints for offline data synchronization
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
@@ -17,6 +17,7 @@ from app.core.e1rm import (
 from app.core.utils import to_iso8601_utc
 from app.models.bodyweight import BodyweightEntry
 from app.models.exercise import Exercise
+from app.models.pr import PR
 from app.models.user import User, UserProfile
 from app.models.workout import Set, WorkoutExercise, WorkoutSession
 from app.schemas.sync import (
@@ -26,7 +27,9 @@ from app.schemas.sync import (
     SyncResult,
     SyncStatusResponse,
 )
+from app.services.achievement_service import check_and_unlock_achievements
 from app.services.pr_detection import detect_and_create_prs
+from app.services.xp_service import award_xp, calculate_workout_xp, get_or_create_user_progress
 
 router = APIRouter()
 
@@ -137,6 +140,48 @@ async def sync_data(
                 # Detect PRs
                 db.flush()
                 detect_and_create_prs(db, current_user.id, workout_exercise, exercise_sets)
+
+            # Award XP for the synced workout, mirroring the POST /workouts
+            # pipeline (offline-logged workouts previously earned nothing).
+            workout_prs = db.query(PR).filter(
+                PR.user_id == current_user.id,
+                PR.set_id.in_([
+                    s.id
+                    for we in workout_session.workout_exercises
+                    for s in we.sets
+                ])
+            ).count()
+
+            # Eager re-load so calculate_workout_xp can walk exercises/sets
+            # (relationship collections are unreliable right after flushes —
+            # see CLAUDE.md SQLAlchemy joinedload rule).
+            loaded_workout = db.query(WorkoutSession).options(
+                joinedload(WorkoutSession.workout_exercises)
+                .joinedload(WorkoutExercise.sets),
+                joinedload(WorkoutSession.workout_exercises)
+                .joinedload(WorkoutExercise.exercise)
+            ).filter(WorkoutSession.id == workout_session.id).first()
+
+            xp_result = calculate_workout_xp(db, loaded_workout, prs_achieved=workout_prs)
+            award_xp(
+                db,
+                current_user.id,
+                xp_result["xp_earned"],
+                workout_date=workout_session.date
+            )
+
+            progress = get_or_create_user_progress(db, current_user.id)
+            progress.total_volume_lb += xp_result["total_volume"]
+            progress.total_prs += workout_prs
+
+            check_and_unlock_achievements(db, current_user.id, {
+                "workout_count": progress.total_workouts,
+                "level": progress.level,
+                "rank": progress.rank,
+                "prs_count": progress.total_prs,
+                "current_streak": progress.current_streak,
+                "exercise_prs": {},
+            })
 
             results.append(SyncResult(
                 entity_type="workout",

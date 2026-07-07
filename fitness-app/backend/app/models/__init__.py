@@ -3,29 +3,9 @@
 from app.models.achievement import AchievementDefinition, UserAchievement
 from app.models.activity import DailyActivity
 from app.models.bodyweight import BodyweightEntry
-from app.models.dungeon import (
-    DungeonDefinition,
-    DungeonObjectiveDefinition,
-    DungeonObjectiveType,
-    DungeonRank,
-    DungeonStatus,
-    UserDungeon,
-    UserDungeonObjective,
-)
 from app.models.exercise import Exercise
 from app.models.friend import FriendRequest, FriendRequestStatus, Friendship
-from app.models.mission import (
-    ExercisePrescription,
-    Goal,
-    GoalProgressSnapshot,
-    GoalStatus,
-    MissionGoal,
-    MissionStatus,
-    MissionWorkout,
-    MissionWorkoutStatus,
-    TrainingSplit,
-    WeeklyMission,
-)
+from app.models.goal import Goal, GoalProgressSnapshot, GoalStatus
 from app.models.notification import DeviceToken, NotificationPreference, NotificationType
 from app.models.password_reset import PasswordResetToken
 from app.models.pr import PR, PRType
@@ -69,27 +49,13 @@ __all__ = [
     "QuestType",
     "QuestDifficulty",
     "DailyActivity",
-    "DungeonDefinition",
-    "DungeonObjectiveDefinition",
-    "UserDungeon",
-    "UserDungeonObjective",
-    "DungeonRank",
-    "DungeonObjectiveType",
-    "DungeonStatus",
     "FriendRequest",
     "Friendship",
     "FriendRequestStatus",
     "PasswordResetToken",
     "Goal",
     "GoalProgressSnapshot",
-    "WeeklyMission",
-    "MissionWorkout",
-    "ExercisePrescription",
-    "MissionGoal",
     "GoalStatus",
-    "MissionStatus",
-    "MissionWorkoutStatus",
-    "TrainingSplit",
     "ScreenshotUsage",
     "ScanBalance",
     "PurchaseRecord",

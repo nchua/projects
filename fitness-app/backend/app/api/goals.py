@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 from app.core.dependencies import get_current_user
 from app.models.exercise import Exercise
 from app.models.user import User
-from app.schemas.mission import (
+from app.schemas.goal import (
     GoalBatchCreate,
     GoalBatchCreateResponse,
     GoalCreate,
@@ -22,7 +22,7 @@ from app.schemas.mission import (
     GoalSummaryResponse,
     GoalUpdate,
 )
-from app.services.mission_service import (
+from app.services.goal_service import (
     MAX_ACTIVE_GOALS,
     GoalStatus,
     create_goal,

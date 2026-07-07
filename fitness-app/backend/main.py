@@ -367,16 +367,13 @@ from app.api import (
     analytics,
     auth,
     bodyweight,
-    dungeons,
     exercises,
     friends,
     goals,
-    missions,
     notifications,
     password_reset,
     profile,
     progress,
-    quests,
     scan_balance,
     screenshot,
     sync,
@@ -396,13 +393,10 @@ app.include_router(bodyweight.router, prefix="/bodyweight", tags=["Bodyweight"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 app.include_router(sync.router, prefix="/sync", tags=["Sync"])
 app.include_router(progress.router, prefix="/progress", tags=["Progress"])
-app.include_router(quests.router, prefix="/quests", tags=["Quests"])
 app.include_router(screenshot.router, prefix="/screenshot", tags=["Screenshot"])
 app.include_router(activity.router, prefix="/activity", tags=["Activity"])
-app.include_router(dungeons.router, prefix="/dungeons", tags=["Dungeons"])
 app.include_router(friends.router, prefix="/friends", tags=["Friends"])
 app.include_router(goals.router, prefix="/goals", tags=["Goals"])
-app.include_router(missions.router, prefix="/missions", tags=["Missions"])
 app.include_router(weekly_report.router, prefix="/progress", tags=["Progress"])
 app.include_router(scan_balance.router, prefix="/scan-balance", tags=["Scan Balance"])
 app.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])

@@ -224,19 +224,6 @@ async def notify_rank_promotion(
     )
 
 
-async def notify_dungeon_spawned(
-    db: Session, user_id: str, dungeon_name: str, dungeon_rank: str
-) -> bool:
-    """Notify user a new dungeon has appeared."""
-    return await send_push_notification(
-        db, user_id,
-        NotificationType.DUNGEON_SPAWNED,
-        "GATE DETECTED",
-        f"{dungeon_rank}-Rank Dungeon \"{dungeon_name}\" has appeared.",
-        data={"type": "dungeon_spawned"},
-    )
-
-
 async def notify_weekly_report_ready(db: Session, user_id: str) -> bool:
     """Notify user their weekly report is available."""
     return await send_push_notification(
@@ -245,15 +232,4 @@ async def notify_weekly_report_ready(db: Session, user_id: str) -> bool:
         "WEEKLY REPORT",
         "Your weekly progress report is ready. Review your performance.",
         data={"type": "weekly_report_ready"},
-    )
-
-
-async def notify_mission_offered(db: Session, user_id: str) -> bool:
-    """Notify user a new weekly mission is available."""
-    return await send_push_notification(
-        db, user_id,
-        NotificationType.MISSION_OFFERED,
-        "NEW MISSION",
-        "This week's training mission is ready. Accept it to continue your journey.",
-        data={"type": "mission_offered"},
     )

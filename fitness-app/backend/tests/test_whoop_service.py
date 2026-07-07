@@ -3,7 +3,7 @@ Tests for the WHOOP integration (Phase 1 wearable HR).
 
 Covers the pure logic (token encryption, OAuth state, zone mapping, session
 time-overlap matching, summary backfill) and an end-to-end sync that monkeypatches
-the WHOOP HTTP layer and asserts an HR-based quest gets credited on sync.
+the WHOOP HTTP layer and asserts session HR backfills on sync.
 """
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -12,7 +12,6 @@ import pytest
 
 from app.core.crypto import decrypt_token, encrypt_token
 from app.models.exercise import Exercise
-from app.models.quest import QuestDefinition, UserQuest
 from app.models.whoop import WhoopConnection
 from app.models.workout import Set, WeightUnit, WorkoutExercise, WorkoutSession
 from app.services import whoop_service
@@ -163,7 +162,7 @@ class TestSyncEndToEnd:
         db.commit()
         return session
 
-    def test_sync_backfills_hr_and_credits_strain_quest(self, db, create_test_user, monkeypatch):
+    def test_sync_backfills_hr(self, db, create_test_user, monkeypatch):
         user, _ = create_test_user(email=f"whoop-{uuid.uuid4().hex[:8]}@example.com")
 
         # A workout logged today (UTC) at 10:00.
@@ -179,16 +178,6 @@ class TestSyncEndToEnd:
         conn.scope = "offline read:profile read:workout"
         db.add(conn)
 
-        # An HR quest assigned for today (mirrors a wearable-gated assignment).
-        qdef = QuestDefinition(
-            id="strain_12", name="Strain Seeker", description="Hit a WHOOP strain of 12",
-            quest_type="session_strain", target_value=12, xp_reward=35, difficulty="normal",
-            is_daily=True, is_active=True,
-        )
-        db.add(qdef)
-        uq = UserQuest(id=str(uuid.uuid4()), user_id=user.id, quest_id="strain_12",
-                       assigned_date=today, progress=0, is_completed=False, is_claimed=False)
-        db.add(uq)
         db.commit()
 
         # Monkeypatch the WHOOP HTTP layer: configured + a scored workout overlapping the session.
@@ -222,11 +211,8 @@ class TestSyncEndToEnd:
         assert result["sessions_matched"] == 1
         assert result["sessions_updated"] == 1
 
-        # The strain quest (target 12) is now completed by strain 15 -> int(15.4)=15.
-        db.refresh(uq)
-        assert uq.progress == 12  # capped at target
-        assert uq.is_completed is True
-        assert uq.id in result["quests_completed"]
+        # Daily quests were removed in Phase 0; the key stays, always empty.
+        assert result["quests_completed"] == []
 
     def test_sync_without_connection_raises(self, db, create_test_user):
         user, _ = create_test_user(email=f"noconn-{uuid.uuid4().hex[:8]}@example.com")

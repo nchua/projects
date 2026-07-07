@@ -28,19 +28,17 @@ to naive UTC itself. New session dates are stored naive-UTC so quest
 day-bucketing files them on the correct local day.
 """
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session as DBSession
 from sqlalchemy.orm import joinedload
 
 from app.core.utils import ensure_utc
-from app.models.quest import UserQuest
 from app.models.workout import WorkoutExercise, WorkoutSession
 from app.schemas.healthkit import HealthKitWorkout
 from app.services import screenshot_service
 from app.services.heart_rate_service import ingest_heart_rate
-from app.services.quest_service import recalculate_quest_progress
 from app.services.whoop_service import _find_matching_session
 
 logger = logging.getLogger(__name__)
@@ -73,18 +71,6 @@ def _iso_utc(dt: datetime) -> str:
     to a date-only string and would not append ``Z`` for aware inputs).
     """
     return ensure_utc(dt).astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
-
-
-def _session_day(session: WorkoutSession) -> date:
-    """The calendar date a session is filed under, for quest day-bucketing.
-
-    Coerce the session's stored ``date`` (datetime or date) to a ``date`` so it
-    lines up with how ``UserQuest.assigned_date`` / ``calculate_todays_workout_stats``
-    bucket the day. (Sessions are stored in naive UTC, so this is the UTC
-    calendar day — consistent with the quest path, which buckets the same way.)
-    """
-    sd = session.date
-    return sd.date() if isinstance(sd, datetime) else sd
 
 
 def _build_cardio_session(
@@ -180,7 +166,6 @@ def import_healthkit_workouts(
       3. **Strength** -> match an existing session by time overlap, backfill HR
          non-destructively, attribute raw samples to sets -> ``sessions_updated``;
          no match -> ``unmatched`` (session NOT created, ``hk_uuid`` NOT consumed).
-      4. **Quest recalc** per affected LOCAL day -> ``quests_completed``.
 
     Only ``db.flush()``es; the **caller (endpoint) owns ``db.commit()``** (and
     rollback). Returns a dict with exactly these keys::
@@ -216,10 +201,6 @@ def import_healthkit_workouts(
         )
         .all()
     }
-
-    # Sessions created or updated this call, by the calendar day they file
-    # under, so we can recalc quests once per affected day at the end.
-    affected_days: set[date] = set()
 
     # ── Lazily load candidate sessions for the strength path (once) ──
     candidate_sessions: Optional[List[WorkoutSession]] = None
@@ -260,7 +241,6 @@ def import_healthkit_workouts(
             session = _build_cardio_session(db, user_id, workout)
             sessions_created.append(session.id)
             imported.append(hk_uuid)
-            affected_days.add(_session_day(session))
 
             # Persist raw cardio samples (no sets -> all set_id=None) so the
             # series is available even though there's no per-set attribution.
@@ -305,7 +285,6 @@ def import_healthkit_workouts(
         db.flush()
         sessions_updated.append(match.id)
         imported.append(hk_uuid)
-        affected_days.add(_session_day(match))
 
         # Per-set HR attribution: re-query with joinedload(exercises->sets) so
         # the relationship collections are populated before ingest_heart_rate
@@ -326,25 +305,9 @@ def import_healthkit_workouts(
                     db, hydrated, workout.heart_rate_samples, source=HR_SOURCE
                 )
 
-    # ── 4. Idempotent quest recalc per affected LOCAL day ──
+    # Daily quests were removed in ARISE v2 Phase 0; the response keeps the
+    # ``quests_completed`` key (always empty) so the client contract is stable.
     quests_completed: List[str] = []
-    seen_quest_ids: set[str] = set()
-    for day in affected_days:
-        unclaimed = (
-            db.query(UserQuest)
-            .filter(
-                UserQuest.user_id == user_id,
-                UserQuest.assigned_date == day,
-                UserQuest.is_claimed.is_(False),
-            )
-            .all()
-        )
-        if not unclaimed:
-            continue
-        for qid in recalculate_quest_progress(db, user_id, unclaimed, day):
-            if qid not in seen_quest_ids:
-                seen_quest_ids.add(qid)
-                quests_completed.append(qid)
 
     db.flush()
 

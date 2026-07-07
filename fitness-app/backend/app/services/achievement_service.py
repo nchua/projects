@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.utils import to_iso8601_utc
 from app.models.achievement import AchievementDefinition, UserAchievement
-from app.services.xp_service import get_or_create_user_progress
+from app.services.xp_service import award_xp, get_or_create_user_progress
 
 
 def get_user_achievements(db: Session, user_id: str) -> List[Dict[str, Any]]:
@@ -108,8 +108,9 @@ def unlock_achievement(
     )
     db.add(user_achievement)
 
-    # Award XP for achievement
-    progress.total_xp += definition.xp_reward
+    # Award XP for achievement through the normal pipeline so level/rank
+    # progression is applied (raw total_xp += skipped level-up checks).
+    award_xp(db, user_id, definition.xp_reward, count_workout=False)
 
     db.flush()
 

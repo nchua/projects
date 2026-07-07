@@ -28,8 +28,6 @@ from app.schemas.healthkit import (
 )
 from app.schemas.workout import (
     AchievementUnlocked,
-    DungeonProgressResponse,
-    DungeonSpawnedResponse,
     PRAchieved,
     SetResponse,
     WorkoutCreate,
@@ -42,17 +40,14 @@ from app.schemas.workout import (
 from app.services import healthkit_service
 from app.services.achievement_service import check_and_unlock_achievements
 from app.services.activity_muscles import get_activity_muscles
-from app.services.dungeon_service import maybe_spawn_dungeon, update_dungeon_progress
+from app.services.goal_service import update_goal_progress
 from app.services.heart_rate_service import ingest_heart_rate
-from app.services.mission_service import update_goal_progress
 from app.services.notification_service import (
     notify_achievement_unlocked,
-    notify_dungeon_spawned,
     notify_level_up,
     notify_rank_promotion,
 )
 from app.services.pr_detection import detect_and_create_prs
-from app.services.quest_service import update_quest_progress
 from app.services.xp_service import award_xp, calculate_workout_xp, get_or_create_user_progress
 
 logger = logging.getLogger(__name__)
@@ -270,8 +265,6 @@ async def _create_workout_impl(
                 current_streak=progress.current_streak,
                 achievements_unlocked=[],
                 prs_achieved=[],
-                dungeon_spawned=None,
-                dungeon_progress=None,
             )
 
     # Create workout session
@@ -422,7 +415,7 @@ async def _create_workout_impl(
     }
 
     # Fetch complete workout with relationships BEFORE any service call that
-    # touches relationship collections (achievements, quests, dungeons).
+    # touches relationship collections (achievements, HR ingest).
     # After db.commit() + db.refresh() above, the collections would be empty
     # without this eager-loaded re-query. See CLAUDE.md SQLAlchemy rule.
     workout = db.query(WorkoutSession).options(
@@ -437,8 +430,8 @@ async def _create_workout_impl(
     newly_unlocked = check_and_unlock_achievements(db, current_user.id, achievement_context)
 
     # Ingest raw HR samples (Apple Watch live session): persist them and roll
-    # up avg/peak onto sets + session so HR-based quests can read them. Runs
-    # before quest progress. WHOOP samples arrive later via the WHOOP sync path.
+    # up avg/peak onto sets + session. WHOOP samples arrive later via the
+    # WHOOP sync path.
     if workout_data.heart_rate_samples:
         ingest_heart_rate(
             db,
@@ -446,15 +439,6 @@ async def _create_workout_impl(
             workout_data.heart_rate_samples,
             source=workout_data.hr_source or "apple_watch",
         )
-
-    # Update quest progress based on this workout (requires loaded relationships)
-    update_quest_progress(db, current_user.id, workout)
-
-    # Update dungeon progress based on this workout
-    dungeon_progress_result = update_dungeon_progress(db, current_user.id, workout)
-
-    # Try to spawn a new dungeon
-    dungeon_spawn_result = maybe_spawn_dungeon(db, current_user.id)
 
     db.commit()
 
@@ -477,13 +461,6 @@ async def _create_workout_impl(
     if xp_award["rank_changed"]:
         asyncio.ensure_future(notify_rank_promotion(
             db, current_user.id, xp_award["new_rank"]
-        ))
-
-    # Notify dungeon spawned
-    if dungeon_spawn_result and dungeon_spawn_result.get("spawned"):
-        d = dungeon_spawn_result["dungeon"]
-        asyncio.ensure_future(notify_dungeon_spawned(
-            db, current_user.id, d["name"], d["rank"]
         ))
 
     # Build workout response
@@ -520,30 +497,6 @@ async def _create_workout_impl(
             xp_earned=100  # Fixed XP per PR
         ))
 
-    # Build dungeon spawn response if spawned
-    dungeon_spawned = None
-    if dungeon_spawn_result and dungeon_spawn_result.get("spawned"):
-        d = dungeon_spawn_result["dungeon"]
-        dungeon_spawned = DungeonSpawnedResponse(
-            id=d["id"],
-            dungeon_id=d["dungeon_id"],
-            name=d["name"],
-            rank=d["rank"],
-            base_xp_reward=d["base_xp_reward"],
-            is_stretch_dungeon=d["is_stretch_dungeon"],
-            stretch_bonus_percent=d.get("stretch_bonus_percent"),
-            time_remaining_seconds=d["time_remaining_seconds"],
-            message=dungeon_spawn_result["message"],
-            is_rare_gate=d["is_rare_gate"]
-        )
-
-    # Build dungeon progress response
-    dungeon_progress = DungeonProgressResponse(
-        dungeons_progressed=dungeon_progress_result["dungeons_progressed"],
-        dungeons_completed=dungeon_progress_result["dungeons_completed"],
-        objectives_completed=dungeon_progress_result["objectives_completed"]
-    )
-
     # Return full response with XP info
     return WorkoutCreateResponse(
         workout=workout_response,
@@ -558,9 +511,7 @@ async def _create_workout_impl(
         new_rank=xp_award["new_rank"] if xp_award["rank_changed"] else None,
         current_streak=xp_award["current_streak"],
         achievements_unlocked=achievements_unlocked,
-        prs_achieved=prs_achieved_list,
-        dungeon_spawned=dungeon_spawned,
-        dungeon_progress=dungeon_progress
+        prs_achieved=prs_achieved_list
     )
 
 

@@ -10,12 +10,12 @@ from sqlalchemy import desc
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.utils import ensure_utc, to_iso8601_utc
-from app.models.mission import Goal, GoalStatus
+from app.models.goal import Goal, GoalStatus
 from app.models.pr import PR
 from app.models.pr import PRType as PRTypeModel
 from app.models.workout import WorkoutExercise, WorkoutSession
 from app.schemas.analytics import PRResponse, PRType
-from app.schemas.mission import ProgressPoint
+from app.schemas.goal import ProgressPoint
 from app.schemas.weekly_report import (
     CoachingSuggestion,
     GoalProgressReport,
@@ -24,7 +24,7 @@ from app.schemas.weekly_report import (
     SuggestionType,
     WeeklyProgressReportResponse,
 )
-from app.services.mission_service import get_goal_progress_data
+from app.services.goal_service import get_goal_progress_data
 
 
 def generate_weekly_report(

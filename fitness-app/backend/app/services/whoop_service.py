@@ -8,11 +8,6 @@ records. WHOOP's API is *post-workout only* — it returns a session-level summa
 this path populates session-level fields only. Per-set HR granularity is the
 Apple Watch's job (Phase 2).
 
-Because WHOOP HR arrives *after* the workout was logged (the create-time quest
-path can't have seen it), ``sync_recent_workouts`` re-runs
-``recalculate_quest_progress`` for each affected day so HR-based quests
-(HR_ZONE_TIME / PEAK_HR / SESSION_STRAIN) get credited.
-
 Credentials come from env vars (never hardcoded) — see ``app/core/config.py`` and
 ``docs/whoop-setup.md`` for how to register a WHOOP developer app. Tokens are
 encrypted at rest on the WhoopConnection model (Fernet, ``app/core/crypto.py``).
@@ -28,10 +23,8 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.core.config import settings
 from app.core.utils import ensure_utc
-from app.models.quest import UserQuest
 from app.models.whoop import WhoopConnection
 from app.models.workout import WorkoutSession
-from app.services.quest_service import recalculate_quest_progress
 
 logger = logging.getLogger(__name__)
 
@@ -431,7 +424,6 @@ def sync_recent_workouts(
     )
 
     updated_session_ids: List[str] = []
-    affected_dates = set()
     matched = 0
     unmatched = 0
 
@@ -457,29 +449,10 @@ def sync_recent_workouts(
         matched += 1
         if apply_whoop_summary(session, score):
             updated_session_ids.append(session.id)
-            # Workout dates are LOCAL dates; coerce datetime -> date for the
-            # quest-recalc lookup below.
-            sd = session.date
-            affected_dates.add(sd.date() if isinstance(sd, datetime) else sd)
 
-    # HR arrives after the workout was logged, so the create-time quest path
-    # never saw it — re-run the recalculation for every affected day so
-    # HR_ZONE_TIME / PEAK_HR / SESSION_STRAIN quests get credited.
+    # Daily quests were removed in ARISE v2 Phase 0; the response keeps the
+    # ``quests_completed`` key (always empty) so the client contract is stable.
     completed_quest_ids: List[str] = []
-    for d in affected_dates:
-        unclaimed = (
-            db.query(UserQuest)
-            .filter(
-                UserQuest.user_id == user_id,
-                UserQuest.assigned_date == d,
-                UserQuest.is_claimed.is_(False),
-            )
-            .all()
-        )
-        if unclaimed:
-            completed_quest_ids.extend(
-                recalculate_quest_progress(db, user_id, unclaimed, d)
-            )
 
     conn.last_synced_at = datetime.now(timezone.utc).replace(tzinfo=None)
     db.flush()

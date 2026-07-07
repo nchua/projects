@@ -188,6 +188,27 @@ class TestIdempotencyAndXP:
         # First Steps awards 50 XP
         assert progress.total_xp == 50
 
+    def test_achievement_xp_triggers_level_up(self, seeded_db, create_test_user):
+        """Achievement XP goes through award_xp, so level-ups apply (Phase 0 fix).
+
+        Previously the reward was a raw ``total_xp +=`` that skipped level/rank
+        progression, so a user could sit above the next level's threshold.
+        """
+        user, _ = create_test_user(email="xp-level@example.com")
+        progress = get_or_create_user_progress(seeded_db, user.id)
+        # Level 2 needs 100*(2**1.5) ≈ 282 XP; park just below the threshold.
+        progress.total_xp = 280
+        progress.level = 1
+        seeded_db.commit()
+
+        result = unlock_achievement(seeded_db, user.id, "first_workout")  # +50 XP
+        seeded_db.commit()
+
+        assert result is not None
+        progress = seeded_db.query(UserProgress).filter_by(user_id=user.id).first()
+        assert progress.total_xp == 330
+        assert progress.level >= 2  # level-up applied, not skipped
+
     def test_double_unlock_is_idempotent(self, seeded_db, create_test_user):
         user, _ = create_test_user(email="dup@example.com")
         get_or_create_user_progress(seeded_db, user.id)

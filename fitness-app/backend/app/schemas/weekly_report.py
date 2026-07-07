@@ -7,7 +7,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 from app.schemas.analytics import PRResponse
-from app.schemas.mission import ProgressPoint
+from app.schemas.goal import ProgressPoint
 
 
 class PaceStatus(str, Enum):

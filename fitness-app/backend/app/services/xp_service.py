@@ -22,7 +22,6 @@ XP_REWARDS = {
     "workout_complete": 50,       # Base XP per workout
     "volume_bonus_per_1000lb": 5, # XP per 1000 lbs of volume
     "pr_achieved": 100,           # Personal record bonus
-    "first_workout_today": 25,    # First workout of the day bonus
     "big_three_set": 3,           # Bonus per Squat/Bench/Deadlift working set
     "streak_7_day": 150,          # 7-day streak bonus
     "streak_30_day": 500,         # 30-day streak bonus

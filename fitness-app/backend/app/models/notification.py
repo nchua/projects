@@ -18,15 +18,11 @@ class NotificationType(str, enum.Enum):
     ACHIEVEMENT_UNLOCKED = "achievement_unlocked"
     LEVEL_UP = "level_up"
     RANK_PROMOTION = "rank_promotion"
-    DUNGEON_SPAWNED = "dungeon_spawned"
     WEEKLY_REPORT_READY = "weekly_report_ready"
-    MISSION_OFFERED = "mission_offered"
     # Local (on-device)
     QUEST_COMPLETED = "quest_completed"
     STREAK_AT_RISK = "streak_at_risk"
     QUEST_RESET = "quest_reset"
-    DUNGEON_EXPIRING = "dungeon_expiring"
-    MISSION_EXPIRING = "mission_expiring"
 
 
 # Convenience sets for categorization
@@ -36,17 +32,13 @@ SERVER_SENT_TYPES = {
     NotificationType.ACHIEVEMENT_UNLOCKED,
     NotificationType.LEVEL_UP,
     NotificationType.RANK_PROMOTION,
-    NotificationType.DUNGEON_SPAWNED,
     NotificationType.WEEKLY_REPORT_READY,
-    NotificationType.MISSION_OFFERED,
 }
 
 LOCAL_TYPES = {
     NotificationType.QUEST_COMPLETED,
     NotificationType.STREAK_AT_RISK,
     NotificationType.QUEST_RESET,
-    NotificationType.DUNGEON_EXPIRING,
-    NotificationType.MISSION_EXPIRING,
 }
 
 

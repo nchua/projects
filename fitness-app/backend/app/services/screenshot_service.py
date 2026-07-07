@@ -27,7 +27,6 @@ from app.models.pr import PR
 from app.models.workout import Set, WeightUnit, WorkoutExercise, WorkoutSession
 from app.services.achievement_service import check_and_unlock_achievements
 from app.services.pr_detection import detect_and_create_prs
-from app.services.quest_service import update_quest_progress
 from app.services.xp_service import award_xp, calculate_workout_xp, get_or_create_user_progress
 
 DATE_FORMATS = ["%Y-%m-%d", "%B %d, %Y", "%b %d, %Y", "%m/%d/%Y", "%d/%m/%Y"]
@@ -902,21 +901,7 @@ async def save_extracted_workout(
         "exercise_prs": exercise_prs
     }
 
-    # Fetch complete workout with relationships BEFORE services that touch
-    # them. After db.commit() + db.refresh() above, relationship collections
-    # are empty without this eager-loaded re-query. Used by achievements
-    # (indirectly via progress) and quest progress.
-    workout_with_relationships = db.query(WorkoutSession).options(
-        joinedload(WorkoutSession.workout_exercises)
-        .joinedload(WorkoutExercise.sets),
-        joinedload(WorkoutSession.workout_exercises)
-        .joinedload(WorkoutExercise.exercise)
-    ).filter(WorkoutSession.id == workout_session.id).first()
-
     check_and_unlock_achievements(db, user_id, achievement_context)
-
-    # Update quest progress
-    update_quest_progress(db, user_id, workout_with_relationships)
 
     logger.info(f"[SAVE] Final commit for workout {workout_session.id}")
     try:
@@ -1134,20 +1119,7 @@ async def save_whoop_activity(
                 "exercise_prs": exercise_prs
             }
 
-            # Fetch complete workout with relationships BEFORE services that
-            # touch them (quest progress, and achievement checks that rely on
-            # consistent eager-loaded state).
-            workout_with_relationships = db.query(WorkoutSession).options(
-                joinedload(WorkoutSession.workout_exercises)
-                .joinedload(WorkoutExercise.sets),
-                joinedload(WorkoutSession.workout_exercises)
-                .joinedload(WorkoutExercise.exercise)
-            ).filter(WorkoutSession.id == workout_session.id).first()
-
             check_and_unlock_achievements(db, user_id, achievement_context)
-
-            # Update quest progress
-            update_quest_progress(db, user_id, workout_with_relationships)
 
     # Fallback: if no exercises were actually saved (either because `exercises`
     # was empty or every item had matched_exercise_id=None), link the session

@@ -24,7 +24,7 @@ from datetime import date, timedelta
 import pytest
 
 from app.models.exercise import Exercise
-from app.services.mission_service import MAX_ACTIVE_GOALS
+from app.services.goal_service import MAX_ACTIVE_GOALS
 
 
 def _seed_exercise(

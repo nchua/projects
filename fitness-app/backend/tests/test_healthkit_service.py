@@ -4,9 +4,9 @@ Tests for the HealthKit (Apple Watch) workout import — Chunk A.
 Covers ``app.services.healthkit_service.import_healthkit_workouts`` and the
 ``POST /workouts/import-healthkit`` endpoint, mirroring the structure of
 ``tests/test_whoop_service.py``: real-DB seeding of ``Exercise`` /
-``WorkoutSession`` / ``Set`` / ``QuestDefinition`` / ``UserQuest`` rows, asserting
-dedup, cardio/strength routing, per-set HR attribution, idempotent quest
-re-crediting, and the round-trip endpoint (which also proves the
+``WorkoutSession`` / ``Set`` rows, asserting
+dedup, cardio/strength routing, per-set HR attribution, response-contract
+stability, and the round-trip endpoint (which also proves the
 ``_build_workout_response`` HR-population fix).
 
 Contract under test (see ``docs/wearable-hr-v1-build-spec.md`` Contract Registry
@@ -29,7 +29,6 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from app.models.exercise import Exercise
-from app.models.quest import QuestDefinition, UserQuest
 from app.models.workout import (
     Set,
     WeightUnit,
@@ -536,75 +535,18 @@ class TestStrengthImport:
         ).count() == 2
 
 
-# ── TestQuestRecredit ─────────────────────────────────────────────────────────
+# ── TestQuestsCompletedContract ──────────────────────────────────────────────
 
-class TestQuestRecredit:
-    """An hr_zone_time quest assigned for the day credits on a cardio import."""
+class TestQuestsCompletedContract:
+    """Daily quests were removed in Phase 0; the response key stays (empty)."""
 
-    def test_hr_zone_quest_credited_on_import(self, db, create_test_user):
-        """Importing a cardio workout with enough elevated zone time completes the quest.
-
-        UNIT ASSUMPTION (flagged in the spec's open note, Reconciliation #8):
-        ``hr_zone_time`` quest ``target_value`` is in **MINUTES**, while the
-        session's ``hr_zone_seconds`` is in **SECONDS**. The progress the service
-        credits is computed exactly the way ``quest_service`` does, via
-        ``calculate_todays_workout_stats``:
-
-            elevated_zone_minutes = sum(int(secs) // 60
-                                        for z, secs in hr_zone_seconds.items()
-                                        if z in {"z2","z3","z4","z5"})
-
-        Note the floor-division is applied PER ZONE then summed, so we pick
-        zone seconds that clear the target even with the per-zone truncation:
-        z2=600s -> 10 min, z3=360s -> 6 min => 16 elevated minutes >= 15 target.
-        This test asserts the quest credits regardless of the exact rounding,
-        as long as the unit is minutes; if the backend instead used seconds the
-        target (15) would be trivially exceeded too, so the assertion is robust
-        to the unit being either — but the comment documents the minutes
-        assumption Chunk D's copy depends on.
-        """
+    def test_quests_completed_always_empty(self, db, create_test_user):
+        """A cardio import still returns the quests_completed key, always []."""
         user, _ = create_test_user(email=f"quest-{uuid.uuid4().hex[:8]}@example.com")
         _seed_running_exercise(db)
 
-        # The import must bucket to "today" (UTC) for the day's quest to credit.
         today = datetime.now(timezone.utc).date()
         start = datetime(today.year, today.month, today.day, 10, 0, tzinfo=timezone.utc)
-
-        # Compute the expected elevated minutes the SAME way quest_service does.
-        zones = {"z2": 600, "z3": 360}
-        expected_elevated_minutes = sum(
-            int(secs) // 60 for z, secs in zones.items()
-            if z in ("z2", "z3", "z4", "z5")
-        )
-        target_value = 15  # hr_zone_15 ("Heat Check"), target in minutes
-        assert expected_elevated_minutes >= target_value, (
-            "test fixture must produce enough elevated minutes to complete the quest"
-        )
-
-        # Assign an hr_zone_time quest for today (mirrors a wearable-gated assignment).
-        qdef = QuestDefinition(
-            id=f"hr_zone_15_{uuid.uuid4().hex[:6]}",
-            name="Heat Check",
-            description="Spend 15 min in elevated HR zones",
-            quest_type="hr_zone_time",
-            target_value=target_value,
-            xp_reward=25,
-            difficulty="easy",
-            is_daily=True,
-            is_active=True,
-        )
-        db.add(qdef)
-        uq = UserQuest(
-            id=str(uuid.uuid4()),
-            user_id=user.id,
-            quest_id=qdef.id,
-            assigned_date=today,
-            progress=0,
-            is_completed=False,
-            is_claimed=False,
-        )
-        db.add(uq)
-        db.commit()
 
         result = import_healthkit_workouts(
             db,
@@ -618,65 +560,12 @@ class TestQuestRecredit:
                     duration_minutes=45,
                     avg_hr=150,
                     peak_hr=175,
-                    hr_zone_seconds=zones,
+                    hr_zone_seconds={"z2": 600, "z3": 360},
                 )
             ],
         )
         db.commit()
 
-        db.refresh(uq)
-        assert uq.is_completed is True
-        assert uq.progress >= target_value or uq.progress == target_value
-        assert uq.id in result["quests_completed"]
-
-    def test_recalc_for_empty_day_credits_nothing(self, db, create_test_user):
-        """A strength workout that goes unmatched (no session) credits no quest."""
-        user, _ = create_test_user(email=f"quest2-{uuid.uuid4().hex[:8]}@example.com")
-        today = datetime.now(timezone.utc).date()
-
-        qdef = QuestDefinition(
-            id=f"hr_zone_e_{uuid.uuid4().hex[:6]}",
-            name="Heat Check",
-            description="Spend 15 min in elevated HR zones",
-            quest_type="hr_zone_time",
-            target_value=15,
-            xp_reward=25,
-            difficulty="easy",
-            is_daily=True,
-            is_active=True,
-        )
-        db.add(qdef)
-        uq = UserQuest(
-            id=str(uuid.uuid4()),
-            user_id=user.id,
-            quest_id=qdef.id,
-            assigned_date=today,
-            progress=0,
-            is_completed=False,
-            is_claimed=False,
-        )
-        db.add(uq)
-        db.commit()
-
-        # Strength workout with no logged session -> unmatched, no session created,
-        # so there is nothing for the day's quest to credit against.
-        result = import_healthkit_workouts(
-            db,
-            user.id,
-            [
-                _make_workout(
-                    hk_uuid=str(uuid.uuid4()),
-                    activity_type="Functional Strength Training",
-                    is_strength=True,
-                    start=datetime(today.year, today.month, today.day, 10, 0, tzinfo=timezone.utc),
-                    duration_minutes=45,
-                )
-            ],
-        )
-        db.commit()
-
-        db.refresh(uq)
-        assert uq.is_completed is False
         assert result["quests_completed"] == []
 
 

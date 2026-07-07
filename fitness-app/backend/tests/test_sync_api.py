@@ -111,6 +111,25 @@ class TestBulkSync:
         assert bodyweight["total_entries"] == 1
         assert bodyweight["entries"][0]["weight_lb"] == 175.0
 
+    def test_synced_workout_awards_xp(self, client, db, auth_headers, unique_email):
+        """Synced workouts run the XP pipeline (Phase 0 fix — previously 0 XP)."""
+        headers, _user = auth_headers(email=unique_email("sync"))
+        exercise = _seed_exercise(db)
+
+        before = client.get("/progress", headers=headers).json()
+
+        resp = client.post(
+            "/sync",
+            json=_sync_payload(workouts=[_workout_payload(exercise.id)]),
+            headers=headers,
+        )
+        assert resp.status_code == 200, resp.json()
+
+        after = client.get("/progress", headers=headers).json()
+        # Base workout XP (50) at minimum, plus the workout is counted.
+        assert after["total_xp"] >= before["total_xp"] + 50
+        assert after["total_workouts"] == before["total_workouts"] + 1
+
     def test_same_date_workout_conflict_client_wins(self, client, db, auth_headers, unique_email):
         headers, _user = auth_headers(email=unique_email("sync"))
         exercise = _seed_exercise(db)

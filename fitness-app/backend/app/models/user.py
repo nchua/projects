@@ -55,7 +55,6 @@ class User(Base):
     prs = relationship("PR", back_populates="user", cascade="all, delete-orphan")
     daily_activities = relationship("DailyActivity", back_populates="user", cascade="all, delete-orphan")
     goals = relationship("Goal", back_populates="user", cascade="all, delete-orphan")
-    weekly_missions = relationship("WeeklyMission", back_populates="user", cascade="all, delete-orphan")
     whoop_connection = relationship("WhoopConnection", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
 
