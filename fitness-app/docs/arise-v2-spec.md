@@ -408,6 +408,45 @@ per-exercise cardiac-cost card ("Bench: −18% cardiac cost vs. 8 wks ago" — f
 colors' CVD separation is below target, so order + labels carry identity, never color
 alone).
 
+### 7.3 Cardio/sport ingestion (decided 2026-07-06)
+
+Three-tier hierarchy for runs and sports:
+
+1. **Apple Watch via HealthKit import — primary** (D3 decision, already resolved).
+   `POST /workouts/import-healthkit` creates a real `WorkoutSession` matched to a
+   seeded Cardio/Sport exercise with raw HR samples → avg/peak HR, `hr_zone_seconds`,
+   computed exertion. Screenshots never compete with this path.
+2. **WHOOP API sync — enrichment.** Strain/recovery via `POST /whoop/sync`, as today.
+3. **Screenshot fallback — upgrade (Phase 3 work item).** The extractor already pulls
+   `activity_type`, `time_range`, `duration_minutes`, `strain`, `steps`, `calories`,
+   `avg_hr`, `max_hr`, and per-zone `heart_rate_zones`
+   (`app/schemas/screenshot.py:54-83`; the Vision prompt covers WHOOP, Apple Fitness,
+   and Strava-style summaries). **But the save path drops the richness**: activity
+   screenshots persist only to `daily_activity` (which has no HR columns), no
+   `WorkoutSession` is created, and `hr_source="screenshot"` is never emitted even
+   though `AriseSourceBadge` supports it.
+
+   **Upgrade:** create a `WorkoutSession` from activity screenshots using the existing
+   `match_activity_to_exercise` (`app/services/screenshot_service.py:257`) → seeded
+   Cardio/Sport exercise; persist `duration_minutes`, `avg_hr`/`max_hr` →
+   `avg_heart_rate`/`peak_heart_rate`, extracted zone breakdown → `hr_zone_seconds`
+   (parse the mm:ss zone durations), `hr_source="screenshot"`. Keep the existing
+   `daily_activity` strain write for WHOOP screenshots. Result: screenshot runs appear
+   in the Hunt log with a strain badge, feed Condition's yesterday-strain input, and
+   count in zone analytics.
+
+   **Strain rules by source:**
+   - WHOOP screenshot → keep WHOOP's stated strain (already 0–21); `arise_strain`
+     source `"screenshot"`. Never recompute over better data.
+   - Non-WHOOP apps → **never convert** app-specific effort metrics (not 0–21). If a
+     zone breakdown was extracted, compute our own `compute_exertion_score` from it;
+     if only avg HR + duration, leave `arise_strain` null in v1 (a single-zone
+     estimate is possible later but must be labeled estimated).
+
+   **Manual controls** (CLAUDE.md philosophy): extracted duration and avg/max HR are
+   editable before save — extend the `ScreenshotExerciseEditView` pattern to the
+   activity fields.
+
 ## 8. Screen-by-screen
 
 Interactive reference: `docs/mockups/arise-v2-mockup.html`. Section order below is
@@ -578,7 +617,9 @@ ignore-behavior and cheapen `gate_opened`.
   `pr_gates` table + endpoints (§6.5), clear-detection hook, Status Gate card + Gate
   sheet, `gate_opened` push + the permission prompt (§11).
 - **Phase 3 — Exertion analytics + achievements + XP.** §7 endpoints + Power Exertion
-  segment, §10.2 achievements, XP fixes (§3.2), Hunt-row strain unification.
+  segment, §10.2 achievements, XP fixes (§3.2), Hunt-row strain unification, cardio
+  screenshot upgrade (§7.3 tier 3: activity screenshots → `WorkoutSession` with
+  `hr_source="screenshot"`).
 
 Each phase that mirrors backend schemas into Swift triggers the contract-mirror QA
 rule (global CLAUDE.md): run `/evaluate` pointed at the backend Pydantic schemas, not
