@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 @MainActor
-class QuestsViewModel: ObservableObject {
+class HuntViewModel: ObservableObject {
     // MARK: - History State
     @Published var workouts: [WorkoutSummaryResponse] = []
     @Published var selectedWorkout: WorkoutResponse?

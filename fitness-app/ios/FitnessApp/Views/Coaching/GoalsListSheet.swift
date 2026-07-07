@@ -7,6 +7,7 @@ struct GoalsListSheet: View {
     let onEditGoal: (GoalSummaryResponse) -> Void
     let onAddGoal: () -> Void
     let onDeleteAllGoals: () -> Void
+    var onEditDeadline: ((GoalSummaryResponse) -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
 
@@ -36,6 +37,15 @@ struct GoalsListSheet: View {
                                     onEditGoal(goal)
                                 }
                                 .buttonStyle(.borderless)
+                            }
+                            .swipeActions(edge: .leading) {
+                                if let onEditDeadline {
+                                    Button("Deadline") {
+                                        dismiss()
+                                        onEditDeadline(goal)
+                                    }
+                                    .tint(.blue)
+                                }
                             }
                         }
                         .onDelete { indices in

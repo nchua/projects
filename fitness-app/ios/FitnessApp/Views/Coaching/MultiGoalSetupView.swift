@@ -356,7 +356,7 @@ private struct ReviewStep: View {
 
                     VStack(alignment: .leading, spacing: 12) {
                         InfoRow(number: "1", text: "We'll analyze your goals and create a smart training split")
-                        InfoRow(number: "2", text: "A personalized weekly mission will be generated")
+                        InfoRow(number: "2", text: "Track progress toward every goal from the Power tab")
                         InfoRow(number: "3", text: "Log workouts to track progress towards all goals")
                     }
                 }

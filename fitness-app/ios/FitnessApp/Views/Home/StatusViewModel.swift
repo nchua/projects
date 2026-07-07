@@ -11,7 +11,7 @@ struct WeeklyStats {
 }
 
 @MainActor
-class HomeViewModel: ObservableObject {
+class StatusViewModel: ObservableObject {
     @Published var recentWorkout: WorkoutSummaryResponse?
     @Published var weeklyReview: WeeklyReviewResponse?
     @Published var recentPRs: [PRResponse] = []
@@ -29,7 +29,7 @@ class HomeViewModel: ObservableObject {
 
     /// Errors from individual endpoints in `loadData()`. Keyed by a short endpoint
     /// name (e.g. "workouts", "PRs"); value is a user-visible message.
-    /// Surfaced in a compact banner on HomeView so users see partial failures
+    /// Surfaced in a compact banner on StatusView so users see partial failures
     /// instead of blank dashboards.
     @Published var dataLoadErrors: [String: String] = [:]
 
@@ -307,7 +307,7 @@ class HomeViewModel: ObservableObject {
         await loadHealthKitData()
     }
 
-    /// Record a per-endpoint load error so `HomeView` can show a banner.
+    /// Record a per-endpoint load error so `StatusView` can show a banner.
     /// Keeps the existing DEBUG log for parity with prior behavior.
     private func recordLoadError(_ endpointName: String, _ error: Error) {
         #if DEBUG
@@ -390,37 +390,9 @@ class HomeViewModel: ObservableObject {
         isHealthKitSyncing = false
     }
 
-    // MARK: - Goal Actions
-
-    /// Delete a specific goal by ID (used by GoalsListSheet swipe-to-delete)
-    func deleteGoal(id: String) async {
-        do {
-            try await APIClient.shared.deleteGoal(id: id)
-        } catch {
-            #if DEBUG
-            print("DEBUG: Failed to delete goal: \(error)")
-            #endif
-            self.error = error.localizedDescription
-        }
-    }
-
-    /// Delete all goals (used by GoalsListSheet menu)
-    func deleteAllGoals() async {
-        do {
-            let goals = try await APIClient.shared.getGoals().goals
-            for goal in goals {
-                try await APIClient.shared.deleteGoal(id: goal.id)
-            }
-        } catch {
-            #if DEBUG
-            print("DEBUG: Failed to delete all goals: \(error)")
-            #endif
-            self.error = error.localizedDescription
-        }
-    }
 }
 
-// Response type for lift trends (matches what HomeView expects)
+// Response type for lift trends (matches what StatusView expects)
 struct LiftTrendResponse {
     let exerciseId: String
     let exerciseName: String

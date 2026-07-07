@@ -52,29 +52,29 @@ struct MainTabView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            HomeView(selectedTab: $selectedTab)
+            StatusView(selectedTab: $selectedTab)
                 .tabItem {
                     Label("Status", systemImage: "shield.fill")
                 }
                 .tag(0)
 
-            QuestsView()
+            HuntView()
                 .tabItem {
-                    Label("Quests", systemImage: "scroll.fill")
+                    Label("Hunt", systemImage: "scope")
                 }
                 .tag(1)
 
-            FriendsView()
-                .tabItem {
-                    Label("Friends", systemImage: "person.2.fill")
-                }
-                .tag(3)
-
             StatsView()
                 .tabItem {
-                    Label("Stats", systemImage: "chart.bar.fill")
+                    Label("Power", systemImage: "bolt.fill")
                 }
-                .tag(4)
+                .tag(2)
+
+            HunterView()
+                .tabItem {
+                    Label("Hunter", systemImage: "person.crop.circle")
+                }
+                .tag(3)
         }
         .tint(Color.systemPrimary)
     }

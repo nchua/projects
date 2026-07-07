@@ -1,8 +1,8 @@
 import SwiftUI
 import PhotosUI
 
-struct QuestsView: View {
-    @StateObject private var viewModel = QuestsViewModel()
+struct HuntView: View {
+    @StateObject private var viewModel = HuntViewModel()
     @State private var navigateToLog = false
     @State private var showScreenshotPicker = false
     @State private var selectedPhotos: [PhotosPickerItem] = []
@@ -34,13 +34,13 @@ struct QuestsView: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         // Header (Edge Flow)
-                        QuestCenterHeader()
+                        HuntHeader()
                             .padding(.horizontal, 20)
                             .padding(.top, 20)
 
                         // Action Buttons (Edge Flow)
-                        QuestActionButtons(
-                            onBeginQuest: { navigateToLog = true },
+                        HuntActionButtons(
+                            onBeginHunt: { navigateToLog = true },
                             onScanLog: { showScreenshotPicker = true }
                         )
                         .padding(.horizontal, 20)
@@ -50,7 +50,7 @@ struct QuestsView: View {
                         // Archive Header (Edge Flow)
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Quest Archive")
+                                Text("Hunt Log")
                                     .font(.system(size: 18, weight: .semibold))
                                     .foregroundColor(.textPrimary)
 
@@ -98,7 +98,7 @@ struct QuestsView: View {
 
                         // Calendar (Edge Flow style)
                         if viewModel.showCalendar {
-                            QuestsCalendarView(
+                            HuntCalendarView(
                                 selectedDate: Binding(
                                     get: { viewModel.selectedDate ?? Date() },
                                     set: { viewModel.selectDate($0) }
@@ -119,19 +119,19 @@ struct QuestsView: View {
                             VStack(spacing: 16) {
                                 ProgressView()
                                     .tint(.systemPrimary)
-                                Text("Loading quests...")
+                                Text("Loading hunts...")
                                     .font(.system(size: 13))
                                     .foregroundColor(.textMuted)
                             }
                             .padding(.vertical, 40)
                         } else if viewModel.displayedWorkouts.isEmpty {
-                            EmptyQuestsCard(hasDateFilter: viewModel.selectedDate != nil)
+                            EmptyHuntsCard(hasDateFilter: viewModel.selectedDate != nil)
                                 .padding(.horizontal, 20)
                         } else {
                             VStack(spacing: 10) {
                                 ForEach(Array(viewModel.displayedWorkouts.enumerated()), id: \.element.id) { index, workout in
                                     NavigationLink {
-                                        QuestsDetailView(
+                                        HuntDetailView(
                                             workoutId: workout.id,
                                             viewModel: viewModel
                                         )
@@ -230,14 +230,14 @@ struct QuestsView: View {
     }
 }
 
-// MARK: - Quest Center Header (Edge Flow)
+// MARK: - Hunt Header (Edge Flow)
 
-struct QuestCenterHeader: View {
+struct HuntHeader: View {
     @State private var showContent = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Quest Center")
+            Text("Hunt")
                 .font(.system(size: 28, weight: .bold))
                 .foregroundColor(.textPrimary)
 
@@ -256,20 +256,20 @@ struct QuestCenterHeader: View {
     }
 }
 
-// MARK: - Quest Action Buttons (Edge Flow)
+// MARK: - Hunt Action Buttons (Edge Flow)
 
-struct QuestActionButtons: View {
-    let onBeginQuest: () -> Void
+struct HuntActionButtons: View {
+    let onBeginHunt: () -> Void
     let onScanLog: () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
-            // Begin Quest Button - Primary Pill
-            Button(action: onBeginQuest) {
+            // Begin Hunt Button - Primary Pill
+            Button(action: onBeginHunt) {
                 HStack(spacing: 8) {
                     Text("\u{26A1}")  // Lightning bolt
                         .font(.system(size: 14))
-                    Text("Begin Quest")
+                    Text("BEGIN HUNT")
                         .font(.system(size: 14, weight: .semibold))
                 }
                 .edgeFlowPillButton(isPrimary: true)
@@ -280,7 +280,7 @@ struct QuestActionButtons: View {
                 HStack(spacing: 8) {
                     Image(systemName: "camera.viewfinder")
                         .font(.system(size: 14, weight: .medium))
-                    Text("Scan")
+                    Text("SCAN")
                         .font(.system(size: 14, weight: .semibold))
                 }
                 .edgeFlowPillButton(isPrimary: false)
@@ -291,7 +291,7 @@ struct QuestActionButtons: View {
 
 // MARK: - Full Month Calendar (Edge Flow)
 
-struct QuestsCalendarView: View {
+struct HuntCalendarView: View {
     @Binding var selectedDate: Date
     let datesWithWorkouts: Set<String>
     var hasSelection: Bool = false
@@ -437,7 +437,7 @@ struct EdgeFlowCalendarDayCell: View {
                     .font(.system(size: 13, weight: isSelected || isToday ? .semibold : .regular))
                     .foregroundColor(textColor)
 
-                // Quest completion indicator
+                // Hunt completion indicator
                 if hasWorkout {
                     RoundedRectangle(cornerRadius: 2)
                         .fill(Color.successGreen)
@@ -509,7 +509,7 @@ struct EdgeFlowWorkoutRow: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            // Quest info
+            // Hunt info
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 10) {
                     Text(formatDate(workout.date))
@@ -668,7 +668,7 @@ struct EdgeFlowWorkoutRow: View {
 
 // MARK: - Empty State (Edge Flow)
 
-struct EmptyQuestsCard: View {
+struct EmptyHuntsCard: View {
     var hasDateFilter: Bool = false
 
     var body: some View {
@@ -684,11 +684,11 @@ struct EmptyQuestsCard: View {
             }
 
             VStack(spacing: 8) {
-                Text(hasDateFilter ? "No Quests on This Day" : "No Quests Yet")
+                Text(hasDateFilter ? "No Hunts on This Day" : "No Hunts Yet")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.textPrimary)
 
-                Text(hasDateFilter ? "Select another date or clear the filter" : "Begin a quest to start tracking\nyour training progress")
+                Text(hasDateFilter ? "Select another date or clear the filter" : "Begin a hunt to start tracking\nyour training progress")
                     .font(.system(size: 13))
                     .foregroundColor(.textSecondary)
                     .multilineTextAlignment(.center)
@@ -700,11 +700,11 @@ struct EmptyQuestsCard: View {
     }
 }
 
-// MARK: - Quest Detail View (wraps existing)
+// MARK: - Hunt Detail View (wraps existing)
 
-struct QuestsDetailView: View {
+struct HuntDetailView: View {
     let workoutId: String
-    @ObservedObject var viewModel: QuestsViewModel
+    @ObservedObject var viewModel: HuntViewModel
 
     var body: some View {
         ZStack {
@@ -738,13 +738,13 @@ struct QuestsDetailView: View {
                         .font(.system(size: 32))
                         .foregroundColor(.warningRed)
 
-                    Text("Quest data not found")
+                    Text("Hunt data not found")
                         .font(.ariseMono(size: 14))
                         .foregroundColor(.textSecondary)
                 }
             }
         }
-        .navigationTitle("Quest Details")
+        .navigationTitle("Hunt Details")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.voidDark, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
@@ -757,5 +757,5 @@ struct QuestsDetailView: View {
 // MARK: - Preview
 
 #Preview {
-    QuestsView()
+    HuntView()
 }

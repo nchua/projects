@@ -53,7 +53,7 @@ struct PowerLevelsCard: View {
                 Spacer()
 
                 Button {
-                    selectedTab = 4
+                    selectedTab = 2
                 } label: {
                     Text("Details")
                         .font(.system(size: 13))

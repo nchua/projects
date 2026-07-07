@@ -7,6 +7,7 @@ class ProfileViewModel: ObservableObject {
     @Published var bodyweightHistory: BodyweightHistoryResponse?
     @Published var userProgress: UserProgressResponse?
     @Published var achievements: [AchievementResponse] = []
+    @Published var recentPRs: [PRResponse] = []
     @Published var isLoading = false
     @Published var isSaving = false
     @Published var error: String?
@@ -92,6 +93,9 @@ class ProfileViewModel: ObservableObject {
             trainingExperience = profileResult.trainingExperience ?? ""
             preferredUnit = profileResult.preferredUnit ?? "lb"
             e1rmFormula = profileResult.e1rmFormula ?? "epley"
+
+            // Latest Achievement card (moved from the Status tab) — non-fatal.
+            recentPRs = (try? await APIClient.shared.getPRs().prs) ?? []
 
         } catch let apiError as APIError {
             // Don't set error for unauthorized - user will be redirected to login

@@ -3,7 +3,12 @@ import Charts
 
 struct StatsView: View {
     @StateObject private var viewModel = ProgressViewModel()
+    @StateObject private var goalsVM = GoalsViewModel()
     @State private var selectedTab = 0
+    @State private var showGoalsList = false
+    @State private var showMultiGoalSetup = false
+    @State private var goalToEdit: GoalSummaryResponse?
+    @State private var goalForDeadlineEdit: GoalSummaryResponse?
 
     var body: some View {
         NavigationStack {
@@ -54,6 +59,10 @@ struct StatsView: View {
 
                             switch selectedTab {
                             case 0:
+                                PowerGoalsRow(
+                                    activeCount: goalsVM.goals.count,
+                                    onTap: { showGoalsList = true }
+                                )
                                 PowerProgressView(viewModel: viewModel)
                             case 1:
                                 VesselProgressView(viewModel: viewModel)
@@ -74,12 +83,92 @@ struct StatsView: View {
         }
         .task {
             await viewModel.loadInitialData()
+            await goalsVM.loadGoals()
         }
         .alert("System Error", isPresented: .constant(viewModel.error != nil)) {
             Button("DISMISS") { viewModel.error = nil }
         } message: {
             Text(viewModel.error ?? "")
         }
+        .sheet(isPresented: $showGoalsList) {
+            GoalsListSheet(
+                goals: goalsVM.goals,
+                maxGoals: goalsVM.maxGoals,
+                onDeleteGoal: { goalId in
+                    Task { await goalsVM.deleteGoal(id: goalId) }
+                },
+                onEditGoal: { goal in
+                    showGoalsList = false
+                    goalToEdit = goal
+                },
+                onAddGoal: {
+                    showGoalsList = false
+                    showMultiGoalSetup = true
+                },
+                onDeleteAllGoals: {
+                    Task { await goalsVM.deleteAllGoals() }
+                    showGoalsList = false
+                },
+                onEditDeadline: { goal in
+                    showGoalsList = false
+                    goalForDeadlineEdit = goal
+                }
+            )
+        }
+        .sheet(isPresented: $showMultiGoalSetup) {
+            MultiGoalSetupView(onComplete: {
+                Task { await goalsVM.loadGoals() }
+            })
+        }
+        .sheet(item: $goalToEdit, onDismiss: {
+            Task { await goalsVM.loadGoals() }
+        }) { goal in
+            GoalSetupView(editingGoal: goalsVM.editableGoal(from: goal))
+        }
+        .sheet(item: $goalForDeadlineEdit, onDismiss: {
+            Task { await goalsVM.loadGoals() }
+        }) { goal in
+            GoalDeadlineEditView(goal: goal, onSaved: {})
+                .presentationDetents([.large])
+        }
+    }
+}
+
+// MARK: - Goals Row (Power tab entry to GoalsListSheet)
+
+struct PowerGoalsRow: View {
+    let activeCount: Int
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                Image(systemName: "target")
+                    .font(.system(size: 16))
+                    .foregroundColor(.systemPrimary)
+
+                Text("Goals")
+                    .font(.ariseHeader(size: 15, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+
+                Spacer()
+
+                Text(activeCount == 1 ? "1 ACTIVE" : "\(activeCount) ACTIVE")
+                    .font(.ariseMono(size: 10, weight: .semibold))
+                    .foregroundColor(.textMuted)
+                    .tracking(1)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.textMuted)
+            }
+            .padding(16)
+            .edgeFlowCard(accent: .systemPrimary)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .padding(.horizontal)
+        .accessibilityLabel("Goals, \(activeCount) active")
+        .accessibilityHint("Opens your strength goals")
     }
 }
 
@@ -168,7 +257,7 @@ struct PowerProgressView: View {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.system(size: 24))
                         .foregroundColor(.gold)
-                    Text("Complete quests with Squat, Bench, and Deadlift to see your Big Three stats.")
+                    Text("Complete hunts with Squat, Bench, and Deadlift to see your Big Three stats.")
                         .font(.ariseMono(size: 12))
                         .foregroundColor(.textSecondary)
                         .multilineTextAlignment(.center)
@@ -631,7 +720,7 @@ struct MinimalExerciseCard: View {
                     // Stat pills (only on non-compact)
                     if !isCompact {
                         if let total = trend?.totalWorkouts {
-                            StatPill(value: "\(total)", label: "QUESTS")
+                            StatPill(value: "\(total)", label: "HUNTS")
                         }
 
                         if let multiplier = percentile?.bodyweightMultiplier {
@@ -925,7 +1014,7 @@ struct ExerciseDetailView: View {
             DetailStatCell(
                 value: trend?.totalWorkouts.description ?? "-",
                 unit: nil,
-                label: "TOTAL QUESTS"
+                label: "TOTAL HUNTS"
             )
             DetailStatCell(
                 value: trend?.rollingAverage4w?.formattedWeight ?? "-",
@@ -1698,7 +1787,7 @@ struct PowerStatsCard: View {
                         .font(.ariseDisplay(size: 24, weight: .bold))
                         .foregroundColor(.systemPrimary)
 
-                    Text("QUESTS")
+                    Text("HUNTS")
                         .font(.ariseMono(size: 9, weight: .medium))
                         .foregroundColor(.textMuted)
                         .tracking(0.5)
@@ -2017,7 +2106,7 @@ struct RecordsView: View {
             }
 
             if filteredPRs.isEmpty {
-                NoDataPanel(message: "No records achieved yet.\nComplete quests to set new records!")
+                NoDataPanel(message: "No records achieved yet.\nComplete hunts to set new records!")
                     .padding(.horizontal)
             } else {
                 ForEach(Array(filteredPRs.enumerated()), id: \.element.id) { index, pr in

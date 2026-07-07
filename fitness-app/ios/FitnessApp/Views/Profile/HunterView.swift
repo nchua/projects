@@ -1,10 +1,9 @@
 import SwiftUI
 import UIKit
 
-struct ProfileView: View {
+struct HunterView: View {
     @StateObject private var viewModel = ProfileViewModel()
     @EnvironmentObject var authManager: AuthManager
-    @Environment(\.dismiss) private var dismiss
     @State private var showLogoutConfirmation = false
     @State private var showDeleteAccountConfirmation = false
     @State private var showDeletePasswordEntry = false
@@ -21,34 +20,6 @@ struct ProfileView: View {
         NavigationStack {
             ZStack {
                 VoidBackground(showGrid: false, glowIntensity: 0.03)
-
-                // Close button overlay
-                VStack {
-                    HStack {
-                        Spacer()
-                        Button {
-                            dismiss()
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.textSecondary)
-                                .frame(width: 32, height: 32)
-                                .background(Color.voidMedium)
-                                .cornerRadius(4)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 4)
-                                        .stroke(Color.ariseBorder, lineWidth: 1)
-                                )
-                                .accessibilityHidden(true)
-                        }
-                        .padding(.trailing, 16)
-                        .padding(.top, 16)
-                        .accessibilityLabel("Close")
-                        .accessibilityHint("Closes the profile screen")
-                    }
-                    Spacer()
-                }
-                .zIndex(100)
 
                 if viewModel.isLoading {
                     VStack(spacing: 16) {
@@ -88,14 +59,31 @@ struct ProfileView: View {
                                 }
                             )
 
-                            // Vessel Section (Bodyweight)
-                            VesselSection(viewModel: viewModel)
+                            // Latest Achievement (moved from the Status tab)
+                            if let latestPR = viewModel.recentPRs.first {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    AriseSectionHeader(title: "Latest Achievement")
+                                        .padding(.horizontal)
+
+                                    EdgeFlowAchievementCard(pr: latestPR)
+                                        .padding(.horizontal)
+                                }
+                            }
+
+                            // Hunter Network (friends, moved from the Friends tab)
+                            HunterNetworkSection()
 
                             // Hunter Identity (Username)
                             HunterIdentitySection(
                                 username: viewModel.profile?.username,
                                 onSetUsername: { showUsernameSetup = true }
                             )
+
+                            // Vessel Section (Bodyweight)
+                            VesselSection(viewModel: viewModel)
+
+                            // Integrations (Apple Health, WHOOP)
+                            IntegrationsSection()
 
                             // Hunter Attributes
                             HunterAttributesSection(viewModel: viewModel)
@@ -455,7 +443,7 @@ struct HunterStatsPanel: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            HunterStatItem(value: "\(totalWorkouts)", label: "Quests", color: .systemPrimary)
+            HunterStatItem(value: "\(totalWorkouts)", label: "Hunts", color: .systemPrimary)
 
             Rectangle()
                 .fill(Color.ariseBorder)
@@ -537,7 +525,7 @@ struct HunterAchievementsSection: View {
                         Image(systemName: "trophy")
                             .font(.system(size: 32))
                             .foregroundColor(.textMuted)
-                        Text("Complete quests to earn achievements")
+                        Text("Complete hunts to earn achievements")
                             .font(.ariseMono(size: 12))
                             .foregroundColor(.textSecondary)
                     }
@@ -1084,8 +1072,6 @@ struct HunterAttributesSection: View {
 
 struct SystemSettingsSection: View {
     @ObservedObject var viewModel: ProfileViewModel
-    @ObservedObject private var healthKit = HealthKitManager.shared
-    @StateObject private var whoopVM = WhoopConnectionViewModel()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1146,71 +1132,6 @@ struct SystemSettingsSection: View {
 
                 AriseDivider()
 
-                AriseSettingsRow(
-                    icon: "heart.fill",
-                    iconColor: .warningRed,
-                    title: "Health Sync",
-                    trailing: {
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(Color.successGreen)
-                                .frame(width: 6, height: 6)
-                            Text("CONNECTED")
-                                .font(.ariseMono(size: 11, weight: .semibold))
-                                .foregroundColor(.successGreen)
-                                .tracking(0.5)
-                        }
-                    }
-                )
-
-                AriseDivider()
-
-                // Apple Health — Workouts & HR (Chunk C). Distinct from "Health Sync" above
-                // (daily steps/calories): different glyph (run vs heart) + color (cyan vs red).
-                NavigationLink {
-                    AppleHealthWorkoutSettingsView()
-                } label: {
-                    AriseSettingsRow(
-                        icon: "figure.run",
-                        iconColor: .systemPrimary,
-                        title: "Apple Health — Workouts & HR",
-                        trailing: {
-                            HStack(spacing: 8) {
-                                Circle()
-                                    .fill(healthKit.isAuthorized ? Color.systemPrimary : Color.textMuted)
-                                    .frame(width: 6, height: 6)
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.textMuted)
-                            }
-                        }
-                    )
-                }
-
-                AriseDivider()
-
-                // Connect WHOOP — disabled "coming soon" placeholder (Chunk C). Stays disabled
-                // for v1 regardless of backend `configured`; not a Button (non-interactive).
-                AriseSettingsRow(
-                    icon: "circle.circle",
-                    iconColor: .textMuted,
-                    title: "Connect WHOOP",
-                    titleColor: .textMuted,
-                    trailing: {
-                        Text("COMING SOON")
-                            .font(.ariseMono(size: 10, weight: .semibold))
-                            .foregroundColor(.textMuted)
-                            .tracking(1)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.voidLight)
-                            .cornerRadius(2)
-                    }
-                )
-                .opacity(0.5)
-
-                AriseDivider()
-
                 Button {
                     if let url = URL(string: "https://backend-production-e316.up.railway.app/privacy") {
                         UIApplication.shared.open(url)
@@ -1236,8 +1157,86 @@ struct SystemSettingsSection: View {
             )
             .padding(.horizontal)
         }
+    }
+}
+
+// MARK: - Integrations
+
+/// Wearable / health-data integrations, split out of System Settings (ARISE v2 §8.4).
+struct IntegrationsSection: View {
+    @ObservedObject private var healthKit = HealthKitManager.shared
+    @StateObject private var whoopVM = WhoopConnectionViewModel()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            AriseSectionHeader(title: "Integrations")
+                .padding(.horizontal)
+
+            VStack(spacing: 0) {
+                // Apple Health — Workouts & HR
+                NavigationLink {
+                    AppleHealthWorkoutSettingsView()
+                } label: {
+                    AriseSettingsRow(
+                        icon: "figure.run",
+                        iconColor: .systemPrimary,
+                        title: "Apple Health — Workouts & HR",
+                        trailing: {
+                            HStack(spacing: 8) {
+                                Circle()
+                                    .fill(healthKit.isAuthorized ? Color.systemPrimary : Color.textMuted)
+                                    .frame(width: 6, height: 6)
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.textMuted)
+                            }
+                        }
+                    )
+                }
+
+                AriseDivider()
+
+                // WHOOP — status-driven, non-interactive (connect flow is out of scope
+                // until Railway WHOOP_* creds + an approved dev app exist).
+                AriseSettingsRow(
+                    icon: "circle.circle",
+                    iconColor: whoopVM.connected ? .successGreen : .textMuted,
+                    title: "WHOOP",
+                    titleColor: whoopVM.connected ? .textPrimary : .textMuted,
+                    trailing: {
+                        if whoopVM.connected {
+                            HStack(spacing: 6) {
+                                Circle()
+                                    .fill(Color.successGreen)
+                                    .frame(width: 6, height: 6)
+                                Text("CONNECTED")
+                                    .font(.ariseMono(size: 11, weight: .semibold))
+                                    .foregroundColor(.successGreen)
+                                    .tracking(0.5)
+                            }
+                        } else {
+                            Text(whoopVM.configured ? "NOT CONNECTED" : "COMING SOON")
+                                .font(.ariseMono(size: 10, weight: .semibold))
+                                .foregroundColor(.textMuted)
+                                .tracking(1)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.voidLight)
+                                .cornerRadius(2)
+                        }
+                    }
+                )
+                .opacity(whoopVM.connected ? 1 : 0.5)
+            }
+            .background(Color.voidMedium)
+            .cornerRadius(4)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(Color.ariseBorder, lineWidth: 1)
+            )
+            .padding(.horizontal)
+        }
         .task {
-            // Exercise the WHOOP status contract (row stays disabled for v1 regardless).
             await whoopVM.load()
         }
     }
@@ -1400,6 +1399,6 @@ struct VesselEntrySheet: View {
 }
 
 #Preview {
-    ProfileView()
+    HunterView()
         .environmentObject(AuthManager.shared)
 }

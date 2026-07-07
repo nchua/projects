@@ -183,8 +183,8 @@ final class PendingWorkoutStore: ObservableObject {
                 //
                 // We intentionally discard the `WorkoutCreateResponse` payload
                 // here — the UI isn't active during a background drain, so
-                // there's nothing to celebrate against. HomeView refetches
-                // `/users/progress` (see HomeViewModel.loadData) every time it
+                // there's nothing to celebrate against. StatusView refetches
+                // `/users/progress` (see StatusViewModel.loadData) every time it
                 // appears / foregrounds, so the authoritative XP + level +
                 // streak come back from the server on the next surface view.
                 _ = try await api.createWorkoutWithXP(entry.workout)

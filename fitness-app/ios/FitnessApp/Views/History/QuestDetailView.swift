@@ -4,7 +4,7 @@
 //
 //  Workout detail (quest summary + per-exercise objective cards).
 //  Extracted from HistoryView.swift when the History tab was removed
-//  (ARISE v2 Phase 0) — still used by QuestsView and StatsView.
+//  (ARISE v2 Phase 0) — still used by HuntView and StatsView.
 //
 
 import SwiftUI
@@ -61,13 +61,13 @@ struct QuestDetailView: View {
                         .font(.system(size: 32))
                         .foregroundColor(.warningRed)
 
-                    Text("Quest data not found")
+                    Text("Hunt data not found")
                         .font(.ariseMono(size: 14))
                         .foregroundColor(.textSecondary)
                 }
             }
         }
-        .navigationTitle("Quest Details")
+        .navigationTitle("Hunt Details")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.voidDark, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
@@ -173,7 +173,7 @@ struct QuestSummaryCard: View {
     private var accentColor: Color { isActivity ? .orange : .successGreen }
 
     private var headerLabel: String {
-        isActivity ? (workout.activityType?.uppercased() ?? "ACTIVITY LOGGED") : "QUEST COMPLETED"
+        isActivity ? (workout.activityType?.uppercased() ?? "ACTIVITY LOGGED") : "HUNT COMPLETE"
     }
 
     @ViewBuilder

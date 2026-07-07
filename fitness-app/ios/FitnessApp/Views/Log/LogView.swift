@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 struct LogView: View {
-    // Initial screenshots passed from QuestsView (or other callers)
+    // Initial screenshots passed from HuntView (or other callers)
     var initialScreenshots: [Data]?
     var initialWorkoutDate: Date?
 
@@ -41,7 +41,7 @@ struct LogView: View {
 
     // MARK: - Credit label for IdleQuestView
 
-    /// Label shown next to the "SCAN QUEST LOG" button.
+    /// Label shown next to the "SCAN HUNT LOG" button.
     /// Shows remaining credits or "∞" for unlimited; "..." while loading.
     private var scanCreditsLabel: String? {
         guard let balance = storeKitManager.scanBalance else { return "..." }
@@ -271,7 +271,7 @@ struct LogView: View {
         } message: {
             Text(viewModel.error ?? "")
         }
-        .alert("Abandon Quest?", isPresented: $showCancelConfirmation) {
+        .alert("Abandon Hunt?", isPresented: $showCancelConfirmation) {
             Button("Continue Training", role: .cancel) {}
             Button("Abandon", role: .destructive) {
                 withAnimation(.smoothSpring) {
@@ -512,7 +512,7 @@ struct IdleQuestView: View {
             .scaleEffect(showContent ? 1 : 0.8)
 
             VStack(spacing: 12) {
-                Text("DAILY QUEST AVAILABLE")
+                Text("READY TO HUNT")
                     .font(.ariseHeader(size: 24, weight: .bold))
                     .foregroundColor(.textPrimary)
                     .tracking(1)
@@ -537,7 +537,7 @@ struct IdleQuestView: View {
                     Image(systemName: "play.fill")
                         .font(.system(size: 14))
                         .accessibilityHidden(true)
-                    Text("BEGIN QUEST")
+                    Text("BEGIN HUNT")
                         .font(.ariseHeader(size: 16, weight: .semibold))
                         .tracking(2)
                 }
@@ -553,7 +553,7 @@ struct IdleQuestView: View {
             .shadow(color: .systemPrimaryGlow, radius: 20, x: 0, y: 0)
             .padding(.horizontal, 24)
             .opacity(showContent ? 1 : 0)
-            .accessibilityLabel("Begin Quest")
+            .accessibilityLabel("Begin Hunt")
             .accessibilityHint("Starts a new workout session")
 
             // Scan Quest Log Button
@@ -568,7 +568,7 @@ struct IdleQuestView: View {
                             Image(systemName: "camera.viewfinder")
                                 .font(.system(size: 14))
                                 .accessibilityHidden(true)
-                            Text("SCAN QUEST LOG")
+                            Text("SCAN HUNT LOG")
                                 .font(.ariseHeader(size: 14, weight: .semibold))
                                 .tracking(2)
 
@@ -606,7 +606,7 @@ struct IdleQuestView: View {
                 }
                 .padding(.horizontal, 24)
                 .opacity(showContent ? 1 : 0)
-                .accessibilityLabel("Scan Quest Log")
+                .accessibilityLabel("Scan Hunt Log")
                 .accessibilityHint("Opens camera to scan a workout screenshot")
             }
 
@@ -666,7 +666,7 @@ struct ActiveQuestView: View {
                                 }
 
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("QUEST DATE")
+                                    Text("HUNT DATE")
                                         .font(.ariseMono(size: 10, weight: .medium))
                                         .foregroundColor(.textMuted)
                                         .tracking(1)
@@ -693,7 +693,7 @@ struct ActiveQuestView: View {
 
                     if showDatePicker {
                         DatePicker(
-                            "Quest Date",
+                            "Hunt Date",
                             selection: $viewModel.workoutDate,
                             displayedComponents: .date
                         )
@@ -836,7 +836,7 @@ struct ActiveQuestView: View {
                             Image(systemName: "checkmark.shield.fill")
                                 .font(.system(size: 16))
                                 .accessibilityHidden(true)
-                            Text("COMPLETE QUEST")
+                            Text("COMPLETE HUNT")
                                 .font(.ariseHeader(size: 14, weight: .semibold))
                                 .tracking(2)
                         }
@@ -856,7 +856,7 @@ struct ActiveQuestView: View {
                 .padding(.horizontal)
                 .disabled(!viewModel.canSave || viewModel.isSaving)
                 .fadeIn(delay: 0.35)
-                .accessibilityLabel(viewModel.isSaving ? "Submitting workout" : "Complete Quest")
+                .accessibilityLabel(viewModel.isSaving ? "Submitting workout" : "Complete Hunt")
                 .accessibilityHint("Saves your workout session")
 
                 Spacer(minLength: 100)
@@ -890,7 +890,7 @@ struct ActiveQuestHeader: View {
                         .frame(width: 8, height: 8)
                         .shadow(color: .successGreen, radius: 4, x: 0, y: 0)
 
-                    Text("QUEST ACTIVE")
+                    Text("HUNT ACTIVE")
                         .font(.ariseMono(size: 11, weight: .semibold))
                         .foregroundColor(.successGreen)
                         .tracking(2)
@@ -1115,7 +1115,7 @@ struct EmptyObjectiveCard: View {
                 .font(.ariseHeader(size: 16, weight: .semibold))
                 .foregroundColor(.textPrimary)
 
-            Text("Add exercises to begin your training quest")
+            Text("Add exercises to begin your hunt")
                 .font(.ariseMono(size: 13))
                 .foregroundColor(.textSecondary)
                 .multilineTextAlignment(.center)

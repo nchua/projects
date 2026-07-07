@@ -1,10 +1,9 @@
 import SwiftUI
 import Charts
 
-struct HomeView: View {
+struct StatusView: View {
     @Binding var selectedTab: Int
-    @StateObject private var viewModel = HomeViewModel()
-    @State private var showProfile = false
+    @StateObject private var viewModel = StatusViewModel()
     @State private var questWorkoutId: String?  // For presenting a workout detail sheet
     @State private var showWeeklyReport = false
 
@@ -18,7 +17,7 @@ struct HomeView: View {
                     VStack(spacing: 16) {
                         // Load-error banner (partial failures across dashboard endpoints)
                         if viewModel.hasDataLoadErrors {
-                            HomeDataErrorBanner(
+                            StatusDataErrorBanner(
                                 summary: viewModel.dataLoadErrorSummary,
                                 onRetry: {
                                     Task { await viewModel.loadData() }
@@ -40,7 +39,7 @@ struct HomeView: View {
                             xpToNextLevel: viewModel.xpToNextLevel,
                             levelProgress: viewModel.levelProgress,
                             streakDays: viewModel.streakDays,
-                            onProfileTap: { showProfile = true }
+                            onProfileTap: { selectedTab = 3 }  // Hunter tab
                         )
                         // No .padding(.horizontal) - full-width gradient header
 
@@ -72,19 +71,6 @@ struct HomeView: View {
                         RecoveryStatusSection(cooldownData: viewModel.cooldownStatus)
                         // No .padding(.horizontal) - built into section
 
-                        // 9. Latest Achievement (Single PR) - Edge Flow styled
-                        if let latestPR = viewModel.recentPRs.first {
-                            VStack(alignment: .leading, spacing: 14) {
-                                Text("Latest Achievement")
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundColor(.textPrimary)
-                                    .padding(.horizontal, 20)
-
-                                EdgeFlowAchievementCard(pr: latestPR)
-                                    .padding(.horizontal, 20)
-                            }
-                        }
-
                         // Bottom padding for tab bar
                         Spacer().frame(height: 20)
                     }
@@ -101,9 +87,6 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showWeeklyReport) {
             WeeklyReportView()
-        }
-        .sheet(isPresented: $showProfile) {
-            ProfileView()
         }
         .sheet(item: $questWorkoutId) { workoutId in
             WorkoutDetailSheet(workoutId: workoutId)
@@ -761,10 +744,10 @@ struct WeeklyReportCard: View {
 
 // MARK: - Home Data Error Banner
 
-/// Compact banner shown at the top of HomeView when one or more dashboard
+/// Compact banner shown at the top of StatusView when one or more dashboard
 /// endpoints failed to load. Non-blocking — the rest of the dashboard still
 /// renders from whatever data succeeded.
-struct HomeDataErrorBanner: View {
+struct StatusDataErrorBanner: View {
     let summary: String
     let onRetry: () -> Void
     let onDismiss: () -> Void
@@ -823,6 +806,6 @@ struct HomeDataErrorBanner: View {
 // MARK: - Preview
 
 #Preview {
-    HomeView(selectedTab: .constant(0))
+    StatusView(selectedTab: .constant(0))
         .environmentObject(AuthManager.shared)
 }
