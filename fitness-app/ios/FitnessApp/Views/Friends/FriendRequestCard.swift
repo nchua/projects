@@ -180,12 +180,7 @@ struct FriendRequestCard: View {
             }
         }
         .padding(14)
-        .background(Color.voidMedium)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.ariseBorder, lineWidth: 1)
-        )
-        .cornerRadius(4)
+        .edgeFlowCard(cornerRadius: 12)
     }
 }
 

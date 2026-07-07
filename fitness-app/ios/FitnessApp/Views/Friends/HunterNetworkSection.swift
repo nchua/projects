@@ -96,12 +96,7 @@ struct EmptyFriendsView: View {
         }
         .padding(40)
         .frame(maxWidth: .infinity)
-        .background(Color.voidMedium)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.ariseBorder, lineWidth: 1)
-        )
-        .cornerRadius(4)
+        .edgeFlowCard()
     }
 }
 

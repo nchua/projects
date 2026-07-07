@@ -17,7 +17,7 @@ struct QuestDetailView: View {
 
     var body: some View {
         ZStack {
-            VoidBackground(showGrid: false, glowIntensity: 0.03)
+            VoidBackground(glowIntensity: 0.03)
 
             if viewModel.isLoadingDetail {
                 SwiftUI.ProgressView()

@@ -2,7 +2,6 @@ import SwiftUI
 
 /// ARISE void background with radial glow
 struct VoidBackground: View {
-    var showGrid: Bool = false
     var showRadialGlow: Bool = true
     var glowIntensity: Double = 0.02
 

@@ -12,7 +12,7 @@ struct HuntView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                VoidBackground(showGrid: false, glowIntensity: 0.03)
+                VoidBackground(glowIntensity: 0.03)
 
                 // Loading overlay for photo conversion
                 if isLoadingPhotos {
@@ -51,7 +51,7 @@ struct HuntView: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Hunt Log")
-                                    .font(.system(size: 18, weight: .semibold))
+                                    .font(.ariseHeader(size: 18, weight: .semibold))
                                     .foregroundColor(.textPrimary)
 
                                 if let date = viewModel.selectedDate {
@@ -238,7 +238,7 @@ struct HuntHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Hunt")
-                .font(.system(size: 28, weight: .bold))
+                .font(.ariseHeader(size: 28, weight: .bold))
                 .foregroundColor(.textPrimary)
 
             Text("Log workouts and track your progress")
@@ -267,10 +267,10 @@ struct HuntActionButtons: View {
             // Begin Hunt Button - Primary Pill
             Button(action: onBeginHunt) {
                 HStack(spacing: 8) {
-                    Text("\u{26A1}")  // Lightning bolt
-                        .font(.system(size: 14))
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 14, weight: .medium))
                     Text("BEGIN HUNT")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.ariseHeader(size: 14, weight: .semibold))
                 }
                 .edgeFlowPillButton(isPrimary: true)
             }
@@ -281,7 +281,7 @@ struct HuntActionButtons: View {
                     Image(systemName: "camera.viewfinder")
                         .font(.system(size: 14, weight: .medium))
                     Text("SCAN")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.ariseHeader(size: 14, weight: .semibold))
                 }
                 .edgeFlowPillButton(isPrimary: false)
             }
@@ -328,7 +328,7 @@ struct HuntCalendarView: View {
                 Spacer()
 
                 Text(dateFormatter.string(from: displayedMonth).uppercased())
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.ariseMono(size: 14, weight: .semibold))
                     .foregroundColor(.textPrimary)
                     .tracking(1)
 
@@ -355,7 +355,7 @@ struct HuntCalendarView: View {
             HStack(spacing: 0) {
                 ForEach(["S", "M", "T", "W", "T", "F", "S"], id: \.self) { day in
                     Text(day)
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.ariseMono(size: 10, weight: .semibold))
                         .foregroundColor(.textMuted)
                         .frame(maxWidth: .infinity)
                 }
@@ -513,7 +513,7 @@ struct EdgeFlowWorkoutRow: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 10) {
                     Text(formatDate(workout.date))
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.ariseHeader(size: 15, weight: .semibold))
                         .foregroundColor(.textPrimary)
 
                     // Badge
@@ -521,7 +521,7 @@ struct EdgeFlowWorkoutRow: View {
                         Image(systemName: badgeIcon)
                             .font(.system(size: 8, weight: .bold))
                         Text(badgeText)
-                            .font(.system(size: 9, weight: .semibold))
+                            .font(.ariseMono(size: 9, weight: .semibold))
                             .tracking(0.5)
                     }
                     .foregroundColor(indicatorColor)
@@ -536,7 +536,7 @@ struct EdgeFlowWorkoutRow: View {
                             Image(systemName: "applewatch")
                                 .font(.system(size: 7, weight: .semibold))
                             Text("WHOOP")
-                                .font(.system(size: 8, weight: .semibold))
+                                .font(.ariseMono(size: 8, weight: .semibold))
                                 .tracking(0.5)
                         }
                         .foregroundColor(.orange)
@@ -553,20 +553,20 @@ struct EdgeFlowWorkoutRow: View {
                         if let activityType = workout.activityType {
                             HStack(spacing: 4) {
                                 Text(activityType)
-                                    .font(.system(size: 12, weight: .medium))
+                                    .font(.ariseMono(size: 12, weight: .medium))
                                     .foregroundColor(.orange)
                             }
                         }
 
                         if let strain = workout.strain {
                             Text(String(format: "%.1f strain", strain))
-                                .font(.system(size: 12))
+                                .font(.ariseMono(size: 12))
                                 .foregroundColor(.textSecondary)
                         }
 
                         if let calories = workout.calories {
                             Text("\(calories) cal")
-                                .font(.system(size: 12))
+                                .font(.ariseMono(size: 12))
                                 .foregroundColor(.textSecondary)
                         }
                     }
@@ -577,7 +577,7 @@ struct EdgeFlowWorkoutRow: View {
                                 .font(.system(size: 10))
                                 .foregroundColor(.textMuted)
                             Text("\(workout.exerciseCount) objectives")
-                                .font(.system(size: 12))
+                                .font(.ariseMono(size: 12))
                                 .foregroundColor(.textSecondary)
                         }
 
@@ -586,7 +586,7 @@ struct EdgeFlowWorkoutRow: View {
                                 .font(.system(size: 10))
                                 .foregroundColor(.textMuted)
                             Text("\(workout.totalSets) sets")
-                                .font(.system(size: 12))
+                                .font(.ariseMono(size: 12))
                                 .foregroundColor(.textSecondary)
                         }
 
@@ -596,7 +596,7 @@ struct EdgeFlowWorkoutRow: View {
                                     .font(.system(size: 10))
                                     .foregroundColor(.orange)
                                 Text(String(format: "%.1f", strain))
-                                    .font(.system(size: 12))
+                                    .font(.ariseMono(size: 12))
                                     .foregroundColor(.orange)
                             }
                         }
@@ -608,10 +608,10 @@ struct EdgeFlowWorkoutRow: View {
                             ForEach(muscles.prefix(3), id: \.self) { muscle in
                                 HStack(spacing: 4) {
                                     Circle()
-                                        .fill(muscleColor(for: muscle))
+                                        .fill(Color.muscleColor(for: muscle))
                                         .frame(width: 6, height: 6)
                                     Text(muscle)
-                                        .font(.system(size: 11, weight: .medium))
+                                        .font(.ariseMono(size: 11, weight: .medium))
                                         .foregroundColor(.textSecondary)
                                 }
                                 .padding(.horizontal, 8)
@@ -622,7 +622,7 @@ struct EdgeFlowWorkoutRow: View {
 
                             if muscles.count > 3 {
                                 Text("+\(muscles.count - 3)")
-                                    .font(.system(size: 11, weight: .medium))
+                                    .font(.ariseMono(size: 11, weight: .medium))
                                     .foregroundColor(.textMuted)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 3)
@@ -648,22 +648,6 @@ struct EdgeFlowWorkoutRow: View {
         dateString.parseISO8601Date()?.formattedMedium ?? dateString
     }
 
-    private func muscleColor(for muscle: String) -> Color {
-        switch muscle.lowercased() {
-        case "chest":       return .liftBench
-        case "back":        return .liftRow
-        case "quads":       return .liftSquat
-        case "hamstrings":  return .orange
-        case "shoulders":   return .gold
-        case "biceps":      return .systemPrimary
-        case "triceps":     return .purple
-        case "glutes":      return .pink
-        case "core", "abs": return .mint
-        case "calves":      return .teal
-        case "forearms":    return .brown
-        default:            return .textSecondary
-        }
-    }
 }
 
 // MARK: - Empty State (Edge Flow)
@@ -685,7 +669,7 @@ struct EmptyHuntsCard: View {
 
             VStack(spacing: 8) {
                 Text(hasDateFilter ? "No Hunts on This Day" : "No Hunts Yet")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.ariseHeader(size: 16, weight: .semibold))
                     .foregroundColor(.textPrimary)
 
                 Text(hasDateFilter ? "Select another date or clear the filter" : "Begin a hunt to start tracking\nyour training progress")
@@ -708,7 +692,7 @@ struct HuntDetailView: View {
 
     var body: some View {
         ZStack {
-            VoidBackground(showGrid: false, glowIntensity: 0.03)
+            VoidBackground(glowIntensity: 0.03)
 
             if viewModel.isLoadingDetail {
                 ProgressView()

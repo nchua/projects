@@ -82,12 +82,7 @@ struct FriendRowCard: View {
                     .foregroundColor(.textMuted)
             }
             .padding(14)
-            .background(Color.voidMedium)
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(Color.ariseBorder, lineWidth: 1)
-            )
-            .cornerRadius(4)
+            .edgeFlowCard(cornerRadius: 12)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -171,12 +166,7 @@ struct SearchResultCard: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(Color.voidMedium)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.ariseBorder, lineWidth: 1)
-        )
-        .cornerRadius(4)
+        .edgeFlowCard(cornerRadius: 12)
     }
 
     @ViewBuilder

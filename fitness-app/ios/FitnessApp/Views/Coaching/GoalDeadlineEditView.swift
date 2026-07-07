@@ -106,7 +106,7 @@ struct GoalDeadlineEditView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(goal.exerciseName)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.ariseHeader(size: 17, weight: .semibold))
                     .foregroundColor(.white)
 
                 Text("\(Int(goal.targetWeight)) \(goal.weightUnit) x \(goal.targetReps) \u{2022} \(Int(goal.progressPercent))% complete")
@@ -191,11 +191,11 @@ struct GoalDeadlineEditView: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text("New Deadline")
-                    .font(.system(size: 12))
+                    .font(.ariseMono(size: 12))
                     .foregroundColor(.textSecondary)
 
                 Text(selectedDate, style: .date)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.ariseHeader(size: 18, weight: .semibold))
                     .foregroundColor(.white)
 
                 HStack(spacing: 6) {
@@ -246,7 +246,7 @@ struct GoalDeadlineEditView: View {
                     Text(hasChanged ? "Save Deadline" : "No Changes")
                 }
             }
-            .font(.system(size: 16, weight: .semibold))
+            .font(.ariseHeader(size: 16, weight: .semibold))
             .foregroundColor(.black)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 18)

@@ -89,7 +89,7 @@ struct ScreenshotExerciseEditView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                VoidBackground(showGrid: false, glowIntensity: 0.03)
+                VoidBackground(glowIntensity: 0.03)
 
                 ScrollView {
                     VStack(spacing: 20) {
@@ -401,7 +401,7 @@ struct ExerciseMatchPickerView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                VoidBackground(showGrid: false, glowIntensity: 0.03)
+                VoidBackground(glowIntensity: 0.03)
 
                 VStack(spacing: 0) {
                     // Search

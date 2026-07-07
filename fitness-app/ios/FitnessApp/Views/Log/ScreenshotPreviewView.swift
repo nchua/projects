@@ -25,7 +25,7 @@ struct ScreenshotPreviewView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                VoidBackground(showGrid: true, glowIntensity: 0.05)
+                VoidBackground(glowIntensity: 0.05)
 
                 if !hasStartedProcessing {
                     dateSelectionView

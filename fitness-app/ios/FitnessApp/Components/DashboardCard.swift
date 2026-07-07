@@ -50,12 +50,12 @@ struct DashboardCard: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("This Week")
-                        .font(.system(size: 12))
+                        .font(.ariseMono(size: 12))
                         .foregroundColor(.textSecondary)
 
                     HStack(alignment: .lastTextBaseline, spacing: 6) {
                         Text("\(workouts)")
-                            .font(.system(size: 28, weight: .bold))
+                            .font(.ariseDisplay(size: 28, weight: .bold))
                             .foregroundColor(.systemPrimary)
 
                         Text("of \(workoutsGoal) workouts")
@@ -68,7 +68,7 @@ struct DashboardCard: View {
 
                 // Percentage badge
                 Text("\(progressPercent)%")
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .font(.ariseMono(size: 14, weight: .bold))
                     .foregroundColor(progressPercent >= 100 ? .successGreen : .systemPrimary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
@@ -137,7 +137,7 @@ struct DashboardCard: View {
                     Image(systemName: "bolt.fill")
                         .font(.system(size: 14))
                     Text("Start Workout")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.ariseHeader(size: 15, weight: .semibold))
                 }
                 .foregroundColor(.black)
                 .frame(maxWidth: .infinity)
@@ -188,7 +188,7 @@ private struct DashboardStatPill: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.textPrimary)
                 Text(label)
-                    .font(.system(size: 10))
+                    .font(.ariseMono(size: 10))
                     .foregroundColor(.textMuted)
             }
         }

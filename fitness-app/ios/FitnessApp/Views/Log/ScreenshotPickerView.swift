@@ -14,7 +14,7 @@ struct ScreenshotPickerView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                VoidBackground(showGrid: true, glowIntensity: 0.05)
+                VoidBackground(glowIntensity: 0.05)
 
                 VStack(spacing: 32) {
                     Spacer()

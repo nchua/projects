@@ -147,12 +147,7 @@ struct FriendProfileView: View {
             statItem(value: "\(profile.totalPrs)", label: "PRs")
         }
         .padding(16)
-        .background(Color.voidMedium)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.ariseBorder, lineWidth: 1)
-        )
-        .cornerRadius(4)
+        .edgeFlowCard()
         .padding(.horizontal, 16)
     }
 
@@ -265,12 +260,7 @@ struct FriendProfileView: View {
             }
         }
         .padding(12)
-        .background(Color.voidMedium)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.ariseBorder, lineWidth: 1)
-        )
-        .cornerRadius(4)
+        .edgeFlowCard(cornerRadius: 12)
     }
 
     private func formatWorkoutDate(_ dateString: String) -> String {

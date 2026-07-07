@@ -73,7 +73,7 @@ struct GoalSetupView: View {
 
                 ToolbarItem(placement: .principal) {
                     Text(viewModel.isEditMode ? "Edit Goal" : "New Strength Goal")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.ariseHeader(size: 17, weight: .semibold))
                         .foregroundColor(.white)
                 }
             }
@@ -162,7 +162,7 @@ struct Step1ExerciseSelection: View {
             // Title
             VStack(alignment: .leading, spacing: 8) {
                 Text("Choose Your Lift")
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.ariseHeader(size: 28, weight: .bold))
                     .foregroundColor(.white)
 
                 Text("What exercise do you want to get stronger at?")
@@ -230,11 +230,11 @@ struct Step1ExerciseSelection: View {
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Current max from history")
-                            .font(.system(size: 12))
+                            .font(.ariseMono(size: 12))
                             .foregroundColor(.textSecondary)
 
                         Text("\(Int(currentMax)) \(viewModel.weightUnit)")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.ariseDisplay(size: 16, weight: .semibold))
                             .foregroundColor(.white)
                     }
 
@@ -268,7 +268,7 @@ struct Step1ExerciseSelection: View {
                             .scaleEffect(0.8)
                     }
                     Text(viewModel.isLoadingHistory ? "Loading history..." : "Continue")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.ariseHeader(size: 16, weight: .semibold))
                 }
                 .foregroundColor(.black)
                 .frame(maxWidth: .infinity)
@@ -302,14 +302,15 @@ struct ExerciseSelectionRow: View {
                         .fill(Color.white.opacity(0.05))
                         .frame(width: 44, height: 44)
 
-                    Text("🏋️")
+                    Image(systemName: "figure.strengthtraining.traditional")
                         .font(.system(size: 20))
+                        .foregroundColor(.systemPrimary)
                 }
 
                 // Info
                 VStack(alignment: .leading, spacing: 2) {
                     Text(exercise.name)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.ariseHeader(size: 16, weight: .semibold))
                         .foregroundColor(.white)
 
                     Text(exercise.category ?? "Exercise")
@@ -365,7 +366,7 @@ struct Step2CurrentAbility: View {
             // Title
             VStack(alignment: .leading, spacing: 8) {
                 Text("Your Current Ability")
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.ariseHeader(size: 28, weight: .bold))
                     .foregroundColor(.white)
 
                 Text("What can you \(viewModel.selectedExercise?.name ?? "lift") today?")
@@ -423,12 +424,12 @@ struct Step2CurrentAbility: View {
             if viewModel.calculatedE1RM > 0 {
                 VStack(spacing: 4) {
                     Text("Estimated 1RM")
-                        .font(.system(size: 12))
+                        .font(.ariseMono(size: 12))
                         .foregroundColor(.textSecondary)
 
                     HStack(alignment: .lastTextBaseline, spacing: 4) {
                         Text("\(Int(viewModel.calculatedE1RM))")
-                            .font(.system(size: 32, weight: .bold))
+                            .font(.ariseDisplay(size: 32, weight: .bold))
                             .foregroundColor(.systemPrimary)
 
                         Text(viewModel.weightUnit)
@@ -466,7 +467,7 @@ struct Step2CurrentAbility: View {
                 viewModel.currentStep = 3
             } label: {
                 Text("Continue")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.ariseHeader(size: 16, weight: .semibold))
                     .foregroundColor(.black)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
@@ -498,7 +499,7 @@ struct Step3TargetWeight: View {
             // Title
             VStack(alignment: .leading, spacing: 8) {
                 Text("Set Your Target")
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.ariseHeader(size: 28, weight: .bold))
                     .foregroundColor(.white)
 
                 Text("What weight and reps do you want to hit on \(viewModel.selectedExercise?.name ?? viewModel.editingExerciseName ?? "this exercise")?")
@@ -514,7 +515,7 @@ struct Step3TargetWeight: View {
             VStack(spacing: 12) {
                 HStack(alignment: .lastTextBaseline, spacing: 8) {
                     Text("\(Int(viewModel.targetWeight))")
-                        .font(.system(size: 56, weight: .bold))
+                        .font(.ariseDisplay(size: 56, weight: .bold))
                         .foregroundColor(.systemPrimary)
 
                     Text(viewModel.weightUnit)
@@ -527,7 +528,7 @@ struct Step3TargetWeight: View {
                         .padding(.horizontal, 4)
 
                     Text("\(viewModel.targetReps)")
-                        .font(.system(size: 56, weight: .bold))
+                        .font(.ariseDisplay(size: 56, weight: .bold))
                         .foregroundColor(.systemPrimary)
 
                     Text(viewModel.targetReps == 1 ? "rep" : "reps")
@@ -543,7 +544,7 @@ struct Step3TargetWeight: View {
 
                         if viewModel.hasExerciseHistory {
                             Text("(from workout history)")
-                                .font(.system(size: 12))
+                                .font(.ariseMono(size: 12))
                                 .foregroundColor(.systemPrimary.opacity(0.7))
                         }
                     }
@@ -553,7 +554,7 @@ struct Step3TargetWeight: View {
             // Weight Controls
             VStack(spacing: 6) {
                 Text("Weight")
-                    .font(.system(size: 12))
+                    .font(.ariseMono(size: 12))
                     .foregroundColor(.textSecondary)
 
                 HStack(spacing: 12) {
@@ -575,7 +576,7 @@ struct Step3TargetWeight: View {
             // Reps Controls
             VStack(spacing: 6) {
                 Text("Reps")
-                    .font(.system(size: 12))
+                    .font(.ariseMono(size: 12))
                     .foregroundColor(.textSecondary)
 
                 HStack(spacing: 12) {
@@ -616,18 +617,18 @@ struct Step3TargetWeight: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Progress needed")
-                            .font(.system(size: 12))
+                            .font(.ariseMono(size: 12))
                             .foregroundColor(.textSecondary)
 
                         HStack(spacing: 8) {
                             Text("+\(Int(diff)) \(viewModel.weightUnit) e1RM (+\(String(format: "%.1f", percent))%)")
-                                .font(.system(size: 16, weight: .semibold))
+                                .font(.ariseDisplay(size: 16, weight: .semibold))
                                 .foregroundColor(.white)
                         }
 
                         if viewModel.targetReps > 1 {
                             Text("Target e1RM: \(Int(viewModel.targetE1RM)) \(viewModel.weightUnit)")
-                                .font(.system(size: 12))
+                                .font(.ariseMono(size: 12))
                                 .foregroundColor(.systemPrimary.opacity(0.8))
                         }
                     }
@@ -656,7 +657,7 @@ struct Step3TargetWeight: View {
                 viewModel.currentStep = 4
             } label: {
                 Text("Continue")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.ariseHeader(size: 16, weight: .semibold))
                     .foregroundColor(.black)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
@@ -678,7 +679,7 @@ struct WeightControlButton: View {
     var body: some View {
         Button(action: action) {
             Text(text)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.ariseDisplay(size: 18, weight: .semibold))
                 .foregroundColor(isLarge ? Color.systemPrimary : .white)
                 .frame(width: 56, height: 56)
                 .background(isLarge ? Color.systemPrimary.opacity(0.2) : Color.bgInput)
@@ -695,7 +696,7 @@ struct RepControlButton: View {
     var body: some View {
         Button(action: action) {
             Text(text)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.ariseDisplay(size: 18, weight: .semibold))
                 .foregroundColor(isLarge ? Color(hex: "00FF88") : .white)
                 .frame(width: 56, height: 56)
                 .background(isLarge ? Color(hex: "00FF88").opacity(0.2) : Color.bgInput)
@@ -737,7 +738,7 @@ struct Step4Deadline: View {
             // Title
             VStack(alignment: .leading, spacing: 8) {
                 Text("Set Your Deadline")
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.ariseHeader(size: 28, weight: .bold))
                     .foregroundColor(.white)
 
                 Text("When do you want to hit \(Int(viewModel.targetWeight)) \(viewModel.weightUnit) x \(viewModel.targetReps) on \(viewModel.selectedExercise?.name ?? viewModel.editingExerciseName ?? "this exercise")?")
@@ -765,11 +766,11 @@ struct Step4Deadline: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Target Date")
-                        .font(.system(size: 12))
+                        .font(.ariseMono(size: 12))
                         .foregroundColor(.textSecondary)
 
                     Text(viewModel.deadline, style: .date)
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.ariseHeader(size: 18, weight: .semibold))
                         .foregroundColor(.white)
 
                     Text("\(weeksRemaining) weeks from now")
@@ -802,7 +803,7 @@ struct Step4Deadline: View {
                 viewModel.currentStep = 5
             } label: {
                 Text("Continue")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.ariseHeader(size: 16, weight: .semibold))
                     .foregroundColor(.black)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
@@ -838,7 +839,7 @@ struct Step5Confirmation: View {
                 // Title
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Your Goal")
-                        .font(.system(size: 28, weight: .bold))
+                        .font(.ariseHeader(size: 28, weight: .bold))
                         .foregroundColor(.white)
 
                     Text("Ready to start your journey?")
@@ -856,18 +857,19 @@ struct Step5Confirmation: View {
                                 .fill(Color.systemPrimary.opacity(0.15))
                                 .frame(width: 60, height: 60)
 
-                            Text("🏋️")
+                            Image(systemName: "figure.strengthtraining.traditional")
                                 .font(.system(size: 28))
+                                .foregroundColor(.systemPrimary)
                         }
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(viewModel.selectedExercise?.name ?? viewModel.editingExerciseName ?? "Exercise")
-                                .font(.system(size: 20, weight: .bold))
+                                .font(.ariseHeader(size: 20, weight: .bold))
                                 .foregroundColor(.white)
 
                             HStack(alignment: .lastTextBaseline, spacing: 4) {
                                 Text("\(Int(viewModel.targetWeight))")
-                                    .font(.system(size: 32, weight: .bold))
+                                    .font(.ariseDisplay(size: 32, weight: .bold))
                                     .foregroundColor(.systemPrimary)
 
                                 Text(viewModel.weightUnit)
@@ -880,7 +882,7 @@ struct Step5Confirmation: View {
                                     .padding(.horizontal, 2)
 
                                 Text("\(viewModel.targetReps)")
-                                    .font(.system(size: 32, weight: .bold))
+                                    .font(.ariseDisplay(size: 32, weight: .bold))
                                     .foregroundColor(.systemPrimary)
 
                                 Text(viewModel.targetReps == 1 ? "rep" : "reps")
@@ -958,11 +960,11 @@ struct Step5Confirmation: View {
                             let isWorkoutDay = [1, 4].contains(index)  // Monday and Thursday
                             VStack(spacing: 4) {
                                 Text(day)
-                                    .font(.system(size: 10))
+                                    .font(.ariseMono(size: 10))
                                     .foregroundColor(.textSecondary)
 
-                                Text(isWorkoutDay ? "💪" : "-")
-                                    .font(.system(size: 16))
+                                Image(systemName: isWorkoutDay ? "dumbbell.fill" : "minus")
+                                    .font(.system(size: isWorkoutDay ? 14 : 10))
                                     .foregroundColor(isWorkoutDay ? .systemPrimary : .textSecondary)
                             }
                             .frame(maxWidth: .infinity)
@@ -1005,7 +1007,7 @@ struct Step5Confirmation: View {
                             .tint(.black)
                     } else {
                         Text(viewModel.isEditMode ? "Save Changes" : "Create Goal")
-                            .font(.system(size: 16, weight: .bold))
+                            .font(.ariseHeader(size: 16, weight: .bold))
                     }
                 }
                 .foregroundColor(.black)

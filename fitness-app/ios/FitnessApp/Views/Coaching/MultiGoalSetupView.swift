@@ -61,7 +61,7 @@ struct MultiGoalSetupView: View {
 
                 ToolbarItem(placement: .principal) {
                     Text("Set Your Goals")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.ariseHeader(size: 17, weight: .semibold))
                         .foregroundColor(.white)
                 }
             }
@@ -98,7 +98,7 @@ private struct IntroStep: View {
             // Title & Description
             VStack(spacing: 12) {
                 Text("Set Your Strength Goals")
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.ariseHeader(size: 28, weight: .bold))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
 
@@ -128,7 +128,7 @@ private struct IntroStep: View {
                 viewModel.currentStep = 2
             } label: {
                 Text("Get Started")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.ariseHeader(size: 16, weight: .semibold))
                     .foregroundColor(.black)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
@@ -172,7 +172,7 @@ private struct GoalListStep: View {
             // Title
             VStack(alignment: .leading, spacing: 8) {
                 Text("Your Goals")
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.ariseHeader(size: 28, weight: .bold))
                     .foregroundColor(.white)
 
                 Text("Add \(viewModel.pendingGoals.isEmpty ? "1-5" : "up to \(5 - viewModel.pendingGoals.count) more") exercises")
@@ -212,7 +212,7 @@ private struct GoalListStep: View {
 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("Add Goal")
-                                        .font(.system(size: 16, weight: .semibold))
+                                        .font(.ariseHeader(size: 16, weight: .semibold))
                                         .foregroundColor(.systemPrimary)
 
                                     Text("\(viewModel.pendingGoals.count)/5 goals added")
@@ -243,7 +243,7 @@ private struct GoalListStep: View {
                 viewModel.currentStep = 3
             } label: {
                 Text("Continue")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.ariseHeader(size: 16, weight: .semibold))
                     .foregroundColor(.black)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
@@ -274,14 +274,15 @@ private struct PendingGoalRow: View {
                     .fill(Color.systemPrimary.opacity(0.1))
                     .frame(width: 44, height: 44)
 
-                Text("🏋️")
+                Image(systemName: "figure.strengthtraining.traditional")
                     .font(.system(size: 20))
+                    .foregroundColor(.systemPrimary)
             }
 
             // Info
             VStack(alignment: .leading, spacing: 4) {
                 Text(goal.exerciseName)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.ariseHeader(size: 16, weight: .semibold))
                     .foregroundColor(.white)
 
                 HStack(spacing: 8) {
@@ -326,7 +327,7 @@ private struct ReviewStep: View {
                 // Title
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Review Your Goals")
-                        .font(.system(size: 28, weight: .bold))
+                        .font(.ariseHeader(size: 28, weight: .bold))
                         .foregroundColor(.white)
 
                     Text("Ready to start your training journey?")
@@ -350,7 +351,7 @@ private struct ReviewStep: View {
                             .foregroundColor(.systemPrimary)
 
                         Text("What happens next")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.ariseHeader(size: 16, weight: .semibold))
                             .foregroundColor(.white)
                     }
 
@@ -401,7 +402,7 @@ private struct ReviewStep: View {
                             .tint(.black)
                     } else {
                         Text("Create \(viewModel.pendingGoals.count) Goal\(viewModel.pendingGoals.count == 1 ? "" : "s")")
-                            .font(.system(size: 16, weight: .bold))
+                            .font(.ariseHeader(size: 16, weight: .bold))
                     }
                 }
                 .foregroundColor(.black)
@@ -444,14 +445,15 @@ private struct ReviewGoalRow: View {
                     .fill(Color.systemPrimary.opacity(0.1))
                     .frame(width: 44, height: 44)
 
-                Text("🎯")
+                Image(systemName: "target")
                     .font(.system(size: 20))
+                    .foregroundColor(.systemPrimary)
             }
 
             // Info
             VStack(alignment: .leading, spacing: 4) {
                 Text(goal.exerciseName)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.ariseHeader(size: 16, weight: .semibold))
                     .foregroundColor(.white)
 
                 HStack(spacing: 8) {
@@ -472,7 +474,7 @@ private struct ReviewGoalRow: View {
             // Deadline
             VStack(alignment: .trailing, spacing: 2) {
                 Text("Target")
-                    .font(.system(size: 11))
+                    .font(.ariseMono(size: 11))
                     .foregroundColor(.textSecondary)
 
                 Text(goal.deadline.formatted(date: .abbreviated, time: .omitted))
@@ -497,7 +499,7 @@ private struct InfoRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Text(number)
-                .font(.system(size: 12, weight: .bold))
+                .font(.ariseMono(size: 12, weight: .bold))
                 .foregroundColor(.black)
                 .frame(width: 20, height: 20)
                 .background(Color.systemPrimary)
@@ -606,7 +608,7 @@ private struct AddGoalSheetView: View {
 
                 ToolbarItem(placement: .principal) {
                     Text("Add Goal")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.ariseHeader(size: 17, weight: .semibold))
                         .foregroundColor(.white)
                 }
             }
@@ -620,7 +622,7 @@ private struct AddGoalSheetView: View {
         VStack(alignment: .leading, spacing: 24) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Choose Exercise")
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.ariseHeader(size: 28, weight: .bold))
                     .foregroundColor(.white)
 
                 Text("What lift do you want to improve?")
@@ -687,7 +689,7 @@ private struct AddGoalSheetView: View {
                             .scaleEffect(0.8)
                     }
                     Text(isLoadingHistory ? "Loading..." : "Continue")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.ariseHeader(size: 16, weight: .semibold))
                 }
                 .foregroundColor(.black)
                 .frame(maxWidth: .infinity)
@@ -712,7 +714,7 @@ private struct AddGoalSheetView: View {
         VStack(spacing: 20) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Set Your Target")
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.ariseHeader(size: 28, weight: .bold))
                     .foregroundColor(.white)
 
                 Text("What do you want to hit on \(selectedExercise?.name ?? "this exercise")?")
@@ -728,7 +730,7 @@ private struct AddGoalSheetView: View {
             VStack(spacing: 12) {
                 HStack(alignment: .lastTextBaseline, spacing: 8) {
                     Text("\(Int(targetWeight))")
-                        .font(.system(size: 56, weight: .bold))
+                        .font(.ariseDisplay(size: 56, weight: .bold))
                         .foregroundColor(.systemPrimary)
 
                     Text(weightUnit)
@@ -741,7 +743,7 @@ private struct AddGoalSheetView: View {
                         .padding(.horizontal, 4)
 
                     Text("\(targetReps)")
-                        .font(.system(size: 56, weight: .bold))
+                        .font(.ariseDisplay(size: 56, weight: .bold))
                         .foregroundColor(.systemPrimary)
 
                     Text(targetReps == 1 ? "rep" : "reps")
@@ -759,7 +761,7 @@ private struct AddGoalSheetView: View {
             // Weight Controls
             VStack(spacing: 6) {
                 Text("Weight")
-                    .font(.system(size: 12))
+                    .font(.ariseMono(size: 12))
                     .foregroundColor(.textSecondary)
 
                 HStack(spacing: 12) {
@@ -781,7 +783,7 @@ private struct AddGoalSheetView: View {
             // Reps Controls
             VStack(spacing: 6) {
                 Text("Reps")
-                    .font(.system(size: 12))
+                    .font(.ariseMono(size: 12))
                     .foregroundColor(.textSecondary)
 
                 HStack(spacing: 12) {
@@ -819,7 +821,7 @@ private struct AddGoalSheetView: View {
                 currentSubStep = 3
             } label: {
                 Text("Continue")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.ariseHeader(size: 16, weight: .semibold))
                     .foregroundColor(.black)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
@@ -838,7 +840,7 @@ private struct AddGoalSheetView: View {
         VStack(alignment: .leading, spacing: 24) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Set Deadline")
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.ariseHeader(size: 28, weight: .bold))
                     .foregroundColor(.white)
 
                 Text("When do you want to hit this target?")
@@ -870,7 +872,7 @@ private struct AddGoalSheetView: View {
                 dismiss()
             } label: {
                 Text("Add Goal")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.ariseHeader(size: 16, weight: .semibold))
                     .foregroundColor(.black)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)

@@ -135,30 +135,6 @@ extension View {
     // LEGACY STYLES (Backward Compatibility)
     // ============================================
 
-    // Standard card style with border (legacy - maps to system panel)
-    func cardStyle() -> some View {
-        self
-            .padding(16)
-            .background(Color.voidMedium)
-            .cornerRadius(4)
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(Color.ariseBorder, lineWidth: 1)
-            )
-    }
-
-    // Elevated card with glow effect
-    func elevatedCardStyle(glowColor: Color = .systemPrimary) -> some View {
-        self
-            .padding(16)
-            .background(Color.voidMedium)
-            .cornerRadius(4)
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(Color.ariseBorder, lineWidth: 1)
-            )
-            .shadow(color: glowColor.opacity(0.15), radius: 15, x: 0, y: 5)
-    }
 
     // Compact card for list items
     func compactCardStyle() -> some View {

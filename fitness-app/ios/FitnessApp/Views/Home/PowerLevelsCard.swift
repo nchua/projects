@@ -18,12 +18,7 @@ struct BigThreeLift: Identifiable {
     }
 
     var liftColor: Color {
-        switch shortName.lowercased() {
-        case "squat": return Color(hex: "FF6B6B")
-        case "bench": return Color.systemPrimary
-        case "deadlift": return Color(hex: "7B61FF")
-        default: return .systemPrimary
-        }
+        Color.exerciseColor(for: name)
     }
 }
 
@@ -47,7 +42,7 @@ struct PowerLevelsCard: View {
             // Section Header
             HStack {
                 Text("Power Levels")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.ariseHeader(size: 18, weight: .semibold))
                     .foregroundColor(.textPrimary)
 
                 Spacer()
@@ -128,7 +123,7 @@ private struct PowerLevelColumn: View {
                     .fill(lift.liftColor)
                     .frame(width: 6, height: 6)
                 Text(lift.shortName.uppercased())
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.ariseMono(size: 10, weight: .medium))
                     .foregroundColor(.textSecondary)
                     .tracking(0.5)
             }
@@ -136,11 +131,11 @@ private struct PowerLevelColumn: View {
             // e1RM value
             HStack(alignment: .lastTextBaseline, spacing: 3) {
                 Text(lift.e1rm.formattedWeight)
-                    .font(.system(size: 24, weight: .bold))
+                    .font(.ariseDisplay(size: 24, weight: .bold))
                     .foregroundColor(lift.liftColor)
 
                 Text("lbs")
-                    .font(.system(size: 11))
+                    .font(.ariseMono(size: 11))
                     .foregroundColor(.textMuted)
             }
 
@@ -178,12 +173,12 @@ private struct TrendBadge: View {
                     .font(.system(size: 8, weight: .bold))
 
                 Text(trendText(pct))
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.ariseMono(size: 11, weight: .semibold))
             }
             .foregroundColor(trendColor(pct))
         } else {
             Text("—")
-                .font(.system(size: 11))
+                .font(.ariseMono(size: 11))
                 .foregroundColor(.textMuted)
         }
     }

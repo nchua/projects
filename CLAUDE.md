@@ -5,7 +5,7 @@ Project instructions for Claude Code when working with this codebase.
 ## Project Overview
 
 A Solo Leveling-inspired fitness tracking ecosystem with:
-- **iOS App**: Swift/SwiftUI frontend with gamification (XP, ranks, quests)
+- **iOS App**: Swift/SwiftUI frontend with gamification (XP, ranks, hunts)
 - **Python Backend**: FastAPI server deployed on Railway
 - **Strength Coach**: CLI tool for advanced analytics
 - **Legacy Dashboard**: HTML/JS fitness dashboard with screenshot processing
@@ -136,7 +136,7 @@ Exercises have: name, category (compound/isolation), muscle_groups, equipment, a
 ### Gamification
 - XP system with level progression
 - Rank badges (E-rank to S-rank)
-- Daily quests for workout goals
+- Strength goals tracked from the Power tab (daily quests removed in ARISE v2 Phase 0)
 
 ---
 

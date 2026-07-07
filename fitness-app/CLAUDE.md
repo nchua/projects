@@ -136,7 +136,7 @@ NEVER hardcode credentials. Use `os.environ.get("VAR_NAME")` and placeholder val
 
 ## SQLAlchemy: Always Use joinedload Before Passing to Services
 
-After `db.commit()` + `db.refresh()`, relationship collections are **empty**. Always re-query with `joinedload()` before passing models to service functions that access relationships (`update_quest_progress()`, `update_dungeon_progress()`, `check_and_unlock_achievements()`).
+After `db.commit()` + `db.refresh()`, relationship collections are **empty**. Always re-query with `joinedload()` before passing models to service functions that access relationships (`check_and_unlock_achievements()`, `calculate_workout_xp()`, `ingest_heart_rate()`).
 
 ---
 
@@ -145,13 +145,13 @@ After `db.commit()` + `db.refresh()`, relationship collections are **empty**. Al
 When modifying how workout data is fetched, stored, or structured, update ALL display locations:
 
 **Backend:** `schemas/workout.py` → `api/workouts.py` → `services/screenshot_service.py`
-**iOS:** `APITypes.swift` → `HomeView.swift` → `HistoryView.swift`
+**iOS:** `APITypes.swift` → `StatusView.swift` → `HuntView.swift` (workout archive) → `QuestDetailView.swift` (detail cards)
 
 ### Checklist When Adding New Workout Fields
 - [ ] Add field to backend Pydantic schema (`schemas/workout.py`)
 - [ ] Update backend API endpoint (`api/workouts.py`)
 - [ ] Add field to iOS Decodable struct (`APITypes.swift`)
-- [ ] Update iOS views (`HomeView.swift`, `HistoryView.swift`)
+- [ ] Update iOS views (`StatusView.swift`, `HuntView.swift`, `QuestDetailView.swift`)
 - [ ] If screenshot-related, update `screenshot_service.py` and `schemas/screenshot.py`
 
 ---

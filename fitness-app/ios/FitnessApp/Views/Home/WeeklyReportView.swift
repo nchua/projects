@@ -23,7 +23,7 @@ struct WeeklyReportView: View {
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("WEEKLY REPORT")
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .font(.ariseMono(size: 13, weight: .bold))
                         .foregroundColor(.systemPrimary)
                         .tracking(2)
                 }
@@ -143,14 +143,14 @@ struct WeeklyReportView: View {
             if let volChange = viewModel.volumeChangeFormatted {
                 VStack(spacing: 2) {
                     Text(volChange)
-                        .font(.system(size: 16, weight: .bold, design: .monospaced))
+                        .font(.ariseDisplay(size: 16, weight: .bold))
                         .foregroundColor(
                             (viewModel.report?.volumeChangePercent ?? 0) >= 0
                                 ? .successGreen
                                 : .warningRed
                         )
                     Text("vs last week")
-                        .font(.system(size: 10))
+                        .font(.ariseMono(size: 10))
                         .foregroundColor(.textMuted)
                 }
             }
@@ -164,7 +164,7 @@ struct WeeklyReportView: View {
     private func goalCardsSection(_ goals: [GoalProgressReportResponse]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Goal Progress")
-                .font(.system(size: 18, weight: .semibold))
+                .font(.ariseHeader(size: 18, weight: .semibold))
                 .foregroundColor(.textPrimary)
 
             ForEach(goals) { goal in
@@ -190,18 +190,18 @@ struct WeeklyReportView: View {
             HStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Current")
-                        .font(.system(size: 10))
+                        .font(.ariseMono(size: 10))
                         .foregroundColor(.textMuted)
                     Text("\(Int(goal.currentE1rm ?? 0)) \(goal.weightUnit)")
-                        .font(.system(size: 18, weight: .bold, design: .monospaced))
+                        .font(.ariseDisplay(size: 18, weight: .bold))
                         .foregroundColor(.textPrimary)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Target")
-                        .font(.system(size: 10))
+                        .font(.ariseMono(size: 10))
                         .foregroundColor(.textMuted)
                     Text("\(Int(goal.targetWeight)) \(goal.weightUnit)")
-                        .font(.system(size: 18, weight: .bold, design: .monospaced))
+                        .font(.ariseDisplay(size: 18, weight: .bold))
                         .foregroundColor(.gold)
                 }
                 Spacer()
@@ -231,16 +231,16 @@ struct WeeklyReportView: View {
 
                 HStack {
                     Text("\(Int(goal.progressPercent))%")
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .font(.ariseMono(size: 11, weight: .medium))
                         .foregroundColor(.textSecondary)
                     Spacer()
                     if goal.weeksRemaining > 0 {
                         Text("\(Int(goal.weeksRemaining))w remaining")
-                            .font(.system(size: 11))
+                            .font(.ariseMono(size: 11))
                             .foregroundColor(.textMuted)
                     } else {
                         Text("Deadline passed")
-                            .font(.system(size: 11))
+                            .font(.ariseMono(size: 11))
                             .foregroundColor(.warningRed)
                     }
                 }
@@ -267,10 +267,10 @@ struct WeeklyReportView: View {
     private func paceDetail(label: String, value: String) -> some View {
         VStack(spacing: 2) {
             Text(label)
-                .font(.system(size: 10))
+                .font(.ariseMono(size: 10))
                 .foregroundColor(.textMuted)
             Text(value)
-                .font(.system(size: 13, weight: .medium, design: .monospaced))
+                .font(.ariseMono(size: 13, weight: .medium))
                 .foregroundColor(.textSecondary)
         }
     }
@@ -278,7 +278,7 @@ struct WeeklyReportView: View {
     private func statusBadge(_ status: String) -> some View {
         let (label, color) = statusInfo(status)
         return Text(label)
-            .font(.system(size: 10, weight: .bold, design: .monospaced))
+            .font(.ariseMono(size: 10, weight: .bold))
             .foregroundColor(color)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
@@ -291,7 +291,7 @@ struct WeeklyReportView: View {
     private func suggestionsSection(_ suggestions: [CoachingSuggestionResponse]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Coaching")
-                .font(.system(size: 18, weight: .semibold))
+                .font(.ariseHeader(size: 18, weight: .semibold))
                 .foregroundColor(.textPrimary)
 
             ForEach(suggestions) { suggestion in
@@ -348,7 +348,7 @@ struct WeeklyReportView: View {
                 .font(.system(size: 32))
                 .foregroundColor(.warningRed)
             Text("Couldn't load report")
-                .font(.system(size: 16, weight: .semibold))
+                .font(.ariseHeader(size: 16, weight: .semibold))
                 .foregroundColor(.textPrimary)
             Text(message)
                 .font(.system(size: 13))
@@ -413,7 +413,7 @@ struct WeeklyReportView: View {
                 AxisValueLabel {
                     if let date = value.as(Date.self) {
                         Text(date.formatted(.dateTime.month(.abbreviated)))
-                            .font(.system(size: 9, design: .monospaced))
+                            .font(.ariseMono(size: 9))
                             .foregroundColor(.textMuted)
                     }
                 }

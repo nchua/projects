@@ -153,47 +153,6 @@ extension Color {
         endPoint: .bottom
     )
 
-    // ============================================
-    // LEGACY ALIASES (Backward Compatibility)
-    // ============================================
-    static let appPrimary = systemPrimary
-    static let appBackground = voidBlack
-    static let appSurface = voidDark
-    static let appCard = voidMedium
-    static let appElevated = voidLight
-    static let appInput = voidLight
-    static let appBorder = ariseBorder
-    static let appBorderLight = ariseBorderLight
-    static let appPrimaryMuted = systemPrimarySubtle
-    static let appSecondary = systemPrimary
-    static let appSuccess = successGreen
-    static let appWarning = gold
-    static let appDanger = warningRed
-    static let appEnergy = Color(hex: "F97316")
-    static let appStrength = Color(hex: "EF4444")
-    static let appCardio = successGreen
-    static let appRecovery = Color(hex: "8B5CF6")
-    static let appGoal = gold
-    static let textTertiary = textMuted
-
-    // Legacy gradients
-    static let gradientPrimary = gradientSystem
-    static let gradientEnergy = LinearGradient(
-        colors: [Color(hex: "F97316"), Color(hex: "EF4444")],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
-    static let gradientStrength = LinearGradient(
-        colors: [Color(hex: "EF4444"), Color(hex: "EC4899")],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
-    static let gradientCardio = LinearGradient(
-        colors: [successGreen, systemPrimary],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
-
     // Initialize from hex string
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
@@ -231,6 +190,25 @@ extension Color {
         if lowercased.contains("pull") { return .liftPullup }
         if lowercased.contains("romanian") || lowercased.contains("rdl") { return .liftRDL }
         return .systemPrimary
+    }
+
+    /// Canonical muscle-group colors, drawn from the lift palette above so
+    /// muscle pills and lift charts read as one color system (spec §9).
+    static func muscleColor(for muscle: String) -> Color {
+        switch muscle.lowercased() {
+        case "chest":        return .liftBench
+        case "back", "lats": return .liftRow
+        case "quads":        return .liftSquat
+        case "hamstrings":   return .liftRDL
+        case "glutes":       return .liftDeadlift
+        case "shoulders":    return .liftOHP
+        case "biceps":       return .liftCurl
+        case "triceps":      return .liftPullup
+        case "core", "abs":  return .successGreen
+        case "calves":       return .systemPrimaryDim
+        case "forearms":     return .gold
+        default:             return .textSecondary
+        }
     }
 }
 

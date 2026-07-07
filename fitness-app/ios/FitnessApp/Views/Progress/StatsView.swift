@@ -13,7 +13,7 @@ struct StatsView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                VoidBackground(showGrid: false, glowIntensity: 0.03)
+                VoidBackground(glowIntensity: 0.03)
 
                 if viewModel.isLoading {
                     VStack(spacing: 16) {
@@ -264,12 +264,7 @@ struct PowerProgressView: View {
                 }
                 .padding(20)
                 .frame(maxWidth: .infinity)
-                .background(Color.voidMedium)
-                .cornerRadius(16)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.ariseBorder, lineWidth: 1)
-                )
+                .edgeFlowCard()
                 .padding(.horizontal)
             }
 
@@ -371,7 +366,7 @@ struct AddSkillSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                VoidBackground(showGrid: false, glowIntensity: 0.03)
+                VoidBackground(glowIntensity: 0.03)
 
                 VStack(spacing: 0) {
                     // Search Bar
@@ -621,11 +616,6 @@ struct MinimalExerciseCard: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Top color bar
-            Rectangle()
-                .fill(exerciseColor)
-                .frame(height: 3)
-
             VStack(spacing: isCompact ? 12 : 16) {
                 // Main row
                 HStack(spacing: isCompact ? 12 : 16) {
@@ -750,12 +740,7 @@ struct MinimalExerciseCard: View {
             }
             .padding(isCompact ? 14 : 20)
         }
-        .background(Color.voidMedium)
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.ariseBorder, lineWidth: 1)
-        )
+        .edgeFlowCard(accent: exerciseColor)
     }
 
     private func trendIcon(_ direction: String) -> String {
@@ -832,7 +817,7 @@ struct ExerciseDetailView: View {
 
     var body: some View {
         ZStack {
-            VoidBackground(showGrid: false, glowIntensity: 0.03)
+            VoidBackground(glowIntensity: 0.03)
 
             ScrollView {
                 VStack(spacing: 0) {
@@ -981,12 +966,7 @@ struct ExerciseDetailView: View {
             chartContent
             statsGrid
         }
-        .background(Color.voidMedium)
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.ariseBorder, lineWidth: 1)
-        )
+        .edgeFlowCard()
         .padding(.horizontal, 20)
     }
 
@@ -1376,12 +1356,7 @@ struct SessionCard: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(Color.voidMedium)
-            .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.ariseBorder, lineWidth: 1)
-            )
+            .edgeFlowCard(cornerRadius: 12)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -1756,18 +1731,7 @@ struct RankClassificationCard: View {
             }
         }
         .padding(20)
-        .background(Color.voidMedium)
-        .overlay(
-            Rectangle()
-                .fill(rank.color.opacity(0.3))
-                .frame(height: 1),
-            alignment: .top
-        )
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.ariseBorder, lineWidth: 1)
-        )
+        .edgeFlowCard(accent: rank.color)
     }
 }
 
@@ -1816,12 +1780,7 @@ struct PowerStatsCard: View {
             }
         }
         .padding(20)
-        .background(Color.voidMedium)
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.ariseBorder, lineWidth: 1)
-        )
+        .edgeFlowCard()
     }
 }
 
@@ -1891,18 +1850,7 @@ struct VesselProgressView: View {
                     }
                 }
                 .padding(20)
-                .background(Color.voidMedium)
-                .overlay(
-                    Rectangle()
-                        .fill(Color.systemPrimary.opacity(0.3))
-                        .frame(height: 1),
-                    alignment: .top
-                )
-                .cornerRadius(4)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(Color.ariseBorder, lineWidth: 1)
-                )
+                .edgeFlowCard(accent: .systemPrimary)
                 .padding(.horizontal)
 
                 // Chart
@@ -1916,12 +1864,7 @@ struct VesselProgressView: View {
                         .frame(height: 160)
                 }
                 .padding(20)
-                .background(Color.voidMedium)
-                .cornerRadius(4)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(Color.ariseBorder, lineWidth: 1)
-                )
+                .edgeFlowCard()
                 .padding(.horizontal)
 
                 // Averages
@@ -2065,12 +2008,7 @@ struct VesselStatCard: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
-        .background(Color.voidMedium)
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.ariseBorder, lineWidth: 1)
-        )
+        .edgeFlowCard(cornerRadius: 12)
     }
 }
 
@@ -2155,11 +2093,6 @@ struct RecordCard: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            // Left color indicator
-            Rectangle()
-                .fill(exerciseColor)
-                .frame(width: 4)
-
             HStack(spacing: 12) {
                 // Trophy icon
                 ZStack {
@@ -2210,12 +2143,7 @@ struct RecordCard: View {
             }
             .padding(16)
         }
-        .background(Color.voidMedium)
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.ariseBorder, lineWidth: 1)
-        )
+        .edgeFlowCard(accent: exerciseColor, cornerRadius: 12)
     }
 
     private func formatDate(_ dateString: String) -> String {
@@ -2252,12 +2180,7 @@ struct NoDataPanel: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
-        .background(Color.voidMedium)
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.ariseBorder, lineWidth: 1)
-        )
+        .edgeFlowCard()
         .onAppear {
             withAnimation(.easeOut(duration: 0.5).delay(0.2)) {
                 showContent = true
@@ -2284,7 +2207,7 @@ struct SkillPickerSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                VoidBackground(showGrid: false, glowIntensity: 0.03)
+                VoidBackground(glowIntensity: 0.03)
 
                 VStack(spacing: 0) {
                     // Search Bar

@@ -136,7 +136,7 @@ struct HunterStatusHeader: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(name)
-                            .font(.system(size: 20, weight: .bold))
+                            .font(.ariseHeader(size: 20, weight: .bold))
                             .foregroundColor(Color(hex: "88DDFF"))
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
@@ -161,7 +161,7 @@ struct HunterStatusHeader: View {
                                 .accessibilityLabel("Streak: \(streakDays) \(streakDays == 1 ? "day" : "days")")
                             }
                         }
-                        .font(.system(size: 12))
+                        .font(.ariseMono(size: 12))
                     }
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -225,7 +225,7 @@ struct EdgeFlowAvatar: View {
 
             // Rank badge
             Text(rank.rawValue)
-                .font(.system(size: 10, weight: .bold))
+                .font(.ariseMono(size: 10, weight: .bold))
                 .foregroundColor(.black)
                 .frame(width: 18, height: 18)
                 .background(rank.color)
@@ -248,13 +248,13 @@ struct EdgeFlowXPBar: View {
             // Labels
             HStack {
                 Text("Level \(level)")
-                    .font(.system(size: 11))
+                    .font(.ariseMono(size: 11))
                     .foregroundColor(.textMuted)
 
                 Spacer()
 
                 Text("\(currentXP.formatted()) / \(xpToNextLevel.formatted()) XP")
-                    .font(.system(size: 11))
+                    .font(.ariseMono(size: 11))
                     .foregroundColor(.textMuted)
             }
 
@@ -302,7 +302,7 @@ struct EdgeFlowAchievementCard: View {
             // Info
             VStack(alignment: .leading, spacing: 2) {
                 Text("NEW PR")
-                    .font(.system(size: 11))
+                    .font(.ariseMono(size: 11))
                     .foregroundColor(Color.gold.opacity(0.6))
                     .tracking(0.5)
 
@@ -317,16 +317,16 @@ struct EdgeFlowAchievementCard: View {
             if pr.prType == "e1rm", let value = pr.value {
                 HStack(alignment: .lastTextBaseline, spacing: 4) {
                     Text(value.formattedWeight)
-                        .font(.system(size: 20, weight: .bold))
+                        .font(.ariseDisplay(size: 20, weight: .bold))
                         .foregroundColor(.gold)
 
                     Text("lb")
-                        .font(.system(size: 12))
+                        .font(.ariseMono(size: 12))
                         .foregroundColor(.textMuted)
                 }
             } else if let reps = pr.reps, let weight = pr.weight {
                 Text("\(reps)\u{00D7}\(weight.formattedWeight)")
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.ariseDisplay(size: 20, weight: .bold))
                     .foregroundColor(.gold)
             }
         }
@@ -355,7 +355,7 @@ struct WorkoutDetailSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                VoidBackground(showGrid: false, glowIntensity: 0.03)
+                VoidBackground(glowIntensity: 0.03)
 
                 if isLoading {
                     VStack(spacing: 16) {
@@ -713,10 +713,10 @@ struct WeeklyReportCard: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Weekly Report")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.ariseHeader(size: 15, weight: .semibold))
                         .foregroundColor(.textPrimary)
                     Text(weekDateRange)
-                        .font(.system(size: 12))
+                        .font(.ariseMono(size: 12))
                         .foregroundColor(.textSecondary)
                 }
 
@@ -724,7 +724,7 @@ struct WeeklyReportCard: View {
 
                 // Status badge
                 Text(statusLabel)
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .font(.ariseMono(size: 10, weight: .bold))
                     .foregroundColor(statusColor)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)

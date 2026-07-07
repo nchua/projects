@@ -131,7 +131,6 @@ struct WorkoutCreate: Codable {
     let notes: String?
     let exercises: [WorkoutExerciseCreate]
     /// Client-generated UUID so the backend can dedupe retries from the offline queue.
-    /// TODO (backend): accept and honor `client_id` on `POST /workouts` — out of scope for this PR.
     let clientId: String?
 
     init(

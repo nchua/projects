@@ -19,7 +19,7 @@ struct HunterView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                VoidBackground(showGrid: false, glowIntensity: 0.03)
+                VoidBackground(glowIntensity: 0.03)
 
                 if viewModel.isLoading {
                     VStack(spacing: 16) {
@@ -460,12 +460,7 @@ struct HunterStatsPanel: View {
             HunterStatItem(value: "\(totalPRs)", label: "Records", color: .successGreen)
         }
         .padding(.vertical, 20)
-        .background(Color.voidMedium)
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.ariseBorder, lineWidth: 1)
-        )
+        .edgeFlowCard()
         .padding(.horizontal)
         .offset(y: -12)
     }
@@ -627,11 +622,6 @@ struct VesselSection: View {
                     showHistory = true
                 } label: {
                     HStack(spacing: 0) {
-                        // Left indicator
-                        Rectangle()
-                            .fill(Color.gold)
-                            .frame(width: 4)
-
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("VESSEL MASS")
@@ -678,12 +668,7 @@ struct VesselSection: View {
                         }
                         .padding(16)
                     }
-                    .background(Color.voidMedium)
-                    .cornerRadius(4)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.ariseBorder, lineWidth: 1)
-                    )
+                    .edgeFlowCard(accent: .gold)
                 }
                 .padding(.horizontal)
             } else {
@@ -711,12 +696,7 @@ struct VesselSection: View {
                     Spacer()
                 }
                 .padding(16)
-                .background(Color.voidMedium)
-                .cornerRadius(4)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(Color.ariseBorder, lineWidth: 1)
-                )
+                .edgeFlowCard()
                 .padding(.horizontal)
             }
         }
@@ -737,7 +717,7 @@ struct VesselHistorySheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                VoidBackground(showGrid: false, glowIntensity: 0.03)
+                VoidBackground(glowIntensity: 0.03)
 
                 if let history = viewModel.bodyweightHistory {
                     List {
@@ -888,12 +868,7 @@ struct VesselStatBox: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 14)
-        .background(Color.voidMedium)
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.ariseBorder, lineWidth: 1)
-        )
+        .edgeFlowCard(cornerRadius: 12)
     }
 }
 
@@ -945,12 +920,7 @@ struct HunterIdentitySection: View {
                     }
                 )
             }
-            .background(Color.voidMedium)
-            .cornerRadius(4)
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(Color.ariseBorder, lineWidth: 1)
-            )
+            .edgeFlowCard()
             .padding(.horizontal)
         }
     }
@@ -1057,12 +1027,7 @@ struct HunterAttributesSection: View {
                     }
                 )
             }
-            .background(Color.voidMedium)
-            .cornerRadius(4)
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(Color.ariseBorder, lineWidth: 1)
-            )
+            .edgeFlowCard()
             .padding(.horizontal)
         }
     }
@@ -1149,12 +1114,7 @@ struct SystemSettingsSection: View {
                     )
                 }
             }
-            .background(Color.voidMedium)
-            .cornerRadius(4)
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(Color.ariseBorder, lineWidth: 1)
-            )
+            .edgeFlowCard()
             .padding(.horizontal)
         }
     }
@@ -1228,12 +1188,7 @@ struct IntegrationsSection: View {
                 )
                 .opacity(whoopVM.connected ? 1 : 0.5)
             }
-            .background(Color.voidMedium)
-            .cornerRadius(4)
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(Color.ariseBorder, lineWidth: 1)
-            )
+            .edgeFlowCard()
             .padding(.horizontal)
         }
         .task {
@@ -1286,7 +1241,7 @@ struct VesselEntrySheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                VoidBackground(showGrid: false, glowIntensity: 0.03)
+                VoidBackground(glowIntensity: 0.03)
 
                 VStack(spacing: 32) {
                     VStack(alignment: .leading, spacing: 16) {

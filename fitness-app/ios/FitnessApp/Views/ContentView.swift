@@ -96,7 +96,7 @@ struct AuthView: View {
         NavigationStack {
             ZStack {
                 // ARISE void background
-                VoidBackground(showGrid: true, glowIntensity: 0.05)
+                VoidBackground(glowIntensity: 0.05)
 
                 VStack(spacing: 32) {
                     Spacer()
@@ -384,7 +384,7 @@ struct SessionValidationView: View {
 
     var body: some View {
         ZStack {
-            VoidBackground(showGrid: true, glowIntensity: 0.05)
+            VoidBackground(glowIntensity: 0.05)
 
             VStack(spacing: 24) {
                 Text("ARISE")

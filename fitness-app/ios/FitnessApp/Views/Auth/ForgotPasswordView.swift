@@ -21,7 +21,7 @@ struct ForgotPasswordView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                VoidBackground(showGrid: true, glowIntensity: 0.03)
+                VoidBackground(glowIntensity: 0.03)
 
                 ScrollView {
                     VStack(spacing: 32) {
