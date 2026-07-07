@@ -11,6 +11,10 @@ from pathlib import Path
 import pytest
 
 os.environ.setdefault("TRANSIT_511_API_KEY", "test-key")
+# Hermetic tests regardless of the developer's .env: an empty value survives
+# app.main._load_dotenv's setdefault and keeps the elevator path key-gated off
+# unless a test opts in with monkeypatch.setenv.
+os.environ["BART_API_KEY"] = ""
 
 FIXTURES = Path(__file__).parent / "tests" / "fixtures"
 

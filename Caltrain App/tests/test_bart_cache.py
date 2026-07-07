@@ -114,5 +114,5 @@ async def test_call_log_is_independent_of_511():
 
 async def test_cache_status_names():
     status = bart.cache_status()
-    assert set(status) == {"bart_trip_updates", "bart_alerts"}
+    assert set(status) == {"bart_trip_updates", "bart_alerts", "bart_elev"}
     assert status["bart_trip_updates"] == {"age_seconds": None, "have_data": False}

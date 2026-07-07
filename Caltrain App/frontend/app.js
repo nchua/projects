@@ -415,6 +415,12 @@ function renderAlerts(alerts) {
       tag.hidden = false;
       tag.textContent = "BART"; // Caltrain alerts stay untagged, as today
     }
+    if (alert.type === "elevator") {
+      const tag = document.createElement("span");
+      tag.className = "src-tag";
+      tag.textContent = "ELEVATOR"; // beside the agency tag (SPEC-V2 §6.3)
+      node.querySelector(".alert-header").before(tag);
+    }
     node.querySelector(".alert-header").textContent = alert.header;
     node.querySelector(".alert-desc").textContent = alert.description;
     holder.append(node);

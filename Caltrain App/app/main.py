@@ -187,11 +187,17 @@ async def _caltrain_alerts() -> dict:
 
 async def _bart_alerts() -> dict:
     payload, fetched_at, stale = await bart.get_alerts()
+    # elevator advisories are best-effort (SPEC-V2 §6.2): key-gated, and a
+    # failing bsa endpoint never degrades the GTFS-RT alerts
+    try:
+        advisories, _, _ = await bart.get_elevator_advisories()
+    except UpstreamNeverFetchedError:
+        advisories = []
     return {
         "agency": "ba",
         "as_of": fetched_at.isoformat(),
         "stale": stale,
-        "alerts": bart_pairs.parse_alerts(payload),
+        "alerts": bart_pairs.parse_alerts(payload) + advisories,
     }
 
 

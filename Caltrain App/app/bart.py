@@ -11,17 +11,25 @@ Both endpoints 301/307-redirect; the shared client follows redirects.
 
 from __future__ import annotations
 
+import os
+import re
 from datetime import datetime
 
 from google.protobuf.message import DecodeError
 from google.transit import gtfs_realtime_pb2
 
+from app import bart_stations
 from app.upstream import Upstream
 
 BASE_URL = "https://api.bart.gov/gtfsrt"
+# Legacy JSON API — the ONLY bart.gov surface that needs the personal key
+# (SPEC-V2 §6.2). The demo key is forbidden in production; no key → the
+# elevator feature is silently absent.
+ELEV_URL = "https://api.bart.gov/api/bsa.aspx"
 
 TRIP_UPDATES_TTL_S = 30
 ALERTS_TTL_S = 300
+ELEV_TTL_S = 300
 GUARD_MAX_CALLS_PER_HOUR = 150
 UPSTREAM_TIMEOUT_S = 10
 
@@ -150,6 +158,84 @@ async def _fetch(endpoint: str) -> dict:
     return _PARSERS[endpoint](resp.content)
 
 
+# --- elevator advisories (SPEC-V2 §6.2) ---------------------------------------
+
+# XML-converted JSON: singletons collapse to bare objects (same class of quirk
+# as 511) and text hides under #cdata-section.
+
+
+def _ensure_list(value) -> list:
+    if value is None:
+        return []
+    return value if isinstance(value, list) else [value]
+
+
+def _cdata(value) -> str:
+    if isinstance(value, dict):
+        return str(value.get("#cdata-section") or "").strip()
+    return str(value or "").strip()
+
+
+# station scoping is parsed from the prose ("MLBR: Station - …; RICH: Station")
+# — tokens before a colon, validated against the station registry
+_ELEV_ABBR_RE = re.compile(r"\b([A-Z0-9]{2,4}):")
+
+
+def parse_elevator_advisories(payload: dict) -> list[dict]:
+    """bsa.aspx?cmd=elev JSON → alert-shaped advisories.
+
+    The feed posts ONE generic entry whose description covers every outage
+    (verified live 2026-07-06, fixture elev.json). Ids are synthetic and
+    set-stable ('elev:' + sorted abbrs) — the feed's own @id is time-derived
+    and would break session-dismiss. A zero-outage message ("all elevators
+    are in service") produces no advisories; prose with no resolvable
+    station degrades to an unscoped banner alert, never dropped.
+    """
+    advisories = []
+    for entry in _ensure_list((payload.get("root") or {}).get("bsa")):
+        description = _cdata(entry.get("description"))
+        if not description or "out of service" not in description.lower():
+            continue
+        abbrs: list[str] = []
+        for token in _ELEV_ABBR_RE.findall(description):
+            if bart_stations.by_abbr(token) and token not in abbrs:
+                abbrs.append(token)
+        if abbrs:
+            names = ", ".join(bart_stations.by_abbr(a).name for a in abbrs)
+            header = f"Elevator out of service at {names}"
+            alert_id = "elev:" + ",".join(sorted(abbrs))
+        else:
+            header, description = description, ""
+            alert_id = "elev:unscoped"
+        advisories.append(
+            {
+                "id": alert_id,
+                "type": "elevator",
+                "header": header,
+                "description": description,
+                "active_period": {"start": None, "end": None},
+                "stops": abbrs,
+            }
+        )
+    return advisories
+
+
+async def _fetch_elev(endpoint: str) -> list[dict]:
+    key = os.environ.get("BART_API_KEY", "")
+    resp = await _upstream.client().get(f"{ELEV_URL}?cmd=elev&key={key}&json=y")
+    resp.raise_for_status()
+    return parse_elevator_advisories(resp.json())
+
+
+async def get_elevator_advisories() -> tuple[list[dict], datetime | None, bool]:
+    """Parsed advisories, or ([], None, False) when no personal key is
+    configured — the feature is key-gated and silently absent (§6.2)."""
+    if not os.environ.get("BART_API_KEY"):
+        return [], None, False
+    advisories, fetched_at, stale = await _upstream.get_cached("bsa_elev", ELEV_TTL_S, _fetch_elev)
+    return advisories, fetched_at, stale
+
+
 async def get_trip_updates() -> tuple[dict, datetime, bool]:
     payload, fetched_at, stale = await _upstream.get_cached(
         "tripupdate.aspx", TRIP_UPDATES_TTL_S, _fetch
@@ -169,7 +255,7 @@ def upstream_calls_last_hour() -> int:
 def cache_status() -> dict:
     """Cache ages for /api/health. Never triggers upstream calls."""
     return _upstream.cache_status(
-        {"bart_trip_updates": "tripupdate.aspx", "bart_alerts": "alerts.aspx"}
+        {"bart_trip_updates": "tripupdate.aspx", "bart_alerts": "alerts.aspx", "bart_elev": "bsa_elev"}
     )
 
 
