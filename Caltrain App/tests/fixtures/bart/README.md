@@ -2,9 +2,13 @@
 
 Raw bytes from BART's public feeds, captured during the SPEC-BART.md exploration.
 These back the verified facts in that spec and feed the Phase-2 unit tests.
+(`elev.json` and `tripupdate_canceled_synthetic.pb` were added 2026-07-06 for
+SPEC-V2.md — see their sections below.)
 No API key was needed for the GTFS-RT feeds; the JSON endpoints used BART's public
-demo key (`MW9S-E7SL-26DU-VV8V` — exploration only; register a personal key before
-shipping anything that calls `api.bart.gov/api/*` in production).
+demo key (`MW9S-E7SL-26DU-VV8V` — **exploration/fixture capture only; production
+code calling `api.bart.gov/api/*` must use a personal key from
+https://api.bart.gov/api/register.aspx via the `BART_API_KEY` env var, never the
+demo key and never a committed key**).
 
 ## Capture commands
 
@@ -16,6 +20,9 @@ curl -sSL "http://api.bart.gov/gtfsrt/alerts.aspx"     -o alerts.pb
 # Legacy JSON API (demo key)
 curl -sS --compressed "https://api.bart.gov/api/etd.aspx?cmd=etd&orig=ALL&key=MW9S-E7SL-26DU-VV8V&json=y" -o etd_all.json
 curl -sS --compressed "https://api.bart.gov/api/stn.aspx?cmd=stns&key=MW9S-E7SL-26DU-VV8V&json=y"          -o stations_api.json
+
+# Elevator advisories (legacy JSON, demo key) — captured 2026-07-06 ~19:37 PT
+curl -sS --compressed "https://api.bart.gov/api/bsa.aspx?cmd=elev&key=MW9S-E7SL-26DU-VV8V&json=y" -o elev.json
 ```
 
 Static GTFS referenced by the spec (not checked in — 1.1 MB zip, regenerable):
@@ -53,6 +60,34 @@ At capture time: `feed_version 72`, valid 2026-01-12 → 2026-08-07.
 
 ### `stations_api.json`
 - 50 stations with GTFS-matching coordinates; matches static parent stations 1:1.
+
+### `elev.json` (elevator advisories — SPEC-V2 feature 5, captured 2026-07-06)
+- XML-converted JSON: `root.bsa[]` entries wrap text in `#cdata-section`, attributes
+  in `@`-prefixed keys. At capture time: ONE entry with `station: "BART"` (generic,
+  NOT per-station), `type: "ELEVATOR"`, and a single prose description covering all
+  outages: *"There are 2 elevators out of service at this time: MLBR: Station -
+  SF/East Bay/SFO Airport; RICH: Station"* — station abbreviations must be parsed
+  out of the prose (`ABBR:` markers). `posted`/`expires` were empty strings.
+- The zero-outage response shape was NOT captured (there were outages) — ⚠ VERIFY
+  during implementation; BART docs suggest a single "all elevators are in service"
+  entry rather than an empty `bsa` array.
+
+### `tripupdate_canceled_synthetic.pb` (SYNTHETIC — not a live capture)
+Hand-built 2026-07-06 for SPEC-V2 feature 4 (canceled-trip rows): zero CANCELED
+entries existed in any live capture, so this pins the shapes the parser must
+handle until a real disruption capture replaces it (SPEC-V2 carries the ⚠ VERIFY).
+Real feed-v72 trip_ids on the EMBR→WCRK pair (route 2), epochs anchored on
+service day 2026-07-06; header timestamp `1783386000` (= 18:00 PT):
+
+| entity | trip | shape | static EMBR dep (PT) |
+|---|---|---|---|
+| 1 | `1842225` | CANCELED, **no STUs** (expected real shape) | 18:03 |
+| 2 | `1951714` | CANCELED, **with STUs** (times kept) | 18:05 |
+| 3 | `1842289` | SCHEDULED, with STUs (normal row for interleaving) | 18:11 |
+| 4 | `9999999` | CANCELED, trip **unknown to bundle** (must be suppressed) | — |
+
+Regenerate with the scratch script recorded in SPEC-V2.md §12 if the bundle
+rotates (trip_ids are feed-v72).
 
 ## Re-capturing
 

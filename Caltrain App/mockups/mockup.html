@@ -260,6 +260,10 @@ main { max-width: 640px; margin: 0 auto; padding: 14px 16px 0; }
 .card-empty p { font-size: 13.5px; color: var(--ink-dim); }
 .card-empty p strong { color: var(--ink); font-weight: 600; }
 
+/* feed-exhausted footer note (SPEC.md §9.2; shown here beside the last-train tag) */
+.card-foot { padding: 10px 16px 12px; border-top: 1px solid var(--edge); }
+.foot-note { font-size: 12px; color: var(--ink-faint); }
+
 /* ---------- add a pair ---------- */
 .add-row {
   background: var(--surface);
@@ -271,6 +275,42 @@ main { max-width: 640px; margin: 0 auto; padding: 14px 16px 0; }
 .leg-arrow { color: var(--ink-faint); font-size: 11px; }
 .dep-xfer { font-size: 12px; color: var(--ink-faint); }
 .dep-xfer strong { color: var(--ink-dim); font-weight: 600; }
+/* v2: connection-at-risk suffix on the change-at line (SPEC-V2 §2) */
+.xfer-risk { color: var(--amber); font-weight: 650; }
+
+/* v2: last-train-tonight tag (SPEC-V2 §4) — LED amber, not late-red */
+.tag-last {
+  align-self: flex-start;
+  font: 650 11px/1 var(--sans); letter-spacing: .02em;
+  color: var(--amber); background: var(--amber-tint);
+  border: 1px solid rgba(242, 177, 53, .3);
+  border-radius: 6px; padding: 4px 7px;
+}
+
+/* v2: canceled row, BART only (SPEC-V2 §5) — the whole row reads as dead */
+.dep.is-canceled .t-big {
+  color: var(--ink-faint);
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  text-shadow: none;
+}
+.dep.is-canceled .type, .dep.is-canceled .tno { opacity: .55; }
+.dep.is-canceled .dep-arr { color: var(--ink-faint); text-decoration: line-through; }
+.dep.is-canceled .dep-arr strong { color: var(--ink-faint); font-weight: 500; }
+.b-canceled { color: var(--red-text); background: var(--red-tint); letter-spacing: .05em; }
+
+/* v2: per-pair alert chip strip under the card head (SPEC-V2 §3) */
+.card-alert {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 16px;
+  background: var(--amber-tint);
+  border-bottom: 1px solid var(--edge);
+  font: 500 12.5px/1.35 var(--sans); color: var(--amber);
+}
+.card-alert svg { width: 14px; height: 14px; flex: none; }
+.card-alert span {
+  min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
 .add-controls {
   display: grid;
   grid-template-columns: 1fr 44px 1fr;
@@ -377,6 +417,16 @@ footer {
       </svg>
       <p><span class="src-tag">BART</span><strong>Expect 30-minute delays after 9 PM</strong> between Millbrae, SFO and Daly City due to planned train control modernization work.</p>
       <button class="alert-x pressable" data-action="dismiss-alert" data-alert="alert-2" aria-label="Dismiss alert">✕</button>
+    </div>
+    <!-- v2: elevator advisory with the ELEVATOR tag beside the agency tag (SPEC-V2 §6.3).
+         Scoped to Richmond only: a Millbrae-scoped advisory would chip the matching card
+         below instead of appearing here (§3.3 banner suppression). -->
+    <div class="alert" id="alert-3">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <p><span class="src-tag">BART</span><span class="src-tag">ELEVATOR</span><strong>Elevator out of service at Richmond.</strong> Station elevator out of service — use the station agent callbox for assistance.</p>
+      <button class="alert-x pressable" data-action="dismiss-alert" data-alert="alert-3" aria-label="Dismiss alert">✕</button>
     </div>
   </section>
 
@@ -559,6 +609,18 @@ footer {
         <div class="dep-status"><span class="badge b-late">+5 min</span></div>
       </div>
 
+      <!-- v2: canceled row, BART only (SPEC-V2 §5) — scheduled times struck through,
+           red CANCELED badge, no leave-by. Interleaves by scheduled departure and
+           never displaces a live row. -->
+      <div class="dep is-canceled">
+        <div class="dep-time"><span class="t-big">8:36</span></div>
+        <div class="dep-info">
+          <div class="dep-line"><span class="type type-b-yellow">Yellow</span><span class="tno">to Antioch</span></div>
+          <div class="dep-arr">arrives <strong>9:11 AM</strong></div>
+        </div>
+        <div class="dep-status"><span class="badge b-canceled">Canceled</span></div>
+      </div>
+
       <div class="dep">
         <div class="dep-time"><span class="t-big">8:42</span></div>
         <div class="dep-info">
@@ -566,6 +628,72 @@ footer {
           <div class="dep-arr">arrives <strong>9:17 AM</strong></div>
         </div>
         <div class="dep-status"><span class="badge b-ok">On time</span></div>
+      </div>
+    </article>
+
+    <!-- v2: cross-agency itinerary card (SPEC-V2 §7) — Caltrain type pill ▸ BART line
+         pill, fixed transfer at Millbrae. The card-alert chip is the BART elevator
+         advisory matching the pair's transfer station (§3.3 xa match set includes
+         Millbrae). Second row: feature 1's at-risk treatment on the change-at line. -->
+    <article class="card" data-agency="xa" data-origin="San Carlos" data-destination="Embarcadero">
+      <header class="card-head">
+        <div class="pair">
+          <span class="pair-names"><span class="o">San Carlos</span> <span class="arrow">→</span> <span class="d">Embarcadero</span></span>
+          <span class="dir-tag">CT ▸ BART</span>
+        </div>
+        <div class="card-actions">
+          <button class="icon-btn pressable" data-action="swap-card" aria-label="Reverse direction">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 16V4M7 4 3.5 7.5M7 4l3.5 3.5"/><path d="M17 8v12m0 0 3.5-3.5M17 20l-3.5-3.5"/>
+            </svg>
+          </button>
+          <button class="icon-btn pressable" data-action="remove-card" aria-label="Remove pair">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <path d="M5 5l14 14M19 5 5 19"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="card-alert">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <span>Elevator out at <strong>Millbrae</strong></span>
+      </div>
+
+      <div class="dep">
+        <div class="dep-time"><span class="t-big">8:19</span></div>
+        <div class="dep-info">
+          <div class="dep-line">
+            <span class="type type-limited">Limited</span>
+            <span class="leg-arrow">▸</span>
+            <span class="type type-b-red">Red</span>
+          </div>
+          <div class="dep-xfer">change at <strong>Millbrae</strong> · 9 min wait</div>
+          <div class="dep-arr">arrives <strong>9:14 AM</strong></div>
+        </div>
+        <div class="dep-status">
+          <span class="badge b-ok">On time</span>
+          <span class="leave">leave by <strong>8:10</strong></span>
+        </div>
+      </div>
+
+      <div class="dep">
+        <div class="dep-time"><span class="t-big">8:31</span></div>
+        <div class="dep-info">
+          <div class="dep-line">
+            <span class="type type-local">Local</span>
+            <span class="leg-arrow">▸</span>
+            <span class="type type-b-red">Red</span>
+          </div>
+          <div class="dep-xfer">change at <strong>Millbrae</strong> · 5 min wait <span class="xfer-risk">· tight connection</span></div>
+          <div class="dep-arr">arrives <strong>9:28 AM</strong></div>
+        </div>
+        <div class="dep-status">
+          <span class="badge b-ok">On time</span>
+          <span class="leave">leave by <strong>8:22</strong></span>
+        </div>
       </div>
     </article>
 
@@ -615,7 +743,8 @@ footer {
     </article>
 
     <!-- transfer itinerary (no direct line): two legs, delay-aware connection.
-         Second row shows a late leg 1 rolling the itinerary to a later connection. -->
+         Second row shows a late leg 1 rolled to the next feasible connection —
+         which is itself tight, so it carries the v2 at-risk flag (SPEC-V2 §2). -->
     <article class="card">
       <header class="card-head">
         <div class="pair">
@@ -649,10 +778,82 @@ footer {
             <span class="leg-arrow">▸</span>
             <span class="type type-b-blue">Blue</span>
           </div>
-          <div class="dep-xfer">change at <strong>West Oakland</strong> · 13 min wait</div>
-          <div class="dep-arr">arrives <strong>9:44 AM</strong></div>
+          <div class="dep-xfer">change at <strong>West Oakland</strong> · 4 min wait <span class="xfer-risk">· tight connection</span></div>
+          <div class="dep-arr">arrives <strong>9:35 AM</strong></div>
         </div>
         <div class="dep-status"><span class="badge b-late">+4 min</span></div>
+      </div>
+    </article>
+
+    <!-- v2: last-train-tonight badge (SPEC-V2 §4) — appears only when the feed is
+         exhausted below the limit AND the final row sits within ε of the static
+         pair-max (24:05 for this pair), so it pairs with the exhaustion footer. -->
+    <article class="card">
+      <header class="card-head">
+        <div class="pair">
+          <span class="pair-names"><span class="o">San Francisco</span> <span class="arrow">→</span> <span class="d">San Carlos</span></span>
+          <span class="dir-tag">SB</span>
+        </div>
+      </header>
+
+      <div class="dep">
+        <div class="dep-time"><span class="t-big">11:20</span></div>
+        <div class="dep-info">
+          <div class="dep-line"><span class="type type-local">Local</span><span class="tno">142</span></div>
+          <div class="dep-arr">arrives <strong>12:10 AM</strong></div>
+        </div>
+        <div class="dep-status"><span class="badge b-ok">On time</span></div>
+      </div>
+
+      <div class="dep">
+        <div class="dep-time"><span class="t-big">12:05</span></div>
+        <div class="dep-info">
+          <div class="dep-line"><span class="type type-local">Local</span><span class="tno">146</span></div>
+          <span class="tag-last">Last train tonight</span>
+          <div class="dep-arr">arrives <strong>12:55 AM</strong></div>
+        </div>
+        <div class="dep-status"><span class="badge b-ok">On time</span></div>
+      </div>
+
+      <div class="card-foot">
+        <p class="foot-note">That's every upcoming train in the live feed right now.</p>
+      </div>
+    </article>
+
+    <!-- v2: per-pair alert chip, Caltrain (SPEC-V2 §3) — the 511 alert's stop-scoped
+         informed entities (StopId 70061 = Millbrae NB) match this card's platform
+         codes; the chip shows the alert's own header and the banner is suppressed. -->
+    <article class="card">
+      <header class="card-head">
+        <div class="pair">
+          <span class="pair-names"><span class="o">Millbrae</span> <span class="arrow">→</span> <span class="d">San Francisco</span></span>
+          <span class="dir-tag">NB</span>
+        </div>
+      </header>
+
+      <div class="card-alert">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <span>Accessibility: Northbound Elevator out of service at <strong>Millbrae</strong></span>
+      </div>
+
+      <div class="dep">
+        <div class="dep-time"><span class="t-big">8:26</span></div>
+        <div class="dep-info">
+          <div class="dep-line"><span class="type type-express">Express</span><span class="tno">507</span></div>
+          <div class="dep-arr">arrives <strong>8:47 AM</strong></div>
+        </div>
+        <div class="dep-status"><span class="badge b-ok">On time</span></div>
+      </div>
+
+      <div class="dep">
+        <div class="dep-time"><span class="t-big">8:38</span></div>
+        <div class="dep-info">
+          <div class="dep-line"><span class="type type-local">Local</span><span class="tno">423</span></div>
+          <div class="dep-arr">arrives <strong>9:05 AM</strong></div>
+        </div>
+        <div class="dep-status"><span class="badge b-ok">On time</span></div>
       </div>
     </article>
   </section>
@@ -712,17 +913,21 @@ function fillSelect(sel, agencyFilter) {
 const agencyOf = (value) => value.split(":")[0];
 const nameOf = (value) => value.slice(value.indexOf(":") + 1);
 
+// v2 (SPEC-V2 §7.6): no destination narrowing — both selects always list both
+// agency groups; picking ends in different agencies makes a cross-agency pair.
 fillSelect(selOrigin, null);
 selOrigin.value = "ct:Hillsdale";
-fillSelect(selDest, "ct");
+fillSelect(selDest, null);
 selDest.value = "ct:San Francisco";
 
-selOrigin.addEventListener("change", () => fillSelect(selDest, agencyOf(selOrigin.value)));
+function dirTagFor(originValue, destValue) {
+  const oa = agencyOf(originValue), da = agencyOf(destValue);
+  if (oa !== da) return oa === "ct" ? "CT ▸ BART" : "BART ▸ CT";
+  if (oa === "ba") return "BART";
+  return STATIONS.indexOf(nameOf(originValue)) > STATIONS.indexOf(nameOf(destValue)) ? "NB" : "SB";
+}
 
-function makeEmptyCard(origin, destination, agency) {
-  const dir = agency === "ba"
-    ? "BART"
-    : STATIONS.indexOf(origin) > STATIONS.indexOf(destination) ? "NB" : "SB";
+function makeEmptyCard(origin, destination, dir) {
   const card = document.createElement("article");
   card.className = "card arriving";
   card.dataset.origin = origin;
@@ -774,21 +979,26 @@ document.body.addEventListener("click", (e) => {
       break;
     }
     case "swap-add": {
+      // both selects always carry both groups now — a plain value swap suffices
       const a = selOrigin.value;
       selOrigin.value = selDest.value;
-      fillSelect(selDest, agencyOf(selOrigin.value));
       selDest.value = a;
       break;
     }
     case "add-favorite": {
-      if (selOrigin.value === selDest.value) {
+      // degenerate cross-agency pair: a Millbrae endpoint means it's really a
+      // single-agency pair (SPEC-V2 §7.2) — same shake as the other violations
+      const mixed = agencyOf(selOrigin.value) !== agencyOf(selDest.value);
+      const millbraeEnd = nameOf(selOrigin.value) === "Millbrae" || nameOf(selDest.value) === "Millbrae";
+      if (selOrigin.value === selDest.value || (mixed && millbraeEnd)) {
         const row = document.getElementById("add-row");
         row.classList.remove("shake");
         void row.offsetWidth;
         row.classList.add("shake");
         return;
       }
-      const card = makeEmptyCard(nameOf(selOrigin.value), nameOf(selDest.value), agencyOf(selOrigin.value));
+      const card = makeEmptyCard(
+        nameOf(selOrigin.value), nameOf(selDest.value), dirTagFor(selOrigin.value, selDest.value));
       document.getElementById("favorites").appendChild(card);
       break;
     }
@@ -797,9 +1007,8 @@ document.body.addEventListener("click", (e) => {
       const o = card.querySelector(".o"), d = card.querySelector(".d");
       [o.textContent, d.textContent] = [d.textContent, o.textContent];
       const tag = card.querySelector(".dir-tag");
-      if (tag.textContent !== "BART") {
-        tag.textContent = tag.textContent === "NB" ? "SB" : "NB";
-      }
+      const flips = { NB: "SB", SB: "NB", "CT ▸ BART": "BART ▸ CT", "BART ▸ CT": "CT ▸ BART" };
+      if (flips[tag.textContent]) tag.textContent = flips[tag.textContent];
       break;
     }
     case "remove-card": {
