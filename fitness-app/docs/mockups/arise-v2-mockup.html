@@ -216,19 +216,28 @@ button { -webkit-appearance:none; appearance:none; border:0; background:none; co
 .b3 .tr { font-family:var(--font-mono); font-size:9px; margin-top:3px; }
 .up { color:var(--success-green); } .down { color:var(--rec-fatigued); } .flat { color:var(--text-muted); }
 
-/* ---- hunt tab ---- */
-.calstrip { display:flex; gap:6px; }
-.cal {
-  flex:1; min-height:56px; border-radius:12px; background:var(--bg-card); border:1px solid var(--glass-border);
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+/* ---- hunt tab: monthly calendar (mirrors QuestsCalendarView) ---- */
+.cal-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.cal-month { font-family:var(--font-header); font-weight:700; font-size:15px; letter-spacing:2px; }
+.cal-nav { min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-size:16px; border-radius:10px; }
+.cal-nav:active { transform:scale(0.9); color:var(--system-primary); }
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+.cal-dow { text-align:center; font-family:var(--font-mono); font-size:8px; letter-spacing:1px; color:var(--text-muted); padding:6px 0; }
+.cal-day {
+  min-height:44px; border-radius:10px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
 }
-.cal .d { font-family:var(--font-mono); font-size:8px; color:var(--text-muted); letter-spacing:.5px; }
-.cal .n { font-family:var(--font-header); font-weight:600; font-size:14px; color:var(--text-secondary); }
-.cal .dot { width:4px; height:4px; border-radius:50%; background:transparent; }
-.cal.hunted .dot { background:var(--system-primary); }
-.cal.hunted .n { color:var(--text-primary); }
-.cal.today { border-color:var(--arise-border); background:rgba(0,212,255,0.04); }
-.cal.today .d { color:var(--system-primary); }
+.cal-day .n { font-family:var(--font-header); font-weight:600; font-size:13px; color:var(--text-secondary); }
+.cal-day .mk { width:5px; height:5px; border-radius:50%; background:transparent; }
+.cal-day.hunted .n { color:var(--text-primary); }
+.cal-day.hunted .mk { background:var(--system-primary); }
+.cal-day.gate .mk { background:var(--gold); border-radius:1px; transform:rotate(45deg); box-shadow:0 0 5px rgba(255,215,0,0.5); }
+.cal-day.today { border:1px solid var(--arise-border); background:rgba(0,212,255,0.04); }
+.cal-day.today .n { color:var(--system-primary); }
+.cal-day.out .n { color:var(--text-muted); opacity:.35; }
+.cal-day.future .n { opacity:.45; }
+.cal-legend { display:flex; gap:14px; margin-top:8px; justify-content:center; font-family:var(--font-mono); font-size:8px; letter-spacing:.5px; color:var(--text-muted); }
+.cal-legend i { display:inline-block; width:5px; height:5px; border-radius:50%; margin-right:4px; vertical-align:1px; }
 
 .hunt-row { display:flex; gap:0; overflow:hidden; padding:0; margin-top:10px; transition:transform .08s ease; }
 .hunt-row:active { transform:scale(0.98); }
@@ -474,14 +483,17 @@ button { -webkit-appearance:none; appearance:none; border:0; background:none; co
   <!-- ================= TAB 1: HUNT ================= -->
   <section class="tab" id="tab-1">
     <div class="seclabel" style="margin-top:6px">Hunt Log</div>
-    <div class="calstrip">
-      <div class="cal"><span class="d">MON</span><span class="n">6</span><span class="dot"></span></div>
-      <div class="cal hunted"><span class="d">TUE</span><span class="n">7</span><span class="dot"></span></div>
-      <div class="cal hunted"><span class="d">WED</span><span class="n">8</span><span class="dot"></span></div>
-      <div class="cal hunted"><span class="d">THU</span><span class="n">9</span><span class="dot"></span></div>
-      <div class="cal today"><span class="d">FRI</span><span class="n">10</span><span class="dot"></span></div>
-      <div class="cal"><span class="d">SAT</span><span class="n">11</span><span class="dot"></span></div>
-      <div class="cal"><span class="d">SUN</span><span class="n">12</span><span class="dot"></span></div>
+    <div class="card compact">
+      <div class="cal-head">
+        <button class="cal-nav" type="button">‹</button>
+        <span class="cal-month">JULY 2026</span>
+        <button class="cal-nav" type="button">›</button>
+      </div>
+      <div class="cal-grid" id="hunt-cal"></div>
+      <div class="cal-legend">
+        <span><i style="background:var(--system-primary)"></i>HUNT</span>
+        <span><i style="background:var(--gold);border-radius:1px;transform:rotate(45deg)"></i>GATE CLEARED</span>
+      </div>
     </div>
 
     <div class="cta-row">
@@ -887,6 +899,28 @@ barChart('chart-volume', VOLUME, 'var(--system-primary)');
 lineChart('chart-cardiac', CARDIAC, '#00D4FF', { h: 76 });
 lineChart('chart-bw', BW, '#A0A0B0', { h: 76 });
 zoneStack('chart-zones');
+
+// ------- monthly hunt calendar (JULY 2026, today = FRI 10) -------
+function monthCal(el) {
+  const DAYS = 31, OFFSET = 2;            // Jul 1 2026 = Wednesday (Mon-start grid)
+  const PREV_TAIL = [29, 30];             // trailing June days
+  const HUNTED = [1, 5, 7, 8, 9], GATE = [1], TODAY = 10;
+  const cells = [];
+  ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach(d => cells.push(`<span class="cal-dow">${d}</span>`));
+  PREV_TAIL.forEach(n => cells.push(`<div class="cal-day out"><span class="n">${n}</span><span class="mk"></span></div>`));
+  for (let n = 1; n <= DAYS; n++) {
+    const cls = ['cal-day'];
+    if (HUNTED.includes(n)) cls.push('hunted');
+    if (GATE.includes(n)) cls.push('gate');
+    if (n === TODAY) cls.push('today');
+    if (n > TODAY) cls.push('future');
+    cells.push(`<div class="${cls.join(' ')}"><span class="n">${n}</span><span class="mk"></span></div>`);
+  }
+  const trailing = (7 - (OFFSET + DAYS) % 7) % 7;
+  for (let n = 1; n <= trailing; n++) cells.push(`<div class="cal-day out"><span class="n">${n}</span><span class="mk"></span></div>`);
+  document.getElementById(el).innerHTML = cells.join('');
+}
+monthCal('hunt-cal');
 
 // ------- interactions (event delegation, mobile-safe) -------
 let gateAccepted = false;
