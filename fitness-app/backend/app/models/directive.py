@@ -35,7 +35,8 @@ class DirectiveType(str, enum.Enum):
     BREAK_PLATEAU = "break_plateau"    # 4 — PLATEAU insight on a big-three lift
     FREQUENCY = "frequency"            # 5 — VOLUME_LOW insight
     GATE_REMINDER = "gate_reminder"    # 6 — open Gate exists (Phase 2)
-    MAINTAIN = "maintain"              # 7 — default
+    LIFT_LAG = "lift_lag"              # 7 — big-three tonnage below 4-wk norm (v2.1)
+    MAINTAIN = "maintain"              # 8 — default
 
 
 class UserDirective(Base):

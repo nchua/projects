@@ -201,6 +201,16 @@ struct DirectiveSheet: View {
         if let hunts = params["hunts_this_week"] {
             rows.append(("HUNTS THIS WEEK", hunts.displayString))
         }
+        // LIFT_LAG (v2.1): tonnage prescription with real numbers.
+        if let volume7d = params["volume_7d"] {
+            rows.append(("MOVED THIS WEEK", "\(volume7d.displayString) lb"))
+        }
+        if let mean = params["volume_4wk_mean"] {
+            rows.append(("4-WEEK NORM", "\(mean.displayString) lb"))
+        }
+        if let gap = params["volume_gap_lb"] {
+            rows.append(("GAP REMAINING", "\(gap.displayString) lb"))
+        }
         return rows
     }
 }

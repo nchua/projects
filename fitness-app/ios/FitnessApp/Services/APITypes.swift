@@ -1516,6 +1516,7 @@ enum DirectiveParamValue: Decodable {
     case int(Int)
     case double(Double)
     case string(String)
+    case stringList([String])  // e.g. LIFT_LAG exercise_ids (v2.1)
 
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
@@ -1525,6 +1526,8 @@ enum DirectiveParamValue: Decodable {
             self = .int(value)
         } else if let value = try? container.decode(Double.self) {
             self = .double(value)
+        } else if let value = try? container.decode([String].self) {
+            self = .stringList(value)
         } else {
             self = .string(try container.decode(String.self))
         }
@@ -1536,6 +1539,7 @@ enum DirectiveParamValue: Decodable {
         case .int(let value): return "\(value)"
         case .double(let value): return String(format: "%.1f", value)
         case .string(let value): return value
+        case .stringList(let value): return value.joined(separator: ", ")
         }
     }
 }
@@ -1545,7 +1549,7 @@ struct DirectiveResponse: Decodable, Identifiable {
     let id: String
     let date: String           // YYYY-MM-DD (user-local day)
     let directiveType: String  // rest | streak_save | reclaim_volume | break_plateau
-    //                            | frequency | gate_reminder | maintain
+    //                            | frequency | gate_reminder | lift_lag | maintain
     let message: String
     let params: [String: DirectiveParamValue]?
     let xpReward: Int

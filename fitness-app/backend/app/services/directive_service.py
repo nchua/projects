@@ -37,6 +37,9 @@ from app.services.xp_service import BIG_THREE, award_xp, get_or_create_user_prog
 CLEARED_OVERNIGHT_MAX_HOURS = 24.0
 # Rule 3: weekly set volume below this fraction of the 4-week mean triggers.
 RECLAIM_VOLUME_THRESHOLD = 0.85
+# Rule 7 (v2.1): rolling-7-day big-three tonnage below this fraction of the
+# 4-week mean triggers the per-lift prescription.
+LIFT_LAG_THRESHOLD = 0.85
 
 
 def _week_windows(client_date: date) -> List[tuple]:
@@ -146,6 +149,61 @@ def _top_lift_for_muscle(muscle_entry: Dict[str, Any]) -> Optional[Dict[str, str
         return None
     top = max(counts.values(), key=lambda c: c["count"])
     return {"exercise_id": top["exercise_id"], "exercise_name": top["exercise_name"]}
+
+
+def _big_three_exercise_groups(db: Session, user_id: str) -> List[Dict[str, Any]]:
+    """The user's big-three lifts as {keyword, name, exercise_ids} groups.
+
+    Groups every exercise the user has ever logged whose name contains a
+    BIG_THREE keyword (squat/bench/deadlift variants share a group), the same
+    name-matching the plateau rule and gate ranking use.
+    """
+    from app.models.exercise import Exercise
+
+    rows = (
+        db.query(Exercise.id, Exercise.name)
+        .join(WorkoutExercise, WorkoutExercise.exercise_id == Exercise.id)
+        .join(WorkoutSession, WorkoutExercise.session_id == WorkoutSession.id)
+        .filter(
+            WorkoutSession.user_id == user_id,
+            WorkoutSession.deleted_at.is_(None),
+        )
+        .distinct()
+        .all()
+    )
+    groups: Dict[str, Dict[str, Any]] = {}
+    for exercise_id, name in rows:
+        lower = name.lower()
+        for keyword in BIG_THREE:
+            if keyword in lower:
+                group = groups.setdefault(keyword, {
+                    "keyword": keyword, "name": name, "exercise_ids": [],
+                })
+                group["exercise_ids"].append(exercise_id)
+                break
+    return list(groups.values())
+
+
+def _volume_lb(
+    db: Session, user_id: str, exercise_ids: List[str], start: date, end: date
+) -> float:
+    """Total tonnage (weight × reps) for an exercise group in [start, end]."""
+    day_start = datetime.combine(start, datetime.min.time())
+    day_end = datetime.combine(end + timedelta(days=1), datetime.min.time())
+    rows = (
+        db.query(Set.weight, Set.reps)
+        .join(WorkoutExercise, Set.workout_exercise_id == WorkoutExercise.id)
+        .join(WorkoutSession, WorkoutExercise.session_id == WorkoutSession.id)
+        .filter(
+            WorkoutSession.user_id == user_id,
+            WorkoutSession.deleted_at.is_(None),
+            WorkoutSession.date >= day_start,
+            WorkoutSession.date < day_end,
+            WorkoutExercise.exercise_id.in_(exercise_ids),
+        )
+        .all()
+    )
+    return sum(weight * reps for weight, reps in rows if weight and reps)
 
 
 def _workouts_this_week(db: Session, user_id: str, client_date: date) -> int:
@@ -323,11 +381,62 @@ def _generate(db: Session, user_id: str, client_date: date,
                     "days_left": days_left,
                 })
 
-        # ── Rule 7: default — maintain the pace ──
+        # ── Rule 7 (v2.1): most-lagging big-three lift by weekly tonnage ──
+        # Rolling 7-day tonnage vs the 4-week mean, most-lagging lift wins.
+        # Gives the "nothing is wrong" day a concrete order with real numbers
+        # instead of the MAINTAIN readout (retro interview, roadmap §9.1).
+        if directive_type is None:
+            windows = _week_windows(client_date)
+            worst: Optional[Dict[str, Any]] = None
+            for group in _big_three_exercise_groups(db, user_id):
+                weekly = [
+                    _volume_lb(db, user_id, group["exercise_ids"], start, end)
+                    for start, end in windows
+                ]
+                current, prior = weekly[0], weekly[1:]
+                prior_mean = sum(prior) / len(prior)
+                if prior_mean <= 0:
+                    continue  # lift not actually in the recent program
+                ratio = current / prior_mean
+                if ratio >= LIFT_LAG_THRESHOLD:
+                    continue
+                if worst is None or ratio < worst["ratio"]:
+                    worst = {
+                        "name": group["name"],
+                        "exercise_id": group["exercise_ids"][0],
+                        "exercise_ids": group["exercise_ids"],
+                        "current": current,
+                        "prior_mean": prior_mean,
+                        "ratio": ratio,
+                    }
+            if worst is not None:
+                gap = round(worst["prior_mean"] - worst["current"])
+                directive_type = DirectiveType.LIFT_LAG
+                message = (
+                    f"{worst['name']} lags. {round(worst['current']):,} lb moved "
+                    f"this week vs {round(worst['prior_mean']):,} lb norm. "
+                    f"Close the gap — {gap:,} lb remain."
+                )
+                params.update({
+                    "lift": worst["name"],
+                    "exercise_id": worst["exercise_id"],
+                    # The full name-matched group the lag was measured on, so
+                    # completion counts the same exercises (canonical alias
+                    # groups can be narrower than the keyword group).
+                    "exercise_ids": worst["exercise_ids"],
+                    "volume_7d": round(worst["current"]),
+                    "volume_4wk_mean": round(worst["prior_mean"]),
+                    "volume_gap_lb": gap,
+                })
+
+        # ── Rule 8: default — pace held (status readout, not a goal) ──
         if directive_type is None:
             n = _workouts_this_week(db, user_id, client_date)
             directive_type = DirectiveType.MAINTAIN
-            message = f"Maintain the pace, Hunter. {n} hunts this week."
+            message = (
+                f"All systems nominal. {n} "
+                f"{'hunt' if n == 1 else 'hunts'} logged this week — hold the line."
+            )
             params["hunts_this_week"] = n
 
     return UserDirective(
@@ -445,6 +554,23 @@ def check_directive_completion(
         if exercise_id:
             exercise_ids = get_canonical_exercise_ids(db, exercise_id)
             completed = len(_sets_today(db, user_id, exercise_ids, workout_date)) > 0
+
+    elif dtype == DirectiveType.LIFT_LAG.value:
+        # The order was "close the gap" — completed when today's tonnage on
+        # that lift covers the gap frozen at generation time, counted over the
+        # same name-matched group the rule measured the lag on.
+        exercise_ids = params.get("exercise_ids") or (
+            get_canonical_exercise_ids(db, params["exercise_id"])
+            if params.get("exercise_id") else []
+        )
+        gap = params.get("volume_gap_lb", 0)
+        if exercise_ids:
+            tonnage = sum(
+                s.weight * s.reps
+                for s in _sets_today(db, user_id, exercise_ids, workout_date)
+                if s.weight is not None and s.reps is not None
+            )
+            completed = tonnage >= gap
 
     # DirectiveType.REST: a workout can never complete it (awarded next-day
     # by _finalize_rest_directive when the user actually rested).

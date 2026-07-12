@@ -133,22 +133,85 @@ def test_rule5_frequency_for_idle_user(db, create_test_user, monkeypatch):
     assert "idleness" in directive.message
 
 
-def test_rule7_maintain_default(db, create_test_user, monkeypatch):
-    """Frequent recent training with no other trigger falls through to maintain."""
+def test_rule8_maintain_default(db, create_test_user, monkeypatch):
+    """Frequent, on-pace training with no other trigger falls through to maintain."""
     user = _mk_user(create_test_user)
     _patch_condition(monkeypatch, 80)
     exercise = _mk_exercise(db)
     today = date.today()
 
-    # 9 workouts over 4 weeks (>2/wk) with varied loads → no VOLUME_LOW,
-    # no PLATEAU (needs >8 sessions on one lift with flat e1RM — loads vary).
+    # 9 workouts over 4 weeks (>2/wk) with loads *rising toward today* → no
+    # VOLUME_LOW, no PLATEAU (improving trend), and no LIFT_LAG (current-week
+    # tonnage beats the 4-week mean).
     for i in range(9):
         when = datetime.combine(today - timedelta(days=1 + i * 3), datetime.min.time()) + timedelta(hours=10)
-        _mk_workout(db, user.id, exercise, when, sets=((135 + i * 10, 5),))
+        _mk_workout(db, user.id, exercise, when, sets=((215 - i * 10, 5),))
 
     directive = get_or_generate_directive(db, user.id, today)
     assert directive.directive_type == DirectiveType.MAINTAIN.value
-    assert "hunts this week" in directive.message
+    assert "logged this week" in directive.message
+
+
+def test_rule7_lift_lag_prescription(db, create_test_user, monkeypatch):
+    """A big-three lift whose rolling week trails the 4-week mean gets the order."""
+    user = _mk_user(create_test_user)
+    _patch_condition(monkeypatch, 80)
+    # Isolate rule 7: no overnight-cleared muscles (rule 3), no insights (4-5).
+    monkeypatch.setattr(
+        directive_service, "calculate_cooldowns",
+        lambda *a, **k: {"muscles_cooling": []},
+    )
+    monkeypatch.setattr("app.api.analytics.compute_insights", lambda db, uid: [])
+
+    exercise = _mk_exercise(db, name="Barbell Bench Press")
+    today = date.today()
+
+    # Prior 4 weeks: heavy bench twice a week. Current week: one token set.
+    for days_ago in (7, 10, 13, 16, 19, 22, 25, 28):
+        when = datetime.combine(today - timedelta(days=days_ago), datetime.min.time()) + timedelta(hours=10)
+        _mk_workout(db, user.id, exercise, when, sets=((225, 5), (225, 5), (225, 5)))
+    when = datetime.combine(today - timedelta(days=3), datetime.min.time()) + timedelta(hours=10)
+    _mk_workout(db, user.id, exercise, when, sets=((135, 5),))
+
+    directive = get_or_generate_directive(db, user.id, today)
+    assert directive.directive_type == DirectiveType.LIFT_LAG.value
+    assert "lags" in directive.message
+    assert "lb" in directive.message
+
+    params = directive.params
+    assert params["lift"] == "Barbell Bench Press"
+    assert params["exercise_ids"] == [exercise.id]
+    assert params["volume_7d"] == 675            # 135×5
+    assert params["volume_4wk_mean"] == 6750     # 2 × 3 sets × 225×5
+    assert params["volume_gap_lb"] == 6075
+
+
+def test_lift_lag_completion_requires_gap_closed(db, create_test_user):
+    """LIFT_LAG completes only when today's tonnage on the lift covers the gap."""
+    user = _mk_user(create_test_user)
+    exercise = _mk_exercise(db, name="Barbell Back Squat", primary="Quads")
+    today = date.today()
+    _mk_directive(db, user.id, today, DirectiveType.LIFT_LAG, params={
+        "exercise_id": exercise.id,
+        "exercise_ids": [exercise.id],
+        "volume_gap_lb": 2000,
+    })
+
+    when = datetime.combine(today, datetime.min.time()) + timedelta(hours=9)
+    _mk_workout(db, user.id, exercise, when, sets=((185, 5),))  # 925 lb < 2000
+    assert check_directive_completion(db, user.id, today) is None
+
+    _mk_workout(db, user.id, exercise, when + timedelta(hours=1),
+                sets=((185, 5), (185, 2)))  # +1295 → 2220 ≥ 2000
+    result = check_directive_completion(db, user.id, today)
+    assert result is not None
+
+    directive = (
+        db.query(UserDirective)
+        .filter(UserDirective.user_id == user.id, UserDirective.date == today)
+        .one()
+    )
+    assert directive.is_completed is True
 
 
 def test_generation_is_deterministic_per_day(db, create_test_user, monkeypatch):
