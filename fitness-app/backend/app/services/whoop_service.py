@@ -1,12 +1,18 @@
 """
-WHOOP API integration (Phase 1 wearable HR).
+WHOOP API integration (Phase 1 wearable HR; recovery sync added in ARISE v2.1).
 
-Implements the OAuth 2.0 Authorization Code flow against WHOOP and a post-workout
-sync that backfills the app's WorkoutSession HR summary from WHOOP's workout
-records. WHOOP's API is *post-workout only* — it returns a session-level summary
-(avg/peak HR, strain, kJ) plus HR-zone durations, NOT raw per-second samples — so
-this path populates session-level fields only. Per-set HR granularity is the
-Apple Watch's job (Phase 2).
+Implements the OAuth 2.0 Authorization Code flow against WHOOP plus two syncs:
+
+- **Workout sync** — backfills the app's WorkoutSession HR summary from WHOOP's
+  workout records. WHOOP's API is *post-workout only* — it returns a
+  session-level summary (avg/peak HR, strain, kJ) plus HR-zone durations, NOT
+  raw per-second samples — so this path populates session-level fields only.
+  Per-set HR granularity is the Apple Watch's job (Phase 2).
+- **Recovery sync (v2.1)** — pulls recovery scores (+ their sleeps) into
+  ``daily_activity`` rows so Condition's biggest inputs (recovery_score, HRV,
+  resting HR, sleep) arrive daily without a screenshot scan (roadmap §9).
+
+All endpoints target WHOOP API **v2** — v1 was sunset by WHOOP in late 2025.
 
 Credentials come from env vars (never hardcoded) — see ``app/core/config.py`` and
 ``docs/whoop-setup.md`` for how to register a WHOOP developer app. Tokens are
@@ -14,7 +20,7 @@ encrypted at rest on the WhoopConnection model (Fernet, ``app/core/crypto.py``).
 """
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 from urllib.parse import urlencode
 
 import httpx
@@ -23,6 +29,7 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.core.config import settings
 from app.core.utils import ensure_utc
+from app.models.activity import DailyActivity
 from app.models.whoop import WhoopConnection
 from app.models.workout import WorkoutSession
 
@@ -43,6 +50,14 @@ _DEFAULT_SESSION_WINDOW_MINUTES = 90
 
 # How far back to pull WHOOP workouts on a sync.
 _DEFAULT_SYNC_DAYS = 30
+
+# How far back to pull WHOOP recoveries/sleeps on a sync.
+_DEFAULT_RECOVERY_SYNC_DAYS = 14
+
+# daily_activity.source for API-synced recovery rows. Distinct from
+# "whoop_screenshot" (scan-created rows) but still contains "whoop", so
+# condition_service's source priority prefers it over apple_fitness.
+_API_ACTIVITY_SOURCE = "whoop_api"
 
 _HTTP_TIMEOUT = 30.0
 
@@ -162,7 +177,7 @@ def _token_request(grant_fields: Dict[str, str]) -> Dict[str, Any]:
 
 def _get_profile(access_token: str) -> Dict[str, Any]:
     """Fetch the WHOOP basic profile (for the WHOOP user_id)."""
-    url = f"{settings.WHOOP_API_BASE_URL}/v1/user/profile/basic"
+    url = f"{settings.WHOOP_API_BASE_URL}/v2/user/profile/basic"
     with httpx.Client(timeout=_HTTP_TIMEOUT) as client:
         resp = client.get(url, headers={"Authorization": f"Bearer {access_token}"})
     if resp.status_code != 200:
@@ -244,19 +259,20 @@ def _ensure_fresh_token(db: DBSession, conn: WhoopConnection) -> WhoopConnection
     return conn
 
 
-# ── WHOOP workout fetch ───────────────────────────────────────────────────────
+# ── WHOOP collection fetch ────────────────────────────────────────────────────
 
-def fetch_recent_workouts(
+def _fetch_paginated(
+    path: str,
     access_token: str,
     start: Optional[datetime] = None,
     limit: int = 25,
     max_pages: int = 10,
 ) -> List[Dict[str, Any]]:
     """
-    Pull recent WHOOP workout records (GET /v1/activity/workout), following
-    pagination up to ``max_pages``. Returns the raw record dicts.
+    GET a WHOOP v2 collection endpoint, following ``next_token`` pagination up
+    to ``max_pages``. Returns the raw record dicts.
     """
-    url = f"{settings.WHOOP_API_BASE_URL}/v1/activity/workout"
+    url = f"{settings.WHOOP_API_BASE_URL}{path}"
     base_params: Dict[str, Any] = {"limit": limit}
     if start is not None:
         base_params["start"] = (
@@ -277,7 +293,7 @@ def fetch_recent_workouts(
             )
             if resp.status_code != 200:
                 raise WhoopError(
-                    f"WHOOP workout fetch failed ({resp.status_code}): {resp.text[:500]}"
+                    f"WHOOP fetch {path} failed ({resp.status_code}): {resp.text[:500]}"
                 )
             body = resp.json()
             records.extend(body.get("records", []) or [])
@@ -285,6 +301,36 @@ def fetch_recent_workouts(
             if not next_token:
                 break
     return records
+
+
+def fetch_recent_workouts(
+    access_token: str,
+    start: Optional[datetime] = None,
+    limit: int = 25,
+    max_pages: int = 10,
+) -> List[Dict[str, Any]]:
+    """Pull recent WHOOP workout records (GET /v2/activity/workout)."""
+    return _fetch_paginated("/v2/activity/workout", access_token, start, limit, max_pages)
+
+
+def fetch_recent_recoveries(
+    access_token: str,
+    start: Optional[datetime] = None,
+    limit: int = 25,
+    max_pages: int = 10,
+) -> List[Dict[str, Any]]:
+    """Pull recent WHOOP recovery records (GET /v2/recovery, scope read:recovery)."""
+    return _fetch_paginated("/v2/recovery", access_token, start, limit, max_pages)
+
+
+def fetch_recent_sleeps(
+    access_token: str,
+    start: Optional[datetime] = None,
+    limit: int = 25,
+    max_pages: int = 10,
+) -> List[Dict[str, Any]]:
+    """Pull recent WHOOP sleep records (GET /v2/activity/sleep, scope read:sleep)."""
+    return _fetch_paginated("/v2/activity/sleep", access_token, start, limit, max_pages)
 
 
 # ── Summary mapping + session matching ────────────────────────────────────────
@@ -464,4 +510,116 @@ def sync_recent_workouts(
         "workouts_unmatched": unmatched,
         "updated_session_ids": updated_session_ids,
         "quests_completed": completed_quest_ids,
+    }
+
+
+# ── Recovery sync (ARISE v2.1) ────────────────────────────────────────────────
+
+def _sleep_hours_from_record(record: Dict[str, Any]) -> Optional[float]:
+    """Asleep hours (light + SWS + REM) from a scored v2 sleep record, else None."""
+    if record.get("score_state") not in (None, "SCORED"):
+        return None
+    stages = (record.get("score") or {}).get("stage_summary") or {}
+    millis = 0
+    for key in (
+        "total_light_sleep_time_milli",
+        "total_slow_wave_sleep_time_milli",
+        "total_rem_sleep_time_milli",
+    ):
+        value = stages.get(key)
+        if value:
+            millis += int(value)
+    if millis <= 0:
+        return None
+    return round(millis / 3_600_000, 1)
+
+
+def sync_recent_recovery(
+    db: DBSession, user_id: str, days: int = _DEFAULT_RECOVERY_SYNC_DAYS
+) -> Dict[str, Any]:
+    """
+    Pull recent WHOOP recoveries (+ their sleeps) into ``daily_activity`` rows
+    (source=``whoop_api``) so Condition's recovery/HRV/RHR/sleep inputs arrive
+    without a screenshot scan.
+
+    A recovery is attributed to the UTC date its sleep ended (the morning it
+    was scored for), falling back to the record's ``created_at`` date when the
+    sleep isn't in the fetch window. WHOOP returns recoveries newest-first, so
+    the first record seen for a day wins (re-scores supersede older scores).
+    The caller is responsible for committing.
+    """
+    conn = get_connection(db, user_id)
+    if conn is None:
+        raise WhoopNotConnected("WHOOP is not connected for this user.")
+    _require_configured()
+    _ensure_fresh_token(db, conn)
+
+    start = datetime.now(timezone.utc) - timedelta(days=days)
+    recoveries = fetch_recent_recoveries(conn.access_token, start=start)
+    sleeps = fetch_recent_sleeps(conn.access_token, start=start)
+    sleep_by_id = {str(s["id"]): s for s in sleeps if s.get("id")}
+
+    created = 0
+    updated = 0
+    seen_days: Set[Any] = set()
+    for rec in recoveries:
+        if rec.get("score_state") != "SCORED":
+            continue
+        score = rec.get("score") or {}
+        if not score:
+            continue
+
+        sleep = sleep_by_id.get(str(rec.get("sleep_id")))
+        day = None
+        if sleep is not None:
+            sleep_end = _parse_whoop_dt(sleep.get("end"))
+            if sleep_end is not None:
+                day = sleep_end.date()
+        if day is None:
+            scored_at = _parse_whoop_dt(rec.get("created_at"))
+            if scored_at is None:
+                continue
+            day = scored_at.date()
+        if day in seen_days:
+            continue
+        seen_days.add(day)
+
+        row = (
+            db.query(DailyActivity)
+            .filter(
+                DailyActivity.user_id == user_id,
+                DailyActivity.date == day,
+                DailyActivity.source == _API_ACTIVITY_SOURCE,
+            )
+            .first()
+        )
+        if row is None:
+            row = DailyActivity(user_id=user_id, date=day, source=_API_ACTIVITY_SOURCE)
+            db.add(row)
+            created += 1
+        else:
+            updated += 1
+
+        recovery_score = score.get("recovery_score")
+        if recovery_score is not None:
+            row.recovery_score = int(round(float(recovery_score)))
+        hrv = score.get("hrv_rmssd_milli")
+        if hrv is not None:
+            row.hrv = int(round(float(hrv)))
+        rhr = score.get("resting_heart_rate")
+        if rhr is not None:
+            row.resting_heart_rate = int(round(float(rhr)))
+        if sleep is not None:
+            hours = _sleep_hours_from_record(sleep)
+            if hours is not None:
+                row.sleep_hours = hours
+
+    conn.last_synced_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    db.flush()
+
+    return {
+        "recoveries_fetched": len(recoveries),
+        "sleeps_fetched": len(sleeps),
+        "days_created": created,
+        "days_updated": updated,
     }

@@ -1126,6 +1126,7 @@ struct SystemSettingsSection: View {
 struct IntegrationsSection: View {
     @ObservedObject private var healthKit = HealthKitManager.shared
     @StateObject private var whoopVM = WhoopConnectionViewModel()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1156,43 +1157,64 @@ struct IntegrationsSection: View {
 
                 AriseDivider()
 
-                // WHOOP — status-driven, non-interactive (connect flow is out of scope
-                // until Railway WHOOP_* creds + an approved dev app exist).
-                AriseSettingsRow(
-                    icon: "circle.circle",
-                    iconColor: whoopVM.connected ? .successGreen : .textMuted,
-                    title: "WHOOP",
-                    titleColor: whoopVM.connected ? .textPrimary : .textMuted,
-                    trailing: {
-                        if whoopVM.connected {
-                            HStack(spacing: 6) {
-                                Circle()
-                                    .fill(Color.successGreen)
-                                    .frame(width: 6, height: 6)
-                                Text("CONNECTED")
-                                    .font(.ariseMono(size: 11, weight: .semibold))
-                                    .foregroundColor(.successGreen)
-                                    .tracking(0.5)
+                // WHOOP — tap to connect (ARISE v2.1). The OAuth flow completes in
+                // the system browser; status refreshes when the app foregrounds.
+                Button {
+                    Task { await whoopVM.connect() }
+                } label: {
+                    AriseSettingsRow(
+                        icon: "circle.circle",
+                        iconColor: whoopVM.connected ? .successGreen : .textMuted,
+                        title: "WHOOP",
+                        titleColor: whoopVM.connected ? .textPrimary : .textMuted,
+                        trailing: {
+                            if whoopVM.connected {
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(Color.successGreen)
+                                        .frame(width: 6, height: 6)
+                                    Text("CONNECTED")
+                                        .font(.ariseMono(size: 11, weight: .semibold))
+                                        .foregroundColor(.successGreen)
+                                        .tracking(0.5)
+                                }
+                            } else if whoopVM.configured {
+                                Text(whoopVM.isConnecting ? "OPENING…" : "CONNECT")
+                                    .font(.ariseMono(size: 10, weight: .semibold))
+                                    .foregroundColor(.systemPrimary)
+                                    .tracking(1)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.voidLight)
+                                    .cornerRadius(2)
+                            } else {
+                                Text("COMING SOON")
+                                    .font(.ariseMono(size: 10, weight: .semibold))
+                                    .foregroundColor(.textMuted)
+                                    .tracking(1)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.voidLight)
+                                    .cornerRadius(2)
                             }
-                        } else {
-                            Text(whoopVM.configured ? "NOT CONNECTED" : "COMING SOON")
-                                .font(.ariseMono(size: 10, weight: .semibold))
-                                .foregroundColor(.textMuted)
-                                .tracking(1)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.voidLight)
-                                .cornerRadius(2)
                         }
-                    }
-                )
-                .opacity(whoopVM.connected ? 1 : 0.5)
+                    )
+                }
+                .buttonStyle(.plain)
+                .disabled(whoopVM.connected || !whoopVM.configured)
+                .opacity(whoopVM.connected || whoopVM.configured ? 1 : 0.5)
             }
             .edgeFlowCard()
             .padding(.horizontal)
         }
         .task {
             await whoopVM.load()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            // Re-read /whoop/status after returning from the authorize page.
+            if newPhase == .active {
+                Task { await whoopVM.load() }
+            }
         }
     }
 }

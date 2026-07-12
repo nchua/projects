@@ -62,8 +62,11 @@ class Settings(BaseSettings):
     # https://backend-production-e316.up.railway.app/whoop/callback
     WHOOP_REDIRECT_URI: str = Field(default="")
     # OAuth scopes. `offline` is required to receive a refresh token; the rest
-    # grant read access to the profile (for whoop_user_id) and workouts.
-    WHOOP_SCOPES: str = Field(default="offline read:profile read:workout")
+    # grant read access to the profile (for whoop_user_id), workouts, and — for
+    # the v2.1 Condition inputs — recovery scores and sleeps.
+    WHOOP_SCOPES: str = Field(
+        default="offline read:profile read:workout read:recovery read:sleep"
+    )
     # WHOOP API hosts (overridable for testing / future API changes).
     WHOOP_AUTH_URL: str = Field(default="https://api.prod.whoop.com/oauth/oauth2/auth")
     WHOOP_TOKEN_URL: str = Field(default="https://api.prod.whoop.com/oauth/oauth2/token")

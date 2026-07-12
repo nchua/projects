@@ -467,6 +467,15 @@ class APIClient {
         return try await get("/whoop/status")
     }
 
+    func getWhoopConnect() async throws -> WhoopConnectResponse {
+        return try await get("/whoop/connect")
+    }
+
+    @discardableResult
+    func postWhoopSync(days: Int = 7) async throws -> WhoopSyncResponse {
+        return try await post("/whoop/sync?days=\(days)", body: EmptyBody())
+    }
+
     // MARK: - Scan Balance
 
     func getScanBalance() async throws -> ScanBalanceResponse {

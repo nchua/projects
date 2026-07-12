@@ -102,9 +102,22 @@ async def whoop_sync(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Pull recent WHOOP workouts and backfill matching sessions' HR summary."""
+    """Pull recent WHOOP workouts and backfill matching sessions' HR summary.
+
+    Also pulls recent recoveries + sleeps into daily_activity (ARISE v2.1) so
+    Condition's inputs stay fresh. Recovery failures don't fail the whole sync
+    — a pre-v2.1 connection without the read:recovery grant still syncs
+    workouts until the user reconnects.
+    """
     try:
         result = whoop_service.sync_recent_workouts(db, current_user.id, days=days)
+        try:
+            result["recovery"] = whoop_service.sync_recent_recovery(db, current_user.id)
+        except WhoopError as exc:
+            logger.warning(
+                "WHOOP recovery sync failed for user %s: %s", current_user.id, exc
+            )
+            result["recovery"] = None
         db.commit()
     except WhoopNotConnected as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))

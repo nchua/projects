@@ -323,6 +323,16 @@ class StatusViewModel: ObservableObject {
 
         // Load HealthKit data after main data
         await loadHealthKitData()
+
+        // WHOOP auto-sync (ARISE v2.1): fire-and-forget so Status load never
+        // blocks on the WHOOP API; when a sync actually runs, re-fetch
+        // Condition so fresh recovery/HRV/sleep inputs show without a reopen.
+        Task { [weak self] in
+            guard await WhoopAutoSync.syncIfDue() else { return }
+            if let fresh = try? await APIClient.shared.getCondition() {
+                self?.condition = fresh
+            }
+        }
     }
 
     /// Record a per-endpoint load error so `StatusView` can show a banner.

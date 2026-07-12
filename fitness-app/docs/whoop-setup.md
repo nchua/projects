@@ -14,6 +14,9 @@ them** (per CLAUDE.md security rules).
    - **Scopes:** select at minimum
      - `read:workout` — pull workout HR summaries + zones
      - `read:profile` — read the WHOOP `user_id`
+     - `read:recovery` — recovery score / HRV / resting HR for Condition
+       (ARISE v2.1 recovery sync)
+     - `read:sleep` — sleep duration for Condition (ARISE v2.1)
      - `offline` — receive a **refresh token** (required for background sync;
        without it the access token expires in ~1 hour and can't be renewed)
    - **Redirect URIs:** add the exact callback URL(s). It must match
@@ -42,7 +45,7 @@ Optional overrides (sensible defaults already in `app/core/config.py`):
 
 | Variable | Default |
 |---|---|
-| `WHOOP_SCOPES` | `offline read:profile read:workout` |
+| `WHOOP_SCOPES` | `offline read:profile read:workout read:recovery read:sleep` |
 | `WHOOP_AUTH_URL` | `https://api.prod.whoop.com/oauth/oauth2/auth` |
 | `WHOOP_TOKEN_URL` | `https://api.prod.whoop.com/oauth/oauth2/token` |
 | `WHOOP_API_BASE_URL` | `https://api.prod.whoop.com/developer` |
@@ -75,7 +78,7 @@ alembic upgrade head   # applies add_whoop_connections (chained off add_wearable
 |---|---|---|
 | `GET /whoop/connect` | Bearer | Returns `{ "authorize_url": ... }`; open it in a browser |
 | `GET /whoop/callback?code=&state=` | none | WHOOP redirect target; exchanges the code, stores tokens |
-| `POST /whoop/sync?days=30` | Bearer | Pulls recent WHOOP workouts, backfills matching sessions' HR, re-credits HR quests |
+| `POST /whoop/sync?days=30` | Bearer | Pulls recent WHOOP workouts (HR backfill) + recoveries/sleeps (Condition inputs, v2.1) |
 | `GET /whoop/status` | Bearer | `{ connected, whoop_user_id, scope, expires_at, last_synced_at }` |
 
 End-to-end:
@@ -86,12 +89,12 @@ End-to-end:
 3. Backend exchanges the code for an access + refresh token and stores an
    (encrypted) `WhoopConnection`.
 4. App calls `POST /whoop/sync`. The backend pulls recent WHOOP workouts
-   (`GET /v1/activity/workout`), matches each to an app `WorkoutSession` by
+   (`GET /v2/activity/workout`), matches each to an app `WorkoutSession` by
    **time overlap**, and backfills the session's `avg_heart_rate`,
-   `peak_heart_rate`, `strain`, `kilojoules`, and `hr_zone_seconds` (derived from
-   WHOOP's `zone_duration` milli fields). It then re-runs
-   `recalculate_quest_progress` for each affected day so HR-based quests get
-   credited (HR arrives *after* the workout was logged).
+   `peak_heart_rate`, `strain`, `kilojoules`, and `hr_zone_seconds` (derived
+   from WHOOP's zone-duration milli fields). It then pulls recent recoveries +
+   sleeps (`GET /v2/recovery`, `GET /v2/activity/sleep`) into `daily_activity`
+   rows (source `whoop_api`) feeding Condition's recovery/HRV/RHR/sleep inputs.
 
 ## What WHOOP provides (and doesn't)
 

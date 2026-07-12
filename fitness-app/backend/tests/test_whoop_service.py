@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app.core.crypto import decrypt_token, encrypt_token
+from app.models.activity import DailyActivity
 from app.models.exercise import Exercise
 from app.models.whoop import WhoopConnection
 from app.models.workout import Set, WeightUnit, WorkoutExercise, WorkoutSession
@@ -220,6 +221,196 @@ class TestSyncEndToEnd:
             whoop_service.sync_recent_workouts(db, user.id)
 
 
+# ── Recovery sync (ARISE v2.1: real DB, monkeypatched WHOOP HTTP) ─────────────
+
+class TestRecoverySync:
+    def _connect(self, db, user_id):
+        conn = WhoopConnection(user_id=user_id)
+        conn.access_token = "access"
+        conn.refresh_token = "refresh"
+        conn.expires_at = (datetime.now(timezone.utc) + timedelta(hours=1)).replace(tzinfo=None)
+        conn.scope = "offline read:profile read:workout read:recovery read:sleep"
+        db.add(conn)
+        db.commit()
+        return conn
+
+    def _patch_configured(self, monkeypatch):
+        monkeypatch.setattr(whoop_service, "is_configured", lambda: True)
+        monkeypatch.setattr(whoop_service, "_require_configured", lambda: None)
+
+    @staticmethod
+    def _iso(dt):
+        return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+    def _recovery(self, sleep_id="s1", score_state="SCORED", created_at=None, **score):
+        base_score = {
+            "recovery_score": 67.0,
+            "hrv_rmssd_milli": 45.2,
+            "resting_heart_rate": 52.0,
+        }
+        base_score.update(score)
+        return {
+            "cycle_id": 1,
+            "sleep_id": sleep_id,
+            "score_state": score_state,
+            "created_at": self._iso(created_at or datetime.now(timezone.utc)),
+            "score": base_score if score_state == "SCORED" else None,
+        }
+
+    def _sleep(self, sleep_id="s1", end=None, light_ms=14_400_000, sws_ms=5_400_000, rem_ms=5_400_000):
+        end = end or datetime.now(timezone.utc).replace(hour=7, minute=0)
+        return {
+            "id": sleep_id,
+            "score_state": "SCORED",
+            "start": self._iso(end - timedelta(hours=8)),
+            "end": self._iso(end),
+            "score": {
+                "stage_summary": {
+                    "total_light_sleep_time_milli": light_ms,
+                    "total_slow_wave_sleep_time_milli": sws_ms,
+                    "total_rem_sleep_time_milli": rem_ms,
+                }
+            },
+        }
+
+    def test_creates_daily_activity_from_recovery(self, db, create_test_user, monkeypatch):
+        user, _ = create_test_user(email=f"rec-{uuid.uuid4().hex[:8]}@example.com")
+        self._connect(db, user.id)
+        self._patch_configured(monkeypatch)
+
+        sleep_end = datetime.now(timezone.utc).replace(hour=7, minute=0)
+        monkeypatch.setattr(
+            whoop_service, "fetch_recent_recoveries", lambda *a, **k: [self._recovery()]
+        )
+        monkeypatch.setattr(
+            whoop_service, "fetch_recent_sleeps", lambda *a, **k: [self._sleep(end=sleep_end)]
+        )
+
+        result = whoop_service.sync_recent_recovery(db, user.id)
+        db.commit()
+
+        row = (
+            db.query(DailyActivity)
+            .filter(DailyActivity.user_id == user.id, DailyActivity.source == "whoop_api")
+            .one()
+        )
+        assert row.date == sleep_end.date()
+        assert row.recovery_score == 67
+        assert row.hrv == 45
+        assert row.resting_heart_rate == 52
+        assert row.sleep_hours == pytest.approx(7.0)  # 4h light + 1.5h SWS + 1.5h REM
+        assert result == {
+            "recoveries_fetched": 1,
+            "sleeps_fetched": 1,
+            "days_created": 1,
+            "days_updated": 0,
+        }
+
+    def test_updates_existing_row_and_skips_unscored(self, db, create_test_user, monkeypatch):
+        user, _ = create_test_user(email=f"rec-{uuid.uuid4().hex[:8]}@example.com")
+        self._connect(db, user.id)
+        self._patch_configured(monkeypatch)
+
+        sleep_end = datetime.now(timezone.utc).replace(hour=7, minute=0)
+        db.add(DailyActivity(
+            user_id=user.id, date=sleep_end.date(), source="whoop_api",
+            recovery_score=10, hrv=20, resting_heart_rate=70, sleep_hours=4.0,
+        ))
+        db.commit()
+
+        monkeypatch.setattr(
+            whoop_service,
+            "fetch_recent_recoveries",
+            lambda *a, **k: [
+                self._recovery(score_state="PENDING_SCORE", sleep_id="s0"),
+                self._recovery(),
+            ],
+        )
+        monkeypatch.setattr(
+            whoop_service, "fetch_recent_sleeps", lambda *a, **k: [self._sleep(end=sleep_end)]
+        )
+
+        result = whoop_service.sync_recent_recovery(db, user.id)
+        db.commit()
+
+        row = (
+            db.query(DailyActivity)
+            .filter(DailyActivity.user_id == user.id, DailyActivity.source == "whoop_api")
+            .one()
+        )
+        assert (row.recovery_score, row.hrv, row.resting_heart_rate) == (67, 45, 52)
+        assert row.sleep_hours == pytest.approx(7.0)
+        assert result["days_created"] == 0
+        assert result["days_updated"] == 1
+
+    def test_newest_recovery_wins_per_day(self, db, create_test_user, monkeypatch):
+        user, _ = create_test_user(email=f"rec-{uuid.uuid4().hex[:8]}@example.com")
+        self._connect(db, user.id)
+        self._patch_configured(monkeypatch)
+
+        sleep_end = datetime.now(timezone.utc).replace(hour=7, minute=0)
+        # WHOOP returns newest-first; both map to the same day.
+        monkeypatch.setattr(
+            whoop_service,
+            "fetch_recent_recoveries",
+            lambda *a, **k: [
+                self._recovery(recovery_score=80.0),
+                self._recovery(sleep_id="s2", recovery_score=30.0),
+            ],
+        )
+        monkeypatch.setattr(
+            whoop_service,
+            "fetch_recent_sleeps",
+            lambda *a, **k: [
+                self._sleep(end=sleep_end),
+                self._sleep(sleep_id="s2", end=sleep_end - timedelta(hours=1)),
+            ],
+        )
+
+        whoop_service.sync_recent_recovery(db, user.id)
+        db.commit()
+
+        row = (
+            db.query(DailyActivity)
+            .filter(DailyActivity.user_id == user.id, DailyActivity.source == "whoop_api")
+            .one()
+        )
+        assert row.recovery_score == 80
+
+    def test_falls_back_to_created_at_when_sleep_missing(self, db, create_test_user, monkeypatch):
+        user, _ = create_test_user(email=f"rec-{uuid.uuid4().hex[:8]}@example.com")
+        self._connect(db, user.id)
+        self._patch_configured(monkeypatch)
+
+        scored_at = datetime.now(timezone.utc) - timedelta(days=2)
+        monkeypatch.setattr(
+            whoop_service,
+            "fetch_recent_recoveries",
+            lambda *a, **k: [self._recovery(sleep_id="missing", created_at=scored_at)],
+        )
+        monkeypatch.setattr(whoop_service, "fetch_recent_sleeps", lambda *a, **k: [])
+
+        whoop_service.sync_recent_recovery(db, user.id)
+        db.commit()
+
+        row = (
+            db.query(DailyActivity)
+            .filter(DailyActivity.user_id == user.id, DailyActivity.source == "whoop_api")
+            .one()
+        )
+        assert row.date == scored_at.date()
+        assert row.sleep_hours is None  # no sleep record → hours untouched
+
+    def test_sleep_hours_helper_edge_cases(self):
+        assert whoop_service._sleep_hours_from_record({"score_state": "PENDING_SCORE"}) is None
+        assert whoop_service._sleep_hours_from_record({"score_state": "SCORED", "score": {}}) is None
+        record = {
+            "score_state": "SCORED",
+            "score": {"stage_summary": {"total_light_sleep_time_milli": 27_000_000}},
+        }
+        assert whoop_service._sleep_hours_from_record(record) == pytest.approx(7.5)
+
+
 # ── API surface ───────────────────────────────────────────────────────────────
 
 class TestWhoopApi:
@@ -237,6 +428,35 @@ class TestWhoopApi:
         headers, _ = auth_headers(email=f"connect-{uuid.uuid4().hex[:8]}@example.com")
         resp = client.get("/whoop/connect", headers=headers)
         assert resp.status_code == 503
+
+    def test_sync_includes_recovery_result(self, client, auth_headers, monkeypatch):
+        headers, _ = auth_headers(email=f"syncapi-{uuid.uuid4().hex[:8]}@example.com")
+        monkeypatch.setattr(
+            whoop_service, "sync_recent_workouts", lambda *a, **k: {"workouts_fetched": 0}
+        )
+        monkeypatch.setattr(
+            whoop_service, "sync_recent_recovery", lambda *a, **k: {"days_created": 2}
+        )
+        resp = client.post("/whoop/sync", headers=headers)
+        assert resp.status_code == 200
+        assert resp.json()["recovery"] == {"days_created": 2}
+
+    def test_sync_tolerates_recovery_failure(self, client, auth_headers, monkeypatch):
+        # A pre-v2.1 connection without read:recovery must still sync workouts.
+        headers, _ = auth_headers(email=f"syncapi-{uuid.uuid4().hex[:8]}@example.com")
+        monkeypatch.setattr(
+            whoop_service, "sync_recent_workouts", lambda *a, **k: {"workouts_fetched": 3}
+        )
+
+        def _boom(*a, **k):
+            raise whoop_service.WhoopError("403 missing scope")
+
+        monkeypatch.setattr(whoop_service, "sync_recent_recovery", _boom)
+        resp = client.post("/whoop/sync", headers=headers)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["workouts_fetched"] == 3
+        assert body["recovery"] is None
 
     def test_connect_returns_url_when_configured(self, client, auth_headers, monkeypatch):
         # Patch the exact settings object whoop_service reads. (Patching

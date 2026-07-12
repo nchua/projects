@@ -333,6 +333,7 @@ async def privacy_policy():
 <ul>
   <li><strong>Anthropic Claude API:</strong> Processes uploaded workout screenshots to extract exercise data. Images are sent to Anthropic's API and are subject to <a href="https://www.anthropic.com/privacy">Anthropic's privacy policy</a>.</li>
   <li><strong>Railway:</strong> Hosts our backend infrastructure. Data is stored on Railway's servers.</li>
+  <li><strong>WHOOP:</strong> If you connect a WHOOP account, we read your workouts, recovery scores, heart-rate variability, resting heart rate, and sleep duration via the WHOOP API (OAuth; you can revoke access anytime from your WHOOP account). This data is used solely to power your own readiness and training analytics and is subject to <a href="https://www.whoop.com/privacy/">WHOOP's privacy policy</a>.</li>
 </ul>
 
 <h2>Data Storage &amp; Retention</h2>
@@ -354,7 +355,7 @@ async def privacy_policy():
 <h2>Contact</h2>
 <p>For privacy inquiries, contact us at <a href="mailto:privacy@arise-fitness.app">privacy@arise-fitness.app</a>.</p>
 
-<p class="updated">Last updated: February 14, 2026</p>
+<p class="updated">Last updated: July 12, 2026</p>
 </div>
 </body>
 </html>"""

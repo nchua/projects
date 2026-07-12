@@ -424,11 +424,31 @@ struct HealthKitImportResponse: Decodable {
     }
 }
 
-// MARK: - WHOOP status (for the disabled "coming soon" row in Chunk C)
+// MARK: - WHOOP connection (live connect + auto-sync since ARISE v2.1)
 
 struct WhoopStatusResponse: Decodable {
     let connected: Bool
     let configured: Bool
+}
+
+struct WhoopConnectResponse: Decodable {
+    let authorizeUrl: String
+
+    enum CodingKeys: String, CodingKey {
+        case authorizeUrl = "authorize_url"
+    }
+}
+
+/// Minimal mirror of POST /whoop/sync — the client only needs to know it ran;
+/// the full payload (session counts, recovery days) is server-side detail.
+struct WhoopSyncResponse: Decodable {
+    let workoutsFetched: Int?
+    let sessionsUpdated: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case workoutsFetched = "workouts_fetched"
+        case sessionsUpdated = "sessions_updated"
+    }
 }
 
 // MARK: - Bodyweight
