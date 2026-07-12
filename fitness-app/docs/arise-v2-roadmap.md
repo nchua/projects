@@ -360,6 +360,72 @@ Every phase ends with all of (even when phases run back-to-back in one session):
 
 ---
 
+## 9. v2.1 — retro-driven scope (interview 2026-07-12)
+
+> **Status: IN PROGRESS.** Scoped the same day v2 shipped, from a structured
+> retro interview. Chunk order = user's stated priority. Each chunk ships with
+> the full §7 gates (pytest/ruff, xcodegen + sim build, entitlements lint,
+> contract-mirror /evaluate where §13 mirrors change, pathspec commit, Railway
+> SUCCESS verification for backend chunks).
+
+### 9.1 Interview record (why this scope)
+
+- **No Gate has spawned yet.** Expected (§8 data prerequisite), but a read-only
+  prod diagnostic (scratchpad script, replicates `evaluate_gate_spawns`
+  rule-by-rule without writing) is written and pending user approval for prod-DB
+  access. User deferred it until WHOOP setup was resolved.
+- **Directive is too vague.** "6 hunts this week" is rule 7 (MAINTAIN), a
+  *status readout* misread as a goal. User wants per-lift prescriptions with
+  real volume numbers (chose that over session-level sets×reps×weight).
+- **Condition is directionally right but unexplained.** The detail sheet's
+  "100w 29%" rows (value + effective weight) are cryptic; "yesterday's strain"
+  is uninterpretable; resting HR shows NO SIGNAL despite Apple Health having it.
+- **Root cause found for the RHR gap:** `HealthKitManager.swift`
+  `DailyHealthData.toActivityCreate()` hardcodes `restingHeartRate`/`hrv`/
+  `sleepHours` to `nil` — HK read permission for RHR is requested but the
+  values are never fetched. Backend upsert is per date+source and skips `None`
+  (`api/activity.py:67-78`), and `condition_service._pick_activity_value` reads
+  across source rows, so filling these is clobber-safe.
+- **Exertion tab: unopened.** Explicitly no v2.1 work.
+- **Notifications: prompt hasn't fired** — it triggers on post-save celebration
+  dismissal and no in-app workout has been logged since the rebuild. Not a bug.
+- **WHOOP recovery sync (the §8 risk / noted future work): user approved.**
+  Developer app registered 2026-07-12; `WHOOP_CLIENT_ID` / `WHOOP_CLIENT_SECRET`
+  / `WHOOP_REDIRECT_URI` set on Railway (deploys skipped). Privacy policy
+  (`GET /privacy`) and callback (`GET /whoop/callback`) were already live and
+  used for the registration form. User connects from the app AFTER chunk 2
+  deploys (scopes must include `read:recovery` at authorize time).
+
+### 9.2 Chunks (priority order, agreed 2026-07-12)
+
+1. **HealthKit Condition inputs (iOS).** Fetch resting HR, HRV (SDNN), and
+   sleep hours in the daily HealthKit sync; populate the `ActivityCreate`
+   fields currently hardcoded `nil`. No backend change.
+2. **WHOOP recovery sync (backend).** Add `read:recovery read:sleep` to
+   default scopes; pull recovery (+ sleep) into `daily_activity`
+   (`recovery_score`, `hrv`, `resting_heart_rate`, `sleep_hours`) alongside the
+   existing workout sync triggers; add a WHOOP paragraph to `/privacy`.
+   **Verify WHOOP API version during build** — v1 endpoints were deprecated for
+   v2; the existing service targets v1 paths.
+3. **Condition explainability (iOS).** Rewrite `ConditionDetailSheet` input
+   rows in plain language (value with units, "X% of today's score"), one-line
+   "what this means" per input, NO SIGNAL states say why + how to fix.
+4. **Directive per-lift prescription (backend + iOS).** New rule above the
+   MAINTAIN fallback: most-lagging big-three lift by weekly volume vs 4-week
+   mean (`_get_exercise_weekly_sets` infra), message with real lb numbers,
+   completion when that lift is logged that day. Fix MAINTAIN copy so counts
+   read as status, never goals.
+5. **Deferred cleanup.** W2 (`client_date` on GET /gates + iOS passes it),
+   W3 (rest-award survives a skipped day), HuntDetailView/QuestDetailView
+   convergence (§2.3), cheap Info items (GateSheet hardcoded caption, silent
+   client_date fallback).
+
+**Out of scope for v2.1:** gate-clear celebration overlay (W5/W8 — user did not
+rank Gates; revisit when the first gate spawns), Exertion changes, quest-table
+drop (§5.3 — Directive still has ~0 real-world days).
+
+---
+
 *Companion docs: product spec `docs/arise-v2-spec.md` (formulas, contracts, UI);
 mockup `docs/mockups/arise-v2-mockup.html`. Update this file's §2 table and phase
 sections as each phase ships.*

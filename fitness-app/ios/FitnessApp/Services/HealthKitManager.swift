@@ -57,6 +57,9 @@ class HealthKitManager: ObservableObject {
         if let hrv = HKQuantityType.quantityType(forIdentifier: .heartRateVariabilitySDNN) {
             types.insert(hrv)
         }
+        if let sleep = HKCategoryType.categoryType(forIdentifier: .sleepAnalysis) {
+            types.insert(sleep)
+        }
         return types
     }()
 
@@ -137,8 +140,14 @@ class HealthKitManager: ObservableObject {
         async let basalCalories = fetchSum(.basalEnergyBurned, start: startOfDay, end: endOfDay)
         async let exerciseMinutes = fetchSum(.appleExerciseTime, start: startOfDay, end: endOfDay)
         async let standHours = fetchStandHours(start: startOfDay, end: endOfDay)
+        async let restingHR = fetchDiscreteAverage(.restingHeartRate, unit: Self.hrUnit, start: startOfDay, end: endOfDay)
+        async let hrvMs = fetchDiscreteAverage(
+            .heartRateVariabilitySDNN, unit: .secondUnit(with: .milli), start: startOfDay, end: endOfDay
+        )
+        async let sleep = fetchSleepHours(nightEnding: startOfDay)
 
         let (s, ac, bc, em, sh) = await (steps, activeCalories, basalCalories, exerciseMinutes, standHours)
+        let (rhr, hrv, slp) = await (restingHR, hrvMs, sleep)
 
         return DailyHealthData(
             date: startOfDay,
@@ -147,7 +156,10 @@ class HealthKitManager: ObservableObject {
             totalCalories: Int(ac + bc),
             exerciseMinutes: Int(em),
             standHours: sh,
-            moveCalories: Int(ac)
+            moveCalories: Int(ac),
+            restingHeartRate: rhr.map { Int($0.rounded()) },
+            hrv: hrv.map { Int($0.rounded()) },
+            sleepHours: slp
         )
     }
 
@@ -520,6 +532,66 @@ class HealthKitManager: ObservableObject {
         }
     }
 
+    /// Discrete-average statistics (resting HR, HRV). Returns `nil` — never 0 — when the day
+    /// has no samples, so the backend upsert leaves the field untouched and Condition
+    /// renormalizes instead of ingesting a fake reading.
+    private func fetchDiscreteAverage(
+        _ identifier: HKQuantityTypeIdentifier, unit: HKUnit, start: Date, end: Date
+    ) async -> Double? {
+        guard let type = HKQuantityType.quantityType(forIdentifier: identifier) else { return nil }
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsQuery(
+                quantityType: type,
+                quantitySamplePredicate: predicate,
+                options: .discreteAverage
+            ) { _, result, _ in
+                continuation.resume(returning: result?.averageQuantity()?.doubleValue(for: unit))
+            }
+            healthStore.execute(query)
+        }
+    }
+
+    /// Sleep hours for the night ending on `date`'s morning: asleep-stage samples in the
+    /// 18:00-the-evening-before → 18:00 window, clamped to it, with overlapping intervals merged
+    /// so Watch + iPhone double-logging doesn't double-count. `nil` when nothing was recorded.
+    private func fetchSleepHours(nightEnding date: Date) async -> Double? {
+        guard let type = HKCategoryType.categoryType(forIdentifier: .sleepAnalysis) else { return nil }
+        let windowStart = date.addingTimeInterval(-6 * 3600) // 18:00 the evening before
+        let windowEnd = date.addingTimeInterval(18 * 3600)   // 18:00 on `date`
+        let predicate = HKQuery.predicateForSamples(withStart: windowStart, end: windowEnd, options: [])
+
+        let samples: [HKCategorySample] = await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: type,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]
+            ) { _, samples, _ in
+                continuation.resume(returning: (samples as? [HKCategorySample]) ?? [])
+            }
+            healthStore.execute(query)
+        }
+
+        let asleepValues = HKCategoryValueSleepAnalysis.allAsleepValues.map(\.rawValue)
+        var merged: [(start: Date, end: Date)] = []
+        for sample in samples where asleepValues.contains(sample.value) {
+            let start = max(sample.startDate, windowStart)
+            let end = min(sample.endDate, windowEnd)
+            guard end > start else { continue }
+            if let last = merged.last, start <= last.end {
+                merged[merged.count - 1].end = max(last.end, end)
+            } else {
+                merged.append((start, end))
+            }
+        }
+
+        let totalSeconds = merged.reduce(0.0) { $0 + $1.end.timeIntervalSince($1.start) }
+        guard totalSeconds > 0 else { return nil }
+        return (totalSeconds / 3600 * 10).rounded() / 10
+    }
+
     private func fetchStandHours(start: Date, end: Date) async -> Int {
         guard let type = HKCategoryType.categoryType(forIdentifier: .appleStandHour) else {
             return 0
@@ -579,6 +651,9 @@ struct DailyHealthData {
     let exerciseMinutes: Int
     let standHours: Int
     let moveCalories: Int
+    let restingHeartRate: Int?
+    let hrv: Int?
+    let sleepHours: Double?
 
     func toActivityCreate() -> ActivityCreate {
         // Use local timezone DateFormatter so the date reflects user's local date
@@ -596,9 +671,9 @@ struct DailyHealthData {
             moveCalories: moveCalories,
             strain: nil,
             recoveryScore: nil,
-            hrv: nil,
-            restingHeartRate: nil,
-            sleepHours: nil
+            hrv: hrv,
+            restingHeartRate: restingHeartRate,
+            sleepHours: sleepHours
         )
     }
 }
