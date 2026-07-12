@@ -53,7 +53,8 @@ Phase 0 shipped in commits `580a5f6..e7eb28e` (2026-07-12), deployed to Railway
 | §3.2 XP fixes (achievement XP via `award_xp`, `/sync` full XP pipeline, dead `first_workout_today`) | **§12 lists these under Phase 3 — wrong** | **Done in Phase 0 Layer 1** (`580a5f6`). Phase 3 drops this item. |
 | §10.1 "`POST /sync` = 0 XP (bug)" row | implied open | **Fixed** — `/sync` runs the full XP pipeline, including a retry double-award guard added at the QA gate (`e7eb28e`) |
 | Condition + Directive (§4–§5, §8.1 Status order, §13.1–13.2 mirrors) | Phase 1 | **Done** (2026-07-12, backend `958bc3f` + iOS commit same day; Railway SUCCESS verified; contract-mirror PASS) |
-| Gates, Exertion analytics, new achievements, `arise_strain`, cardio-screenshot upgrade, notification prompt | Phases 2–3 | **Not started** — mapped in §4–§5 below |
+| PR Gates + notification prompt (§6, §11, §13.3 mirror) | Phase 2 | **Done** (2026-07-12, backend `bf636b1` + iOS commit same day; Railway SUCCESS verified; contract-mirror PASS) |
+| Exertion analytics, new achievements, `arise_strain`, cardio-screenshot upgrade | Phase 3 | **Not started** — mapped in §5 below |
 
 ### 2.2 Deliberately kept groundwork (don't "clean up")
 
@@ -148,6 +149,18 @@ Spec sections: **§4 (Condition), §5 (Directive), §8.1 (Status tab), §13.1–
   re-emits that type or the toggle/enum gets cut here.
 
 ## 4. Phase 2 session — PR Gates
+
+> **Status: SHIPPED 2026-07-12.** All §7 ship criteria met: 442 backend tests green,
+> ruff clean, sim build green, entitlements lint clean, contract-mirror `/evaluate`
+> PASS (all 19 GateResponse fields match), Railway SUCCESS (`bf636b1`), `/gates`
+> live. **Deviations:** (1) the spec's "nightly job" for spawn evaluation is
+> implemented as lazy evaluation on GET /gates (+ on workout create) — no scheduler
+> infra was added, deliberately (no-extraneous-features rule; the Status tab hits
+> GET /gates on every open). (2) Hunt Log rank sigils match cleared gates to rows
+> by local clear *day* (GateResponse carries cleared_by_set_id, which summaries
+> can't resolve to a workout client-side). (3) The CLAUDE.md notification-permission
+> Open Decision is resolved: prompt on post-save celebration dismissal via
+> `requestAuthorizationIfNeeded()`.
 
 Spec sections: **§6 (Gates), §11 (notifications), §13.3 (contract).** This is the
 **north-star phase** — the feature the whole roadmap exists to ship.

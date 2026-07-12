@@ -48,12 +48,44 @@ class HuntViewModel: ObservableObject {
         return workouts
     }
 
+    // MARK: - Cleared-gate sigils (ARISE v2 §6.6)
+
+    /// Cleared gates keyed by local clear day (yyyy-MM-dd) → rank.
+    /// GateResponse only carries cleared_by_set_id (not a workout id), so the
+    /// Hunt Log matches by day: the workout row on the day a gate cleared
+    /// gets the rank sigil.
+    @Published var clearedGateRanksByDay: [String: String] = [:]
+
+    /// Rank sigil for a workout row, or nil.
+    func gateRank(for workout: WorkoutSummaryResponse) -> String? {
+        guard let date = workout.date.parseISO8601Date() else { return nil }
+        return clearedGateRanksByDay[Self.dayFormatter.string(from: date)]
+    }
+
+    private static let dayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    private func loadClearedGates() async {
+        guard let history = try? await APIClient.shared.getGateHistory(limit: 50) else { return }
+        var byDay: [String: String] = [:]
+        for gate in history where gate.status == "cleared" {
+            if let clearedAt = gate.clearedAt?.parseISO8601Date() {
+                byDay[Self.dayFormatter.string(from: clearedAt)] = gate.rank
+            }
+        }
+        clearedGateRanksByDay = byDay
+    }
+
     // MARK: - Actions
 
     func loadWorkouts(refresh: Bool = false) async {
         if refresh {
             offset = 0
             hasMoreWorkouts = true
+            await loadClearedGates()
         }
 
         guard hasMoreWorkouts else { return }

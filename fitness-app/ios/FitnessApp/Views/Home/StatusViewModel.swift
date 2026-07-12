@@ -23,6 +23,7 @@ class StatusViewModel: ObservableObject {
     @Published var profile: ProfileResponse?
     @Published var condition: ConditionResponse?
     @Published var directive: DirectiveResponse?
+    @Published var gates: [GateResponse] = []
     @Published var weeklyProgressReport: WeeklyProgressReportResponse?
     @Published var isLoading = false
     @Published var error: String?
@@ -263,6 +264,15 @@ class StatusViewModel: ObservableObject {
                     self.directive = try await APIClient.shared.getTodayDirective()
                 } catch {
                     self.recordLoadError("directive", error)
+                }
+            }
+
+            group.addTask { @MainActor in
+                do {
+                    // GET /gates also runs the server-side spawn/expiry sweep.
+                    self.gates = try await APIClient.shared.getGates()
+                } catch {
+                    self.recordLoadError("gates", error)
                 }
             }
 

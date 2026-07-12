@@ -136,7 +136,10 @@ struct HuntView: View {
                                             viewModel: viewModel
                                         )
                                     } label: {
-                                        EdgeFlowWorkoutRow(workout: workout)
+                                        EdgeFlowWorkoutRow(
+                                            workout: workout,
+                                            gateRank: viewModel.gateRank(for: workout)
+                                        )
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                     .contextMenu {
@@ -480,6 +483,8 @@ struct EdgeFlowCalendarDayCell: View {
 
 struct EdgeFlowWorkoutRow: View {
     let workout: WorkoutSummaryResponse
+    /// Rank of a PR Gate cleared on this hunt's day (ARISE v2 §6.6), or nil.
+    var gateRank: String? = nil
 
     private var isWhoopActivity: Bool {
         workout.isWhoopActivity == true
@@ -529,6 +534,21 @@ struct EdgeFlowWorkoutRow: View {
                     .padding(.vertical, 4)
                     .background(indicatorColor.opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                    // Cleared-gate rank sigil (ARISE v2 §6.6)
+                    if let gateRank {
+                        Text(gateRank)
+                            .font(.ariseMono(size: 10, weight: .bold))
+                            .foregroundColor(.black)
+                            .frame(width: 18, height: 18)
+                            .background(HunterRank(rawValue: gateRank)?.color ?? .textMuted)
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                            .shadow(
+                                color: (HunterRank(rawValue: gateRank)?.color ?? .clear).opacity(0.5),
+                                radius: 4, x: 0, y: 0
+                            )
+                            .accessibilityLabel("\(gateRank)-rank gate cleared")
+                    }
 
                     // WHOOP indicator for activities with exercises
                     if isWhoopActivity && hasExercises {

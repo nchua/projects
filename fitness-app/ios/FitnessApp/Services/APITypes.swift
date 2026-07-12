@@ -1531,6 +1531,67 @@ struct DirectiveHistoryResponse: Decodable {
     let directives: [DirectiveResponse]
 }
 
+// MARK: - PR Gates (ARISE v2 §6)
+
+/// Contract mirror of `app/schemas/gate.py::GateResponse`.
+struct GateResponse: Decodable, Identifiable {
+    let id: String
+    let exerciseId: String
+    let exerciseName: String
+    let rank: String               // C | B | A | S
+    let name: String               // "B-Rank Gate: Bench 225×4"
+    let targetWeight: Double
+    let targetReps: Int
+    let targetE1rm: Double
+    let baselineE1rm: Double
+    let projectedE1rm: Double
+    let weeklySlope: Double        // lb/week at spawn
+    let conditionAtSpawn: Int
+    let status: String             // open | active | cleared | expired
+    let spawnedAt: String          // ISO8601
+    let expiresAt: String          // ISO8601
+    let acceptedAt: String?
+    let clearedAt: String?
+    let clearedBySetId: String?
+    let xpAwarded: Int?
+
+    /// Progress toward the target (baseline / target) for the proximity bar.
+    var proximity: Double {
+        guard targetE1rm > 0 else { return 0 }
+        return min(1.0, baselineE1rm / targetE1rm)
+    }
+
+    /// Whole days until the window closes (0 when past due).
+    var daysRemaining: Int {
+        guard let expiry = expiresAt.parseISO8601Date() else { return 0 }
+        return max(0, Calendar.current.dateComponents([.day], from: Date(), to: expiry).day ?? 0)
+    }
+
+    /// Rank sigil color — reuses the hunter rank palette (spec §9.8).
+    var rankColor: Color {
+        HunterRank(rawValue: rank.uppercased())?.color ?? .textMuted
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, rank, name, status
+        case exerciseId = "exercise_id"
+        case exerciseName = "exercise_name"
+        case targetWeight = "target_weight"
+        case targetReps = "target_reps"
+        case targetE1rm = "target_e1rm"
+        case baselineE1rm = "baseline_e1rm"
+        case projectedE1rm = "projected_e1rm"
+        case weeklySlope = "weekly_slope"
+        case conditionAtSpawn = "condition_at_spawn"
+        case spawnedAt = "spawned_at"
+        case expiresAt = "expires_at"
+        case acceptedAt = "accepted_at"
+        case clearedAt = "cleared_at"
+        case clearedBySetId = "cleared_by_set_id"
+        case xpAwarded = "xp_awarded"
+    }
+}
+
 // MARK: - Friends
 
 struct FriendRequestResponse: Decodable, Identifiable {

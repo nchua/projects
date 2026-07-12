@@ -156,9 +156,10 @@ When modifying how workout data is fetched, stored, or structured, update ALL di
 
 ---
 
-## Open Decisions
+## Resolved Decisions
 
-### When to request notification permission (Phase 3)
-`NotificationManager.requestAuthorization()` exists but is not called anywhere yet.
-Decide when to prompt — options: after first workout, on first launch, from settings screen, or after onboarding.
-Files: `ios/FitnessApp/Services/NotificationManager.swift`, wherever the trigger is added.
+### Notification permission prompt (resolved in ARISE v2 Phase 2, 2026-07-12)
+Prompted on dismissal of the post-save celebration in `LogView` (the XP reward
+view's `onDismiss`), via `NotificationManager.requestAuthorizationIfNeeded()` —
+a no-op once the user has decided either way. Rationale (spec §11): the ask
+lands right after the user's best moment, with `gate_opened` pushes as the payoff.

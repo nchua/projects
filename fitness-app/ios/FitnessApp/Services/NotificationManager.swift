@@ -42,6 +42,16 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         isAuthorized = settings.authorizationStatus == .authorized
     }
 
+    /// Prompt for notification permission only while undetermined (ARISE v2
+    /// §11: triggered on dismissal of the post-save celebration in LogView —
+    /// the ask lands right after the user's best moment). A no-op once the
+    /// user has decided either way.
+    func requestAuthorizationIfNeeded() async {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        guard settings.authorizationStatus == .notDetermined else { return }
+        await requestAuthorization()
+    }
+
     // MARK: - Device Token Registration
 
     func registerDeviceToken(_ tokenData: Data) {

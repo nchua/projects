@@ -212,6 +212,10 @@ struct LogView: View {
                     withAnimation(.smoothSpring) {
                         isSessionActive = false
                     }
+                    // Notification permission ask lands right after the
+                    // post-save celebration (ARISE v2 §11) — no-op once
+                    // the user has already decided.
+                    Task { await NotificationManager.shared.requestAuthorizationIfNeeded() }
                 }
             )
         }

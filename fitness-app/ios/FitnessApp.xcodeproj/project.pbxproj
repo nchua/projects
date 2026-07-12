@@ -25,6 +25,7 @@
 		36750CE2DDD1706C9CEE20E0 /* HunterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FC261FFC2B91483B5642356 /* HunterView.swift */; };
 		37D65595AB26EE23DF8E59C3 /* ForgotPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47495C43CDDFAF66EC1C0D89 /* ForgotPasswordView.swift */; };
 		38B0407D98BDD920EEE82422 /* WhoopConnectionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC6594577B731D9B66D05175 /* WhoopConnectionViewModel.swift */; };
+		3A2A743E7A3FC8D8AC69BC59 /* GateCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DCBFA9BCFA32A32880A9C1D /* GateCard.swift */; };
 		3A555F185433DA7D15E50DAD /* Orbitron-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0FCA59D77C62E3D316AC25A2 /* Orbitron-Variable.ttf */; };
 		3A8619F4BAD8C07E7093FD9C /* ScanPaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A011653DE0136DB185E1BB86 /* ScanPaywallView.swift */; };
 		3E66DA3B5E5A06562EC368C6 /* HuntViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB94022350AB07227F556378 /* HuntViewModel.swift */; };
@@ -32,6 +33,7 @@
 		4243BB754ED9750C15429B09 /* AchievementDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D60C9B9D1A9A908C95E6852 /* AchievementDetailSheet.swift */; };
 		46DA542BE6B0DE9C1B91BF13 /* PowerLevelsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D36B4AA14B929AA95E36E602 /* PowerLevelsCard.swift */; };
 		48113D49713CF47249D00B90 /* JetBrainsMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 7E490406F225338152AB77DD /* JetBrainsMono-Bold.ttf */; };
+		4B87E6E33CF6927F52A4FCD4 /* GateSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8794B762AE704D5AFE7BF331 /* GateSheet.swift */; };
 		4B8D6A40C74DD675692DDB3E /* ConditionDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9007EB28564D1BF705F485D0 /* ConditionDetailSheet.swift */; };
 		4DE2F4CEF8CDDCED4C17A591 /* ScreenshotPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDB048EAA3D732A16D8F1C87 /* ScreenshotPreviewView.swift */; };
 		4EF008506C359122170F5270 /* XPRewardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4C96A0FDFB19923AC061970 /* XPRewardView.swift */; };
@@ -158,6 +160,7 @@
 		47495C43CDDFAF66EC1C0D89 /* ForgotPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgotPasswordView.swift; sourceTree = "<group>"; };
 		4782AB3331CF5A6119847AF2 /* BodyweightEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyweightEntry.swift; sourceTree = "<group>"; };
 		4AF2D9A5212F46C78603591D /* GoalSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalSetupView.swift; sourceTree = "<group>"; };
+		4DCBFA9BCFA32A32880A9C1D /* GateCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GateCard.swift; sourceTree = "<group>"; };
 		4FC261FFC2B91483B5642356 /* HunterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HunterView.swift; sourceTree = "<group>"; };
 		53655A6FCF7E8651BC8F9F23 /* Rajdhani-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Rajdhani-Light.ttf"; sourceTree = "<group>"; };
 		53F09A840EAE2FB72DE2D26F /* AriseSourceBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AriseSourceBadge.swift; sourceTree = "<group>"; };
@@ -176,6 +179,7 @@
 		81F8E90BC8857EC0213E34D5 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		8256903DF70674E4B428B2AF /* Rajdhani-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Rajdhani-Medium.ttf"; sourceTree = "<group>"; };
 		876861A5716076C7E16CA53C /* MultiGoalSetupViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiGoalSetupViewModelTests.swift; sourceTree = "<group>"; };
+		8794B762AE704D5AFE7BF331 /* GateSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GateSheet.swift; sourceTree = "<group>"; };
 		8AFF1DFAB12FCB9126C1386F /* MockAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockAPIClient.swift; sourceTree = "<group>"; };
 		9007EB28564D1BF705F485D0 /* ConditionDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConditionDetailSheet.swift; sourceTree = "<group>"; };
 		93180FC8B345CB004A5D390D /* Rajdhani-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Rajdhani-Regular.ttf"; sourceTree = "<group>"; };
@@ -449,6 +453,8 @@
 				E4BC8D73F6A1E9F56CD31C28 /* ConditionGaugeCard.swift */,
 				D7CB8C5B7475A9F30DA78BD9 /* DirectiveCard.swift */,
 				CE64F236AB7CDB1AE715B673 /* DirectiveSheet.swift */,
+				4DCBFA9BCFA32A32880A9C1D /* GateCard.swift */,
+				8794B762AE704D5AFE7BF331 /* GateSheet.swift */,
 				D36B4AA14B929AA95E36E602 /* PowerLevelsCard.swift */,
 				CE2A62A1E050193695378BF7 /* RecoveryDetailSheet.swift */,
 				386B58A648DA7731B4C2FA83 /* RecoveryStatusSection.swift */,
@@ -668,6 +674,8 @@
 				707E7061D2A90519FF68FDAC /* FriendRequestCard.swift in Sources */,
 				5676B5494CB708F2A9CFA399 /* FriendRowCard.swift in Sources */,
 				9C607E3BE0A2C455F49E9E0D /* FriendsViewModel.swift in Sources */,
+				3A2A743E7A3FC8D8AC69BC59 /* GateCard.swift in Sources */,
+				4B87E6E33CF6927F52A4FCD4 /* GateSheet.swift in Sources */,
 				F77280EFD38F9B8F7FCE40E6 /* GoalDeadlineEditView.swift in Sources */,
 				B809C23FE60B170A45283EC6 /* GoalSetupView.swift in Sources */,
 				8BBB849080ED68DA567BA7A7 /* GoalsListSheet.swift in Sources */,

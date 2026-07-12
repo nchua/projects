@@ -8,6 +8,7 @@ struct StatusView: View {
     @State private var showWeeklyReport = false
     @State private var showConditionSheet = false
     @State private var showDirectiveSheet = false
+    @State private var selectedGate: GateResponse?
 
     var body: some View {
         NavigationStack {
@@ -61,7 +62,13 @@ struct StatusView: View {
                             .padding(.horizontal, 20)
                         }
 
-                        // 4. Open Gate card slot — lands with PR Gates (Phase 2)
+                        // 4. Open Gate cards (spec §6.6, conditional)
+                        ForEach(viewModel.gates) { gate in
+                            GateCard(gate: gate) {
+                                selectedGate = gate
+                            }
+                            .padding(.horizontal, 20)
+                        }
 
                         // 5. This Week (DashboardCard + Weekly Report link row)
                         DashboardCard(
@@ -107,6 +114,11 @@ struct StatusView: View {
         .sheet(isPresented: $showDirectiveSheet) {
             if let directive = viewModel.directive {
                 DirectiveSheet(directive: directive)
+            }
+        }
+        .sheet(item: $selectedGate) { gate in
+            GateSheet(gate: gate) {
+                Task { await viewModel.loadData() }
             }
         }
     }

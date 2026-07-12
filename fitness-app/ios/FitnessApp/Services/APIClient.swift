@@ -268,6 +268,20 @@ class APIClient {
         return try await get("/directive/history?limit=\(limit)")
     }
 
+    // MARK: - PR Gates (ARISE v2)
+
+    func getGates() async throws -> [GateResponse] {
+        return try await get("/gates")
+    }
+
+    func acceptGate(id: String) async throws -> GateResponse {
+        return try await request(method: "POST", path: "/gates/\(id)/accept", body: nil as EmptyBody?)
+    }
+
+    func getGateHistory(limit: Int = 20) async throws -> [GateResponse] {
+        return try await get("/gates/history?limit=\(limit)")
+    }
+
     func getWeeklyProgressReport(weekStart: String? = nil) async throws -> WeeklyProgressReportResponse {
         let today = DateFormatter.localDate.string(from: Date())
         var path = "/progress/weekly-report?client_date=\(today)"
