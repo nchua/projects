@@ -244,6 +244,43 @@ _ACTIVITY_CATEGORIES = ("Sport", "Cardio", "Flexibility", "Strength")
 _ACTIVITY_PREFIXES = ("indoor ", "outdoor ", "pool ", "open water ")
 
 
+def parse_zone_seconds(heart_rate_zones) -> Optional[Dict[str, int]]:
+    """Parse extracted HR-zone rows into the hr_zone_seconds shape (§7.3).
+
+    The Vision extractor returns rows like
+    ``{"zone": 3, "duration": "15:30", ...}`` — zone numbers 1-5 map to
+    z1..z5 (zone 0 is below-zone time and is dropped), durations are
+    ``mm:ss`` or ``h:mm:ss``. Returns None when nothing parses so sessions
+    without zone data stay null rather than {}.
+    """
+    if not heart_rate_zones:
+        return None
+    zone_seconds: Dict[str, int] = {}
+    for row in heart_rate_zones:
+        if isinstance(row, dict):
+            zone = row.get("zone")
+            duration = row.get("duration")
+        else:  # pydantic HeartRateZone
+            zone = getattr(row, "zone", None)
+            duration = getattr(row, "duration", None)
+        if zone is None or not duration or not (1 <= int(zone) <= 5):
+            continue
+        parts = str(duration).strip().split(":")
+        try:
+            if len(parts) == 2:
+                seconds = int(parts[0]) * 60 + int(parts[1])
+            elif len(parts) == 3:
+                seconds = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+            else:
+                continue
+        except ValueError:
+            continue
+        if seconds > 0:
+            key = f"z{int(zone)}"
+            zone_seconds[key] = zone_seconds.get(key, 0) + seconds
+    return zone_seconds or None
+
+
 def _strip_activity_prefix(activity_type: str) -> str:
     """Strip Apple Watch location prefixes from an activity name."""
     lowered = activity_type.lower().strip()
@@ -1015,11 +1052,23 @@ async def save_whoop_activity(
         notes_parts.append(f"Time: {extraction_result['time_range']}")
     notes = " | ".join(notes_parts)
 
+    # ARISE v2 §7.3 tier-3 upgrade: persist the HR richness the extractor
+    # already pulls (avg/max HR, per-zone durations) onto the session with
+    # hr_source="screenshot", so screenshot activities feed the Hunt log
+    # strain badge, Condition's yesterday-strain input, and zone analytics.
+    # Strain stays WHOOP's stated value (0-21) — never recomputed, and
+    # non-WHOOP effort metrics are never converted (the extractor only fills
+    # `strain` for WHOOP screenshots).
     workout_session = WorkoutSession(
         user_id=user_id,
         date=workout_datetime,
         duration_minutes=extraction_result.get("duration_minutes"),
-        notes=notes
+        notes=notes,
+        avg_heart_rate=extraction_result.get("avg_hr"),
+        peak_heart_rate=extraction_result.get("max_hr"),
+        strain=extraction_result.get("strain"),
+        hr_zone_seconds=parse_zone_seconds(extraction_result.get("heart_rate_zones")),
+        hr_source="screenshot",
     )
     db.add(workout_session)
     db.flush()

@@ -189,12 +189,181 @@ def check_and_unlock_achievements(
                 exercise_max = exercise_prs.get(achievement.requirement_exercise.lower(), 0)
                 should_unlock = exercise_max >= achievement.requirement_value
 
+        # ── ARISE v2 requirement types (spec §10.2) — evaluated lazily via
+        # DB queries so callers don't have to precompute them into context.
+        elif achievement.requirement_type == "gate_cleared":
+            should_unlock = _count_cleared_gates(db, user_id) >= achievement.requirement_value
+
+        elif achievement.requirement_type == "gate_s_rank_cleared":
+            should_unlock = _has_cleared_s_rank_gate(db, user_id)
+
+        elif achievement.requirement_type == "directive_streak":
+            should_unlock = _directive_streak(db, user_id) >= achievement.requirement_value
+
+        elif achievement.requirement_type == "condition_peak_streak":
+            should_unlock = _condition_peak_streak(db, user_id, achievement.requirement_value)
+
+        elif achievement.requirement_type == "arise_strain_single":
+            should_unlock = _max_single_workout_strain(db, user_id) >= achievement.requirement_value
+
+        elif achievement.requirement_type == "cardiac_cost_drop":
+            should_unlock = _any_lift_cardiac_cost_drop(db, user_id, achievement.requirement_value)
+
         if should_unlock:
             unlocked = unlock_achievement(db, user_id, achievement.id)
             if unlocked:
                 newly_unlocked.append(unlocked)
 
     return newly_unlocked
+
+
+# ── ARISE v2 achievement helpers (spec §10.2) ────────────────────────────────
+
+def _count_cleared_gates(db: Session, user_id: str) -> int:
+    from app.models.gate import GateStatus, PRGate
+    return (
+        db.query(PRGate)
+        .filter(PRGate.user_id == user_id, PRGate.status == GateStatus.CLEARED.value)
+        .count()
+    )
+
+
+def _has_cleared_s_rank_gate(db: Session, user_id: str) -> bool:
+    from app.models.gate import GateRank, GateStatus, PRGate
+    return (
+        db.query(PRGate)
+        .filter(
+            PRGate.user_id == user_id,
+            PRGate.status == GateStatus.CLEARED.value,
+            PRGate.rank == GateRank.S.value,
+        )
+        .first()
+        is not None
+    )
+
+
+def _directive_streak(db: Session, user_id: str) -> int:
+    """Consecutive completed directives, newest backward.
+
+    Today's still-pending directive doesn't break the streak (it's in
+    progress); the count then requires strictly consecutive calendar days.
+    """
+    from datetime import date, timedelta
+
+    from app.models.directive import UserDirective
+
+    rows = (
+        db.query(UserDirective)
+        .filter(UserDirective.user_id == user_id)
+        .order_by(UserDirective.date.desc())
+        .limit(40)
+        .all()
+    )
+    if not rows:
+        return 0
+
+    index = 0
+    if not rows[0].is_completed and rows[0].date == date.today():
+        index = 1  # today's directive is still live — start from yesterday
+
+    streak = 0
+    expected = None
+    for row in rows[index:]:
+        if not row.is_completed:
+            break
+        if expected is not None and row.date != expected:
+            break
+        streak += 1
+        expected = row.date - timedelta(days=1)
+    return streak
+
+
+def _condition_peak_streak(db: Session, user_id: str, days: int) -> bool:
+    """True when Condition >= PEAK for each of the last ``days`` days.
+
+    Historical scores are recomputed from the date-keyed inputs
+    (daily_activity rows); the muscle-freshness input uses current cooldowns
+    — an accepted approximation since Condition is never stored.
+    """
+    from datetime import date, timedelta
+
+    from app.services.condition_service import CONDITION_PEAK_MIN, compute_condition
+
+    today = date.today()
+    for offset in range(days):
+        result = compute_condition(db, user_id, today - timedelta(days=offset))
+        if result["score"] < CONDITION_PEAK_MIN:
+            return False
+    return True
+
+
+def _max_single_workout_strain(db: Session, user_id: str) -> float:
+    """Best single-workout unified strain (§7.1) across the user's history."""
+    from sqlalchemy import func
+
+    from app.core.exertion import compute_exertion_score
+    from app.models.workout import WorkoutSession
+
+    best = (
+        db.query(func.max(WorkoutSession.strain))
+        .filter(WorkoutSession.user_id == user_id, WorkoutSession.deleted_at.is_(None))
+        .scalar()
+    ) or 0.0
+
+    # Exertion fallback path: only wearable-era sessions carry zone data, so
+    # this scan stays small.
+    zone_rows = (
+        db.query(WorkoutSession.hr_zone_seconds)
+        .filter(
+            WorkoutSession.user_id == user_id,
+            WorkoutSession.deleted_at.is_(None),
+            WorkoutSession.hr_zone_seconds.isnot(None),
+        )
+        .all()
+    )
+    for (zones,) in zone_rows:
+        score = compute_exertion_score(zones)
+        if score is not None and score > best:
+            best = score
+    return best
+
+
+def _any_lift_cardiac_cost_drop(db: Session, user_id: str, drop_pct: int) -> bool:
+    """True when any lift's cardiac cost fell >= drop_pct% (8-wk window)."""
+    from datetime import datetime, timedelta
+
+    from app.models.workout import Set, WorkoutExercise, WorkoutSession
+
+    # Only lifts with HR-carrying sets in the window can qualify — keeps the
+    # per-exercise cardiac-cost computation bounded.
+    cutoff = datetime.now().replace(tzinfo=None) - timedelta(weeks=8)
+    candidate_ids = [
+        row[0]
+        for row in (
+            db.query(WorkoutExercise.exercise_id)
+            .join(Set, Set.workout_exercise_id == WorkoutExercise.id)
+            .join(WorkoutSession, WorkoutExercise.session_id == WorkoutSession.id)
+            .filter(
+                WorkoutSession.user_id == user_id,
+                WorkoutSession.deleted_at.is_(None),
+                WorkoutSession.date >= cutoff,
+                Set.peak_heart_rate.isnot(None),
+            )
+            .distinct()
+            .all()
+        )
+    ]
+    if not candidate_ids:
+        return False
+
+    # Local import: api layer — same lazy pattern as the Directive engine.
+    from app.api.exertion_analytics import compute_cardiac_cost
+
+    for exercise_id in candidate_ids:
+        result = compute_cardiac_cost(db, user_id, exercise_id, weeks=8)
+        if result.percent_change is not None and result.percent_change <= -drop_pct:
+            return True
+    return False
 
 
 def seed_achievement_definitions(db: Session):
@@ -561,6 +730,103 @@ def seed_achievement_definitions(db: Session):
             "requirement_type": "streak_days",
             "requirement_value": 30,
             "sort_order": 72
+        },
+        # ── ARISE v2 achievement lines (spec §10.2) ──
+        {
+            "id": "gate_first",
+            "name": "Gate Breaker",
+            "description": "Clear your first PR Gate",
+            "category": "gates",
+            "icon": "flag.checkered",
+            "xp_reward": 200,
+            "rarity": "rare",
+            "requirement_type": "gate_cleared",
+            "requirement_value": 1,
+            "sort_order": 80
+        },
+        {
+            "id": "gate_5",
+            "name": "Gatekeeper",
+            "description": "Clear 5 PR Gates",
+            "category": "gates",
+            "icon": "flag.2.crossed.fill",
+            "xp_reward": 400,
+            "rarity": "epic",
+            "requirement_type": "gate_cleared",
+            "requirement_value": 5,
+            "sort_order": 81
+        },
+        {
+            "id": "gate_s_rank",
+            "name": "S-Rank Clearance",
+            "description": "Clear an S-rank Gate",
+            "category": "gates",
+            "icon": "crown.fill",
+            "xp_reward": 750,
+            "rarity": "legendary",
+            "requirement_type": "gate_s_rank_cleared",
+            "requirement_value": 1,
+            "sort_order": 82
+        },
+        {
+            "id": "directive_7",
+            "name": "The System's Chosen",
+            "description": "Follow 7 consecutive System Directives",
+            "category": "directives",
+            "icon": "checkmark.seal.fill",
+            "xp_reward": 200,
+            "rarity": "rare",
+            "requirement_type": "directive_streak",
+            "requirement_value": 7,
+            "sort_order": 83
+        },
+        {
+            "id": "directive_30",
+            "name": "Absolute Obedience",
+            "description": "Follow 30 consecutive System Directives",
+            "category": "directives",
+            "icon": "checkmark.shield.fill",
+            "xp_reward": 500,
+            "rarity": "legendary",
+            "requirement_type": "directive_streak",
+            "requirement_value": 30,
+            "sort_order": 84
+        },
+        {
+            "id": "condition_peak_7",
+            "name": "Peak Form",
+            "description": "Hold PEAK Condition (85+) for 7 consecutive days",
+            "category": "condition",
+            "icon": "gauge.high",
+            "xp_reward": 300,
+            "rarity": "epic",
+            "requirement_type": "condition_peak_streak",
+            "requirement_value": 7,
+            "sort_order": 85
+        },
+        {
+            "id": "strain_18",
+            "name": "Redline",
+            "description": "Hit a single-workout Strain of 18 or higher",
+            "category": "exertion",
+            "icon": "bolt.heart.fill",
+            "xp_reward": 250,
+            "rarity": "epic",
+            "requirement_type": "arise_strain_single",
+            "requirement_value": 18,
+            "sort_order": 86
+        },
+        {
+            "id": "engine_built",
+            "name": "Engine Built",
+            "description": "Drop a lift's cardiac cost 15% over 8 weeks",
+            "category": "exertion",
+            "icon": "heart.circle.fill",
+            "xp_reward": 400,
+            "rarity": "epic",
+            "requirement_type": "cardiac_cost_drop",
+            "requirement_value": 15,
+            "sort_order": 87
         },
     ]
 

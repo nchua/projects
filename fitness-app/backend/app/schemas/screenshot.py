@@ -86,6 +86,32 @@ class ScreenshotProcessResponse(BaseModel):
         from_attributes = True
 
 
+class ActivitySaveRequest(BaseModel):
+    """Save an (optionally user-edited) activity extraction (ARISE v2 §7.3).
+
+    Manual-controls flow: the client processes the screenshot with
+    save_activity=false, lets the user edit duration and avg/max HR, then
+    posts the edited fields here.
+    """
+    activity_type: Optional[str] = Field(None, description="Activity type (e.g., 'TENNIS')")
+    session_date: Optional[str] = Field(None, description="Activity date (YYYY-MM-DD)")
+    time_range: Optional[str] = Field(None, description="Activity time range")
+    duration_minutes: Optional[int] = Field(None, ge=1, le=1440)
+    strain: Optional[float] = Field(None, ge=0, le=21, description="WHOOP strain (never converted)")
+    steps: Optional[int] = Field(None, ge=0)
+    calories: Optional[int] = Field(None, ge=0)
+    avg_hr: Optional[int] = Field(None, ge=20, le=250)
+    max_hr: Optional[int] = Field(None, ge=20, le=250)
+    heart_rate_zones: List[HeartRateZone] = Field(default_factory=list)
+
+
+class ActivitySaveResponse(BaseModel):
+    """Response for POST /screenshot/save-activity."""
+    activity_id: str
+    workout_id: str
+    activity_saved: bool = True
+
+
 class ScreenshotBatchResponse(BaseModel):
     """Response for batch screenshot processing"""
     screenshots_processed: int = Field(..., description="Number of screenshots processed")

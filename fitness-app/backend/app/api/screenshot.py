@@ -26,6 +26,8 @@ logger = logging.getLogger(__name__)
 DAILY_SCREENSHOT_LIMIT = 20
 COOLDOWN_SECONDS = 10
 from app.schemas.screenshot import (
+    ActivitySaveRequest,
+    ActivitySaveResponse,
     ExtractedExercise,
     ExtractedSet,
     HeartRateZone,
@@ -284,6 +286,13 @@ MAX_FILE_SIZE = 10 * 1024 * 1024
 async def process_screenshot(
     file: UploadFile = File(..., description="Workout screenshot image"),
     save_workout: bool = Form(default=False, description="Auto-save as workout"),
+    save_activity: bool = Form(
+        default=True,
+        description=(
+            "Auto-save activity screenshots. Pass false for the ARISE v2 §7.3 "
+            "edit-before-save flow (then POST /screenshot/save-activity)."
+        ),
+    ),
     session_date: Optional[str] = Form(default=None, description="Override session date (YYYY-MM-DD)"),
     include_warmups: bool = Form(default=True, description="Include warmup sets"),
     current_user: User = Depends(get_current_user),
@@ -461,10 +470,12 @@ async def process_screenshot(
             logger.error(f"[SINGLE SAVE ERROR] Traceback:\n{traceback.format_exc()}")
             # Don't fail the whole request - still return extraction data
 
-    # Auto-save WHOOP activity data (also creates a WorkoutSession for calendar)
+    # Auto-save WHOOP activity data (also creates a WorkoutSession for
+    # calendar). Skipped when the client opts into the §7.3 edit-before-save
+    # flow (save_activity=false → user edits → POST /screenshot/save-activity).
     activity_id = None
     activity_saved = False
-    if screenshot_type == "whoop_activity":
+    if screenshot_type == "whoop_activity" and save_activity:
         try:
             activity_id, whoop_workout_id = await save_whoop_activity(
                 db=db,
@@ -781,3 +792,58 @@ async def process_screenshots_batch(
         source=merged.get("source"),
         heart_rate_zones=heart_rate_zones
     )
+
+
+@router.post("/save-activity", response_model=ActivitySaveResponse)
+async def save_activity(
+    payload: ActivitySaveRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Save a (possibly user-edited) activity extraction (ARISE v2 §7.3).
+
+    Second half of the manual-controls flow: the client processes an activity
+    screenshot with save_activity=false, lets the user edit duration and
+    avg/max HR, then posts the edited fields here. Creates the DailyActivity
+    row and a WorkoutSession with hr_source="screenshot".
+    """
+    parsed_date = None
+    if payload.session_date:
+        try:
+            parsed_date = datetime.strptime(payload.session_date, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid session_date format. Use YYYY-MM-DD.",
+            )
+
+    extraction_result = {
+        "activity_type": payload.activity_type,
+        "session_date": payload.session_date,
+        "time_range": payload.time_range,
+        "duration_minutes": payload.duration_minutes,
+        "strain": payload.strain,
+        "steps": payload.steps,
+        "calories": payload.calories,
+        "avg_hr": payload.avg_hr,
+        "max_hr": payload.max_hr,
+        "heart_rate_zones": [zone.model_dump() for zone in payload.heart_rate_zones],
+    }
+
+    try:
+        activity_id, workout_id = await save_whoop_activity(
+            db=db,
+            user_id=current_user.id,
+            extraction_result=extraction_result,
+            activity_date=parsed_date,
+        )
+    except Exception as e:
+        logger.error(f"[SAVE-ACTIVITY ERROR] {e}")
+        logger.error(f"[SAVE-ACTIVITY ERROR] Traceback:\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to save activity",
+        )
+
+    return ActivitySaveResponse(activity_id=activity_id, workout_id=workout_id)

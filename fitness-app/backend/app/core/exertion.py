@@ -63,3 +63,30 @@ def compute_exertion_score(hr_zone_seconds: Optional[Dict[str, int]]) -> Optiona
     if score <= 0:
         return None
     return score
+
+
+def compute_arise_strain(
+    strain: Optional[float],
+    hr_zone_seconds: Optional[Dict[str, int]],
+    hr_source: Optional[str],
+) -> Optional[Dict[str, object]]:
+    """One user-facing Strain, source-badged (ARISE v2 spec §7.1).
+
+    Precedence: WHOOP ``strain`` if non-null (badge "whoop", or "screenshot"
+    when the session was created from an activity screenshot), else the
+    exertion score derived from ``hr_zone_seconds`` with the session's
+    ``hr_source`` as the badge. ``None`` when neither exists — clients render
+    no strain rather than a fake zero. Never converts non-WHOOP effort
+    metrics (§7.3): only the 0-21 WHOOP strain or our own exertion score
+    flow through here.
+    """
+    if strain is not None:
+        source = "screenshot" if hr_source == "screenshot" else "whoop"
+        return {"value": round(float(strain), 1), "source": source}
+
+    exertion = compute_exertion_score(hr_zone_seconds)
+    if exertion is not None:
+        source = hr_source if hr_source in ("apple_watch", "screenshot") else "apple_watch"
+        return {"value": exertion, "source": source}
+
+    return None

@@ -124,6 +124,17 @@ class WorkoutCreate(BaseModel):
         raise ValueError(f"Cannot parse date: {v}")
 
 
+class AriseStrain(BaseModel):
+    """Unified user-facing Strain (ARISE v2 §7.1 / §13.4).
+
+    WHOOP strain if present, else the exertion score, with a provenance
+    badge. Contract-mirror note: canonical shape for the iOS ``AriseStrain``
+    struct in APITypes.swift.
+    """
+    value: float               # 0-21
+    source: str                # whoop | apple_watch | screenshot
+
+
 class WorkoutResponse(BaseModel):
     """Schema for workout information in responses"""
     id: str
@@ -141,7 +152,10 @@ class WorkoutResponse(BaseModel):
     hr_source: Optional[str] = None
     # 0-21 exertion score derived from hr_zone_seconds (Apple-Watch strain proxy).
     # None when no zone data; clients fall back to WHOOP strain.
+    # Kept during the §7.1 migration — iOS reads arise_strain instead.
     exertion_score: Optional[float] = None
+    # Unified Strain (spec §7.1): WHOOP strain else exertion, source-badged.
+    arise_strain: Optional[AriseStrain] = None
     # Activity classification (mirrors WorkoutSummary) so the detail screen can
     # render a cardio session as an activity rather than a 0-set "quest".
     is_activity: bool = False
@@ -253,7 +267,10 @@ class WorkoutSummary(BaseModel):
     # "activity" rendering regardless of data source.
     is_activity: bool = False
     # 0-21 exertion score derived from hr_zone_seconds (Apple-Watch strain proxy).
+    # Kept during the §7.1 migration — iOS reads arise_strain instead.
     exertion_score: Optional[float] = None
+    # Unified Strain (spec §7.1): WHOOP strain else exertion, source-badged.
+    arise_strain: Optional[AriseStrain] = None
     # Wearable HR summary for the History-row provenance badge + biometrics.
     # Optional so rows without a wearable (and legacy data) render unchanged.
     avg_heart_rate: Optional[int] = None

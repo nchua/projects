@@ -16,7 +16,7 @@ from app.core.e1rm import (
     calculate_e1rm_from_rpe,
     get_user_e1rm_formula,
 )
-from app.core.exertion import compute_exertion_score
+from app.core.exertion import compute_arise_strain, compute_exertion_score
 from app.core.utils import to_iso8601_utc
 from app.models.exercise import Exercise
 from app.models.pr import PR, PRType
@@ -659,6 +659,13 @@ async def list_workouts(
             calories=activity["calories"],
             is_activity=activity["is_activity"],
             exertion_score=compute_exertion_score(workout.hr_zone_seconds),
+            # Unified Strain (§7.1): session strain column, else the WHOOP
+            # strain parsed from activity notes, else exertion.
+            arise_strain=compute_arise_strain(
+                workout.strain if workout.strain is not None else activity["strain"],
+                workout.hr_zone_seconds,
+                workout.hr_source,
+            ),
             # Wearable HR provenance (read from session columns; populated by
             # Apple Watch live sessions and the HealthKit/WHOOP import paths).
             avg_heart_rate=workout.avg_heart_rate,
@@ -948,6 +955,13 @@ def _build_workout_response(workout: WorkoutSession) -> WorkoutResponse:
         hr_zone_seconds=workout.hr_zone_seconds,
         hr_source=workout.hr_source,
         exertion_score=compute_exertion_score(workout.hr_zone_seconds),
+        # Unified Strain (§7.1): session strain column, else the WHOOP strain
+        # parsed from activity notes, else exertion.
+        arise_strain=compute_arise_strain(
+            workout.strain if workout.strain is not None else activity["strain"],
+            workout.hr_zone_seconds,
+            workout.hr_source,
+        ),
         is_activity=activity["is_activity"],
         activity_type=activity["activity_type"],
         calories=activity["calories"],
