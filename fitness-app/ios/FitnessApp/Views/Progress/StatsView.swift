@@ -30,10 +30,10 @@ struct StatsView: View {
                             // Header
                             PowerAnalysisHeader()
 
-                            // Tab Selector
+                            // Tab Selector (Exertion inserted second — spec §8.3)
                             HStack(spacing: 8) {
-                                ForEach(["Power", "Vessel", "Records"], id: \.self) { tab in
-                                    let index = ["Power", "Vessel", "Records"].firstIndex(of: tab) ?? 0
+                                ForEach(["Power", "Exertion", "Vessel", "Records"], id: \.self) { tab in
+                                    let index = ["Power", "Exertion", "Vessel", "Records"].firstIndex(of: tab) ?? 0
                                     Button {
                                         withAnimation(.quickSpring) {
                                             selectedTab = index
@@ -65,8 +65,10 @@ struct StatsView: View {
                                 )
                                 PowerProgressView(viewModel: viewModel)
                             case 1:
-                                VesselProgressView(viewModel: viewModel)
+                                ExertionProgressView(exercises: viewModel.exercises)
                             case 2:
+                                VesselProgressView(viewModel: viewModel)
+                            case 3:
                                 RecordsView(viewModel: viewModel)
                             default:
                                 EmptyView()

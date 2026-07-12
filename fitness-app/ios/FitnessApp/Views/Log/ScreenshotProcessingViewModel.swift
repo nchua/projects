@@ -62,6 +62,7 @@ class ScreenshotProcessingViewModel: ObservableObject {
                     activitySaved = data.activitySaved
                     savedActivityId = data.activityId
                     hydrateEditableExercises(from: data.exercises)
+                    hydrateEditableActivityFields()
                 }
             } catch APIError.paymentRequired(_) {
                 self.needsPaywall = true
@@ -96,6 +97,7 @@ class ScreenshotProcessingViewModel: ObservableObject {
                     activitySaved = batch.activitySaved
                     savedActivityId = batch.activityId
                     hydrateEditableExercises(from: batch.exercises)
+                    hydrateEditableActivityFields()
                 }
 
                 processingProgress = "Complete! Processed \(batchData?.screenshotsProcessed ?? 0) screenshots."
@@ -258,6 +260,59 @@ class ScreenshotProcessingViewModel: ObservableObject {
         default:
             return "LOW CONFIDENCE"
         }
+    }
+
+    // MARK: - Activity edit-before-save (ARISE v2 §7.3)
+
+    /// Editable copies of the extracted activity fields (manual-controls
+    /// philosophy: extraction errors are fixed by the user, not debugged).
+    /// Hydrated once per extraction; the single-image path processes with
+    /// save_activity=false so these edits are what actually get saved.
+    @Published var editableDurationText: String = ""
+    @Published var editableAvgHRText: String = ""
+    @Published var editableMaxHRText: String = ""
+    @Published var isSavingActivity = false
+
+    func hydrateEditableActivityFields() {
+        guard isWhoopActivity else { return }
+        let duration = processedData?.durationMinutes ?? batchData?.durationMinutes
+        editableDurationText = duration.map(String.init) ?? ""
+        editableAvgHRText = whoopAvgHR.map(String.init) ?? ""
+        let maxHr = processedData?.maxHr ?? batchData?.maxHr
+        editableMaxHRText = maxHr.map(String.init) ?? ""
+    }
+
+    /// Save the (possibly edited) activity via POST /screenshot/save-activity.
+    func saveActivity() async {
+        guard !activitySaved else { return }
+        isSavingActivity = true
+        error = nil
+
+        let payload = ActivitySaveRequest(
+            activityType: activityType,
+            sessionDate: processedData?.sessionDate ?? batchData?.sessionDate
+                ?? DateFormatter.localDate.string(from: selectedDate),
+            timeRange: whoopTimeRange,
+            durationMinutes: Int(editableDurationText),
+            strain: whoopStrain,
+            steps: whoopSteps,
+            calories: whoopCalories,
+            avgHr: Int(editableAvgHRText),
+            maxHr: Int(editableMaxHRText),
+            heartRateZones: processedData?.heartRateZones ?? batchData?.heartRateZones ?? []
+        )
+
+        do {
+            let response = try await APIClient.shared.saveActivity(payload)
+            activitySaved = response.activitySaved
+            savedActivityId = response.activityId
+            savedWorkoutId = response.workoutId
+            workoutSaved = true
+        } catch {
+            self.error = "Failed to save activity: \(error.localizedDescription)"
+        }
+
+        isSavingActivity = false
     }
 
     // WHOOP/Activity detection

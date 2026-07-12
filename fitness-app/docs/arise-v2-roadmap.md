@@ -54,7 +54,7 @@ Phase 0 shipped in commits `580a5f6..e7eb28e` (2026-07-12), deployed to Railway
 | §10.1 "`POST /sync` = 0 XP (bug)" row | implied open | **Fixed** — `/sync` runs the full XP pipeline, including a retry double-award guard added at the QA gate (`e7eb28e`) |
 | Condition + Directive (§4–§5, §8.1 Status order, §13.1–13.2 mirrors) | Phase 1 | **Done** (2026-07-12, backend `958bc3f` + iOS commit same day; Railway SUCCESS verified; contract-mirror PASS) |
 | PR Gates + notification prompt (§6, §11, §13.3 mirror) | Phase 2 | **Done** (2026-07-12, backend `bf636b1` + iOS commit same day; Railway SUCCESS verified; contract-mirror PASS) |
-| Exertion analytics, new achievements, `arise_strain`, cardio-screenshot upgrade | Phase 3 | **Not started** — mapped in §5 below |
+| Exertion analytics, new achievements, `arise_strain`, cardio-screenshot upgrade (§7, §10.2, §13.4–13.6 mirrors) | Phase 3 | **Done** (2026-07-12, backend `4308b0e` + iOS commit same day; Railway SUCCESS verified; contract-mirror PASS) |
 
 ### 2.2 Deliberately kept groundwork (don't "clean up")
 
@@ -207,6 +207,18 @@ Spec sections: **§6 (Gates), §11 (notifications), §13.3 (contract).** This is
 
 ## 5. Phase 3 session — Exertion analytics + achievements
 
+> **Status: SHIPPED 2026-07-12.** All §7 ship criteria met: 460 backend tests green,
+> ruff clean, sim build green, entitlements lint clean, contract-mirror `/evaluate`
+> PASS (all §13.4–13.6 mirrors + ActivitySave contracts), Railway SUCCESS (`4308b0e`).
+> **Deviations/notes:** (1) The §7.3 edit-before-save flow is implemented as a new
+> `save_activity=false` form flag on /screenshot/process (single-image path) +
+> `POST /screenshot/save-activity` — batch keeps auto-save; old clients keep
+> auto-save via the flag's default. (2) **Post-deploy manual step:** the 8 new
+> achievement defs seed via `POST /progress/seed-achievements` (idempotent,
+> auth-required) — hit it once from the app/curl; no startup auto-seed exists.
+> (3) `condition_peak_7` recomputes historical Condition with current cooldowns
+> (approximation — Condition is never stored). (4) §5.3 decision below: tables kept.
+
 Spec sections: **§7 (strain unification + analytics + cardio screenshots), §10.2
 (achievements), §13.4–13.6 (contracts).** Note: §12's "XP fixes (§3.2)" item is
 already done (see §2.1) — it is **not** part of this phase.
@@ -247,6 +259,11 @@ already done (see §2.1) — it is **not** part of this phase.
 after the Directive is proven. By Phase 3 the Directive will have run for two phases —
 if it's stable, add the drop to this phase's migration; if in doubt, leave them (they
 cost nothing) and note it for the QA pass.
+
+> **Decided 2026-07-12: LEAVE.** All three phases shipped in one session, so the
+> Directive has zero days of real-world use — not "proven" by any reading. The
+> tables cost nothing; drop them in a future session once the Directive has run
+> for a few weeks in prod.
 
 ### 5.4 QA
 

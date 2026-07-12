@@ -100,6 +100,7 @@
 		DDB186D30D008EBB548C39BB /* XPCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4405B03A566EC3D65DA19B00 /* XPCalculator.swift */; };
 		E244350F916D83CE2E3F050A /* PendingWorkoutStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DED7A755B987BE8C2157642E /* PendingWorkoutStoreTests.swift */; };
 		E28470405C3C1AA2581AF940 /* PendingWorkoutStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005EFE9EE54FDC4505E0DD62 /* PendingWorkoutStore.swift */; };
+		ED09CA5AEF747C9593DF5B23 /* ExertionProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3220676DE798E502118BB26 /* ExertionProgressView.swift */; };
 		F170EB4E18FF678BA3F9C6A5 /* DirectiveCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7CB8C5B7475A9F30DA78BD9 /* DirectiveCard.swift */; };
 		F18DBC98943A7BAF48CA853E /* JetBrainsMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 450195A9814F8AAE5DFCB41F /* JetBrainsMono-Regular.ttf */; };
 		F286067EDCBE1B25D7055849 /* ScreenshotPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BED1304102384B66EBFC6063 /* ScreenshotPickerView.swift */; };
@@ -200,6 +201,7 @@
 		BFE7F6DB954159E6CB657F56 /* UsernameSetupSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsernameSetupSheet.swift; sourceTree = "<group>"; };
 		C01FDC4FF961DB921BD73534 /* SyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncCoordinator.swift; sourceTree = "<group>"; };
 		C1501ADA0180F9124FEF3524 /* AriseHRZoneBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AriseHRZoneBar.swift; sourceTree = "<group>"; };
+		C3220676DE798E502118BB26 /* ExertionProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExertionProgressView.swift; sourceTree = "<group>"; };
 		C40D79161E7BF21144DB9619 /* AppleHealthWorkoutSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleHealthWorkoutSettingsView.swift; sourceTree = "<group>"; };
 		C5A97BBD2F0FF0461CBD9001 /* Inter-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Inter-Variable.ttf"; sourceTree = "<group>"; };
 		C68D331EA8FE8B1C6A105FE9 /* StatCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatCard.swift; sourceTree = "<group>"; };
@@ -503,6 +505,7 @@
 		EB3E3142FB1F16CD070C5266 /* Progress */ = {
 			isa = PBXGroup;
 			children = (
+				C3220676DE798E502118BB26 /* ExertionProgressView.swift */,
 				2468C0705007B46592A04385 /* GoalsViewModel.swift */,
 				B9622F7E459A288822E8C353 /* ProgressViewModel.swift */,
 				0ED58B7E30BB84AE9A98C885 /* StatsView.swift */,
@@ -665,6 +668,7 @@
 				872CFD2997DD0AC99DA759F3 /* DirectiveSheet.swift in Sources */,
 				DCC041843FFDACBD6ACCE722 /* EdgeFlowStyles.swift in Sources */,
 				2D5485AA0052928F9070FCF0 /* Exercise.swift in Sources */,
+				ED09CA5AEF747C9593DF5B23 /* ExertionProgressView.swift in Sources */,
 				89134716A036BC7417B1CCD3 /* Extensions.swift in Sources */,
 				C74790B0B116896A339C6481 /* FitnessApp.swift in Sources */,
 				5D5163C8527D1AB4ECA7EDB4 /* FlowLayout.swift in Sources */,

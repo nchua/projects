@@ -16,7 +16,7 @@ struct ScreenshotPreviewView: View {
         if viewModel.workoutSaved || viewModel.activitySaved {
             return "DONE"
         } else if viewModel.isWhoopActivity {
-            return "ACTIVITY LOGGED"
+            return "SAVE ACTIVITY"
         } else {
             return "USE THIS DATA"
         }
@@ -370,6 +370,11 @@ struct ScreenshotPreviewView: View {
             // Exercises list — driven off the EDITABLE copy so user changes show here.
             ScrollView {
                 VStack(spacing: 12) {
+                    // Activity fields — editable before save (ARISE v2 §7.3).
+                    if viewModel.isWhoopActivity && !viewModel.activitySaved {
+                        activityEditCard
+                    }
+
                     ForEach(viewModel.editableExercises) { exercise in
                         EditableExercisePreviewCard(exercise: exercise) {
                             editingExerciseId = exercise.id
@@ -436,10 +441,12 @@ struct ScreenshotPreviewView: View {
                 }
 
                 Button {
-                    if viewModel.workoutSaved || viewModel.activitySaved || viewModel.isWhoopActivity {
-                        // Just close if already saved or WHOOP activity (auto-saved by backend)
+                    if viewModel.workoutSaved || viewModel.activitySaved {
                         isPresented = false
                         viewModel.reset()
+                    } else if viewModel.isWhoopActivity {
+                        // §7.3 edit-before-save: post the (edited) activity.
+                        Task { await viewModel.saveActivity() }
                     } else {
                         let exercises = viewModel.convertToLoggedExercises()
                         onConfirm(exercises)
@@ -448,8 +455,13 @@ struct ScreenshotPreviewView: View {
                     }
                 } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: (viewModel.workoutSaved || viewModel.activitySaved) ? "checkmark" : "checkmark.circle.fill")
-                            .font(.system(size: 16))
+                        if viewModel.isSavingActivity {
+                            SwiftUI.ProgressView()
+                                .tint(.voidBlack)
+                        } else {
+                            Image(systemName: (viewModel.workoutSaved || viewModel.activitySaved) ? "checkmark" : "checkmark.circle.fill")
+                                .font(.system(size: 16))
+                        }
                         Text(buttonText)
                             .font(.ariseHeader(size: 14, weight: .semibold))
                             .tracking(2)
@@ -461,10 +473,74 @@ struct ScreenshotPreviewView: View {
                     .cornerRadius(4)
                     .shadow(color: (viewModel.workoutSaved || viewModel.activitySaved) ? Color.green.opacity(0.3) : .systemPrimaryGlow, radius: 15, x: 0, y: 0)
                 }
-                .disabled(!viewModel.workoutSaved && !viewModel.activitySaved && !viewModel.hasMatchedExercises && !viewModel.isWhoopActivity)
+                .disabled(
+                    viewModel.isSavingActivity
+                        || (!viewModel.workoutSaved && !viewModel.activitySaved
+                            && !viewModel.hasMatchedExercises && !viewModel.isWhoopActivity)
+                )
             }
             .padding()
             .background(Color.voidMedium)
+        }
+    }
+
+    // MARK: - Activity Edit Card (ARISE v2 §7.3 manual controls)
+
+    private var activityEditCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("[ ACTIVITY DATA ]")
+                    .font(.ariseMono(size: 10, weight: .medium))
+                    .foregroundColor(.systemPrimary)
+                    .tracking(2)
+
+                Spacer()
+
+                if let strain = viewModel.whoopStrain {
+                    Text(String(format: "STRAIN %.1f", strain))
+                        .font(.ariseMono(size: 10, weight: .bold))
+                        .foregroundColor(.orange)
+                }
+            }
+
+            Text("Review the extracted values — edit anything the scan got wrong.")
+                .font(.ariseMono(size: 10))
+                .foregroundColor(.textMuted)
+
+            HStack(spacing: 12) {
+                activityField(label: "DURATION (MIN)", text: $viewModel.editableDurationText)
+                activityField(label: "AVG HR", text: $viewModel.editableAvgHRText)
+                activityField(label: "MAX HR", text: $viewModel.editableMaxHRText)
+            }
+        }
+        .padding()
+        .background(Color.voidMedium)
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.ariseBorder, lineWidth: 1)
+        )
+    }
+
+    private func activityField(label: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.ariseMono(size: 8, weight: .semibold))
+                .foregroundColor(.textMuted)
+                .tracking(0.5)
+
+            TextField("—", text: text)
+                .keyboardType(.numberPad)
+                .font(.ariseDisplay(size: 16, weight: .bold))
+                .foregroundColor(.textPrimary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(Color.voidLight)
+                .cornerRadius(6)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.glassBorder, lineWidth: 1)
+                )
         }
     }
 

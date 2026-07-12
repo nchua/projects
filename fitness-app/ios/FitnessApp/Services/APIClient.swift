@@ -282,6 +282,22 @@ class APIClient {
         return try await get("/gates/history?limit=\(limit)")
     }
 
+    // MARK: - Exertion analytics (ARISE v2 §7.2)
+
+    func getExertionWeekly(weeks: Int = 8) async throws -> [ExertionWeekPoint] {
+        return try await get("/analytics/exertion/weekly?weeks=\(weeks)")
+    }
+
+    func getCardiacCost(exerciseId: String, weeks: Int = 12) async throws -> CardiacCostResponse {
+        return try await get("/analytics/exercise/\(exerciseId)/cardiac-cost?weeks=\(weeks)")
+    }
+
+    // MARK: - Activity save (ARISE v2 §7.3 edit-before-save)
+
+    func saveActivity(_ payload: ActivitySaveRequest) async throws -> ActivitySaveResponse {
+        return try await post("/screenshot/save-activity", body: payload)
+    }
+
     func getWeeklyProgressReport(weekStart: String? = nil) async throws -> WeeklyProgressReportResponse {
         let today = DateFormatter.localDate.string(from: Date())
         var path = "/progress/weekly-report?client_date=\(today)"
@@ -552,6 +568,13 @@ class APIClient {
             body.append("Content-Disposition: form-data; name=\"session_date\"\r\n\r\n".data(using: .utf8)!)
             body.append("\(dateString)\r\n".data(using: .utf8)!)
         }
+
+        // Single-image flow uses the ARISE v2 §7.3 edit-before-save path:
+        // activities are NOT auto-saved; the user reviews/edits duration and
+        // avg/max HR, then saveActivity() posts the edited fields.
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"save_activity\"\r\n\r\n".data(using: .utf8)!)
+        body.append("false\r\n".data(using: .utf8)!)
 
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
 

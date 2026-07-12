@@ -41,22 +41,14 @@ struct AriseWorkoutHRSection: View {
                             showGlow: true
                         )
                     }
-                    // Strain originates from WHOOP only; absent on Apple Watch.
-                    if workout.isWhoopActivity, let strain = workout.strain {
+                    // Unified Strain (ARISE v2 §7.1): one metric, source-badged
+                    // upstream in the section header. WHOOP strain wins; else
+                    // the HR-zone exertion proxy; absent without HR data.
+                    if let strain = workout.ariseStrain {
                         StatCard(
                             icon: "bolt.fill",
-                            value: String(format: "%.1f", strain),
+                            value: String(format: "%.1f", strain.value),
                             label: "STRAIN",
-                            useSystemIcon: true,
-                            valueColor: .orange
-                        )
-                    } else if let exertion = workout.exertionScore {
-                        // Apple-Watch sessions carry no strain; show the HR-zone
-                        // exertion proxy in its place.
-                        StatCard(
-                            icon: "bolt.fill",
-                            value: String(format: "%.1f", exertion),
-                            label: "EXERTION",
                             useSystemIcon: true,
                             valueColor: .orange
                         )

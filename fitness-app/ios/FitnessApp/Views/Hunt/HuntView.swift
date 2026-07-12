@@ -578,10 +578,13 @@ struct EdgeFlowWorkoutRow: View {
                             }
                         }
 
-                        if let strain = workout.strain {
-                            Text(String(format: "%.1f strain", strain))
-                                .font(.ariseMono(size: 12))
-                                .foregroundColor(.textSecondary)
+                        if let strain = workout.ariseStrain {
+                            HStack(spacing: 4) {
+                                Text(String(format: "%.1f strain", strain.value))
+                                    .font(.ariseMono(size: 12))
+                                    .foregroundColor(.textSecondary)
+                                AriseSourceBadge(source: strain.source, compact: true)
+                            }
                         }
 
                         if let calories = workout.calories {
@@ -610,14 +613,15 @@ struct EdgeFlowWorkoutRow: View {
                                 .foregroundColor(.textSecondary)
                         }
 
-                        if isWhoopActivity, let strain = workout.strain {
+                        if let strain = workout.ariseStrain {
                             HStack(spacing: 4) {
                                 Image(systemName: "bolt.fill")
                                     .font(.system(size: 10))
                                     .foregroundColor(.orange)
-                                Text(String(format: "%.1f", strain))
+                                Text(String(format: "%.1f", strain.value))
                                     .font(.ariseMono(size: 12))
                                     .foregroundColor(.orange)
+                                AriseSourceBadge(source: strain.source, compact: true)
                             }
                         }
                     }

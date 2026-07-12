@@ -122,10 +122,9 @@ struct QuestSummaryCard: View {
                     if let calories = workout.calories {
                         statCell(value: "\(calories)", label: "CALORIES", color: .textPrimary)
                     }
-                    if let strain = workout.strain {
-                        statCell(value: String(format: "%.1f", strain), label: "STRAIN", color: .gold)
-                    } else if let exertion = workout.exertionScore {
-                        statCell(value: String(format: "%.1f", exertion), label: "EXERTION", color: .gold)
+                    // Unified Strain (ARISE v2 §7.1) — one metric everywhere.
+                    if let strain = workout.ariseStrain {
+                        statCell(value: String(format: "%.1f", strain.value), label: "STRAIN", color: .gold)
                     }
                 } else {
                     statCell(value: "\(workout.exercises.count)", label: "OBJECTIVES", color: .systemPrimary)

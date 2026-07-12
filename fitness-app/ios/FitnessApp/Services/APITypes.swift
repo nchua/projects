@@ -187,6 +187,13 @@ struct SetCreate: Codable {
     }
 }
 
+/// Contract mirror of `app/schemas/workout.py::AriseStrain` (ARISE v2 §7.1):
+/// the one user-facing Strain, source-badged.
+struct AriseStrain: Decodable {
+    let value: Double          // 0-21
+    let source: String         // whoop | apple_watch | screenshot
+}
+
 struct WorkoutSummaryResponse: Decodable, Identifiable {
     let id: String
     let userId: String
@@ -210,6 +217,8 @@ struct WorkoutSummaryResponse: Decodable, Identifiable {
     let isActivity: Bool?
     // 0-21 exertion score derived from HR zones (Apple-Watch strain proxy).
     let exertionScore: Double?
+    // Unified Strain (ARISE v2 §7.1) — iOS renders this everywhere strain shows.
+    let ariseStrain: AriseStrain?
     // Heart rate (additive — Apple Watch / WHOOP). Missing keys decode to nil.
     let avgHeartRate: Int?
     let peakHeartRate: Int?
@@ -230,6 +239,7 @@ struct WorkoutSummaryResponse: Decodable, Identifiable {
         case activityType = "activity_type"
         case isActivity = "is_activity"
         case exertionScore = "exertion_score"
+        case ariseStrain = "arise_strain"
         case avgHeartRate = "avg_heart_rate"
         case peakHeartRate = "peak_heart_rate"
         case hrSource = "hr_source"
@@ -256,6 +266,8 @@ struct WorkoutResponse: Decodable, Identifiable {
     let hrSource: String?
     // 0-21 exertion score derived from HR zones (Apple-Watch strain proxy).
     let exertionScore: Double?
+    // Unified Strain (ARISE v2 §7.1) — iOS renders this everywhere strain shows.
+    let ariseStrain: AriseStrain?
     // Activity classification (mirrors WorkoutSummary) so the detail screen can
     // render a cardio session as an activity instead of a 0-set quest.
     let isActivity: Bool?
@@ -274,6 +286,7 @@ struct WorkoutResponse: Decodable, Identifiable {
         case hrZoneSeconds = "hr_zone_seconds"
         case hrSource = "hr_source"
         case exertionScore = "exertion_score"
+        case ariseStrain = "arise_strain"
         case isActivity = "is_activity"
         case activityType = "activity_type"
     }
@@ -1178,7 +1191,9 @@ struct ExtractedSummary: Decodable {
     }
 }
 
-struct HeartRateZone: Decodable {
+// Codable (not just Decodable): the §7.3 edit-before-save flow re-encodes
+// extracted zones into ActivitySaveRequest.
+struct HeartRateZone: Codable {
     let zone: Int?
     let bpmRange: String?
     let percentage: Double?
@@ -1529,6 +1544,108 @@ struct DirectiveResponse: Decodable, Identifiable {
 /// Contract mirror of `app/schemas/directive.py::DirectiveHistoryResponse`.
 struct DirectiveHistoryResponse: Decodable {
     let directives: [DirectiveResponse]
+}
+
+// MARK: - Exertion analytics (ARISE v2 §7.2)
+
+/// Contract mirror of `app/schemas/exertion.py::ExertionWeekPoint`.
+struct ExertionWeekPoint: Decodable, Identifiable {
+    let weekStart: String              // YYYY-MM-DD (Monday)
+    let strainTotal: Double?           // nil when no strain data that week
+    let strainAvg: Double?
+    let workoutCount: Int
+    let volumeLb: Double
+    let zoneSeconds: [String: Int]     // {z1..z5}, may be empty
+
+    var id: String { weekStart }
+
+    enum CodingKeys: String, CodingKey {
+        case weekStart = "week_start"
+        case strainTotal = "strain_total"
+        case strainAvg = "strain_avg"
+        case workoutCount = "workout_count"
+        case volumeLb = "volume_lb"
+        case zoneSeconds = "zone_seconds"
+    }
+}
+
+/// Contract mirror of `app/schemas/exertion.py::MatchedSet`.
+struct CardiacCostMatchedSet: Decodable {
+    let weight: Double
+    let reps: Int
+}
+
+/// Contract mirror of `app/schemas/exertion.py::CardiacCostPoint`.
+struct CardiacCostPoint: Decodable, Identifiable {
+    let weekStart: String
+    let deltaHrMedian: Double
+    let nSets: Int
+
+    var id: String { weekStart }
+
+    enum CodingKeys: String, CodingKey {
+        case weekStart = "week_start"
+        case deltaHrMedian = "delta_hr_median"
+        case nSets = "n_sets"
+    }
+}
+
+/// Contract mirror of `app/schemas/exertion.py::CardiacCostResponse`.
+struct CardiacCostResponse: Decodable {
+    let exerciseId: String
+    let matchedSet: CardiacCostMatchedSet?
+    let points: [CardiacCostPoint]
+    let percentChange: Double?
+    let trendDirection: String        // improving | regressing | stable | insufficient_data
+    let caveats: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case points, caveats
+        case exerciseId = "exercise_id"
+        case matchedSet = "matched_set"
+        case percentChange = "percent_change"
+        case trendDirection = "trend_direction"
+    }
+}
+
+// MARK: - Activity save (ARISE v2 §7.3 edit-before-save)
+
+/// Contract mirror of `app/schemas/screenshot.py::ActivitySaveRequest`.
+struct ActivitySaveRequest: Encodable {
+    let activityType: String?
+    let sessionDate: String?           // YYYY-MM-DD
+    let timeRange: String?
+    let durationMinutes: Int?
+    let strain: Double?
+    let steps: Int?
+    let calories: Int?
+    let avgHr: Int?
+    let maxHr: Int?
+    let heartRateZones: [HeartRateZone]
+
+    enum CodingKeys: String, CodingKey {
+        case strain, steps, calories
+        case activityType = "activity_type"
+        case sessionDate = "session_date"
+        case timeRange = "time_range"
+        case durationMinutes = "duration_minutes"
+        case avgHr = "avg_hr"
+        case maxHr = "max_hr"
+        case heartRateZones = "heart_rate_zones"
+    }
+}
+
+/// Contract mirror of `app/schemas/screenshot.py::ActivitySaveResponse`.
+struct ActivitySaveResponse: Decodable {
+    let activityId: String
+    let workoutId: String
+    let activitySaved: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case activityId = "activity_id"
+        case workoutId = "workout_id"
+        case activitySaved = "activity_saved"
+    }
 }
 
 // MARK: - PR Gates (ARISE v2 §6)
