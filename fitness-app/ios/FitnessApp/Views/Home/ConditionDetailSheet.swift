@@ -25,6 +25,11 @@ struct ConditionDetailSheet: View {
                         VStack(alignment: .leading, spacing: 12) {
                             AriseSectionHeader(title: "Signal Inputs")
 
+                            Text("Each signal scores 0–100 and blends into Condition by its share. A missing signal hands its share to the rest.")
+                                .font(.ariseMono(size: 10))
+                                .foregroundColor(.textMuted)
+                                .fixedSize(horizontal: false, vertical: true)
+
                             ForEach(condition.inputs) { input in
                                 ConditionInputRow(input: input)
                             }
@@ -188,10 +193,10 @@ struct ConditionDetailSheet: View {
         }
     }
 
-    /// HRV lands on the WHOOP-sourced daily_activity row; fall back to the
-    /// default source if no WHOOP scan exists today.
+    /// HRV lands on a WHOOP-sourced daily_activity row (API sync first, then
+    /// screenshot scans); fall back to Apple Health if neither exists today.
     private func loadHRV() async {
-        for source in ["whoop_screenshot", "apple_fitness"] {
+        for source in ["whoop_api", "whoop_screenshot", "apple_fitness"] {
             if let activity = try? await APIClient.shared.getTodayActivity(source: source),
                let value = activity.hrv {
                 hrv = value
@@ -204,7 +209,8 @@ struct ConditionDetailSheet: View {
 // MARK: - Input Row
 
 /// One Condition input: label + source badge, subscore bar scaled by the
-/// effective (post-renormalization) weight, or the NO SIGNAL state.
+/// effective (post-renormalization) weight, a plain-language readout of the
+/// raw value, or a NO SIGNAL state that says how to feed the input.
 struct ConditionInputRow: View {
     let input: ConditionInput
 
@@ -221,12 +227,12 @@ struct ConditionInputRow: View {
                 Spacer()
 
                 if let subscore = input.subscore {
-                    HStack(spacing: 6) {
+                    HStack(alignment: .firstTextBaseline, spacing: 2) {
                         Text("\(subscore)")
                             .font(.ariseDisplay(size: 15, weight: .bold))
                             .foregroundColor(.textPrimary)
 
-                        Text("w \(Int((input.effectiveWeight * 100).rounded()))%")
+                        Text("/100")
                             .font(.ariseMono(size: 10))
                             .foregroundColor(.textMuted)
                     }
@@ -245,11 +251,28 @@ struct ConditionInputRow: View {
                     }
                 }
                 .frame(height: 4)
+
+                HStack(alignment: .firstTextBaseline) {
+                    if let readout {
+                        Text(readout)
+                            .font(.ariseMono(size: 10))
+                            .foregroundColor(.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 12)
+
+                    Text("\(Int((input.effectiveWeight * 100).rounded()))% OF SCORE")
+                        .font(.ariseMono(size: 10))
+                        .foregroundColor(.textMuted)
+                        .layoutPriority(1)
+                }
             } else {
-                Text("NO SIGNAL — weight redistributed")
+                Text("NO SIGNAL — \(missingHint)")
                     .font(.ariseMono(size: 10))
                     .foregroundColor(.textMuted)
                     .italic()
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(14)
@@ -260,6 +283,49 @@ struct ConditionInputRow: View {
                 .stroke(Color.glassBorder, lineWidth: 1)
         )
         .opacity(input.available ? 1.0 : 0.7)
+    }
+
+    /// Plain-language reading of the raw value. Units differ per input key
+    /// (see backend condition_service): recovery/subscores are 0-100, strain
+    /// is WHOOP's 0-21 scale, sleep is hours, resting HR is bpm.
+    private var readout: String? {
+        switch input.key {
+        case "recovery":
+            guard let raw = input.raw else { return nil }
+            return "WHOOP recovery \(Int(raw))% — overnight readiness"
+        case "cooldowns":
+            return "How recovered your muscle groups are from recent training"
+        case "sleep":
+            guard let raw = input.raw else { return nil }
+            return String(format: "%.1f h slept last night (7.5 h+ scores 100)", raw)
+        case "strain_yesterday":
+            guard let raw = input.raw else { return nil }
+            return String(
+                format: "Yesterday's load %.1f of 21 — a light day (≤10) scores 100; harder days pull Condition down",
+                raw
+            )
+        case "rhr_trend":
+            guard let raw = input.raw else { return nil }
+            return "Resting HR \(Int(raw)) bpm vs your 14-day average — elevated means incomplete recovery"
+        default:
+            return nil
+        }
+    }
+
+    /// Why the signal is missing and how to feed it, per input key.
+    private var missingHint: String {
+        switch input.key {
+        case "recovery":
+            return "no recovery reading today. Connect WHOOP (Hunter › Integrations) or scan a WHOOP screenshot; its share shifts to the other signals"
+        case "sleep":
+            return "no sleep recorded last night. Wear your watch to bed or connect WHOOP"
+        case "strain_yesterday":
+            return "nothing measured yesterday — no WHOOP strain and no watch workout"
+        case "rhr_trend":
+            return "needs today's resting HR plus a 14-day baseline (Apple Health syncs this automatically now)"
+        default:
+            return "weight redistributed"
+        }
     }
 
     private func barColor(for subscore: Int) -> Color {
