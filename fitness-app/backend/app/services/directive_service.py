@@ -303,7 +303,25 @@ def _generate(db: Session, user_id: str, client_date: date,
                             params["workouts_per_week"] = insight.data["workouts_per_week"]
                         break
 
-        # ── Rule 6: open Gate exists — lands with PR Gates in Phase 2 ──
+        # ── Rule 6: open Gate exists ──
+        if directive_type is None:
+            from app.core.utils import ensure_utc
+            from app.services.gate_service import get_live_gates
+            gates = get_live_gates(db, user_id)
+            if gates:
+                gate = gates[0]
+                days_left = max(
+                    0,
+                    (ensure_utc(gate.expires_at) - datetime.now(timezone.utc)).days,
+                )
+                directive_type = DirectiveType.GATE_REMINDER
+                message = f"The Gate waits. {gate.name} closes in {days_left} days."
+                params.update({
+                    "gate_id": gate.id,
+                    "gate_name": gate.name,
+                    "exercise_id": gate.exercise_id,
+                    "days_left": days_left,
+                })
 
         # ── Rule 7: default — maintain the pace ──
         if directive_type is None:
@@ -421,9 +439,15 @@ def check_directive_completion(
                 if s.weight is not None and s.reps is not None
             )
 
+    elif dtype == DirectiveType.GATE_REMINDER.value:
+        # "Gate cleared or attempted" — any set on that lift today (§5.2-6).
+        exercise_id = params.get("exercise_id")
+        if exercise_id:
+            exercise_ids = get_canonical_exercise_ids(db, exercise_id)
+            completed = len(_sets_today(db, user_id, exercise_ids, workout_date)) > 0
+
     # DirectiveType.REST: a workout can never complete it (awarded next-day
     # by _finalize_rest_directive when the user actually rested).
-    # DirectiveType.GATE_REMINDER: completion hooks in with Phase 2 Gates.
 
     if not completed:
         return None

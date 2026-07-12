@@ -27,6 +27,7 @@ from app.models.pr import PR
 from app.models.workout import Set, WeightUnit, WorkoutExercise, WorkoutSession
 from app.services.achievement_service import check_and_unlock_achievements
 from app.services.directive_service import check_directive_completion
+from app.services.gate_service import check_gate_clear
 from app.services.pr_detection import detect_and_create_prs
 from app.services.xp_service import award_xp, calculate_workout_xp, get_or_create_user_progress
 
@@ -858,6 +859,8 @@ async def save_extracted_workout(
             db.flush()
             logger.info(f"[SAVE] Detecting PRs for exercise {exercise_name} with {len(exercise_sets)} sets")
             detect_and_create_prs(db, user_id, workout_exercise, exercise_sets)
+            # Gate clear-detection (ARISE v2 §6.4) rides the same hook.
+            check_gate_clear(db, user_id, workout_exercise, exercise_sets)
 
     logger.info(f"[SAVE] Committing workout session {workout_session.id}")
     try:
@@ -1085,6 +1088,8 @@ async def save_whoop_activity(
             if exercise_sets:
                 db.flush()
                 detect_and_create_prs(db, user_id, workout_exercise, exercise_sets)
+                # Gate clear-detection (ARISE v2 §6.4) rides the same hook.
+                check_gate_clear(db, user_id, workout_exercise, exercise_sets)
 
         # If we saved exercises, award XP and update progress
         if order_index > 0:

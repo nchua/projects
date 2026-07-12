@@ -41,10 +41,12 @@ from app.services import healthkit_service
 from app.services.achievement_service import check_and_unlock_achievements
 from app.services.activity_muscles import get_activity_muscles
 from app.services.directive_service import check_directive_completion
+from app.services.gate_service import check_gate_clear, evaluate_gate_spawns
 from app.services.goal_service import update_goal_progress
 from app.services.heart_rate_service import ingest_heart_rate
 from app.services.notification_service import (
     notify_achievement_unlocked,
+    notify_gate_opened,
     notify_level_up,
     notify_rank_promotion,
 )
@@ -352,6 +354,9 @@ async def _create_workout_impl(
         db.flush()  # Ensure sets have IDs
         detect_and_create_prs(db, current_user.id, workout_exercise, exercise_sets)
 
+        # Gate clear-detection (ARISE v2 §6.4) rides the same hook point.
+        check_gate_clear(db, current_user.id, workout_exercise, exercise_sets)
+
         # Update goal progress with best e1RM from this exercise
         if exercise_sets:
             best_set = max(exercise_sets, key=lambda s: s.e1rm or 0)
@@ -447,8 +452,15 @@ async def _create_workout_impl(
 
     db.commit()
 
+    # Gate spawn rules run on workout create, after PR detection (§6.2).
+    # evaluate_gate_spawns commits internally.
+    newly_spawned_gates = evaluate_gate_spawns(db, current_user.id)
+
     # ── Send push notifications for triggered events ──
     import asyncio
+
+    for gate in newly_spawned_gates:
+        asyncio.ensure_future(notify_gate_opened(db, current_user.id, gate))
 
     # Notify for each unlocked achievement
     for ach in newly_unlocked:

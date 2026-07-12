@@ -233,3 +233,27 @@ async def notify_weekly_report_ready(db: Session, user_id: str) -> bool:
         "Your weekly progress report is ready. Review your performance.",
         data={"type": "weekly_report_ready"},
     )
+
+
+async def notify_gate_opened(db: Session, user_id: str, gate) -> bool:
+    """Notify user a PR Gate has opened (ARISE v2 §11).
+
+    e.g. "A B-Rank Gate has opened: Bench 225×4. 14 days."
+    """
+    days = 14
+    try:
+        from datetime import datetime, timezone
+
+        from app.core.utils import ensure_utc
+        days = max(1, (ensure_utc(gate.expires_at) - datetime.now(timezone.utc)).days)
+    except Exception:
+        pass
+    # gate.name is "B-Rank Gate: Bench 225×4" — reshape for the push line.
+    target = gate.name.split(": ", 1)[-1]
+    return await send_push_notification(
+        db, user_id,
+        NotificationType.GATE_OPENED,
+        "A GATE HAS OPENED",
+        f"A {gate.rank}-Rank Gate has opened: {target}. {days} days.",
+        data={"type": "gate_opened", "gate_id": gate.id},
+    )

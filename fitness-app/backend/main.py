@@ -371,6 +371,7 @@ from app.api import (
     directive,
     exercises,
     friends,
+    gates,
     goals,
     notifications,
     password_reset,
@@ -395,6 +396,7 @@ app.include_router(bodyweight.router, prefix="/bodyweight", tags=["Bodyweight"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 app.include_router(condition.router, prefix="/condition", tags=["Condition"])
 app.include_router(directive.router, prefix="/directive", tags=["Directive"])
+app.include_router(gates.router, prefix="/gates", tags=["Gates"])
 app.include_router(sync.router, prefix="/sync", tags=["Sync"])
 app.include_router(progress.router, prefix="/progress", tags=["Progress"])
 app.include_router(screenshot.router, prefix="/screenshot", tags=["Screenshot"])

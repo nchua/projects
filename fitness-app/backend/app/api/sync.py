@@ -29,6 +29,7 @@ from app.schemas.sync import (
 )
 from app.services.achievement_service import check_and_unlock_achievements
 from app.services.directive_service import check_directive_completion
+from app.services.gate_service import check_gate_clear
 from app.services.pr_detection import detect_and_create_prs
 from app.services.xp_service import award_xp, calculate_workout_xp, get_or_create_user_progress
 
@@ -208,6 +209,9 @@ async def sync_data(
                 # Detect PRs
                 db.flush()
                 detect_and_create_prs(db, current_user.id, workout_exercise, exercise_sets)
+
+                # Gate clear-detection (ARISE v2 §6.4) rides the same hook.
+                check_gate_clear(db, current_user.id, workout_exercise, exercise_sets)
 
             # Award XP for the synced workout, mirroring the POST /workouts
             # pipeline (offline-logged workouts previously earned nothing).

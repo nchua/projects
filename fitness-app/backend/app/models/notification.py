@@ -19,6 +19,7 @@ class NotificationType(str, enum.Enum):
     LEVEL_UP = "level_up"
     RANK_PROMOTION = "rank_promotion"
     WEEKLY_REPORT_READY = "weekly_report_ready"
+    GATE_OPENED = "gate_opened"
     # Local (on-device)
     STREAK_AT_RISK = "streak_at_risk"
 
@@ -31,6 +32,7 @@ SERVER_SENT_TYPES = {
     NotificationType.LEVEL_UP,
     NotificationType.RANK_PROMOTION,
     NotificationType.WEEKLY_REPORT_READY,
+    NotificationType.GATE_OPENED,
 }
 
 LOCAL_TYPES = {

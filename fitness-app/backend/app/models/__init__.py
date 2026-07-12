@@ -6,6 +6,7 @@ from app.models.bodyweight import BodyweightEntry
 from app.models.directive import DirectiveType, UserDirective
 from app.models.exercise import Exercise
 from app.models.friend import FriendRequest, FriendRequestStatus, Friendship
+from app.models.gate import GateRank, GateStatus, PRGate
 from app.models.goal import Goal, GoalProgressSnapshot, GoalStatus
 from app.models.notification import DeviceToken, NotificationPreference, NotificationType
 from app.models.password_reset import PasswordResetToken
@@ -51,6 +52,9 @@ __all__ = [
     "QuestDifficulty",
     "UserDirective",
     "DirectiveType",
+    "PRGate",
+    "GateStatus",
+    "GateRank",
     "DailyActivity",
     "FriendRequest",
     "Friendship",
