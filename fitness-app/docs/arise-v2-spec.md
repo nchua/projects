@@ -606,6 +606,11 @@ ignore-behavior and cheapen `gate_opened`.
 
 ## 12. Build phases (one per future session, roughly)
 
+> **Execution status is tracked in `docs/arise-v2-roadmap.md`** (goals, post-Phase-0
+> reconciliation, per-session execution maps). Where this list and the roadmap disagree
+> — e.g. the §3.2 XP fixes listed under Phase 3 below actually shipped in Phase 0 —
+> the roadmap wins.
+
 - **Phase 0 — Cleanup + restructure.** Everything in §3 (cuts, fixes, renames), tab
   restructure to 4 tabs (§2, §8.4 Hunter tab from ProfileView + FriendsView), design
   consolidation pass (§9). Pure subtraction + reshuffle; no new systems. Ship criteria:
