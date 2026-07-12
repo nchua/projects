@@ -6,6 +6,8 @@ struct StatusView: View {
     @StateObject private var viewModel = StatusViewModel()
     @State private var questWorkoutId: String?  // For presenting a workout detail sheet
     @State private var showWeeklyReport = false
+    @State private var showConditionSheet = false
+    @State private var showDirectiveSheet = false
 
     var body: some View {
         NavigationStack {
@@ -43,33 +45,39 @@ struct StatusView: View {
                         )
                         // No .padding(.horizontal) - full-width gradient header
 
-                        // 2. Dashboard Card (weekly progress + CTA)
+                        // 2. Hunter Condition gauge — the hero (spec §4.4)
+                        ConditionGaugeCard(condition: viewModel.condition) {
+                            if viewModel.condition != nil {
+                                showConditionSheet = true
+                            }
+                        }
+                        .padding(.horizontal, 20)
+
+                        // 3. System Directive (spec §5.4)
+                        if let directive = viewModel.directive {
+                            DirectiveCard(directive: directive) {
+                                showDirectiveSheet = true
+                            }
+                            .padding(.horizontal, 20)
+                        }
+
+                        // 4. Open Gate card slot — lands with PR Gates (Phase 2)
+
+                        // 5. This Week (DashboardCard + Weekly Report link row)
                         DashboardCard(
                             workouts: viewModel.weeklyReview?.totalWorkouts ?? 0,
                             workoutsGoal: viewModel.weeklyStats.workoutsGoal,
                             totalVolume: viewModel.weeklyStats.totalVolume,
                             activeMinutes: viewModel.weeklyStats.activeMinutes,
-                            prsCount: viewModel.recentPRs.count
+                            prsCount: viewModel.recentPRs.count,
+                            weeklyReportStatus: viewModel.weeklyProgressReport != nil
+                                ? viewModel.weeklyReportStatus : nil,
+                            onWeeklyReportTap: { showWeeklyReport = true }
                         )
                         .padding(.horizontal, 20)
 
-                        // 7. Power Levels (consolidated card)
+                        // 6. Power snapshot
                         PowerLevelsCard(lifts: viewModel.bigThreeLifts, selectedTab: $selectedTab)
-
-                        // 7.5. Weekly Report Card
-                        if viewModel.weeklyProgressReport != nil {
-                            WeeklyReportCard(
-                                totalWorkouts: viewModel.weeklyProgressReport?.totalWorkouts ?? 0,
-                                weekDateRange: viewModel.weeklyReportDateRange,
-                                overallStatus: viewModel.weeklyReportStatus,
-                                onTap: { showWeeklyReport = true }
-                            )
-                            .padding(.horizontal, 20)
-                        }
-
-                        // 8. Recovery Status (Edge Flow - horizontal pills)
-                        RecoveryStatusSection(cooldownData: viewModel.cooldownStatus)
-                        // No .padding(.horizontal) - built into section
 
                         // Bottom padding for tab bar
                         Spacer().frame(height: 20)
@@ -90,6 +98,16 @@ struct StatusView: View {
         }
         .sheet(item: $questWorkoutId) { workoutId in
             WorkoutDetailSheet(workoutId: workoutId)
+        }
+        .sheet(isPresented: $showConditionSheet) {
+            if let condition = viewModel.condition {
+                ConditionDetailSheet(condition: condition)
+            }
+        }
+        .sheet(isPresented: $showDirectiveSheet) {
+            if let directive = viewModel.directive {
+                DirectiveSheet(directive: directive)
+            }
         }
     }
 }
@@ -673,72 +691,6 @@ struct WorkoutExerciseCard: View {
             RoundedRectangle(cornerRadius: 4)
                 .stroke(Color.ariseBorder, lineWidth: 1)
         )
-    }
-}
-
-// MARK: - Weekly Report Card
-
-struct WeeklyReportCard: View {
-    let totalWorkouts: Int
-    let weekDateRange: String
-    let overallStatus: String  // "on_track" | "ahead" | "behind"
-    let onTap: () -> Void
-
-    private var statusLabel: String {
-        switch overallStatus {
-        case "ahead": return "AHEAD"
-        case "behind": return "BEHIND"
-        default: return "ON TRACK"
-        }
-    }
-
-    private var statusColor: Color {
-        switch overallStatus {
-        case "ahead": return .gold
-        case "behind": return .warningRed
-        default: return .systemPrimary
-        }
-    }
-
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 14) {
-                // Icon
-                Image(systemName: "chart.line.uptrend.xyaxis")
-                    .font(.system(size: 20))
-                    .foregroundColor(.systemPrimary)
-                    .frame(width: 36, height: 36)
-                    .background(Color.systemPrimary.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Weekly Report")
-                        .font(.ariseHeader(size: 15, weight: .semibold))
-                        .foregroundColor(.textPrimary)
-                    Text(weekDateRange)
-                        .font(.ariseMono(size: 12))
-                        .foregroundColor(.textSecondary)
-                }
-
-                Spacer()
-
-                // Status badge
-                Text(statusLabel)
-                    .font(.ariseMono(size: 10, weight: .bold))
-                    .foregroundColor(statusColor)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(statusColor.opacity(0.15))
-                    .clipShape(Capsule())
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12))
-                    .foregroundColor(.textMuted)
-            }
-            .padding(14)
-            .edgeFlowCard(accent: statusColor)
-        }
-        .buttonStyle(PlainButtonStyle())
     }
 }
 

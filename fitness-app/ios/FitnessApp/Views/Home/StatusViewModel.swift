@@ -21,8 +21,8 @@ class StatusViewModel: ObservableObject {
     @Published var userProgress: UserProgressResponse?
     @Published var recentAchievements: [AchievementResponse] = []
     @Published var profile: ProfileResponse?
-    @Published var cooldownStatus: [MuscleCooldownStatus] = []
-    @Published var cooldownAgeModifier: Double = 1.0
+    @Published var condition: ConditionResponse?
+    @Published var directive: DirectiveResponse?
     @Published var weeklyProgressReport: WeeklyProgressReportResponse?
     @Published var isLoading = false
     @Published var error: String?
@@ -250,11 +250,19 @@ class StatusViewModel: ObservableObject {
 
             group.addTask { @MainActor in
                 do {
-                    let cooldowns = try await APIClient.shared.getCooldownStatus()
-                    self.cooldownStatus = cooldowns.musclesCooling
-                    self.cooldownAgeModifier = cooldowns.ageModifier
+                    // Muscle cooldowns ride along on the Condition payload
+                    // (muscles_cooling pass-through) for the detail sheet.
+                    self.condition = try await APIClient.shared.getCondition()
                 } catch {
-                    self.recordLoadError("recovery", error)
+                    self.recordLoadError("condition", error)
+                }
+            }
+
+            group.addTask { @MainActor in
+                do {
+                    self.directive = try await APIClient.shared.getTodayDirective()
+                } catch {
+                    self.recordLoadError("directive", error)
                 }
             }
 

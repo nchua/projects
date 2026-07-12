@@ -252,6 +252,22 @@ class APIClient {
         return try await get("/analytics/cooldowns")
     }
 
+    // MARK: - Condition & Directive (ARISE v2)
+
+    func getCondition() async throws -> ConditionResponse {
+        let today = DateFormatter.localDate.string(from: Date())
+        return try await get("/condition?client_date=\(today)")
+    }
+
+    func getTodayDirective() async throws -> DirectiveResponse {
+        let today = DateFormatter.localDate.string(from: Date())
+        return try await get("/directive/today?client_date=\(today)")
+    }
+
+    func getDirectiveHistory(limit: Int = 7) async throws -> DirectiveHistoryResponse {
+        return try await get("/directive/history?limit=\(limit)")
+    }
+
     func getWeeklyProgressReport(weekStart: String? = nil) async throws -> WeeklyProgressReportResponse {
         let today = DateFormatter.localDate.string(from: Date())
         var path = "/progress/weekly-report?client_date=\(today)"

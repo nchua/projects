@@ -18,7 +18,6 @@ class NotificationSettingsViewModel: ObservableObject {
         ("achievement_unlocked", "Achievement Unlocked", "trophy.fill"),
         ("level_up", "Level Up", "arrow.up.circle.fill"),
         ("rank_promotion", "Rank Promotion", "shield.lefthalf.filled"),
-        ("quest_completed", "Quest Completed", "checkmark.seal.fill"),
         ("weekly_report_ready", "Weekly Report Ready", "chart.bar.fill"),
         ("streak_at_risk", "Streak at Risk", "flame.fill"),
     ]

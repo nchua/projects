@@ -52,7 +52,8 @@ Phase 0 shipped in commits `580a5f6..e7eb28e` (2026-07-12), deployed to Railway
 | §9 design consolidation (Minimal Void) | Phase 0 | **Done** (Layer 4; `LogView` interior deliberately skipped per §8.2 out-of-scope rule) |
 | §3.2 XP fixes (achievement XP via `award_xp`, `/sync` full XP pipeline, dead `first_workout_today`) | **§12 lists these under Phase 3 — wrong** | **Done in Phase 0 Layer 1** (`580a5f6`). Phase 3 drops this item. |
 | §10.1 "`POST /sync` = 0 XP (bug)" row | implied open | **Fixed** — `/sync` runs the full XP pipeline, including a retry double-award guard added at the QA gate (`e7eb28e`) |
-| Condition, Directive, Gates, Exertion analytics, new achievements, `arise_strain`, cardio-screenshot upgrade, notification prompt | Phases 1–3 | **Not started** — mapped in §3–§5 below |
+| Condition + Directive (§4–§5, §8.1 Status order, §13.1–13.2 mirrors) | Phase 1 | **Done** (2026-07-12, backend `958bc3f` + iOS commit same day; Railway SUCCESS verified; contract-mirror PASS) |
+| Gates, Exertion analytics, new achievements, `arise_strain`, cardio-screenshot upgrade, notification prompt | Phases 2–3 | **Not started** — mapped in §4–§5 below |
 
 ### 2.2 Deliberately kept groundwork (don't "clean up")
 
@@ -61,8 +62,10 @@ Phase 0 shipped in commits `580a5f6..e7eb28e` (2026-07-12), deployed to Railway
   callers today** — reserved for Directive generation (Phase 1). Not dead code.
 - `quest_definitions` / `user_quests` tables were **not dropped** — spec §3.1 says drop
   after the Directive ships and is proven. Decision point recorded for Phase 3 (§5).
-- The `quest_completed` notification enum + iOS "Quest Completed" toggle survive until
-  Phase 1 decides whether the Directive re-emits that type.
+- ~~The `quest_completed` notification enum + iOS "Quest Completed" toggle survive until
+  Phase 1 decides whether the Directive re-emits that type.~~ **Resolved in Phase 1:**
+  cut (`quest_completed` + dead `quest_reset` enum values, the settings row, and the
+  uncalled local-notif schedulers) — spec §11 says no push for the daily Directive.
 
 ### 2.3 Build-on points for the next phases
 
@@ -83,6 +86,13 @@ Phase 0 shipped in commits `580a5f6..e7eb28e` (2026-07-12), deployed to Railway
   over `exerciseColor` (3 call sites; spec §9.4 said retire).
 
 ## 3. Phase 1 session — Condition + Directive
+
+> **Status: SHIPPED 2026-07-12.** All §7 ship criteria met: 418 backend tests green,
+> ruff clean, sim build green, entitlements lint clean, contract-mirror `/evaluate`
+> PASS (no blockers), Railway deploy SUCCESS (`958bc3f`), prod routes verified live.
+> Deviations from the plan below: `FlowLayout` was NOT dead (live in
+> `AriseHRZoneBar` legend) — moved to `Components/FlowLayout.swift` instead of
+> deleted. Directive rule 6 (gate_reminder) is a stub until Phase 2.
 
 Spec sections: **§4 (Condition), §5 (Directive), §8.1 (Status tab), §13.1–13.2
 (contracts).** Fixes both interview pain points.

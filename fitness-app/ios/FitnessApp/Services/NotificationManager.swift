@@ -101,51 +101,6 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         }
     }
 
-    func scheduleQuestResetNotification() {
-        cancelNotification(identifier: "quest_reset")
-
-        let content = UNMutableNotificationContent()
-        content.title = "DAILY QUESTS RESET"
-        content.body = "New daily quests are available. Begin today's training."
-        content.sound = .default
-        content.userInfo = ["type": "quest_reset"]
-
-        // 7 AM daily
-        var dateComponents = DateComponents()
-        dateComponents.hour = 7
-        dateComponents.minute = 0
-
-        let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
-        let request = UNNotificationRequest(identifier: "quest_reset", content: content, trigger: trigger)
-
-        UNUserNotificationCenter.current().add(request) { error in
-            #if DEBUG
-            if let error { print("DEBUG: Failed to schedule quest reset notification: \(error)") }
-            #endif
-        }
-    }
-
-    func sendQuestCompletedNotification(questName: String, xpReward: Int) {
-        let content = UNMutableNotificationContent()
-        content.title = "QUEST COMPLETED"
-        content.body = "\(questName) — +\(xpReward) XP earned."
-        content.sound = .default
-        content.userInfo = ["type": "quest_completed"]
-
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
-        let request = UNNotificationRequest(
-            identifier: "quest_completed_\(UUID().uuidString)",
-            content: content,
-            trigger: trigger
-        )
-
-        UNUserNotificationCenter.current().add(request) { error in
-            #if DEBUG
-            if let error { print("DEBUG: Failed to send quest completed notification: \(error)") }
-            #endif
-        }
-    }
-
     // MARK: - Cancel Helpers
 
     func cancelNotification(identifier: String) {

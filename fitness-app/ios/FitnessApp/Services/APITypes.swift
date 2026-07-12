@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // MARK: - Auth
 
@@ -1398,6 +1399,136 @@ struct CooldownResponse: Decodable {
         case generatedAt = "generated_at"
         case ageModifier = "age_modifier"
     }
+}
+
+// MARK: - Hunter Condition (ARISE v2 §4)
+
+/// Contract mirror of backend `app/schemas/condition.py::ConditionBand` values.
+enum ConditionBand: String, Decodable {
+    case peak
+    case battleReady = "battle_ready"
+    case strained
+    case critical
+
+    var label: String {
+        switch self {
+        case .peak: return "PEAK"
+        case .battleReady: return "BATTLE READY"
+        case .strained: return "STRAINED"
+        case .critical: return "CRITICAL"
+        }
+    }
+
+    var copy: String {
+        switch self {
+        case .peak: return "The System favors you."
+        case .battleReady: return "Cleared for battle."
+        case .strained: return "Fight carefully."
+        case .critical: return "REST DECREED."
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .peak: return .systemPrimary
+        case .battleReady: return .successGreen
+        case .strained: return .gold
+        case .critical: return .warningRed
+        }
+    }
+}
+
+/// Contract mirror of `app/schemas/condition.py::ConditionInput`.
+struct ConditionInput: Decodable, Identifiable {
+    let key: String            // recovery | cooldowns | sleep | strain_yesterday | rhr_trend
+    let label: String
+    let raw: Double?
+    let subscore: Int?         // nil when unavailable
+    let weight: Double
+    let effectiveWeight: Double  // post-renormalization; 0 when unavailable
+    let available: Bool
+    let source: String?        // whoop | apple_watch | app
+
+    var id: String { key }
+
+    enum CodingKeys: String, CodingKey {
+        case key, label, raw, subscore, weight, available, source
+        case effectiveWeight = "effective_weight"
+    }
+}
+
+/// Contract mirror of `app/schemas/condition.py::ConditionResponse`.
+struct ConditionResponse: Decodable {
+    let score: Int             // 0-100
+    let band: ConditionBand
+    let generatedAt: String
+    let inputs: [ConditionInput]
+    let musclesCooling: [MuscleCooldownStatus]
+
+    enum CodingKeys: String, CodingKey {
+        case score, band, inputs
+        case generatedAt = "generated_at"
+        case musclesCooling = "muscles_cooling"
+    }
+}
+
+// MARK: - System Directive (ARISE v2 §5)
+
+/// Heterogeneous JSON value for the directive's type-specific `params`
+/// (lift, muscle, delta_pct, target_sets, ...).
+enum DirectiveParamValue: Decodable {
+    case bool(Bool)
+    case int(Int)
+    case double(Double)
+    case string(String)
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let value = try? container.decode(Bool.self) {
+            self = .bool(value)
+        } else if let value = try? container.decode(Int.self) {
+            self = .int(value)
+        } else if let value = try? container.decode(Double.self) {
+            self = .double(value)
+        } else {
+            self = .string(try container.decode(String.self))
+        }
+    }
+
+    var displayString: String {
+        switch self {
+        case .bool(let value): return value ? "YES" : "NO"
+        case .int(let value): return "\(value)"
+        case .double(let value): return String(format: "%.1f", value)
+        case .string(let value): return value
+        }
+    }
+}
+
+/// Contract mirror of `app/schemas/directive.py::DirectiveResponse`.
+struct DirectiveResponse: Decodable, Identifiable {
+    let id: String
+    let date: String           // YYYY-MM-DD (user-local day)
+    let directiveType: String  // rest | streak_save | reclaim_volume | break_plateau
+    //                            | frequency | gate_reminder | maintain
+    let message: String
+    let params: [String: DirectiveParamValue]?
+    let xpReward: Int
+    let isCompleted: Bool
+    let completedAt: String?   // ISO8601
+
+    enum CodingKeys: String, CodingKey {
+        case id, date, message, params
+        case directiveType = "directive_type"
+        case xpReward = "xp_reward"
+        case isCompleted = "is_completed"
+        case completedAt = "completed_at"
+    }
+}
+
+/// Contract mirror of `app/schemas/directive.py::DirectiveHistoryResponse`.
+struct DirectiveHistoryResponse: Decodable {
+    let directives: [DirectiveResponse]
 }
 
 // MARK: - Friends

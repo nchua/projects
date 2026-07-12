@@ -1,12 +1,17 @@
 import SwiftUI
 
-/// Dashboard card shown on Home tab — weekly progress + Start Workout CTA
+/// "This Week" card on the Status tab — weekly progress, BEGIN HUNT + SCAN
+/// CTAs, and the Weekly Report link row (absorbed from the old
+/// WeeklyReportCard per ARISE v2 spec §8.1-5).
 struct DashboardCard: View {
     let workouts: Int
     let workoutsGoal: Int
     let totalVolume: Double
     let activeMinutes: Int
     let prsCount: Int
+    /// "on_track" | "ahead" | "behind" — nil hides the Weekly Report row.
+    var weeklyReportStatus: String? = nil
+    var onWeeklyReportTap: (() -> Void)? = nil
 
     private var progressPercent: Int {
         guard workoutsGoal > 0 else { return 0 }
@@ -30,8 +35,13 @@ struct DashboardCard: View {
                 activeState
             }
 
-            // Full-width Start Workout CTA
+            // Full-width BEGIN HUNT CTA
             ctaRow
+
+            // Weekly Report link row (absorbed WeeklyReportCard)
+            if weeklyReportStatus != nil {
+                weeklyReportRow
+            }
         }
         .padding(20)
         .background(Color.voidMedium)
@@ -131,13 +141,14 @@ struct DashboardCard: View {
 
     private var ctaRow: some View {
         HStack(spacing: 10) {
-            // Start Workout — primary CTA
+            // BEGIN HUNT — primary CTA
             NavigationLink(destination: LogView()) {
                 HStack(spacing: 8) {
                     Image(systemName: "bolt.fill")
                         .font(.system(size: 14))
-                    Text("Start Workout")
+                    Text("BEGIN HUNT")
                         .font(.ariseHeader(size: 15, weight: .semibold))
+                        .tracking(1)
                 }
                 .foregroundColor(.black)
                 .frame(maxWidth: .infinity)
@@ -153,20 +164,76 @@ struct DashboardCard: View {
                 .shadow(color: Color.systemPrimary.opacity(0.3), radius: 8, x: 0, y: 4)
             }
 
-            // Scan — secondary icon
+            // SCAN — secondary
             NavigationLink(destination: LogView()) {
-                Image(systemName: "camera.viewfinder")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(.systemPrimary)
-                    .frame(width: 48, height: 48)
-                    .background(Color.voidLight)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(Color.glassBorder, lineWidth: 1)
-                    )
+                HStack(spacing: 6) {
+                    Image(systemName: "camera.viewfinder")
+                        .font(.system(size: 15, weight: .medium))
+                    Text("SCAN")
+                        .font(.ariseMono(size: 12, weight: .semibold))
+                        .tracking(1)
+                }
+                .foregroundColor(.systemPrimary)
+                .padding(.horizontal, 16)
+                .frame(height: 48)
+                .background(Color.voidLight)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.glassBorder, lineWidth: 1)
+                )
             }
         }
+    }
+
+    // MARK: - Weekly Report Row
+
+    private var statusLabel: String {
+        switch weeklyReportStatus {
+        case "ahead": return "AHEAD"
+        case "behind": return "BEHIND"
+        default: return "ON TRACK"
+        }
+    }
+
+    private var statusColor: Color {
+        switch weeklyReportStatus {
+        case "ahead": return .gold
+        case "behind": return .warningRed
+        default: return .systemPrimary
+        }
+    }
+
+    private var weeklyReportRow: some View {
+        Button {
+            onWeeklyReportTap?()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "chart.line.uptrend.xyaxis")
+                    .font(.system(size: 13))
+                    .foregroundColor(.systemPrimary)
+
+                Text("Weekly Report")
+                    .font(.ariseMono(size: 12, weight: .medium))
+                    .foregroundColor(.textSecondary)
+
+                Spacer()
+
+                Text(statusLabel)
+                    .font(.ariseMono(size: 9, weight: .bold))
+                    .foregroundColor(statusColor)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(statusColor.opacity(0.15))
+                    .clipShape(Capsule())
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11))
+                    .foregroundColor(.textMuted)
+            }
+            .padding(.top, 2)
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
