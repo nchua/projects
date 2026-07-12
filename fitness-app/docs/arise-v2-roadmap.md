@@ -30,9 +30,12 @@ Recorded so future sessions know *why* the order is what it is.
   Phase 2 (PR Gates) → Phase 3 (Exertion analytics + achievements). Phase 1 first
   because it fixes both pain points directly and Gates depend on Condition (spawn rule
   requires Condition ≥ 65, spec §6.2).
-- **Cadence: one phase per build session**, like Phase 0. Each session ends with the
-  ship criteria in §7 of this doc.
-- **After Phase 3: a QA/polish pass session** (§6 below) before calling v2 done.
+- **Cadence (revised 2026-07-12): the whole remaining build in one session** — Phases
+  1 → 2 → 3 → QA pass, sequentially. The original one-phase-per-session plan was
+  superseded by user decision the same day the roadmap was written. Per-phase ship
+  criteria (§7) still gate each phase: commit + push + verified Railway deploy before
+  moving to the next.
+- **After Phase 3: the QA/polish pass** (§6 below) before calling v2 done.
 
 ## 2. Current state — post-Phase-0 reconciliation
 
@@ -246,7 +249,7 @@ Contract-mirror rule triggers for §13.4–13.6 (`AriseStrain`, `ExertionWeekPoi
 
 ## 7. Per-phase ship criteria (mirrors Phase 0)
 
-Every build session ends with all of:
+Every phase ends with all of (even when phases run back-to-back in one session):
 
 1. Backend: `pytest` green (`venv/bin/python -m pytest tests/ -n auto -q`), `ruff
    check .` clean (CI runs it; local pytest alone misses it).
