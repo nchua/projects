@@ -14,7 +14,7 @@ lift clears it, awards XP immediately (no claim step).
 Expiry: window passed → quiet row move to history. No penalty, no nag.
 """
 import statistics
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy.orm import Session
@@ -215,11 +215,15 @@ def _candidate_lifts(db: Session, user_id: str) -> List[Dict[str, Any]]:
     return [g for g in groups.values() if g["baseline"] > 0]
 
 
-def evaluate_gate_spawns(db: Session, user_id: str) -> List[PRGate]:
+def evaluate_gate_spawns(
+    db: Session, user_id: str, client_date: Optional[date] = None
+) -> List[PRGate]:
     """Run the §6.2 spawn rules; returns newly spawned gates (committed).
 
     Also expires overdue gates first, so a single GET /gates keeps the whole
-    lifecycle current.
+    lifecycle current. ``client_date`` pins the Condition gate (rule 3) to the
+    user's local day — without it an evening evaluation reads a mostly-empty
+    UTC "today" (v2.1, QA W2).
     """
     expire_stale_gates(db, user_id)
 
@@ -239,7 +243,7 @@ def evaluate_gate_spawns(db: Session, user_id: str) -> List[PRGate]:
     # Condition gate (rule 3): today's Condition must be BATTLE READY+.
     profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
     user_age = profile.age if profile else None
-    condition = compute_condition(db, user_id, user_age=user_age)
+    condition = compute_condition(db, user_id, client_date, user_age=user_age)
     if condition["score"] < CONDITION_BATTLE_READY_MIN:
         db.commit()
         return []

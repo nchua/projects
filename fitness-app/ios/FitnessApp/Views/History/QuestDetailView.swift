@@ -12,9 +12,23 @@ import SwiftUI
 
 // MARK: - Quest Detail
 
-struct QuestDetailView: View {
+/// Shared surface for a workout-detail loader. HuntViewModel and
+/// HistoryViewModel both provide these members, so the Hunt Log and Power
+/// tabs share this one detail view instead of drifting near-copies
+/// (v2.1 — the old HuntDetailView duplicate lacked the HR section and the
+/// cardio-activity objectives suppression).
+protocol WorkoutDetailProviding: ObservableObject {
+    var isLoadingDetail: Bool { get }
+    var selectedWorkout: WorkoutResponse? { get }
+    func loadWorkoutDetail(id: String) async
+}
+
+extension HistoryViewModel: WorkoutDetailProviding {}
+extension HuntViewModel: WorkoutDetailProviding {}
+
+struct QuestDetailView<ViewModel: WorkoutDetailProviding>: View {
     let workoutId: String
-    @ObservedObject var viewModel: HistoryViewModel
+    @ObservedObject var viewModel: ViewModel
 
     var body: some View {
         ZStack {

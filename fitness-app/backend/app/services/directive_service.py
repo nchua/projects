@@ -40,6 +40,9 @@ RECLAIM_VOLUME_THRESHOLD = 0.85
 # Rule 7 (v2.1): rolling-7-day big-three tonnage below this fraction of the
 # 4-week mean triggers the per-lift prescription.
 LIFT_LAG_THRESHOLD = 0.85
+# Rule 1 settlement (v2.1, QA W3): how far back an unsettled rest directive
+# can still be awarded on next generation.
+REST_AWARD_LOOKBACK_DAYS = 7
 
 
 def _week_windows(client_date: date) -> List[tuple]:
@@ -224,21 +227,27 @@ def _workouts_this_week(db: Session, user_id: str, client_date: date) -> int:
 
 
 def _finalize_rest_directive(db: Session, user_id: str, client_date: date) -> None:
-    """Award yesterday's rest directive if the user actually rested (§5.2-1)."""
-    yesterday = client_date - timedelta(days=1)
+    """Settle the most recent unsettled rest directive (§5.2-1).
+
+    v2.1 (QA W3): a skipped generation day no longer forfeits the award — any
+    unsettled rest directive from the last ``REST_AWARD_LOOKBACK_DAYS`` days is
+    settled on the next generation, judged against workouts on its own day.
+    """
     directive = (
         db.query(UserDirective)
         .filter(
             UserDirective.user_id == user_id,
-            UserDirective.date == yesterday,
+            UserDirective.date < client_date,
+            UserDirective.date >= client_date - timedelta(days=REST_AWARD_LOOKBACK_DAYS),
             UserDirective.directive_type == DirectiveType.REST.value,
             UserDirective.is_completed.is_(False),
         )
+        .order_by(UserDirective.date.desc())
         .first()
     )
     if directive is None:
         return
-    stats = calculate_todays_workout_stats(db, user_id, yesterday)
+    stats = calculate_todays_workout_stats(db, user_id, directive.date)
     if stats["workout_count"] == 0:
         directive.is_completed = True
         directive.completed_at = datetime.now(timezone.utc)

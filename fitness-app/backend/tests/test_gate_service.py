@@ -298,6 +298,29 @@ def test_get_gates_empty_for_new_user(client, db, auth_headers, unique_email):
     assert resp.json() == []
 
 
+def test_get_gates_passes_client_date_to_spawn_rules(
+    client, auth_headers, unique_email, monkeypatch
+):
+    """v2.1 (QA W2): GET /gates forwards the client's local day to the spawn rules."""
+    captured = {}
+
+    def fake_eval(db, user_id, client_date=None):
+        captured["client_date"] = client_date
+        return []
+
+    monkeypatch.setattr("app.api.gates.evaluate_gate_spawns", fake_eval)
+    headers, _ = auth_headers(email=unique_email("gate"))
+
+    resp = client.get("/gates?client_date=2026-07-10", headers=headers)
+    assert resp.status_code == 200
+    assert captured["client_date"] == date(2026, 7, 10)
+
+    # Malformed dates fall back to the server day (logged, not fatal).
+    resp = client.get("/gates?client_date=not-a-date", headers=headers)
+    assert resp.status_code == 200
+    assert captured["client_date"] is None
+
+
 def test_get_gates_spawns_and_returns_contract_shape(
     client, db, auth_headers, unique_email, monkeypatch
 ):

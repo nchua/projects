@@ -1,6 +1,7 @@
 """
 System Directive API endpoints (ARISE v2 spec §5.3).
 """
+import logging
 from datetime import date
 from typing import Optional
 
@@ -17,6 +18,8 @@ from app.services.directive_service import (
     get_directive_history,
     get_or_generate_directive,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -54,7 +57,10 @@ async def get_today_directive(
         try:
             parsed_date = date.fromisoformat(client_date)
         except ValueError:
-            pass
+            logger.warning(
+                "Malformed client_date %r on GET /directive/today — using the server day",
+                client_date,
+            )
 
     profile = db.query(UserProfile).filter(
         UserProfile.user_id == current_user.id

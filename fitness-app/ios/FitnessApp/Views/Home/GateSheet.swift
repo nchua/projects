@@ -77,8 +77,8 @@ struct GateSheet: View {
                                 divider
                                 whyRow(
                                     "CONDITION AT SPAWN",
-                                    "\(gate.conditionAtSpawn) — BATTLE READY",
-                                    valueColor: .successGreen
+                                    "\(gate.conditionAtSpawn) — \(ConditionBand(score: gate.conditionAtSpawn).label)",
+                                    valueColor: ConditionBand(score: gate.conditionAtSpawn).color
                                 )
                             }
                             .background(Color.voidMedium)

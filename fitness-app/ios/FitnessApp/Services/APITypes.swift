@@ -1445,6 +1445,18 @@ enum ConditionBand: String, Decodable {
     case strained
     case critical
 
+    /// Mirrors backend `condition_service.band_for_score` (§4.2 thresholds:
+    /// peak ≥85, battle ready ≥65, strained ≥40) for scores that arrive
+    /// without a band, e.g. `GateResponse.conditionAtSpawn`.
+    init(score: Int) {
+        switch score {
+        case 85...: self = .peak
+        case 65..<85: self = .battleReady
+        case 40..<65: self = .strained
+        default: self = .critical
+        }
+    }
+
     var label: String {
         switch self {
         case .peak: return "PEAK"

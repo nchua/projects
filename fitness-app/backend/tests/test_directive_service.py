@@ -327,6 +327,28 @@ def test_rest_directive_awarded_next_day_when_rested(db, create_test_user, monke
     assert progress.total_xp == xp_before + 40
 
 
+def test_rest_directive_awarded_after_skipped_day(db, create_test_user, monkeypatch):
+    """v2.1 (QA W3): a skipped generation day no longer forfeits the rest award."""
+    user = _mk_user(create_test_user)
+    _patch_condition(monkeypatch, 80)
+    today = date.today()
+    # Rest decreed 3 days ago; nothing generated since (generation days skipped).
+    _mk_directive(db, user.id, today - timedelta(days=3), DirectiveType.REST)
+
+    progress = get_or_create_user_progress(db, user.id)
+    xp_before = progress.total_xp
+
+    get_or_generate_directive(db, user.id, today)
+
+    rest_row = db.query(UserDirective).filter(
+        UserDirective.user_id == user.id,
+        UserDirective.date == today - timedelta(days=3),
+    ).one()
+    assert rest_row.is_completed is True
+    db.refresh(progress)
+    assert progress.total_xp == xp_before + 40
+
+
 def test_rest_directive_failed_when_workout_logged(db, create_test_user, monkeypatch):
     user = _mk_user(create_test_user)
     _patch_condition(monkeypatch, 80)

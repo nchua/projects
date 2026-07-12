@@ -131,7 +131,7 @@ struct HuntView: View {
                             VStack(spacing: 10) {
                                 ForEach(Array(viewModel.displayedWorkouts.enumerated()), id: \.element.id) { index, workout in
                                     NavigationLink {
-                                        HuntDetailView(
+                                        QuestDetailView(
                                             workoutId: workout.id,
                                             viewModel: viewModel
                                         )
@@ -705,60 +705,6 @@ struct EmptyHuntsCard: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)
         .edgeFlowCard(accent: .systemPrimary)
-    }
-}
-
-// MARK: - Hunt Detail View (wraps existing)
-
-struct HuntDetailView: View {
-    let workoutId: String
-    @ObservedObject var viewModel: HuntViewModel
-
-    var body: some View {
-        ZStack {
-            VoidBackground(glowIntensity: 0.03)
-
-            if viewModel.isLoadingDetail {
-                ProgressView()
-                    .tint(.systemPrimary)
-            } else if let workout = viewModel.selectedWorkout {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        QuestSummaryCard(workout: workout)
-                            .padding(.horizontal)
-                            .fadeIn(delay: 0)
-
-                        AriseSectionHeader(title: "Completed Objectives")
-                            .padding(.horizontal)
-                            .fadeIn(delay: 0.1)
-
-                        ForEach(Array(workout.exercises.enumerated()), id: \.element.id) { index, exercise in
-                            ObjectiveDetailCard(exercise: exercise)
-                                .padding(.horizontal)
-                                .fadeIn(delay: 0.15 + Double(index) * 0.05)
-                        }
-                    }
-                    .padding(.vertical)
-                }
-            } else {
-                VStack(spacing: 12) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 32))
-                        .foregroundColor(.warningRed)
-
-                    Text("Hunt data not found")
-                        .font(.ariseMono(size: 14))
-                        .foregroundColor(.textSecondary)
-                }
-            }
-        }
-        .navigationTitle("Hunt Details")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.voidDark, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
-        .task {
-            await viewModel.loadWorkoutDetail(id: workoutId)
-        }
     }
 }
 

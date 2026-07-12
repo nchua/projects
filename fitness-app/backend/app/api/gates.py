@@ -6,8 +6,9 @@ doubles as the lazy stand-in for the spec's nightly job: it expires overdue
 gates and evaluates spawn rules before answering.
 """
 import asyncio
-from datetime import datetime, timezone
-from typing import List
+import logging
+from datetime import date, datetime, timezone
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -25,6 +26,8 @@ from app.services.gate_service import (
     get_live_gates,
 )
 from app.services.notification_service import notify_gate_opened
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -56,6 +59,13 @@ def _to_response(db: Session, gate: PRGate) -> GateResponse:
 
 @router.get("", response_model=List[GateResponse])
 async def list_gates(
+    client_date: Optional[str] = Query(
+        None,
+        description=(
+            "Client's local date (YYYY-MM-DD) so the spawn rules read Condition "
+            "for the user's day, not the server's UTC day (v2.1, QA W2)"
+        ),
+    ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -64,7 +74,17 @@ async def list_gates(
     (the lazy nightly-job stand-in), so the Status tab always sees a current
     lifecycle.
     """
-    newly_spawned = evaluate_gate_spawns(db, current_user.id)
+    parsed_date: Optional[date] = None
+    if client_date:
+        try:
+            parsed_date = date.fromisoformat(client_date)
+        except ValueError:
+            logger.warning(
+                "Malformed client_date %r on GET /gates — using the server day",
+                client_date,
+            )
+
+    newly_spawned = evaluate_gate_spawns(db, current_user.id, client_date=parsed_date)
     for gate in newly_spawned:
         asyncio.ensure_future(notify_gate_opened(db, current_user.id, gate))
 

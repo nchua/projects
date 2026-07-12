@@ -362,11 +362,27 @@ Every phase ends with all of (even when phases run back-to-back in one session):
 
 ## 9. v2.1 — retro-driven scope (interview 2026-07-12)
 
-> **Status: IN PROGRESS.** Scoped the same day v2 shipped, from a structured
-> retro interview. Chunk order = user's stated priority. Each chunk ships with
-> the full §7 gates (pytest/ruff, xcodegen + sim build, entitlements lint,
-> contract-mirror /evaluate where §13 mirrors change, pathspec commit, Railway
-> SUCCESS verification for backend chunks).
+> **Status: SHIPPED 2026-07-12** (same day as v2, all five chunks). Every
+> chunk passed the full §7 gates (474 backend tests, ruff clean, sim build
+> green, entitlements lint, contract-mirror PASS on the WHOOP and Directive
+> contracts, pathspec commits, Railway SUCCESS verified via /deploy-watch).
+> Chunks: 1 = `92a9d5f` (HealthKit RHR/HRV/sleep), 2 = `029dce0` (WHOOP v2
+> migration + recovery sync + live connect row), 3 = `d899d12` (Condition
+> explainability), 4 = `39d1813` (LIFT_LAG prescription), 5 = cleanup (this
+> commit).
+>
+> **Post-ship user steps:** rebuild in Xcode; grant the new Apple Health
+> sleep permission on next app open; tap Hunter › Integrations › WHOOP →
+> CONNECT (credentials were set on Railway 2026-07-12, deploys verified).
+>
+> **Known deferrals from v2.1 verification (recorded, not bugs to rediscover):**
+> - `WhoopStatusResponse` deliberately doesn't mirror `whoop_user_id` /
+>   `scope` / `expires_at` / `last_synced_at` (unused by UI today).
+> - GATE_REMINDER's `gate_id`/`gate_name`/`days_left` params aren't rendered
+>   in the Directive why-sheet (pre-existing).
+> - Retro-synced workout still can't revoke an already-awarded rest directive
+>   (v2 QA Info item, unchanged).
+> - W1 (lazy achievement-check perf) untouched — still fine for a solo user.
 
 ### 9.1 Interview record (why this scope)
 

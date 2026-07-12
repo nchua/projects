@@ -271,7 +271,11 @@ class APIClient {
     // MARK: - PR Gates (ARISE v2)
 
     func getGates() async throws -> [GateResponse] {
-        return try await get("/gates")
+        // client_date pins the spawn rules' Condition check to the user's
+        // local day (v2.1, QA W2) — same convention as /condition and
+        // /directive/today.
+        let today = DateFormatter.localDate.string(from: Date())
+        return try await get("/gates?client_date=\(today)")
     }
 
     func acceptGate(id: String) async throws -> GateResponse {
