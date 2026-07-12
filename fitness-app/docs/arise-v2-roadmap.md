@@ -272,6 +272,42 @@ Contract-mirror rule triggers for §13.4–13.6 (`AriseStrain`, `ExertionWeekPoi
 
 ## 6. QA/polish pass session (after Phase 3)
 
+> **Status: DONE 2026-07-12.** Independent full-app `/evaluate` (defect-first,
+> separate agent): **B+ (7.95), PASS WITH WARNINGS** — 0 Critical, 2 Error,
+> 10 Warning, 9 Info. Contract mirrors re-verified clean (all §13.1–13.6 +
+> §13.7 spot-checks). **Fixed in the QA pass:** both Errors (pure-cardio
+> screenshot saves now run directive completion; `_directive_streak` tolerates
+> client/server day drift), plus W4 (Gate Opened notification toggle row),
+> W6 (achievement check moved after HR ingest + directive completion),
+> W7 (out-of-scale non-WHOOP strain dropped before any persistence),
+> W9 (`app` source badge case), W10 (`int(zone)` guard in zone parsing).
+> Also fixed the **pre-existing red CI** (failing since before this session):
+> stale `scripts/backfill_goal_progress.py` import of the Phase-0-deleted
+> `app.models.mission` + import-sort error only newest ruff flags — file fixed
+> (imports now from `app.models.goal`) and ruff pinned to 0.15.18 so CI and
+> local agree. 3 regression tests added (463 total).
+>
+> **Deferred (known, recorded — not bugs to rediscover):**
+> - W1: lazy achievement checks (`condition_peak_streak` = 7× cooldown calc,
+>   `cardiac_cost_drop` = per-lift scan) run on every ingest until unlocked —
+>   acceptable for a solo user; revisit if ingest latency grows.
+> - W2: gate-spawn Condition + `_condition_peak_streak` use the server's UTC
+>   day (no client_date on GET /gates) — evening spawns read a mostly-empty
+>   "today"; renormalization degrades gracefully. Fix = optional client_date
+>   param on GET /gates.
+> - W3: rest-directive award requires generation exactly next day (spec-faithful
+>   "next morning"; a skipped day forfeits the 40 XP).
+> - W5/W8: gate clears are not surfaced in the workout-create response and the
+>   §6.4 celebration overlay is unimplemented — the clear shows via Hunt Log
+>   sigil + XP totals. Needs a contract addition; schedule as v2.1 polish.
+> - Info items: `accept` on unswept overdue gate (narrow race), sigil
+>   day-matching, GateSheet hardcodes "BATTLE READY" caption, silent
+>   `client_date` fallback, WHOOP-zones-without-strain badge, `volume_lb`
+>   ignores weight_unit (app-wide convention), `refresh(None)` edge in the
+>   directive race handler, retro-synced workout can't revoke an awarded rest
+>   directive, trend weekly-best math duplicated between trend_service and the
+>   /trend endpoint.
+
 **Entry criteria:** Phase 3 live on Railway, all four phases' ship criteria met.
 
 **Scope:**

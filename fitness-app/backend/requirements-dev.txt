@@ -1,4 +1,7 @@
-ruff
+# Pinned so CI and local agree — unpinned, CI (newest release) flagged
+# import-sort patterns that local 0.15.x accepted, failing CI on files the
+# local lint gate had passed.
+ruff==0.15.18
 pytest
 pytest-asyncio
 pytest-cov

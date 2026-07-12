@@ -340,3 +340,79 @@ def test_strain_18_achievement(db, create_test_user):
 
     unlocked = check_and_unlock_achievements(db, user.id, {})
     assert "strain_18" in {a["id"] for a in unlocked}
+
+
+# ── QA-pass regression tests (2026-07-12 /evaluate findings) ────────────────
+
+def test_pure_cardio_activity_completes_directive(client, db, auth_headers, unique_email):
+    """A scanned run with no strength exercises still counts as a hunt (§5.2)."""
+    from app.models.directive import DirectiveType, UserDirective
+
+    headers, user = auth_headers(email=unique_email("actdir"))
+    today = date.today()
+    db.add(UserDirective(
+        user_id=user.id, date=today,
+        directive_type=DirectiveType.MAINTAIN.value, message="m",
+    ))
+    db.commit()
+
+    resp = client.post(
+        "/screenshot/save-activity",
+        json={"activity_type": "RUNNING", "session_date": today.isoformat(),
+              "duration_minutes": 30},
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
+
+    directive = db.query(UserDirective).filter(UserDirective.user_id == user.id).first()
+    assert directive.is_completed is True
+
+
+def test_directive_streak_tolerates_client_server_day_drift(db, create_test_user):
+    """A pending newest directive dated 'yesterday' server-time is the
+    client's in-progress today under UTC drift — it must not zero the streak."""
+    from app.models.directive import DirectiveType, UserDirective
+    from app.services.achievement_service import _directive_streak
+
+    user, _ = create_test_user(email=f"drift-{uuid.uuid4().hex[:8]}@example.com")
+    today = date.today()
+
+    # Pending directive dated yesterday (server ahead of client), preceded by
+    # 3 consecutive completed days.
+    db.add(UserDirective(
+        user_id=user.id, date=today - timedelta(days=1),
+        directive_type=DirectiveType.MAINTAIN.value, message="m",
+        is_completed=False,
+    ))
+    for offset in (2, 3, 4):
+        db.add(UserDirective(
+            user_id=user.id, date=today - timedelta(days=offset),
+            directive_type=DirectiveType.MAINTAIN.value, message="m",
+            is_completed=True, completed_at=datetime.now(timezone.utc),
+        ))
+    db.commit()
+
+    assert _directive_streak(db, user.id) == 3
+
+
+def test_out_of_scale_strain_dropped_on_activity_save(db, create_test_user):
+    """Non-WHOOP effort metrics (e.g. Garmin Training Load 250) are never
+    persisted as strain (§7.3) — the auto-save path validates server-side."""
+    import asyncio
+
+    from app.models.activity import DailyActivity
+    from app.services.screenshot_service import save_whoop_activity
+
+    user, _ = create_test_user(email=f"scale-{uuid.uuid4().hex[:8]}@example.com")
+    activity_id, workout_id = asyncio.run(
+        save_whoop_activity(
+            db, user.id,
+            {"activity_type": "RUNNING", "strain": 250.0, "duration_minutes": 40},
+        )
+    )
+
+    workout = db.query(WorkoutSession).filter(WorkoutSession.id == workout_id).first()
+    assert workout.strain is None
+
+    activity = db.query(DailyActivity).filter(DailyActivity.id == activity_id).first()
+    assert activity.strain is None

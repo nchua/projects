@@ -16,6 +16,7 @@ struct AriseSourceBadge: View {
         case "whoop":       return ("circle.circle", .orange, "WHOOP")
         case "apple_watch": return ("applewatch", .systemPrimary, "APPLE WATCH")
         case "screenshot":  return ("camera.fill", .textMuted, "SCREENSHOT")
+        case "app":         return ("iphone", .textMuted, "APP")  // Condition's own engine (§13.1)
         default:            return nil   // nil / unknown -> no badge
         }
     }

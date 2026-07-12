@@ -263,17 +263,21 @@ def parse_zone_seconds(heart_rate_zones) -> Optional[Dict[str, int]]:
         else:  # pydantic HeartRateZone
             zone = getattr(row, "zone", None)
             duration = getattr(row, "duration", None)
-        if zone is None or not duration or not (1 <= int(zone) <= 5):
+        if zone is None or not duration:
             continue
         parts = str(duration).strip().split(":")
         try:
+            zone = int(zone)
+            if not (1 <= zone <= 5):
+                continue
             if len(parts) == 2:
                 seconds = int(parts[0]) * 60 + int(parts[1])
             elif len(parts) == 3:
                 seconds = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
             else:
                 continue
-        except ValueError:
+        except (ValueError, TypeError):
+            # One malformed extractor row must not abort the whole save.
             continue
         if seconds > 0:
             key = f"z{int(zone)}"
@@ -1005,6 +1009,18 @@ async def save_whoop_activity(
 
     logger.info(f"Final workout date: {date}, datetime: {workout_datetime}")
 
+    # Strain stays WHOOP's stated value — never recomputed. A value outside
+    # WHOOP's 0-21 scale means the extractor grabbed some other app's effort
+    # metric (Garmin Training Load etc.); those are never converted (§7.3),
+    # so drop them before ANY persistence (daily_activity feeds Condition).
+    strain_value = extraction_result.get("strain")
+    if strain_value is not None and not (0 <= float(strain_value) <= 21):
+        logger.warning(
+            f"Dropping out-of-scale strain {strain_value!r} — non-WHOOP effort "
+            "metrics are never converted (spec §7.3)"
+        )
+        strain_value = None
+
     # Save to DailyActivity for metrics tracking
     existing = db.query(DailyActivity).filter(
         DailyActivity.user_id == user_id,
@@ -1013,8 +1029,8 @@ async def save_whoop_activity(
     ).first()
 
     if existing:
-        if extraction_result.get("strain") is not None:
-            existing.strain = extraction_result["strain"]
+        if strain_value is not None:
+            existing.strain = strain_value
         if extraction_result.get("calories") is not None:
             existing.active_calories = extraction_result["calories"]
         if extraction_result.get("steps") is not None:
@@ -1028,7 +1044,7 @@ async def save_whoop_activity(
             user_id=user_id,
             date=date,
             source="whoop_screenshot",
-            strain=extraction_result.get("strain"),
+            strain=strain_value,
             active_calories=extraction_result.get("calories"),
             steps=extraction_result.get("steps"),
             active_minutes=extraction_result.get("duration_minutes")
@@ -1039,7 +1055,7 @@ async def save_whoop_activity(
 
     # Create WorkoutSession so it appears in quests calendar
     activity_type = extraction_result.get("activity_type") or extraction_result.get("session_name") or "Activity"
-    strain = extraction_result.get("strain")
+    strain = strain_value
     calories = extraction_result.get("calories")
 
     # Build notes with WHOOP metrics
@@ -1056,9 +1072,6 @@ async def save_whoop_activity(
     # already pulls (avg/max HR, per-zone durations) onto the session with
     # hr_source="screenshot", so screenshot activities feed the Hunt log
     # strain badge, Condition's yesterday-strain input, and zone analytics.
-    # Strain stays WHOOP's stated value (0-21) — never recomputed, and
-    # non-WHOOP effort metrics are never converted (the extractor only fills
-    # `strain` for WHOOP screenshots).
     workout_session = WorkoutSession(
         user_id=user_id,
         date=workout_datetime,
@@ -1066,7 +1079,7 @@ async def save_whoop_activity(
         notes=notes,
         avg_heart_rate=extraction_result.get("avg_hr"),
         peak_heart_rate=extraction_result.get("max_hr"),
-        strain=extraction_result.get("strain"),
+        strain=strain_value,
         hr_zone_seconds=parse_zone_seconds(extraction_result.get("heart_rate_zones")),
         hr_source="screenshot",
     )
@@ -1208,6 +1221,13 @@ async def save_whoop_activity(
                 f"WHOOP activity {activity_type!r} saved with no exercises "
                 f"(no matched exercises in extraction and no sport/cardio match)"
             )
+
+        # A pure-cardio activity is still a workout logged today (it counts
+        # in calculate_todays_workout_stats), so it must run directive
+        # completion like every other ingest path (ARISE v2 §5) — otherwise
+        # a scanned run breaks a rest directive but never completes a
+        # maintain/frequency/streak one.
+        check_directive_completion(db, user_id, workout_session.date)
 
     db.commit()
     return activity_id, workout_id

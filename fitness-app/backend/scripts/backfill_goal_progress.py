@@ -20,17 +20,18 @@ Options:
 import argparse
 import os
 import sys
-
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import uuid
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.models.mission import Goal, GoalProgressSnapshot, GoalStatus
-from app.models.pr import PR
+# Add parent directory to path for app imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Goal models moved from app.models.mission to app.models.goal when the
+# Weekly Missions feature was cut (ARISE v2 Phase 0).
+from app.models.goal import Goal, GoalProgressSnapshot, GoalStatus  # noqa: E402
+from app.models.pr import PR  # noqa: E402
 
 
 def get_database_url():

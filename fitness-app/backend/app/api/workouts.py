@@ -431,10 +431,6 @@ async def _create_workout_impl(
         .joinedload(WorkoutExercise.exercise)
     ).filter(WorkoutSession.id == workout_session.id).first()
 
-    # Check for newly unlocked achievements (uses context dict but also
-    # reads progress — kept after eager-load for consistency)
-    newly_unlocked = check_and_unlock_achievements(db, current_user.id, achievement_context)
-
     # Ingest raw HR samples (Apple Watch live session): persist them and roll
     # up avg/peak onto sets + session. WHOOP samples arrive later via the
     # WHOOP sync path.
@@ -449,6 +445,11 @@ async def _create_workout_impl(
     # Directive completion auto-detect (ARISE v2 §5) — idempotent; mirrors
     # PR detection in running on every ingest path.
     check_directive_completion(db, current_user.id, workout_session.date)
+
+    # Check for newly unlocked achievements AFTER HR ingest + directive
+    # completion, so strain-driven (Redline) and directive-streak
+    # achievements can unlock on the very workout that earns them.
+    newly_unlocked = check_and_unlock_achievements(db, current_user.id, achievement_context)
 
     db.commit()
 

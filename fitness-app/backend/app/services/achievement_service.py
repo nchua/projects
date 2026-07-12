@@ -263,8 +263,12 @@ def _directive_streak(db: Session, user_id: str) -> int:
         return 0
 
     index = 0
-    if not rows[0].is_completed and rows[0].date == date.today():
-        index = 1  # today's directive is still live — start from yesterday
+    # The newest directive may still be in progress. Directive rows are keyed
+    # to the CLIENT's local day while this server runs UTC, so "today" can be
+    # off by a day in either direction — excuse a pending newest row whose
+    # date is within a day of server-today rather than requiring equality.
+    if not rows[0].is_completed and rows[0].date >= date.today() - timedelta(days=1):
+        index = 1
 
     streak = 0
     expected = None
