@@ -28,6 +28,7 @@ from app.schemas.sync import (
     SyncStatusResponse,
 )
 from app.services.achievement_service import check_and_unlock_achievements
+from app.services.directive_service import check_directive_completion
 from app.services.pr_detection import detect_and_create_prs
 from app.services.xp_service import award_xp, calculate_workout_xp, get_or_create_user_progress
 
@@ -216,6 +217,10 @@ async def sync_data(
             # dedupe; sync has no client_id, so the conflict flag is the guard).
             if existing is None:
                 _award_workout_xp(db, current_user, workout_session)
+
+            # Directive completion auto-detect (ARISE v2 §5) — idempotent,
+            # so safe to run on the conflict path too.
+            check_directive_completion(db, current_user.id, workout_session.date)
 
             results.append(SyncResult(
                 entity_type="workout",

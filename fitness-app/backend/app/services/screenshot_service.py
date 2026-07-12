@@ -26,6 +26,7 @@ from app.models.exercise import Exercise
 from app.models.pr import PR
 from app.models.workout import Set, WeightUnit, WorkoutExercise, WorkoutSession
 from app.services.achievement_service import check_and_unlock_achievements
+from app.services.directive_service import check_directive_completion
 from app.services.pr_detection import detect_and_create_prs
 from app.services.xp_service import award_xp, calculate_workout_xp, get_or_create_user_progress
 
@@ -876,6 +877,10 @@ async def save_extracted_workout(
     xp_result = calculate_workout_xp(db, workout_session, prs_achieved=workout_prs)
     award_xp(db, user_id, xp_result["xp_earned"], workout_date=workout_session.date)
 
+    # Directive completion auto-detect (ARISE v2 §5) — idempotent; mirrors
+    # PR detection in running on every ingest path.
+    check_directive_completion(db, user_id, workout_session.date)
+
     # Update progress stats
     progress = get_or_create_user_progress(db, user_id)
     progress.total_volume_lb += xp_result["total_volume"]
@@ -1094,6 +1099,9 @@ async def save_whoop_activity(
 
             xp_result = calculate_workout_xp(db, workout_session, prs_achieved=workout_prs)
             award_xp(db, user_id, xp_result["xp_earned"], workout_date=workout_session.date)
+
+            # Directive completion auto-detect (ARISE v2 §5) — idempotent.
+            check_directive_completion(db, user_id, workout_session.date)
 
             # Update progress stats
             progress = get_or_create_user_progress(db, user_id)

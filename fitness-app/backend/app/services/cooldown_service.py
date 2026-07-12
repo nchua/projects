@@ -613,7 +613,8 @@ def calculate_cooldowns(
     db: Session,
     user_id: str,
     user_age: int | None = None,
-    lookback_hours: int = 168  # 7 days lookback (increased for longer cooldowns)
+    lookback_hours: int = 168,  # 7 days lookback (increased for longer cooldowns)
+    include_ready: bool = False,
 ) -> Dict:
     """
     Calculate muscle cooldown status for a user.
@@ -631,6 +632,11 @@ def calculate_cooldowns(
         user_id: User ID to calculate cooldowns for
         user_age: Optional user age for applying age-based cooldown modifiers
         lookback_hours: How far back to look for workouts (default 168 hours / 7 days)
+        include_ready: When True, muscles that finished cooling within the
+            lookback are also returned (status "ready", cooldown_percent 100,
+            plus a ``ready_hours_ago`` key). The Directive engine uses this to
+            detect muscles that cleared overnight; the public /analytics
+            endpoint keeps the default (cooling-only) shape.
 
     Returns dict with:
     - muscles_cooling: List of muscles that are still cooling down
@@ -808,8 +814,30 @@ def calculate_cooldowns(
         # before subtracting.
         hours_since_trained = (now - ensure_utc(data["last_trained"])).total_seconds() / 3600
 
-        # Skip if fully ready
+        fatigue_breakdown = {
+            "base_cooldown_hours": base_cooldown,
+            "total_sets": data["set_count"],
+            "effective_sets": round(effective_sets, 1),
+            "avg_intensity_factor": round(avg_fatigue_score, 2),
+            "volume_multiplier": round(volume_mult, 2),
+            "age_modifier": age_modifier,
+            "final_cooldown_hours": total_cooldown_hours
+        }
+
+        # Fully ready: skipped by default; surfaced (with how long ago the
+        # cooldown finished) when the caller asks for ready muscles too.
         if hours_since_trained >= total_cooldown_hours:
+            if include_ready:
+                muscles_cooling.append({
+                    "muscle_group": muscle,
+                    "status": "ready",
+                    "cooldown_percent": 100.0,
+                    "hours_remaining": 0,
+                    "ready_hours_ago": round(hours_since_trained - total_cooldown_hours, 1),
+                    "last_trained": to_iso8601_utc(data["last_trained"]),
+                    "affected_exercises": data["exercises"],
+                    "fatigue_breakdown": fatigue_breakdown,
+                })
             continue
 
         hours_remaining = int(total_cooldown_hours - hours_since_trained)
@@ -823,15 +851,7 @@ def calculate_cooldowns(
             "last_trained": to_iso8601_utc(data["last_trained"]),
             "affected_exercises": data["exercises"],
             # Enhanced fatigue breakdown for transparency
-            "fatigue_breakdown": {
-                "base_cooldown_hours": base_cooldown,
-                "total_sets": data["set_count"],
-                "effective_sets": round(effective_sets, 1),
-                "avg_intensity_factor": round(avg_fatigue_score, 2),
-                "volume_multiplier": round(volume_mult, 2),
-                "age_modifier": age_modifier,
-                "final_cooldown_hours": total_cooldown_hours
-            }
+            "fatigue_breakdown": fatigue_breakdown
         })
 
     # Sort by hours remaining (most cooldown needed first)

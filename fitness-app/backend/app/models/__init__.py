@@ -3,6 +3,7 @@
 from app.models.achievement import AchievementDefinition, UserAchievement
 from app.models.activity import DailyActivity
 from app.models.bodyweight import BodyweightEntry
+from app.models.directive import DirectiveType, UserDirective
 from app.models.exercise import Exercise
 from app.models.friend import FriendRequest, FriendRequestStatus, Friendship
 from app.models.goal import Goal, GoalProgressSnapshot, GoalStatus
@@ -48,6 +49,8 @@ __all__ = [
     "UserQuest",
     "QuestType",
     "QuestDifficulty",
+    "UserDirective",
+    "DirectiveType",
     "DailyActivity",
     "FriendRequest",
     "Friendship",

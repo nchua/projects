@@ -40,6 +40,7 @@ from app.schemas.workout import (
 from app.services import healthkit_service
 from app.services.achievement_service import check_and_unlock_achievements
 from app.services.activity_muscles import get_activity_muscles
+from app.services.directive_service import check_directive_completion
 from app.services.goal_service import update_goal_progress
 from app.services.heart_rate_service import ingest_heart_rate
 from app.services.notification_service import (
@@ -439,6 +440,10 @@ async def _create_workout_impl(
             workout_data.heart_rate_samples,
             source=workout_data.hr_source or "apple_watch",
         )
+
+    # Directive completion auto-detect (ARISE v2 §5) — idempotent; mirrors
+    # PR detection in running on every ingest path.
+    check_directive_completion(db, current_user.id, workout_session.date)
 
     db.commit()
 

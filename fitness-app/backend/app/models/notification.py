@@ -20,9 +20,7 @@ class NotificationType(str, enum.Enum):
     RANK_PROMOTION = "rank_promotion"
     WEEKLY_REPORT_READY = "weekly_report_ready"
     # Local (on-device)
-    QUEST_COMPLETED = "quest_completed"
     STREAK_AT_RISK = "streak_at_risk"
-    QUEST_RESET = "quest_reset"
 
 
 # Convenience sets for categorization
@@ -36,9 +34,7 @@ SERVER_SENT_TYPES = {
 }
 
 LOCAL_TYPES = {
-    NotificationType.QUEST_COMPLETED,
     NotificationType.STREAK_AT_RISK,
-    NotificationType.QUEST_RESET,
 }
 
 

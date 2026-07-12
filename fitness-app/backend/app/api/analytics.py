@@ -599,20 +599,19 @@ async def get_prs(
     return PRListResponse(prs=pr_responses, total_count=total_count)
 
 
-@router.get("/insights", response_model=InsightsResponse)
-async def get_insights(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Generate personalized workout insights
+def compute_insights(db: Session, user_id: str) -> list:
+    """Generate personalized workout insights (sync, reusable).
+
+    Extracted from the /insights endpoint so the Directive engine
+    (app/services/directive_service.py) can evaluate PLATEAU / VOLUME_LOW
+    triggers without going through HTTP.
     """
     insights = []
     four_weeks_ago = date.today() - timedelta(days=28)
 
     # Get recent workout data
     recent_workouts = db.query(WorkoutSession).filter(
-        WorkoutSession.user_id == current_user.id,
+        WorkoutSession.user_id == user_id,
         WorkoutSession.deleted_at == None,
         WorkoutSession.date >= four_weeks_ago
     ).all()
@@ -624,7 +623,7 @@ async def get_insights(
             title="No recent workouts",
             description="You haven't logged any workouts in the last 4 weeks. Time to get back to training!"
         ))
-        return InsightsResponse(insights=insights, generated_at=to_iso8601_utc(datetime.now(timezone.utc)))
+        return insights
 
     # Analyze exercise trends - aggregate by date using max e1RM per workout
     # This prevents false alerts from within-session fatigue (later sets have lower e1RM)
@@ -721,6 +720,18 @@ async def get_insights(
     priority_order = {InsightPriority.HIGH: 0, InsightPriority.MEDIUM: 1, InsightPriority.LOW: 2}
     insights.sort(key=lambda x: priority_order[x.priority])
 
+    return insights
+
+
+@router.get("/insights", response_model=InsightsResponse)
+async def get_insights(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Generate personalized workout insights
+    """
+    insights = compute_insights(db, current_user.id)
     return InsightsResponse(insights=insights, generated_at=to_iso8601_utc(datetime.now(timezone.utc)))
 
 
