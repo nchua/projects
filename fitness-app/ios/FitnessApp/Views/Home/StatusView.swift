@@ -471,9 +471,16 @@ struct WorkoutSheetHeader: View {
                         .foregroundColor(.successGreen)
                         .tracking(1)
 
-                    Text(formatDate(workout.date))
+                    // Hunt name (custom → suggestion), falling back to the date
+                    Text(workout.displayName ?? formatDate(workout.date))
                         .font(.ariseHeader(size: 20, weight: .bold))
                         .foregroundColor(.textPrimary)
+
+                    if workout.displayName != nil {
+                        Text(formatDate(workout.date))
+                            .font(.ariseMono(size: 12))
+                            .foregroundColor(.textMuted)
+                    }
                 }
 
                 Spacer()

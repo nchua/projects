@@ -127,6 +127,9 @@ struct ExerciseResponse: Decodable, Identifiable {
 
 struct WorkoutCreate: Codable {
     let date: String
+    /// Custom hunt name. Nil lets the backend/clients fall back to the
+    /// derived suggestion ("Back & Biceps Day", "Tennis") and then the date.
+    let name: String?
     let durationMinutes: Int?
     let sessionRpe: Int?
     let notes: String?
@@ -136,6 +139,7 @@ struct WorkoutCreate: Codable {
 
     init(
         date: String,
+        name: String? = nil,
         durationMinutes: Int?,
         sessionRpe: Int?,
         notes: String?,
@@ -143,6 +147,7 @@ struct WorkoutCreate: Codable {
         clientId: String? = UUID().uuidString
     ) {
         self.date = date
+        self.name = name
         self.durationMinutes = durationMinutes
         self.sessionRpe = sessionRpe
         self.notes = notes
@@ -151,7 +156,7 @@ struct WorkoutCreate: Codable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case date, notes, exercises
+        case date, name, notes, exercises
         case durationMinutes = "duration_minutes"
         case sessionRpe = "session_rpe"
         case clientId = "client_id"
@@ -198,6 +203,9 @@ struct WorkoutSummaryResponse: Decodable, Identifiable {
     let id: String
     let userId: String
     let date: String
+    /// User-set hunt name; `suggestedName` is the server-derived fallback.
+    let name: String?
+    let suggestedName: String?
     let durationMinutes: Int?
     let sessionRpe: Int?
     let notes: String?
@@ -225,8 +233,9 @@ struct WorkoutSummaryResponse: Decodable, Identifiable {
     let hrSource: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, date, notes, strain, calories
+        case id, date, name, notes, strain, calories
         case userId = "user_id"
+        case suggestedName = "suggested_name"
         case durationMinutes = "duration_minutes"
         case sessionRpe = "session_rpe"
         case exerciseCount = "exercise_count"
@@ -250,6 +259,9 @@ struct WorkoutResponse: Decodable, Identifiable {
     let id: String
     let userId: String
     let date: String
+    /// User-set hunt name; `suggestedName` is the server-derived fallback.
+    let name: String?
+    let suggestedName: String?
     let durationMinutes: Int?
     let sessionRpe: Int?
     let notes: String?
@@ -275,8 +287,9 @@ struct WorkoutResponse: Decodable, Identifiable {
     let calories: Int?
 
     enum CodingKeys: String, CodingKey {
-        case id, date, notes, exercises, strain, kilojoules, calories
+        case id, date, name, notes, exercises, strain, kilojoules, calories
         case userId = "user_id"
+        case suggestedName = "suggested_name"
         case durationMinutes = "duration_minutes"
         case sessionRpe = "session_rpe"
         case createdAt = "created_at"
@@ -290,6 +303,29 @@ struct WorkoutResponse: Decodable, Identifiable {
         case isActivity = "is_activity"
         case activityType = "activity_type"
     }
+}
+
+// MARK: - Hunt name helpers
+// Computed only — not Codable fields, so they don't affect the decode contract.
+
+extension WorkoutSummaryResponse {
+    /// Custom name → server suggestion → nil (caller falls back to the date).
+    var displayName: String? {
+        name ?? suggestedName
+    }
+}
+
+extension WorkoutResponse {
+    /// Custom name → server suggestion → nil (caller falls back to the date).
+    var displayName: String? {
+        name ?? suggestedName
+    }
+}
+
+/// Rename-only PUT body for `/workouts/{id}`. An empty string clears the
+/// custom name (display falls back to the suggestion).
+struct WorkoutRename: Codable {
+    let name: String
 }
 
 // MARK: - HR display helpers (wearable-HR v1, Chunk D)

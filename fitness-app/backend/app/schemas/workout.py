@@ -81,6 +81,7 @@ class WorkoutExerciseResponse(BaseModel):
 class WorkoutCreate(BaseModel):
     """Schema for creating a workout"""
     date: Union[datetime, str] = Field(default_factory=lambda: datetime.now(timezone.utc), description="Workout date/time")
+    name: Optional[str] = Field(None, max_length=100, description="Custom hunt name")
     duration_minutes: Optional[int] = Field(None, ge=1, le=600, description="Workout duration in minutes")
     session_rpe: Optional[int] = Field(None, ge=1, le=10, description="Overall session RPE")
     notes: Optional[str] = Field(None, max_length=1000, description="Workout notes")
@@ -140,6 +141,10 @@ class WorkoutResponse(BaseModel):
     id: str
     user_id: str
     date: str
+    # User-set hunt name; suggested_name is the server-derived fallback
+    # (activity type or muscle split). Clients display name → suggestion → date.
+    name: Optional[str] = None
+    suggested_name: Optional[str] = None
     duration_minutes: Optional[int]
     session_rpe: Optional[int]
     notes: Optional[str]
@@ -218,6 +223,9 @@ class WorkoutCreateResponse(BaseModel):
 class WorkoutUpdate(BaseModel):
     """Schema for updating a workout"""
     date: Optional[Union[datetime, str]] = Field(None, description="Workout date/time")
+    # Empty string clears the custom name (falls back to the suggestion);
+    # omitting the field leaves it unchanged.
+    name: Optional[str] = Field(None, max_length=100, description="Custom hunt name")
     duration_minutes: Optional[int] = Field(None, ge=1, le=600, description="Workout duration in minutes")
     session_rpe: Optional[int] = Field(None, ge=1, le=10, description="Overall session RPE")
     notes: Optional[str] = Field(None, max_length=1000, description="Workout notes")
@@ -248,6 +256,10 @@ class WorkoutSummary(BaseModel):
     id: str
     user_id: str
     date: str
+    # User-set hunt name; suggested_name is the server-derived fallback
+    # (activity type or muscle split). Clients display name → suggestion → date.
+    name: Optional[str] = None
+    suggested_name: Optional[str] = None
     duration_minutes: Optional[int]
     session_rpe: Optional[int]
     notes: Optional[str]

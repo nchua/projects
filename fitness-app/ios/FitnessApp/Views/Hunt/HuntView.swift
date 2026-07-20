@@ -517,9 +517,11 @@ struct EdgeFlowWorkoutRow: View {
             // Hunt info
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 10) {
-                    Text(formatDate(workout.date))
+                    // Hunt name (custom → suggestion), falling back to the date
+                    Text(workout.displayName ?? formatDate(workout.date))
                         .font(.ariseHeader(size: 15, weight: .semibold))
                         .foregroundColor(.textPrimary)
+                        .lineLimit(1)
 
                     // Badge
                     HStack(spacing: 4) {
@@ -567,10 +569,19 @@ struct EdgeFlowWorkoutRow: View {
                     }
                 }
 
+                // Date subtitle when a name occupies the title slot
+                if workout.displayName != nil {
+                    Text(formatDate(workout.date))
+                        .font(.ariseMono(size: 11))
+                        .foregroundColor(.textMuted)
+                }
+
                 // Stats row
                 if isWhoopActivity && !hasExercises {
                     HStack(spacing: 16) {
-                        if let activityType = workout.activityType {
+                        // Skip the type label when it's already the row title
+                        if let activityType = workout.activityType,
+                           activityType.lowercased() != (workout.displayName ?? "").lowercased() {
                             HStack(spacing: 4) {
                                 Text(activityType)
                                     .font(.ariseMono(size: 12, weight: .medium))

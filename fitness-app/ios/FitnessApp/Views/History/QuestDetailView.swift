@@ -21,6 +21,9 @@ protocol WorkoutDetailProviding: ObservableObject {
     var isLoadingDetail: Bool { get }
     var selectedWorkout: WorkoutResponse? { get }
     func loadWorkoutDetail(id: String) async
+    /// Rename the hunt ("" clears back to the suggested name) and refresh
+    /// both the detail and the owning list.
+    func renameWorkout(id: String, to name: String) async
 }
 
 extension HistoryViewModel: WorkoutDetailProviding {}
@@ -29,6 +32,8 @@ extension HuntViewModel: WorkoutDetailProviding {}
 struct QuestDetailView<ViewModel: WorkoutDetailProviding>: View {
     let workoutId: String
     @ObservedObject var viewModel: ViewModel
+    @State private var showRenameAlert = false
+    @State private var renameText = ""
 
     var body: some View {
         ZStack {
@@ -86,6 +91,35 @@ struct QuestDetailView<ViewModel: WorkoutDetailProviding>: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.voidDark, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    renameText = viewModel.selectedWorkout?.name
+                        ?? viewModel.selectedWorkout?.suggestedName
+                        ?? ""
+                    showRenameAlert = true
+                } label: {
+                    Image(systemName: "pencil")
+                        .foregroundColor(.systemPrimary)
+                }
+                .disabled(viewModel.selectedWorkout == nil)
+                .accessibilityLabel("Rename hunt")
+            }
+        }
+        .alert("Name This Hunt", isPresented: $showRenameAlert) {
+            TextField("Hunt name", text: $renameText)
+            Button("Save") {
+                Task {
+                    await viewModel.renameWorkout(
+                        id: workoutId,
+                        to: renameText.trimmingCharacters(in: .whitespaces)
+                    )
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Leave empty to go back to the suggested name.")
+        }
         .task {
             await viewModel.loadWorkoutDetail(id: workoutId)
         }
@@ -105,9 +139,16 @@ struct QuestSummaryCard: View {
                         .foregroundColor(accentColor)
                         .tracking(1)
 
-                    Text(formatDate(workout.date))
+                    // Hunt name (custom → suggestion), falling back to the date
+                    Text(workout.displayName ?? formatDate(workout.date))
                         .font(.ariseHeader(size: 20, weight: .bold))
                         .foregroundColor(.textPrimary)
+
+                    if workout.displayName != nil {
+                        Text(formatDate(workout.date))
+                            .font(.ariseMono(size: 12))
+                            .foregroundColor(.textMuted)
+                    }
                 }
 
                 Spacer()
@@ -187,7 +228,13 @@ struct QuestSummaryCard: View {
     private var accentColor: Color { isActivity ? .orange : .successGreen }
 
     private var headerLabel: String {
-        isActivity ? (workout.activityType?.uppercased() ?? "ACTIVITY LOGGED") : "HUNT COMPLETE"
+        guard isActivity else { return "HUNT COMPLETE" }
+        // Skip the type eyebrow when it's already the headline (suggested name)
+        if let type = workout.activityType,
+           type.lowercased() != (workout.displayName ?? "").lowercased() {
+            return type.uppercased()
+        }
+        return "ACTIVITY LOGGED"
     }
 
     @ViewBuilder

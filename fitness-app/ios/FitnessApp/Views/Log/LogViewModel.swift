@@ -6,6 +6,7 @@ class LogViewModel: ObservableObject {
     @Published var exercises: [ExerciseResponse] = []
     @Published var selectedExercises: [LoggedExercise] = []
     @Published var workoutDate = Date()
+    @Published var workoutName = ""
     @Published var workoutNotes = ""
     @Published var sessionRPE: Int?
     @Published var isLoading = false
@@ -59,6 +60,17 @@ class LogViewModel: ObservableObject {
         }
     }
 
+    /// Muscle-split suggestion ("Back & Biceps Day") for the Hunt Name field's
+    /// placeholder. Screenshot-added exercises don't carry a muscle, so fall
+    /// back to a lookup in the loaded exercise library.
+    var suggestedHuntName: String? {
+        let muscles = selectedExercises.compactMap { logged in
+            logged.primaryMuscle
+                ?? exercises.first(where: { $0.id == logged.exerciseId })?.primaryMuscle
+        }
+        return HuntNameSuggester.suggest(primaryMuscles: muscles)
+    }
+
     var totalCompletedSets: Int {
         selectedExercises.reduce(0) { total, exercise in
             total + exercise.sets.filter { ($0.isBodyweight || $0.weight > 0) && $0.reps > 0 }.count
@@ -82,6 +94,7 @@ class LogViewModel: ObservableObject {
         let logged = LoggedExercise(
             exerciseId: exercise.id,
             exerciseName: exercise.name,
+            primaryMuscle: exercise.primaryMuscle,
             sets: [LoggedSet(setNumber: 1)]
         )
         selectedExercises.append(logged)
@@ -99,6 +112,7 @@ class LogViewModel: ObservableObject {
             let logged = LoggedExercise(
                 exerciseId: exercise.id,
                 exerciseName: exercise.name,
+                primaryMuscle: exercise.primaryMuscle,
                 sets: [LoggedSet(setNumber: 1)],
                 supersetGroupId: groupId
             )
@@ -208,8 +222,13 @@ class LogViewModel: ObservableObject {
             )
         }
 
+        // Send the name only when the user typed one — an empty field falls
+        // back to the server-derived suggestion at display time.
+        let trimmedName = workoutName.trimmingCharacters(in: .whitespaces)
+
         let workout = WorkoutCreate(
             date: DateFormatter.localDate.string(from: workoutDate),
+            name: trimmedName.isEmpty ? nil : trimmedName,
             durationMinutes: nil,
             sessionRpe: sessionRPE,
             notes: workoutNotes.isEmpty ? nil : workoutNotes,
@@ -292,6 +311,7 @@ class LogViewModel: ObservableObject {
     func resetWorkout() {
         selectedExercises = []
         workoutDate = Date()
+        workoutName = ""
         workoutNotes = ""
         sessionRPE = nil
     }
@@ -303,6 +323,10 @@ struct LoggedExercise: Identifiable {
     let id = UUID()
     let exerciseId: String
     let exerciseName: String
+    /// Primary muscle from the exercise library — feeds the hunt-name
+    /// suggestion. Nil for screenshot-extracted exercises (resolved by
+    /// library lookup in LogViewModel.suggestedHuntName).
+    var primaryMuscle: String? = nil
     var sets: [LoggedSet]
     var supersetGroupId: UUID? = nil
 }

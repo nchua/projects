@@ -92,4 +92,18 @@ class HistoryViewModel: ObservableObject {
         let dateString = DateFormatter.localDate.string(from: date)
         return workouts.filter { String($0.date.prefix(10)) == dateString }
     }
+
+    /// Rename a hunt ("" clears back to the suggested name), then refresh the
+    /// detail and the list so row titles update immediately.
+    func renameWorkout(id: String, to name: String) async {
+        do {
+            selectedWorkout = try await APIClient.shared.renameWorkout(id: id, name: name)
+            await loadWorkouts(refresh: true)
+        } catch let apiError as APIError {
+            if case .unauthorized = apiError { return }
+            self.error = apiError.localizedDescription
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
 }

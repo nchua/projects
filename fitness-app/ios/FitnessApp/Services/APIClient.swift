@@ -202,6 +202,12 @@ class APIClient {
         try await delete("/workouts/\(id)")
     }
 
+    /// Rename a hunt. Pass "" to clear the custom name so display falls back
+    /// to the server-derived suggestion.
+    func renameWorkout(id: String, name: String) async throws -> WorkoutResponse {
+        return try await put("/workouts/\(id)", body: WorkoutRename(name: name))
+    }
+
     // MARK: - Bodyweight
 
     func logBodyweight(_ entry: BodyweightCreate) async throws -> BodyweightResponse {
