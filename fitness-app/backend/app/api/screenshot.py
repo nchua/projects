@@ -513,7 +513,20 @@ async def process_screenshot(
         avg_hr=result.get("avg_hr"),
         max_hr=result.get("max_hr"),
         source=result.get("source"),
-        heart_rate_zones=heart_rate_zones
+        heart_rate_zones=heart_rate_zones,
+        # Cardio metrics in source units (see schema).
+        active_calories=result.get("active_calories"),
+        total_calories=result.get("total_calories"),
+        distance=result.get("distance"),
+        distance_unit=result.get("distance_unit"),
+        avg_pace=result.get("avg_pace"),
+        pace_unit=result.get("pace_unit"),
+        avg_speed=result.get("avg_speed"),
+        speed_unit=result.get("speed_unit"),
+        elevation_gain=result.get("elevation_gain"),
+        elevation_unit=result.get("elevation_unit"),
+        avg_cadence=result.get("avg_cadence"),
+        avg_power=result.get("avg_power"),
     )
 
 
@@ -790,7 +803,20 @@ async def process_screenshots_batch(
         avg_hr=merged.get("avg_hr"),
         max_hr=merged.get("max_hr"),
         source=merged.get("source"),
-        heart_rate_zones=heart_rate_zones
+        heart_rate_zones=heart_rate_zones,
+        # Cardio metrics in source units (see schema).
+        active_calories=merged.get("active_calories"),
+        total_calories=merged.get("total_calories"),
+        distance=merged.get("distance"),
+        distance_unit=merged.get("distance_unit"),
+        avg_pace=merged.get("avg_pace"),
+        pace_unit=merged.get("pace_unit"),
+        avg_speed=merged.get("avg_speed"),
+        speed_unit=merged.get("speed_unit"),
+        elevation_gain=merged.get("elevation_gain"),
+        elevation_unit=merged.get("elevation_unit"),
+        avg_cadence=merged.get("avg_cadence"),
+        avg_power=merged.get("avg_power"),
     )
 
 
@@ -829,6 +855,19 @@ async def save_activity(
         "avg_hr": payload.avg_hr,
         "max_hr": payload.max_hr,
         "heart_rate_zones": [zone.model_dump() for zone in payload.heart_rate_zones],
+        # Cardio metrics in source units; save_whoop_activity normalizes to SI.
+        "active_calories": payload.active_calories,
+        "total_calories": payload.total_calories,
+        "distance": payload.distance,
+        "distance_unit": payload.distance_unit,
+        "avg_pace": payload.avg_pace,
+        "pace_unit": payload.pace_unit,
+        "avg_speed": payload.avg_speed,
+        "speed_unit": payload.speed_unit,
+        "elevation_gain": payload.elevation_gain,
+        "elevation_unit": payload.elevation_unit,
+        "avg_cadence": payload.avg_cadence,
+        "avg_power": payload.avg_power,
     }
 
     try:

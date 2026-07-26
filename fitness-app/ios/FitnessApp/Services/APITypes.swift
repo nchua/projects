@@ -231,6 +231,20 @@ struct WorkoutSummaryResponse: Decodable, Identifiable {
     let avgHeartRate: Int?
     let peakHeartRate: Int?
     let hrSource: String?
+    // ── Cardio metrics (nil for strength sessions) ──
+    // Server sends SI plus precomputed imperial, so the client does no unit
+    // math. `avgPaceDisplay` is a ready-to-render mm'ss" string.
+    let distanceMeters: Double?
+    let distanceMiles: Double?
+    let elevationGainMeters: Double?
+    let elevationGainFeet: Int?
+    let avgSpeedMps: Double?
+    let avgPaceSecondsPerMile: Double?
+    let avgPaceDisplay: String?
+    let avgCadenceSpm: Int?
+    let avgPowerWatts: Int?
+    let activeCalories: Int?
+    let totalCalories: Int?
 
     enum CodingKeys: String, CodingKey {
         case id, date, name, notes, strain, calories
@@ -252,6 +266,17 @@ struct WorkoutSummaryResponse: Decodable, Identifiable {
         case avgHeartRate = "avg_heart_rate"
         case peakHeartRate = "peak_heart_rate"
         case hrSource = "hr_source"
+        case distanceMeters = "distance_meters"
+        case distanceMiles = "distance_miles"
+        case elevationGainMeters = "elevation_gain_meters"
+        case elevationGainFeet = "elevation_gain_feet"
+        case avgSpeedMps = "avg_speed_mps"
+        case avgPaceSecondsPerMile = "avg_pace_seconds_per_mile"
+        case avgPaceDisplay = "avg_pace_display"
+        case avgCadenceSpm = "avg_cadence_spm"
+        case avgPowerWatts = "avg_power_watts"
+        case activeCalories = "active_calories"
+        case totalCalories = "total_calories"
     }
 }
 
@@ -285,6 +310,20 @@ struct WorkoutResponse: Decodable, Identifiable {
     let isActivity: Bool?
     let activityType: String?
     let calories: Int?
+    // ── Cardio metrics (nil for strength sessions) ──
+    // Server sends SI plus precomputed imperial, so the client does no unit
+    // math. `avgPaceDisplay` is a ready-to-render mm'ss" string.
+    let distanceMeters: Double?
+    let distanceMiles: Double?
+    let elevationGainMeters: Double?
+    let elevationGainFeet: Int?
+    let avgSpeedMps: Double?
+    let avgPaceSecondsPerMile: Double?
+    let avgPaceDisplay: String?
+    let avgCadenceSpm: Int?
+    let avgPowerWatts: Int?
+    let activeCalories: Int?
+    let totalCalories: Int?
 
     enum CodingKeys: String, CodingKey {
         case id, date, name, notes, exercises, strain, kilojoules, calories
@@ -302,6 +341,17 @@ struct WorkoutResponse: Decodable, Identifiable {
         case ariseStrain = "arise_strain"
         case isActivity = "is_activity"
         case activityType = "activity_type"
+        case distanceMeters = "distance_meters"
+        case distanceMiles = "distance_miles"
+        case elevationGainMeters = "elevation_gain_meters"
+        case elevationGainFeet = "elevation_gain_feet"
+        case avgSpeedMps = "avg_speed_mps"
+        case avgPaceSecondsPerMile = "avg_pace_seconds_per_mile"
+        case avgPaceDisplay = "avg_pace_display"
+        case avgCadenceSpm = "avg_cadence_spm"
+        case avgPowerWatts = "avg_power_watts"
+        case activeCalories = "active_calories"
+        case totalCalories = "total_calories"
     }
 }
 

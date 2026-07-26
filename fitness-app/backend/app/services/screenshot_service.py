@@ -7,6 +7,7 @@ import io
 import json
 import logging
 import os
+import re
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -105,6 +106,18 @@ FOR WHOOP/ACTIVITY SCREENSHOTS (screenshot_type: "whoop_activity"):
   "strain": activity strain score as a number (e.g., 7.7),
   "steps": step count as integer or null,
   "calories": calories burned as integer or null,
+  "active_calories": active/move calories as integer or null,
+  "total_calories": total calories as integer or null,
+  "distance": distance as a number, exactly as displayed (e.g., 2.46),
+  "distance_unit": "the unit shown next to distance: mi, km, or m",
+  "avg_pace": "average pace exactly as displayed (e.g., \"9'19\\\"\") or null",
+  "pace_unit": "the distance unit the pace is per: /mi or /km",
+  "avg_speed": average speed as a number if shown instead of pace,
+  "speed_unit": "the unit shown next to speed: mph or kph",
+  "elevation_gain": elevation gain as a number or null,
+  "elevation_unit": "the unit shown next to elevation: ft or m",
+  "avg_cadence": average cadence in steps/min as integer or null,
+  "avg_power": average power in watts as integer or null,
   "avg_hr": average heart rate in BPM as integer or null,
   "max_hr": max heart rate in BPM as integer or null,
   "source": "Data source if shown (e.g., 'VIA APPLE WATCH')",
@@ -125,7 +138,17 @@ CRITICAL RULES:
 - For duration_minutes, convert time format to minutes (e.g., "0:09:59" = 10, "1:30:00" = 90)
 - For percentages, extract just the number (e.g., "53%" becomes 53)
 - Ignore any AI-generated summaries or motivational text at the bottom of screenshots
-- For WHOOP running/cardio screenshots: look for Activity Strain, heart rate zones, duration, steps"""
+- For WHOOP running/cardio screenshots: look for Activity Strain, heart rate zones, duration, steps
+- NEVER convert units. Report each number exactly as displayed and put the unit
+  shown on screen in the matching *_unit field. If a run shows "2.46MI", return
+  distance 2.46 and distance_unit "mi" — do not convert to km.
+- Report pace as the displayed string, not a decimal: "9'19\\"" stays "9'19\\"".
+- Distance/pace/elevation/cadence/power appear on running and cycling
+  screenshots (Apple Fitness, Strava, Garmin, WHOOP). Extract every one that is
+  visible; use null for those that are not.
+- If a screenshot shows both "Active Calories" and "Total Calories", populate
+  active_calories and total_calories separately, and set calories to the active
+  value."""
 
 
 SUPPORTED_MEDIA_TYPES = ("image/jpeg", "image/png", "image/gif", "image/webp")
@@ -287,6 +310,163 @@ def parse_zone_seconds(heart_rate_zones) -> Optional[Dict[str, int]]:
             key = f"z{int(zone)}"
             zone_seconds[key] = zone_seconds.get(key, 0) + seconds
     return zone_seconds or None
+
+
+# ── Cardio unit normalization ────────────────────────────────────────────
+# Screenshots show whatever units the source app was set to (mi/km, ft/m,
+# min/mi pace or mph speed). Everything is converted to SI on the way in so
+# stored sessions are directly comparable regardless of the source's settings.
+
+_METERS_PER = {
+    "mi": 1609.344, "mile": 1609.344, "miles": 1609.344,
+    "km": 1000.0, "kilometer": 1000.0, "kilometers": 1000.0, "kilometre": 1000.0,
+    "m": 1.0, "meter": 1.0, "meters": 1.0, "metre": 1.0,
+    "ft": 0.3048, "foot": 0.3048, "feet": 0.3048,
+    "yd": 0.9144, "yard": 0.9144, "yards": 0.9144,
+}
+
+
+def _to_meters(value, unit: Optional[str]) -> Optional[float]:
+    """Convert a distance/elevation reading to metres.
+
+    Returns None for a missing value or an unrecognized unit — guessing a
+    unit would silently corrupt the number, which is worse than dropping it.
+    """
+    if value is None or unit is None:
+        return None
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return None
+    factor = _METERS_PER.get(str(unit).strip().lower().rstrip("."))
+    if factor is None:
+        logger.warning(f"Unrecognized distance unit {unit!r} — dropping value {value!r}")
+        return None
+    return value * factor
+
+
+def parse_pace_to_seconds(pace) -> Optional[float]:
+    """Parse a displayed pace into seconds per unit distance.
+
+    Handles the shapes activity apps actually render: ``9'19"`` (Apple),
+    ``9:19``, ``9m19s``, and a bare number of minutes (``9.5`` -> 570s).
+    Returns None when nothing parses.
+    """
+    if pace is None:
+        return None
+    if isinstance(pace, (int, float)):
+        return float(pace) * 60.0
+    text = str(pace).strip()
+    if not text:
+        return None
+    # Strip any trailing unit ("/mi", "per km", "min/km").
+    text = re.split(r"\s*(?:/|per\s)", text, maxsplit=1)[0].strip()
+    text = re.sub(r"(?i)\b(?:min|minutes?)\b", "", text).strip()
+    match = re.match(r"^(\d+)\s*[:'’m]\s*(\d{1,2})\s*[\"”s]?$", text)
+    if match:
+        return int(match.group(1)) * 60 + int(match.group(2))
+    try:
+        return float(text) * 60.0
+    except ValueError:
+        logger.warning(f"Could not parse pace {pace!r} — dropping")
+        return None
+
+
+def _speed_mps_from_pace(pace_seconds: Optional[float], unit: Optional[str]) -> Optional[float]:
+    """Convert seconds-per-unit pace into metres/second."""
+    if not pace_seconds or pace_seconds <= 0:
+        return None
+    meters = _METERS_PER.get(str(unit or "mi").strip().lower().lstrip("/").rstrip("."))
+    if meters is None:
+        return None
+    return meters / pace_seconds
+
+
+_SPEED_MPS_PER = {
+    "mph": 0.44704, "mi/h": 0.44704,
+    "kph": 0.277778, "km/h": 0.277778, "kmh": 0.277778,
+    "m/s": 1.0, "mps": 1.0,
+}
+
+
+def _speed_to_mps(value, unit: Optional[str]) -> Optional[float]:
+    """Convert a displayed speed to metres/second."""
+    if value is None or unit is None:
+        return None
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return None
+    factor = _SPEED_MPS_PER.get(str(unit).strip().lower())
+    if factor is None:
+        logger.warning(f"Unrecognized speed unit {unit!r} — dropping value {value!r}")
+        return None
+    return value * factor
+
+
+def _coerce_int(value) -> Optional[int]:
+    """Best-effort int for extractor values that may arrive as floats/strings."""
+    if value is None:
+        return None
+    try:
+        return int(round(float(value)))
+    except (TypeError, ValueError):
+        return None
+
+
+def extract_cardio_metrics(extraction_result: dict) -> Dict[str, Any]:
+    """Normalize the cardio block of an extraction into SI column values.
+
+    Returns a dict keyed by WorkoutSession column name, omitting anything the
+    screenshot did not show. Speed is taken from the source's own pace/speed
+    reading rather than distance/duration — apps report moving pace while
+    duration is elapsed time, and those differ whenever the user paused.
+    """
+    metrics: Dict[str, Any] = {}
+
+    distance = _to_meters(
+        extraction_result.get("distance"), extraction_result.get("distance_unit")
+    )
+    if distance is not None and distance > 0:
+        metrics["distance_meters"] = round(distance, 2)
+
+    elevation = _to_meters(
+        extraction_result.get("elevation_gain"),
+        extraction_result.get("elevation_unit"),
+    )
+    if elevation is not None:
+        metrics["elevation_gain_meters"] = round(elevation, 2)
+
+    # Prefer an explicit speed reading; fall back to pace (runs show pace).
+    speed = _speed_to_mps(
+        extraction_result.get("avg_speed"), extraction_result.get("speed_unit")
+    )
+    if speed is None:
+        speed = _speed_mps_from_pace(
+            parse_pace_to_seconds(extraction_result.get("avg_pace")),
+            extraction_result.get("pace_unit"),
+        )
+    if speed is not None and speed > 0:
+        metrics["avg_speed_mps"] = round(speed, 4)
+
+    for key, column in (
+        ("avg_cadence", "avg_cadence_spm"),
+        ("avg_power", "avg_power_watts"),
+        ("active_calories", "active_calories"),
+        ("total_calories", "total_calories"),
+    ):
+        coerced = _coerce_int(extraction_result.get(key))
+        if coerced is not None:
+            metrics[column] = coerced
+
+    # Older extractions only had a single "calories" field; treat it as active
+    # burn so existing behaviour keeps working alongside the new split.
+    if "active_calories" not in metrics:
+        legacy = _coerce_int(extraction_result.get("calories"))
+        if legacy is not None:
+            metrics["active_calories"] = legacy
+
+    return metrics
 
 
 def _strip_activity_prefix(activity_type: str) -> str:
@@ -548,6 +728,23 @@ async def extract_workout_from_screenshot(
             "max_hr": extracted_data.get("max_hr"),
             "source": extracted_data.get("source"),
             "heart_rate_zones": extracted_data.get("heart_rate_zones") or [],
+            # Cardio metrics, passed through in the source's own units — the
+            # save path normalizes them to SI via extract_cardio_metrics().
+            # This dict is an allowlist: anything omitted here is silently
+            # dropped before persistence, so new extractor fields must be
+            # added in both places.
+            "active_calories": extracted_data.get("active_calories"),
+            "total_calories": extracted_data.get("total_calories"),
+            "distance": extracted_data.get("distance"),
+            "distance_unit": extracted_data.get("distance_unit"),
+            "avg_pace": extracted_data.get("avg_pace"),
+            "pace_unit": extracted_data.get("pace_unit"),
+            "avg_speed": extracted_data.get("avg_speed"),
+            "speed_unit": extracted_data.get("speed_unit"),
+            "elevation_gain": extracted_data.get("elevation_gain"),
+            "elevation_unit": extracted_data.get("elevation_unit"),
+            "avg_cadence": extracted_data.get("avg_cadence"),
+            "avg_power": extracted_data.get("avg_power"),
             "processing_confidence": "high",
             # Include empty exercises array for compatibility
             "exercises": [],
@@ -646,6 +843,45 @@ async def extract_workout_from_screenshot(
         "exercises": exercises_with_matches,
         "processing_confidence": overall_confidence
     }
+
+
+def _first_value(extractions: List[Dict[str, Any]], key: str):
+    """First non-null value for `key` across extractions."""
+    for ext in extractions:
+        if ext.get(key) is not None:
+            return ext[key]
+    return None
+
+
+def _first_unit(extractions: List[Dict[str, Any]], value_key: str, unit_key: str):
+    """Unit reported alongside the first extraction that had `value_key`."""
+    for ext in extractions:
+        if ext.get(value_key) is not None:
+            return ext.get(unit_key)
+    return None
+
+
+def _sum_cardio(extractions: List[Dict[str, Any]], value_key: str, unit_key: str):
+    """Sum a distance-like metric across extractions that share a unit.
+
+    Screenshots of the same run split across images should add up. Mixed units
+    (one mi, one km) cannot be summed safely here — the unit is resolved
+    separately — so only same-unit values are combined, matching the unit that
+    ``_first_unit`` will report.
+    """
+    base_unit = _first_unit(extractions, value_key, unit_key)
+    total = 0.0
+    seen = False
+    for ext in extractions:
+        value = ext.get(value_key)
+        if value is None or ext.get(unit_key) != base_unit:
+            continue
+        try:
+            total += float(value)
+            seen = True
+        except (TypeError, ValueError):
+            continue
+    return total if seen else None
 
 
 def merge_extractions(extractions: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -781,6 +1017,29 @@ def merge_extractions(extractions: List[Dict[str, Any]]) -> Dict[str, Any]:
         result["avg_hr"] = max_avg_hr
         result["max_hr"] = max_max_hr
         result["heart_rate_zones"] = all_heart_rate_zones if all_heart_rate_zones else None
+
+        # Cardio metrics: additive for distance/elevation/calories (two halves
+        # of one run), first-seen for rate metrics (pace/cadence/power), which
+        # cannot be meaningfully summed across screenshots. Units come from the
+        # first screenshot that reported each metric.
+        for key in ("distance", "elevation_gain"):
+            result[key] = _sum_cardio(extractions, key, f"{key.split('_')[0]}_unit")
+        result["distance_unit"] = _first_unit(extractions, "distance", "distance_unit")
+        result["elevation_unit"] = _first_unit(extractions, "elevation_gain", "elevation_unit")
+        for key, unit_key in (
+            ("avg_pace", "pace_unit"),
+            ("avg_speed", "speed_unit"),
+        ):
+            result[key] = _first_value(extractions, key)
+            result[unit_key] = _first_unit(extractions, key, unit_key)
+        for key in ("avg_cadence", "avg_power"):
+            result[key] = _first_value(extractions, key)
+        for key in ("active_calories", "total_calories"):
+            total = sum(
+                ext[key] for ext in extractions
+                if isinstance(ext.get(key), (int, float))
+            )
+            result[key] = total or None
 
     logger.info(f"Merged result session_date: {result.get('session_date')}")
     return result
@@ -1069,7 +1328,9 @@ async def save_whoop_activity(
     strain = strain_value
     calories = extraction_result.get("calories")
 
-    # Build notes with WHOOP metrics
+    # Build notes with WHOOP metrics. Distance/pace live in real columns now —
+    # they are echoed here only so the existing notes-driven summary line still
+    # reads well; parse_whoop_notes deliberately ignores them.
     notes_parts = [f"{activity_type} - WHOOP Activity"]
     if strain:
         notes_parts.append(f"Strain: {strain}")
@@ -1083,6 +1344,12 @@ async def save_whoop_activity(
     # already pulls (avg/max HR, per-zone durations) onto the session with
     # hr_source="screenshot", so screenshot activities feed the Hunt log
     # strain badge, Condition's yesterday-strain input, and zone analytics.
+    # Cardio metrics (distance, pace, elevation, cadence, power, calorie split)
+    # normalized to SI. Empty for strength screenshots, which show none of them.
+    cardio_metrics = extract_cardio_metrics(extraction_result)
+    if cardio_metrics:
+        logger.info(f"Extracted cardio metrics: {cardio_metrics}")
+
     workout_session = WorkoutSession(
         user_id=user_id,
         date=workout_datetime,
@@ -1093,6 +1360,7 @@ async def save_whoop_activity(
         strain=strain_value,
         hr_zone_seconds=parse_zone_seconds(extraction_result.get("heart_rate_zones")),
         hr_source="screenshot",
+        **cardio_metrics,
     )
     db.add(workout_session)
     db.flush()

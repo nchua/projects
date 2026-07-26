@@ -45,6 +45,7 @@ from app.services.gate_service import check_gate_clear, evaluate_gate_spawns
 from app.services.goal_service import update_goal_progress
 from app.services.heart_rate_service import ingest_heart_rate
 from app.services.hunt_name_service import suggest_hunt_name
+from app.services.workout_stats import cardio_display_fields
 from app.services.notification_service import (
     notify_achievement_unlocked,
     notify_gate_opened,
@@ -684,6 +685,9 @@ async def list_workouts(
             avg_heart_rate=workout.avg_heart_rate,
             peak_heart_rate=workout.peak_heart_rate,
             hr_source=workout.hr_source,
+            # Cardio metrics (distance/pace/elevation/...) — all None for
+            # strength sessions.
+            **cardio_display_fields(workout),
         ))
 
     return summaries
@@ -988,6 +992,9 @@ def _build_workout_response(workout: WorkoutSession) -> WorkoutResponse:
         kilojoules=workout.kilojoules,
         hr_zone_seconds=workout.hr_zone_seconds,
         hr_source=workout.hr_source,
+        # Cardio metrics (distance/pace/elevation/...) — all None for
+        # strength sessions.
+        **cardio_display_fields(workout),
         exertion_score=compute_exertion_score(workout.hr_zone_seconds),
         # Unified Strain (§7.1): session strain column, else the WHOOP strain
         # parsed from activity notes, else exertion.

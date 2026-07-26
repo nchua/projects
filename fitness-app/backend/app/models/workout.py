@@ -74,6 +74,26 @@ class WorkoutSession(Base):
     hr_zone_seconds = Column(JSON, nullable=True)
     hr_source = Column(String, nullable=True)       # "apple_watch" | "whoop" | "screenshot"
 
+    # ── Cardio metrics (runs, rides, swims) ──
+    # Populated from activity screenshots and HealthKit cardio imports. All
+    # nullable — strength sessions leave every one of them NULL.
+    #
+    # Stored in SI units regardless of what the source displayed, so a run
+    # logged in miles and one logged in kilometres are directly comparable.
+    # Clients format for display (see workout_stats.cardio_display_fields).
+    #
+    # avg_speed_mps holds the speed the SOURCE reported, converted — it is
+    # deliberately not derived from distance/duration, because apps report
+    # moving pace while duration_minutes is usually elapsed time, and the two
+    # disagree whenever the user paused.
+    distance_meters = Column(Float, nullable=True)
+    elevation_gain_meters = Column(Float, nullable=True)
+    avg_speed_mps = Column(Float, nullable=True)
+    avg_cadence_spm = Column(Integer, nullable=True)   # steps/rev per minute
+    avg_power_watts = Column(Integer, nullable=True)
+    active_calories = Column(Integer, nullable=True)   # excludes resting burn
+    total_calories = Column(Integer, nullable=True)    # active + resting
+
     # Sync tracking
     synced_at = Column(DateTime, nullable=True)
 

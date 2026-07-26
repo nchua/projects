@@ -192,6 +192,47 @@ struct QuestSummaryCard: View {
                 Spacer()
             }
 
+            // Cardio metrics — distance/pace/elevation and, when the source
+            // reported them, cadence/power. Rendered only for sessions that
+            // actually carry them, so strength quests are unchanged.
+            if hasCardioMetrics {
+                AriseDivider()
+
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 24) {
+                        if let miles = workout.distanceMiles {
+                            statCell(
+                                value: String(format: "%.2f", miles),
+                                label: "MILES",
+                                color: .systemPrimary
+                            )
+                        }
+                        if let pace = workout.avgPaceDisplay {
+                            statCell(value: pace, label: "AVG PACE", color: .textPrimary)
+                        }
+                        if let elevation = workout.elevationGainFeet {
+                            statCell(value: "\(elevation)", label: "ELEV FT", color: .gold)
+                        }
+                        Spacer()
+                    }
+
+                    if workout.avgCadenceSpm != nil || workout.avgPowerWatts != nil {
+                        HStack(spacing: 24) {
+                            if let cadence = workout.avgCadenceSpm {
+                                statCell(value: "\(cadence)", label: "SPM", color: .textPrimary)
+                            }
+                            if let power = workout.avgPowerWatts {
+                                statCell(value: "\(power)", label: "WATTS", color: .textPrimary)
+                            }
+                            if let total = workout.totalCalories {
+                                statCell(value: "\(total)", label: "TOTAL CAL", color: .textPrimary)
+                            }
+                            Spacer()
+                        }
+                    }
+                }
+            }
+
             // Notes
             if let notes = workout.notes, !notes.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
@@ -223,6 +264,15 @@ struct QuestSummaryCard: View {
     }
 
     private var isActivity: Bool { workout.isActivity ?? false }
+
+    /// True when the session carries any cardio metric worth a row of its own.
+    private var hasCardioMetrics: Bool {
+        workout.distanceMiles != nil
+            || workout.avgPaceDisplay != nil
+            || workout.elevationGainFeet != nil
+            || workout.avgCadenceSpm != nil
+            || workout.avgPowerWatts != nil
+    }
 
     /// Orange for cardio/sport activities, green for completed strength quests.
     private var accentColor: Color { isActivity ? .orange : .successGreen }

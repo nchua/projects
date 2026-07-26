@@ -598,6 +598,20 @@ struct EdgeFlowWorkoutRow: View {
                             }
                         }
 
+                        // Distance leads for runs/rides — it's the number
+                        // you scan a history list for.
+                        if let miles = workout.distanceMiles {
+                            Text(String(format: "%.2f mi", miles))
+                                .font(.ariseMono(size: 12))
+                                .foregroundColor(.textSecondary)
+                        }
+
+                        if let pace = workout.avgPaceDisplay {
+                            Text("\(pace)/mi")
+                                .font(.ariseMono(size: 12))
+                                .foregroundColor(.textSecondary)
+                        }
+
                         if let calories = workout.calories {
                             Text("\(calories) cal")
                                 .font(.ariseMono(size: 12))

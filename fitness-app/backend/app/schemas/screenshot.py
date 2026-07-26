@@ -81,6 +81,20 @@ class ScreenshotProcessResponse(BaseModel):
     max_hr: Optional[int] = Field(None, description="Max heart rate in BPM")
     source: Optional[str] = Field(None, description="Data source (e.g., 'VIA APPLE WATCH')")
     heart_rate_zones: List[HeartRateZone] = Field(default_factory=list, description="Heart rate zone breakdown")
+    # Cardio metrics as displayed on the screenshot (source units). The client
+    # shows these in the edit-before-save flow and posts them back unchanged.
+    active_calories: Optional[int] = Field(None, description="Active/move calories")
+    total_calories: Optional[int] = Field(None, description="Total calories")
+    distance: Optional[float] = Field(None, description="Distance in distance_unit")
+    distance_unit: Optional[str] = Field(None, description="mi | km | m")
+    avg_pace: Optional[str] = Field(None, description="Average pace, e.g. 9'19\"")
+    pace_unit: Optional[str] = Field(None, description="/mi | /km")
+    avg_speed: Optional[float] = Field(None, description="Average speed in speed_unit")
+    speed_unit: Optional[str] = Field(None, description="mph | kph")
+    elevation_gain: Optional[float] = Field(None, description="Elevation gain in elevation_unit")
+    elevation_unit: Optional[str] = Field(None, description="ft | m")
+    avg_cadence: Optional[int] = Field(None, description="Average cadence (steps/min)")
+    avg_power: Optional[int] = Field(None, description="Average power (watts)")
 
     class Config:
         from_attributes = True
@@ -103,6 +117,20 @@ class ActivitySaveRequest(BaseModel):
     avg_hr: Optional[int] = Field(None, ge=20, le=250)
     max_hr: Optional[int] = Field(None, ge=20, le=250)
     heart_rate_zones: List[HeartRateZone] = Field(default_factory=list)
+    # Cardio metrics, echoed back in the source's own units so the edit flow
+    # preserves what the screenshot showed. Normalized to SI on save.
+    active_calories: Optional[int] = Field(None, ge=0)
+    total_calories: Optional[int] = Field(None, ge=0)
+    distance: Optional[float] = Field(None, ge=0)
+    distance_unit: Optional[str] = None
+    avg_pace: Optional[str] = None
+    pace_unit: Optional[str] = None
+    avg_speed: Optional[float] = Field(None, ge=0)
+    speed_unit: Optional[str] = None
+    elevation_gain: Optional[float] = None
+    elevation_unit: Optional[str] = None
+    avg_cadence: Optional[int] = Field(None, ge=0)
+    avg_power: Optional[int] = Field(None, ge=0)
 
 
 class ActivitySaveResponse(BaseModel):
@@ -137,6 +165,20 @@ class ScreenshotBatchResponse(BaseModel):
     max_hr: Optional[int] = Field(None, description="Max heart rate in BPM")
     source: Optional[str] = Field(None, description="Data source")
     heart_rate_zones: List[HeartRateZone] = Field(default_factory=list, description="Heart rate zone breakdown")
+    # Cardio metrics as displayed on the screenshot (source units). The client
+    # shows these in the edit-before-save flow and posts them back unchanged.
+    active_calories: Optional[int] = Field(None, description="Active/move calories")
+    total_calories: Optional[int] = Field(None, description="Total calories")
+    distance: Optional[float] = Field(None, description="Distance in distance_unit")
+    distance_unit: Optional[str] = Field(None, description="mi | km | m")
+    avg_pace: Optional[str] = Field(None, description="Average pace, e.g. 9'19\"")
+    pace_unit: Optional[str] = Field(None, description="/mi | /km")
+    avg_speed: Optional[float] = Field(None, description="Average speed in speed_unit")
+    speed_unit: Optional[str] = Field(None, description="mph | kph")
+    elevation_gain: Optional[float] = Field(None, description="Elevation gain in elevation_unit")
+    elevation_unit: Optional[str] = Field(None, description="ft | m")
+    avg_cadence: Optional[int] = Field(None, description="Average cadence (steps/min)")
+    avg_power: Optional[int] = Field(None, description="Average power (watts)")
 
     class Config:
         from_attributes = True

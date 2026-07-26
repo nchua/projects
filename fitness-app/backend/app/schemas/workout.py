@@ -166,6 +166,20 @@ class WorkoutResponse(BaseModel):
     is_activity: bool = False
     activity_type: Optional[str] = None
     calories: Optional[int] = None
+    # ── Cardio metrics (None for strength sessions) ──
+    # Stored in SI; imperial companions are precomputed server-side so clients
+    # render without unit math. `avg_pace_display` is the mm'ss" string.
+    distance_meters: Optional[float] = None
+    distance_miles: Optional[float] = None
+    elevation_gain_meters: Optional[float] = None
+    elevation_gain_feet: Optional[int] = None
+    avg_speed_mps: Optional[float] = None
+    avg_pace_seconds_per_mile: Optional[float] = None
+    avg_pace_display: Optional[str] = None
+    avg_cadence_spm: Optional[int] = None
+    avg_power_watts: Optional[int] = None
+    active_calories: Optional[int] = None
+    total_calories: Optional[int] = None
     created_at: str
     updated_at: str
 
@@ -288,6 +302,21 @@ class WorkoutSummary(BaseModel):
     avg_heart_rate: Optional[int] = None
     peak_heart_rate: Optional[int] = None
     hr_source: Optional[str] = None
+
+    # ── Cardio metrics (None for strength sessions) ──
+    # Stored in SI; imperial companions are precomputed server-side so clients
+    # render without unit math. `avg_pace_display` is the mm'ss" string.
+    distance_meters: Optional[float] = None
+    distance_miles: Optional[float] = None
+    elevation_gain_meters: Optional[float] = None
+    elevation_gain_feet: Optional[int] = None
+    avg_speed_mps: Optional[float] = None
+    avg_pace_seconds_per_mile: Optional[float] = None
+    avg_pace_display: Optional[str] = None
+    avg_cadence_spm: Optional[int] = None
+    avg_power_watts: Optional[int] = None
+    active_calories: Optional[int] = None
+    total_calories: Optional[int] = None
 
     class Config:
         from_attributes = True
