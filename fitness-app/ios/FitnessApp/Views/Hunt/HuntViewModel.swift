@@ -141,6 +141,20 @@ class HuntViewModel: ObservableObject {
         }
     }
 
+    /// Rename a hunt ("" clears back to the suggested name), then refresh the
+    /// detail and the Hunt Log list so the row title updates immediately.
+    func renameWorkout(id: String, to name: String) async {
+        do {
+            selectedWorkout = try await APIClient.shared.renameWorkout(id: id, name: name)
+            await loadWorkouts(refresh: true)
+        } catch let apiError as APIError {
+            if case .unauthorized = apiError { return }
+            self.error = apiError.localizedDescription
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
     func workoutsForDate(_ date: Date) -> [WorkoutSummaryResponse] {
         // Use local timezone DateFormatter to match how workout dates are stored
         let dateString = DateFormatter.localDate.string(from: date)

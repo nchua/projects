@@ -51,6 +51,12 @@ class WorkoutSession(Base):
     hk_uuid = Column(String, nullable=True, index=True)
 
     date = Column(DateTime, nullable=False, index=True)
+
+    # User-facing hunt name ("Back & Biceps Day", "Tennis"). Nullable — when
+    # unset, clients fall back to the server-derived suggested name (see
+    # hunt_name_service.suggest_hunt_name) and finally the session date.
+    name = Column(String(100), nullable=True)
+
     duration_minutes = Column(Integer, nullable=True)
     session_rpe = Column(Integer, nullable=True)  # Optional 1-10 rating for entire session
     notes = Column(Text, nullable=True)

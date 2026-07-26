@@ -715,6 +715,46 @@ struct ActiveQuestView: View {
                 .padding(.horizontal)
                 .fadeIn(delay: 0.15)
 
+                // Hunt Name — seeded by the muscle-split suggestion; leaving it
+                // empty keeps the server-derived suggestion as the display name.
+                VStack(alignment: .leading, spacing: 12) {
+                    AriseSectionHeader(title: "Hunt Name")
+                        .padding(.horizontal)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        TextField(
+                            viewModel.suggestedHuntName ?? "Name this hunt...",
+                            text: $viewModel.workoutName
+                        )
+                        .font(.ariseMono(size: 14))
+                        .foregroundColor(.textPrimary)
+                        .padding(16)
+                        .background(Color.voidMedium)
+                        .cornerRadius(4)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color.ariseBorder, lineWidth: 1)
+                        )
+
+                        if let suggestion = viewModel.suggestedHuntName,
+                           viewModel.workoutName.trimmingCharacters(in: .whitespaces).isEmpty {
+                            Button {
+                                viewModel.workoutName = suggestion
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "sparkles")
+                                        .font(.system(size: 10, weight: .semibold))
+                                    Text("Use \"\(suggestion)\"")
+                                        .font(.ariseMono(size: 12, weight: .medium))
+                                }
+                                .foregroundColor(.systemPrimary)
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .fadeIn(delay: 0.18)
+
                 // Exercises Section
                 VStack(alignment: .leading, spacing: 16) {
                     HStack {

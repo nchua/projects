@@ -44,6 +44,7 @@ from app.services.directive_service import check_directive_completion
 from app.services.gate_service import check_gate_clear, evaluate_gate_spawns
 from app.services.goal_service import update_goal_progress
 from app.services.heart_rate_service import ingest_heart_rate
+from app.services.hunt_name_service import suggest_hunt_name
 from app.services.notification_service import (
     notify_achievement_unlocked,
     notify_gate_opened,
@@ -275,6 +276,7 @@ async def _create_workout_impl(
         user_id=current_user.id,
         client_id=workout_data.client_id,
         date=workout_data.date,
+        name=(workout_data.name or "").strip() or None,
         duration_minutes=workout_data.duration_minutes,
         session_rpe=workout_data.session_rpe,
         notes=workout_data.notes,
@@ -635,6 +637,14 @@ async def list_workouts(
         # for activities, surface the muscle proxy (Quads/Hamstrings…) instead of
         # the coarse seeded primary_muscle ("Full Body"/"Legs").
         activity = _derive_activity_fields(workout, total_sets)
+        # Suggested name: activity type for pure cardio/sport rows, otherwise
+        # the raw strength muscles (before the activity muscle-proxy overwrite)
+        # — a WHOOP "WEIGHTLIFTING" tag on a logged session shouldn't beat the
+        # muscle split.
+        suggested_name = suggest_hunt_name(
+            activity["activity_type"] if activity["is_activity"] else None,
+            primary_muscles,
+        )
         if activity["is_activity"]:
             proxy_muscles = _activity_primary_muscles(sorted_exercises, activity["activity_type"])
             if proxy_muscles:
@@ -644,6 +654,8 @@ async def list_workouts(
             id=workout.id,
             user_id=workout.user_id,
             date=to_iso8601_utc(workout.date),
+            name=workout.name,
+            suggested_name=suggested_name,
             duration_minutes=workout.duration_minutes,
             session_rpe=workout.session_rpe,
             notes=workout.notes,
@@ -756,6 +768,10 @@ async def update_workout(
     # Update basic fields
     if workout_data.date is not None:
         workout.date = workout_data.date
+    # Empty string clears the custom name (display falls back to the
+    # suggestion); omitting the field leaves it unchanged.
+    if workout_data.name is not None:
+        workout.name = workout_data.name.strip() or None
     if workout_data.duration_minutes is not None:
         workout.duration_minutes = workout_data.duration_minutes
     if workout_data.session_rpe is not None:
@@ -940,10 +956,27 @@ def _build_workout_response(workout: WorkoutSession) -> WorkoutResponse:
     total_sets = sum(len(we.sets) for we in workout.workout_exercises)
     activity = _derive_activity_fields(workout, total_sets)
 
+    # Suggested name mirrors the list endpoint: activity type for pure
+    # cardio/sport sessions, muscle split otherwise.
+    seen_muscles = set()
+    primary_muscles = []
+    for we in sorted(workout.workout_exercises, key=lambda we: we.order_index):
+        if we.exercise and we.exercise.primary_muscle:
+            m = we.exercise.primary_muscle
+            if m not in seen_muscles:
+                seen_muscles.add(m)
+                primary_muscles.append(m)
+    suggested_name = suggest_hunt_name(
+        activity["activity_type"] if activity["is_activity"] else None,
+        primary_muscles,
+    )
+
     return WorkoutResponse(
         id=workout.id,
         user_id=workout.user_id,
         date=to_iso8601_utc(workout.date),
+        name=workout.name,
+        suggested_name=suggested_name,
         duration_minutes=workout.duration_minutes,
         session_rpe=workout.session_rpe,
         notes=workout.notes,
