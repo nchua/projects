@@ -19,14 +19,18 @@ class ModelConfig:
     """Configuration settings for Claude model parameters."""
 
     # Available models include:
-    # - claude-sonnet-4-20250514 (default)
-    # - claude-opus-4-20250514
-    # - claude-haiku-4-5-20251001
-    # - claude-3-5-sonnet-20240620
-    # - claude-3-haiku-20240307
-    model: str = "claude-sonnet-4-20250514"
-    max_tokens: int = 4096
-    temperature: float = 1.0
+    # - claude-opus-5 (default)
+    # - claude-sonnet-5
+    # - claude-haiku-4-5
+    model: str = "claude-opus-5"
+    # Raised from 4096: current models run adaptive thinking by default and
+    # thinking tokens count against max_tokens, so an agent loop needs headroom
+    # for reasoning plus the tool calls and final answer.
+    max_tokens: int = 16000
+    # Optional and omitted from the request when None. Current models reject a
+    # non-default temperature/top_p/top_k with a 400 — steer behaviour with the
+    # system prompt instead. Left configurable only for older model pins.
+    temperature: float | None = None
     context_window_tokens: int = 180000
 
 
@@ -83,15 +87,19 @@ class Agent:
         Returns a dict with base parameters from config, with any
         message_params overriding conflicting keys.
         """
-        return {
+        params: dict[str, Any] = {
             "model": self.config.model,
             "max_tokens": self.config.max_tokens,
-            "temperature": self.config.temperature,
             "system": self.system,
             "messages": self.history.format_for_api(),
             "tools": [tool.to_dict() for tool in self.tools],
-            **self.message_params,
         }
+        # Only send temperature when explicitly configured; current models 400
+        # on a non-default value, and omitting it is always valid.
+        if self.config.temperature is not None:
+            params["temperature"] = self.config.temperature
+        params.update(self.message_params)
+        return params
 
     async def _agent_loop(self, user_input: str) -> list[dict[str, Any]]:
         """Process user input and handle tool calls in a loop"""

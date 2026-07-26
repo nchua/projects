@@ -1338,7 +1338,11 @@ Only suggest actions when they make sense for the user's question. Keep response
                     'anthropic-dangerous-direct-browser-access': 'true'
                 },
                 body: JSON.stringify({
-                    model: 'claude-sonnet-4-20250514',
+                    model: 'claude-sonnet-5',
+                    // Thinking must stay off here: the model thinks by default
+                    // and thinking tokens count against max_tokens, which would
+                    // consume this whole budget and return no text.
+                    thinking: { type: 'disabled' },
                     max_tokens: 50,
                     messages: [{ role: 'user', content: 'Say "connected" and nothing else.' }]
                 })
@@ -1414,8 +1418,10 @@ Only suggest actions when they make sense for the user's question. Keep response
                         'anthropic-dangerous-direct-browser-access': 'true'
                     },
                     body: JSON.stringify({
-                        model: 'claude-sonnet-4-20250514',
-                        max_tokens: 1024,
+                        model: 'claude-sonnet-5',
+                        // Raised from 1024: the model thinks by default and
+                        // thinking tokens share this budget with the answer.
+                        max_tokens: 8192,
                         system: systemPrompt,
                         messages: [{ role: 'user', content: question }]
                     })
