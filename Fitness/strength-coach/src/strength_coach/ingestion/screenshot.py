@@ -18,6 +18,11 @@ from ..models.activity import (
 )
 
 
+# Vision model used for screenshot detection and extraction. Keep this as a
+# named constant so a model retirement is a one-line change.
+VISION_MODEL = "claude-sonnet-5"
+
+
 class ScreenshotExtractionResult(BaseModel):
     """Result of screenshot extraction."""
 
@@ -114,8 +119,12 @@ def detect_source(image_path: Path, api_key: Optional[str] = None) -> ActivitySo
     image_data, media_type = _load_image(image_path)
 
     response = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=50,
+        model=VISION_MODEL,
+        # Must stay disabled: Sonnet 5 thinks by default and thinking tokens
+        # count against max_tokens, which would consume this whole budget and
+        # leave nothing for the one-word source label.
+        thinking={"type": "disabled"},
+        max_tokens=100,
         messages=[
             {
                 "role": "user",
@@ -204,8 +213,13 @@ def extract_from_screenshot(
 
     try:
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=1024,
+            model=VISION_MODEL,
+            # Sonnet 5 thinks by default and thinking tokens count against
+            # max_tokens; this call returns a fixed JSON shape, so the budget
+            # belongs to the payload.
+            thinking={"type": "disabled"},
+            # Raised from 1024 for Sonnet 5's ~30% higher token counts.
+            max_tokens=2048,
             messages=[
                 {
                     "role": "user",

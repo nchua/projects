@@ -1,2 +1,4 @@
-anthropic>=0.18.0
+# Floor raised: the screenshot processor passes the `thinking` parameter,
+# which older SDK versions reject as an unexpected keyword argument.
+anthropic>=0.49.0
 watchdog>=3.0.0
