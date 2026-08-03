@@ -411,6 +411,9 @@ struct HealthKitWorkoutImport: Encodable {
     let hrZoneSeconds: [String: Int]? // dict, matches backend storage; nil if age unknown
     let heartRateSamples: [HealthKitHRSample]?
     let distanceMeters: Double?       // deferred v1 — send nil
+    // UTC offset (minutes) at the workout's start; backend uses it to bucket
+    // the session on the user's local calendar day (not the UTC day).
+    let timezoneOffsetMinutes: Int?
 
     enum CodingKeys: String, CodingKey {
         case start, end, kilojoules
@@ -423,6 +426,7 @@ struct HealthKitWorkoutImport: Encodable {
         case hrZoneSeconds = "hr_zone_seconds"
         case heartRateSamples = "heart_rate_samples"
         case distanceMeters = "distance_meters"
+        case timezoneOffsetMinutes = "timezone_offset_minutes"
     }
 }
 

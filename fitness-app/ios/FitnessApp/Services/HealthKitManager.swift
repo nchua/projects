@@ -376,6 +376,10 @@ class HealthKitManager: ObservableObject {
             return ("rowing", false)
         case .elliptical:
             return ("elliptical", false)
+        case .stairClimbing, .stairs, .stepTraining:
+            // Watch "Stair Stepper"/"Stairs" → seeded "Stair Climber" (alias "StairMaster");
+            // "stair_climber" fuzz-matches it ≈92, well clear of "Climbing" (rock).
+            return ("stair_climber", false)
         default:
             return ("other", false)
         }
@@ -454,7 +458,10 @@ class HealthKitManager: ObservableObject {
             peakHeartRate: peakHeartRate,
             hrZoneSeconds: hrZoneSeconds,
             heartRateSamples: heartRateSamples,
-            distanceMeters: nil // deferred v1
+            distanceMeters: nil, // deferred v1
+            // Offset at the workout's *start* (not now) so a workout logged
+            // across a DST change still buckets on the day it happened.
+            timezoneOffsetMinutes: TimeZone.current.secondsFromGMT(for: workout.startDate) / 60
         )
     }
 

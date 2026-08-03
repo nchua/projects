@@ -62,6 +62,16 @@ class HealthKitWorkout(BaseModel):
     distance_meters: Optional[float] = Field(
         None, ge=0, description="Distance (m); v1 stores only in notes, may be null"
     )
+    timezone_offset_minutes: Optional[int] = Field(
+        None,
+        ge=-14 * 60,
+        le=14 * 60,
+        description=(
+            "User's UTC offset (minutes) at the workout's start, e.g. -420 for "
+            "PDT. Used to bucket the created session on the user's local "
+            "calendar day; when absent the session date falls back to UTC."
+        ),
+    )
 
     @field_validator("start", "end", mode="before")
     @classmethod

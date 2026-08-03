@@ -63,6 +63,7 @@ def _make_workout(
     kilojoules: float = None,
     hr_zone_seconds: dict = None,
     samples: list = None,
+    timezone_offset_minutes: int = None,
 ) -> HealthKitWorkout:
     """Build a validated ``HealthKitWorkout`` request item.
 
@@ -84,6 +85,7 @@ def _make_workout(
         hr_zone_seconds=hr_zone_seconds,
         heart_rate_samples=samples,
         distance_meters=None,
+        timezone_offset_minutes=timezone_offset_minutes,
     )
 
 
@@ -294,6 +296,95 @@ class TestCardioImport:
         db.refresh(session)
         # No exercise linked because nothing matched.
         assert session.workout_exercises == []
+
+
+# ── TestLocalDateBucketing ────────────────────────────────────────────────────
+
+class TestLocalDateBucketing:
+    """Cardio session dates follow the user's local calendar day, not UTC.
+
+    The Hunt calendar buckets workouts by the stored date string's day part
+    (mirroring manual logs, which store local dates), so a Sunday-evening
+    workout in a UTC-negative timezone must not land on Monday.
+    """
+
+    def test_offset_shifts_session_date_to_local_day(self, db, create_test_user):
+        """Sunday 7pm PDT (Monday 02:00 UTC, offset -420) stores Sunday 19:00."""
+        user, _ = create_test_user(email=f"tz1-{uuid.uuid4().hex[:8]}@example.com")
+        _seed_running_exercise(db)
+
+        result = import_healthkit_workouts(
+            db,
+            user.id,
+            [
+                _make_workout(
+                    # Mon 2026-08-03 02:00 UTC == Sun 2026-08-02 19:00 PDT.
+                    start=_utc(2026, 8, 3, 2, 0),
+                    duration_minutes=30,
+                    timezone_offset_minutes=-420,
+                )
+            ],
+        )
+        db.commit()
+
+        session = db.query(WorkoutSession).filter(
+            WorkoutSession.id == result["sessions_created"][0]
+        ).first()
+        assert session.date == datetime(2026, 8, 2, 19, 0)
+
+    def test_no_offset_falls_back_to_utc(self, db, create_test_user):
+        """Older clients omit the offset -> unchanged naive-UTC behavior."""
+        user, _ = create_test_user(email=f"tz2-{uuid.uuid4().hex[:8]}@example.com")
+        _seed_running_exercise(db)
+
+        result = import_healthkit_workouts(
+            db,
+            user.id,
+            [_make_workout(start=_utc(2026, 8, 3, 2, 0), duration_minutes=30)],
+        )
+        db.commit()
+
+        session = db.query(WorkoutSession).filter(
+            WorkoutSession.id == result["sessions_created"][0]
+        ).first()
+        assert session.date == datetime(2026, 8, 3, 2, 0)
+
+    def test_stair_climber_vocab_links_seeded_exercise(self, db, create_test_user):
+        """The Chunk-C vocab string "stair_climber" fuzz-matches seeded "Stair Climber".
+
+        Guards the iOS ``mapActivityType`` addition (.stairClimbing/.stairs/
+        .stepTraining) against the backend matcher's ≥70 threshold — and against
+        mis-landing on "Climbing" (rock), which is also seeded on real DBs.
+        """
+        user, _ = create_test_user(email=f"stair-{uuid.uuid4().hex[:8]}@example.com")
+        stair = Exercise(
+            id=str(uuid.uuid4()),
+            name="Stair Climber",
+            category="Cardio",
+            is_custom=False,
+        )
+        climbing = Exercise(
+            id=str(uuid.uuid4()),
+            name="Climbing",
+            category="Sport",
+            is_custom=False,
+        )
+        db.add_all([stair, climbing])
+        db.flush()
+
+        result = import_healthkit_workouts(
+            db,
+            user.id,
+            [_make_workout(activity_type="stair_climber", avg_hr=140)],
+        )
+        db.commit()
+
+        session = db.query(WorkoutSession).filter(
+            WorkoutSession.id == result["sessions_created"][0]
+        ).first()
+        db.refresh(session)
+        exercise_ids = [we.exercise_id for we in session.workout_exercises]
+        assert exercise_ids == [stair.id]
 
 
 # ── TestStrengthImport ────────────────────────────────────────────────────────

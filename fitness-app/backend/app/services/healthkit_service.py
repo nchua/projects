@@ -22,10 +22,13 @@ path can attribute HR to individual sets (via
 Like ``whoop_service.sync_recent_workouts``, this service only ``db.flush()``es —
 the **endpoint owns the final ``db.commit()``** (and rollback on error).
 
-Datetime discipline: the DB stores **naive UTC**; the WHOOP overlap matchers
-expect **aware UTC** (``ensure_utc``); ``ingest_heart_rate`` normalizes samples
-to naive UTC itself. New session dates are stored naive-UTC so day-stat
-helpers bucket them on the correct local day.
+Datetime discipline: HR timestamps stay UTC — the WHOOP overlap matchers
+expect **aware UTC** (``ensure_utc``) and ``ingest_heart_rate`` normalizes
+samples to naive UTC itself. New session ``date``s, however, follow the
+manual-log convention (naive **local** wall-clock): the client sends its UTC
+offset per workout (``timezone_offset_minutes``) and the date is shifted by
+it, so an evening workout doesn't bucket onto the next UTC day in the Hunt
+calendar (which groups by the stored date string's day part).
 """
 import logging
 from datetime import datetime, timedelta, timezone
@@ -63,6 +66,21 @@ def _to_naive_utc(dt: datetime) -> datetime:
     return aware.astimezone(timezone.utc).replace(tzinfo=None)
 
 
+def _session_local_date(workout: HealthKitWorkout) -> datetime:
+    """Naive local wall-clock datetime for a new session's ``date``.
+
+    Manual logs store the user's local date, and the iOS Hunt calendar buckets
+    workouts by the stored date string's day part — so a Sunday 7pm PDT workout
+    (Monday 02:00 UTC) must be stored as Sunday 19:00, not Monday. The client
+    sends its UTC offset at the workout's start; without it (older clients) we
+    fall back to plain UTC.
+    """
+    date = _to_naive_utc(workout.start)
+    if workout.timezone_offset_minutes is not None:
+        date += timedelta(minutes=workout.timezone_offset_minutes)
+    return date
+
+
 def _iso_utc(dt: datetime) -> str:
     """Format a datetime as a full ISO8601 UTC string with a trailing ``Z``.
 
@@ -94,7 +112,7 @@ def _build_cardio_session(
 
     session = WorkoutSession(
         user_id=user_id,
-        date=_to_naive_utc(workout.start),
+        date=_session_local_date(workout),
         duration_minutes=round(workout.duration_seconds / 60),
         hk_uuid=workout.hk_uuid,
         avg_heart_rate=workout.avg_heart_rate,
