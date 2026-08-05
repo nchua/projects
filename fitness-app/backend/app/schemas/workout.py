@@ -166,6 +166,8 @@ class WorkoutResponse(BaseModel):
     is_activity: bool = False
     activity_type: Optional[str] = None
     calories: Optional[int] = None
+    # Cardio distance (HealthKit imports); None for strength/legacy rows.
+    distance_meters: Optional[float] = None
     created_at: str
     updated_at: str
 
@@ -288,6 +290,8 @@ class WorkoutSummary(BaseModel):
     avg_heart_rate: Optional[int] = None
     peak_heart_rate: Optional[int] = None
     hr_source: Optional[str] = None
+    # Cardio distance (HealthKit imports); None for strength/legacy rows.
+    distance_meters: Optional[float] = None
 
     class Config:
         from_attributes = True

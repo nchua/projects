@@ -88,7 +88,8 @@ def _build_cardio_session(
     """
     notes_parts = [f"{workout.activity_type} - Apple Watch"]
     if workout.distance_meters is not None:
-        # v1 has no distance column; preserve it in notes per the spec.
+        # Kept in notes alongside the real column so older clients that
+        # render notes still show the distance.
         notes_parts.append(f"Distance: {round(workout.distance_meters)}m")
     notes = " | ".join(notes_parts)
 
@@ -102,6 +103,8 @@ def _build_cardio_session(
         kilojoules=workout.kilojoules,
         hr_zone_seconds=workout.hr_zone_seconds,
         hr_source=HR_SOURCE,
+        activity_type=workout.activity_type,
+        distance_meters=workout.distance_meters,
         notes=notes,
     )
     db.add(session)
