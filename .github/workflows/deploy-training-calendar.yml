@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  pages: write
 
 concurrency:
   group: pages-deploy
@@ -24,3 +25,10 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./training-calendar
           force_orphan: true
+      - name: Enable GitHub Pages from gh-pages branch (no-op once enabled)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/${{ github.repository }}/pages" \
+            -X POST -f "source[branch]=gh-pages" -f "source[path]=/" \
+            || echo "Pages already enabled (or enable failed) — see above"
