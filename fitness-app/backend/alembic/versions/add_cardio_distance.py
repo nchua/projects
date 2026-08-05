@@ -20,6 +20,8 @@ depends_on = None
 def upgrade() -> None:
     op.add_column("workout_sessions", sa.Column("activity_type", sa.String(length=64), nullable=True))
     op.add_column("workout_sessions", sa.Column("distance_meters", sa.Float(), nullable=True))
+    # Exact cardio duration for pace math (duration_minutes is rounded).
+    op.add_column("workout_sessions", sa.Column("duration_seconds", sa.Integer(), nullable=True))
 
     # Backfill from the notes convention used by the HealthKit import:
     #   "<activity_type> - Apple Watch | Distance: <n>m"
@@ -70,5 +72,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.drop_column("workout_sessions", "duration_seconds")
     op.drop_column("workout_sessions", "distance_meters")
     op.drop_column("workout_sessions", "activity_type")

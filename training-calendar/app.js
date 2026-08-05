@@ -119,6 +119,11 @@ function liftSummary(lift) {
   }).join(" · ");
 }
 
+function fmtPace(sec) {
+  if (!sec) return null;
+  return `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, "0")}/MI`;
+}
+
 function dayActualLine(dayIdx) {
   const week = currentWeekActuals();
   if (!week) return null;
@@ -128,12 +133,30 @@ function dayActualLine(dayIdx) {
   for (const r of runs) {
     const bits = [];
     if (r.distance_miles != null) bits.push(`${r.distance_miles} MI`);
-    if (r.duration_minutes != null) bits.push(`${r.duration_minutes} MIN`);
+    const pace = fmtPace(r.pace_sec_per_mile);
+    if (pace) bits.push(pace);
+    else if (r.duration_minutes != null) bits.push(`${r.duration_minutes} MIN`);
     if (r.avg_heart_rate != null) bits.push(`${r.avg_heart_rate} BPM`);
     parts.push(bits.join(" · ") || (r.activity_type || "ACTIVITY").toUpperCase());
   }
   for (const l of lifts) parts.push(liftSummary(l));
   return parts.length ? parts.join("  |  ") : null;
+}
+
+/* Distance-weighted average pace + duration-weighted avg HR for a week's runs. */
+function weekRunStats(w) {
+  const runs = w.runs.filter((r) => r.is_run && r.distance_miles);
+  const totalMi = runs.reduce((a, r) => a + r.distance_miles, 0);
+  const paced = runs.filter((r) => r.pace_sec_per_mile);
+  const pacedMi = paced.reduce((a, r) => a + r.distance_miles, 0);
+  const pace = pacedMi
+    ? paced.reduce((a, r) => a + r.pace_sec_per_mile * r.distance_miles, 0) / pacedMi
+    : null;
+  const hrRuns = runs.filter((r) => r.avg_heart_rate);
+  const hr = hrRuns.length
+    ? Math.round(hrRuns.reduce((a, r) => a + r.avg_heart_rate, 0) / hrRuns.length)
+    : null;
+  return { totalMi, pace, hr };
 }
 
 /* Auto-check days that have a synced session of the matching kind. */
@@ -206,20 +229,24 @@ function renderReport() {
   const el = $("report");
   if (!Sync.connected() || !actualWeeks?.length) { el.hidden = true; return; }
 
-  // Weekly mileage table: last 5 weeks incl. current, expected vs actual.
+  // Weekly running table: last 5 weeks incl. current — expected vs actual
+  // miles, longest run, distance-weighted pace, avg HR. Pace falling while
+  // HR holds (or HR falling at the same pace) is the aerobic-progress signal.
   const rows = actualWeeks.slice(-5).map((w) => {
     const monday = new Date(`${w.week_start}T00:00:00`);
     const n = planWeekNumber(monday);
     const exp = expectedMiles(n);
     const longest = Math.max(0, ...w.runs.filter((r) => r.is_run).map((r) => r.distance_miles || 0));
+    const stats = weekRunStats(w);
     const v = paceVerdict(w.run_miles, exp);
     const isCurrent = w.week_start === isoDate(mondayOf(now));
-    return `<tr class="${isCurrent ? "current" : ""}">
+    const wkCls = [isCurrent ? "current" : "", !isCurrent && v ? v.cls + "-row" : ""].join(" ");
+    return `<tr class="${wkCls}">
       <td>${n ? "W" + n : w.week_start.slice(5)}${exp?.cutback ? "↓" : ""}</td>
       <td>${w.run_miles.toFixed(1)}${exp ? " / " + exp.miles : ""}</td>
       <td>${longest ? longest.toFixed(1) : "—"}</td>
-      <td>${w.lift_sessions}·${w.total_sets}</td>
-      <td class="${v ? v.cls : ""}">${isCurrent ? "…" : (v ? v.label.split(" ")[0] : "—")}</td>
+      <td>${stats.pace ? fmtPace(stats.pace).replace("/MI", "") : "—"}</td>
+      <td>${stats.hr ?? "—"}</td>
     </tr>`;
   }).join("");
 
@@ -248,15 +275,16 @@ function renderReport() {
   const longestRecent = Math.max(0, ...(recent?.runs || []).filter((r) => r.is_run).map((r) => r.distance_miles || 0));
   el.innerHTML = `
     <div class="report-block">
-      <h3>MILEAGE · EXPECTED VS ACTUAL</h3>
-      <table class="mono"><thead><tr><th>WK</th><th>MI (ACT/EXP)</th><th>LONG</th><th>LIFTS·SETS</th><th>PACE</th></tr></thead>
+      <h3>RUNNING · EXPECTED VS ACTUAL</h3>
+      <table class="mono"><thead><tr><th>WK</th><th>MI (ACT/EXP)</th><th>LONG</th><th>/MI</th><th>BPM</th></tr></thead>
       <tbody>${rows}</tbody></table>
-      <div class="report-note">↓ = planned −25% cutback week · long-run target this phase: ${p.longRunMi} mi (longest this wk: ${longestRecent ? longestRecent.toFixed(1) : "0"})</div>
+      <div class="report-note">↓ = planned −25% cutback week · long-run target this phase: ${p.longRunMi} mi (longest this wk: ${longestRecent ? longestRecent.toFixed(1) : "0"}) · progress = pace dropping at the same HR</div>
     </div>
     <div class="report-block">
       <h3>LIFTS · BEST E1RM (THIS WK VS PRIOR 4)</h3>
       <table class="mono"><thead><tr><th>LIFT</th><th>NOW</th><th>PRIOR</th><th>Δ</th></tr></thead>
       <tbody>${liftRows || `<tr><td colspan="4">no lift data yet</td></tr>`}</tbody></table>
+      <div class="report-note">this wk: ${recent ? recent.lift_sessions : 0} session${recent?.lift_sessions === 1 ? "" : "s"} · ${recent ? recent.total_sets : 0} sets</div>
     </div>
     <div class="report-actions">
       <button id="sync-refresh">REFRESH</button>

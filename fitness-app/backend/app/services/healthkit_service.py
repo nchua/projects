@@ -105,6 +105,7 @@ def _build_cardio_session(
         hr_source=HR_SOURCE,
         activity_type=workout.activity_type,
         distance_meters=workout.distance_meters,
+        duration_seconds=workout.duration_seconds,
         notes=notes,
     )
     db.add(session)

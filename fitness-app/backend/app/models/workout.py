@@ -76,10 +76,13 @@ class WorkoutSession(Base):
 
     # ── Cardio metadata (HealthKit imports and future cardio logging) ──
     # activity_type is the controlled vocab from the HealthKit import (e.g.
-    # "Outdoor Run"); distance covers runs/rides/swims. Both nullable —
-    # strength sessions and legacy rows leave them unset.
+    # "Outdoor Run"); distance covers runs/rides/swims. duration_seconds
+    # keeps the exact workout length (duration_minutes is rounded, which is
+    # too coarse for pace math). All nullable — strength sessions and legacy
+    # rows leave them unset.
     activity_type = Column(String(64), nullable=True)
     distance_meters = Column(Float, nullable=True)
+    duration_seconds = Column(Integer, nullable=True)
 
     # Sync tracking
     synced_at = Column(DateTime, nullable=True)

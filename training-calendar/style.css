@@ -320,6 +320,8 @@ td.ok, td.warn { border: none; }
 }
 .report-block td { padding: 3px 6px 3px 0; color: var(--text-dim); }
 .report-block tr.current td { color: var(--text); }
+.report-block tr.ok-row td:first-child { color: var(--lift); }
+.report-block tr.warn-row td:first-child { color: var(--run); }
 .report-note { font-size: 9.5px; color: #4d5563; margin-top: 7px; line-height: 1.4; }
 .report-actions { display: flex; gap: 8px; }
 

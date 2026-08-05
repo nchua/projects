@@ -44,6 +44,8 @@ class CalendarRun(BaseModel):
     is_run: bool             # True for run-like activities (vs other cardio)
     distance_miles: Optional[float] = None
     duration_minutes: Optional[int] = None
+    duration_seconds: Optional[int] = None   # exact, when known (pace math)
+    pace_sec_per_mile: Optional[int] = None  # None without distance
     avg_heart_rate: Optional[int] = None
 
 

@@ -135,17 +135,30 @@ async def get_weekly_calendar(
             # meaningful on the calendar; plain empty sessions are skipped.
             if activity is None and s.distance_meters is None:
                 continue
+            miles = (
+                round(s.distance_meters / METERS_PER_MILE, 2)
+                if s.distance_meters is not None else None
+            )
+            # Prefer exact seconds; fall back to rounded minutes for legacy
+            # rows so older runs still get an approximate pace.
+            secs = s.duration_seconds or (
+                s.duration_minutes * 60 if s.duration_minutes else None
+            )
+            pace = (
+                round(secs / (s.distance_meters / METERS_PER_MILE))
+                if secs and s.distance_meters and s.distance_meters >= 400
+                else None
+            )
             bucket["runs"].append(CalendarRun(
                 id=s.id,
                 local_date=local_day.isoformat(),
                 day_index=local_day.weekday(),
                 activity_type=activity,
                 is_run=_is_run(activity) or (activity is None and s.distance_meters is not None),
-                distance_miles=(
-                    round(s.distance_meters / METERS_PER_MILE, 2)
-                    if s.distance_meters is not None else None
-                ),
+                distance_miles=miles,
                 duration_minutes=s.duration_minutes,
+                duration_seconds=s.duration_seconds,
+                pace_sec_per_mile=pace,
                 avg_heart_rate=s.avg_heart_rate,
             ))
 

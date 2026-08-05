@@ -44,9 +44,11 @@ def _add_lift(db, user_id, when, exercise, sets_spec):
     return session
 
 
-def _add_run(db, user_id, when, meters, activity="Outdoor Run", hk_uuid=None):
+def _add_run(db, user_id, when, meters, activity="Outdoor Run", hk_uuid=None,
+             duration_seconds=None):
     session = WorkoutSession(
         user_id=user_id, date=when, duration_minutes=30,
+        duration_seconds=duration_seconds,
         activity_type=activity, distance_meters=meters,
         hr_source="apple_watch", hk_uuid=hk_uuid,
         avg_heart_rate=150,
@@ -101,6 +103,9 @@ class TestCalendarWeekly:
         run = next(r for r in runs if r["is_run"])
         assert run["distance_miles"] == 2.0
         assert run["avg_heart_rate"] == 150
+        # No exact seconds on this row -> pace falls back to rounded minutes:
+        # 30 min over 2.0 mi = 900 sec/mi.
+        assert run["pace_sec_per_mile"] == 900
         ride = next(r for r in runs if not r["is_run"])
         assert ride["activity_type"] == "Outdoor Cycle"
         # Weekly mileage counts runs only.
@@ -139,6 +144,18 @@ class TestCalendarWeekly:
         assert len(pdt_runs) == 1
         assert pdt_runs[0]["day_index"] == 6
         assert sum(w["run_miles"] for w in pdt_view) == 1.0
+
+    def test_pace_prefers_exact_seconds(self, client, db, calendar_user):
+        headers, user = calendar_user
+        now = _utc_naive_now()
+        # 5 km in 29:17 -> 1757 s / 3.107 mi = 566 sec/mi (9:26).
+        _add_run(db, user.id, now - timedelta(hours=1), 5000.0,
+                 hk_uuid="hk-pace", duration_seconds=1757)
+
+        resp = client.get("/calendar/weekly?weeks=1", headers=headers)
+        run = resp.json()["weeks"][0]["runs"][0]
+        assert run["duration_seconds"] == 1757
+        assert run["pace_sec_per_mile"] == 566
 
     def test_soft_deleted_sessions_excluded(self, client, db, calendar_user):
         headers, user = calendar_user
