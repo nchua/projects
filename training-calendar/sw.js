@@ -1,11 +1,12 @@
 /* Cache-first service worker. Bump VERSION when any precached file changes. */
-const VERSION = "tc-v2";
+const VERSION = "tc-v3";
 const PRECACHE = [
   "./",
   "index.html",
   "style.css",
   "app.js",
   "data.js",
+  "sync.js",
   "manifest.webmanifest",
   "fonts/fonts.css",
   "fonts/Oswald.woff2",

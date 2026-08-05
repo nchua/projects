@@ -31,7 +31,25 @@
 
 <section class="phase-meta" id="phase-meta"></section>
 
+<section class="syncbar" id="syncbar" hidden></section>
+<section class="report" id="report" hidden></section>
+
 <main class="days" id="days"></main>
+
+<dialog id="login-dialog">
+  <form method="dialog" id="login-form">
+    <h2>Connect fitness app</h2>
+    <label>Email <input type="email" id="login-email" autocomplete="username" required></label>
+    <label>Password <input type="password" id="login-password" autocomplete="current-password" required></label>
+    <label>Plan start (Monday of week 1)
+      <input type="date" id="plan-start"></label>
+    <div class="login-error" id="login-error"></div>
+    <div class="dialog-actions">
+      <button type="button" id="login-cancel">Cancel</button>
+      <button type="submit" id="login-submit" class="primary">Connect</button>
+    </div>
+  </form>
+</dialog>
 
 <footer class="weekbar">
   <span id="week-progress" class="mono"></span>
@@ -39,6 +57,7 @@
 </footer>
 
 <script src="data.js"></script>
+<script src="sync.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

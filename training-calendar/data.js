@@ -10,6 +10,7 @@ const PHASES = [
     "key": "p1",
     "label": "Months 1–2",
     "sub": "~7–13 mi/wk",
+    "milesMin": 7, "milesMax": 13, "longRunMi": 4.5,
     "note": "Focus: frequency, not distance. Just Mon/Wed/Thu running for now — Tue & Fri stay optional/light so legs are fresh for Saturday's squat. Every 4th week, cut mileage ~25%.",
     "days": [
       { "name": "Monday", "type": "run", "title": "Easy Run", "load": 35,
@@ -35,6 +36,7 @@ const PHASES = [
     "key": "p2",
     "label": "Months 3–4",
     "sub": "~13–19 mi/wk",
+    "milesMin": 13, "milesMax": 19, "longRunMi": 6,
     "note": "Tuesday becomes a real run day. Friday drops to lifting-only — keep it light so Saturday's squat isn't compromised. Long run climbs toward 6 mi.",
     "days": [
       { "name": "Monday", "type": "run", "title": "Easy Run", "load": 40,
@@ -59,6 +61,7 @@ const PHASES = [
     "key": "p3",
     "label": "Months 5–6",
     "sub": "~19–25 mi/wk",
+    "milesMin": 19, "milesMax": 25, "longRunMi": 7,
     "note": "Friday adds a short shakeout run. Keep it easy — Saturday's heavy squat is still the priority. Long run reaches 7 mi+, matching the 2024 peak, this time built safely.",
     "days": [
       { "name": "Monday", "type": "run", "title": "Easy Run", "load": 48,
