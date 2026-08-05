@@ -410,7 +410,7 @@ struct HealthKitWorkoutImport: Encodable {
     let peakHeartRate: Int?
     let hrZoneSeconds: [String: Int]? // dict, matches backend storage; nil if age unknown
     let heartRateSamples: [HealthKitHRSample]?
-    let distanceMeters: Double?       // deferred v1 — send nil
+    let distanceMeters: Double?       // HKWorkout.totalDistance in meters
 
     enum CodingKeys: String, CodingKey {
         case start, end, kilojoules

@@ -60,6 +60,16 @@ class HealthKitManager: ObservableObject {
         if let sleep = HKCategoryType.categoryType(forIdentifier: .sleepAnalysis) {
             types.insert(sleep)
         }
+        // Cardio distance reads so imported runs/rides/swims carry mileage
+        // (workout.totalDistance and the per-type statistics fallback both
+        // require read access to the underlying distance quantity types).
+        for identifier: HKQuantityTypeIdentifier in [
+            .distanceWalkingRunning, .distanceCycling, .distanceSwimming,
+        ] {
+            if let type = HKQuantityType.quantityType(forIdentifier: identifier) {
+                types.insert(type)
+            }
+        }
         return types
     }()
 
@@ -442,6 +452,26 @@ class HealthKitManager: ObservableObject {
             kilojoules = sum.doubleValue(for: .kilocalorie()) * 4.184 // kcal → kJ
         }
 
+        // Cardio distance (running/walking/cycling/swimming) so the backend
+        // can track mileage. `workout.totalDistance` covers the common case;
+        // fall back to per-type statistics for workouts that only carry the
+        // typed quantity.
+        var distanceMeters: Double?
+        if let total = workout.totalDistance {
+            distanceMeters = total.doubleValue(for: .meter())
+        } else {
+            let distanceIdentifiers: [HKQuantityTypeIdentifier] = [
+                .distanceWalkingRunning, .distanceCycling, .distanceSwimming,
+            ]
+            for identifier in distanceIdentifiers {
+                if let type = HKQuantityType.quantityType(forIdentifier: identifier),
+                   let sum = workout.statistics(for: type)?.sumQuantity() {
+                    distanceMeters = sum.doubleValue(for: .meter())
+                    break
+                }
+            }
+        }
+
         return HealthKitWorkoutImport(
             hkUuid: workout.uuid.uuidString,
             activityType: activityType,
@@ -454,7 +484,7 @@ class HealthKitManager: ObservableObject {
             peakHeartRate: peakHeartRate,
             hrZoneSeconds: hrZoneSeconds,
             heartRateSamples: heartRateSamples,
-            distanceMeters: nil // deferred v1
+            distanceMeters: distanceMeters
         )
     }
 
