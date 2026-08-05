@@ -46,10 +46,31 @@ up the update on next launch.
 - PWA setup (manifest, apple-touch-icon, standalone meta tags) mirrors the
   Caltrain app's known-good iOS install config
 
-## Future: fitness-app sync
+## Fitness-app sync
 
-The plan is to sync this with the FitnessApp backend (Railway): pull logged
-workouts via `GET /api/workouts` to auto-check days and show actuals next
-to targets. That needs auth + CORS on the backend, so it's deliberately not
-wired up in this static v1; `data.js`'s shape (items as [name, spec] pairs)
-is designed to accept an `actual` field alongside each target later.
+Tap **CONNECT FITNESS APP** and log in with your FitnessApp account. The
+PWA then pulls `GET /calendar/weekly` from the Railway backend and:
+
+- overlays logged actuals on each day card (`LOGGED 2.6 MI · 30 MIN ·
+  152 BPM` for runs, `SQ 245×3 · BP 205×5` top sets for lifts)
+- auto-checks days that have a synced session of the matching type
+- shows a pace strip (`WK 5 · 4.8/9.6 MI · 2 LIFTS · ON PACE`) that
+  expands into the report: weekly mileage expected-vs-actual, long-run
+  progression, and best-e1RM deltas for squat/deadlift/bench/OHP
+
+"Expected" mileage ramps linearly through each phase's `milesMin →
+milesMax` (set in `data.js`), with every 4th plan week cut ~25%. The plan
+start date (Monday of week 1) is set in the connect dialog and stored
+locally. The verdict pro-rates mid-week, and flags **AHEAD — EASE UP**
+when ramping too fast (that's how the 2024 injury happened).
+
+Runs arrive via the iOS app's Apple Health import (now including
+distance); lifts are whatever you log in the app. Actuals cache in
+`localStorage` so the last sync renders offline. Tokens also live in
+`localStorage` — fine for a personal device; use DISCONNECT to clear.
+
+**Goes live when the branch merges to `main`** (Railway auto-deploys the
+backend; `alembic upgrade head` runs the distance migration). Until then
+the connect button will log in but find no `/calendar/weekly` endpoint on
+prod. For local testing:
+`localStorage.setItem("tc.apiBase", "http://localhost:8000")`.
