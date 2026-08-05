@@ -2,88 +2,81 @@
  *
  * type: "lift" (steel blue) | "run" (amber) | "light" (slate)
  * load: 0-100, drives the load-bar fill width
- *   heavy lift ~100 · long run 55-75 · easy run 35-48 · light/rest ~20
- *
- * NOTE: the original request's data section was truncated in transit, so
- * this schedule was reconstructed from the stated constraints (Sat/Sun
- * heavy barbell protected, Mon/Wed/Thu office-day runs, Tue/Fri WFH
- * accessory + later-phase easy runs, slow ramp capped well under the
- * 7.6 mi injury peak). Adjust freely — the UI renders whatever is here.
+ * items: [exercise/activity, sets×reps or distance] pairs
+ * Lift weights intentionally omitted — sets×reps only.
  */
 const PHASES = [
   {
-    id: "p1",
-    tab: "PHASE I",
-    name: "BASE",
-    weeks: "WEEKS 1–8",
-    focus: "Rebuild the running habit. All mileage easy, nothing long yet.",
-    weeklyMiles: "6.5 MI/WK",
-    cutback: "EVERY 4TH WK: −25% MILEAGE",
-    days: [
-      { day: "MON", where: "OFFICE", type: "run",   title: "Easy Run",
-        spec: "2.0 MI · Z2 · CONVERSATIONAL", load: 38 },
-      { day: "TUE", where: "WFH",    type: "light", title: "Light Accessory",
-        spec: "DB OHP 3×10 · CHIN 3×6 · CORE 3 RDS", load: 22 },
-      { day: "WED", where: "OFFICE", type: "run",   title: "Easy Run",
-        spec: "2.5 MI · Z2", load: 42 },
-      { day: "THU", where: "OFFICE", type: "run",   title: "Easy Run + Strides",
-        spec: "2.0 MI · Z2 + 4×15S STRIDES", load: 40 },
-      { day: "FRI", where: "WFH",    type: "light", title: "Mobility + Core",
-        spec: "HIPS/ANKLES 20 MIN · CORE 3 RDS", load: 20 },
-      { day: "SAT", where: "GYM",    type: "lift",  title: "Heavy Lower",
-        spec: "SQ 5×5 · RDL 3×8 · BSS 3×10", load: 100 },
-      { day: "SUN", where: "GYM",    type: "lift",  title: "Heavy Upper",
-        spec: "BP 5×5 · OHP 3×8 · ROW 4×8", load: 95 },
-    ],
+    "key": "p1",
+    "label": "Months 1–2",
+    "sub": "~7–13 mi/wk",
+    "note": "Focus: frequency, not distance. Just Mon/Wed/Thu running for now — Tue & Fri stay optional/light so legs are fresh for Saturday's squat. Every 4th week, cut mileage ~25%.",
+    "days": [
+      { "name": "Monday", "type": "run", "title": "Easy Run", "load": 35,
+        "items": [["Easy pace run", "2–2.5 mi"]],
+        "note": "Conversational effort — legs still recovering from Sunday." },
+      { "name": "Tuesday", "type": "light", "title": "Optional Light Work (WFH)", "load": 20,
+        "items": [["DB incline press", "3×12"], ["Lateral raises", "3×15"], ["Core circuit", "10 min"]],
+        "note": "Skip entirely if you'd rather just rest." },
+      { "name": "Wednesday", "type": "run", "title": "Easy Run", "load": 35,
+        "items": [["Easy pace run", "2–2.5 mi"]] },
+      { "name": "Thursday", "type": "run", "title": "Long Run", "load": 55,
+        "items": [["Long run", "3 → 4.5 mi (build weekly)"]],
+        "note": "This is the one to protect — it drives the aerobic base." },
+      { "name": "Friday", "type": "light", "title": "Optional Light Work (WFH)", "load": 20,
+        "items": [["Barbell row or pull-ups", "3×10"], ["Curls / triceps", "3×12"]] },
+      { "name": "Saturday", "type": "lift", "title": "Squat Day — Heavy", "load": 100,
+        "items": [["Back Squat", "5×5"], ["Deadlift", "4×5"], ["Leg press or lunges", "3×12"], ["Hanging leg raise", "3×12"]] },
+      { "name": "Sunday", "type": "lift", "title": "Bench Day — Heavy", "load": 100,
+        "items": [["Bench Press", "5×5"], ["Overhead Press", "4×6"], ["Barbell Row", "4×8"], ["Close-grip bench", "3×10"]] }
+    ]
   },
   {
-    id: "p2",
-    tab: "PHASE II",
-    name: "BUILD",
-    weeks: "WEEKS 9–16",
-    focus: "Introduce the long run. Optional WFH shakeout when fresh.",
-    weeklyMiles: "11 MI/WK",
-    cutback: "EVERY 4TH WK: −25% MILEAGE",
-    days: [
-      { day: "MON", where: "OFFICE", type: "run",   title: "Easy Run",
-        spec: "2.5 MI · Z2", load: 40 },
-      { day: "TUE", where: "WFH",    type: "light", title: "Accessory + Opt. Shakeout",
-        spec: "DB BENCH 3×10 · CHIN 3×8 · +1.5 MI EASY (OPT)", load: 30 },
-      { day: "WED", where: "OFFICE", type: "run",   title: "Easy Run + Strides",
-        spec: "3.0 MI · Z2 + 6×20S STRIDES", load: 46 },
-      { day: "THU", where: "OFFICE", type: "run",   title: "Long Run",
-        spec: "4.0 MI · Z2 · FUEL BEFORE", load: 60 },
-      { day: "FRI", where: "WFH",    type: "light", title: "Light Accessory",
-        spec: "LAT RAISE 3×12 · CURL 3×12 · CORE", load: 22 },
-      { day: "SAT", where: "GYM",    type: "lift",  title: "Heavy Lower",
-        spec: "SQ 5×5 · DL 3×5 · BSS 3×10", load: 100 },
-      { day: "SUN", where: "GYM",    type: "lift",  title: "Heavy Upper",
-        spec: "BP 5×5 · OHP 3×8 · ROW 4×8 · DIP 3×10", load: 95 },
-    ],
+    "key": "p2",
+    "label": "Months 3–4",
+    "sub": "~13–19 mi/wk",
+    "note": "Tuesday becomes a real run day. Friday drops to lifting-only — keep it light so Saturday's squat isn't compromised. Long run climbs toward 6 mi.",
+    "days": [
+      { "name": "Monday", "type": "run", "title": "Easy Run", "load": 40,
+        "items": [["Easy pace run", "2.5–3 mi"]] },
+      { "name": "Tuesday", "type": "run", "title": "Easy Run (WFH)", "load": 40,
+        "items": [["Easy pace run", "2–3 mi"]],
+        "note": "Add light accessory work after, if energy allows." },
+      { "name": "Wednesday", "type": "run", "title": "Easy Run", "load": 40,
+        "items": [["Easy pace run", "2.5–3 mi"]] },
+      { "name": "Thursday", "type": "run", "title": "Long Run", "load": 65,
+        "items": [["Long run", "5 → 6 mi (build weekly)"]] },
+      { "name": "Friday", "type": "light", "title": "Lifting Only (WFH)", "load": 20,
+        "items": [["DB bench or OHP", "3×10"], ["Lat pulldown", "3×12"]],
+        "note": "No running — protect Saturday." },
+      { "name": "Saturday", "type": "lift", "title": "Squat Day — Heavy", "load": 100,
+        "items": [["Back Squat", "5×5"], ["Deadlift", "4×5"], ["Leg press or lunges", "3×12"], ["Hanging leg raise", "3×12"]] },
+      { "name": "Sunday", "type": "lift", "title": "Bench Day — Heavy", "load": 100,
+        "items": [["Bench Press", "5×5"], ["Overhead Press", "4×6"], ["Barbell Row", "4×8"], ["Close-grip bench", "3×10"]] }
+    ]
   },
   {
-    id: "p3",
-    tab: "PHASE III",
-    name: "PEAK",
-    weeks: "WEEKS 17–24",
-    focus: "Five run days. Long run capped at 6.0 — stays under the 7.6 that caused the 2024 injury.",
-    weeklyMiles: "15 MI/WK",
-    cutback: "EVERY 4TH WK: −25% MILEAGE",
-    days: [
-      { day: "MON", where: "OFFICE", type: "run",   title: "Easy Run",
-        spec: "3.0 MI · Z2", load: 44 },
-      { day: "TUE", where: "WFH",    type: "run",   title: "Easy Run + Accessory",
-        spec: "2.5 MI · Z2 + DB BENCH 3×10 · CHIN 3×8", load: 42 },
-      { day: "WED", where: "OFFICE", type: "run",   title: "Easy Run + Strides",
-        spec: "3.5 MI · Z2 + 6×20S STRIDES", load: 48 },
-      { day: "THU", where: "OFFICE", type: "run",   title: "Long Run",
-        spec: "6.0 MI · Z2 · HARD CAP", load: 72 },
-      { day: "FRI", where: "WFH",    type: "light", title: "Accessory + Mobility",
-        spec: "ARMS/DELTS 3 RDS · HIPS 15 MIN", load: 24 },
-      { day: "SAT", where: "GYM",    type: "lift",  title: "Heavy Lower",
-        spec: "SQ 5×5 · DL 3×5 · BSS 3×10", load: 100 },
-      { day: "SUN", where: "GYM",    type: "lift",  title: "Heavy Upper",
-        spec: "BP 5×5 · OHP 3×8 · ROW 4×8 · DIP 3×10", load: 95 },
-    ],
-  },
+    "key": "p3",
+    "label": "Months 5–6",
+    "sub": "~19–25 mi/wk",
+    "note": "Friday adds a short shakeout run. Keep it easy — Saturday's heavy squat is still the priority. Long run reaches 7 mi+, matching the 2024 peak, this time built safely.",
+    "days": [
+      { "name": "Monday", "type": "run", "title": "Easy Run", "load": 48,
+        "items": [["Easy pace run", "3–3.5 mi"]] },
+      { "name": "Tuesday", "type": "run", "title": "Easy Run (WFH)", "load": 48,
+        "items": [["Easy pace run", "3–3.5 mi"]] },
+      { "name": "Wednesday", "type": "run", "title": "Easy Run", "load": 48,
+        "items": [["Easy pace run", "3–3.5 mi"]] },
+      { "name": "Thursday", "type": "run", "title": "Long Run", "load": 75,
+        "items": [["Long run", "6.5 → 7+ mi"]],
+        "note": "Back to the 2024 peak distance — this time on a 6-month ramp, not 3 weeks." },
+      { "name": "Friday", "type": "run", "title": "Shakeout Run + Light Lift (WFH)", "load": 30,
+        "items": [["Easy shakeout run", "2 mi"], ["Light accessory only", "15–20 min"]],
+        "note": "Keep it short — Saturday still comes first." },
+      { "name": "Saturday", "type": "lift", "title": "Squat Day — Heavy", "load": 100,
+        "items": [["Back Squat", "5×5"], ["Deadlift", "4×5"], ["Leg press or lunges", "3×12"], ["Hanging leg raise", "3×12"]] },
+      { "name": "Sunday", "type": "lift", "title": "Bench Day — Heavy", "load": 100,
+        "items": [["Bench Press", "5×5"], ["Overhead Press", "4×6"], ["Barbell Row", "4×8"], ["Close-grip bench", "3×10"]] }
+    ]
+  }
 ];

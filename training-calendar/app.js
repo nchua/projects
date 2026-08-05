@@ -70,24 +70,26 @@ function streak() {
 const $ = (id) => document.getElementById(id);
 const todayIdx = (now.getDay() + 6) % 7; // Mon=0..Sun=6
 
+const ROMAN = ["I", "II", "III", "IV", "V"];
+
 function phase() {
-  return PHASES.find((p) => p.id === state.phase) || PHASES[0];
+  return PHASES.find((p) => p.key === state.phase) || PHASES[0];
 }
 
 function renderTabs() {
   $("tabs").innerHTML = PHASES.map(
-    (p) => `<button class="tab${p.id === state.phase ? " active" : ""}" role="tab"
-      aria-selected="${p.id === state.phase}" data-phase="${p.id}">
-      ${p.tab}<small>${p.name} · ${p.weeks}</small></button>`
+    (p, i) => `<button class="tab${p.key === state.phase ? " active" : ""}" role="tab"
+      aria-selected="${p.key === state.phase}" data-phase="${p.key}">
+      Phase ${ROMAN[i]}<small>${p.label}</small></button>`
   ).join("");
 }
 
 function renderMeta() {
   const p = phase();
   $("phase-meta").innerHTML =
-    `<span class="miles">${p.weeklyMiles}</span>
-     <span class="badge">${p.cutback}</span>
-     <span class="focus">${p.focus}</span>`;
+    `<span class="miles">${p.sub}</span>
+     <span class="badge">EVERY 4TH WK: −25% MILEAGE</span>
+     <span class="focus">${p.note}</span>`;
 }
 
 function renderDays() {
@@ -96,11 +98,13 @@ function renderDays() {
     (d, i) => `<article class="day${done[i] ? " done" : ""}${i === todayIdx ? " today" : ""}"
       data-type="${d.type}" data-idx="${i}" role="button" aria-pressed="${done[i]}">
       <div class="row1">
-        <span class="dayname">${d.day}</span>
+        <span class="dayname">${d.name.slice(0, 3).toUpperCase()}</span>
         <span class="title">${d.title}</span>
-        <span class="where">${d.where}</span>
       </div>
-      <div class="spec">${d.spec}</div>
+      <div class="items">${d.items.map(
+        ([what, spec]) => `<div class="item"><span class="what">${what}</span><span class="val">${spec}</span></div>`
+      ).join("")}</div>
+      ${d.note ? `<div class="note">${d.note}</div>` : ""}
       <div class="loadbar"><div class="fill" style="width:${d.load}%"></div></div>
       <span class="check">✓</span>
     </article>`
