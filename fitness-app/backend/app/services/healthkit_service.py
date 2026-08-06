@@ -106,6 +106,7 @@ def _build_cardio_session(
         activity_type=workout.activity_type,
         distance_meters=workout.distance_meters,
         duration_seconds=workout.duration_seconds,
+        mile_splits=workout.mile_splits,
         notes=notes,
     )
     db.add(session)
@@ -174,6 +175,9 @@ def _backfill_cardio_fields(session: WorkoutSession, workout: HealthKitWorkout) 
         changed = True
     if workout.duration_seconds is not None and session.duration_seconds is None:
         session.duration_seconds = int(workout.duration_seconds)
+        changed = True
+    if workout.mile_splits and session.mile_splits is None:
+        session.mile_splits = workout.mile_splits
         changed = True
     return changed
 

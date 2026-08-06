@@ -60,8 +60,22 @@ class HealthKitWorkout(BaseModel):
         None, description="Raw HR series (reuses HeartRateSampleCreate shape)"
     )
     distance_meters: Optional[float] = Field(
-        None, ge=0, description="Distance (m); v1 stores only in notes, may be null"
+        None, ge=0, description="Distance (m); stored on the session since add_cardio_distance"
     )
+    mile_splits: Optional[list[int]] = Field(
+        None,
+        max_length=100,
+        description="Seconds per completed mile, in order; computed on-device from "
+                    "the workout's distance samples. Null when samples are unavailable.",
+    )
+
+    @field_validator("mile_splits")
+    @classmethod
+    def check_splits_positive(cls, v: Optional[list[int]]) -> Optional[list[int]]:
+        """Each split is a positive number of seconds."""
+        if v is not None and any(s <= 0 for s in v):
+            raise ValueError("mile_splits entries must be positive seconds")
+        return v
 
     @field_validator("start", "end", mode="before")
     @classmethod

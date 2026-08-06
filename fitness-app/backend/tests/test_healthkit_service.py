@@ -64,6 +64,7 @@ def _make_workout(
     hr_zone_seconds: dict = None,
     samples: list = None,
     distance_meters: float = None,
+    mile_splits: list = None,
 ) -> HealthKitWorkout:
     """Build a validated ``HealthKitWorkout`` request item.
 
@@ -85,6 +86,7 @@ def _make_workout(
         hr_zone_seconds=hr_zone_seconds,
         heart_rate_samples=samples,
         distance_meters=distance_meters,
+        mile_splits=mile_splits,
     )
 
 
@@ -244,7 +246,7 @@ class TestCardioBackfill:
         result = import_healthkit_workouts(
             db, user.id,
             [_make_workout(hk_uuid=hk_uuid, activity_type="running",
-                           distance_meters=5012.0)],
+                           distance_meters=5012.0, mile_splits=[578, 585, 561])],
         )
         db.commit()
 
@@ -257,6 +259,7 @@ class TestCardioBackfill:
         assert session.activity_type == "running"
         assert session.distance_meters == 5012.0
         assert session.duration_seconds == 45 * 60
+        assert session.mile_splits == [578, 585, 561]
         # No new session materialized.
         assert db.query(WorkoutSession).filter(
             WorkoutSession.user_id == user.id
@@ -270,12 +273,13 @@ class TestCardioBackfill:
         session.activity_type = "cycling"
         session.distance_meters = 9000.0
         session.duration_seconds = 2000
+        session.mile_splits = [700, 710]
         db.commit()
 
         result = import_healthkit_workouts(
             db, user.id,
             [_make_workout(hk_uuid=hk_uuid, activity_type="running",
-                           distance_meters=5012.0)],
+                           distance_meters=5012.0, mile_splits=[578, 585])],
         )
         db.commit()
 
@@ -285,6 +289,7 @@ class TestCardioBackfill:
         assert session.activity_type == "cycling"
         assert session.distance_meters == 9000.0
         assert session.duration_seconds == 2000
+        assert session.mile_splits == [700, 710]
 
     def test_backfill_idempotent_on_resend(self, db, create_test_user):
         """Second identical re-sync pass is a plain skip (nothing left to fill)."""
@@ -302,6 +307,32 @@ class TestCardioBackfill:
         db.commit()
         assert second["sessions_updated"] == []
         assert hk_uuid in second["skipped_duplicates"]
+
+    def test_cardio_create_stores_mile_splits(self, db, create_test_user):
+        """A fresh cardio import persists mile_splits alongside distance."""
+        user, _ = create_test_user(email=f"splits1-{uuid.uuid4().hex[:8]}@example.com")
+        _seed_running_exercise(db)
+        hk_uuid = str(uuid.uuid4())
+
+        result = import_healthkit_workouts(
+            db, user.id,
+            [_make_workout(hk_uuid=hk_uuid, activity_type="running",
+                           distance_meters=5012.0, mile_splits=[578, 585, 561])],
+        )
+        db.commit()
+
+        session = db.query(WorkoutSession).filter(
+            WorkoutSession.id == result["sessions_created"][0]
+        ).one()
+        assert session.mile_splits == [578, 585, 561]
+        assert session.distance_meters == 5012.0
+
+    def test_mile_splits_rejects_nonpositive(self):
+        """Schema validation: zero/negative splits are rejected."""
+        import pytest
+
+        with pytest.raises(ValueError):
+            _make_workout(mile_splits=[578, 0, 561])
 
     def test_duplicate_strength_is_not_backfilled(self, db, create_test_user):
         """The backfill is cardio-only: a duplicate strength workout still skips."""
@@ -717,6 +748,8 @@ class TestEndpoint:
                     "peak_heart_rate": 176,
                     "kilojoules": 1480.0,
                     "hr_zone_seconds": {"z2": 540, "z3": 300},
+                    "distance_meters": 7500.0,
+                    "mile_splits": [578, 585, 561, 590],
                 }
             ]
         }
@@ -750,6 +783,10 @@ class TestEndpoint:
         assert workout["peak_heart_rate"] == 176
         assert workout["hr_source"] == "apple_watch"
         assert workout["hr_zone_seconds"] == {"z2": 540, "z3": 300}
+        # Cardio metadata serializes on the GET (distance/pace/splits UI).
+        assert workout["distance_meters"] == 7500.0
+        assert workout["duration_seconds"] == 45 * 60
+        assert workout["mile_splits"] == [578, 585, 561, 590]
         # SetResponse HR fields exist in the schema; for cardio there are no sets,
         # so just assert the schema shape is intact.
         assert "exercises" in workout

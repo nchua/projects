@@ -687,6 +687,7 @@ async def list_workouts(
             peak_heart_rate=workout.peak_heart_rate,
             hr_source=workout.hr_source,
             distance_meters=workout.distance_meters,
+            duration_seconds=workout.duration_seconds,
         ))
 
     return summaries
@@ -1003,6 +1004,8 @@ def _build_workout_response(workout: WorkoutSession) -> WorkoutResponse:
         activity_type=activity["activity_type"],
         calories=activity["calories"],
         distance_meters=workout.distance_meters,
+        duration_seconds=workout.duration_seconds,
+        mile_splits=workout.mile_splits,
         created_at=to_iso8601_utc(workout.created_at),
         updated_at=to_iso8601_utc(workout.updated_at)
     )

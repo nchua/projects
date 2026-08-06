@@ -83,6 +83,9 @@ class WorkoutSession(Base):
     activity_type = Column(String(64), nullable=True)
     distance_meters = Column(Float, nullable=True)
     duration_seconds = Column(Integer, nullable=True)
+    # Seconds per completed mile, in order (e.g. [578, 585, 561]); computed
+    # on-device from HealthKit distance samples. NULL when unavailable.
+    mile_splits = Column(JSON, nullable=True)
 
     # Sync tracking
     synced_at = Column(DateTime, nullable=True)
