@@ -28,6 +28,8 @@ ourselves the way the whoop tests do.
 import uuid
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from app.models.exercise import Exercise
 from app.models.workout import (
     Set,
@@ -329,8 +331,6 @@ class TestCardioBackfill:
 
     def test_mile_splits_rejects_nonpositive(self):
         """Schema validation: zero/negative splits are rejected."""
-        import pytest
-
         with pytest.raises(ValueError):
             _make_workout(mile_splits=[578, 0, 561])
 

@@ -106,7 +106,7 @@ def _build_cardio_session(
         activity_type=workout.activity_type,
         distance_meters=workout.distance_meters,
         duration_seconds=workout.duration_seconds,
-        mile_splits=workout.mile_splits,
+        mile_splits=workout.mile_splits or None,
         notes=notes,
     )
     db.add(session)
@@ -158,13 +158,13 @@ def _backfill_session_hr(session: WorkoutSession, workout: HealthKitWorkout) -> 
 
 
 def _backfill_cardio_fields(session: WorkoutSession, workout: HealthKitWorkout) -> bool:
-    """NULL-fill cardio metadata on an existing session from a re-sent workout.
+    """NULL-fill the cardio metadata columns on an existing session from a
+    re-sent workout.
 
-    Sessions imported before the ``add_cardio_distance`` migration have
-    ``activity_type`` / ``distance_meters`` / ``duration_seconds`` unset. A
-    history re-sync re-sends those workouts; only empty fields are filled — a
-    re-import never clobbers — so the re-sync is idempotent. Returns True if
-    anything changed.
+    Sessions imported before the cardio-metadata migrations have those columns
+    unset. A history re-sync re-sends the workouts; only empty fields are
+    filled — a re-import never clobbers — so the re-sync is idempotent.
+    Returns True if anything changed.
     """
     changed = False
     if workout.activity_type and session.activity_type is None:
@@ -192,9 +192,9 @@ def import_healthkit_workouts(
     Steps (per the Chunk A spec):
       1. **Dedup** against existing non-null ``hk_uuid``s for the user (and
          intra-batch duplicates) -> ``skipped_duplicates``. Exception: a
-         duplicate **cardio** workout whose existing row is missing
-         ``activity_type``/``distance_meters``/``duration_seconds`` NULL-fills
-         them -> ``sessions_updated`` + ``imported`` (history re-sync backfill).
+         duplicate **cardio** workout whose existing row is missing cardio
+         metadata columns NULL-fills them (see ``_backfill_cardio_fields``)
+         -> ``sessions_updated`` + ``imported`` (history re-sync backfill).
       2. **Cardio** -> build a synthetic session inline -> ``sessions_created``.
       3. **Strength** -> match an existing session by time overlap, backfill HR
          non-destructively, attribute raw samples to sets -> ``sessions_updated``;

@@ -494,22 +494,23 @@ struct EdgeFlowWorkoutRow: View {
         workout.exerciseCount > 0
     }
 
+    /// Unified activity rendering (WHOOP or Apple Watch, no logged sets) —
+    /// drives the badge and stats row so an imported run renders as an
+    /// activity, not a 0-set hunt.
+    private var isActivityRow: Bool {
+        ((workout.isActivity ?? false) || isWhoopActivity) && !hasExercises
+    }
+
     private var indicatorColor: Color {
-        (isWhoopActivity && !hasExercises) ? .orange : .successGreen
+        isActivityRow ? .orange : .successGreen
     }
 
     private var badgeText: String {
-        if isWhoopActivity && !hasExercises {
-            return "ACTIVITY"
-        }
-        return "COMPLETE"
+        isActivityRow ? "ACTIVITY" : "COMPLETE"
     }
 
     private var badgeIcon: String {
-        if isWhoopActivity && !hasExercises {
-            return "flame.fill"
-        }
-        return "checkmark"
+        isActivityRow ? "flame.fill" : "checkmark"
     }
 
     var body: some View {
@@ -577,7 +578,7 @@ struct EdgeFlowWorkoutRow: View {
                 }
 
                 // Stats row
-                if isWhoopActivity && !hasExercises {
+                if isActivityRow {
                     HStack(spacing: 16) {
                         // Skip the type label when it's already the row title
                         if let activityType = workout.activityType,
@@ -586,6 +587,19 @@ struct EdgeFlowWorkoutRow: View {
                                 Text(activityType)
                                     .font(.ariseMono(size: 12, weight: .medium))
                                     .foregroundColor(.orange)
+                            }
+                        }
+
+                        // Distance + pace lead for runs; calories yields the
+                        // space (it stays on the detail screen).
+                        if let miles = workout.distanceMiles {
+                            Text(String(format: "%.2f mi", miles))
+                                .font(.ariseMono(size: 12, weight: .medium))
+                                .foregroundColor(.textPrimary)
+                            if let pace = workout.paceSecondsPerMile {
+                                Text("\(pace.asMinSecString) /mi")
+                                    .font(.ariseMono(size: 12))
+                                    .foregroundColor(.textSecondary)
                             }
                         }
 
@@ -598,7 +612,7 @@ struct EdgeFlowWorkoutRow: View {
                             }
                         }
 
-                        if let calories = workout.calories {
+                        if workout.distanceMiles == nil, let calories = workout.calories {
                             Text("\(calories) cal")
                                 .font(.ariseMono(size: 12))
                                 .foregroundColor(.textSecondary)

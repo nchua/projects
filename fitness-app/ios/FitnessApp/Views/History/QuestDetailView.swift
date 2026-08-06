@@ -58,6 +58,14 @@ struct QuestDetailView<ViewModel: WorkoutDetailProviding>: View {
                                 .fadeIn(delay: 0.05)
                         }
 
+                        // Per-mile splits — cardio sessions with granular
+                        // distance data (imported or re-synced after mile_splits).
+                        if workout.mileSplits?.isEmpty == false {
+                            AriseMileSplitsCard(workout: workout)
+                                .padding(.horizontal)
+                                .fadeIn(delay: 0.08)
+                        }
+
                         // Objectives — a cardio/sport activity has no real sets to
                         // show, so suppress this section for activities (the HR
                         // block above carries the meaningful detail).
@@ -167,29 +175,28 @@ struct QuestSummaryCard: View {
 
             AriseDivider()
 
-            // Stats row — duration/calories/exertion for activities, otherwise
-            // objectives/sets/RPE for a logged strength quest.
-            HStack(spacing: 24) {
-                if isActivity {
-                    if let duration = workout.durationMinutes {
-                        statCell(value: "\(duration)", label: "MINUTES", color: .systemPrimary)
+            // Stats — distance-first for cardio with mileage (wrapping to a
+            // second row), otherwise objectives/sets/RPE for a strength quest.
+            if isActivity {
+                VStack(alignment: .leading, spacing: 14) {
+                    ForEach(Array(activityStats.chunked(into: 3).enumerated()), id: \.offset) { _, row in
+                        HStack(spacing: 24) {
+                            ForEach(row, id: \.label) { stat in
+                                statCell(value: stat.value, label: stat.label, color: stat.color)
+                            }
+                            Spacer()
+                        }
                     }
-                    if let calories = workout.calories {
-                        statCell(value: "\(calories)", label: "CALORIES", color: .textPrimary)
-                    }
-                    // Unified Strain (ARISE v2 §7.1) — one metric everywhere.
-                    if let strain = workout.ariseStrain {
-                        statCell(value: String(format: "%.1f", strain.value), label: "STRAIN", color: .gold)
-                    }
-                } else {
+                }
+            } else {
+                HStack(spacing: 24) {
                     statCell(value: "\(workout.exercises.count)", label: "OBJECTIVES", color: .systemPrimary)
                     statCell(value: "\(totalSets)", label: "SETS", color: .textPrimary)
                     if let rpe = workout.sessionRpe {
                         statCell(value: "\(rpe)", label: "RPE", color: .gold)
                     }
+                    Spacer()
                 }
-
-                Spacer()
             }
 
             // Notes
@@ -254,8 +261,120 @@ struct QuestSummaryCard: View {
         workout.exercises.reduce(0) { $0 + $1.sets.count }
     }
 
+    /// Activity stat cells in display order: distance + pace lead when the
+    /// session carries mileage; the classic trio follows.
+    private var activityStats: [(value: String, label: String, color: Color)] {
+        var stats: [(value: String, label: String, color: Color)] = []
+        if let miles = workout.distanceMiles {
+            stats.append((String(format: "%.2f", miles), "MILES", .systemPrimary))
+            if let pace = workout.paceSecondsPerMile {
+                stats.append((pace.asMinSecString, "PACE /MI", .textPrimary))
+            }
+        }
+        if let duration = workout.durationMinutes {
+            stats.append(("\(duration)", "MINUTES", stats.isEmpty ? .systemPrimary : .textPrimary))
+        }
+        if let calories = workout.calories {
+            stats.append(("\(calories)", "CALORIES", .textPrimary))
+        }
+        // Unified Strain (ARISE v2 §7.1) — one metric everywhere.
+        if let strain = workout.ariseStrain {
+            stats.append((String(format: "%.1f", strain.value), "STRAIN", .gold))
+        }
+        return stats
+    }
+
     private func formatDate(_ dateString: String) -> String {
         dateString.parseISO8601Date()?.formattedMedium ?? dateString
+    }
+}
+
+/// Per-mile split list for a cardio activity. Bars scale to the slowest mile
+/// (longer bar = slower mile); the fastest full mile reads green. A trailing
+/// partial mile (total time minus full-mile time) shows muted.
+struct AriseMileSplitsCard: View {
+    let workout: WorkoutResponse
+
+    private struct SplitRow {
+        let label: String        // "1", "2", … or "0.24" for the partial tail
+        let seconds: Int
+        let paceSecPerMile: Int  // == seconds for full miles; scaled for the tail
+        let isPartial: Bool
+    }
+
+    var body: some View {
+        let rows = splitRows
+        let maxPace = rows.map(\.paceSecPerMile).max() ?? 1
+        // "Fastest" needs a comparison — require at least two FULL miles.
+        let fullMilePaces = rows.filter { !$0.isPartial }.map(\.paceSecPerMile)
+        let fastestPace = fullMilePaces.count > 1 ? fullMilePaces.min() : nil
+
+        return VStack(alignment: .leading, spacing: 8) {
+            AriseSectionHeader(title: "Mile Splits")
+
+            VStack(spacing: 10) {
+                ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                    splitRowView(row, maxPace: maxPace, fastestPace: fastestPace)
+                }
+            }
+            .padding(16)
+            .background(Color.voidMedium)
+            .cornerRadius(4)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(Color.ariseBorder, lineWidth: 1)
+            )
+        }
+    }
+
+    private var splitRows: [SplitRow] {
+        guard let splits = workout.mileSplits, !splits.isEmpty else { return [] }
+        var rows = splits.enumerated().map { index, seconds in
+            SplitRow(label: "\(index + 1)", seconds: seconds,
+                     paceSecPerMile: seconds, isPartial: false)
+        }
+        // Trailing partial mile: whatever time the full-mile splits don't cover.
+        if let miles = workout.distanceMiles, let total = workout.durationSeconds {
+            let remainderMiles = miles - Double(splits.count)
+            let remainderSeconds = total - splits.reduce(0, +)
+            if remainderMiles >= 0.05, remainderSeconds > 0 {
+                rows.append(SplitRow(
+                    label: String(format: "%.2f", remainderMiles),
+                    seconds: remainderSeconds,
+                    paceSecPerMile: Int((Double(remainderSeconds) / remainderMiles).rounded()),
+                    isPartial: true
+                ))
+            }
+        }
+        return rows
+    }
+
+    private func splitRowView(_ row: SplitRow, maxPace: Int, fastestPace: Int?) -> some View {
+        let isFastest = !row.isPartial && row.paceSecPerMile == fastestPace
+        return HStack(spacing: 12) {
+            Text("MI \(row.label)")
+                .font(.ariseMono(size: 11, weight: .medium))
+                .foregroundColor(row.isPartial ? .textMuted : .textSecondary)
+                .frame(width: 56, alignment: .leading)
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Rectangle().fill(Color.voidLight)
+                    Rectangle()
+                        .fill(isFastest
+                              ? Color.successGreen
+                              : Color.systemPrimary.opacity(row.isPartial ? 0.35 : 0.75))
+                        .frame(width: geo.size.width * CGFloat(row.paceSecPerMile) / CGFloat(max(maxPace, 1)))
+                }
+            }
+            .frame(height: 6)
+            .cornerRadius(3)
+
+            Text(row.seconds.asMinSecString)
+                .font(.ariseMono(size: 13, weight: .semibold))
+                .foregroundColor(isFastest ? .successGreen : .textPrimary)
+                .frame(width: 52, alignment: .trailing)
+        }
     }
 }
 

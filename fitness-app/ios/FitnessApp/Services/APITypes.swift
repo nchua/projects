@@ -231,6 +231,9 @@ struct WorkoutSummaryResponse: Decodable, Identifiable {
     let avgHeartRate: Int?
     let peakHeartRate: Int?
     let hrSource: String?
+    // Cardio metadata (HealthKit imports); nil for strength/legacy rows.
+    let distanceMeters: Double?
+    let durationSeconds: Int?
 
     enum CodingKeys: String, CodingKey {
         case id, date, name, notes, strain, calories
@@ -252,6 +255,8 @@ struct WorkoutSummaryResponse: Decodable, Identifiable {
         case avgHeartRate = "avg_heart_rate"
         case peakHeartRate = "peak_heart_rate"
         case hrSource = "hr_source"
+        case distanceMeters = "distance_meters"
+        case durationSeconds = "duration_seconds"
     }
 }
 
@@ -285,6 +290,10 @@ struct WorkoutResponse: Decodable, Identifiable {
     let isActivity: Bool?
     let activityType: String?
     let calories: Int?
+    // Cardio metadata (HealthKit imports); nil for strength/legacy rows.
+    let distanceMeters: Double?
+    let durationSeconds: Int?
+    let mileSplits: [Int]?
 
     enum CodingKeys: String, CodingKey {
         case id, date, name, notes, exercises, strain, kilojoules, calories
@@ -302,6 +311,9 @@ struct WorkoutResponse: Decodable, Identifiable {
         case ariseStrain = "arise_strain"
         case isActivity = "is_activity"
         case activityType = "activity_type"
+        case distanceMeters = "distance_meters"
+        case durationSeconds = "duration_seconds"
+        case mileSplits = "mile_splits"
     }
 }
 
@@ -326,6 +338,48 @@ extension WorkoutResponse {
 /// custom name (display falls back to the suggestion).
 struct WorkoutRename: Codable {
     let name: String
+}
+
+// MARK: - Cardio display helpers
+// Computed only — not Codable fields, so they don't affect the decode contract.
+
+enum CardioUnits {
+    static let metersPerMile = 1609.344
+}
+
+/// Shared cardio-display math for the two workout response shapes.
+protocol CardioMetricsProviding {
+    var distanceMeters: Double? { get }
+    var durationSeconds: Int? { get }
+    var durationMinutes: Int? { get }
+}
+
+extension CardioMetricsProviding {
+    /// Distance in miles; nil under 0.05 mi (GPS noise / distance-less workouts).
+    var distanceMiles: Double? {
+        guard let meters = distanceMeters else { return nil }
+        let miles = meters / CardioUnits.metersPerMile
+        return miles >= 0.05 ? miles : nil
+    }
+
+    /// Overall pace (sec/mi) — exact seconds when available, rounded minutes for
+    /// legacy rows the re-sync hasn't backfilled.
+    var paceSecondsPerMile: Int? {
+        guard let miles = distanceMiles,
+              let seconds = durationSeconds ?? durationMinutes.map({ $0 * 60 }),
+              seconds > 0 else { return nil }
+        return Int((Double(seconds) / miles).rounded())
+    }
+}
+
+extension WorkoutResponse: CardioMetricsProviding {}
+extension WorkoutSummaryResponse: CardioMetricsProviding {}
+
+extension Int {
+    /// Seconds as "m:ss" (578 → "9:38") for paces and split times.
+    var asMinSecString: String {
+        "\(self / 60):" + String(format: "%02d", self % 60)
+    }
 }
 
 // MARK: - HR display helpers (wearable-HR v1, Chunk D)
@@ -411,6 +465,7 @@ struct HealthKitWorkoutImport: Encodable {
     let hrZoneSeconds: [String: Int]? // dict, matches backend storage; nil if age unknown
     let heartRateSamples: [HealthKitHRSample]?
     let distanceMeters: Double?       // HKWorkout.totalDistance in meters
+    let mileSplits: [Int]?            // seconds per completed mile, from distance samples
 
     enum CodingKeys: String, CodingKey {
         case start, end, kilojoules
@@ -423,6 +478,7 @@ struct HealthKitWorkoutImport: Encodable {
         case hrZoneSeconds = "hr_zone_seconds"
         case heartRateSamples = "heart_rate_samples"
         case distanceMeters = "distance_meters"
+        case mileSplits = "mile_splits"
     }
 }
 

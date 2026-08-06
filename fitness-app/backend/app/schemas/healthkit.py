@@ -13,7 +13,7 @@ These schemas are the canonical contract for Chunk A; the Swift mirror structs
 (Chunk B) and the iOS query builder (Chunk C) follow them field-for-field.
 """
 from datetime import datetime
-from typing import Optional
+from typing import Annotated, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -62,20 +62,12 @@ class HealthKitWorkout(BaseModel):
     distance_meters: Optional[float] = Field(
         None, ge=0, description="Distance (m); stored on the session since add_cardio_distance"
     )
-    mile_splits: Optional[list[int]] = Field(
+    mile_splits: Optional[list[Annotated[int, Field(gt=0)]]] = Field(
         None,
         max_length=100,
         description="Seconds per completed mile, in order; computed on-device from "
                     "the workout's distance samples. Null when samples are unavailable.",
     )
-
-    @field_validator("mile_splits")
-    @classmethod
-    def check_splits_positive(cls, v: Optional[list[int]]) -> Optional[list[int]]:
-        """Each split is a positive number of seconds."""
-        if v is not None and any(s <= 0 for s in v):
-            raise ValueError("mile_splits entries must be positive seconds")
-        return v
 
     @field_validator("start", "end", mode="before")
     @classmethod

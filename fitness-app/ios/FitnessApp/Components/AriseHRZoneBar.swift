@@ -139,7 +139,7 @@ struct AriseHRZoneBar: View {
     }
 
     private func timeLabel(_ seconds: Int) -> String {
-        String(format: "%d:%02d", seconds / 60, seconds % 60)
+        seconds.asMinSecString
     }
 }
 

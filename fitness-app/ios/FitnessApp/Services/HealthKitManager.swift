@@ -394,6 +394,13 @@ class HealthKitManager: ObservableObject {
     private static let importChunkSize = 10
     /// Slim (no-HR) resync payloads are tiny, so they ride the backend's 1..100 request bound.
     private static let resyncSlimChunkSize = 100
+    /// Matches the backend schema's mile_splits max_length.
+    private static let maxMileSplits = 100
+    /// Distance series probed (statistics only — no store queries) when
+    /// `totalDistance` is absent.
+    private static let cardioDistanceIdentifiers: [HKQuantityTypeIdentifier] = [
+        .distanceWalkingRunning, .distanceCycling, .distanceSwimming,
+    ]
     /// Re-scan window before the cursor to catch late Watch→iPhone syncs (see `importNewWorkouts`).
     private static let reScanBuffer: TimeInterval = 2 * 86_400 // 2 days
     /// Steady-state minimum lookback: every run re-scans at least this far back regardless of the
@@ -476,12 +483,17 @@ class HealthKitManager: ObservableObject {
 
     private func fetchHeartRateSamples(for workout: HKWorkout) async -> [HKQuantitySample] {
         guard let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate) else { return [] }
+        return await fetchQuantitySamples(of: hrType, for: workout)
+    }
+
+    /// The workout's samples of `type`, sorted ascending by start date.
+    private func fetchQuantitySamples(of type: HKQuantityType, for workout: HKWorkout) async -> [HKQuantitySample] {
         let predicate = HKQuery.predicateForObjects(from: workout)
         let sort = [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]
 
         return await withCheckedContinuation { continuation in
             let query = HKSampleQuery(
-                sampleType: hrType,
+                sampleType: type,
                 predicate: predicate,
                 limit: HKObjectQueryNoLimit,
                 sortDescriptors: sort
@@ -490,6 +502,97 @@ class HealthKitManager: ObservableObject {
             }
             healthStore.execute(query)
         }
+    }
+
+    /// The one distance series that can back mile splits for this workout type.
+    private static func splitDistanceType(for workout: HKWorkout) -> HKQuantityType? {
+        let identifier: HKQuantityTypeIdentifier
+        switch workout.workoutActivityType {
+        case .cycling: identifier = .distanceCycling
+        case .swimming: identifier = .distanceSwimming
+        default: identifier = .distanceWalkingRunning
+        }
+        return HKQuantityType.quantityType(forIdentifier: identifier)
+    }
+
+    /// Paused date ranges from the workout's pause/resume event pairs.
+    private static func pausedIntervals(of workout: HKWorkout) -> [DateInterval] {
+        guard let events = workout.workoutEvents else { return [] }
+        var intervals: [DateInterval] = []
+        var pauseStart: Date?
+        for event in events {
+            switch event.type {
+            case .pause:
+                if pauseStart == nil { pauseStart = event.dateInterval.start }
+            case .resume:
+                if let start = pauseStart {
+                    let end = event.dateInterval.start
+                    if end > start { intervals.append(DateInterval(start: start, end: end)) }
+                    pauseStart = nil
+                }
+            default:
+                break
+            }
+        }
+        // Workout ended while paused: the tail counts as paused too.
+        if let start = pauseStart, workout.endDate > start {
+            intervals.append(DateInterval(start: start, end: workout.endDate))
+        }
+        return intervals
+    }
+
+    /// Seconds between two dates minus any overlap with paused ranges.
+    private static func activeSeconds(from start: Date, to end: Date, excluding paused: [DateInterval]) -> TimeInterval {
+        var total = end.timeIntervalSince(start)
+        for range in paused {
+            let overlapStart = max(start, range.start)
+            let overlapEnd = min(end, range.end)
+            if overlapEnd > overlapStart {
+                total -= overlapEnd.timeIntervalSince(overlapStart)
+            }
+        }
+        return total
+    }
+
+    /// Per-mile split times (seconds per completed mile) from the workout's
+    /// distance samples: walk cumulative distance sample by sample and linearly
+    /// interpolate each mile boundary's timestamp inside the sample that crosses
+    /// it. Splits measure ACTIVE time (paused intervals subtracted), matching
+    /// `HKWorkout.duration` so overall pace and splits share one time base.
+    /// Nil when no split is possible (sub-mile, no granular distance series) —
+    /// callers fall back to overall pace. Sub-mile and wrong-type gates are
+    /// query-free, so most workouts cost nothing here.
+    private func computeMileSplits(for workout: HKWorkout, distanceMeters: Double?) async -> [Int]? {
+        guard let meters = distanceMeters, meters >= CardioUnits.metersPerMile,
+              let type = Self.splitDistanceType(for: workout) else { return nil }
+        let samples = await fetchQuantitySamples(of: type, for: workout)
+        guard !samples.isEmpty else { return nil }
+
+        let pausedRanges = Self.pausedIntervals(of: workout)
+        var splits: [Int] = []
+        var cumulativeMeters = 0.0
+        var nextBoundary = CardioUnits.metersPerMile
+        var lastBoundaryTime = workout.startDate
+        for sample in samples {
+            let sampleMeters = sample.quantity.doubleValue(for: .meter())
+            guard sampleMeters > 0 else { continue }
+            let sampleStartMeters = cumulativeMeters
+            cumulativeMeters += sampleMeters
+            while cumulativeMeters >= nextBoundary, splits.count < Self.maxMileSplits {
+                let fraction = (nextBoundary - sampleStartMeters) / sampleMeters
+                let sampleDuration = sample.endDate.timeIntervalSince(sample.startDate)
+                let boundaryTime = sample.startDate.addingTimeInterval(sampleDuration * fraction)
+                let split = Self.activeSeconds(
+                    from: lastBoundaryTime, to: boundaryTime, excluding: pausedRanges
+                )
+                // Clamp ≥ 1 (backend validator floor) and always consume the
+                // boundary — overlapping/duplicated samples can't stall it.
+                splits.append(max(1, Int(split.rounded())))
+                lastBoundaryTime = boundaryTime
+                nextBoundary += CardioUnits.metersPerMile
+            }
+        }
+        return splits.isEmpty ? nil : splits
     }
 
     private func buildImport(for workout: HKWorkout, age: Int?, includeHRSamples: Bool = true) async -> HealthKitWorkoutImport {
@@ -529,10 +632,7 @@ class HealthKitManager: ObservableObject {
         if let total = workout.totalDistance {
             distanceMeters = total.doubleValue(for: .meter())
         } else {
-            let distanceIdentifiers: [HKQuantityTypeIdentifier] = [
-                .distanceWalkingRunning, .distanceCycling, .distanceSwimming,
-            ]
-            for identifier in distanceIdentifiers {
+            for identifier in Self.cardioDistanceIdentifiers {
                 if let type = HKQuantityType.quantityType(forIdentifier: identifier),
                    let sum = workout.statistics(for: type)?.sumQuantity() {
                     distanceMeters = sum.doubleValue(for: .meter())
@@ -540,6 +640,12 @@ class HealthKitManager: ObservableObject {
                 }
             }
         }
+
+        // Splits ride slim resync payloads too — they're part of what the
+        // duplicate backfill fills. Strength workouts skip the extra query.
+        let mileSplits: [Int]? = isStrength
+            ? nil
+            : await computeMileSplits(for: workout, distanceMeters: distanceMeters)
 
         return HealthKitWorkoutImport(
             hkUuid: workout.uuid.uuidString,
@@ -553,7 +659,8 @@ class HealthKitManager: ObservableObject {
             peakHeartRate: peakHeartRate,
             hrZoneSeconds: hrZoneSeconds,
             heartRateSamples: heartRateSamples,
-            distanceMeters: distanceMeters
+            distanceMeters: distanceMeters,
+            mileSplits: mileSplits
         )
     }
 
