@@ -173,7 +173,7 @@ async def get_weekly_calendar(
                 sum(r.distance_miles or 0.0 for r in b["runs"] if r.is_run), 2
             ),
             lift_sessions=len(b["lifts"]),
-            total_sets=sum(l.total_sets for l in b["lifts"]),
+            total_sets=sum(lift.total_sets for lift in b["lifts"]),
         ))
 
     return CalendarWeeklyResponse(weeks=week_list)

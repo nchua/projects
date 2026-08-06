@@ -8,8 +8,9 @@ Revision ID: add_cardio_distance
 Revises: add_hunt_name
 Create Date: 2026-08-05
 """
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "add_cardio_distance"
 down_revision = "add_hunt_name"
