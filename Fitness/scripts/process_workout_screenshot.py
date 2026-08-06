@@ -10,11 +10,11 @@ Usage:
     python process_workout_screenshot.py --folder <folder_path>
 """
 
-import os
-import sys
-import json
 import base64
+import json
+import os
 import shutil
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -100,7 +100,7 @@ def encode_image(image_path: str) -> tuple[str, str]:
 
 def extract_workout_data(image_path: str, client: anthropic.Anthropic) -> dict:
     """Use Claude to extract workout data from screenshot."""
-    print(f"  Analyzing image with Claude...")
+    print("  Analyzing image with Claude...")
 
     image_data, media_type = encode_image(image_path)
 
@@ -254,13 +254,13 @@ def process_screenshot(image_path: str, move_to_processed: bool = True) -> bool:
 
     # Add to workout log
     if add_session_to_log(extracted_data, str(image_path)):
-        print(f"  Added to workout_log.json")
+        print("  Added to workout_log.json")
 
     # Move to processed folder
     if move_to_processed:
         dest = PROCESSED_DIR / image_path.name
         shutil.move(str(image_path), str(dest))
-        print(f"  Moved to processed/")
+        print("  Moved to processed/")
 
     return True
 

@@ -3,7 +3,7 @@
 import base64
 import json
 import os
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from typing import Optional
@@ -16,7 +16,6 @@ from ..models.activity import (
     CardioWorkoutType,
     DailyActivityEntry,
 )
-
 
 # Vision model used for screenshot detection and extraction. Keep this as a
 # named constant so a model retirement is a one-line change.
@@ -57,7 +56,8 @@ Return ONLY a valid JSON object with these fields (use null for any not visible)
     ]
 }
 
-Valid activity_type values: walking, running, cycling, swimming, hiit, rowing, elliptical, strength, yoga, other
+Valid activity_type values: walking, running, cycling, swimming, hiit, rowing,
+elliptical, strength, yoga, other
 
 Only include fields you can clearly see. Be precise with numbers.
 Return ONLY the JSON, no other text."""
@@ -84,7 +84,8 @@ Return ONLY a valid JSON object with these fields (use null for any not visible)
     ]
 }
 
-Valid activity_type values: walking, running, cycling, swimming, hiit, rowing, elliptical, strength, yoga, other
+Valid activity_type values: walking, running, cycling, swimming, hiit, rowing,
+elliptical, strength, yoga, other
 
 Focus on activity rings and workout summaries. Be precise with numbers.
 Return ONLY the JSON, no other text."""
