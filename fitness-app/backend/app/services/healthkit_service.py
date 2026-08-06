@@ -156,6 +156,28 @@ def _backfill_session_hr(session: WorkoutSession, workout: HealthKitWorkout) -> 
         session.hr_source = HR_SOURCE
 
 
+def _backfill_cardio_fields(session: WorkoutSession, workout: HealthKitWorkout) -> bool:
+    """NULL-fill cardio metadata on an existing session from a re-sent workout.
+
+    Sessions imported before the ``add_cardio_distance`` migration have
+    ``activity_type`` / ``distance_meters`` / ``duration_seconds`` unset. A
+    history re-sync re-sends those workouts; only empty fields are filled — a
+    re-import never clobbers — so the re-sync is idempotent. Returns True if
+    anything changed.
+    """
+    changed = False
+    if workout.activity_type and session.activity_type is None:
+        session.activity_type = workout.activity_type
+        changed = True
+    if workout.distance_meters is not None and session.distance_meters is None:
+        session.distance_meters = float(workout.distance_meters)
+        changed = True
+    if workout.duration_seconds is not None and session.duration_seconds is None:
+        session.duration_seconds = int(workout.duration_seconds)
+        changed = True
+    return changed
+
+
 def import_healthkit_workouts(
     db: DBSession,
     user_id: str,
@@ -165,7 +187,10 @@ def import_healthkit_workouts(
 
     Steps (per the Chunk A spec):
       1. **Dedup** against existing non-null ``hk_uuid``s for the user (and
-         intra-batch duplicates) -> ``skipped_duplicates``.
+         intra-batch duplicates) -> ``skipped_duplicates``. Exception: a
+         duplicate **cardio** workout whose existing row is missing
+         ``activity_type``/``distance_meters``/``duration_seconds`` NULL-fills
+         them -> ``sessions_updated`` + ``imported`` (history re-sync backfill).
       2. **Cardio** -> build a synthetic session inline -> ``sessions_created``.
       3. **Strength** -> match an existing session by time overlap, backfill HR
          non-destructively, attribute raw samples to sets -> ``sessions_updated``;
@@ -195,15 +220,21 @@ def import_healthkit_workouts(
     sessions_updated: List[str] = []
     unmatched: List[Dict[str, str]] = []
 
-    # ── 1. Dedup set: existing hk_uuids for this user + intra-batch dups ──
-    known_uuids = {
-        row[0]
-        for row in db.query(WorkoutSession.hk_uuid)
+    # ── 1. Dedup sources: one batch-scoped query (membership is only ever
+    # tested for batch uuids). `known_uuids` keeps soft-deleted rows — a
+    # deleted session still blocks re-import — while backfill targets
+    # (step 1's duplicate-cardio NULL-fill) must be live rows. ──
+    batch_rows = (
+        db.query(WorkoutSession)
         .filter(
             WorkoutSession.user_id == user_id,
-            WorkoutSession.hk_uuid.isnot(None),
+            WorkoutSession.hk_uuid.in_([w.hk_uuid for w in workouts]),
         )
         .all()
+    )
+    known_uuids = {s.hk_uuid for s in batch_rows}
+    existing_by_uuid: Dict[str, WorkoutSession] = {
+        s.hk_uuid: s for s in batch_rows if s.deleted_at is None
     }
 
     # ── Lazily load candidate sessions for the strength path (once) ──
@@ -236,7 +267,24 @@ def import_healthkit_workouts(
 
         # 1. Dedup (existing rows OR an earlier item in this same batch).
         if hk_uuid in known_uuids:
-            skipped_duplicates.append(hk_uuid)
+            # Duplicate cardio backfill: rows imported before the distance
+            # columns existed carry NULLs there; a re-sent duplicate fills the
+            # gaps (NULL-only, so repeat re-syncs stay idempotent). Intra-batch
+            # duplicates miss `existing_by_uuid` (queried pre-loop) and fall
+            # through to skipped as before.
+            existing = existing_by_uuid.get(hk_uuid)
+            if (
+                existing is not None
+                and not workout.is_strength
+                and _backfill_cardio_fields(existing, workout)
+            ):
+                # Acknowledge the uuid in `imported` like the strength-update
+                # path does, so clients learn the backend has it. The final
+                # flush persists the fill; no per-row flush needed.
+                sessions_updated.append(existing.id)
+                imported.append(hk_uuid)
+            else:
+                skipped_duplicates.append(hk_uuid)
             continue
         known_uuids.add(hk_uuid)
 

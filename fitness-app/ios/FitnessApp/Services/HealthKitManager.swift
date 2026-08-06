@@ -302,23 +302,87 @@ class HealthKitManager: ObservableObject {
             return nil
         }
 
+        let result = await postImports(imports, chunkSize: Self.importChunkSize)
+        if !result.failed {
+            // Leave the cursor on failure so the next run retries the rest.
+            WorkoutImportStore.shared.advanceCursor(to: now)
+        }
+        return result.aggregate
+    }
+
+    /// Shared wire protocol for both import paths: chunked POSTs, response merge,
+    /// and acknowledgment. Imported + skipped both mean "the backend has it" →
+    /// safe to never resend; whatever chunks succeed are acknowledged even when a
+    /// later chunk fails, so a retry only re-sends the remainder.
+    private func postImports(
+        _ imports: [HealthKitWorkoutImport], chunkSize: Int
+    ) async -> (aggregate: HealthKitImportResponse?, failed: Bool) {
         var aggregate: HealthKitImportResponse?
         var acknowledged: [String] = []
+        var failed = false
         do {
-            for chunk in imports.chunked(into: Self.importChunkSize) {
+            for chunk in imports.chunked(into: chunkSize) {
                 let response = try await APIClient.shared.importHealthKitWorkouts(chunk)
-                // imported + skipped both mean "the backend has it" → safe to never resend.
                 acknowledged.append(contentsOf: response.imported + response.skippedDuplicates)
                 aggregate = Self.merge(aggregate, response)
             }
-            WorkoutImportStore.shared.markImported(acknowledged)
-            WorkoutImportStore.shared.advanceCursor(to: now)
         } catch {
-            // Persist whatever chunks did succeed; leave the cursor so the next run retries the rest.
-            WorkoutImportStore.shared.markImported(acknowledged)
+            failed = true
             print("HealthKit workout import error: \(error)")
         }
-        return aggregate
+        WorkoutImportStore.shared.markImported(acknowledged)
+        return (aggregate, failed)
+    }
+
+    /// One-off history re-sync (Profile → Apple Health): re-send the last `days` of
+    /// workouts *ignoring* the already-imported filter so the backend can NULL-fill
+    /// cardio fields (distance, exact duration, activity type) added after the
+    /// originals were imported. Already-sent workouts go up slim (no HR samples —
+    /// duplicates only get missing fields filled); workouts the store never sent
+    /// (e.g. older than the first-sync window) keep full HR so their newly created
+    /// sessions aren't degraded. The steady-state cursor is deliberately untouched.
+    ///
+    /// Unlike the silent steady-state import, this is an explicit user action, so
+    /// `failed` reports whether any chunk errored — the caller must not render a
+    /// partial or empty result as success.
+    func resyncHistory(age: Int?, days: Int) async -> (response: HealthKitImportResponse?, failed: Bool) {
+        guard isHealthDataAvailable else { return (nil, false) }
+        guard isAuthorized else { return (nil, false) }
+        guard !isImportingWorkouts else { return (nil, false) }
+        isImportingWorkouts = true
+        defer { isImportingWorkouts = false }
+
+        let now = Date()
+        let start = Calendar.current.date(byAdding: .day, value: -days, to: now)
+            ?? now.addingTimeInterval(-Double(days) * 86_400)
+        let workouts = await fetchWorkouts(start: start, end: now)
+        guard !workouts.isEmpty else { return (nil, false) }
+
+        var slim: [HealthKitWorkoutImport] = []
+        var full: [HealthKitWorkoutImport] = []
+        for workout in workouts {
+            let alreadySent = WorkoutImportStore.shared.isImported(workout.uuid.uuidString)
+            let item = await buildImport(for: workout, age: age, includeHRSamples: !alreadySent)
+            if alreadySent { slim.append(item) } else { full.append(item) }
+        }
+
+        // Slim payloads (~200 bytes each) ride the backend's 100-item request cap;
+        // the 10-item chunk guard exists for full-HR payload latency only.
+        var aggregate: HealthKitImportResponse?
+        var failed = false
+        if !slim.isEmpty {
+            let result = await postImports(slim, chunkSize: Self.resyncSlimChunkSize)
+            aggregate = result.aggregate
+            failed = result.failed
+        }
+        if !full.isEmpty {
+            let result = await postImports(full, chunkSize: Self.importChunkSize)
+            if let fullAggregate = result.aggregate {
+                aggregate = Self.merge(aggregate, fullAggregate)
+            }
+            failed = failed || result.failed
+        }
+        return (aggregate, failed)
     }
 
     // MARK: - Workout Import Helpers
@@ -328,6 +392,8 @@ class HealthKitManager: ObservableObject {
     private static let maxHRSamplesPerWorkout = 720
     /// Per-POST workout cap so the first-run 30-day batch stays under the 10s request timeout.
     private static let importChunkSize = 10
+    /// Slim (no-HR) resync payloads are tiny, so they ride the backend's 1..100 request bound.
+    private static let resyncSlimChunkSize = 100
     /// Re-scan window before the cursor to catch late Watch→iPhone syncs (see `importNewWorkouts`).
     private static let reScanBuffer: TimeInterval = 2 * 86_400 // 2 days
     /// Steady-state minimum lookback: every run re-scans at least this far back regardless of the
@@ -426,9 +492,12 @@ class HealthKitManager: ObservableObject {
         }
     }
 
-    private func buildImport(for workout: HKWorkout, age: Int?) async -> HealthKitWorkoutImport {
+    private func buildImport(for workout: HKWorkout, age: Int?, includeHRSamples: Bool = true) async -> HealthKitWorkoutImport {
         let (activityType, isStrength) = Self.mapActivityType(workout.workoutActivityType)
-        let rawSamples = await fetchHeartRateSamples(for: workout)
+        // Slim path (history re-sync of already-imported workouts): skip the
+        // per-workout HR query — the backend only NULL-fills cardio fields on
+        // duplicates, and HR is already stored from the original import.
+        let rawSamples = includeHRSamples ? await fetchHeartRateSamples(for: workout) : []
 
         // avg/peak from ALL raw samples (most accurate); payload uses the decimated set.
         let bpms = rawSamples.map { Int($0.quantity.doubleValue(for: Self.hrUnit).rounded()) }

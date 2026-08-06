@@ -56,8 +56,29 @@ final class AppleHealthWorkoutSettingsViewModel: ObservableObject {
 
         state = .importing
         let age = await currentAge()
-        let response = await healthKit.importNewWorkouts(age: age)
+        applyImportResult(await healthKit.importNewWorkouts(age: age))
+    }
 
+    /// One-off "Re-sync 90 days": re-sends history so runs imported before the
+    /// distance feature pick up mileage, pace, and exact duration. Unlike the
+    /// steady-state import, failures surface — this is an explicit user action.
+    func runHistoryResync() async {
+        guard healthKit.isHealthDataAvailable else { state = .notAvailable; return }
+        guard healthKit.isAuthorized else { state = .notAuthorized; return }
+
+        state = .importing
+        let age = await currentAge()
+        let result = await healthKit.resyncHistory(age: age, days: 90)
+        if result.failed {
+            state = .error(result.response == nil
+                ? "Couldn't reach the server. Check your connection and tap RE-SYNC 90 DAYS again."
+                : "Re-sync was interrupted partway. Tap RE-SYNC 90 DAYS again to finish — synced workouts are skipped automatically.")
+        } else {
+            applyImportResult(result.response)
+        }
+    }
+
+    private func applyImportResult(_ response: HealthKitImportResponse?) {
         if let response = response, !(response.imported.isEmpty && response.sessionsUpdated.isEmpty) {
             state = .imported(AppleHealthImportSummary(
                 imported: response.imported.count,
@@ -219,7 +240,7 @@ struct AppleHealthWorkoutSettingsView: View {
 
             VStack(spacing: 8) {
                 if summary.imported > 0 { summaryStat("Imported", summary.imported, .systemPrimary) }
-                if summary.updated > 0 { summaryStat("HR backfilled", summary.updated, .systemPrimary) }
+                if summary.updated > 0 { summaryStat("Updated", summary.updated, .systemPrimary) }
                 if summary.questsCompleted > 0 { summaryStat("Quests completed", summary.questsCompleted, .gold) }
                 if summary.skipped > 0 { summaryStat("Already imported", summary.skipped, .textMuted) }
                 if summary.unmatched > 0 { summaryStat("Log these first", summary.unmatched, .textMuted) }
@@ -256,8 +277,18 @@ struct AppleHealthWorkoutSettingsView: View {
                 await viewModel.connect()
             }
         default:
-            primaryButton(title: "IMPORT NOW", systemImage: "arrow.clockwise") {
-                await viewModel.runImport()
+            VStack(spacing: 12) {
+                primaryButton(title: "IMPORT NOW", systemImage: "arrow.clockwise") {
+                    await viewModel.runImport()
+                }
+                secondaryButton(title: "RE-SYNC 90 DAYS", systemImage: "clock.arrow.circlepath") {
+                    await viewModel.runHistoryResync()
+                }
+                Text("Re-sends the last 90 days so older runs pick up distance and pace. Safe to run more than once.")
+                    .font(.ariseBody(size: 11))
+                    .foregroundColor(.textMuted)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
             }
         }
     }
@@ -281,6 +312,27 @@ struct AppleHealthWorkoutSettingsView: View {
             .foregroundColor(.voidBlack)
             .overlay(Rectangle().stroke(Color.systemPrimary, lineWidth: 2))
             .shadow(color: .systemPrimaryGlow, radius: 15, x: 0, y: 0)
+        }
+        .padding(.horizontal)
+    }
+
+    private func secondaryButton(title: String, systemImage: String, action: @escaping () async -> Void) -> some View {
+        Button {
+            let impact = UIImpactFeedbackGenerator(style: .light)
+            impact.impactOccurred()
+            Task { await action() }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 13, weight: .semibold))
+                Text(title)
+                    .font(.ariseHeader(size: 13, weight: .semibold))
+                    .tracking(2)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 46)
+            .foregroundColor(.systemPrimary)
+            .overlay(Rectangle().stroke(Color.systemPrimary.opacity(0.5), lineWidth: 1))
         }
         .padding(.horizontal)
     }

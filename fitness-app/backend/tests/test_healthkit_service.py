@@ -63,6 +63,7 @@ def _make_workout(
     kilojoules: float = None,
     hr_zone_seconds: dict = None,
     samples: list = None,
+    distance_meters: float = None,
 ) -> HealthKitWorkout:
     """Build a validated ``HealthKitWorkout`` request item.
 
@@ -83,7 +84,7 @@ def _make_workout(
         peak_heart_rate=peak_hr,
         hr_zone_seconds=hr_zone_seconds,
         heart_rate_samples=samples,
-        distance_meters=None,
+        distance_meters=distance_meters,
     )
 
 
@@ -210,6 +211,116 @@ class TestDedup:
             WorkoutSession.user_id == user.id,
             WorkoutSession.hk_uuid == hk_uuid,
         ).count() == 1
+
+
+# ── TestCardioBackfill ────────────────────────────────────────────────────────
+
+def _seed_legacy_cardio_session(db, user_id: str, hk_uuid: str) -> WorkoutSession:
+    """Seed a cardio session as the pre-``add_cardio_distance`` import wrote it:
+    hk_uuid consumed, but activity_type/distance_meters/duration_seconds NULL."""
+    session = WorkoutSession(
+        id=str(uuid.uuid4()),
+        user_id=user_id,
+        date=_utc(2026, 6, 1, 10, 0).replace(tzinfo=None),
+        duration_minutes=45,
+        hk_uuid=hk_uuid,
+        hr_source="apple_watch",
+        notes="running - Apple Watch",
+    )
+    db.add(session)
+    db.commit()
+    return session
+
+
+class TestCardioBackfill:
+    """A duplicate cardio workout NULL-fills missing distance fields (re-sync)."""
+
+    def test_duplicate_cardio_backfills_null_fields(self, db, create_test_user):
+        """Legacy row (NULL cardio fields) + re-sent duplicate -> fields filled."""
+        user, _ = create_test_user(email=f"backfill1-{uuid.uuid4().hex[:8]}@example.com")
+        hk_uuid = str(uuid.uuid4())
+        session = _seed_legacy_cardio_session(db, user.id, hk_uuid)
+
+        result = import_healthkit_workouts(
+            db, user.id,
+            [_make_workout(hk_uuid=hk_uuid, activity_type="running",
+                           distance_meters=5012.0)],
+        )
+        db.commit()
+
+        assert result["sessions_updated"] == [session.id]
+        # Acknowledged like the strength-update path, so clients mark it sent.
+        assert hk_uuid in result["imported"]
+        assert hk_uuid not in result["skipped_duplicates"]
+        assert result["sessions_created"] == []
+        db.refresh(session)
+        assert session.activity_type == "running"
+        assert session.distance_meters == 5012.0
+        assert session.duration_seconds == 45 * 60
+        # No new session materialized.
+        assert db.query(WorkoutSession).filter(
+            WorkoutSession.user_id == user.id
+        ).count() == 1
+
+    def test_backfill_never_clobbers_existing_values(self, db, create_test_user):
+        """Non-NULL fields are left alone; a full row means plain skip."""
+        user, _ = create_test_user(email=f"backfill2-{uuid.uuid4().hex[:8]}@example.com")
+        hk_uuid = str(uuid.uuid4())
+        session = _seed_legacy_cardio_session(db, user.id, hk_uuid)
+        session.activity_type = "cycling"
+        session.distance_meters = 9000.0
+        session.duration_seconds = 2000
+        db.commit()
+
+        result = import_healthkit_workouts(
+            db, user.id,
+            [_make_workout(hk_uuid=hk_uuid, activity_type="running",
+                           distance_meters=5012.0)],
+        )
+        db.commit()
+
+        assert hk_uuid in result["skipped_duplicates"]
+        assert result["sessions_updated"] == []
+        db.refresh(session)
+        assert session.activity_type == "cycling"
+        assert session.distance_meters == 9000.0
+        assert session.duration_seconds == 2000
+
+    def test_backfill_idempotent_on_resend(self, db, create_test_user):
+        """Second identical re-sync pass is a plain skip (nothing left to fill)."""
+        user, _ = create_test_user(email=f"backfill3-{uuid.uuid4().hex[:8]}@example.com")
+        hk_uuid = str(uuid.uuid4())
+        _seed_legacy_cardio_session(db, user.id, hk_uuid)
+        workout = _make_workout(hk_uuid=hk_uuid, activity_type="running",
+                                distance_meters=5012.0)
+
+        first = import_healthkit_workouts(db, user.id, [workout])
+        db.commit()
+        assert len(first["sessions_updated"]) == 1
+
+        second = import_healthkit_workouts(db, user.id, [workout])
+        db.commit()
+        assert second["sessions_updated"] == []
+        assert hk_uuid in second["skipped_duplicates"]
+
+    def test_duplicate_strength_is_not_backfilled(self, db, create_test_user):
+        """The backfill is cardio-only: a duplicate strength workout still skips."""
+        user, _ = create_test_user(email=f"backfill4-{uuid.uuid4().hex[:8]}@example.com")
+        hk_uuid = str(uuid.uuid4())
+        session = _seed_legacy_cardio_session(db, user.id, hk_uuid)
+
+        result = import_healthkit_workouts(
+            db, user.id,
+            [_make_workout(hk_uuid=hk_uuid, activity_type="strength_training",
+                           is_strength=True, distance_meters=100.0)],
+        )
+        db.commit()
+
+        assert hk_uuid in result["skipped_duplicates"]
+        assert result["sessions_updated"] == []
+        db.refresh(session)
+        assert session.activity_type is None
+        assert session.distance_meters is None
 
 
 # ── TestCardioImport ──────────────────────────────────────────────────────────
