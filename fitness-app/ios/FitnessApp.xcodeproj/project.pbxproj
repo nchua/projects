@@ -100,6 +100,7 @@
 		DDB186D30D008EBB548C39BB /* XPCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4405B03A566EC3D65DA19B00 /* XPCalculator.swift */; };
 		E244350F916D83CE2E3F050A /* PendingWorkoutStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DED7A755B987BE8C2157642E /* PendingWorkoutStoreTests.swift */; };
 		E28470405C3C1AA2581AF940 /* PendingWorkoutStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005EFE9EE54FDC4505E0DD62 /* PendingWorkoutStore.swift */; };
+		E77F831C3F29DCBECA099478 /* HuntNameSuggester.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD159BBC65A869A19AF7FAB3 /* HuntNameSuggester.swift */; };
 		ED09CA5AEF747C9593DF5B23 /* ExertionProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3220676DE798E502118BB26 /* ExertionProgressView.swift */; };
 		F170EB4E18FF678BA3F9C6A5 /* DirectiveCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7CB8C5B7475A9F30DA78BD9 /* DirectiveCard.swift */; };
 		F18DBC98943A7BAF48CA853E /* JetBrainsMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 450195A9814F8AAE5DFCB41F /* JetBrainsMono-Regular.ttf */; };
@@ -209,6 +210,7 @@
 		C8B1E8A1E0A8D308344E179E /* WeeklyReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyReportView.swift; sourceTree = "<group>"; };
 		C9F64535FBE31A54DBE47FFF /* RankBadgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RankBadgeView.swift; sourceTree = "<group>"; };
 		CC8A2F491AC9087E07B63540 /* FriendRowCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendRowCard.swift; sourceTree = "<group>"; };
+		CD159BBC65A869A19AF7FAB3 /* HuntNameSuggester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuntNameSuggester.swift; sourceTree = "<group>"; };
 		CE2A62A1E050193695378BF7 /* RecoveryDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryDetailSheet.swift; sourceTree = "<group>"; };
 		CE64F236AB7CDB1AE715B673 /* DirectiveSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectiveSheet.swift; sourceTree = "<group>"; };
 		D36B4AA14B929AA95E36E602 /* PowerLevelsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerLevelsCard.swift; sourceTree = "<group>"; };
@@ -430,6 +432,7 @@
 				9F3A7D81E4F7B61A487F21DB /* Colors.swift */,
 				30AB8A1A5C01773A5442AA89 /* Extensions.swift */,
 				383EA1AD7F433E7FB9232B6C /* Fonts.swift */,
+				CD159BBC65A869A19AF7FAB3 /* HuntNameSuggester.swift */,
 				EB776AC6E5732ADD25171C9B /* SwipeBackGesture.swift */,
 				4405B03A566EC3D65DA19B00 /* XPCalculator.swift */,
 			);
@@ -686,6 +689,7 @@
 				BFC4D914E5F9E5E82E378C3F /* GoalsViewModel.swift in Sources */,
 				B26810B18ABFA530CF1FA835 /* HealthKitManager.swift in Sources */,
 				F5CDC904F67051AC1B681858 /* HistoryViewModel.swift in Sources */,
+				E77F831C3F29DCBECA099478 /* HuntNameSuggester.swift in Sources */,
 				AE767B2501E2EAD99C39324A /* HuntView.swift in Sources */,
 				3E66DA3B5E5A06562EC368C6 /* HuntViewModel.swift in Sources */,
 				7840B0B19A0B2A648CB5B435 /* HunterNetworkSection.swift in Sources */,

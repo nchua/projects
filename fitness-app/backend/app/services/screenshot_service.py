@@ -33,6 +33,10 @@ from app.services.xp_service import award_xp, calculate_workout_xp, get_or_creat
 
 DATE_FORMATS = ["%Y-%m-%d", "%B %d, %Y", "%b %d, %Y", "%m/%d/%Y", "%d/%m/%Y"]
 
+# Vision model used for screenshot extraction. Keep this as a named constant so
+# a model retirement is a one-line change instead of a hunt through the file.
+VISION_MODEL = "claude-sonnet-5"
+
 
 def parse_date_string(date_string: str) -> Optional[datetime]:
     """Parse a date string using multiple common formats."""
@@ -463,8 +467,15 @@ async def extract_workout_from_screenshot(
     # Call Claude Vision API
     try:
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=2000,
+            model=VISION_MODEL,
+            # Sonnet 5 runs adaptive thinking when `thinking` is omitted, and
+            # thinking tokens count against max_tokens. Extraction is a fixed
+            # JSON shape, so disable it to keep the response inside the 30s
+            # timeout above and leave the whole budget for the JSON payload.
+            thinking={"type": "disabled"},
+            # Raised from 2000: Sonnet 5's tokenizer produces ~30% more tokens
+            # for the same text, and a truncated response fails JSON parsing.
+            max_tokens=4000,
             messages=[
                 {
                     "role": "user",

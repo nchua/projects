@@ -176,12 +176,16 @@ async def general_exception_handler(request, exc):
 # Origins are loaded from the ALLOWED_ORIGINS env var (comma-separated).
 # When empty, fall back to the production Railway origin so local dev and
 # existing deploys don't break.
-_default_origin = "https://backend-production-e316.up.railway.app"
+_default_origins = [
+    "https://backend-production-e316.up.railway.app",
+    # Training-calendar PWA (GitHub Pages) reads /calendar/weekly.
+    "https://nchua.github.io",
+]
 _allowed_origins = [
     o.strip()
     for o in (settings.ALLOWED_ORIGINS or "").split(",")
     if o.strip()
-] or [_default_origin]
+] or _default_origins
 
 app.add_middleware(
     CORSMiddleware,
@@ -368,6 +372,7 @@ from app.api import (
     analytics,
     auth,
     bodyweight,
+    calendar,
     condition,
     directive,
     exercises,
@@ -389,6 +394,7 @@ from app.api import (
 )
 
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+app.include_router(calendar.router, prefix="/calendar", tags=["Training Calendar"])
 app.include_router(password_reset.router, prefix="/auth/password-reset", tags=["Password Reset"])
 app.include_router(profile.router, prefix="/profile", tags=["Profile"])
 app.include_router(users.router, prefix="/users", tags=["Users"])

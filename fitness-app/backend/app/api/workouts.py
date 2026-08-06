@@ -103,7 +103,9 @@ def _derive_activity_fields(workout: WorkoutSession, total_sets: int) -> dict:
     activity_type = None
     calories = None
     if workout.hr_source == "apple_watch" and total_sets == 0:
-        activity_type = parse_apple_watch_activity_type(workout.notes)
+        # Prefer the real column (populated since the distance migration);
+        # fall back to the legacy notes convention for older rows.
+        activity_type = workout.activity_type or parse_apple_watch_activity_type(workout.notes)
         if workout.kilojoules:
             calories = round(workout.kilojoules * KJ_TO_KCAL)
     return {
@@ -684,6 +686,7 @@ async def list_workouts(
             avg_heart_rate=workout.avg_heart_rate,
             peak_heart_rate=workout.peak_heart_rate,
             hr_source=workout.hr_source,
+            distance_meters=workout.distance_meters,
         ))
 
     return summaries
@@ -999,6 +1002,7 @@ def _build_workout_response(workout: WorkoutSession) -> WorkoutResponse:
         is_activity=activity["is_activity"],
         activity_type=activity["activity_type"],
         calories=activity["calories"],
+        distance_meters=workout.distance_meters,
         created_at=to_iso8601_utc(workout.created_at),
         updated_at=to_iso8601_utc(workout.updated_at)
     )

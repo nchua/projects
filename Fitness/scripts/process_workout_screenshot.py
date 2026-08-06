@@ -34,6 +34,10 @@ PROCESSED_DIR = SCREENSHOT_DIR / "processed"
 # Ensure processed directory exists
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
+# Vision model used for screenshot extraction. Keep this as a named constant so
+# a model retirement is a one-line change instead of a hunt through the file.
+VISION_MODEL = "claude-sonnet-5"
+
 EXTRACTION_PROMPT = """Analyze this workout screenshot from a fitness tracking app.
 
 Extract ALL workout data visible in the image and return it as JSON in this exact format:
@@ -101,8 +105,14 @@ def extract_workout_data(image_path: str, client: anthropic.Anthropic) -> dict:
     image_data, media_type = encode_image(image_path)
 
     message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=2000,
+        model=VISION_MODEL,
+        # Sonnet 5 runs adaptive thinking when `thinking` is omitted, and
+        # thinking tokens count against max_tokens. Extraction returns a fixed
+        # JSON shape, so leave the whole budget for the payload.
+        thinking={"type": "disabled"},
+        # Raised from 2000: Sonnet 5's tokenizer produces ~30% more tokens for
+        # the same text, and a truncated response fails JSON parsing.
+        max_tokens=4000,
         messages=[
             {
                 "role": "user",

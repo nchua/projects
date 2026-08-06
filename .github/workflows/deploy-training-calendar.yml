@@ -1,0 +1,29 @@
+name: Deploy Training Calendar to GitHub Pages
+
+on:
+  push:
+    branches: [main, claude/training-calendar-pwa-p7wm84]
+    paths: ["training-calendar/**", ".github/workflows/deploy-training-calendar.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish training-calendar/ to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./training-calendar
+          force_orphan: true
+      # NOTE: enabling the Pages site itself is a one-time manual step
+      # (Settings → Pages → Source: gh-pages). The Pages create API needs
+      # administration:write, which GITHUB_TOKEN can never hold.

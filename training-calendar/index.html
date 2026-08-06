@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14171c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Training">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+<title>Training Calendar</title>
+</head>
+<body>
+
+<header class="topbar">
+  <div>
+    <h1>Training<span class="accent">.</span></h1>
+    <div class="week-label mono" id="week-label"></div>
+  </div>
+  <div class="streak" id="streak" title="Consecutive fully-completed weeks">
+    <span class="streak-num mono" id="streak-num">0</span>
+    <span class="streak-unit">WK<br>STREAK</span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs" role="tablist"></nav>
+
+<section class="phase-meta" id="phase-meta"></section>
+
+<section class="syncbar" id="syncbar" hidden></section>
+<section class="report" id="report" hidden></section>
+
+<main class="days" id="days"></main>
+
+<dialog id="login-dialog">
+  <form method="dialog" id="login-form">
+    <h2>Connect fitness app</h2>
+    <label>Email <input type="email" id="login-email" autocomplete="username" required></label>
+    <label>Password <input type="password" id="login-password" autocomplete="current-password" required></label>
+    <label>Plan start (Monday of week 1)
+      <input type="date" id="plan-start"></label>
+    <div class="login-error" id="login-error"></div>
+    <div class="dialog-actions">
+      <button type="button" id="login-cancel">Cancel</button>
+      <button type="submit" id="login-submit" class="primary">Connect</button>
+    </div>
+  </form>
+</dialog>
+
+<footer class="weekbar">
+  <span id="week-progress" class="mono"></span>
+  <span class="hint">tap a day to mark it done · resets weekly</span>
+</footer>
+
+<script src="data.js"></script>
+<script src="sync.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
