@@ -2,10 +2,13 @@ import SwiftUI
 
 // MARK: - State
 
-/// Counts surfaced after a manual "Import Now". This is the ONE place import results show —
-/// the silent foreground path never surfaces a summary.
+/// Counts surfaced after a manual "Import Now" or "Re-sync 90 Days". This is the ONE
+/// place import results show — the silent foreground path never surfaces a summary.
+/// Counts are non-overlapping (new sessions vs updated rows), unlike the raw response
+/// where backfilled/matched uuids appear in both `imported` and `sessionsUpdated`.
 struct AppleHealthImportSummary {
-    let imported: Int
+    let title: String          // which action finished: "Import complete" / "Re-sync complete"
+    let newWorkouts: Int
     let updated: Int
     let skipped: Int
     let unmatched: Int
@@ -56,7 +59,7 @@ final class AppleHealthWorkoutSettingsViewModel: ObservableObject {
 
         state = .importing
         let age = await currentAge()
-        applyImportResult(await healthKit.importNewWorkouts(age: age))
+        applyImportResult(await healthKit.importNewWorkouts(age: age), title: "Import complete")
     }
 
     /// One-off "Re-sync 90 days": re-sends history so runs imported before the
@@ -74,14 +77,15 @@ final class AppleHealthWorkoutSettingsViewModel: ObservableObject {
                 ? "Couldn't reach the server. Check your connection and tap RE-SYNC 90 DAYS again."
                 : "Re-sync was interrupted partway. Tap RE-SYNC 90 DAYS again to finish — synced workouts are skipped automatically.")
         } else {
-            applyImportResult(result.response)
+            applyImportResult(result.response, title: "Re-sync complete")
         }
     }
 
-    private func applyImportResult(_ response: HealthKitImportResponse?) {
+    private func applyImportResult(_ response: HealthKitImportResponse?, title: String) {
         if let response = response, !(response.imported.isEmpty && response.sessionsUpdated.isEmpty) {
             state = .imported(AppleHealthImportSummary(
-                imported: response.imported.count,
+                title: title,
+                newWorkouts: response.sessionsCreated.count,
                 updated: response.sessionsUpdated.count,
                 skipped: response.skippedDuplicates.count,
                 unmatched: response.unmatched.count,
@@ -228,21 +232,26 @@ struct AppleHealthWorkoutSettingsView: View {
 
     private func importedSummary(_ summary: AppleHealthImportSummary) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.system(size: 18))
                     .foregroundColor(.successGreen)
                     .frame(width: 24)
-                Text("Import complete")
-                    .font(.ariseHeader(size: 14, weight: .semibold))
-                    .foregroundColor(.textPrimary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(summary.title)
+                        .font(.ariseHeader(size: 14, weight: .semibold))
+                        .foregroundColor(.textPrimary)
+                    Text("You're all set — no further action needed.")
+                        .font(.ariseBody(size: 12))
+                        .foregroundColor(.textSecondary)
+                }
             }
 
             VStack(spacing: 8) {
-                if summary.imported > 0 { summaryStat("Imported", summary.imported, .systemPrimary) }
+                if summary.newWorkouts > 0 { summaryStat("New workouts", summary.newWorkouts, .systemPrimary) }
                 if summary.updated > 0 { summaryStat("Updated", summary.updated, .systemPrimary) }
                 if summary.questsCompleted > 0 { summaryStat("Quests completed", summary.questsCompleted, .gold) }
-                if summary.skipped > 0 { summaryStat("Already imported", summary.skipped, .textMuted) }
+                if summary.skipped > 0 { summaryStat("Already synced", summary.skipped, .textMuted) }
                 if summary.unmatched > 0 { summaryStat("Log these first", summary.unmatched, .textMuted) }
             }
         }
