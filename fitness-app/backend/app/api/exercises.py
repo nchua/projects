@@ -212,6 +212,27 @@ EXERCISES_DATA = [
 ]
 
 
+# Canonical (non-alias) names from the library above. The list endpoint collapses
+# each canonical group down to one row for display, and this set decides which
+# row wins — see _display_rank.
+CANONICAL_NAMES = {ex["name"] for ex in EXERCISES_DATA}
+
+
+def _display_rank(exercise: Exercise) -> tuple:
+    """
+    Rank rows inside one canonical group; the highest-ranked row represents the
+    group in the exercise list.
+
+    A group's canonical name always wins over its aliases, so the picker shows
+    "Romanian Deadlift" rather than its longer "Stiff-Leg Deadlift" alias (which
+    made the bilateral RDL effectively unfindable — searching "romanian" only
+    turned up "Single Leg Romanian Deadlift"). Groups seeded before
+    EXERCISES_DATA existed have no canonical name here, so they keep the old
+    longest-name-wins fallback.
+    """
+    return (exercise.name in CANONICAL_NAMES, len(exercise.name))
+
+
 @router.get("", response_model=List[ExerciseResponse])
 @router.get("/", response_model=List[ExerciseResponse])
 async def list_exercises(
@@ -253,7 +274,8 @@ async def list_exercises(
     # Order by name
     exercises = query.order_by(Exercise.name).all()
 
-    # Deduplicate seeded exercises: one per canonical_id (prefer longest/most descriptive name).
+    # Deduplicate seeded exercises: one per canonical_id (prefer the canonical
+    # library name, falling back to the longest/most descriptive one).
     # Aliases stay in the DB for screenshot matching and existing workout FK references.
     seen_canonical = {}
     custom = []
@@ -262,7 +284,7 @@ async def list_exercises(
             custom.append(ex)
         else:
             key = ex.canonical_id or ex.id
-            if key not in seen_canonical or len(ex.name) > len(seen_canonical[key].name):
+            if key not in seen_canonical or _display_rank(ex) > _display_rank(seen_canonical[key]):
                 seen_canonical[key] = ex
 
     deduped = custom + sorted(seen_canonical.values(), key=lambda e: e.name)
