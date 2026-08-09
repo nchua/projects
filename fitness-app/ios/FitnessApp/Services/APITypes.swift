@@ -108,6 +108,11 @@ struct UserPublicResponse: Decodable, Identifiable {
 struct ExerciseResponse: Decodable, Identifiable {
     let id: String
     let name: String
+    /// Other names for the same movement — "Lying Tricep Extension" for
+    /// "Skull Crushers", "RDL" for "Romanian Deadlift". The list endpoint
+    /// returns one row per movement, so these are what make it findable
+    /// under the name the user actually thinks in.
+    let aliases: [String]?
     let canonicalId: String?
     let category: String?
     let primaryMuscle: String?
@@ -115,11 +120,17 @@ struct ExerciseResponse: Decodable, Identifiable {
     let isCustom: Bool?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, category
+        case id, name, aliases, category
         case canonicalId = "canonical_id"
         case primaryMuscle = "primary_muscle"
         case secondaryMuscles = "secondary_muscles"
         case isCustom = "is_custom"
+    }
+
+    /// Picker search: match the displayed name or any of its aliases.
+    func matches(searchText: String) -> Bool {
+        if name.localizedCaseInsensitiveContains(searchText) { return true }
+        return (aliases ?? []).contains { $0.localizedCaseInsensitiveContains(searchText) }
     }
 }
 

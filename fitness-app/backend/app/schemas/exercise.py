@@ -18,6 +18,10 @@ class ExerciseResponse(BaseModel):
     """Schema for exercise information in responses"""
     id: str
     name: str
+    # Other names for this movement ("Lying Tricep Extension" for "Skull
+    # Crushers"). The list endpoint returns one row per canonical group, so
+    # clients need these to make the collapsed names searchable.
+    aliases: List[str] = Field(default_factory=list)
     canonical_id: Optional[str]
     category: Optional[str]
     primary_muscle: Optional[str]

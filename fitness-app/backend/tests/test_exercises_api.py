@@ -82,6 +82,60 @@ def test_search_finds_both_romanian_deadlifts(client, auth_headers, seed_group):
     ]
 
 
+def test_list_returns_aliases_for_the_collapsed_group(client, auth_headers, seed_group):
+    """The names that lost the collapse ride along so clients can search them."""
+    headers, _ = auth_headers()
+    # Mirrors production, where the group's rows predate the rename: the row
+    # created as the canonical one is still named "Skull Crushers".
+    seed_group("Skull Crushers", ["Lying Tricep Extension", "EZ Bar Skull Crusher"], category="Push")
+
+    response = client.get("/exercises", headers=headers)
+    assert response.status_code == 200, response.text
+
+    lying = next(ex for ex in response.json() if ex["name"] == "Lying Tricep Extension")
+    assert lying["aliases"] == ["EZ Bar Skull Crusher", "Skull Crushers"]
+
+
+def test_search_by_alias_returns_the_canonical_entry(client, auth_headers, seed_group):
+    """Searching an alias finds the movement under its canonical display name."""
+    headers, _ = auth_headers()
+    seed_group("Skull Crushers", ["Lying Tricep Extension", "EZ Bar Skull Crusher"], category="Push")
+    seed_group("Overhead Tricep Extension", ["Tricep Extensions"], category="Push")
+
+    response = client.get("/exercises?search=skull", headers=headers)
+    assert response.status_code == 200, response.text
+
+    results = response.json()
+    assert [ex["name"] for ex in results] == ["Lying Tricep Extension"]
+    assert "Skull Crushers" in results[0]["aliases"]
+
+
+def test_search_matching_two_groups_keeps_them_distinct(client, auth_headers, seed_group):
+    """The lying and overhead tricep extensions are separate movements."""
+    headers, _ = auth_headers()
+    seed_group("Skull Crushers", ["Lying Tricep Extension", "EZ Bar Skull Crusher"], category="Push")
+    seed_group("Overhead Tricep Extension", ["Tricep Extensions"], category="Push")
+
+    response = client.get("/exercises?search=tricep", headers=headers)
+    assert response.status_code == 200, response.text
+
+    assert sorted(ex["name"] for ex in response.json()) == [
+        "Lying Tricep Extension",
+        "Overhead Tricep Extension",
+    ]
+
+
+def test_custom_exercises_have_no_aliases(client, auth_headers):
+    headers, _ = auth_headers()
+    created = client.post("/exercises", headers=headers, json={"name": "Nick's Special Curl"})
+    assert created.status_code == 201, created.text
+    assert created.json()["aliases"] == []
+
+    listed = client.get("/exercises", headers=headers).json()
+    mine = next(ex for ex in listed if ex["name"] == "Nick's Special Curl")
+    assert mine["aliases"] == []
+
+
 def test_group_without_canonical_library_name_falls_back_to_longest(client, auth_headers, seed_group):
     """Groups predating EXERCISES_DATA keep the old longest-name behaviour."""
     headers, _ = auth_headers()
