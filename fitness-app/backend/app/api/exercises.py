@@ -165,7 +165,9 @@ EXERCISES_DATA = [
     {"name": "Woodchoppers", "aliases": ["Cable Woodchop", "Wood Chop"], "category": "Core", "primary_muscle": "Obliques", "secondary_muscles": ["Core"]},
 
     # Additional Strength Variations
-    {"name": "Skull Crushers", "aliases": ["Lying Tricep Extension", "EZ Bar Skull Crusher"], "category": "Push", "primary_muscle": "Triceps", "secondary_muscles": []},
+    # Same movement as the skull crusher; named for the position so it reads as
+    # a sibling of "Overhead Tricep Extension" in the picker.
+    {"name": "Lying Tricep Extension", "aliases": ["Skull Crushers", "Skull Crusher", "EZ Bar Skull Crusher", "Lying Triceps Extension"], "category": "Push", "primary_muscle": "Triceps", "secondary_muscles": []},
     {"name": "EZ Bar Curl", "aliases": ["EZ Curl", "EZ Barbell Curl"], "category": "Pull", "primary_muscle": "Biceps", "secondary_muscles": []},
     {"name": "Concentration Curl", "aliases": ["Concentration Curls", "Seated Concentration Curl"], "category": "Pull", "primary_muscle": "Biceps", "secondary_muscles": []},
     {"name": "Incline Dumbbell Curl", "aliases": ["Incline DB Curl", "Incline Curl"], "category": "Pull", "primary_muscle": "Biceps", "secondary_muscles": []},
@@ -274,26 +276,47 @@ async def list_exercises(
     # Order by name
     exercises = query.order_by(Exercise.name).all()
 
-    # Deduplicate seeded exercises: one per canonical_id (prefer the canonical
-    # library name, falling back to the longest/most descriptive one).
-    # Aliases stay in the DB for screenshot matching and existing workout FK references.
-    seen_canonical = {}
-    custom = []
-    for ex in exercises:
-        if ex.is_custom:
-            custom.append(ex)
-        else:
-            key = ex.canonical_id or ex.id
-            if key not in seen_canonical or _display_rank(ex) > _display_rank(seen_canonical[key]):
-                seen_canonical[key] = ex
+    custom = [ex for ex in exercises if ex.is_custom]
+    matched_seeded = [ex for ex in exercises if not ex.is_custom]
 
-    deduped = custom + sorted(seen_canonical.values(), key=lambda e: e.name)
+    # Seeded exercises collapse to one row per canonical_id. A search returns
+    # only the rows that matched — which may be an alias ("Lying Tricep
+    # Extension") rather than the row that represents the group — so re-read
+    # every matched group in full. That keeps both the display name and the
+    # alias list independent of which row the search happened to hit.
+    group_keys = {ex.canonical_id or ex.id for ex in matched_seeded}
+    group_rows = matched_seeded
+    if search and group_keys:
+        group_rows = db.query(Exercise).filter(
+            Exercise.is_custom == False,
+            or_(
+                Exercise.canonical_id.in_(group_keys),
+                Exercise.id.in_(group_keys),
+            )
+        ).all()
+
+    # Aliases stay in the DB for screenshot matching and existing workout FK
+    # references; here they ride along on the response so clients can search
+    # for a movement by any of its names.
+    groups = {}
+    for ex in group_rows:
+        groups.setdefault(ex.canonical_id or ex.id, []).append(ex)
+
+    seeded_display = []
+    aliases_by_id = {}
+    for rows in groups.values():
+        display = max(rows, key=_display_rank)
+        seeded_display.append(display)
+        aliases_by_id[display.id] = sorted(r.name for r in rows if r.name != display.name)
+
+    deduped = custom + sorted(seeded_display, key=lambda e: e.name)
 
     # Convert to response format
     return [
         ExerciseResponse(
             id=ex.id,
             name=ex.name,
+            aliases=aliases_by_id.get(ex.id, []),
             canonical_id=ex.canonical_id,
             category=ex.category,
             primary_muscle=ex.primary_muscle,
@@ -404,9 +427,20 @@ async def get_exercise(
             detail="You don't have access to this exercise"
         )
 
+    aliases = []
+    if exercise.canonical_id:
+        aliases = sorted(
+            row.name
+            for row in db.query(Exercise).filter(
+                Exercise.canonical_id == exercise.canonical_id
+            ).all()
+            if row.name != exercise.name
+        )
+
     return ExerciseResponse(
         id=exercise.id,
         name=exercise.name,
+        aliases=aliases,
         canonical_id=exercise.canonical_id,
         category=exercise.category,
         primary_muscle=exercise.primary_muscle,

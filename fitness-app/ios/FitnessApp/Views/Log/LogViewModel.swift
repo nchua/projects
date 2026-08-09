@@ -42,7 +42,7 @@ class LogViewModel: ObservableObject {
         }
 
         if !searchText.isEmpty {
-            result = result.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+            result = result.filter { $0.matches(searchText: searchText) }
         }
 
         return result

@@ -395,7 +395,7 @@ struct ExerciseMatchPickerView: View {
 
     private var filtered: [ExerciseResponse] {
         guard !searchText.isEmpty else { return exercises }
-        return exercises.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+        return exercises.filter { $0.matches(searchText: searchText) }
     }
 
     var body: some View {
