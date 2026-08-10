@@ -94,6 +94,8 @@ function renderMeta() {
 
 /* actuals state: latest /calendar/weekly payload (fetched or cached) */
 let actualWeeks = null;
+/* last doSync outcome: null (ok/not run) | "expired" (auth) | "failed" (network/5xx) */
+let syncError = null;
 
 function currentWeekActuals() {
   if (!actualWeeks?.length) return null;
@@ -204,7 +206,12 @@ function renderSyncbar() {
   const bar = $("syncbar");
   bar.hidden = false;
   if (!Sync.connected()) {
-    bar.innerHTML = `<button class="connect-btn" id="connect-btn">CONNECT FITNESS APP</button>`;
+    // A dead session (expired refresh token) lands here too — say so
+    // instead of presenting like a never-connected install.
+    const label = syncError === "expired"
+      ? "SESSION EXPIRED — TAP TO RECONNECT"
+      : "CONNECT FITNESS APP";
+    bar.innerHTML = `<button class="connect-btn" id="connect-btn">${label}</button>`;
     $("report").hidden = true;
     return;
   }
@@ -212,6 +219,19 @@ function renderSyncbar() {
   const miles = week ? week.run_miles : 0;
   const liftCount = week ? week.lift_sessions : 0;
   const exp = expectedMiles(planWeekNumber(mondayOf(now)));
+  // Sync failed and we're showing a cached payload — label it stale rather
+  // than passing off old numbers (or zeros) as this week's progress.
+  if (syncError) {
+    const ts = Sync.cachedWeekly()?.ts;
+    const age = ts ? Math.max(0, Math.round((Date.now() - ts) / 86400000)) : null;
+    bar.innerHTML = `
+      <div class="sync-line" id="sync-toggle" role="button">
+        <span class="mono">WK ${exp ? exp.week : "?"} · SYNC FAILED</span>
+        <span class="pace warn mono">${age != null ? `SHOWING ${age === 0 ? "TODAY'S" : age + "D OLD"} DATA` : "NO DATA"}</span>
+        <span class="chev" id="report-chev">▾</span>
+      </div>`;
+    return;
+  }
   // Judge the week in progress against a pro-rated target (through today),
   // not the full-week number — Monday shouldn't start out "BEHIND".
   const verdict = exp
@@ -319,11 +339,20 @@ function loadActuals(data) {
 }
 
 async function doSync() {
+  syncError = null;
   try {
     loadActuals(await Sync.fetchWeekly());
   } catch (e) {
+    syncError = e.authExpired ? "expired" : "failed";
     const cached = Sync.cachedWeekly();
-    if (cached) loadActuals(cached.data);
+    if (cached && Sync.connected()) {
+      loadActuals(cached.data);
+    } else {
+      // Session expired (tokens gone) or nothing cached: re-render so the
+      // strip reflects reality instead of keeping the pre-sync optimism.
+      renderAll();
+      $("report").hidden = true;
+    }
   }
 }
 
