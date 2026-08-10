@@ -425,6 +425,17 @@ $("days").addEventListener("click", (e) => {
   renderStatus();
 });
 
+/* iOS keeps standalone web apps alive in the background, so a reopen is
+ * usually NOT a page load — without this, the page only ever synced once
+ * and sat on stale actuals (e.g. a run imported minutes after load never
+ * appeared). On return to foreground: reload if the calendar date rolled
+ * (load-time `now`/week state would be wrong), else just re-fetch. */
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  if (isoDate(new Date()) !== isoDate(now)) { location.reload(); return; }
+  if (Sync.connected()) doSync();
+});
+
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js");
 }
