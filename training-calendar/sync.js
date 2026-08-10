@@ -35,9 +35,17 @@ const Sync = {
     }
   },
 
+  /* Explicit user disconnect: drop tokens AND cached actuals. */
   logout() {
     localStorage.removeItem(TOKENS_KEY);
     localStorage.removeItem(ACTUALS_KEY);
+  },
+
+  /* Auth died out from under us (refresh token expired). Drop only the
+   * tokens — the cached actuals stay so the UI can label them as stale
+   * instead of rendering misleading zeros. */
+  expireSession() {
+    localStorage.removeItem(TOKENS_KEY);
   },
 
   async refresh() {
@@ -48,7 +56,7 @@ const Sync = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: t.refresh_token }),
     });
-    if (!res.ok) { this.logout(); return false; }
+    if (!res.ok) { this.expireSession(); return false; }
     localStorage.setItem(TOKENS_KEY, JSON.stringify(await res.json()));
     return true;
   },
@@ -59,8 +67,12 @@ const Sync = {
     const res = await fetch(`${API_BASE}${path}`, {
       headers: { Authorization: `Bearer ${t.access_token}` },
     });
-    if (res.status === 401 && !retried && await this.refresh()) {
-      return this.apiGet(path, true);
+    if (res.status === 401) {
+      if (!retried && await this.refresh()) return this.apiGet(path, true);
+      this.expireSession();
+      const err = new Error("session expired");
+      err.authExpired = true;
+      throw err;
     }
     if (!res.ok) throw new Error(`API ${res.status}`);
     return res.json();

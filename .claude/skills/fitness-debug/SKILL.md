@@ -76,7 +76,7 @@ python main.py
 ### 1. "Unauthorized" / 401 Errors
 **Symptoms**: API calls return 401
 **Check**:
-- Is token expired? (30-day expiry by default)
+- Is token expired? (access tokens last 60 min — `ACCESS_TOKEN_EXPIRE_MINUTES`; refresh tokens `REFRESH_TOKEN_EXPIRE_DAYS`, default 30. Clients idle past the refresh window must re-login — 2026-08-10: the 7-day default silently logged the training-calendar PWA out weekly)
 - Is `Authorization: Bearer <token>` header correct?
 - Check `backend/app/core/security.py` for JWT validation
 

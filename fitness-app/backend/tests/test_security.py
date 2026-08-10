@@ -34,6 +34,20 @@ class TestJWTTokenTypes:
         result = verify_token(access_token, token_type="refresh")
         assert result is None
 
+    def test_refresh_token_expiry_follows_setting(self):
+        """Refresh token exp lands REFRESH_TOKEN_EXPIRE_DAYS out (weekly-use
+        clients like the training-calendar PWA rely on this window)."""
+        from datetime import datetime, timedelta, timezone
+
+        from app.core.config import settings
+
+        token = create_refresh_token(data={"sub": "user-123"})
+        payload = decode_token(token)
+        expected = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        actual = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+        assert abs((expected - actual).total_seconds()) < 60
+        assert settings.REFRESH_TOKEN_EXPIRE_DAYS >= 30
+
 
 class TestPrivacyEndpoint:
     """Tests for GET /privacy."""

@@ -69,6 +69,20 @@ distance); lifts are whatever you log in the app. Actuals cache in
 `localStorage` so the last sync renders offline. Tokens also live in
 `localStorage` — fine for a personal device; use DISCONNECT to clear.
 
+Actuals re-sync automatically whenever the app returns to the
+foreground (iOS keeps standalone web apps alive, so reopening is rarely
+a fresh page load), and the page reloads itself when the calendar date
+has rolled since it last rendered. A workout can still lag a minute or
+two behind the iOS app — it only reaches the backend once the app runs
+its Apple Health import.
+
+Sessions ride the backend's refresh tokens (30 days). If the app sits
+unopened past that, the next open shows **SESSION EXPIRED — TAP TO
+RECONNECT** in place of the pace strip; log in again to resume. A sync
+that fails for any other reason (offline, server error) keeps the pace
+strip but labels it `SYNC FAILED · SHOWING <n>D OLD DATA` instead of
+passing cached numbers off as current.
+
 **Goes live when the branch merges to `main`** (Railway auto-deploys the
 backend; `alembic upgrade head` runs the distance migration). Until then
 the connect button will log in but find no `/calendar/weekly` endpoint on

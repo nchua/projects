@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     )
     ALGORITHM: str = Field(default="HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=60)  # 1 hour
+    # Refresh tokens gate how long a client can sit idle before forcing a
+    # re-login. 7 days silently logged out weekly-use clients (the
+    # training-calendar PWA); 30 days covers realistic usage gaps.
+    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=30)
 
     # Screenshot processing
     SCREENSHOT_PROCESSING_ENABLED: bool = Field(default=True)

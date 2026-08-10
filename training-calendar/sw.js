@@ -1,5 +1,5 @@
 /* Cache-first service worker. Bump VERSION when any precached file changes. */
-const VERSION = "tc-v4";
+const VERSION = "tc-v5";
 const PRECACHE = [
   "./",
   "index.html",
