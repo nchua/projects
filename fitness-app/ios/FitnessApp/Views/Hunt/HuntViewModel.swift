@@ -24,18 +24,18 @@ class HuntViewModel: ObservableObject {
 
     var workoutsByDate: [String: [WorkoutSummaryResponse]] {
         Dictionary(grouping: workouts) { workout in
-            String(workout.date.prefix(10))
+            workout.date.localDayKey
         }
     }
 
     var datesWithWorkouts: Set<String> {
-        let dates = Set(workouts.map { String($0.date.prefix(10)) })
+        let dates = Set(workouts.map { $0.date.localDayKey })
         #if DEBUG
         // Debug: print what dates we're extracting
         print("DEBUG datesWithWorkouts: \(dates.sorted())")
         if let firstWorkout = workouts.first {
             print("DEBUG first workout raw date: '\(firstWorkout.date)'")
-            print("DEBUG first workout prefix(10): '\(String(firstWorkout.date.prefix(10)))'")
+            print("DEBUG first workout localDayKey: '\(firstWorkout.date.localDayKey)'")
         }
         #endif
         return dates
@@ -58,22 +58,15 @@ class HuntViewModel: ObservableObject {
 
     /// Rank sigil for a workout row, or nil.
     func gateRank(for workout: WorkoutSummaryResponse) -> String? {
-        guard let date = workout.date.parseISO8601Date() else { return nil }
-        return clearedGateRanksByDay[Self.dayFormatter.string(from: date)]
+        clearedGateRanksByDay[workout.date.localDayKey]
     }
-
-    private static let dayFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter
-    }()
 
     private func loadClearedGates() async {
         guard let history = try? await APIClient.shared.getGateHistory(limit: 50) else { return }
         var byDay: [String: String] = [:]
         for gate in history where gate.status == "cleared" {
             if let clearedAt = gate.clearedAt?.parseISO8601Date() {
-                byDay[Self.dayFormatter.string(from: clearedAt)] = gate.rank
+                byDay[DateFormatter.localDate.string(from: clearedAt)] = gate.rank
             }
         }
         clearedGateRanksByDay = byDay
@@ -156,9 +149,8 @@ class HuntViewModel: ObservableObject {
     }
 
     func workoutsForDate(_ date: Date) -> [WorkoutSummaryResponse] {
-        // Use local timezone DateFormatter to match how workout dates are stored
         let dateString = DateFormatter.localDate.string(from: date)
-        return workouts.filter { String($0.date.prefix(10)) == dateString }
+        return workouts.filter { $0.date.localDayKey == dateString }
     }
 
     func selectDate(_ date: Date) {

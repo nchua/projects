@@ -407,8 +407,8 @@ struct HuntCalendarView: View {
     }
 
     private func hasWorkout(on date: Date) -> Bool {
-        // Use local timezone DateFormatter to match how workout dates are stored
-        // (stored as local date strings like "2024-01-15", not UTC)
+        // datesWithWorkouts holds local-day keys (String.localDayKey), so the
+        // cell's Date must be formatted in the local timezone to match
         let dateString = DateFormatter.localDate.string(from: date)
         let hasIt = datesWithWorkouts.contains(dateString)
         // Debug for end of month dates

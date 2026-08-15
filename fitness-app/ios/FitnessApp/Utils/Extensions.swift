@@ -477,6 +477,17 @@ extension String {
     var formattedMonthDayFromISO: String {
         parseISO8601Date()?.formattedMonthDay ?? self
     }
+
+    /// Local calendar day key ("yyyy-MM-dd") for an API date string.
+    /// UTC timestamps (e.g. Apple Watch/HealthKit syncs) are converted to the
+    /// user's timezone before taking the day, so a Friday-evening workout
+    /// doesn't land on Saturday; date-only strings round-trip unchanged.
+    /// Must stay consistent with how rows display dates (parseISO8601Date →
+    /// local formatting), or calendar indicators drift from the visible dates.
+    var localDayKey: String {
+        guard let date = parseISO8601Date() else { return String(prefix(10)) }
+        return DateFormatter.localDate.string(from: date)
+    }
 }
 
 // MARK: - Array Extensions
