@@ -145,6 +145,32 @@ class TestCalendarWeekly:
         assert pdt_runs[0]["day_index"] == 6
         assert sum(w["run_miles"] for w in pdt_view) == 1.0
 
+    def test_midnight_sessions_keep_their_local_day(self, client, db, calendar_user, squat):
+        """Manual/screenshot logs are stored at local midnight, not UTC.
+
+        The tz offset must NOT shift them: a squat day logged for Saturday
+        would otherwise render under Friday in the training-calendar PWA
+        (regression: 2026-08-16).
+        """
+        headers, user = calendar_user
+        now = _utc_naive_now()
+        this_monday = _monday_of(now)
+
+        # Saturday of the previous week, stored date-only style (midnight).
+        saturday = this_monday - timedelta(days=2)
+        stored = datetime.combine(saturday, datetime.min.time())
+        _add_lift(db, user.id, stored, squat, [(225, 3, 247.5)])
+
+        pdt_view = client.get(
+            "/calendar/weekly?weeks=2&tz_offset_minutes=420", headers=headers
+        ).json()["weeks"]
+        lifts = [(w["week_start"], lift) for w in pdt_view for lift in w["lifts"]]
+        assert len(lifts) == 1
+        week_start, lift = lifts[0]
+        assert week_start == (this_monday - timedelta(days=7)).isoformat()
+        assert lift["day_index"] == 5  # Saturday, not Friday
+        assert lift["local_date"] == saturday.isoformat()
+
     def test_pace_prefers_exact_seconds(self, client, db, calendar_user):
         headers, user = calendar_user
         now = _utc_naive_now()

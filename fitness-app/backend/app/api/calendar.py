@@ -6,11 +6,14 @@ of training: lift sessions with their exercises/sets (weight x reps, e1RM)
 and runs/cardio with distance + duration. The PWA overlays these actuals on
 the planned schedule and computes on-pace reports client-side.
 
-Sessions are stored naive-UTC; the client passes `tz_offset_minutes`
-(JavaScript `new Date().getTimezoneOffset()`, e.g. 420 for PDT) so days
-bucket on the user's local calendar, matching how they experience a "week".
+Sessions with a real time-of-day (HealthKit/watch imports) are stored
+naive-UTC; the client passes `tz_offset_minutes` (JavaScript
+`new Date().getTimezoneOffset()`, e.g. 420 for PDT) so those bucket on the
+user's local calendar. Sessions stored at exactly midnight (manual and
+screenshot logs) already mean "this local calendar day" and are bucketed
+as-is — the same midnight convention as `to_iso8601_utc`.
 """
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -91,8 +94,15 @@ async def get_weekly_calendar(
     }
 
     for s in sessions:
-        local_dt = s.date - offset
-        local_day: date = local_dt.date()
+        # Two storage conventions share the date column (see to_iso8601_utc):
+        # HealthKit/watch imports carry a real UTC time-of-day and need the
+        # tz shift; manual/screenshot logs are stored at midnight meaning
+        # "this local calendar day" — shifting those would drag them onto
+        # the previous local day.
+        if s.date.time() == time.min:
+            local_day: date = s.date.date()
+        else:
+            local_day = (s.date - offset).date()
         monday = local_day - timedelta(days=local_day.weekday())
         bucket = buckets.get(monday)
         if bucket is None:
