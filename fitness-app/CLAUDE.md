@@ -134,6 +134,18 @@ NEVER hardcode credentials. Use `os.environ.get("VAR_NAME")` and placeholder val
 
 ---
 
+## Workout Dates: local_date Is Authoritative
+
+`workout_sessions.date` mixes two conventions (midnight = local calendar day
+from manual/screenshot logs; non-midnight = real UTC instant from watch
+imports). Never bucket or group by `date` directly. Use
+`workout_sessions.local_date` (backend; NULL only on legacy watch rows —
+fall back via `core/utils.derive_local_date` + tz offset) and
+`WorkoutSummaryResponse.dayKey` (iOS). New session-creation paths MUST stamp
+`local_date`; clients send the device-local day explicitly.
+
+---
+
 ## SQLAlchemy: Always Use joinedload Before Passing to Services
 
 After `db.commit()` + `db.refresh()`, relationship collections are **empty**. Always re-query with `joinedload()` before passing models to service functions that access relationships (`check_and_unlock_achievements()`, `calculate_workout_xp()`, `ingest_heart_rate()`).
