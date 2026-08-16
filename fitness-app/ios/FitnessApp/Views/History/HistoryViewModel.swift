@@ -17,12 +17,12 @@ class HistoryViewModel: ObservableObject {
 
     var workoutsByDate: [String: [WorkoutSummaryResponse]] {
         Dictionary(grouping: workouts) { workout in
-            workout.date.localDayKey
+            workout.dayKey
         }
     }
 
     var datesWithWorkouts: Set<String> {
-        Set(workouts.map { $0.date.localDayKey })
+        Set(workouts.map { $0.dayKey })
     }
 
     func loadWorkouts(refresh: Bool = false) async {
@@ -89,7 +89,7 @@ class HistoryViewModel: ObservableObject {
 
     func workoutsForDate(_ date: Date) -> [WorkoutSummaryResponse] {
         let dateString = DateFormatter.localDate.string(from: date)
-        return workouts.filter { $0.date.localDayKey == dateString }
+        return workouts.filter { $0.dayKey == dateString }
     }
 
     /// Rename a hunt ("" clears back to the suggested name), then refresh the

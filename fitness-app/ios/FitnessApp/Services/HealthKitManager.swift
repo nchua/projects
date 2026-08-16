@@ -653,6 +653,7 @@ class HealthKitManager: ObservableObject {
             isStrength: isStrength,
             start: Self.iso8601UTCFormatter.string(from: workout.startDate),
             end: Self.iso8601UTCFormatter.string(from: workout.endDate),
+            localDate: DateFormatter.localDate.string(from: workout.startDate),
             durationSeconds: Int(workout.duration),
             kilojoules: kilojoules,
             avgHeartRate: avgHeartRate,

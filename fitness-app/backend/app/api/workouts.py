@@ -17,7 +17,7 @@ from app.core.e1rm import (
     get_user_e1rm_formula,
 )
 from app.core.exertion import compute_arise_strain, compute_exertion_score
-from app.core.utils import to_iso8601_utc
+from app.core.utils import derive_local_date, to_iso8601_utc
 from app.models.exercise import Exercise
 from app.models.pr import PR, PRType
 from app.models.user import User
@@ -278,6 +278,7 @@ async def _create_workout_impl(
         user_id=current_user.id,
         client_id=workout_data.client_id,
         date=workout_data.date,
+        local_date=workout_data.local_date or derive_local_date(workout_data.date),
         name=(workout_data.name or "").strip() or None,
         duration_minutes=workout_data.duration_minutes,
         session_rpe=workout_data.session_rpe,
@@ -656,6 +657,7 @@ async def list_workouts(
             id=workout.id,
             user_id=workout.user_id,
             date=to_iso8601_utc(workout.date),
+            local_date=workout.local_date.isoformat() if workout.local_date else None,
             name=workout.name,
             suggested_name=suggested_name,
             duration_minutes=workout.duration_minutes,
@@ -772,6 +774,11 @@ async def update_workout(
     # Update basic fields
     if workout_data.date is not None:
         workout.date = workout_data.date
+        # Keep the local day in step with the new date unless the client set
+        # it explicitly below; a date change invalidates the stored local day.
+        workout.local_date = derive_local_date(workout_data.date)
+    if workout_data.local_date is not None:
+        workout.local_date = workout_data.local_date
     # Empty string clears the custom name (display falls back to the
     # suggestion); omitting the field leaves it unchanged.
     if workout_data.name is not None:
@@ -979,6 +986,7 @@ def _build_workout_response(workout: WorkoutSession) -> WorkoutResponse:
         id=workout.id,
         user_id=workout.user_id,
         date=to_iso8601_utc(workout.date),
+        local_date=workout.local_date.isoformat() if workout.local_date else None,
         name=workout.name,
         suggested_name=suggested_name,
         duration_minutes=workout.duration_minutes,

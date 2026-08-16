@@ -14,7 +14,7 @@ from app.core.e1rm import (
     calculate_e1rm_from_rpe,
     get_user_e1rm_formula,
 )
-from app.core.utils import to_iso8601_utc
+from app.core.utils import derive_local_date, to_iso8601_utc
 from app.models.bodyweight import BodyweightEntry
 from app.models.exercise import Exercise
 from app.models.pr import PR
@@ -157,6 +157,7 @@ async def sync_data(
             workout_session = WorkoutSession(
                 user_id=current_user.id,
                 date=workout_data.date,
+                local_date=workout_data.local_date or derive_local_date(workout_data.date),
                 duration_minutes=workout_data.duration_minutes,
                 session_rpe=workout_data.session_rpe,
                 notes=workout_data.notes,

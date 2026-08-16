@@ -58,3 +58,21 @@ def to_iso8601_utc(dt: Optional[Union[datetime, date]]) -> Optional[str]:
 
     # For datetime objects with actual time, append Z to indicate UTC
     return dt.isoformat() + "Z"
+
+
+def derive_local_date(dt: Optional[datetime]) -> Optional[date]:
+    """Best-effort local calendar day for a session datetime.
+
+    Companion to ``WorkoutSession.local_date`` for writes where the client
+    didn't send an explicit local day. A midnight-stored datetime means
+    "this local calendar day" (manual and screenshot logs — the same
+    convention ``to_iso8601_utc`` serializes), so its date part IS the local
+    day. A non-midnight value is a real UTC instant whose local day depends
+    on a timezone we don't know here — return None and let readers fall
+    back to shifting by the requesting client's tz offset.
+    """
+    if dt is None:
+        return None
+    if dt.hour == 0 and dt.minute == 0 and dt.second == 0 and dt.microsecond == 0:
+        return dt.date()
+    return None

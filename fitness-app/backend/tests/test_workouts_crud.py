@@ -258,6 +258,78 @@ class TestWorkoutDateRoundTrip:
         assert fetched.json()["date"] == "2026-02-01"
 
 
+class TestLocalDate:
+    """workout_sessions.local_date — the explicit local calendar day.
+
+    Derived from the midnight convention when the client doesn't send it,
+    authoritative when it does (a watch workout at Sat 02:00 UTC is still
+    Friday for the lifter)."""
+
+    def test_derived_from_date_only_create(
+        self, client, auth_headers, unique_email, seeded_exercise
+    ):
+        headers, _ = auth_headers(email=unique_email("ld-derive"))
+        workout = _create_workout(
+            client, headers, _workout_payload(seeded_exercise, date="2026-02-01")
+        )
+        assert workout["local_date"] == "2026-02-01"
+
+    def test_explicit_local_date_wins_over_utc_timestamp(
+        self, client, auth_headers, unique_email, seeded_exercise
+    ):
+        headers, _ = auth_headers(email=unique_email("ld-explicit"))
+        payload = _workout_payload(seeded_exercise, date="2026-02-01T02:30:00Z")
+        payload["local_date"] = "2026-01-31"
+        workout = _create_workout(client, headers, payload)
+        assert workout["local_date"] == "2026-01-31"
+
+        fetched = client.get(f"/workouts/{workout['id']}", headers=headers)
+        assert fetched.json()["local_date"] == "2026-01-31"
+
+    def test_non_midnight_without_explicit_stays_null(
+        self, client, auth_headers, unique_email, seeded_exercise
+    ):
+        headers, _ = auth_headers(email=unique_email("ld-null"))
+        workout = _create_workout(
+            client, headers,
+            _workout_payload(seeded_exercise, date="2026-02-01T02:30:00Z"),
+        )
+        assert workout["local_date"] is None
+
+    def test_update_date_rederives_local_date(
+        self, client, auth_headers, unique_email, seeded_exercise
+    ):
+        headers, _ = auth_headers(email=unique_email("ld-update"))
+        workout = _create_workout(
+            client, headers, _workout_payload(seeded_exercise, date="2026-02-01")
+        )
+
+        resp = client.put(
+            f"/workouts/{workout['id']}", json={"date": "2026-02-03"}, headers=headers
+        )
+        assert resp.status_code == 200
+        assert resp.json()["local_date"] == "2026-02-03"
+
+        resp = client.put(
+            f"/workouts/{workout['id']}",
+            json={"date": "2026-02-05T02:30:00Z", "local_date": "2026-02-04"},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["local_date"] == "2026-02-04"
+
+    def test_summary_list_includes_local_date(
+        self, client, auth_headers, unique_email, seeded_exercise
+    ):
+        headers, _ = auth_headers(email=unique_email("ld-list"))
+        _create_workout(
+            client, headers, _workout_payload(seeded_exercise, date="2026-02-01")
+        )
+        listed = client.get("/workouts", headers=headers)
+        assert listed.status_code == 200
+        assert listed.json()[0]["local_date"] == "2026-02-01"
+
+
 class TestWhoopNotesRendering:
     def test_whoop_activity_notes_render_in_list(
         self, client, auth_headers, unique_email, db

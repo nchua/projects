@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from sqlalchemy import (
     JSON,
     Column,
+    Date,
     DateTime,
     Enum,
     Float,
@@ -51,6 +52,13 @@ class WorkoutSession(Base):
     hk_uuid = Column(String, nullable=True, index=True)
 
     date = Column(DateTime, nullable=False, index=True)
+
+    # The user's local calendar day for this session — "what day it was for
+    # the lifter". Authoritative for all day bucketing when set. Nullable:
+    # legacy watch-import rows store only a UTC instant and can't recover
+    # the local day; readers fall back to the midnight convention on `date`
+    # (midnight = local day, non-midnight = UTC; see core/utils).
+    local_date = Column(Date, nullable=True, index=True)
 
     # User-facing hunt name ("Back & Biceps Day", "Tennis"). Nullable — when
     # unset, clients fall back to the server-derived suggested name (see

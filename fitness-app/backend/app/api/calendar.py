@@ -94,13 +94,15 @@ async def get_weekly_calendar(
     }
 
     for s in sessions:
-        # Two storage conventions share the date column (see to_iso8601_utc):
-        # HealthKit/watch imports carry a real UTC time-of-day and need the
-        # tz shift; manual/screenshot logs are stored at midnight meaning
-        # "this local calendar day" — shifting those would drag them onto
-        # the previous local day.
-        if s.date.time() == time.min:
-            local_day: date = s.date.date()
+        # local_date is authoritative when present (stamped at logging /
+        # import time). Legacy rows without it fall back to the dual storage
+        # convention on `date` (see to_iso8601_utc): midnight means "this
+        # local calendar day" (manual/screenshot logs — no shift), anything
+        # else is a real UTC instant that needs the tz shift.
+        if s.local_date is not None:
+            local_day: date = s.local_date
+        elif s.date.time() == time.min:
+            local_day = s.date.date()
         else:
             local_day = (s.date - offset).date()
         monday = local_day - timedelta(days=local_day.weekday())

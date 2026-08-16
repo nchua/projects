@@ -171,6 +171,30 @@ class TestCalendarWeekly:
         assert lift["day_index"] == 5  # Saturday, not Friday
         assert lift["local_date"] == saturday.isoformat()
 
+    def test_explicit_local_date_is_authoritative(self, client, db, calendar_user):
+        """A stored local_date wins over both the tz shift and the midnight
+        convention — regardless of the requesting client's offset."""
+        headers, user = calendar_user
+        now = _utc_naive_now()
+        this_monday = _monday_of(now)
+
+        # Stored Monday 02:00 UTC, but the device said it was Monday locally
+        # (e.g. logged in a UTC+2 timezone, later viewed from UTC-7).
+        run_utc = datetime.combine(this_monday, datetime.min.time()) + timedelta(hours=2)
+        s = _add_run(db, user.id, run_utc, 1609.344, hk_uuid="hk-ld")
+        s.local_date = this_monday
+        db.commit()
+
+        pdt_view = client.get(
+            "/calendar/weekly?weeks=2&tz_offset_minutes=420", headers=headers
+        ).json()["weeks"]
+        runs = [r for w in pdt_view for r in w["runs"]]
+        assert len(runs) == 1
+        # Without local_date this would shift to Sunday (see the tz test
+        # above); with it, it stays Monday.
+        assert runs[0]["day_index"] == 0
+        assert runs[0]["local_date"] == this_monday.isoformat()
+
     def test_pace_prefers_exact_seconds(self, client, db, calendar_user):
         headers, user = calendar_user
         now = _utc_naive_now()

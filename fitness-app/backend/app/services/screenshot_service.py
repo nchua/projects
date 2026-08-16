@@ -22,6 +22,7 @@ from rapidfuzz import fuzz, process
 
 from app.api.exercises import EXERCISES_DATA
 from app.core.e1rm import calculate_e1rm, get_user_e1rm_formula
+from app.core.utils import derive_local_date
 from app.models.exercise import Exercise
 from app.models.pr import PR
 from app.models.workout import Set, WeightUnit, WorkoutExercise, WorkoutSession
@@ -828,6 +829,7 @@ async def save_extracted_workout(
     workout_session = WorkoutSession(
         user_id=user_id,
         date=workout_date,
+        local_date=derive_local_date(workout_date),
         duration_minutes=extraction_result.get("duration_minutes"),
         notes=notes
     )
@@ -1086,6 +1088,7 @@ async def save_whoop_activity(
     workout_session = WorkoutSession(
         user_id=user_id,
         date=workout_datetime,
+        local_date=derive_local_date(workout_datetime),
         duration_minutes=extraction_result.get("duration_minutes"),
         notes=notes,
         avg_heart_rate=extraction_result.get("avg_hr"),

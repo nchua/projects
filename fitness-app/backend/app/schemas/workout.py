@@ -1,7 +1,7 @@
 """
 Workout schemas for request/response validation
 """
-from datetime import datetime, timezone
+from datetime import date as date_type, datetime, timezone
 from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
@@ -81,6 +81,10 @@ class WorkoutExerciseResponse(BaseModel):
 class WorkoutCreate(BaseModel):
     """Schema for creating a workout"""
     date: Union[datetime, str] = Field(default_factory=lambda: datetime.now(timezone.utc), description="Workout date/time")
+    # The user's local calendar day ("what day it was for the lifter").
+    # Optional: when absent the server derives it from the midnight
+    # convention on `date` where possible (see core/utils.derive_local_date).
+    local_date: Optional[date_type] = Field(None, description="Local calendar day (YYYY-MM-DD)")
     name: Optional[str] = Field(None, max_length=100, description="Custom hunt name")
     duration_minutes: Optional[int] = Field(None, ge=1, le=600, description="Workout duration in minutes")
     session_rpe: Optional[int] = Field(None, ge=1, le=10, description="Overall session RPE")
@@ -141,6 +145,10 @@ class WorkoutResponse(BaseModel):
     id: str
     user_id: str
     date: str
+    # Authoritative local calendar day (YYYY-MM-DD); None for legacy watch
+    # imports where it can't be recovered — clients fall back to parsing
+    # `date` into the device timezone.
+    local_date: Optional[str] = None
     # User-set hunt name; suggested_name is the server-derived fallback
     # (activity type or muscle split). Clients display name → suggestion → date.
     name: Optional[str] = None
@@ -227,6 +235,9 @@ class WorkoutCreateResponse(BaseModel):
 class WorkoutUpdate(BaseModel):
     """Schema for updating a workout"""
     date: Optional[Union[datetime, str]] = Field(None, description="Workout date/time")
+    # Explicit local calendar day; when omitted but `date` changes, the
+    # server re-derives it via the midnight convention.
+    local_date: Optional[date_type] = Field(None, description="Local calendar day (YYYY-MM-DD)")
     # Empty string clears the custom name (falls back to the suggestion);
     # omitting the field leaves it unchanged.
     name: Optional[str] = Field(None, max_length=100, description="Custom hunt name")
@@ -260,6 +271,9 @@ class WorkoutSummary(BaseModel):
     id: str
     user_id: str
     date: str
+    # Authoritative local calendar day (YYYY-MM-DD); None for legacy watch
+    # imports — clients fall back to parsing `date` into the device timezone.
+    local_date: Optional[str] = None
     # User-set hunt name; suggested_name is the server-derived fallback
     # (activity type or muscle split). Clients display name → suggestion → date.
     name: Optional[str] = None

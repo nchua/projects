@@ -138,6 +138,10 @@ struct ExerciseResponse: Decodable, Identifiable {
 
 struct WorkoutCreate: Codable {
     let date: String
+    /// The user's local calendar day (yyyy-MM-dd) — authoritative for day
+    /// bucketing server-side. Derived from `date` in the device timezone
+    /// unless the caller passes one explicitly.
+    let localDate: String?
     /// Custom hunt name. Nil lets the backend/clients fall back to the
     /// derived suggestion ("Back & Biceps Day", "Tennis") and then the date.
     let name: String?
@@ -150,6 +154,7 @@ struct WorkoutCreate: Codable {
 
     init(
         date: String,
+        localDate: String? = nil,
         name: String? = nil,
         durationMinutes: Int?,
         sessionRpe: Int?,
@@ -158,6 +163,10 @@ struct WorkoutCreate: Codable {
         clientId: String? = UUID().uuidString
     ) {
         self.date = date
+        // localDayKey handles both shapes callers pass: a date-only string
+        // (user-picked day) passes through, a full ISO8601 UTC timestamp is
+        // converted to the device-local day.
+        self.localDate = localDate ?? date.localDayKey
         self.name = name
         self.durationMinutes = durationMinutes
         self.sessionRpe = sessionRpe
@@ -168,6 +177,7 @@ struct WorkoutCreate: Codable {
 
     enum CodingKeys: String, CodingKey {
         case date, name, notes, exercises
+        case localDate = "local_date"
         case durationMinutes = "duration_minutes"
         case sessionRpe = "session_rpe"
         case clientId = "client_id"
@@ -214,6 +224,9 @@ struct WorkoutSummaryResponse: Decodable, Identifiable {
     let id: String
     let userId: String
     let date: String
+    /// Authoritative local calendar day (YYYY-MM-DD); nil for legacy watch
+    /// imports — callers fall back to parsing `date` (see localDayKey).
+    let localDate: String?
     /// User-set hunt name; `suggestedName` is the server-derived fallback.
     let name: String?
     let suggestedName: String?
@@ -249,6 +262,7 @@ struct WorkoutSummaryResponse: Decodable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id, date, name, notes, strain, calories
         case userId = "user_id"
+        case localDate = "local_date"
         case suggestedName = "suggested_name"
         case durationMinutes = "duration_minutes"
         case sessionRpe = "session_rpe"
@@ -275,6 +289,9 @@ struct WorkoutResponse: Decodable, Identifiable {
     let id: String
     let userId: String
     let date: String
+    /// Authoritative local calendar day (YYYY-MM-DD); nil for legacy watch
+    /// imports — callers fall back to parsing `date` (see localDayKey).
+    let localDate: String?
     /// User-set hunt name; `suggestedName` is the server-derived fallback.
     let name: String?
     let suggestedName: String?
@@ -309,6 +326,7 @@ struct WorkoutResponse: Decodable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id, date, name, notes, exercises, strain, kilojoules, calories
         case userId = "user_id"
+        case localDate = "local_date"
         case suggestedName = "suggested_name"
         case durationMinutes = "duration_minutes"
         case sessionRpe = "session_rpe"
@@ -335,6 +353,13 @@ extension WorkoutSummaryResponse {
     /// Custom name → server suggestion → nil (caller falls back to the date).
     var displayName: String? {
         name ?? suggestedName
+    }
+
+    /// Local calendar day key (yyyy-MM-dd) for grouping and calendar
+    /// indicators: the server-stamped local day when present, else derived
+    /// from `date` in the device timezone.
+    var dayKey: String {
+        localDate ?? date.localDayKey
     }
 }
 
@@ -469,6 +494,9 @@ struct HealthKitWorkoutImport: Encodable {
     let isStrength: Bool
     let start: String                 // ISO8601 UTC w/ fractional seconds
     let end: String
+    /// Device-local calendar day of `start` (yyyy-MM-dd) — computed on-device
+    /// where the timezone is known, so the backend never has to guess.
+    let localDate: String?
     let durationSeconds: Int
     let kilojoules: Double?
     let avgHeartRate: Int?
@@ -481,6 +509,7 @@ struct HealthKitWorkoutImport: Encodable {
     enum CodingKeys: String, CodingKey {
         case start, end, kilojoules
         case hkUuid = "hk_uuid"
+        case localDate = "local_date"
         case activityType = "activity_type"
         case isStrength = "is_strength"
         case durationSeconds = "duration_seconds"

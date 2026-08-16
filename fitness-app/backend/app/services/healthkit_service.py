@@ -96,6 +96,9 @@ def _build_cardio_session(
     session = WorkoutSession(
         user_id=user_id,
         date=_to_naive_utc(workout.start),
+        # Device-local calendar day, computed on-device where the timezone is
+        # known. None from older clients → readers fall back to tz shifting.
+        local_date=workout.local_date,
         duration_minutes=round(workout.duration_seconds / 60),
         hk_uuid=workout.hk_uuid,
         avg_heart_rate=workout.avg_heart_rate,

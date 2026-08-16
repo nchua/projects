@@ -12,7 +12,7 @@ part of the request).
 These schemas are the canonical contract for Chunk A; the Swift mirror structs
 (Chunk B) and the iOS query builder (Chunk C) follow them field-for-field.
 """
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -46,6 +46,12 @@ class HealthKitWorkout(BaseModel):
     )
     start: datetime = Field(..., description="Workout start (ISO8601 UTC)")
     end: datetime = Field(..., description="Workout end (ISO8601 UTC); must be >= start")
+    # The device-local calendar day of `start`, computed on-device where the
+    # timezone is known. Optional for older clients; when absent the session's
+    # local_date stays NULL and readers fall back to tz-offset shifting.
+    local_date: Optional[date] = Field(
+        None, description="Device-local calendar day of the workout (YYYY-MM-DD)"
+    )
     duration_seconds: int = Field(..., ge=1, description="Workout duration in seconds")
     kilojoules: Optional[float] = Field(
         None, ge=0, description="Energy expenditure (kJ); client converts kcal x 4.184"

@@ -24,18 +24,18 @@ class HuntViewModel: ObservableObject {
 
     var workoutsByDate: [String: [WorkoutSummaryResponse]] {
         Dictionary(grouping: workouts) { workout in
-            workout.date.localDayKey
+            workout.dayKey
         }
     }
 
     var datesWithWorkouts: Set<String> {
-        let dates = Set(workouts.map { $0.date.localDayKey })
+        let dates = Set(workouts.map { $0.dayKey })
         #if DEBUG
         // Debug: print what dates we're extracting
         print("DEBUG datesWithWorkouts: \(dates.sorted())")
         if let firstWorkout = workouts.first {
             print("DEBUG first workout raw date: '\(firstWorkout.date)'")
-            print("DEBUG first workout localDayKey: '\(firstWorkout.date.localDayKey)'")
+            print("DEBUG first workout dayKey: '\(firstWorkout.dayKey)'")
         }
         #endif
         return dates
@@ -58,7 +58,7 @@ class HuntViewModel: ObservableObject {
 
     /// Rank sigil for a workout row, or nil.
     func gateRank(for workout: WorkoutSummaryResponse) -> String? {
-        clearedGateRanksByDay[workout.date.localDayKey]
+        clearedGateRanksByDay[workout.dayKey]
     }
 
     private func loadClearedGates() async {
@@ -150,7 +150,7 @@ class HuntViewModel: ObservableObject {
 
     func workoutsForDate(_ date: Date) -> [WorkoutSummaryResponse] {
         let dateString = DateFormatter.localDate.string(from: date)
-        return workouts.filter { $0.date.localDayKey == dateString }
+        return workouts.filter { $0.dayKey == dateString }
     }
 
     func selectDate(_ date: Date) {
