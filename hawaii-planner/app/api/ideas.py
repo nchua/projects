@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_member, require_member
+from app.api.errors import bad_request, not_found, reject_null_fields
 from app.api.serialize import idea_out, scheduled_day_ids_by_idea
 from app.core.database import get_db
 from app.core.versioning import bump_version
@@ -27,10 +28,7 @@ def _get_idea(db: Session, idea_id: str) -> Idea:
         .first()
     )
     if idea is None:
-        raise HTTPException(
-            status_code=404,
-            detail={"code": "idea_not_found", "message": "That idea no longer exists."},
-        )
+        raise not_found("idea_not_found", "That idea no longer exists.")
     return idea
 
 
@@ -41,13 +39,10 @@ def _idea_response(db: Session, idea: Idea, version: int) -> dict:
 
 def _validate_region(db: Session, region_id: str) -> None:
     if db.get(Region, region_id) is None:
-        raise HTTPException(
-            status_code=400,
-            detail={"code": "unknown_region", "message": f"Unknown region {region_id!r}."},
-        )
+        raise bad_request(f"Unknown region {region_id!r}.", code="unknown_region")
 
 
-@router.post("/api/ideas")
+@router.post("/api/ideas", status_code=201)
 def create_idea(
     body: IdeaCreate,
     db: Session = Depends(get_db),
@@ -77,7 +72,8 @@ def create_idea(
 def patch_idea(idea_id: str, body: IdeaPatch, db: Session = Depends(get_db)) -> dict:
     idea = _get_idea(db, idea_id)
     updates = body.model_dump(exclude_unset=True)
-    if "region_id" in updates and updates["region_id"] is not None:
+    reject_null_fields(updates, ("title", "region_id", "duration_min"))
+    if "region_id" in updates:
         _validate_region(db, updates["region_id"])
     if "meal_tags" in updates and updates["meal_tags"] is not None:
         updates["meal_tags"] = ",".join(updates["meal_tags"])

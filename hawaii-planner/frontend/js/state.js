@@ -82,9 +82,19 @@ export async function refresh() {
 function defaultDayId() {
   const days = state.data?.days || [];
   if (!days.length) return null;
-  const today = new Date().toISOString().slice(0, 10);
+  // Trip dates are Hawaii wall-clock — compute "today" in HST, not UTC.
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Pacific/Honolulu" });
   const current = days.find((day) => day.date && day.date >= today);
   return (current || days[0]).id;
+}
+
+// A mutation response carries the post-mutation version. A gap larger than one
+// means someone else's change landed in between — refetch so it isn't skipped.
+function adoptVersion(version) {
+  if (!version) return;
+  const gap = version - state.data.version;
+  state.data.version = Math.max(state.data.version, version);
+  if (gap > 1) refresh();
 }
 
 export function applyDay(payload) {
@@ -92,7 +102,7 @@ export function applyDay(payload) {
   const index = state.data.days.findIndex((day) => day.id === payload.day.id);
   if (index >= 0) state.data.days[index] = payload.day;
   else state.data.days.push(payload.day);
-  if (payload.version) state.data.version = payload.version;
+  adoptVersion(payload.version);
   syncScheduledIds();
   render();
 }
@@ -102,7 +112,7 @@ export function applyIdea(payload) {
   const index = state.data.ideas.findIndex((idea) => idea.id === payload.idea.id);
   if (index >= 0) state.data.ideas[index] = payload.idea;
   else state.data.ideas.push(payload.idea);
-  if (payload.version) state.data.version = payload.version;
+  adoptVersion(payload.version);
   render();
 }
 

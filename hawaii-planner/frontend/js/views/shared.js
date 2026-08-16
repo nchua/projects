@@ -1,7 +1,21 @@
-// Bits shared between the Ideas and Food boards.
+// Bits shared between the Ideas board, the Food board, and the itinerary.
 import { clearVote, setVote } from "../sheets.js";
 import { isNew, state } from "../state.js";
-import { h } from "../ui.js";
+import { dayShort, h } from "../ui.js";
+
+// How many unscheduled ideas in one region before we nudge "make it a day".
+export const CLUSTER_MIN = 3;
+
+// Unscheduled activities grouped by region — the input to both cluster nudges.
+export function unscheduledActivitiesByRegion() {
+  const byRegion = {};
+  for (const idea of state.data.ideas) {
+    if (idea.kind !== "activity") continue;
+    if ((idea.scheduled_day_ids || []).length) continue;
+    (byRegion[idea.region_id] ||= []).push(idea);
+  }
+  return byRegion;
+}
 
 export function reactionPill(idea) {
   const mine = state.member
@@ -35,11 +49,7 @@ export function scheduledBadge(idea) {
   if (!dayIds.length) return null;
   const index = state.data.days.findIndex((day) => day.id === dayIds[0]);
   const day = state.data.days[index];
-  let label = "✓ scheduled";
-  if (day) {
-    const date = day.date ? new Date(day.date + "T12:00:00") : null;
-    label = `✓ ${date ? date.toLocaleDateString("en-US", { weekday: "short" }) : `Day ${index + 1}`}`;
-  }
+  const label = day ? `✓ ${dayShort(day, index).dow}` : "✓ scheduled";
   return h("span", { className: "badge scheduled", text: label });
 }
 

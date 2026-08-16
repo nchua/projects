@@ -118,7 +118,7 @@ function showPicker() {
         const name = otherName.value.trim();
         if (!name) return;
         const payload = await api("/api/members", { method: "POST", body: { name } });
-        pick(payload.member, payload.created);
+        pick(payload.member);
       },
     })
   );

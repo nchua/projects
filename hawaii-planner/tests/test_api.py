@@ -4,7 +4,7 @@ from app.core.config import settings
 
 def claim(client, name: str) -> dict:
     response = client.post("/api/members", json={"name": name})
-    assert response.status_code == 200
+    assert response.status_code in (200, 201)  # 200 existing, 201 created
     return response.json()["member"]
 
 
@@ -14,7 +14,7 @@ def add_idea(client, member, title="Waimea Bay", kind="activity", region="NS") -
         json={"title": title, "kind": kind, "region_id": region},
         headers={"X-Member-Id": member["id"]},
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
     return response.json()["idea"]
 
 

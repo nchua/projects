@@ -22,7 +22,7 @@ def csv_list(value: str | None) -> list[str]:
     return [token for token in (value or "").split(",") if token]
 
 
-def _min(t: time_type) -> int:
+def _to_minutes(t: time_type) -> int:
     return t.hour * 60 + t.minute
 
 
@@ -91,7 +91,8 @@ def idea_out(idea: Idea, scheduled_day_ids: list[str]) -> dict:
         "best_time": idea.best_time,
         "meal_tags": csv_list(idea.meal_tags),
         "created_by_member_id": idea.created_by_member_id,
-        "created_at": idea.created_at.isoformat() if idea.created_at else None,
+        # Stored naive-UTC; mark it so JS Date.parse doesn't read it as local.
+        "created_at": idea.created_at.isoformat() + "Z" if idea.created_at else None,
         "score": idea_score(idea.votes),
         "votes": [
             {"member_id": vote.member_id, "value": vote.value} for vote in idea.votes
@@ -100,29 +101,30 @@ def idea_out(idea: Idea, scheduled_day_ids: list[str]) -> dict:
     }
 
 
+def _item_idea(item: ScheduleItem) -> Idea | None:
+    """The pool idea behind a stop, or None for a free-text stop."""
+    return item.idea if item.idea_id is not None else None
+
+
+def _duration_min(item: ScheduleItem, idea: Idea | None) -> int:
+    """Override wins; otherwise the idea's own duration, else the free-text default."""
+    return item.duration_override_min or (
+        idea.duration_min if idea else FREE_TEXT_DEFAULT_DURATION_MIN
+    )
+
+
 def _stop_from_item(item: ScheduleItem) -> TimelineStop:
-    if item.idea_id is not None and item.idea is not None:
-        idea = item.idea
-        return TimelineStop(
-            id=item.id,
-            title=idea.title,
-            region_id=idea.region_id,
-            duration_min=item.duration_override_min or idea.duration_min,
-            fixed_start_min=(
-                None if item.fixed_start_time is None else _min(item.fixed_start_time)
-            ),
-            drive_override_min=item.drive_override_min,
-            closed_days=frozenset(csv_list(idea.closed_days)),
-        )
+    idea = _item_idea(item)
     return TimelineStop(
         id=item.id,
-        title=item.free_text_title or "",
-        region_id=item.free_text_region_id,
-        duration_min=item.duration_override_min or FREE_TEXT_DEFAULT_DURATION_MIN,
+        title=idea.title if idea else (item.free_text_title or ""),
+        region_id=idea.region_id if idea else item.free_text_region_id,
+        duration_min=_duration_min(item, idea),
         fixed_start_min=(
-            None if item.fixed_start_time is None else _min(item.fixed_start_time)
+            None if item.fixed_start_time is None else _to_minutes(item.fixed_start_time)
         ),
         drive_override_min=item.drive_override_min,
+        closed_days=frozenset(csv_list(idea.closed_days)) if idea else frozenset(),
     )
 
 
@@ -131,8 +133,8 @@ def day_out(day: TripDay, drive_lookup) -> dict:
     items = sorted(day.items, key=lambda i: i.position)
     weekday = WEEKDAYS[day.date.weekday()] if day.date else None
     computed = compute_timeline(
-        start_min=_min(day.start_time),
-        end_min=_min(day.end_time),
+        start_min=_to_minutes(day.start_time),
+        end_min=_to_minutes(day.end_time),
         weekday=weekday,
         stops=[_stop_from_item(item) for item in items],
         drive_lookup=drive_lookup,
@@ -140,7 +142,7 @@ def day_out(day: TripDay, drive_lookup) -> dict:
 
     items_json = []
     for item, calc in zip(items, computed["items"]):
-        idea = item.idea if item.idea_id else None
+        idea = _item_idea(item)
         items_json.append(
             {
                 "id": item.id,
@@ -155,10 +157,7 @@ def day_out(day: TripDay, drive_lookup) -> dict:
                 "best_time": idea.best_time if idea else None,
                 "notes": item.notes,
                 "position": item.position,
-                "duration_min": (
-                    item.duration_override_min
-                    or (idea.duration_min if idea else FREE_TEXT_DEFAULT_DURATION_MIN)
-                ),
+                "duration_min": _duration_min(item, idea),
                 "duration_override_min": item.duration_override_min,
                 "fixed_start_time": _time_str(item.fixed_start_time),
                 "drive_override_min": item.drive_override_min,
@@ -219,7 +218,7 @@ def scheduled_day_ids_by_idea(db: Session) -> dict[str, list[str]]:
     )
     mapping: dict[str, list[str]] = {}
     for idea_id, day_id in rows:
-        mapping.setdefault(idea_id, [])
-        if day_id not in mapping[idea_id]:
-            mapping[idea_id].append(day_id)
+        day_ids = mapping.setdefault(idea_id, [])
+        if day_id not in day_ids:
+            day_ids.append(day_id)
     return mapping

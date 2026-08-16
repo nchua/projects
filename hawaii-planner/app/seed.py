@@ -28,13 +28,16 @@ MEMBERS = [
     ("Dad", "#1864AB"),
 ]
 
+# (date, label, start_time, end_time, notes) — arrival night ends late by
+# definition, so its window is 21:00-23:30 rather than the default 21:30 end
+# (which would flag any dinner stop as "overpacked").
 DAYS = [
-    (date(2026, 8, 26), "Arrival night", time(21, 0), "Land ~9pm — dinner near the hotel"),
-    (date(2026, 8, 27), None, time(8, 30), None),
-    (date(2026, 8, 28), None, time(8, 30), None),
-    (date(2026, 8, 29), None, time(8, 30), None),
-    (date(2026, 8, 30), None, time(8, 30), "Nick flies out 10pm"),
-    (date(2026, 8, 31), "Last day", time(9, 0), "Checkout — flights home (4 travelers)"),
+    (date(2026, 8, 26), "Arrival night", time(21, 0), time(23, 30), "Land ~9pm — dinner near the hotel"),
+    (date(2026, 8, 27), None, time(8, 30), time(21, 30), None),
+    (date(2026, 8, 28), None, time(8, 30), time(21, 30), None),
+    (date(2026, 8, 29), None, time(8, 30), time(21, 30), None),
+    (date(2026, 8, 30), None, time(8, 30), time(21, 30), "Nick flies out 10pm"),
+    (date(2026, 8, 31), "Last day", time(9, 0), time(21, 30), "Checkout — flights home (4 travelers)"),
 ]
 
 
@@ -103,7 +106,7 @@ def seed_members(db: Session) -> bool:
 
 def seed_days(db: Session) -> bool:
     changed = False
-    for sort_order, (day_date, label, start, notes) in enumerate(DAYS):
+    for sort_order, (day_date, label, start, end, notes) in enumerate(DAYS):
         exists = db.query(TripDay).filter(TripDay.date == day_date).first()
         if exists is None:
             db.add(
@@ -111,6 +114,7 @@ def seed_days(db: Session) -> bool:
                     date=day_date,
                     label=label,
                     start_time=start,
+                    end_time=end,
                     notes=notes,
                     sort_order=sort_order,
                 )

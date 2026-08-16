@@ -59,6 +59,13 @@ export function dayDate(day) {
   return day.date ? new Date(day.date + "T12:00:00") : null;
 }
 
+// Indexed by Date.getDay() (Sunday = 0) to match the backend's closed_days tokens.
+const WEEKDAY_TOKENS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+export function dayWeekdayToken(day) {
+  const date = dayDate(day);
+  return date ? WEEKDAY_TOKENS[date.getDay()] : null;
+}
+
 export function dayShort(day, index) {
   const date = dayDate(day);
   if (!date) return { dow: `Day ${index + 1}`, sub: "" };
@@ -76,14 +83,27 @@ export function dayTitle(day, index) {
   return day.label ? `${base} · ${day.label}` : base;
 }
 
+export function regionName(regions, regionId) {
+  return regions.find((region) => region.id === regionId)?.name ?? regionId;
+}
+
 export function regionChip(regions, regionId) {
-  const region = regions.find((r) => r.id === regionId);
   return h(
     "span",
     { className: "chip" },
     h("span", { className: "swatch", style: { background: REGION_COLORS[regionId] || "#999" } }),
-    region ? region.name : regionId
+    regionName(regions, regionId)
   );
+}
+
+// The plain filter/sort chip used by the board headers.
+export function filterChip(label, active, onClick) {
+  return h("button", {
+    type: "button",
+    className: `chip ${active ? "active" : ""}`,
+    text: label,
+    onclick: onClick,
+  });
 }
 
 export function avatar(member) {

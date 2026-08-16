@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.api.errors import bad_request, not_found, reject_null_fields
 from app.api.serialize import build_drive_lookup, day_out, idea_score, load_day
 from app.core.database import get_db
 from app.core.versioning import bump_version
@@ -13,14 +14,10 @@ from app.schemas.day import BulkAddIn, DayCreate, DayPatch, ItemCreate, ItemPatc
 router = APIRouter()
 
 
-def _not_found(code: str, message: str) -> HTTPException:
-    return HTTPException(status_code=404, detail={"code": code, "message": message})
-
-
 def _get_day(db: Session, day_id: str) -> TripDay:
     day = load_day(db, day_id)
     if day is None:
-        raise _not_found("day_not_found", "That day no longer exists.")
+        raise not_found("day_not_found", "That day no longer exists.")
     return day
 
 
@@ -36,8 +33,8 @@ def _next_position(day: TripDay) -> int:
 
 @router.post("/api/days")
 def create_day(body: DayCreate, db: Session = Depends(get_db)) -> dict:
-    max_sort = db.query(TripDay).count()
-    day = TripDay(date=body.date, label=body.label, sort_order=max_sort)
+    next_sort_order = db.query(TripDay).count()
+    day = TripDay(date=body.date, label=body.label, sort_order=next_sort_order)
     db.add(day)
     version = bump_version(db)
     db.commit()
@@ -47,7 +44,9 @@ def create_day(body: DayCreate, db: Session = Depends(get_db)) -> dict:
 @router.patch("/api/days/{day_id}")
 def patch_day(day_id: str, body: DayPatch, db: Session = Depends(get_db)) -> dict:
     day = _get_day(db, day_id)
-    for field, value in body.model_dump(exclude_unset=True).items():
+    updates = body.model_dump(exclude_unset=True)
+    reject_null_fields(updates, ("start_time", "end_time", "sort_order"))
+    for field, value in updates.items():
         setattr(day, field, value)
     version = bump_version(db)
     db.commit()
@@ -67,12 +66,9 @@ def delete_day(day_id: str, db: Session = Depends(get_db)) -> dict:
 def add_item(day_id: str, body: ItemCreate, db: Session = Depends(get_db)) -> dict:
     day = _get_day(db, day_id)
     if body.idea_id is not None and db.get(Idea, body.idea_id) is None:
-        raise _not_found("idea_not_found", "That idea no longer exists.")
+        raise not_found("idea_not_found", "That idea no longer exists.")
     if body.free_text_region_id and db.get(Region, body.free_text_region_id) is None:
-        raise HTTPException(
-            status_code=400,
-            detail={"code": "unknown_region", "message": "Unknown region."},
-        )
+        raise bad_request("Unknown region.", code="unknown_region")
 
     item = ScheduleItem(
         trip_day_id=day.id,
@@ -95,12 +91,17 @@ def add_item(day_id: str, body: ItemCreate, db: Session = Depends(get_db)) -> di
 def patch_item(item_id: str, body: ItemPatch, db: Session = Depends(get_db)) -> dict:
     item = db.get(ScheduleItem, item_id)
     if item is None:
-        raise _not_found("item_not_found", "That stop no longer exists.")
+        raise not_found("item_not_found", "That stop no longer exists.")
 
     updates = body.model_dump(exclude_unset=True)
+    if "free_text_title" in updates and (
+        # Renaming applies only to free-text stops, and never to null (XOR check).
+        item.idea_id is not None or updates["free_text_title"] is None
+    ):
+        raise bad_request("free_text_title can only be changed on a free-text stop.")
     if "trip_day_id" in updates:
-        target_id = updates.pop("trip_day_id")
-        target = _get_day(db, target_id)
+        reject_null_fields(updates, ("trip_day_id",))
+        target = _get_day(db, updates.pop("trip_day_id"))
         item.trip_day_id = target.id
         item.position = _next_position(target)
     for field, value in updates.items():
@@ -114,7 +115,7 @@ def patch_item(item_id: str, body: ItemPatch, db: Session = Depends(get_db)) -> 
 def delete_item(item_id: str, db: Session = Depends(get_db)) -> dict:
     item = db.get(ScheduleItem, item_id)
     if item is None:
-        raise _not_found("item_not_found", "That stop no longer exists.")
+        raise not_found("item_not_found", "That stop no longer exists.")
     day_id = item.trip_day_id
     db.delete(item)
     version = bump_version(db)
@@ -152,7 +153,7 @@ def bulk_add(day_id: str, body: BulkAddIn, db: Session = Depends(get_db)) -> dic
     day = _get_day(db, day_id)
     ideas = db.query(Idea).filter(Idea.id.in_(body.idea_ids)).all()
     if len(ideas) != len(set(body.idea_ids)):
-        raise _not_found("idea_not_found", "One of those ideas no longer exists.")
+        raise not_found("idea_not_found", "One of those ideas no longer exists.")
 
     tour_order = {region.id: region.tour_order for region in db.query(Region).all()}
     ideas.sort(

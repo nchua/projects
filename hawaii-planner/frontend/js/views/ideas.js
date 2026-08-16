@@ -1,19 +1,20 @@
 // Ideas pool: region-grouped activity cards, cluster banners, filters.
-import { addIdeaSheet, addIdeaToDay, dayPickerSheet, ideaDetailSheet } from "../sheets.js";
 import { api } from "../api.js";
+import { addIdeaSheet, addIdeaToDay, dayPickerSheet, ideaDetailSheet } from "../sheets.js";
 import { applyDay, render, state } from "../state.js";
-import { REGION_COLORS, fmtDur, h, toast } from "../ui.js";
-import { creditLine, newPill, reactionPill, scheduledBadge } from "./shared.js";
+import { REGION_COLORS, filterChip, fmtDur, h, regionName, toast } from "../ui.js";
+import {
+  CLUSTER_MIN,
+  creditLine,
+  newPill,
+  reactionPill,
+  scheduledBadge,
+  unscheduledActivitiesByRegion,
+} from "./shared.js";
 
 function filterRow(current, onPick) {
   const row = h("div", { className: "filter-row" });
-  const chip = (id, label) =>
-    h("button", {
-      type: "button",
-      className: `chip ${current === id ? "active" : ""}`,
-      text: label,
-      onclick: () => onPick(id),
-    });
+  const chip = (id, label) => filterChip(label, current === id, () => onPick(id));
   row.append(chip(null, "All"));
   for (const region of state.data.regions) {
     row.append(chip(region.id, region.name));
@@ -23,22 +24,15 @@ function filterRow(current, onPick) {
 
 function clusterBanners() {
   const banners = [];
-  const unscheduled = state.data.ideas.filter(
-    (idea) => idea.kind === "activity" && !(idea.scheduled_day_ids || []).length
-  );
-  const byRegion = {};
-  for (const idea of unscheduled) {
-    (byRegion[idea.region_id] ||= []).push(idea);
-  }
-  for (const [regionId, ideas] of Object.entries(byRegion)) {
-    if (ideas.length < 3) continue;
+  for (const [regionId, ideas] of Object.entries(unscheduledActivitiesByRegion())) {
+    if (ideas.length < CLUSTER_MIN) continue;
     if (state.ideasRegion && state.ideasRegion !== regionId) continue;
-    const region = state.data.regions.find((r) => r.id === regionId);
+    const label = regionName(state.data.regions, regionId);
     banners.push(
       h(
         "div",
         { className: "banner" },
-        h("div", { className: "banner-title", text: `💡 ${(region?.name || regionId).toUpperCase()} DAY?` }),
+        h("div", { className: "banner-title", text: `💡 ${label.toUpperCase()} DAY?` }),
         h("div", {
           className: "muted",
           text: `${ideas.slice(0, 3).map((idea) => idea.title).join(", ")}${ideas.length > 3 ? ` +${ideas.length - 3} more` : ""} cluster nicely.`,
@@ -50,7 +44,7 @@ function clusterBanners() {
           type: "button",
           onclick: () =>
             dayPickerSheet({
-              title: `Plan a ${region?.name || regionId} day on…`,
+              title: `Plan a ${label} day on…`,
               onPick: async (day) => {
                 applyDay(
                   await api(`/api/days/${day.id}/items/bulk`, {

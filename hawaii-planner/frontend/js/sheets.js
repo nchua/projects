@@ -1,19 +1,21 @@
 // All bottom sheets: add/edit forms, pickers, menus, the star-swap flow.
-import { api, ApiError } from "./api.js";
+import { api, ApiError, storedToken } from "./api.js";
 import { applyDay, applyIdea, refresh, state } from "./state.js";
 import {
   closeSheet,
+  dayShort,
+  dayTitle,
+  dayWeekdayToken,
   field,
   fmtClosedDays,
   fmtDur,
-  dayShort,
-  dayTitle,
   h,
   openSheet,
   regionChip,
   regionChipRow,
   stepper,
   toast,
+  yelpUrl,
 } from "./ui.js";
 
 const memberId = () => state.member?.id;
@@ -62,11 +64,13 @@ function starSwapSheet(targetId, currentIds) {
           onclick: async () => {
             closeSheet();
             // Demote the old star to 👍 (they cared enough to star it once).
-            await api(`/api/ideas/${idea.id}/vote`, {
-              method: "PUT",
-              body: { value: "interested" },
-              memberId: memberId(),
-            }).then(applyIdea);
+            applyIdea(
+              await api(`/api/ideas/${idea.id}/vote`, {
+                method: "PUT",
+                body: { value: "interested" },
+                memberId: memberId(),
+              })
+            );
             await setVote(targetId, "must_go");
             toast("Must-go moved ⭐");
           },
@@ -170,6 +174,10 @@ export function ideaDetailSheet(ideaId) {
   const addedBy = members.find((entry) => entry.id === idea.created_by_member_id);
   if (addedBy) addInfo("Added by", addedBy.name);
 
+  const mapsHref =
+    idea.maps_url ||
+    `https://www.google.com/maps/search/?${new URLSearchParams({ api: "1", query: `${idea.title}, Oahu, HI` })}`;
+
   openSheet(
     idea.title,
     h("div", { style: { marginBottom: "10px" } }, regionChip(state.data.regions, idea.region_id)),
@@ -181,12 +189,12 @@ export function ideaDetailSheet(ideaId) {
       "div",
       { className: "card-actions" },
       idea.kind === "restaurant"
-        ? h("a", { className: "btn yelp", text: "Yelp ↗", href: idea.yelp_url || `https://www.yelp.com/search?${new URLSearchParams({ find_desc: idea.title, find_loc: "Honolulu, HI" })}`, target: "_blank", rel: "noopener" })
+        ? h("a", { className: "btn yelp", text: "Yelp ↗", href: yelpUrl(idea), target: "_blank", rel: "noopener" })
         : null,
       h("a", {
         className: "btn",
         text: "Maps ↗",
-        href: idea.maps_url || `https://www.google.com/maps/search/?${new URLSearchParams({ api: "1", query: `${idea.title}, Oahu, HI` })}`,
+        href: mapsHref,
         target: "_blank",
         rel: "noopener",
       }),
@@ -271,11 +279,10 @@ export function dayPickerSheet({ title, closedDays = [], onPick }) {
   const sheet = openSheet(title);
   state.data.days.forEach((day, index) => {
     const short = dayShort(day, index);
-    const weekday = day.date
-      ? ["mon", "tue", "wed", "thu", "fri", "sat", "sun"][new Date(day.date + "T12:00:00").getDay() === 0 ? 6 : new Date(day.date + "T12:00:00").getDay() - 1]
-      : null;
+    const weekday = dayWeekdayToken(day);
     const isClosed = weekday && closedDays.includes(weekday);
     const stops = day.items.length;
+    const stopsText = stops ? `${stops} stop${stops > 1 ? "s" : ""}` : "Nothing planned yet";
     sheet.append(
       h(
         "button",
@@ -294,9 +301,7 @@ export function dayPickerSheet({ title, closedDays = [], onPick }) {
           dayTitle(day, index),
           h("span", {
             className: "sub",
-            text: isClosed
-              ? `✕ Closed ${short.dow}`
-              : `${stops ? `${stops} stop${stops > 1 ? "s" : ""}` : "Nothing planned yet"}${day.label ? "" : ""}`,
+            text: isClosed ? `✕ Closed ${short.dow}` : stopsText,
           })
         )
       )
@@ -475,6 +480,7 @@ export function stopMenuSheet(day, item) {
 
 export function stopEditSheet(day, item) {
   let duration = item.duration_min;
+  let durationTouched = false;
   let driveOverride = item.drive_override_min;
   const pin = h("input", { type: "time", value: item.fixed_start_time || "" });
   const notes = h("input", { value: item.notes || "", placeholder: "e.g. reservation under Nick" });
@@ -504,7 +510,7 @@ export function stopEditSheet(day, item) {
 
   openSheet(
     `Edit ${item.title}`,
-    field("Duration", stepper({ value: duration, onChange: (v) => (duration = v) })),
+    field("Duration", stepper({ value: duration, onChange: (v) => { duration = v; durationTouched = true; } })),
     field("Pinned start time (reservations)", pin),
     field("Drive time into this stop", driveWrap),
     field("Notes", notes),
@@ -517,7 +523,9 @@ export function stopEditSheet(day, item) {
           method: "PATCH",
           memberId: memberId(),
           body: {
-            duration_override_min: duration,
+            // Only freeze an override if the stepper was actually touched —
+            // otherwise the stop keeps tracking its pool idea's duration.
+            duration_override_min: durationTouched ? duration : item.duration_override_min,
             fixed_start_time: pin.value || null,
             drive_override_min: driveOverride,
             notes: notes.value.trim() || null,
@@ -637,7 +645,6 @@ function templatePreviewSheet(dayId, template) {
 
 // ── You-chip ───────────────────────────────────────────────
 export function youSheet(onSwitch) {
-  const trip = state.data;
   openSheet(
     state.member ? `You're ${state.member.name}` : "Who are you?",
     h("p", { className: "muted", text: "Votes and suggestions are saved under your name on this phone.", style: { marginBottom: "12px" } }),
@@ -652,8 +659,19 @@ export function youSheet(onSwitch) {
     }),
     h("div", { style: { marginTop: "16px" } },
       h("strong", { text: "The crew" }),
-      ...trip.members.map((member) => h("div", { text: member.name, style: { padding: "4px 0" } }))
+      ...state.data.members.map((member) => h("div", { text: member.name, style: { padding: "4px 0" } }))
     ),
+    storedToken()
+      ? h("div", { style: { marginTop: "14px" } },
+          h("strong", { text: "Share the trip" }),
+          h("input", {
+            readOnly: true,
+            value: `${location.origin}/?k=${storedToken()}`,
+            onclick: (event) => event.target.select(),
+            style: { marginTop: "6px", fontSize: "13px" },
+          })
+        )
+      : null,
     h("p", { className: "muted", text: "Aug 26 – 31, 2026 · Aston Waikiki Beach Tower", style: { marginTop: "14px" } })
   );
 }

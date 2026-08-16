@@ -1,5 +1,5 @@
 """Name-picker identity: idempotent claims, no credentials."""
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -30,8 +30,11 @@ def list_members(db: Session = Depends(get_db)) -> dict:
 
 
 @router.post("/api/members")
-def claim_member(body: MemberClaim, db: Session = Depends(get_db)) -> dict:
-    """Case-insensitive idempotent claim: existing name returns that member."""
+def claim_member(
+    body: MemberClaim, response: Response, db: Session = Depends(get_db)
+) -> dict:
+    """Case-insensitive idempotent claim: existing name returns that member
+    (200); a new name creates one (201)."""
     name = body.name.strip()
     existing = (
         db.query(Member).filter(func.lower(Member.name) == name.lower()).first()
@@ -44,4 +47,5 @@ def claim_member(body: MemberClaim, db: Session = Depends(get_db)) -> dict:
     db.add(member)
     version = bump_version(db)
     db.commit()
+    response.status_code = 201
     return {"member": member_out(member), "created": True, "version": version}

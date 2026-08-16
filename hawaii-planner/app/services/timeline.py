@@ -15,8 +15,6 @@ HOME_REGION_ID = "WAI"
 # Parking, bathrooms, loading five people into one car — applied to every leg.
 TRANSITION_BUFFER_MIN = 10
 
-WEEKDAY_TOKENS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
-
 # drive_lookup(region_a, region_b) -> (typical minutes, caution flags)
 DriveLookup = Callable[[str, str], tuple[int, list[str]]]
 
@@ -113,7 +111,6 @@ def compute_timeline(
                 "region_id": region,
                 "drive_minutes": drive,
                 "drive_flags": flags,
-                "depart_prev_min": start - drive,
                 "start_min": start,
                 "end_min": end,
                 "leave_by_min": leave_by,

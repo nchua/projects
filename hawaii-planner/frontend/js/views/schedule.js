@@ -12,7 +12,9 @@ import {
   h,
   mapsDirUrl,
   regionChip,
+  regionName,
 } from "../ui.js";
+import { CLUSTER_MIN, unscheduledActivitiesByRegion } from "./shared.js";
 
 function dominantRegion(day) {
   const counts = {};
@@ -49,11 +51,15 @@ function dayChip(day, index, { rail = false } = {}) {
 }
 
 function driveRow(minutes, flags, originTitle, destTitle, destMapsUrl) {
-  const rush = (flags || []).length > 0;
+  const flagList = flags || [];
+  const hasFlags = flagList.length > 0;
+  let caution = "";
+  if (flagList.some((flag) => flag.startsWith("H1"))) caution = " ⚠ rush-hour risk";
+  else if (hasFlags) caution = " ⚠ crowd/traffic risk";
   return h(
     "div",
-    { className: `drive-row ${rush ? "rush" : ""}` },
-    `🚗 ~${minutes} min drive${rush ? " ⚠ rush-hour risk" : ""}`,
+    { className: `drive-row ${hasFlags ? "rush" : ""}` },
+    `🚗 ~${minutes} min drive${caution}`,
     h("a", {
       text: "Directions ↗",
       href: mapsDirUrl(originTitle, destTitle, destMapsUrl),
@@ -88,7 +94,7 @@ function stopCard(day, item) {
           ? h("span", { className: "badge scheduled", text: `Leave hotel by ${fmtTime(item.leave_by)}` })
           : null,
         item.reservation_rule ? h("span", { className: "badge reservation", text: "🎟 Reservation" }) : null,
-        item.difficulty ? h("span", { className: "badge hard", text: `${item.difficulty} hike` }) : null
+        item.difficulty ? h("span", { className: "badge hard", text: "Hard hike" }) : null
       ),
       item.notes ? h("div", { className: "card-note", text: item.notes }) : null,
       ...item.warnings.map((warning) => h("div", { className: "warn-row", text: `⚠ ${warning.message}` })),
@@ -227,19 +233,14 @@ function emptyState(day) {
 }
 
 function clusterHint() {
-  const unscheduled = state.data.ideas.filter(
-    (idea) => idea.kind === "activity" && !(idea.scheduled_day_ids || []).length
-  );
-  const byRegion = {};
-  for (const idea of unscheduled) {
-    (byRegion[idea.region_id] ||= []).push(idea);
-  }
-  const best = Object.entries(byRegion).sort((a, b) => b[1].length - a[1].length)[0];
-  if (!best || best[1].length < 3) return null;
-  const region = state.data.regions.find((r) => r.id === best[0]);
+  const byRegion = Object.entries(unscheduledActivitiesByRegion());
+  const biggest = byRegion.sort((a, b) => b[1].length - a[1].length)[0];
+  if (!biggest) return null;
+  const [regionId, ideas] = biggest;
+  if (ideas.length < CLUSTER_MIN) return null;
   return h("p", {
     className: "muted",
-    text: `💡 ${best[1].length} ${region?.name || best[0]} ideas in the pool would make a great day together`,
+    text: `💡 ${ideas.length} ${regionName(state.data.regions, regionId)} ideas in the pool would make a great day together`,
     style: { marginTop: "12px" },
   });
 }
