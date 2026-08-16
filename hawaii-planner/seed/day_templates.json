@@ -1,0 +1,267 @@
+[
+  {
+    "name": "East Side Coastal Circle",
+    "description": "Hanauma snorkel, coastal lookouts, Makapuu, then Kailua beach + Pali on the way home",
+    "stops": [
+      {
+        "title": "Hanauma Bay",
+        "region_id": "EAST",
+        "duration_min": 210,
+        "note": "Earliest slot — needs the T-2 reservation win (2 days ahead, 7am HST)"
+      },
+      {
+        "title": "Halona Blowhole + Lanai Lookout",
+        "region_id": "EAST",
+        "duration_min": 25,
+        "note": "Roadside pull-offs, no walking"
+      },
+      {
+        "title": "Sandy Beach (watch only)",
+        "region_id": "EAST",
+        "duration_min": 15,
+        "note": "Watch the shorebreak — no swimming"
+      },
+      {
+        "title": "Makapuu Lighthouse trail",
+        "region_id": "EAST",
+        "duration_min": 105,
+        "note": "Paved; parents can turn around partway"
+      },
+      {
+        "title": "Kailua town lunch",
+        "region_id": "WINDS",
+        "duration_min": 75,
+        "note": "Pick a spot in town"
+      },
+      {
+        "title": "Kailua + Lanikai Beach",
+        "region_id": "WINDS",
+        "duration_min": 120,
+        "note": "Afternoon swim — park at Kailua Beach Park"
+      },
+      {
+        "title": "Nuuanu Pali Lookout",
+        "region_id": "WINDS",
+        "duration_min": 25,
+        "note": "On the way home over the Pali"
+      }
+    ],
+    "pacing_note": "~90 min total drive in short hops — the friendliest big day for mixed mobility. Needs the Hanauma T-2 reservation win; skip Mon/Tue (Hanauma closed)."
+  },
+  {
+    "name": "North Shore Classic Loop",
+    "description": "Dole, Haleiwa lunch, turtles, Waimea, Sharks Cove, and sunset at Sunset Beach",
+    "stops": [
+      {
+        "title": "Dole Plantation",
+        "region_id": "CEN",
+        "duration_min": 75,
+        "note": "Depart 8am; keep this short — Dole Whip and go"
+      },
+      {
+        "title": "Haleiwa lunch + shave ice",
+        "region_id": "NS",
+        "duration_min": 75,
+        "note": "Haleiwa town — shave ice at Matsumoto after lunch"
+      },
+      {
+        "title": "Laniakea Turtle Beach",
+        "region_id": "NS",
+        "duration_min": 25,
+        "note": "Keep 10ft from the turtles"
+      },
+      {
+        "title": "Waimea Bay + Waimea Valley",
+        "region_id": "NS",
+        "duration_min": 120,
+        "note": "Pick one: summer-flat Bay swim, or the Valley waterfall walk (shuttle for parents)"
+      },
+      {
+        "title": "Sharks Cove snorkel",
+        "region_id": "NS",
+        "duration_min": 105,
+        "note": "Water shoes; skip if the group is fading"
+      },
+      {
+        "title": "Sunset Beach/Pipeline",
+        "region_id": "NS",
+        "duration_min": 60,
+        "note": "Golden-hour finish, then home"
+      }
+    ],
+    "pacing_note": "~2.5h of driving — the longest driving day. Front-load the morning and keep Dole short. Never stack this back-to-back with the PCC/Laie day — interleave big-drive days with town days."
+  },
+  {
+    "name": "Pearl Harbor + Town History",
+    "description": "USS Arizona early, Chinatown lunch, palace or museum, Tantalus sunset",
+    "stops": [
+      {
+        "title": "USS Arizona Memorial",
+        "region_id": "PRL",
+        "duration_min": 90,
+        "note": "Leave the hotel ~7am for an 8–9am slot; no bags"
+      },
+      {
+        "title": "Pearl Harbor full site (Missouri/Bowfin/Aviation)",
+        "region_id": "PRL",
+        "duration_min": 180,
+        "note": "Optional add-on — the Missouri is the parents' favorite"
+      },
+      {
+        "title": "Chinatown food crawl",
+        "region_id": "HNL",
+        "duration_min": 75,
+        "note": "Lunch — graze the markets"
+      },
+      {
+        "title": "Iolani Palace",
+        "region_id": "HNL",
+        "duration_min": 90,
+        "note": "Or Bishop Museum; palace closed Sun–Mon"
+      },
+      {
+        "title": "Tantalus/Puu Ualakaa lookout",
+        "region_id": "HNL",
+        "duration_min": 40,
+        "note": "Sunset — gate closes ~7:45pm"
+      }
+    ],
+    "pacing_note": "~60 min of driving and the lowest physical demand — a good recovery day between big-drive days."
+  },
+  {
+    "name": "Windward Temples & Ranch",
+    "description": "Pali and Byodo-In in the morning, Kualoa Ranch tour in the afternoon",
+    "stops": [
+      {
+        "title": "Nuuanu Pali Lookout",
+        "region_id": "WINDS",
+        "duration_min": 25,
+        "note": "Start ~9am; $7 non-resident parking"
+      },
+      {
+        "title": "Byodo-In Temple",
+        "region_id": "WINDS",
+        "duration_min": 50,
+        "note": "Quiet respect; bring cash for admission"
+      },
+      {
+        "title": "Hoomaluhia garden drive",
+        "region_id": "WINDS",
+        "duration_min": 70,
+        "note": "Free; no stopping on the entrance road"
+      },
+      {
+        "title": "Shrimp-truck lunch",
+        "region_id": "WINDN",
+        "duration_min": 60,
+        "note": "Shrimp plates from a roadside truck en route to Kualoa"
+      },
+      {
+        "title": "Kualoa Ranch",
+        "region_id": "WINDN",
+        "duration_min": 150,
+        "note": "1pm tour — must be pre-booked (books out 2–4+ weeks)"
+      },
+      {
+        "title": "Chinaman's Hat viewpoint",
+        "region_id": "WINDN",
+        "duration_min": 25,
+        "note": "Quick stop before heading home"
+      }
+    ],
+    "pacing_note": "~2h of driving with a gentle morning and a seated afternoon — easy on the parents."
+  },
+  {
+    "name": "PCC / Laie Day",
+    "description": "Coastal stops on the drive up, then the Polynesian Cultural Center through the evening show",
+    "stops": [
+      {
+        "title": "Chinaman's Hat viewpoint",
+        "region_id": "WINDN",
+        "duration_min": 25,
+        "note": "Leave ~10:30 — quick coastal stop"
+      },
+      {
+        "title": "Laie Point",
+        "region_id": "WINDN",
+        "duration_min": 15,
+        "note": "Sea-arch lookout before the gates open"
+      },
+      {
+        "title": "Polynesian Cultural Center",
+        "region_id": "WINDN",
+        "duration_min": 360,
+        "note": "Opens 12:30 — villages, luau, evening show ends ~9pm"
+      }
+    ],
+    "pacing_note": "NOT Sun/Wed — PCC is closed, so only Thu/Fri/Sat work this trip. Home ~10pm after the show; parents can skip the show and leave at 6. Big-drive day — never stack back-to-back with the North Shore loop."
+  },
+  {
+    "name": "West Side Wind-Down + Luau",
+    "description": "Ko Olina lagoons morning, resort lunch, optional outlets, sunset luau finale",
+    "stops": [
+      {
+        "title": "Ko Olina Lagoons",
+        "region_id": "KOOL",
+        "duration_min": 180,
+        "note": "In the water by 9:30am — free lots fill fast"
+      },
+      {
+        "title": "Resort lunch",
+        "region_id": "KOOL",
+        "duration_min": 75,
+        "note": "Poolside or lagoon-side at Ko Olina"
+      },
+      {
+        "title": "Waikele outlets (optional)",
+        "region_id": "CEN",
+        "duration_min": 75,
+        "note": "Optional shopping detour"
+      },
+      {
+        "title": "Luau night (pick one)",
+        "region_id": "KOOL",
+        "duration_min": 165,
+        "note": "Sunset oceanfront — Chief's or Paradise Cove fit this day"
+      }
+    ],
+    "pacing_note": "~90 min of driving — the recovery day with a finale. Home after the luau against zero traffic."
+  },
+  {
+    "name": "Waikiki No-Car Day",
+    "description": "Diamond Head sunrise, beach + surf, zoo or pool, evening hula — the car stays parked",
+    "stops": [
+      {
+        "title": "Diamond Head hike",
+        "region_id": "EAST",
+        "duration_min": 120,
+        "note": "Sunrise slot — rideshare over, no car needed"
+      },
+      {
+        "title": "KCC Farmers Market",
+        "region_id": "EAST",
+        "duration_min": 60,
+        "note": "Saturday only, 7:30–11am — right below Diamond Head"
+      },
+      {
+        "title": "Waikiki Beach + surf lesson/outrigger",
+        "region_id": "WAI",
+        "duration_min": 150,
+        "note": "Book the lesson 1–2 days ahead"
+      },
+      {
+        "title": "Honolulu Zoo/Waikiki Aquarium",
+        "region_id": "WAI",
+        "duration_min": 120,
+        "note": "Or pool time back at the tower"
+      },
+      {
+        "title": "Kuhio Beach hula show or in-Waikiki luau",
+        "region_id": "WAI",
+        "duration_min": 90,
+        "note": "Walkable evening finish"
+      }
+    ],
+    "pacing_note": "Zero driving — schedule this right after a big-drive day (North Shore loop or PCC/Laie)."
+  }
+]

@@ -155,8 +155,13 @@ def run() -> None:
     db = SessionLocal()
     try:
         changed = False
+        # These tables are linked only by bare FKs (no relationship()), so the
+        # unit of work won't order their inserts — flush each layer before the
+        # next one references it.
         changed |= seed_regions(db)
+        db.flush()
         changed |= seed_drive_times(db)
+        db.flush()
         changed |= seed_members(db)
         changed |= seed_days(db)
         changed |= _seed_ideas(db, _load("activities.json"), "activity")
