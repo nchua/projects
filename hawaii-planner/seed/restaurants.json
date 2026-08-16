@@ -1,0 +1,362 @@
+[
+  {
+    "title": "Liliha Bakery",
+    "region_id": "HNL",
+    "duration_min": 30,
+    "yelp_url": "https://www.yelp.com/biz/liliha-bakery-honolulu-2",
+    "meal_tags": ["breakfast", "treat"],
+    "notes": "Coco puffs + Chantilly cake; the original Kuakini St spot is also a classic diner counter (other locations at Ala Moana and Waikiki).",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Siam Garden Cafe",
+    "region_id": "HNL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/siam-garden-cafe-honolulu-2",
+    "meal_tags": ["lunch", "dinner"],
+    "notes": "Thai on Nimitz Hwy near Iwilei; open Mon–Fri only.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Hong Yeon",
+    "region_id": "HNL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/hong-yeon-honolulu-2",
+    "meal_tags": ["lunch", "dinner"],
+    "notes": "Korean-Chinese on Isenberg St (listed as 'Hong Yun Chinese' in the family notes) — jjajangmyeon/jjamppong territory.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Maguro Brothers",
+    "region_id": "HNL",
+    "duration_min": 30,
+    "yelp_url": "https://www.yelp.com/biz/maguro-brothers-hawaii-honolulu-6",
+    "meal_tags": ["lunch"],
+    "notes": "Fresh ahi don/poke counter inside Maunakea Marketplace, Chinatown (daytime, closed Sun); their Waikiki stall runs evenings.",
+    "recommended_by": "Erica's mom's friends + Nick's parents"
+  },
+  {
+    "title": "YogurStory",
+    "region_id": "HNL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/yogurstory-honolulu-4",
+    "meal_tags": ["breakfast", "lunch"],
+    "notes": "Ube pancakes; Korean-owned brunch on Keeaumoku until 3:30pm; first-come first-served (reservations only for 6+).",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Fukurou",
+    "region_id": "WAI",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/fukurou-honolulu",
+    "meal_tags": ["dinner"],
+    "notes": "10-seat sushi omakase (~$100) tucked into Waikiki Shopping Plaza; dinner Tue–Fri only — book ahead.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Koko Head Cafe",
+    "region_id": "HNL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/koko-head-cafe-honolulu",
+    "meal_tags": ["breakfast", "lunch"],
+    "notes": "French Toast (cornflake-crusted) + breakfast bibimbap; Kaimuki brunch — expect a wait.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Lobster King",
+    "region_id": "HNL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/lobster-king-honolulu-3",
+    "meal_tags": ["lunch", "dinner"],
+    "notes": "Jja-jang-myeon / champong — Korean-Chinese seafood on S King St; the lobster jjamppong is the move.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Tonkatsu Kuro",
+    "region_id": "HNL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/tonkatsu-kuro-honolulu",
+    "meal_tags": ["dinner"],
+    "notes": "Katsu specialist in Ward Village (listed as 'Kuro Tonkatsu' in the family notes); opens 4pm on weekdays.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Han Gang",
+    "region_id": "HNL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/hangang-honolulu",
+    "meal_tags": ["lunch", "dinner"],
+    "notes": "냉면 (naengmyeon) — one of the best cold-noodle bowls in town; Korean grill house on Waimanu St, Kakaako.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Broke Da Mouth Grindz",
+    "region_id": "KOOL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/broke-da-mouth-grindz-kapolei-kapolei-3",
+    "meal_tags": ["lunch"],
+    "notes": "Garlic furikake chicken + oxtail adobo (Diners Drive-ins & Dives famous); Kapolei — pairs with a Ko Olina day; very limited hours, check before going.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Yoshitsune",
+    "region_id": "WAI",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/yoshitsune-honolulu",
+    "meal_tags": ["breakfast", "dinner"],
+    "notes": "Old-school traditional Japanese in the Park Shore Waikiki hotel — known for Japanese breakfast sets.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Shiro's Saimin Haven",
+    "region_id": "PRL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/shiros-saimin-haven-aiea-2",
+    "meal_tags": ["breakfast", "lunch"],
+    "notes": "65 kinds of fresh-made saimin since 1969 (listed as 'Shiro's Simon' in the family notes); Waimalu/Aiea — pairs with a Pearl Harbor day.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Don Quijote (Kaheka)",
+    "region_id": "HNL",
+    "duration_min": 30,
+    "yelp_url": "https://www.yelp.com/biz/don-quijote-kaheka-honolulu-2",
+    "meal_tags": ["lunch", "treat"],
+    "notes": "24-hour Japanese superstore — poke, bento, mochi, omiyage runs.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Da Ono Hawaiian Foods",
+    "region_id": "HNL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/da-ono-hawaiian-foods-honolulu-4",
+    "meal_tags": ["lunch", "dinner"],
+    "notes": "Old-school Hawaiian plates (laulau, kalua pig, poi) on Kapahulu; closed weekends; lunch-only early in the week.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Redfish Poke Bar by Foodland",
+    "region_id": "WAI",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/redfish-waikiki-honolulu-2",
+    "meal_tags": ["lunch", "dinner"],
+    "notes": "Sit-down poke bar + cocktails (listed as 'Red Fish Poke' in the family notes); the Kakaako original closed — current spot is on Ala Wai Blvd in Waikiki.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Island Vintage Coffee",
+    "region_id": "WAI",
+    "duration_min": 30,
+    "yelp_url": "https://www.yelp.com/biz/island-vintage-coffee-honolulu-4",
+    "meal_tags": ["breakfast", "treat"],
+    "notes": "Açaí bowls + 100% Kona coffee; upstairs in Royal Hawaiian Center — busy, mostly outdoor seating.",
+    "recommended_by": "Erica's mom's friends + Nick's parents"
+  },
+  {
+    "title": "Helena's Hawaiian Food",
+    "region_id": "HNL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/helenas-hawaiian-food-honolulu",
+    "meal_tags": ["lunch"],
+    "notes": "James Beard 'America's Classic' since 1946 — pipikaula short ribs + kalua pig; Kalihi; open Tue–Fri only, 10am–7:30pm.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Tanaka of Tokyo",
+    "region_id": "WAI",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/tanaka-of-tokyo-central-honolulu",
+    "meal_tags": ["dinner"],
+    "notes": "Teppanyaki tableside show; Central location in Waikiki Shopping Plaza, dinner from 5pm (West location at Ala Moana too).",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Giovanni's Shrimp Truck",
+    "region_id": "NS",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/giovannis-shrimp-truck-kahuku",
+    "meal_tags": ["lunch"],
+    "notes": "Garlic shrimp scampi plates from the graffiti truck in Kahuku (Haleiwa truck too); long lines at lunch.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Tsurutontan Udon",
+    "region_id": "WAI",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/tsurutontan-udon-noodle-brasserie-honolulu",
+    "meal_tags": ["lunch", "dinner"],
+    "notes": "House-made udon in giant bowls; Royal Hawaiian Center; takes reservations.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Mitch's Fish Market & Sushi Bar",
+    "region_id": "HNL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/mitchs-fish-market-and-sushi-bar-honolulu-3",
+    "meal_tags": ["lunch", "dinner"],
+    "notes": "Tiny BYOB sushi bar by the airport runways (listed as 'Mitch's Sushi'); world-class sashimi + anything lobster; reservations essential, last seating 7:45pm.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "53 By The Sea",
+    "region_id": "HNL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/53-by-the-sea-honolulu",
+    "meal_tags": ["dinner"],
+    "notes": "Oceanfront fine dining in Kakaako with the Diamond Head view; dinner Wed–Sat + weekend brunch; reserve.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Yakitori Hachibei",
+    "region_id": "HNL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/yakitori-hachibei-honolulu",
+    "meal_tags": ["dinner"],
+    "notes": "Hakata-style yakitori in Chinatown. NOTE: the original spot closed at lease-end and is reopening at Nuuanu Ave & N Hotel St — verify it's open before going.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Sugoi",
+    "region_id": "HNL",
+    "duration_min": 30,
+    "yelp_url": "https://www.yelp.com/biz/sugoi-honolulu",
+    "meal_tags": ["breakfast", "lunch"],
+    "notes": "Spicy garlic chicken bento; takeout counter in City Square, Kalihi; opens 8am daily.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Scratch Kitchen",
+    "region_id": "HNL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/scratch-kitchen-ward-honolulu-2",
+    "meal_tags": ["breakfast", "lunch"],
+    "notes": "Milk & cereal pancakes + Southern-comfort brunch; South Shore Market, Ward Village.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Ya-Ya's Chophouse & Seafood",
+    "region_id": "HNL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/ya-ya-s-chophouse-and-seafood-honolulu",
+    "meal_tags": ["dinner"],
+    "notes": "Kakaako steakhouse. NOTE: Yelp marks it CLOSED as of mid-2026 — verify before planning around it.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "The Signature Prime Steak & Seafood",
+    "region_id": "HNL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/the-signature-prime-steak-and-seafood-honolulu",
+    "meal_tags": ["dinner"],
+    "notes": "36th floor of the Ala Moana Hotel — sunset city views; from 4:30pm; valet or limited self-parking; reserve.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Il Tappo",
+    "region_id": "WAI",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/il-tappo-honolulu-2",
+    "meal_tags": ["dinner"],
+    "notes": "Authentic Italian oasis on Kalakaua; dinner from 5:30pm, closed Sun.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Ethel's Grill",
+    "region_id": "HNL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/ethels-grill-honolulu",
+    "meal_tags": ["breakfast", "lunch"],
+    "notes": "Kalihi hole-in-the-wall famous for tataki sashimi. NOTE: Yelp marks it CLOSED as of 2026 — verify before going.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Mahina & Sun's",
+    "region_id": "WAI",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/mahina-and-suns-honolulu-2",
+    "meal_tags": ["lunch", "dinner"],
+    "notes": "Local-sourced menu poolside at the Surfjack Hotel; live music; walk-ins from noon.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Nico's Pier 38",
+    "region_id": "HNL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/nicos-pier-38-honolulu-2",
+    "meal_tags": ["breakfast", "lunch", "dinner"],
+    "notes": "Fish-auction-fresh seafood + fish-market poke on the working harbor; furikake ahi; closed Sun.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Takayuki",
+    "region_id": "WAI",
+    "duration_min": 75,
+    "yelp_url": null,
+    "meal_tags": ["dinner"],
+    "notes": "Could not verify this spot on Oahu (no Yelp/press match) — confirm the exact name and location with Erica's mom's friends before booking.",
+    "recommended_by": "Erica's mom's friends"
+  },
+  {
+    "title": "Ono Seafood",
+    "region_id": "HNL",
+    "duration_min": 30,
+    "yelp_url": "https://www.yelp.com/biz/ono-seafood-honolulu",
+    "meal_tags": ["lunch"],
+    "notes": "#7 Spicy Ahi — made-to-order poke by the pound on Kapahulu since 1995; closed Sun–Mon; can sell out.",
+    "recommended_by": "Nick's parents"
+  },
+  {
+    "title": "Maguro Spot",
+    "region_id": "WAI",
+    "duration_min": 30,
+    "yelp_url": "https://www.yelp.com/biz/maguro-spot-honolulu-5",
+    "meal_tags": ["lunch"],
+    "notes": "Build-your-own poke hole-in-the-wall on Kuhio Ave — best-value ahi in Waikiki; weekdays 10am–8:30pm.",
+    "recommended_by": "Nick's parents"
+  },
+  {
+    "title": "Foodland Farms Ala Moana",
+    "region_id": "HNL",
+    "duration_min": 30,
+    "yelp_url": "https://www.yelp.com/biz/foodland-farms-honolulu-5",
+    "meal_tags": ["lunch"],
+    "notes": "Supermarket poke counter — 2026 Poke Bowl champion; Ewa wing of Ala Moana Center.",
+    "recommended_by": "Nick's parents"
+  },
+  {
+    "title": "Highway Inn",
+    "region_id": "HNL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/highway-inn-kakaako-honolulu-4",
+    "meal_tags": ["lunch", "dinner"],
+    "notes": "Loco moco + Hawaiian plates, family-run since 1947; Kakaako location at 680 Ala Moana Blvd (SALT).",
+    "recommended_by": "Nick's parents"
+  },
+  {
+    "title": "Ruscello at Nordstrom",
+    "region_id": "HNL",
+    "duration_min": 75,
+    "yelp_url": "https://www.yelp.com/biz/ruscello-honolulu-3",
+    "meal_tags": ["lunch"],
+    "notes": "Quiet sit-down inside Nordstrom Ala Moana — easy mid-shopping lunch; from 11am.",
+    "recommended_by": "Nick's parents"
+  },
+  {
+    "title": "Royal Hawaiian Bakery",
+    "region_id": "WAI",
+    "duration_min": 30,
+    "yelp_url": "https://www.yelp.com/biz/royal-hawaiian-bakery-honolulu",
+    "meal_tags": ["breakfast", "treat"],
+    "notes": "Malasadas (not baked daily — ask) + the famous banana bread; Pink Palace lanai, mornings only (6am–noon, weekdays).",
+    "recommended_by": "Nick's parents"
+  },
+  {
+    "title": "Leonard's Bakery",
+    "region_id": "HNL",
+    "duration_min": 30,
+    "yelp_url": "https://www.yelp.com/biz/leonards-bakery-honolulu",
+    "meal_tags": ["breakfast", "treat"],
+    "notes": "The original malasada since 1952 — order them hot; Kapahulu Ave, 5:30am–7pm daily.",
+    "recommended_by": "Nick's parents"
+  }
+]

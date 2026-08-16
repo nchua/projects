@@ -1,0 +1,56 @@
+[
+  {
+    "id": "WAI",
+    "name": "Waikiki",
+    "sort_order": 0,
+    "tour_order": 0
+  },
+  {
+    "id": "HNL",
+    "name": "Honolulu Town",
+    "sort_order": 1,
+    "tour_order": 1
+  },
+  {
+    "id": "PRL",
+    "name": "Pearl Harbor/Airport",
+    "sort_order": 2,
+    "tour_order": 2
+  },
+  {
+    "id": "EAST",
+    "name": "East Honolulu Coast",
+    "sort_order": 3,
+    "tour_order": 7
+  },
+  {
+    "id": "WINDS",
+    "name": "Windward South",
+    "sort_order": 4,
+    "tour_order": 6
+  },
+  {
+    "id": "WINDN",
+    "name": "Windward North",
+    "sort_order": 5,
+    "tour_order": 5
+  },
+  {
+    "id": "NS",
+    "name": "North Shore",
+    "sort_order": 6,
+    "tour_order": 4
+  },
+  {
+    "id": "CEN",
+    "name": "Central",
+    "sort_order": 7,
+    "tour_order": 3
+  },
+  {
+    "id": "KOOL",
+    "name": "Ko Olina/Leeward",
+    "sort_order": 8,
+    "tour_order": 8
+  }
+]
