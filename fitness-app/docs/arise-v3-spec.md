@@ -1,15 +1,16 @@
 # ARISE v3 — The System Coaches
 
-> **Status:** Draft for review. Written 2026-09-04 from a first-principles review of the
+> **Status:** Draft v2 for review (2026-09-04). Written from a first-principles review of the
 > shipped v2/v2.1 product, the `training-calendar` PWA, the `Fitness Coach` Cowork job, and
-> two code audits (iOS logging flow; backend intelligence primitives). Code anchors were
-> verified against the working tree on 2026-09-04 — re-verify `file:line` before each build
-> phase, they drift.
+> two code audits (iOS logging flow; backend intelligence primitives), then revised after two
+> independent red-team passes (product/athlete lens; staff-engineer feasibility lens — §19).
+> Code anchors verified against the working tree on 2026-09-04; re-verify `file:line` before
+> each build phase, they drift.
 >
 > **What this is:** the product definition for the next step-change. It keeps the v2 thesis
 > ("every gamified element derives from real data") and closes the loop the v2 spec left
 > open: the app records and grades, but it does not **plan, prescribe, or adapt**. v3 makes
-> the System a coach.
+> the System a coach — with the engine owning every number and the model owning the prose.
 >
 > **What this is not:** a redesign. Minimal Void, the 4-tab structure, Condition, Gates, XP,
 > and the ingestion paths all stay. v3 adds three systems (Campaign, Load, Coach), rebuilds
@@ -28,32 +29,29 @@ other:
 | ARISE iOS + backend | logging, XP, Condition, Directive, Gates, analytics | no concept of a plan; Directive is a rules engine that mostly says MAINTAIN; Gates have never spawned |
 | `training-calendar/` PWA | the actual 6-month run+lift program, weekly check-offs, a hand-rolled "AHEAD — EASE UP" pace verdict | static `data.js`, no loads, manual check-off, its injury guard is 15 lines of JS |
 | `Fitness Coach/` + scheduled Cowork job | the intended weekly coach: review the week, prescribe next week's loads | 7 consecutive failed runs (May 10 → Aug 6); depends on a `weekly_export.py` that does not exist; its Week 1 plan (Fri push / Sat pull / Sun legs, 3×3) contradicts the PWA plan (Sat squat 5×5 / Sun bench 5×5) |
-| Apple Watch / WHOOP → HealthKit → app | HR, runs, sleep, HRV, RHR, recovery | foreground-only sync; runs lag until the app is opened; HRV is stored and never read |
+| Apple Watch / WHOOP → HealthKit → app | HR, runs, sleep, HRV, RHR, recovery | foreground-only sync; runs lag until the app is opened; HRV is stored and Condition never reads it |
 
 **v3 collapses these into one loop inside the app: Plan → Prescribe → Log → Adapt.**
 
-1. **Campaign** — the program becomes a first-class object (arcs, weeks, hunt templates,
+1. **LogView v2 + Gates v2 first** (one session, no new tables). "Last time" beside every
+   set, ghost values from the last session, an explicit ✓ that starts a countdown rest timer,
+   drafts that survive an app kill, and the four constant changes that let a Gate actually
+   spawn. This is the change that alters Saturday behavior; everything else builds on the
+   data it produces.
+2. **Campaign** — the program becomes a first-class object (arcs, weeks, hunt templates,
    progression rules). The PWA's `data.js` is imported once and the PWA is retired.
-2. **Prescription** — every planned hunt is materialized with real loads (weight × reps ×
-   RPE, or miles × effort) from the user's own e1RM, last session, and readiness.
-3. **LogView v2** — logging becomes confirm-or-adjust: prescribed sets pre-filled, "last
-   time" beside every row, an explicit ✓ that starts a countdown rest timer, drafts that
-   survive an app kill. Target: **≤ 5 seconds per set** on a prescribed hunt.
-4. **Load + Overreach Guard** — one training-load currency across running and lifting,
-   acute:chronic ratio, mileage ramp and long-run share rules. Feeds Condition v2 and
-   vetoes prescriptions. This is the injury guard the PWA hand-rolled, done properly.
-5. **The Coach** — a server-side Claude coach with a structured athlete context: a
-   3-sentence **Hunt Briefing** every training morning, and a Sunday **Weekly Debrief** that
-   proposes typed plan adjustments the user accepts with a tap. Deterministic validators
-   bound everything the model proposes. Replaces the Directive's voice, the weekly report's
-   template suggestions, and the Cowork job.
-6. **Gates v2** — the north-star feature gets a fair chance to fire: baseline = campaign
-   best not lifetime best, 4 weekly points not 6, spawn onto the next planned heavy day,
-   and the clear celebration that was deferred in v2.
-
-Plus the plumbing that makes a coach trustworthy: background HealthKit delivery, a nightly
-job, one exercise-canonicalization scheme, honest `weight_unit` math, and a `local_day` on
-every session.
+3. **Prescription** — every planned hunt materialized with real loads (weight × reps, RPE
+   optional; miles × HR cap for runs) from the user's own last session and e1RM.
+   Prescribed sets become the ghost values in the logger.
+4. **Load + Overreach Guard** — one training-load currency, a run-only acute:chronic ratio,
+   and mileage rules stated against the *plan's* ramp. The injury guard the PWA hand-rolled,
+   done properly and without vetoing the plan it protects.
+5. **The Coach** — a Sunday **Weekly Debrief** written by Claude over a structured athlete
+   context: the narrative, the concerns, and a ranked set of typed plan adjustments that the
+   engine generated and the user accepts with a tap. Replaces the weekly report's template
+   prose and the Cowork job. The daily line stays deterministic in v3.
+6. **Plumbing** — background HealthKit delivery, a profile timezone and `local_day` on
+   every session, honest `weight_unit` math, one exercise-family scheme, an SDK pin.
 
 ---
 
@@ -66,19 +64,18 @@ cares most about PRs on the big lifts (roadmap §1: "North star: Strength PRs").
 
 | # | Job | How it's served today | Evidence | Served |
 |---|---|---|---|---|
-| J1 | **Tell me what to do today** — the session, the loads, push or back off | Directive (one line, rules engine); the PWA (static plan, no loads); the Coach job (never ran) | Rules 4 (BREAK_PLATEAU) and 5 (FREQUENCY) are structurally dead for a 2-lift-day/week user (`analytics.py:690` needs >8 sessions per lift per 28 days; `analytics.py:701` counts imported runs as sessions). Rule 7 (LIFT_LAG) fires spuriously every Saturday because the rolling 7-day window holds only last Sunday (`directive_service.py:48-62`, `:397`). Rule 1 (REST) needs a WHOOP score. The user sees MAINTAIN most days (v2.1 interview: "Directive is too vague") | ~20% |
-| J2 | **Let me log it fast, without thinking** | Manual entry from blank rows; screenshot scan behind a credit paywall; HealthKit import for runs | No "last time" anywhere in the logger (`LogViewModel.swift:93-102` creates one blank set; `getExerciseTrend` never called from Log). Set completion is derived from `weight>0 && reps>0` in five places, so the rest timer fires while typing "1" of "12" (`LogView.swift:1108-1115`). Timer is global count-up, off-screen by exercise 3. No templates, no routines, no repeat-last-workout. Draft dies on swipe-back or app kill. Session duration measured then discarded (`LogViewModel.swift:232`); bodyweight flag dropped at save (`APITypes.swift:191-204`) | runs ~70%, lifts ~30% |
-| J3 | **Show me I'm getting stronger and when I'm ready to PR** | e1RM charts, percentiles, PR detection, Gates | Charts are good. Gates need 6 unbroken Monday-keyed weekly points per lift (`trend_service.py:19`) and a projection 1% past the **all-time** best (`gate_service.py:274`) — a 5×5 trajectory cannot beat an old heavy single; Sat+Sun sessions collapse to one weekly point. No gate has spawned since Phase 2 shipped (2026-07-12). The payoff loop has been empty for the entire v2 era | ~55% |
-| J4 | **Keep me from getting hurt while I ramp mileage and lift heavy** | Muscle cooldowns, Condition, the PWA's "AHEAD — EASE UP" | No acute:chronic ratio, ramp rate, or long-run share anywhere in the backend (`grep acute|chronic|acwr|ramp` → nothing). Cardio fatigue is duration-only and capped at 5 effective sets, so a 15-mile long run costs the same recovery as a 75-minute jog (`cooldown_service.py:122-123`). Condition's strain input is yesterday-only | ~25% |
+| J1 | **Tell me what to do today** — the session, the loads, push or back off | Directive (one line, rules engine); the PWA (static plan, no loads); the Coach job (never ran) | Rules 4 (BREAK_PLATEAU) and 5 (FREQUENCY) are structurally dead for a 2-lift-day/week user (`analytics.py:690` needs >8 e1RM points per lift; `analytics.py:701` counts imported runs as sessions). Rule 7 (LIFT_LAG) fires spuriously every Saturday because the rolling 7-day window holds only last Sunday (`directive_service.py:48-62`, `:397`). Rule 1 (REST) needs a WHOOP score. The user sees MAINTAIN most days (v2.1 interview: "Directive is too vague") | ~20% |
+| J2 | **Let me log it fast, without thinking** | Manual entry from blank rows; screenshot scan behind a credit paywall; HealthKit import for runs | No "last time" anywhere in the logger (`LogViewModel.swift:93-102` creates one blank set; `getExerciseTrend` never called from Log). Set completion is derived from `weight>0 && reps>0` in five places, so the rest timer fires while typing "1" of "12" (`LogView.swift:1108-1115`). Timer is global count-up, off-screen by exercise 3. No templates, no routines, no repeat-last-workout. Draft dies on swipe-back or app kill. Session duration measured then discarded (`LogViewModel.swift:232`); bodyweight flag dropped at save (`APITypes.swift:191-204`); `rir` hardcoded nil (`LogViewModel.swift:217`) though the contract carries it | runs ~70%, lifts ~30% |
+| J3 | **Show me I'm getting stronger and when I'm ready to PR** | e1RM charts, percentiles, PR detection, Gates | Charts are good. Gates need 6 Monday-keyed weekly points per lift (`SLOPE_WINDOW_WEEKS`, `trend_service.py:19`, used as both the minimum and the fit window at `:59-61`) and a projection 1% past the **all-time** best (`gate_service.py:274`) — a 5×5 trajectory cannot beat an old heavy single; Sat+Sun sessions collapse to one weekly point. No gate has spawned since Phase 2 shipped (2026-07-12) | ~55% |
+| J4 | **Keep me from getting hurt while I ramp mileage and lift heavy** | Muscle cooldowns, Condition, the PWA's "AHEAD — EASE UP" | No acute:chronic ratio, ramp rate, or long-run share anywhere in the backend. Cardio fatigue is duration-only and capped at 5 effective sets, so a 15-mile long run costs the same recovery as a 75-minute jog (`cooldown_service.py:122-123`). Condition's strain input is yesterday-only | ~25% |
 | J5 | **Review my week and adjust the plan** | Weekly report (goal pace only, five static template suggestions at `weekly_report_service.py:354`); the Cowork job | The weekly report has no plan to compare against. The Cowork job was the user's attempt to bolt a real coach on from outside and it never produced a review | ~10% |
-| J6 | **Make training feel like a game I want to open** | XP, rank, achievements, celebrations, Condition gauge | The parts tied to real signal land. The daily hook (Directive) and the boss fight (Gate) are the weak links because they rarely say anything true or new | ~60% |
-| J7 | **Get my wearable data in without effort** | HealthKit foreground sync, WHOOP OAuth sync, screenshot fallback | All sync is foreground-triggered (`SyncCoordinator.swift:23`; no `HKObserverQuery`/`enableBackgroundDelivery` anywhere despite `UIBackgroundModes` declaring fetch/processing). The PWA README apologizes for the lag. HRV is written (`whoop_service.py:606`) and never read | ~60% |
+| J6 | **Make training feel like a game I want to open** | XP, rank, achievements, celebrations, Condition gauge | The parts tied to real signal land. The daily hook (Directive) and the boss fight (Gate) are the weak links because they rarely say anything true or new. Streaks lie for a runner: HealthKit imports never call `award_xp` (verified: no XP/streak path in `healthkit_service.py` or the import endpoint) | ~60% |
+| J7 | **Get my wearable data in without effort** | HealthKit foreground sync, WHOOP OAuth sync, screenshot fallback | All sync is foreground-triggered (`SyncCoordinator.swift:23`; no `HKObserverQuery`/`enableBackgroundDelivery` anywhere despite `UIBackgroundModes` declaring fetch/processing). The PWA README apologizes for the lag. HRV is written (`whoop_service.py:606`, HealthKit since v2.1) and returned by `/activity`, but no scorer reads it | ~60% |
 
-**The pattern:** J1, J4, J5 are the coach's jobs, and they are the least served. J2 is the
-daily friction that determines whether the data the coach needs exists at all. J3's payoff
-mechanic exists but is miscalibrated. v3 orders work accordingly: fix the logging friction
-and the data foundations first (they gate everything), then plan + prescribe, then load,
-then the coach, then delight.
+**The pattern:** J1, J4, J5 are the coach's jobs and the least served. J2 is the daily
+friction that decides whether the data the coach needs exists at all. J3's payoff mechanic
+exists but is miscalibrated. v3 orders work accordingly: J2 + J3 in one session (they need
+no new tables), then plan + prescribe (J1), then load (J4), then the coach (J5).
 
 ---
 
@@ -101,26 +98,21 @@ changes what the user does next.
 ### 2.2 v3
 
 ```
-                     ┌──────────────── nightly job ────────────────┐
-                     │ load recompute · ACWR · gate spawn ·        │
-                     │ materialize tomorrow's hunt · write briefing│
-                     └──────────────────────┬──────────────────────┘
-                                            ▼
- morning push (training days only) → Status: TODAY'S HUNT card + Briefing
-                                            ▼
-                     BEGIN HUNT (pre-filled from prescription)
-                                            ▼
-                     confirm-or-adjust each set · ✓ → rest countdown
-                                            ▼
-                     save → one celebration (PR · Gate · XP)
-                                            ▼
-                     planned_hunt marked done · load updated · next hunt re-prescribed
-                                            ▼
- Sunday evening → WEEKLY DEBRIEF (Coach) → typed adjustments → user accepts → next week rewritten
+ open app → Status: TODAY'S HUNT (prescribed, readiness-modulated at fetch time)
+                    ▼
+          BEGIN HUNT (pre-filled: ghost targets + "last time")
+                    ▼
+          confirm-or-adjust each set · ✓ → rest countdown
+                    ▼
+          save → one celebration (PR · Gate · XP)
+                    ▼
+          planned_hunt linked · load updated · next hunt re-prescribed on next fetch
+                    ▼
+ Sunday → WEEKLY DEBRIEF (engine ops + Coach prose) → ACCEPT → next week rewritten
 ```
 
-Every arrow is a real data path. The Coach only ever writes *proposals*; the deterministic
-engine validates them and the user accepts them.
+Every arrow is a real data path. Generation is lazy (on fetch, idempotent per day) in v3;
+a scheduler is added only when pushes need pre-written content (§9.2).
 
 ---
 
@@ -131,10 +123,10 @@ engine validates them and the user accepts them.
 3. **Strength is the story.** (v2)
 4. **Fewer, denser surfaces.** (v2)
 5. **The System prescribes, the Hunter decides.** New. Every prescription and every
-   coach proposal shows its numbers and has a one-tap override. No silent changes to the plan.
-6. **The model proposes, the engine disposes.** New. LLM output is structured, validated
-   against hard bounds (ramp rate, ACWR, load caps, deload cadence), and stored with its
-   context hash so "why did it say that" is always answerable.
+   proposal shows its numbers and has a one-tap override. No silent changes to the plan.
+6. **The engine owns the numbers; the model owns the prose.** New. Every load, mile, flag,
+   and adjustment op is computed deterministically and validated against hard bounds. The
+   LLM explains, prioritizes, and narrates; it never decides a weight.
 
 ---
 
@@ -144,170 +136,177 @@ engine validates them and the user accepts them.
 
 | Term | Meaning | Maps to |
 |---|---|---|
-| **Campaign** | A multi-month program with a goal | the PWA's whole `PHASES` array; "6-month hybrid: run base + strength" |
-| **Arc** | A block inside a campaign with its own mileage band and emphasis | one PWA phase ("Months 1–2, 7–13 mi/wk, long run 4.5") |
-| **Hunt template** | A weekday's session shape inside an arc | one PWA `days[]` entry ("Saturday — Squat Day, Heavy, 5×5 …") |
+| **Campaign** | A multi-month program with a goal | the PWA's whole `PHASES` array |
+| **Arc** | A block with its own mileage band and emphasis | one PWA phase ("Months 1–2, 7–13 mi/wk, long run 4.5") |
+| **Hunt template** | A weekday's session shape inside an arc | one PWA `days[]` entry |
 | **Planned hunt** | A template materialized onto a calendar date, with a prescription | new |
-| **Prescription** | Concrete targets for a planned hunt: per exercise, sets × reps × weight × RPE; for runs, miles × effort | new (§5) |
-
-The Hunt tab already calls workouts "hunts"; a planned hunt is the same noun before it
-happens.
+| **Prescription** | Concrete targets for a planned hunt | new (§5) |
 
 ### 4.2 Data model
 
-New tables (all keyed by `user_id`; idempotent migrations per the prod-stamp-drift rule):
+New tables (all keyed by `user_id`; idempotent migrations chaining from the current single
+head `lying_tricep_aliases`):
 
 ```
 campaigns            id, user_id, name, goal, start_date, status(active|paused|completed),
-                     source(import|template|coach), created_at
+                     source(import|template), created_at
 campaign_arcs        id, campaign_id, index, name, weeks, run_miles_min, run_miles_max,
                      long_run_miles, deload_every_n_weeks (default 4), deload_factor (0.75),
                      notes
 hunt_templates       id, arc_id, weekday(0-6), type(lift|run|light|rest), title,
-                     location_tag, load_hint(0-100), items JSON  -- see below
+                     location_tag, load_hint(0-100), items JSON
 planned_hunts        id, user_id, campaign_id, arc_id, template_id, date(local),
                      status(planned|done|modified|skipped|moved), session_id FK, moved_to,
                      prescription JSON, prescription_version, generated_at, rationale JSON
 ```
 
-`hunt_templates.items` is the plan's *shape*, not its loads:
+`hunt_templates.items` is the plan's *shape*, not its loads. Every item that the PWA writes
+as "A or B" carries `alternatives` with a default, so WFH days don't import as blank rows:
 
 ```json
 [
-  {"exercise_family": "back_squat", "sets": 5, "reps": [5,5], "role": "main",
+  {"family": "back_squat", "sets": 5, "reps": [5,5], "role": "main",
    "progression": "linear", "increment_lb": 10, "rpe_cap": 8},
-  {"exercise_family": "deadlift",   "sets": 4, "reps": [5,5], "role": "secondary",
-   "progression": "linear", "increment_lb": 10, "rpe_cap": 8},
-  {"exercise_family": "leg_press_or_lunge", "sets": 3, "reps": [10,12], "role": "accessory",
-   "progression": "double", "increment_lb": 10},
-  {"exercise_family": "hanging_leg_raise",  "sets": 3, "reps": [12,12], "role": "accessory",
-   "progression": "double"}
+  {"family": "leg_press", "alternatives": ["walking_lunge"], "sets": 3, "reps": [10,12],
+   "role": "accessory", "progression": "double", "increment_lb": 10},
+  {"note": "Core circuit — 10 min"}
 ]
 ```
 
-For runs: `{"run": "easy", "miles": [2, 2.5]}` or `{"run": "long", "miles": "arc"}` (arc
-ramp decides).
+Runs: `{"run": "easy", "miles": [2, 2.5]}` or `{"run": "long", "miles": "arc"}`.
 
-**`exercise_family`** is new and is the fix for the audit's finding that four
-substring-matching schemes disagree (`xp_service.py:31`, `analytics.py:126`,
-`cooldown_service.py:437`, `pr_detection.py:44`; `exercise_equivalence.py` is a fifth, with
-no callers). One table, one truth:
+**`family`** is the one canonicalization scheme. The seed already groups 169 canonical
+exercises and 349 aliases by `canonical_id` (`models/exercise.py:19`), so a family is
+`canonical_id` plus a curated overlay for the cases the audit found disagreeing
+(`xp_service.py:31` big-three substrings, `analytics.py:126` keyword map,
+`cooldown_service.py:437` fuzzy muscle map, `pr_detection.py:44`; `exercise_equivalence.py`
+has no caller outside its test):
 
 ```
 exercise_families    id (slug), display_name, primary_muscle, is_big_three, standards_key
-exercises            + family_id FK (backfilled by a one-time script from name/canonical_id)
+exercises            + family_id FK — backfilled from canonical_id via a committed
+                       name→slug dict; custom exercises name-matched, NULL allowed
 ```
 
-`BIG_THREE`, the strength-standards lookup, PR canonical grouping, cooldown muscle mapping,
-and the Directive's `_big_three_exercise_groups` all read `family_id`. The substring code
-paths are deleted, not kept as fallbacks.
+Consumers switch to `family_id` in the phase where each first needs it (§16); the
+substring schemes are deleted when their last reader moves, not before.
 
 ### 4.3 Import and templates
 
-- **`POST /campaign/import`** accepts the PWA's `data.js` shape verbatim (phases → arcs,
-  days → templates). One-time script `scripts/import_training_calendar.py` runs it for the
-  owner. Sets × reps strings ("5×5", "3×10-12", "2–2.5 mi", "3 → 4.5 mi (build weekly)")
-  are parsed into `items`; anything unparseable lands as a `note` and is flagged in the
-  response so nothing is silently dropped.
-- **`POST /campaign`** from a template picker with two seeds: the owner's hybrid plan and a
-  generic 4-day upper/lower. That is the entire template library for v3 — no marketplace.
-- Editing is in-app and coarse: move a hunt to another day, skip it, swap two templates,
-  change an arc's mileage band. Fine-grained template editing stays a JSON edit in v3.
+- **`POST /campaign/import`** accepts the PWA's `data.js` shape verbatim. Sets × reps
+  strings ("5×5", "3×10-12", "2–2.5 mi", "3 → 4.5 mi (build weekly)") parse into `items`;
+  "A or B" becomes `family` + `alternatives`; time-based items ("Core circuit 10 min",
+  "Light accessory only 15–20 min") become `note` rows. Anything unparseable is flagged in
+  the response so nothing is silently dropped. One-time script
+  `scripts/import_training_calendar.py` runs it for the owner.
+- **Which plan:** the PWA plan is the default import (it has check-offs and was trained
+  against). The Cowork Week 1 plan was never trained and is not imported. Open question
+  §18.2 records this as a decision to confirm, not to revisit.
+- **Templates:** one seed — the owner's hybrid plan. No library in v3.
+- Editing is in-app and coarse: move a hunt, skip it, swap two templates, change an arc's
+  mileage band. Template item editing stays a JSON edit in v3.
 
-### 4.4 Materialization
+### 4.4 Materialization and linking
 
-`planned_hunts` are written 8 days ahead by the nightly job (§9.2) and on any campaign edit.
-Materialization is idempotent per `(user_id, date)`. A planned hunt with `status=planned`
-and a past date becomes `skipped` at the next nightly run; a session logged on a day with a
-matching-type planned hunt links to it (`done`, or `modified` if the exercise set differs by
-more than one family).
+- **Lazy, idempotent.** `GET /hunts/today` and `GET /hunts/week` materialize any missing
+  `planned_hunts` for the requested range (+7 days) on first fetch. No scheduler needed;
+  the same pattern v2 chose for gate evaluation.
+- **Linking a logged session:** on save (all ingest paths), link to the planned hunt on the
+  same `local_day` with a matching `type`; else the nearest same-type planned hunt within
+  ±2 days → that hunt becomes `moved` with `moved_to = session day`. A Friday lift against
+  a Saturday plan is `moved`, not `skipped` + unlinked.
+- **Status:** `done` = every `main` and `secondary` family in the template appears in the
+  session (accessories dropped still count as done); `modified` = a main/secondary family
+  is missing or swapped outside `alternatives`; `skipped` = the day passed with no link.
+  Past `planned` hunts flip to `skipped` on the next fetch.
 
 ### 4.5 API
 
 | Endpoint | Returns |
 |---|---|
 | `GET /campaign/current` | campaign + arcs + current arc index + week-in-arc + deload flag |
-| `GET /hunts/today?client_date=` | today's `PlannedHuntResponse` (prescription included), or `null` on rest days |
+| `GET /hunts/today?client_date=` | today's `PlannedHuntResponse` (prescription + modulation applied now), or `null` on rest days |
 | `GET /hunts/week?start=` | 7 planned hunts with status + linked session summaries — the Hunt tab week view and the PWA replacement |
 | `PUT /hunts/{id}` | `{status: skipped}` · `{moved_to: date}` · `{swap_with: id}` |
 | `POST /campaign/import`, `POST /campaign`, `PUT /campaign/{id}` | as above |
 
 ### 4.6 UI
 
-- **Status tab:** the **TODAY'S HUNT** card replaces the Directive card's position (the
-  Directive/Briefing line renders *inside* it, §8.3). Shows type, title, location tag, the
-  main lift's prescribed top set ("Back Squat 5×5 @ 235"), or the run ("Easy 2.5 mi · HR ≤
-  150"), Condition modulation if any, and BEGIN HUNT. Rest days show a quiet REST card with
-  tomorrow's hunt.
-- **Hunt tab:** the month calendar gains a **week strip** at the top: 7 day cells with
-  planned type glyph, done/skipped state, and the pace strip the PWA had
-  (`WK 5 · 4.8/9.6 MI · 2 LIFTS · ON PACE`). Tap a future day → planned hunt sheet with the
-  prescription and move/skip. This is PWA parity; the PWA retires when it ships (§11).
+- **Status tab:** **TODAY'S HUNT** card takes the Directive card's slot (the System line
+  renders inside it, §8.3). Type, title, location tag, the main lift's prescribed top set
+  ("Back Squat 5×5 @ 235 · +5"), or the run ("Easy 2.5 mi · HR ≤ 150"), modulation line if
+  any, BEGIN HUNT. Rest days: quiet REST card with tomorrow's hunt.
+- **Hunt tab:** the month calendar gains a **week strip**: 7 day cells with planned type
+  glyph and done/moved/skipped state, plus the pace strip the PWA had
+  (`WK 5 · 4.8/9.6 MI · 2 LIFTS · ON PACE`). Tap a future day → planned hunt sheet with
+  the prescription and move/skip. PWA parity; the PWA retires when it ships (§11).
 
 ---
 
 ## 5. Prescription engine (deterministic)
 
 `app/services/prescription_service.py`. Pure function of (template item, athlete history,
-readiness, load state) → concrete sets. No LLM in this path. Every output carries a
-`rationale` with the real numbers used, because pillar 5 says the Hunter must be able to
-see why.
+readiness, load state) → concrete sets, with a `rationale` carrying the real numbers used.
+No LLM in this path.
 
 ### 5.1 Lifts
 
-**Anchor selection**, per exercise family, in order:
+**Anchor selection**, per family, in order:
 
-1. Last completed session of that family within 21 days with ≥ 1 set at `rpe ≤ rpe_cap+1`
-   → anchor = that session's working weight and the progression rule's verdict.
-2. Else current e1RM (`trend_service.weekly_best_e1rm_series` last point, or best set in
-   90 days) → weight = `round_to_increment(e1rm × pct_for_reps(reps_target) × 0.95)`, using
-   the Epley inverse the app already uses (`core/e1rm.py`).
-3. Else no anchor → prescription is sets × reps with weight `null` and rationale
-   "first session — pick a load you can finish at RPE 7–8" (this is exactly the Coach's
-   Week 1 instruction, now in-app).
+1. Last linked session of that family within 21 days → anchor = that session's working
+   weight and the progression verdict below.
+2. Else e1RM-derived start: best set in 90 days **with reps ≤ 8** (Epley overestimates
+   high-rep sets), weight = `round_to_increment(e1rm × pct_for_reps(target) × 0.90)`.
+3. Else no anchor → sets × reps with weight `null`; rationale "first session — pick a load
+   you can finish at RPE 7–8" (the Coach's own Week 1 instruction, now in-app).
 
-**Progression rules** (from `items[].progression`):
+**Progression verdicts** are decided by **reps**; RPE is optional and only ever slows
+progression:
 
-| Rule | Verdict from last session | Next prescription |
+| Rule | Last session | Next prescription |
 |---|---|---|
-| `linear` (main lifts, e.g. 5×5) | all sets hit target reps and max RPE ≤ `rpe_cap` | `+increment_lb` |
-| | any set short by ≤ 1 rep, or RPE = cap+1 | hold weight |
-| | short by ≥ 2 reps on ≥ 2 sets, or two consecutive holds | `−10%`, round to increment, flag `deload_lift` |
-| `double` (accessories, rep range [lo, hi]) | all sets ≥ `hi` | `+increment_lb`, reps reset to `lo` |
-| | else | hold weight, target `min(hi, last_reps+1)` |
-| `rpe` (top set + backoffs, future) | — | out of scope v3 |
+| `linear` (main lifts) | every set hit target reps | `+increment_lb` — unless RPE was logged and any set was ≥ `rpe_cap + 2`, then hold |
+| | any set short by 1 rep | hold weight |
+| | ≥ 2 sets short by ≥ 2 reps, **twice in a row** | `−10%`, round to increment, flag `deload_lift` |
+| `double` (accessories, range [lo, hi]) | every set ≥ `hi` | `+increment_lb`, target reps reset to `lo` |
+| | else | hold weight, target `min(hi, last_reps + 1)` |
 
-**Readiness modulation** (Condition band from `condition_service`, plus §6 guard):
+RPE absent = pass. Two successful 5×5 sessions at RPE 9 progress; the next miss holds.
+
+**Readiness modulation** is applied at **fetch time** (`GET /hunts/today`), never at
+materialization — the morning's sleep, HRV, and WHOOP recovery don't exist at 02:00:
 
 | Band | Modulation |
 |---|---|
-| PEAK | no change; if a Gate is open on this family, the gate's target set is appended as a final "Gate attempt" set (§10) |
-| BATTLE READY | no change |
-| STRAINED | main lifts `×0.95`, drop the last accessory set; rationale says so |
-| CRITICAL | hunt becomes `light`: main lifts ×0.85 for 3 sets, or the user takes the rest option the card offers |
-| Overreach Guard veto (§6.4) | overrides the above with its own rule; always shown |
+| PEAK / BATTLE READY | none; if a Gate targets this hunt, the gate attempt is set 1 (§10) |
+| STRAINED | main lifts ×0.95, drop the last accessory set; a Gate attempt is deferred to the next hunt on that family |
+| CRITICAL | hunt becomes `light`: main lifts ×0.85 for 3 sets, or the REST option on the card |
 
-Rounding: 5 lb barbell, 2.5 lb dumbbell (per family), honoring `preferred_unit` (2.5/1.25
-kg) — which requires the `weight_unit` fix in §12.
+Lifts never enter the Overreach Guard's veto path (§6.4); `deload_lift` and the arc's
+deload cadence are their back-off mechanisms.
+
+Rounding: 5 lb barbell, 2.5 lb dumbbell (per family), honoring `preferred_unit` (2.5 /
+1.25 kg) once §12 lands `weight_lb`.
 
 ### 5.2 Runs
 
 - **Weekly target miles** = linear ramp from `run_miles_min` to `run_miles_max` across the
-  arc's weeks; every `deload_every_n_weeks`-th week × `deload_factor`. Same math the PWA's
-  `expectedMiles()` does, moved server-side.
-- **Per-run distance:** long run = `min(long_run_miles_target_for_week, 0.35 × weekly)`;
-  easy runs split the remainder evenly across the template's easy-run days, clamped to
-  the template's range.
-- **Effort, not pace:** easy = HR cap at the user's zone-2 ceiling (from
-  `hr_zone_seconds` history: the bpm below which ≥ 70% of easy-run time has fallen over
-  the last 6 easy runs; fallback = 180 − age × 0.9 until 6 runs exist). Long runs get the
-  same cap. Pace is reported after, never prescribed in v3.
-- **Guard:** §6.4 can reduce a run's distance or convert it to `easy`; the card says why.
+  arc's weeks; every `deload_every_n_weeks`-th week × `deload_factor`. Same math as the
+  PWA's `expectedMiles()`, moved server-side and stored on the planned week so §6 can
+  compare against it.
+- **Long run** = the arc's `long_run_miles` progression for that week (the plan is the
+  authority). Easy runs split the remainder across the template's easy-run days, clamped to
+  each template's range.
+- **Effort, not pace:** easy and long runs carry an HR cap = the upper bound of zone 2 in
+  the app's existing zone table (the same `zoneKey(forPercent:)` boundaries
+  `HealthKitManager` uses to compute `hr_zone_seconds`, keyed off profile age), overridable
+  in Hunter › Coach settings. Pace is reported after, never prescribed.
+- **Guard:** §6.4 may reduce a run's distance or convert it to easy; the card says why.
 
 ### 5.3 Where prescriptions show
 
-- Today's Hunt card (top set only), planned hunt sheet (all sets), and — the point of the
-  exercise — **pre-filled into LogView v2** (§7).
+Today's Hunt card (top set), planned hunt sheet (all sets), and pre-filled into LogView v2
+as ghost values (§7.1).
 
 ---
 
@@ -315,166 +314,173 @@ kg) — which requires the `weight_unit` fix in §12.
 
 ### 6.1 One currency
 
-`app/services/training_load_service.py`. Per session, one `load` number, plus `miles` kept
-separately because mileage rules are stated in miles:
+`app/services/training_load_service.py`. Per session, one `load` number; `miles` kept
+separately because the rules are stated in miles:
 
 | Source | Load formula | Fallback |
 |---|---|---|
-| Run/cardio with HR zones | Edwards TRIMP: `Σ zone_minutes × zone_weight` with z1..z5 = 1..5 (from `hr_zone_seconds`) | duration × 2.5 (moderate) when zones are missing; flagged `estimated` |
-| Lift with per-set RPE | session-RPE (Foster): `session_rpe_or_mean_set_rpe × duration_minutes` | if no RPE: `Σ(sets) × 6 × (duration/60)`; flagged `estimated`. Duration now persists (§7 fix) |
-| Anything with WHOOP strain | keep `arise_strain` for display; **do not** mix into load (different scale) | — |
+| Run/cardio with HR zones | Edwards TRIMP: `Σ zone_minutes × zone_weight`, z1..z5 = 1..5 (from `hr_zone_seconds`) | duration × 2.5, flagged `estimated` |
+| Lift | session-RPE (Foster): `(session_rpe or mean set rpe) × duration_minutes` | if no RPE: `Σ sets × 6 × duration/60`, flagged `estimated` (duration persists after §7.5) |
+| WHOOP strain | display only (`arise_strain`); never mixed into load | — |
 
-This is deliberately simple. The audit's item 10 (cardio fatigue capped at 5 effective sets)
-is fixed by feeding TRIMP into `cooldown_service` for cardio instead of duration-with-a-cap.
+TRIMP also replaces duration-with-a-cap as the cardio input to `cooldown_service`
+(`cooldown_service.py:122-123`), so a long run finally costs more recovery than a jog.
 
 ### 6.2 Daily series
 
-New table `daily_training_load`: `user_id, date(local), run_load, lift_load, total_load,
-miles, acute_7d, chronic_28d, acwr, miles_7d, miles_prev_7d, long_run_share, flags JSON`.
-Recomputed for the trailing 35 days on every ingest path (the three that already share PR
-detection: `api/workouts.py`, `api/sync.py`, screenshot save; plus HealthKit import) and by
-the nightly job. Acute/chronic are 7- and 28-day EWMAs of `total_load` (EWMA, not rolling
-sum, so a rest day decays rather than cliff-drops).
+New table `daily_training_load`: `user_id, local_day, run_load, lift_load, total_load,
+miles, run_acute_7d, run_chronic_28d, run_acwr, miles_7d, miles_plan_7d, longest_run_7d,
+flags JSON`. Recomputed for the trailing 35 days on every ingest path (the three that share
+PR detection plus HealthKit import) and on any `GET /load`. Acute/chronic are 7- and 28-day
+EWMAs (a rest day decays rather than cliff-drops). Requires `local_day` (§12.1).
 
-### 6.3 Rules (the guard's vocabulary)
+### 6.3 Rules
+
+Stated against the **plan**, not last week, so a post-deload week (×0.75 → ×1.0 is a 33%
+jump by design) does not trip the guard:
 
 | Flag | Condition | Meaning |
 |---|---|---|
-| `acwr_high` | `acwr > 1.30` | acute load outrunning fitness |
-| `acwr_critical` | `acwr > 1.50` | classic injury-risk zone |
-| `ramp_high` | `miles_7d > 1.10 × miles_prev_7d` and `miles_7d > 8` | the 2024 failure mode |
-| `long_run_share` | longest run in 7d > 35% of `miles_7d` | too much of the week in one run |
+| `ramp_high` | `miles_7d > 1.20 × miles_plan_7d` and `miles_7d > 8` | ahead of the plan's ramp — the PWA's rule, kept |
+| `long_run_share` | `miles_7d ≥ 15` and `longest_run_7d > 0.40 × miles_7d` | too much of a real week in one run; below 15 mi/week the plan's `long_run_miles` is the authority and no flag exists |
+| `run_acwr_high` | `run_acwr > 1.30`, **only after 28 days of run history** | acute running load outrunning fitness |
+| `run_acwr_critical` | `run_acwr > 1.50`, same cold-start rule | classic injury-risk zone |
 | `deload_due` | week-in-arc hits the arc's cadence, or two `deload_lift` verdicts in one week | planned or earned back-off |
-| `monotony_high` | mean/sd of daily load over 7d > 2.0 | same load every day, no variation |
 
-### 6.4 The Overreach Guard (how flags change prescriptions)
+ACWR is computed on **run load only**. A heavy Sat/Sun weekend spikes total load every
+Monday; that is the plan working, not a risk signal.
 
-Applied after readiness modulation, before the prescription is stored:
+### 6.4 The Overreach Guard
+
+Applied at fetch time to **runs only**, after readiness modulation:
 
 | Flag(s) | Action |
 |---|---|
-| `acwr_critical` **or** (`acwr_high` and Condition < 65) | today's run → skipped-with-reason (REST DECREED, the v2 copy); lifts → `light` |
-| `acwr_high` | runs −20% distance, converted to `easy`; lifts unchanged |
-| `ramp_high` | cap this week's remaining run miles so `miles_7d ≤ 1.10 × miles_prev_7d`; long run first |
-| `long_run_share` | cap the next long run at 35% of the weekly target |
-| `deload_due` | apply the arc's `deload_factor` to runs and −15% to lift volume (drop a set) |
+| `run_acwr_critical` **or** (`run_acwr_high` and Condition < 65) | today's run → REST DECREED (v2 copy) with the numbers |
+| `run_acwr_high` | −20% distance, converted to easy |
+| `ramp_high` | cap the week's remaining run miles so `miles_7d ≤ 1.20 × miles_plan_7d`; long run cut first |
+| `long_run_share` | cap the next long run at 40% of `miles_7d` |
+| `deload_due` | arc `deload_factor` on runs; lifts drop one set per main lift |
 
 Everything the guard does is written into `planned_hunts.rationale` and rendered on the
-card ("Run cut to 2 mi: 7-day miles are 14% over last week").
+card ("Run cut to 2 mi: 14% ahead of the arc's ramp").
 
 ### 6.5 Condition v2
 
-Two changes to `condition_service`:
+Two contained changes in `condition_service` (weights at `condition_service.py:25-30`):
 
-- **Input 4 replaced:** "yesterday's strain" → **acute-vs-chronic load**: subscore
-  `100` at `acwr ≤ 1.0`, linear to `40` at `acwr = 1.5`, floor 40. Same weight (0.10).
-- **Input 6 added:** **HRV trend** (weight 0.10, taken from recovery's 0.40 → 0.30 when
-  HRV is present; renormalization handles absence as today): 7-day mean vs 28-day mean,
-  subscore `100 − 300 × max(0, 1 − ratio)`, floor 40. HRV is already stored from both
-  HealthKit (v2.1 chunk 1) and WHOOP; today nothing reads it.
+- **Input 4 replaced:** "yesterday's strain" → **acute-vs-chronic total load**, subscore
+  `100` at ratio ≤ 1.0, linear to `40` at 1.5, floor 40; unavailable (renormalized away)
+  until 28 days of history. Same weight 0.10.
+- **Input 6 added:** **HRV trend** (weight 0.10; recovery's 0.40 → 0.30 when HRV is
+  present): 7-day mean vs 28-day mean, subscore `100 − 300 × max(0, 1 − ratio)`, floor 40.
 
-Band thresholds unchanged so Gates and the rest directive keep their meaning.
+Band thresholds unchanged.
 
 ### 6.6 Surfaces
 
-- **Status:** a compact **LOAD** strip under Condition: acute/chronic sparkline (28 days),
-  ACWR badge in band color, `miles_7d` vs plan. Tap → Load sheet (rules, current flags,
-  the week's runs and lifts as load bars).
-- **Power › Load** segment replaces the unopened Exertion segment (v2.1 interview: "Exertion
-  tab: unopened"). Keeps the strain/volume small multiples; adds the ACWR series and weekly
-  miles vs plan. Cardiac cost stays as a card inside it.
+A compact **LOAD** strip on Status under Condition (28-day run acute/chronic sparkline,
+ACWR badge, `miles_7d` vs plan), tap → Load sheet (rules, flags, the week's runs and lifts
+as load bars). **No Power › Load segment** — the unopened Exertion segment is the precedent;
+Power keeps its current four segments.
 
 ---
 
 ## 7. LogView v2 — confirm-or-adjust
 
-The v2 spec ruled the active-hunt flow out of scope. It is the center of v3 because a
-prescription is worthless if confirming it costs more taps than typing from scratch. Every
-item below has an anchor in the iOS audit.
+The v2 spec ruled the active-hunt flow out of scope. It is the first thing v3 ships because
+it changes Saturday behavior with no new tables, and because a prescription is worthless if
+confirming it costs more taps than typing from scratch. Split into **2a** (no plan
+dependency) and **2b** (prescription pre-fill).
 
-### 7.1 Entry
+### 7.1 Entry (2a → 2b)
 
-- **BEGIN HUNT** on a day with a planned hunt opens the session **pre-populated**: exercises
-  in template order, prescribed sets as ghost values (grey, italic), "last time" beside each
-  row. The free-form path (blank session) remains one tap away ("Start empty hunt").
-- **Repeat last hunt** on the Hunt tab and the idle screen (audit gap 5) — copies exercises
-  and last weights as ghosts. Zero templates exist today; this is the cheapest one.
+- **2a — Repeat last hunt** on the Hunt tab and the idle screen: copies the last session's
+  exercises with its weights as ghost values. The only "template" in v3 until Campaign ships.
+- **2b — BEGIN HUNT** on a day with a planned hunt opens **pre-populated**: exercises in
+  template order, prescribed sets as ghost values, "last time" beside each row. "Start empty
+  hunt" stays one tap away.
 
-### 7.2 Set row
+### 7.2 Set row (2a unless noted)
 
 | Element | Today | v3 |
 |---|---|---|
-| Completion | derived from `weight>0 && reps>0` in five places (`LogView.swift:1193`, `:1319`, `LogViewModel.swift:58`, `:76`, `SupersetCard.swift:19`) | stored `isCompleted` + `completedAt`; a ✓ button on the row. Tapping ✓ on a row with empty fields **accepts the ghost values** (one tap logs a prescribed set) |
-| Last time | none | grey column `225×5` from `GET /exercises/{id}/last-performance` (new; returns last session's sets, best e1RM, days ago) |
-| Target | none | ghost weight/reps from the prescription; a small `↑+5` chip when the progression rule moved the weight |
-| Live feedback | none | e1RM of the entered set vs the family's best; turns gold when it would be a PR, purple when it clears an open Gate |
-| Unit | hardcoded `lb` (`LogView.swift:1423`, `LogViewModel.swift:214`) | honors `preferred_unit` |
-| Warm-up | none; screenshot import drops warm-ups (`ScreenshotProcessingViewModel.swift:145`) | "Add warm-ups" generates 40/60/80% ramp rows marked `isWarmup` (persisted; excluded from PRs/volume) |
-| Plate math | none | tap the weight → plate sheet for the bar in use (45/35 lb, 20 kg) |
-| RIR | hardcoded nil (`LogViewModel.swift:216`) | sent when set |
+| Completion | derived from `weight>0 && reps>0` in five places (`LogView.swift:1193`, `:1319`, `LogViewModel.swift:58`, `:76`, `SupersetCard.swift:19`) | stored `isCompleted`; ✓ button on the row. Tapping ✓ on an empty row **accepts the ghost values** — one tap logs a set |
+| Last time | none | grey column `225×5` from `GET /exercises/{id}/last-performance` (new; last session's sets, best e1RM, days ago) |
+| Target (2b) | none | ghost weight/reps from the prescription; `↑+5` chip when the rule moved the weight |
+| Live feedback | none | e1RM of the entered set vs the family's best; gold when it would be a PR, purple when it clears an open Gate |
+| Unit | hardcoded `lb` (`LogView.swift:1423`, `LogViewModel.swift:214`) | honors `preferred_unit` (after §12.3) |
+| Warm-up | none; screenshot import drops warm-ups (`ScreenshotProcessingViewModel.swift:145`) and has no column to persist them | "Add warm-ups" generates 40/60/80% rows marked `is_warmup` (new column; excluded from PRs/volume) |
+| RIR | hardcoded nil at `LogViewModel.swift:217` though `SetCreate` carries it on both sides | send the entered value; no contract change |
+
+Plate calculator: **v3.1**.
 
 ### 7.3 Rest timer v2
 
-Replaces `QuestTimerCard` (`LogView.swift:973-1141`): per-exercise default countdown
-(main 180 s, secondary 120 s, accessory 90 s, editable per family), starts on ✓ not on
-keystroke, lives in a **sticky bottom bar** (always visible), haptic at 10 s and 0, and a
-**local notification** at zero when backgrounded (`NotificationManager` already schedules
-locals for `streak_at_risk`). Phase 5 adds a Live Activity for the same state.
+Replaces `QuestTimerCard` (`LogView.swift:973-1141`): per-exercise default countdown (main
+180 s, secondary 120 s, accessory 90 s, editable), starts on ✓ not on keystroke, lives in a
+**sticky bottom bar**, haptic at 10 s and 0, local notification at zero when backgrounded
+(`NotificationManager` already schedules locals). Live Activity for the same state: Phase 5.
 
 ### 7.4 Draft persistence
 
 An `ActiveHuntStore` mirroring `PendingWorkoutStore` (`PendingWorkoutStore.swift:91-135`)
-saves the in-progress session on every mutation. Reopening the app within 12 hours shows a
-RESUME HUNT banner on Status and the idle screen. Swipe-back on an active hunt asks before
-discarding (today only the X button does, `LogView.swift:278-288`).
+saves the in-progress session on every mutation. Reopening within 12 hours shows RESUME HUNT
+on Status and the idle screen. Swipe-back on an active hunt asks before discarding (today
+only the X button does, `LogView.swift:278-288`).
 
 ### 7.5 Save
 
-- Sticky FINISH bar; `canSave` no longer blocks on blank trailing sets (they are dropped
-  with a toast).
-- One celebration screen stacking PR(s) → Gate clear → XP → rank, with a single CONTINUE
-  (today: up to three sequential full-screen covers, `LogView.swift:142-221`).
-- The create payload carries `duration_seconds` (measured today, discarded at
-  `LogViewModel.swift:232`), `is_bodyweight`, `is_warmup`, `rir`, `completed_at` per set,
-  and `planned_hunt_id`. Backend links the session to the planned hunt and sets its status.
-- Post-save edit: date, notes, RPE, and sets become editable from the detail view
-  (today only the name is, `QuestDetailView.swift:102-130`). `PUT /workouts/{id}` exists.
+- Sticky FINISH bar; `canSave` no longer blocks on blank trailing sets (dropped with a
+  toast).
+- One celebration screen stacking PR(s) → Gate clear → XP → rank, single CONTINUE (today:
+  up to three sequential full-screen covers, `LogView.swift:142-221`).
+- **Contract (net new only — the audit found most of it already exists):**
+  `WorkoutCreate.duration_seconds` (the column and response exist, `models/workout.py:85`,
+  the create schema doesn't), `WorkoutCreate.planned_hunt_id` (2b), `Set.is_bodyweight`,
+  `Set.is_warmup` (new columns + `SetCreate` fields). Per-set completion time reuses the
+  existing `Set.end_time`. `rir` is a one-line iOS fix.
+- Post-save edit: date, notes, RPE, and sets editable from the detail view (today only the
+  name is, `QuestDetailView.swift:102-130`); `PUT /workouts/{id}` exists.
 
 ### 7.6 Picker
 
-Recents (last 30 days, most-frequent first), favorites, multi-select, muscle filter, and
-clearing filters on dismiss (`LogView.swift:1628-1634` leaks state). Swapping an exercise
-inside a prescribed hunt offers same-family alternatives first, then same-primary-muscle.
+Recents (30 days, most-frequent first), favorites, multi-select, muscle filter; clear
+filters on dismiss (`LogView.swift:1628-1634` leaks state). Swapping inside a prescribed hunt
+(2b) offers the item's `alternatives` first, then same-family, then same-primary-muscle.
 
 ### 7.7 Small fixes folded in
 
-Locale-safe number parsing (`Double(weightText)` fails on comma decimals,
-`LogViewModel.swift:343`); next-field keyboard affordance; exercise reorder; swipe-to-delete
-set; enqueue offline on 5xx too, not only `networkError` (`LogViewModel.swift:245-251`).
+Locale-safe number parsing (`Double(weightText)`, `LogViewModel.swift:343`); next-field
+keyboard affordance; exercise reorder; swipe-to-delete set; enqueue offline on 5xx too, not
+only `networkError` (`LogViewModel.swift:245-251`).
 
-### 7.8 Instrumentation
+### 7.8 Acceptance
 
-Client-side timing: `set_logged` events with milliseconds since previous set and
-`source: prescribed|ghost_accepted|typed`. This is the one metric v3 is judged on for J2.
-Stored locally and summarized into a `logging_stats` field on the weekly debrief request;
-no third-party analytics SDK.
+No analytics SDK, no event table. Acceptance for 2a is a stopwatch: the owner logs a
+prescribed-shape 5×5 session and the median set takes ≤ 5 s from ✓ to ✓. Recorded in the
+roadmap when it passes.
 
 ---
 
 ## 8. The Coach
 
-### 8.1 Why an LLM, and where it is allowed
+### 8.1 Division of labor (revised after red-team)
 
-The deterministic engine (§5, §6) already answers "what weight." What it cannot do is the
-thing the user built a Cowork job to get: read the week as a whole, notice that squat
-stalled the week sleep fell apart, connect the WHOOP recovery dip to the long-run jump, and
-say so in two sentences with a concrete change. That is language over structured data, and
-it is what Claude is for.
+The first draft had the model proposing daily modulations and weekly ops that the engine
+then clamped — two deciders for one number. Revised rule: **the engine generates every
+number, every flag, and every candidate adjustment; the model ranks, explains, and
+narrates.** Concretely:
 
-The Coach is allowed to: **explain**, **prioritize**, **propose typed adjustments**, and
-**answer questions over the athlete's own data**. It is not allowed to: write to any table
-directly, prescribe outside the guard's bounds, or invent numbers not present in its
-context. Structured outputs plus a validator enforce all four.
+| Surface | Engine | Model |
+|---|---|---|
+| Daily System line (Today's Hunt card) | rationale text with real numbers ("+5: last week 225×5×5 · Condition 71 BATTLE READY") | **not used in v3** — "System voice" rewrite of the same line is a v3.1 toggle |
+| Weekly Debrief | adherence, highlights, concerns from flags, **candidate ops** from §5/§6 verdicts (progression holds/deloads, next week's miles vs plan, `deload_due`, `moved` patterns) | writes `summary` and `concerns[].text`, **ranks candidate ops to ≤ 3**, writes each op's `reason`; may add ops **only** from the typed vocabulary, subject to the same validators |
+| Ask the System (v3.1) | context | bounded Q&A over the athlete context; any op it proposes goes through the same accept flow |
+
+This halves the LLM surface, keeps hallucinated numbers off the daily card, and still
+delivers the thing the Cowork job was built for: a Sunday read of the week that connects
+sleep, mileage, and the squat stall in two sentences.
 
 ### 8.2 Athlete context builder
 
@@ -483,66 +489,49 @@ confirmed most of it is callable without new SQL:
 
 | Section | Source | Budget |
 |---|---|---|
-| Campaign, current arc, week-in-arc, next 7 planned hunts with prescriptions | §4 | ~600 tokens |
-| Last 4 weeks of sessions: lifts with sets (weight, reps, RPE, e1RM), runs with miles/pace/avg HR, weekly `run_miles` | `api/calendar.py:49` (`weeks=4`) | ~3,000 |
+| Campaign, arc, week-in-arc, next 7 planned hunts with prescriptions and status | §4 | ~600 tokens |
+| Last 4 weeks of sessions: lifts with sets, runs with miles/pace/avg HR, weekly `run_miles` | `api/calendar.py:49` (`weeks=4`) | ~3,000 |
 | Per-family weekly-best e1RM series (12 wks), slope, projection | `trend_service.py:22`, `:52`, `:76` | ~400 |
 | Condition today + inputs, muscles cooling | `condition_service.py:155` | ~250 |
-| Load: 28-day daily series, ACWR, flags | §6.2 | ~500 |
-| Sleep / HRV / RHR / recovery 14-day series | **new** `daily_activity_series()` — the audit's missing helper #1 | ~400 |
+| Load: 28-day daily series, run ACWR, flags | §6.2 | ~500 |
+| Sleep / HRV / RHR / recovery 14-day series | **new** `daily_activity_series()` | ~400 |
 | Goals + pace, PRs in window, open/cleared gates | `goal_service.py:287`, `weekly_report_service.py:162`, `gate_service.py:365` | ~300 |
-| Last debrief's accepted/rejected adjustments, last 7 briefings | `coach_outputs` (§8.5) | ~400 |
-| Athlete profile: age, sex, bodyweight trend, injury notes (new free-text profile field) | `UserProfile` + bodyweight | ~150 |
+| Candidate ops (engine) + last debrief's decisions | §8.4, `coach_outputs` | ~400 |
+| Profile: age, sex, bodyweight trend, injury notes (new free-text profile field) | `UserProfile` + bodyweight | ~150 |
 
-≈ 6–8K tokens of context. The system prompt (coaching philosophy, voice, output contract,
-guardrail statement) is frozen text and cached with `cache_control` (§8.6). Volatile context
-goes in the user turn. Numbers are serialized with fixed key order and fixed precision so
-identical weeks hash identically (`context_hash` on the stored output).
+≈ 6–8K tokens. Serialized with fixed key order and precision so identical weeks hash
+identically (`context_hash`).
 
-### 8.3 Hunt Briefing (daily)
+### 8.3 Daily System line
 
-- **When:** written by the nightly job for the next local day, **only for days with a
-  planned hunt** (lift, run, or light). Rest days get no briefing and no push — the v2 §11
-  argument against daily nags holds; the difference is that a training-day briefing has
-  content.
-- **Output contract** (structured output, JSON schema):
+Engine-generated, rendered inside the TODAY'S HUNT card in the mono/bracket dialect the v2
+Directive used. Content = the prescription rationale + the highest-priority flag, with
+numbers. Tap → the planned hunt sheet (the "why" is the rationale itself). The
+`user_directives` table and rules engine retire in Phase 4; the rules' useful *flags*
+(streak lapse, per-lift volume gap, lift lag with a calendar-week window) move into the
+context builder and the Debrief's concerns.
 
-```json
-{
-  "headline": "≤ 90 chars, System voice",
-  "body": "≤ 2 sentences with the numbers that matter",
-  "modulation": {"type": "none|reduce_run|reduce_lift|swap_to_easy|rest",
-                 "magnitude_pct": 0, "reason": "…"} ,
-  "watch": ["acwr_high"]
-}
-```
+### 8.4 Weekly Debrief
 
-- **Validator:** `modulation` may only move within what §5.1/§6.4 already allow (±5% lift,
-  −20% run, swap-to-easy, rest); anything larger is clamped and logged. If the engine's own
-  guard already decided REST, the model's job is to explain, not re-decide.
-- **Where it renders:** inside the TODAY'S HUNT card as the System line (mono/bracket
-  styling — the v2 Directive's dialect survives here), tap → Briefing sheet with the "why"
-  (context numbers cited) and the last 7 briefings. The `user_directives` table and rules
-  engine are retired; the rules' *flags* (streak lapse, plateau, volume gap, lift lag) move
-  into the context builder as inputs the Coach can cite. XP for "directive followed" becomes
-  XP for **hunt completed as planned** (§13).
-- **Push:** `hunt_briefing` at a user-set time (default 06:30 local), training days only,
-  opt-in via the existing preferences table. Payload = headline.
-
-### 8.4 Weekly Debrief (Sunday)
-
-- **When:** nightly job on Sunday 20:00 local (or Monday 05:00 if Sunday's hunt isn't
-  logged yet — configurable). Also on demand from the Status "This Week" card.
+- **When:** generated lazily on the first fetch after Sunday 20:00 local (or on demand from
+  the This Week card any time after Saturday's hunt is logged). Push arrives only once §9.2
+  exists.
+- **Engine step** (`debrief_service.build_candidates`): adherence counts; highlights from
+  PRs, gate clears, `week completed as planned`; concerns from §6 flags, `deload_lift`
+  verdicts, Condition < 65 streaks, sleep < 6 h ≥ 3 nights; **candidate ops** with their
+  numeric justification.
+- **Model step:** `client.beta.messages.parse(...)` with the schema below; the candidate ops
+  are in the context; the model returns them ranked with reasons, possibly fewer, possibly
+  plus additional typed ops.
 - **Output contract:**
 
 ```json
 {
   "summary": "≤ 4 sentences: what happened vs plan, the one thing that mattered",
-  "adherence": {"planned": 5, "done": 4, "modified": 1, "skipped": 0},
-  "highlights": [{"kind": "pr|gate|milestone|consistency", "text": "…"}],
-  "concerns":   [{"flag": "ramp_high|acwr_high|sleep_low|lift_stall|…", "text": "…"}],
+  "concerns":   [{"flag": "ramp_high|run_acwr_high|sleep_low|lift_stall|…", "text": "…"}],
   "adjustments": [
-    {"op": "set_progression", "family": "back_squat", "increment_lb": 5,
-     "reason": "…", "confidence": "high|medium|low"},
+    {"op": "set_progression", "family": "back_squat", "increment_lb": 5, "reason": "…",
+     "confidence": "high|medium|low", "source": "engine|model"},
     {"op": "set_week_miles", "week_start": "2026-09-07", "miles": 12.5, "reason": "…"},
     {"op": "deload_now", "scope": "lifts|runs|all", "reason": "…"},
     {"op": "swap_days", "a": "2026-09-09", "b": "2026-09-10", "reason": "…"},
@@ -553,61 +542,52 @@ identical weeks hash identically (`context_hash` on the stored output).
 }
 ```
 
-- **Typed ops are the whole point.** Each op has a deterministic applier in
-  `campaign_service` and a validator (miles within ±15% of the arc's ramp value unless
-  `deload_now`; increments within the family's increment; no more than one `deload_now`
-  per 3 weeks; `extend_arc` ≤ 2 weeks). Invalid ops are returned to the user as
-  "suggested, out of bounds" — visible, not applied.
+- **Validators** (deterministic appliers in `campaign_service`): miles within ±15% of the
+  arc's ramp value unless `deload_now`; increments equal to the family's increment; at most
+  one `deload_now` per 3 weeks; `extend_arc ≤ 2`; ≤ 3 adjustments; every family named must
+  exist in the context. Out-of-bounds ops render as "suggested, out of bounds" — visible,
+  not applied. Adherence, highlights, and all numbers come from the engine step, not the
+  model output.
 - **UI:** `WeeklyReportView` becomes the **Debrief sheet**: summary, adherence ring,
-  highlights, concerns, then adjustments as cards with ACCEPT / DISMISS. Accepting rewrites
-  next week's `planned_hunts` and stores the decision. The existing goal-pace section stays
-  below as "Goal pace". The static `_generate_suggestions` prose is deleted.
-- **Push:** `weekly_report_ready` already exists and is already sent from
-  `api/weekly_report.py:53` — it now fires from the job, not from a GET.
+  highlights, concerns, adjustments as ACCEPT / DISMISS cards. Accepting rewrites next
+  week's `planned_hunts`. The goal-pace section stays below. The static
+  `_generate_suggestions` prose is deleted.
+- **Fallback:** on refusal, timeout, or schema failure the sheet shows the engine step
+  alone (summary = adherence + top concern). The app never shows an empty debrief.
 
-### 8.5 Storage and auditability
+### 8.5 Storage
 
 ```
-coach_outputs   id, user_id, kind(briefing|debrief|answer), for_date, context_hash,
-                prompt_version, model, input_tokens, output_tokens, cache_read_tokens,
-                output JSON, validated JSON, decisions JSON (accepted/dismissed op ids),
-                created_at
+coach_outputs   id, user_id, kind(debrief|answer), for_date, context_hash, prompt_version,
+                model, output JSON, validated JSON, decisions JSON, created_at
 ```
 
-Every card that shows Coach text links to its row's "why" (the context sections it cited).
-If the model refuses (`stop_reason == "refusal"`) or the call fails, the card falls back to
-the engine's own rationale — the app never shows an empty briefing.
+Token counts are logged, not stored. "Why did it say that" = the stored context hash plus
+the candidate-ops snapshot inside `validated`.
 
-### 8.6 Model, cost, and API shape
+### 8.6 Model, SDK, cost
 
-- **Model:** `claude-opus-5` (the current default; the screenshot extractor stays on
-  `claude-sonnet-5` — vision extraction is a different job). Adaptive thinking on (the
-  default); `output_config.effort` `medium` for briefings, `high` for debriefs.
-  Structured outputs via `output_config.format` with the schemas above (`client.messages
-  .parse()` in the Python SDK). Include `fallbacks: "default"` with the
-  `server-side-fallback-2026-07-01` beta so a policy decline (unlikely for fitness text,
-  possible for injury questions) is re-run automatically rather than blanking the card.
-- **Caching:** frozen system prompt + output schema first with `cache_control`; the
-  volatile athlete context after. Debrief and briefing share the same system prefix.
-- **Cost, one user:** briefing ≈ 8K input (≈ 2K uncached after the prefix caches) + 300
-  output ≈ $0.02; ×5 training days ≈ $0.10/week. Debrief ≈ 10K input + 1.5K output ≈
-  $0.09. **≈ $0.80/month.** Ten users: $8/month. Cost is not a design constraint here; the
-  scan-credit paywall was built for a per-image cost this feature does not have.
-- **Ask the System** (v3.1): a bounded chat over the same context ("why is bench stalled?",
-  "can I move Saturday's squat to Friday?"). Multi-turn with the SDK's conversation
-  pattern; ops proposed in chat go through the same validators and ACCEPT cards. Not in the
-  v3 critical path.
+- **Model:** `claude-opus-5`, adaptive thinking (default), `output_config.effort: "high"`,
+  structured output via `client.beta.messages.parse(...)` (beta namespace is required
+  because the call also passes `betas` for `fallbacks: "default"` with
+  `server-side-fallback-2026-07-01`, so a policy decline on injury-adjacent text re-runs
+  instead of blanking the sheet). Explicit `timeout` (60 s) and `max_retries=1`; one
+  try/except per user so one failure never aborts a batch. The screenshot extractor stays
+  on `claude-sonnet-5`.
+- **SDK pin:** `requirements.txt:22` is `anthropic>=0.49.0` (floating); the local venv has
+  0.111.0, which has `beta.messages.parse`; PyPI's 1.x line is a breaking rewrite. **Pin
+  `anthropic==0.111.0`** in Phase 0 and treat the 1.x upgrade as its own task.
+- **Caching:** frozen system prompt + schema first with `cache_control`; volatile context
+  after.
+- **Cost, one user:** one debrief/week ≈ 10K input + 1.5K output ≈ $0.09 → **≈ $0.40/month**.
+  The v3.1 daily line would add ≈ $0.10/week. Cost is not a design constraint.
 
-### 8.7 Prompt principles (recorded so the first prompt isn't written from scratch)
+### 8.7 Prompt principles
 
-- Voice: the System — terse, declarative, numbers over adjectives. No exclamation marks.
-- Cite the context: every claim in `body`/`summary` must reference a number present in the
-  context; the validator rejects outputs that name a lift family absent from the context.
-- Prefer one change over three. `adjustments` ≤ 3 per debrief.
-- Never contradict the guard: if a flag is set, the coach explains it; it cannot argue it
-  away.
-- Prompt is versioned (`prompt_version`) and lives in `app/coach/prompts/`. Changing it is
-  a code change with a test that replays three stored contexts and checks the schema.
+Voice: the System — terse, declarative, numbers over adjectives, no exclamation marks. Cite
+the context (validator rejects unknown families). Prefer one change over three. Never
+argue with a flag. Prompt versioned in `app/coach/prompts/` with a replay test over three
+stored contexts. Budget a tone-tuning pass over 10 stored contexts before enabling any push.
 
 ---
 
@@ -616,77 +596,81 @@ the engine's own rationale — the app never shows an empty briefing.
 ### 9.1 Background ingestion (iOS)
 
 `HKObserverQuery` + `enableBackgroundDelivery` for workouts (immediate), sleep, HRV, and
-resting HR (hourly). The observer's update handler runs the existing
-`HealthKitManager.importNewWorkouts` / `syncTodayOnly` paths and calls the completion
-handler. `UIBackgroundModes` already declares `fetch` and `processing`; this finally uses
-them. Success metric: a run recorded on the watch is visible in Hunt within 15 minutes with
-the phone in a pocket. This also removes the PWA README's "can lag a minute or two" caveat
-and makes the nightly job's inputs complete before it runs.
+resting HR (hourly). The observer's handler runs the existing
+`HealthKitManager.importNewWorkouts` / `syncTodayOnly` and calls the completion handler.
+`UIBackgroundModes` already declares `fetch` and `processing`; this finally uses them.
+Success: a run recorded on the watch is visible in Hunt within 15 minutes with the phone in
+a pocket. Foreground sync stays as the backstop; iOS throttles background delivery.
 
-### 9.2 Nightly job (backend)
+### 9.2 Scheduler — deferred until pushes need it
 
-The v2 roadmap deliberately avoided scheduler infra ("no-extraneous-features"). v3 needs
-one: prescriptions must exist before the user wakes up, briefings need to be pre-written for
-the push, and gate spawn should not depend on someone opening the Status tab.
+Everything in v3 generates lazily and idempotently on fetch (§4.4, §8.4, gate evaluation
+as today). A scheduler is needed only for content that must exist *before* the user opens
+the app: a `weekly_report_ready` push with a real debrief behind it, `gate_opened` pushes
+that don't wait for a Status open, and the v3.1 daily line. When that time comes:
 
-- **Mechanism:** a second Railway service in the same project, `cron`, with
-  `cronSchedule = "0 * * * *"` and `startCommand = "python -m app.jobs.hourly"`. Hourly so
-  each user's local 02:00 / 20:00 windows are hit; the job is idempotent per
-  `(user, date, task)`. No long-running process, no APScheduler, no Redis.
-- **Tasks:** `expire_stale_gates`, recompute `daily_training_load` (35 days), Condition v2
-  snapshot for the day (stored now — the audit's `condition_peak_7` approximation goes
-  away), `evaluate_gate_spawns`, materialize planned hunts (+8 days), generate tomorrow's
-  prescription, write tomorrow's briefing (training days), Sunday debrief, send pushes,
-  mark past `planned` hunts `skipped`.
-- **Observability:** each task writes a `job_runs` row (task, user, started, finished,
-  status, error). Sentry is already wired in `main.py`.
+- A second Railway service in the same project **with its own config file** —
+  `backend/railway.cron.toml` — because a cron service that inherits `backend/railway.toml`
+  would run `alembic upgrade head && uvicorn …` (never exits, so every hourly run is skipped
+  as "still running"), fail the `/` healthcheck, and run migrations:
+
+```toml
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "python -m app.jobs.hourly"
+cronSchedule = "0 * * * *"
+restartPolicyType = "never"
+```
+
+- Reference `DATABASE_URL`, `ANTHROPIC_API_KEY`, `SENTRY_DSN` from the web service; the job
+  calls `sentry_sdk.init` itself (`main.py:40` only initializes it for the FastAPI app); the
+  whole pass must finish under 60 minutes (Railway skips overlapping runs); tasks are
+  idempotent per `(user, local_day, task)` and log to a `job_runs` table.
 
 ### 9.3 Notifications
 
 | Type | Kind | v3 |
 |---|---|---|
-| `hunt_briefing` | push, training days only, opt-in, user-set time | new |
-| `weekly_report_ready` | push | exists; fires from the job |
-| `gate_opened` | push | exists; fires from the job |
-| `overreach_warning` | push, at most once per 3 days | new — only on `acwr_critical` or `ramp_high` |
 | `rest_timer_done` | local | new (§7.3) |
-| `streak_at_risk` | local | exists; **retired** — streak semantics move to plan adherence (§13) |
+| `weekly_report_ready` | push | exists, fires from `api/weekly_report.py:53` on GET today; moves to the job when §9.2 lands |
+| `gate_opened` | push | exists; unchanged |
+| `hunt_briefing` | push | **v3.1**, off by default, training days only, payload = planned hunt title + top set (engine text, no LLM at push time) |
+| `overreach_warning` | — | **not built** — flags surface on the Today card and in the Debrief |
+| `streak_at_risk` | local | **retired**; plan adherence replaces streak semantics (§13) |
 
-The permission prompt stays where v2 put it (post-save celebration dismissal).
+Net: no new push types in v3. The v2 §11 no-nag stance holds.
 
-### 9.4 Widgets and Live Activity (Phase 5)
+### 9.4 Widgets and Live Activity (Phase 5, optional)
 
-- Lock-screen / home widget: Today's Hunt (type, top set or miles) + Condition score.
-  Reads a cached JSON written by the app; refreshes on the background HealthKit callback.
-- Live Activity during an active hunt: current exercise, next prescribed set, rest
-  countdown. Same state as the sticky timer bar.
+Lock-screen widget: Today's Hunt + Condition score, from a cached JSON the app writes.
+Live Activity during an active hunt: current exercise, next prescribed set, rest countdown.
+Ship only if the Today card and the timer bar are being used daily.
 
 ---
 
-## 10. Gates v2
+## 10. Gates v2 (ships in the first session, with LogView 2a)
 
-The north star has not fired in eight weeks. Four calibration changes, all in
-`gate_service.py` / `trend_service.py`:
+Four contained changes in `gate_service.py` / `trend_service.py`:
 
-1. **Baseline = campaign best**, i.e. best e1RM on that family since the campaign
-   `start_date` (fallback: last 12 weeks), not the all-time best (`gate_service.py:274`
-   compares against all-time today). Lifetime PRs stay lifetime PRs in Records; a Gate is
-   about beating *this campaign's* ceiling. Rank still keys off the % jump.
-2. **`MIN_WEEKLY_POINTS` 6 → 4** (`trend_service.py:19`), and weekly points come from the
-   family, so a Saturday squat and a Sunday front squat both count toward `back_squat`'s
-   series (one point per week — that rule stays; two lifts in one weekend is still one
-   week of evidence).
-3. **Spawn onto the plan.** Evaluated by the nightly job; a spawned gate targets the *next
-   planned hunt* containing that family, and the prescription engine appends the gate set
-   ("Gate attempt: 235×5 after working sets"). Window = until that planned hunt + 7 days
-   (not a flat 14). Condition is checked the morning of the attempt, not at spawn:
-   STRAINED → the gate set is dropped from the prescription that day and the window
-   extends one hunt.
-4. **Clear feedback.** `gate_cleared` returned in the workout-create response (v2 QA
-   W5/W8), one celebration screen (§7.5), Hunt Log sigil as today.
+1. **Baseline = campaign best** — best e1RM on the family since the campaign `start_date`
+   (before Campaign exists: last 12 weeks). `_candidate_lifts` (`gate_service.py:169-215`)
+   takes `func.max(Set.e1rm)` all-time today; adding a `since` filter is contained. Lifetime
+   PRs stay lifetime PRs in Records.
+2. **Split `SLOPE_WINDOW_WEEKS`** (`trend_service.py:19`, used as both the minimum-points
+   gate at `:59` and the fit window at `:61`) into `MIN_WEEKLY_POINTS = 4` and a 6-point fit
+   window. Weekly points come from the family (a Saturday squat and a Sunday front squat both
+   feed `back_squat`; still one point per week).
+3. **Spawn onto the plan** (after Campaign ships): a spawned gate targets the *next planned
+   hunt* containing that family; window = that hunt + 7 days. Readiness is checked at fetch
+   time on the day: STRAINED defers the attempt one hunt.
+4. **Gate attempt is set 1 after warm-ups**, and that day's working sets become −10%
+   back-offs. A PR attempt after 5×5 squat and 4×5 deadlift is a bad prescription.
+5. **Clear feedback:** `gate_cleared` in the workout-create response (v2 QA W5/W8), one
+   celebration screen (§7.5), Hunt Log sigil as today.
 
-Expected effect for a Sat/Sun 5×5 lifter: first gate within 4–5 weeks of consistent
-logging, roughly one gate per lift per arc.
+Expected effect for a Sat/Sun 5×5 lifter: first gate within 4–5 weeks of consistent logging.
 
 ---
 
@@ -694,47 +678,58 @@ logging, roughly one gate per lift per arc.
 
 | Item | Action | Why |
 |---|---|---|
-| `training-calendar/` PWA | Retire one release after §4.6 week view ships; leave gh-pages read-only for 30 days, then remove the workflow | one plan, one place |
+| `training-calendar/` PWA | Retire one release after §4.6 ships; gh-pages read-only for 30 days, then remove the workflow | one plan, one place |
 | `Fitness Coach/` Cowork job + `weekly-export` skill + `Workout Exports/` | Delete the scheduled task and the skill; archive the folder | 7 failed runs; replaced by §8.4 |
-| `user_directives` + `directive_service` rule engine | Retire the table and the user-facing rules; keep `calculate_todays_workout_stats`, `_week_windows`, `_volume_lb` as context-builder inputs (make them public) | replaced by Briefing; rules 4/5 dead by construction, rule 7 spurious |
-| `weekly_report_service._generate_suggestions` | Delete | replaced by Debrief |
-| `quest_definitions` / `user_quests` tables | Drop (the v2 §5.3 decision was "leave until proven"; the Directive ran 8 weeks and is itself being replaced) | dead weight, 5 migrations reference them |
-| `exercise_equivalence.py` and the four substring canonicalizers | Replace with `exercise_families` (§4.2) | audit item 2 |
-| Power › Exertion segment | Folded into Power › Load (§6.6) | unopened |
-| `streak_at_risk` local notification + streak XP | Retire; plan-adherence XP replaces it (§13) | HealthKit runs don't sustain streaks today (`healthkit_service.py:19-27`), so the streak lies for a runner |
-| Scan-credit paywall for the owner | One-time `has_unlimited = true` for the owner account (admin script); IAP code stays for other users | the owner should not be paywalled out of his own scanner |
-| Friends UI | No change | already demoted in v2 |
+| `user_directives` + `directive_service` rule engine | Retire in Phase 4; first move `calculate_todays_workout_stats` and `user_has_wearable` out of `quest_service.py` (`directive_service.py:31` imports from it) into a neutral module | replaced by the engine line + Debrief concerns |
+| `weekly_report_service._generate_suggestions` | Delete in Phase 4 | replaced by Debrief |
+| `quest_definitions` / `user_quests` tables | Drop (idempotent `IF EXISTS`) in Phase 4 after the helper move above and the `app/models/__init__.py` registration is removed | dead weight |
+| `exercise_equivalence.py` + the substring canonicalizers | Replace with `family_id` reads, per consumer, as each phase touches it | audit item 2 |
+| Power › Exertion segment | Leave as is; no Power › Load segment is built | unopened; Load lives on Status |
+| `streak_at_risk` + streak XP | Retire in Phase 2 when plan-adherence XP ships | HealthKit runs never sustain streaks (no `award_xp` in the import path) |
+| Scan-credit paywall for the owner | One-time `has_unlimited = true` for the owner via an admin script; IAP code stays | the owner should not be paywalled out of his own scanner |
+| Plate calculator, briefing-history sheet, second campaign template, `set_logged` instrumentation, `overreach_warning` push, daily LLM line | **v3.1 or never** | overbuilt for N=1 |
+| Friends UI | No change | already demoted |
 
 ---
 
-## 12. Foundations (Phase 0 — do first, everything depends on them)
+## 12. Foundations (split 0a / 0b after the engineering review)
 
-From the backend audit, each of these silently corrupts a coach's inputs:
+**0a — write-side, one session, no behavior change:**
 
-1. **`WorkoutSession.local_day`** (Date) + `tz_offset_minutes`. Manual creates parse
-   `"YYYY-MM-DD"` to naive midnight (`schemas/workout.py:117`) while HealthKit imports
-   store a true UTC instant (`healthkit_service.py:98`); every weekly bucket in analytics
-   compares the same column. Backfill: manual rows → `date.date()`; HealthKit rows →
-   `(date + offset).date()` using the profile timezone (new field, default from the last
-   `client_date` seen). All week/day math switches to `local_day`. The calendar endpoint's
-   uniform offset subtraction (`api/calendar.py:94`) goes away.
-2. **`exercise_families`** table + `exercises.family_id` + backfill script + delete the
-   substring schemes (§4.2).
-3. **Honor `weight_unit`.** e1RM (`workouts.py:337`), tonnage (`weekly_report_service.py:126`,
-   `directive_service.py:209`), PR buckets (`pr_detection.py:92`), plate milestones
-   (`gate_service.py:55`), strength standards (`analytics.py:480`) all treat `weight` as lb.
-   Normalize to lb at ingest (store `weight_lb` alongside `weight`+`weight_unit`), read
-   `weight_lb` everywhere. Small change, large honesty gain.
-4. **Persist session duration** and per-set `completed_at`, `is_bodyweight`, `is_warmup`,
-   `rir` — the create contract (§7.5).
-5. **`daily_activity_series()`** helper and a public per-family enumeration helper (the
-   audit's missing primitives #1 and #2).
-6. **Drop the quest tables**; add `job_runs`; add the cron service (§9.2) with a no-op task
-   so deploy shape is proven before it has real work.
-7. **HealthKit background delivery** (§9.1) — iOS, independent of the backend items.
-8. **Plateau threshold** `>8` → `≥5` distinct dates per family per 28 days
-   (`analytics.py:690`) so the insight can exist for anyone under 2.25 sessions/week per
-   lift. Cheap, and it feeds the context builder.
+1. **`user_profiles.timezone`** (IANA string). Nothing persists an offset today:
+   `client_date` is a date, `tz_offset_minutes` is a query param on `api/calendar.py:52`
+   and never stored. Owner default via admin script; iOS sends it on create/sync/import.
+2. **`WorkoutSession.local_day`** (Date) populated at every ingest path from the profile
+   timezone. Manual creates and screenshot-dated rows already carry a local date
+   (`schemas/workout.py:117` → naive local midnight, used by `api/workouts.py:280`,
+   `api/sync.py:159`, `screenshot_service.py:814`); HealthKit stores a true UTC instant
+   (`healthkit_service.py:98`); the screenshot fallback is `datetime.now(utc)`
+   (`screenshot_service.py:816-818`). Backfill: `.date()` for manual/screenshot-dated rows,
+   `zoneinfo` conversion for HealthKit and fallback rows. **`date` stays the instant** —
+   WHOOP overlap matching depends on it; only bucketing moves.
+3. **`Set.weight_lb`** written at ingest and used for e1RM at `workouts.py:337`. No kg rows
+   exist today (iOS hardcodes lb at `LogViewModel.swift:214`, screenshot at
+   `screenshot_service.py:900`, `:1151`), so the backfill is one line. The 29 `.weight` read
+   sites across 8 files switch to `weight_lb` in 0b.
+4. **`Set.is_bodyweight`, `Set.is_warmup`, `WorkoutCreate.duration_seconds`** (§7.5).
+5. **`exercise_families` + `exercises.family_id`** backfilled from `canonical_id` via a
+   committed dict; no consumers switched yet.
+6. **Pin `anthropic==0.111.0`.**
+7. **Owner unlimited scans** admin script.
+8. **Plateau insight:** `api/analytics.py:690` counts e1RM points per exercise with `> 8`
+   and no explicit 28-day cap; reword to `≥ 5` distinct `local_day`s in 28 days.
+
+**0b — read-side switches, done inside the phase that first needs each:**
+
+- Weekly bucketing to `local_day`: `trend_service`, `gate_service`, `condition_service`,
+  `weekly_report_service`, `api/calendar` (drop the uniform offset subtraction at
+  `api/calendar.py:94`), `api/analytics` — required by Phase 3 (Load's daily series).
+- `.weight` → `weight_lb` reads — Phase 3 (tonnage) and Phase 2b (rounding with units).
+- `family_id` consumers: `xp_service` BIG_THREE (Phase 1, gates), `pr_detection` grouping
+  (Phase 1), `analytics` keyword map + `cooldown_service` fuzzy map (Phase 3), then delete
+  the substring schemes and `exercise_equivalence.py`.
+
+**Independent iOS item:** HealthKit background delivery (§9.1) — half a session, any time.
 
 ---
 
@@ -742,11 +737,11 @@ From the backend audit, each of these silently corrupts a coach's inputs:
 
 | Source | v2 | v3 |
 |---|---|---|
-| Directive followed | +40/day | **0 — retired** |
-| **Hunt completed as planned** (`planned_hunts.status = done`) | — | **+40**; `modified` +25; free-form hunt still earns the base 50 |
-| **Week completed as planned** (all planned hunts done/modified, none skipped) | — | **+150** (replaces the 7-day streak bonus) |
+| Directive followed | +40/day | **0 — retired** (Phase 4) |
+| **Hunt completed as planned** (`done`) | — | **+40**; `modified` / `moved` +25; free-form hunt still earns the base 50 |
+| **Week completed as planned** (no `skipped`) | — | **+150** (replaces the 7-day streak bonus) |
 | Gate clear | C 300 / B 500 / A 800 / S 1200 | unchanged |
-| Overreach Guard respected (guard cut a run/lift and the user logged the reduced version, not more) | — | **+30** — the game rewards restraint, which is the whole point of J4 |
+| Guard respected (a run was cut and the logged run was ≤ the cut distance) | — | **+30** — the game rewards restraint |
 | Everything else | unchanged | unchanged |
 
 New achievements: `campaign_arc_complete`, `four_weeks_on_plan`, `guard_respected_10`,
@@ -756,151 +751,157 @@ New achievements: `campaign_arc_complete`, `four_weeks_on_plan`, `guard_respecte
 
 ## 14. Screens (delta only)
 
-- **Status:** header → Condition → **TODAY'S HUNT** (with Briefing line) → **LOAD strip** →
-  Gate card(s) → This Week (adherence ring replaces workouts-vs-goal bar; "Debrief →" link)
-  → Power snapshot. Still six sections.
+- **Status:** header → Condition → **TODAY'S HUNT** (with System line) → **LOAD strip** →
+  Gate card(s) → This Week (adherence ring; "Debrief →") → Power snapshot. Six sections.
 - **Hunt:** week strip with plan overlay + pace strip; BEGIN HUNT / REPEAT LAST / SCAN;
-  calendar and log as today. Planned-hunt sheet for future days.
+  calendar and log as today; planned-hunt sheet for future days; RESUME HUNT banner.
 - **Active hunt (LogView v2):** §7.
-- **Power:** segments `["Power", "Load", "Vessel", "Records"]`; Goals row unchanged.
-- **Hunter:** Campaign row (name, arc, week; edit/pause/import), Coach settings (briefing
-  time, push toggles), Integrations gains a "background delivery" status line.
-- **Sheets:** Planned Hunt, Briefing, Debrief (replaces Weekly Report), Load, Plate calc.
+- **Power:** unchanged.
+- **Hunter:** Campaign row (name, arc, week; edit/pause/import), Coach settings (HR cap
+  override, debrief time), Integrations gains a background-delivery status line.
+- **Sheets:** Planned Hunt, Debrief (replaces Weekly Report), Load.
 
-Design language unchanged. Mockup to be produced before Phase 1 per the house rule
-(`docs/mockups/arise-v3-mockup.html`), covering Today's Hunt, LogView v2 set row + timer bar,
-Debrief sheet, and the Hunt week strip.
+Design language unchanged. Mockup before Phase 1b per the house rule
+(`docs/mockups/arise-v3-mockup.html`): Today's Hunt, LogView v2 set row + timer bar,
+Debrief sheet, Hunt week strip.
 
 ---
 
-## 15. Contract registry (backend ↔ iOS, the mirrors that trigger `/evaluate`)
+## 15. Contract registry (backend ↔ iOS mirrors that trigger `/evaluate`)
 
 Routers mount without `/api`. Snake_case JSON; explicit `CodingKeys` in `APITypes.swift`.
-Field tables for the three contracts LogView v2 and Status depend on; the rest follow the
-same discipline when built.
 
-### 15.1 `GET /hunts/today` → `PlannedHuntResponse?`
+### 15.1 `GET /exercises/{id}/last-performance` → `LastPerformanceResponse` (Phase 1)
 
-| JSON | Type | Null? | Swift |
-|---|---|---|---|
-| `id`, `campaign_id`, `arc_id`, `template_id` | string | no | `id` … |
-| `date` | `YYYY-MM-DD` | no | `date: String` |
-| `type` | `lift \| run \| light \| rest` | no | `type: PlannedHuntType` |
-| `title`, `location_tag` | string | tag yes | |
-| `status` | `planned \| done \| modified \| skipped \| moved` | no | `status: PlannedHuntStatus` |
-| `session_id` | string | yes | |
-| `prescription` | `PrescriptionResponse` | yes (rest) | |
-| `rationale` | `[RationaleLine]` `{key, text, numbers: {…}}` | no, may be empty | |
-| `briefing` | `BriefingResponse` | yes | §15.3 |
-| `modulation` | `{band, factor, note}` | yes | |
-| `guard_flags` | `[string]` | no | |
+`exercise_id`, `family_id`, `date` (local), `days_ago`, `sets [{weight_lb, reps, rpe,
+is_warmup}]`, `best_e1rm`, `best_e1rm_date`.
 
-### 15.2 `PrescriptionResponse`
+### 15.2 Workout create additions (`POST /workouts`, `/sync`) (Phase 1)
+
+Request: `duration_seconds?`, `planned_hunt_id?` (Phase 2b), per set `is_bodyweight`,
+`is_warmup`, `end_time?` (existing field, now sent on ✓). Response adds `gate_cleared?` and
+`planned_hunt_status?` (2b).
+
+### 15.3 `GET /hunts/today` → `PlannedHuntResponse?` (Phase 2)
 
 | JSON | Type | Null? |
 |---|---|---|
-| `version` | int | no |
-| `exercises[]` | array | no |
-| `exercises[].family_id`, `exercise_id`, `exercise_name`, `role` | string; `role ∈ main\|secondary\|accessory\|gate\|warmup` | no |
-| `exercises[].sets[]` | array of `{set_number, target_weight_lb, target_reps_lo, target_reps_hi, target_rpe, is_warmup, is_gate_attempt}` | `target_weight_lb` yes (no anchor) |
-| `exercises[].last_performance` | `{date, sets: [{weight_lb, reps, rpe}], best_e1rm, days_ago}` | yes |
-| `exercises[].progression_note` | string ("+5 — last week 225×5×5 @ RPE 8") | yes |
-| `run` | `{kind: easy\|long\|shakeout, miles, hr_cap_bpm, note}` | yes |
+| `id`, `campaign_id`, `arc_id`, `template_id` | string | no |
+| `date` | `YYYY-MM-DD` | no |
+| `type` | `lift \| run \| light \| rest` | no |
+| `title`, `location_tag` | string | tag yes |
+| `status` | `planned \| done \| modified \| skipped \| moved` | no |
+| `session_id`, `moved_to` | string | yes |
+| `prescription` | `PrescriptionResponse` | yes (rest) |
+| `rationale` | `[{key, text, numbers}]` | no, may be empty |
+| `system_line` | string (engine, §8.3) | no |
+| `modulation` | `{band, factor, note}` | yes |
+| `guard_flags` | `[string]` | no |
 
-### 15.3 `BriefingResponse` / `DebriefResponse`
+`PrescriptionResponse`: `version`; `exercises[] {family_id, exercise_id, exercise_name,
+role ∈ main|secondary|accessory|gate|warmup, alternatives [exercise_id], sets [{set_number,
+target_weight_lb?, target_reps_lo, target_reps_hi, target_rpe?, is_warmup, is_gate_attempt}],
+last_performance?, progression_note?}`; `run? {kind ∈ easy|long|shakeout, miles, hr_cap_bpm,
+note}`; `notes [string]`.
 
-`BriefingResponse`: `id`, `for_date`, `headline`, `body`, `modulation {type,
-magnitude_pct, reason}`, `watch [string]`, `why [{section, text}]`, `generated_at`.
+### 15.4 `GET /load` → `TrainingLoadResponse` (Phase 3)
 
-`DebriefResponse`: `id`, `week_start`, `summary`, `adherence {planned, done, modified,
-skipped}`, `highlights [{kind, text}]`, `concerns [{flag, text}]`, `adjustments
-[{id, op, params {…}, reason, confidence, status: proposed|accepted|dismissed|out_of_bounds}]`,
-`next_week_focus`, `goal_reports` (existing shape), `generated_at`.
+`as_of`, `run_acute_7d`, `run_chronic_28d`, `run_acwr?` (null before 28 days), `band`,
+`miles_7d`, `miles_plan_7d`, `longest_run_7d`, `flags [string]`, `series [{local_day,
+run_load, lift_load, total_load, miles, run_acwr?}]` (28 days).
+
+### 15.5 `GET /coach/debrief?week_start=` → `DebriefResponse` (Phase 4)
+
+`id`, `week_start`, `summary`, `adherence {planned, done, modified, moved, skipped}`,
+`highlights [{kind, text}]`, `concerns [{flag, text}]`, `adjustments [{id, op, params, reason,
+confidence, source, status ∈ proposed|accepted|dismissed|out_of_bounds}]`, `next_week_focus`,
+`goal_reports` (existing shape), `generated_at`, `source ∈ model|engine_fallback`.
 `POST /coach/debrief/{id}/adjustments/{adj_id}` with `{decision: accept|dismiss}`.
-
-### 15.4 Workout create additions (`POST /workouts`, `/sync`)
-
-Request: `planned_hunt_id?`, `duration_seconds?`, per set `is_bodyweight`, `is_warmup`,
-`rir?`, `completed_at?`, `weight_unit`. Response adds `gate_cleared?` (v2 W5) and
-`planned_hunt_status?`.
-
-### 15.5 `GET /load` → `TrainingLoadResponse`
-
-`as_of`, `acute_7d`, `chronic_28d`, `acwr`, `band`, `miles_7d`, `miles_plan_7d`,
-`long_run_share`, `flags [string]`, `series [{date, run_load, lift_load, total_load, miles,
-acwr}]` (28 days).
 
 ---
 
-## 16. Build phases
+## 16. Build phases (reordered after red-team: daily win first)
 
 Each phase ends with the v2 ship criteria (pytest + ruff, sim build + entitlements lint,
 contract-mirror `/evaluate` against the Pydantic schemas, pathspec commit, verified Railway
-SUCCESS, Xcode rebuild reminder). Sessions are the unit v2 used; v2 shipped four phases in
-one day, so these are upper bounds.
+SUCCESS, Xcode rebuild reminder). Sessions are the unit v2 used.
 
 | Phase | Scope | Sessions | Ship signal |
 |---|---|---|---|
-| **0 — Foundations** | §12 items 1–8; owner unlimited scans; cron service with a no-op task | 1 | analytics unchanged on a before/after snapshot except where `local_day` corrects a bucket; a run lands without opening the app |
-| **1 — Campaign + Prescription** | §4 tables/API/import of `data.js`; §5 engine; Today's Hunt card; Hunt week strip + pace strip (PWA parity); Directive text now comes from the engine's rationale (no LLM yet) | 2 | the user can delete the PWA from the home screen and lose nothing |
-| **2 — LogView v2** | §7 in full; contract §15.4; `/exercises/{id}/last-performance` | 2 | median seconds-per-set on a prescribed hunt ≤ 5 (instrumented) |
-| **3 — Load + Guard + Condition v2 + Gates v2** | §6, §10; Power › Load; nightly job takes over spawn/expire/materialize | 1–2 | a gate spawns onto a planned heavy day; ACWR and mileage flags visible; Condition shows HRV |
-| **4 — The Coach** | §8 context builder, briefing, debrief, ops + accept UI, pushes; retire Directive tables, static suggestions, the Cowork job and skill | 2 | first debrief accepted in-app; briefing push arrives before the alarm |
-| **5 — Delight** | Widgets + Live Activity (§9.4); Ask the System; PWA removal; §13 achievements | 1–2 | — |
+| **1 — Log fast + Gates fire** | §7 items marked 2a (last time, ghost from last session, ✓ + countdown bar, drafts, save compression, repeat last hunt, picker); §15.1–15.2; §10 items 1, 2, 4, 5 (campaign-best → last-12-weeks baseline for now); §12 items 3, 4, 6, 7 | 1 | ≤ 5 s per set on a stopwatch; a gate spawns for at least one big-three lift within 4 weeks |
+| **2 — Plan + Prescribe** | §12 items 1, 2, 5, 8 (0a); §4 tables, import of `data.js`, lazy materialization, linking; §5 engine (linear/double, runs vs arc ramp); Today's Hunt card + Hunt week strip + pace strip; LogView 2b pre-fill; §13 adherence XP, retire streak; §10 item 3 | 2 | the PWA can be deleted from the home screen and nothing is lost; a prescribed hunt logs with ghost-accept taps only |
+| **3 — Load + Guard + Condition v2** | 0b `local_day` and `weight_lb` read switches; §6 service, table, rules, guard; Load strip + sheet; Condition v2; TRIMP into cooldowns; HealthKit background delivery (§9.1, parallel iOS item) | 1–2 | ACWR shows `null` until day 28 then a number; a run appears in Hunt without opening the app |
+| **4 — The Coach** | §8 context builder, engine candidates, model debrief, validators, Debrief sheet + accept flow; retire Directive tables, static suggestions, the Cowork job and skill (§11) | 2 | first debrief with an accepted adjustment; fallback path exercised once by forcing a schema failure |
+| **5 — Optional delight** | §9.2 scheduler + `weekly_report_ready` from the job; widgets/Live Activity; Ask the System; v3.1 daily line; plate calc; PWA workflow removal | 1–2 | only what is used daily |
 
-Total: 9–11 sessions. Phases 1 and 2 are independent of each other after Phase 0 and can
-be built in either order; 3 needs 1; 4 needs 1–3; 5 needs 2 and 4.
+Total: **7–9 sessions**, with a behavior change after the first one. Phase 1 has no schema
+dependency beyond the three set columns; Phase 2 depends on 1 (ghost plumbing); 3 on 2
+(planned week miles); 4 on 2–3; 5 on 4.
 
 ---
 
-## 17. Success metrics (what "next level" means, measurably)
+## 17. Success metrics
 
-| Job | Metric | Baseline (today) | Target (after Phase 4) |
+| Job | Metric | Baseline | Target |
 |---|---|---|---|
-| J2 | median seconds per logged set, prescribed hunts | not instrumented (est. 15–25 s) | ≤ 5 s |
-| J2 | % of lift sessions logged in-app the same day | unknown (no `local_day`) | ≥ 90% |
-| J1 | % training days with a Briefing that names a number specific to that day | 0 (MAINTAIN) | 100% |
-| J1/J5 | planned-hunt adherence (done + modified) / planned | — | ≥ 80% per arc |
-| J3 | gates spawned per lift per arc; gates cleared | 0 since 2026-07-12 | ≥ 1 spawned per big-three lift per arc; ≥ 1 cleared per arc |
-| J4 | weeks with `acwr > 1.5` or `ramp_high` unresolved by a prescription cut | not measured | 0 |
-| J5 | debriefs with ≥ 1 accepted adjustment | 0 (no debrief exists) | ≥ 75% of weeks |
-| J7 | minutes from watch save to session visible in Hunt (phone in pocket) | until next app open | ≤ 15 |
-| Trust | Coach outputs falling back to engine rationale (refusal/error/out-of-bounds) | — | ≤ 5% |
+| J2 | seconds per set on a prescribed-shape 5×5 (stopwatch, median) | est. 15–25 s | ≤ 5 s |
+| J2 | lift sessions logged in-app on the day | unknown | ≥ 90% (visible once `local_day` exists) |
+| J3 | gates spawned per big-three lift per arc; cleared per arc | 0 since 2026-07-12 | ≥ 1 spawned per lift; ≥ 1 cleared |
+| J1/J5 | planned-hunt adherence (`done + modified + moved`) / planned | — | ≥ 80% per arc |
+| J4 | weeks with an unresolved `run_acwr_critical` or `ramp_high` | not measured | 0 after day 28 |
+| J5 | debriefs with ≥ 1 accepted adjustment | 0 | ≥ 75% of weeks |
+| J7 | minutes from watch save to session visible in Hunt, phone in pocket | until next app open | ≤ 15 |
+| Trust | debriefs served from `engine_fallback` | — | ≤ 5% |
 
 ---
 
 ## 18. Risks and open questions
 
 1. **Prod usage is unverified.** This session's read-only prod snapshot was blocked by the
-   permission classifier. The JTBD "served" estimates are inferred from code and docs. A
-   read-only script exists at the scratchpad path noted in the session summary; run it
-   before Phase 1 to confirm: sessions/week split lift vs run, which lift names are actually
-   logged (family backfill depends on it), directive type distribution, whether any gate has
-   spawned since July, and daily-activity input coverage.
-2. **Plan conflict.** The PWA plan (Sat squat / Sun bench, 5×5) and the Coach's Week 1 plan
-   (Fri push / Sat pull / Sun legs, 3×3) are different programs. §4.3 imports the PWA plan
-   because it is the one with check-offs; the user should confirm before Phase 1.
-3. **Load formulas are first-order.** TRIMP and session-RPE are standard but coarse; the
-   guard's thresholds (1.3/1.5, 10%, 35%) are literature defaults, not fitted to this user.
-   They are constants in one module and the Debrief can propose changing them
-   (`set_guard_threshold` is a reasonable v3.1 op).
-4. **Nightly job on Railway cron:** verify a cron service can reach the same Postgres and
-   that its alembic head matches the web service's (it must not run migrations). Hourly
-   granularity means "06:30 local" pushes land at the top of the hour; acceptable for v3.
-5. **Background HealthKit delivery** is best-effort by design; iOS throttles it. The
-   foreground sync stays as the backstop.
-6. **The Coach's tone** in a 90-character headline is easy to get wrong (cheesy or
-   clinical). Budget a prompt-tuning pass with 10 stored contexts before enabling the
-   push.
-7. **Multi-user shape is preserved** (everything is per-user; the cron loops over active
-   campaigns) but the template library, the import format, and the coach prompt are tuned
-   for one athlete. That is the correct trade for now (solo dev, N=1) and is stated so a
-   later "launch" decision doesn't inherit it as an accident.
-8. **`local_day` backfill** must be verified on a prod copy before it runs — it rewrites
-   the axis every chart uses.
+   permission classifier; the JTBD "served" estimates are inferred from code and docs.
+   `backend/scripts/usage_snapshot.py` (committed, read-only) prints sessions/week split
+   lift vs run, logged lift names (the family backfill depends on them), directive type
+   distribution, gate history, and daily-activity coverage. Run it before Phase 2.
+2. **Which plan is the plan.** PWA plan (Sat squat / Sun bench, 5×5) is the default
+   import; the Cowork Week 1 plan is not. Confirm before Phase 2.
+3. **Guard thresholds are literature defaults** (1.20× plan, 1.3/1.5 ACWR, 40% long-run
+   share above 15 mi/wk, 28-day cold start). They live in one module; a
+   `set_guard_threshold` op is a reasonable v3.1 addition once the Debrief has data.
+4. **`local_day` backfill** rewrites the axis every chart uses. Verify on a prod copy;
+   HealthKit rows are the ones that move.
+5. **SDK line.** Pinning 0.111.0 defers the 1.x upgrade (httpx2, breaking); do it as its
+   own task with the migration guide, not inside Phase 4.
+6. **Scheduler config collision** (§9.2) is a real deploy risk when Phase 5 arrives; the
+   separate config file is not optional.
+7. **Tone.** A Sunday summary in the System's voice can read cheesy or clinical; the
+   10-context tuning pass in §8.7 is the mitigation, and the engine fallback is the floor.
+8. **N=1 by design.** Everything is per-user, but the template, import format, and prompt
+   are tuned for one athlete. Stated so a later launch decision doesn't inherit it by
+   accident.
 
 ---
 
-*Companion docs to be written: `docs/arise-v3-roadmap.md` (live tracker, same role as the
-v2 roadmap) after Phase 0; `docs/mockups/arise-v3-mockup.html` before Phase 1. Code cited
-was verified against the tree on 2026-09-04.*
+## 19. Revision log
+
+- **v1 (2026-09-04, morning):** initial draft from the two audits.
+- **v2 (2026-09-04, after two independent red-team passes):**
+  - Product/athlete review: guard rules restated against the plan's ramp (ramp-vs-last-week
+    fired after every deload; 35% long-run cap cut the plan's own long run); ACWR made
+    run-only with a 28-day cold start and lifts removed from the veto path; progression
+    verdicts keyed on reps with RPE optional; readiness modulation moved to fetch time;
+    gate attempt moved to set 1; import gained `alternatives` and note rows; linking gained
+    the ±2-day `moved` rule; e1RM-derived starts ignore >8-rep sets and use 0.90; LLM scope
+    cut to the Sunday debrief with engine-generated candidate ops; daily LLM line, Power ›
+    Load segment, plate calc, instrumentation, overreach push, and second template cut or
+    deferred; phases reordered so the first session changes daily behavior.
+  - Engineering review: cron service gets its own `railway.cron.toml` (inheriting the web
+    config would loop forever and run migrations) and is deferred behind lazy generation;
+    `local_day` needs a stored profile timezone and keeps `date` as the instant; Phase 0
+    split into write-side 0a and per-phase 0b; quest-table drop sequenced after moving the
+    helpers `directive_service` imports; `SLOPE_WINDOW_WEEKS` split rather than a
+    non-existent `MIN_WEEKLY_POINTS` edited; SDK pinned; contract additions reduced to the
+    fields that don't already exist (`rir`, `end_time`, `duration_seconds` on the model all
+    exist); four wrong anchors corrected.
+
+*Companion docs to be written: `docs/arise-v3-roadmap.md` after Phase 1;
+`docs/mockups/arise-v3-mockup.html` before Phase 2.*
