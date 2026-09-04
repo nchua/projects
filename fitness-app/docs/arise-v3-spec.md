@@ -50,8 +50,9 @@ other:
    context: the narrative, the concerns, and a ranked set of typed plan adjustments that the
    engine generated and the user accepts with a tap. Replaces the weekly report's template
    prose and the Cowork job. The daily line stays deterministic in v3.
-6. **Plumbing** — background HealthKit delivery, a profile timezone and `local_day` on
-   every session, honest `weight_unit` math, one exercise-family scheme, an SDK pin.
+6. **Plumbing** — background HealthKit delivery, `local_date` bucketing everywhere (the
+   column landed 2026-09-04 in `09f1654`; most readers still bucket on `date`), honest
+   `weight_unit` math, one exercise-family scheme, an SDK pin.
 
 ---
 
@@ -145,7 +146,7 @@ a scheduler is added only when pushes need pre-written content (§9.2).
 ### 4.2 Data model
 
 New tables (all keyed by `user_id`; idempotent migrations chaining from the current single
-head `lying_tricep_aliases`):
+head `add_workout_local_date`):
 
 ```
 campaigns            id, user_id, name, goal, start_date, status(active|paused|completed),
@@ -212,7 +213,7 @@ substring schemes are deleted when their last reader moves, not before.
   `planned_hunts` for the requested range (+7 days) on first fetch. No scheduler needed;
   the same pattern v2 chose for gate evaluation.
 - **Linking a logged session:** on save (all ingest paths), link to the planned hunt on the
-  same `local_day` with a matching `type`; else the nearest same-type planned hunt within
+  same `local_date` with a matching `type`; else the nearest same-type planned hunt within
   ±2 days → that hunt becomes `moved` with `moved_to = session day`. A Friday lift against
   a Saturday plan is `moved`, not `skipped` + unlinked.
 - **Status:** `done` = every `main` and `secondary` family in the template appears in the
@@ -328,11 +329,11 @@ TRIMP also replaces duration-with-a-cap as the cardio input to `cooldown_service
 
 ### 6.2 Daily series
 
-New table `daily_training_load`: `user_id, local_day, run_load, lift_load, total_load,
+New table `daily_training_load`: `user_id, local_date, run_load, lift_load, total_load,
 miles, run_acute_7d, run_chronic_28d, run_acwr, miles_7d, miles_plan_7d, longest_run_7d,
 flags JSON`. Recomputed for the trailing 35 days on every ingest path (the three that share
 PR detection plus HealthKit import) and on any `GET /load`. Acute/chronic are 7- and 28-day
-EWMAs (a rest day decays rather than cliff-drops). Requires `local_day` (§12.1).
+EWMAs (a rest day decays rather than cliff-drops). Buckets on `local_date` (§12, 0b).
 
 ### 6.3 Rules
 
@@ -627,7 +628,7 @@ restartPolicyType = "never"
 - Reference `DATABASE_URL`, `ANTHROPIC_API_KEY`, `SENTRY_DSN` from the web service; the job
   calls `sentry_sdk.init` itself (`main.py:40` only initializes it for the FastAPI app); the
   whole pass must finish under 60 minutes (Railway skips overlapping runs); tasks are
-  idempotent per `(user, local_day, task)` and log to a `job_runs` table.
+  idempotent per `(user, local_date, task)` and log to a `job_runs` table.
 
 ### 9.3 Notifications
 
@@ -696,17 +697,19 @@ Expected effect for a Sat/Sun 5×5 lifter: first gate within 4–5 weeks of cons
 
 **0a — write-side, one session, no behavior change:**
 
-1. **`user_profiles.timezone`** (IANA string). Nothing persists an offset today:
-   `client_date` is a date, `tz_offset_minutes` is a query param on `api/calendar.py:52`
-   and never stored. Owner default via admin script; iOS sends it on create/sync/import.
-2. **`WorkoutSession.local_day`** (Date) populated at every ingest path from the profile
-   timezone. Manual creates and screenshot-dated rows already carry a local date
-   (`schemas/workout.py:117` → naive local midnight, used by `api/workouts.py:280`,
-   `api/sync.py:159`, `screenshot_service.py:814`); HealthKit stores a true UTC instant
-   (`healthkit_service.py:98`); the screenshot fallback is `datetime.now(utc)`
-   (`screenshot_service.py:816-818`). Backfill: `.date()` for manual/screenshot-dated rows,
-   `zoneinfo` conversion for HealthKit and fallback rows. **`date` stays the instant** —
-   WHOOP overlap matching depends on it; only bucketing moves.
+1. ~~`user_profiles.timezone`~~ **Deferred to Phase 5.** The landed design has the
+   client send the device-local day instead (`WorkoutCreate.local_date`,
+   `HealthKitWorkoutImport.local_date`), and every existing server-side "today" already
+   takes `client_date`. A stored timezone is only needed for the scheduler (§9.2) and
+   for backfilling legacy watch rows; until then, server code that needs "the user's
+   today" must take it from the client, as `GET /directive/today` does.
+2. **`WorkoutSession.local_date` — shipped 2026-09-04** (`09f1654`, migration
+   `add_workout_local_date`; rule recorded in `fitness-app/CLAUDE.md` "Workout Dates").
+   Stamped at all four ingest paths (client-supplied, else `core/utils.derive_local_date`
+   midnight convention); NULL on legacy watch-import rows. `date` stays the instant.
+   **Remaining:** a one-off owner backfill of the NULL rows (zoneinfo with the owner's tz,
+   run by the owner), and the reader switch in 0b — only `api/calendar.py` reads
+   `local_date` so far.
 3. **`Set.weight_lb`** written at ingest and used for e1RM at `workouts.py:337`. No kg rows
    exist today (iOS hardcodes lb at `LogViewModel.swift:214`, screenshot at
    `screenshot_service.py:900`, `:1151`), so the backfill is one line. The 29 `.weight` read
@@ -717,13 +720,15 @@ Expected effect for a Sat/Sun 5×5 lifter: first gate within 4–5 weeks of cons
 6. **Pin `anthropic==0.111.0`.**
 7. **Owner unlimited scans** admin script.
 8. **Plateau insight:** `api/analytics.py:690` counts e1RM points per exercise with `> 8`
-   and no explicit 28-day cap; reword to `≥ 5` distinct `local_day`s in 28 days.
+   and no explicit 28-day cap; reword to `≥ 5` distinct `local_date`s in 28 days.
 
 **0b — read-side switches, done inside the phase that first needs each:**
 
-- Weekly bucketing to `local_day`: `trend_service`, `gate_service`, `condition_service`,
-  `weekly_report_service`, `api/calendar` (drop the uniform offset subtraction at
-  `api/calendar.py:94`), `api/analytics` — required by Phase 3 (Load's daily series).
+- Weekly bucketing to `local_date` (with the `derive_local_date` fallback for NULL rows):
+  `trend_service`, `gate_service`, `condition_service`, `directive_service`,
+  `weekly_report_service`, `api/analytics` — `api/calendar` is already switched. Required
+  by Phase 3 (Load's daily series); Phase 1 switches `trend_service` early so weekly-best
+  points bucket honestly for Gates.
 - `.weight` → `weight_lb` reads — Phase 3 (tonnage) and Phase 2b (rounding with units).
 - `family_id` consumers: `xp_service` BIG_THREE (Phase 1, gates), `pr_detection` grouping
   (Phase 1), `analytics` keyword map + `cooldown_service` fuzzy map (Phase 3), then delete
@@ -807,7 +812,7 @@ note}`; `notes [string]`.
 ### 15.4 `GET /load` → `TrainingLoadResponse` (Phase 3)
 
 `as_of`, `run_acute_7d`, `run_chronic_28d`, `run_acwr?` (null before 28 days), `band`,
-`miles_7d`, `miles_plan_7d`, `longest_run_7d`, `flags [string]`, `series [{local_day,
+`miles_7d`, `miles_plan_7d`, `longest_run_7d`, `flags [string]`, `series [{local_date,
 run_load, lift_load, total_load, miles, run_acwr?}]` (28 days).
 
 ### 15.5 `GET /coach/debrief?week_start=` → `DebriefResponse` (Phase 4)
@@ -828,8 +833,8 @@ SUCCESS, Xcode rebuild reminder). Sessions are the unit v2 used.
 
 | Phase | Scope | Sessions | Ship signal |
 |---|---|---|---|
-| **1 — Log fast + Gates fire** | §7 items marked 2a (last time, ghost from last session, ✓ + countdown bar, drafts, save compression, repeat last hunt, picker); §15.1–15.2; §10 items 1, 2, 4, 5 (campaign-best → last-12-weeks baseline for now); §12 items 3, 4, 6, 7 | 1 | ≤ 5 s per set on a stopwatch; a gate spawns for at least one big-three lift within 4 weeks |
-| **2 — Plan + Prescribe** | §12 items 1, 2, 5, 8 (0a); §4 tables, import of `data.js`, lazy materialization, linking; §5 engine (linear/double, runs vs arc ramp); Today's Hunt card + Hunt week strip + pace strip; LogView 2b pre-fill; §13 adherence XP, retire streak; §10 item 3 | 2 | the PWA can be deleted from the home screen and nothing is lost; a prescribed hunt logs with ghost-accept taps only |
+| **1 — Log fast + Gates fire** | §7 items marked 2a (last time, ghost from last session, ✓ + countdown bar, drafts, save compression, repeat last hunt, picker); §15.1–15.2; §10 items 1, 2, 4, 5 (campaign-best → last-12-weeks baseline for now); §12 items 3, 4, 6, 7 + `trend_service` on `local_date` | 1 | ≤ 5 s per set on a stopwatch; a gate spawns for at least one big-three lift within 4 weeks |
+| **2 — Plan + Prescribe** | §12 items 5, 8 (0a) + the legacy-row `local_date` backfill; §4 tables, import of `data.js`, lazy materialization, linking; §5 engine (linear/double, runs vs arc ramp); Today's Hunt card + Hunt week strip + pace strip; LogView 2b pre-fill; §13 adherence XP, retire streak; §10 item 3 | 2 | the PWA can be deleted from the home screen and nothing is lost; a prescribed hunt logs with ghost-accept taps only |
 | **3 — Load + Guard + Condition v2** | 0b `local_day` and `weight_lb` read switches; §6 service, table, rules, guard; Load strip + sheet; Condition v2; TRIMP into cooldowns; HealthKit background delivery (§9.1, parallel iOS item) | 1–2 | ACWR shows `null` until day 28 then a number; a run appears in Hunt without opening the app |
 | **4 — The Coach** | §8 context builder, engine candidates, model debrief, validators, Debrief sheet + accept flow; retire Directive tables, static suggestions, the Cowork job and skill (§11) | 2 | first debrief with an accepted adjustment; fallback path exercised once by forcing a schema failure |
 | **5 — Optional delight** | §9.2 scheduler + `weekly_report_ready` from the job; widgets/Live Activity; Ask the System; v3.1 daily line; plate calc; PWA workflow removal | 1–2 | only what is used daily |
@@ -845,7 +850,7 @@ dependency beyond the three set columns; Phase 2 depends on 1 (ghost plumbing); 
 | Job | Metric | Baseline | Target |
 |---|---|---|---|
 | J2 | seconds per set on a prescribed-shape 5×5 (stopwatch, median) | est. 15–25 s | ≤ 5 s |
-| J2 | lift sessions logged in-app on the day | unknown | ≥ 90% (visible once `local_day` exists) |
+| J2 | lift sessions logged in-app on the day | unknown | ≥ 90% (measurable now via `local_date`) |
 | J3 | gates spawned per big-three lift per arc; cleared per arc | 0 since 2026-07-12 | ≥ 1 spawned per lift; ≥ 1 cleared |
 | J1/J5 | planned-hunt adherence (`done + modified + moved`) / planned | — | ≥ 80% per arc |
 | J4 | weeks with an unresolved `run_acwr_critical` or `ramp_high` | not measured | 0 after day 28 |
@@ -867,8 +872,8 @@ dependency beyond the three set columns; Phase 2 depends on 1 (ghost plumbing); 
 3. **Guard thresholds are literature defaults** (1.20× plan, 1.3/1.5 ACWR, 40% long-run
    share above 15 mi/wk, 28-day cold start). They live in one module; a
    `set_guard_threshold` op is a reasonable v3.1 addition once the Debrief has data.
-4. **`local_day` backfill** rewrites the axis every chart uses. Verify on a prod copy;
-   HealthKit rows are the ones that move.
+4. **`local_date` reader switch** moves the axis every chart uses; legacy watch rows are
+   NULL until the owner backfill runs. Verify on a prod copy before Phase 3.
 5. **SDK line.** Pinning 0.111.0 defers the 1.x upgrade (httpx2, breaking); do it as its
    own task with the migration guide, not inside Phase 4.
 6. **Scheduler config collision** (§9.2) is a real deploy risk when Phase 5 arrives; the
@@ -902,6 +907,12 @@ dependency beyond the three set columns; Phase 2 depends on 1 (ghost plumbing); 
     non-existent `MIN_WEEKLY_POINTS` edited; SDK pinned; contract additions reduced to the
     fields that don't already exist (`rir`, `end_time`, `duration_seconds` on the model all
     exist); four wrong anchors corrected.
+
+- **v2.1 (2026-09-04, evening):** reconciled with `09f1654`/`902b9cd`, which landed
+  `workout_sessions.local_date` (client-supplied day, `derive_local_date` fallback) and the
+  CLAUDE.md "local_date is authoritative" rule while this spec was being reviewed. §12 item 2
+  marked shipped; profile timezone deferred to Phase 5; alembic head updated; `local_day`
+  renamed `local_date` throughout.
 
 *Companion docs to be written: `docs/arise-v3-roadmap.md` after Phase 1;
 `docs/mockups/arise-v3-mockup.html` before Phase 2.*
