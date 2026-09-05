@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     Column,
     Date,
     DateTime,
@@ -95,6 +96,12 @@ class WorkoutSession(Base):
     # on-device from HealthKit distance samples. NULL when unavailable.
     mile_splits = Column(JSON, nullable=True)
 
+    # ── Training load (ARISE v3 §6.1) — one load number per session, written
+    # by training_load_service; `load_estimated` flags the no-RPE / no-HR
+    # fallback formula. NULL until the load service has run for the session.
+    training_load = Column(Float, nullable=True)
+    load_estimated = Column(Boolean, nullable=True)
+
     # Sync tracking
     synced_at = Column(DateTime, nullable=True)
 
@@ -182,7 +189,15 @@ class Set(Base):
 
     weight = Column(Float, nullable=False)
     weight_unit = Column(Enum(WeightUnit), default=WeightUnit.LB, nullable=False)
+    # Weight normalized to lb at ingest (kg × 2.20462). e1RM is computed from
+    # this column so kg rows produce lb e1RMs. Nullable only for rows written
+    # before the v3 migration backfilled it.
+    weight_lb = Column(Float, nullable=True)
     reps = Column(Integer, nullable=False)
+    # Bodyweight movement (weight is added load, possibly 0). Warm-up sets are
+    # excluded from PR detection, volume and XP.
+    is_bodyweight = Column(Boolean, nullable=False, default=False, server_default="false")
+    is_warmup = Column(Boolean, nullable=False, default=False, server_default="false")
 
     rpe = Column(Integer, nullable=True)  # Rate of Perceived Exertion 1-10
     rir = Column(Integer, nullable=True)  # Reps in Reserve 0-5

@@ -39,6 +39,10 @@ class PRGate(Base):
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     # Canonical root exercise id for the lift (aliases resolve to this).
     exercise_id = Column(String, ForeignKey("exercises.id"), nullable=False)
+    # ARISE v3: the family the gate targets, and the planned hunt it was
+    # spawned onto (spec §10.3). Both nullable for pre-v3 gates.
+    family_id = Column(String, ForeignKey("exercise_families.id"), nullable=True)
+    planned_hunt_id = Column(String, ForeignKey("planned_hunts.id"), nullable=True)
 
     rank = Column(String, nullable=False)           # GateRank value
     name = Column(String, nullable=False)           # "B-Rank Gate: Bench 225×4"

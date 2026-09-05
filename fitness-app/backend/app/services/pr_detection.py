@@ -170,8 +170,10 @@ def detect_and_create_prs(
         if reps > rep_pr_map.get(key, 0):
             rep_pr_map[key] = reps
 
-    # Check each set for PRs
+    # Check each set for PRs. Warm-ups (ARISE v3 §7.5) never mint PRs.
     for set_obj in sets:
+        if getattr(set_obj, "is_warmup", False):
+            continue
         achieved_at = datetime.now(timezone.utc)
 
         # Check for e1RM PR

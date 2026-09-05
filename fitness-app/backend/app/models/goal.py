@@ -19,13 +19,29 @@ class GoalStatus(str, enum.Enum):
     EXPIRED = "expired"
 
 
+class GoalKind(str, enum.Enum):
+    """Objective kind (ARISE v3 §4.6)."""
+    STRENGTH = "strength"
+    RUN = "run"
+
+
 class Goal(Base):
     """User's strength PR goal"""
     __tablename__ = "goals"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
-    exercise_id = Column(String, ForeignKey("exercises.id"), nullable=False)
+    # Nullable since ARISE v3: run objectives have no exercise.
+    exercise_id = Column(String, ForeignKey("exercises.id"), nullable=True)
+
+    # ── Objectives (ARISE v3 §4.6): goals live under the Campaign ──
+    campaign_id = Column(String, ForeignKey("campaigns.id"), nullable=True)
+    kind = Column(String, nullable=False, default=GoalKind.STRENGTH.value, server_default="strength")
+    # Run objectives: {miles, by: arc_end | date} for the long run or weekly total.
+    target_miles = Column(Float, nullable=True)
+    run_scope = Column(String, nullable=True)  # long_run | weekly
+    # set_goal_deadline op: extend only, ≤ 4 weeks, at most once per objective.
+    deadline_extensions = Column(Integer, nullable=False, default=0, server_default="0")
 
     # Target
     target_weight = Column(Float, nullable=False)  # Target weight to lift
@@ -50,6 +66,7 @@ class Goal(Base):
     # Relationships
     user = relationship("User", back_populates="goals")
     exercise = relationship("Exercise")
+    campaign = relationship("Campaign", back_populates="goals")
     # Progress snapshots for tracking e1RM over time
     progress_snapshots = relationship("GoalProgressSnapshot", back_populates="goal", cascade="all, delete-orphan", order_by="GoalProgressSnapshot.recorded_at")
 

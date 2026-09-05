@@ -111,10 +111,7 @@ class TestQuestDateMatching:
 
     def test_get_today_utc_returns_date_object(self):
         """get_today_utc should return a date, not datetime."""
-        try:
-            from app.services.quest_service import get_today_utc
-        except ImportError:
-            pytest.skip("quest_service dependencies not available")
+        from app.services.goal_service import get_today_utc
 
         today = get_today_utc()
         assert isinstance(today, date)

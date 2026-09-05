@@ -13,6 +13,7 @@ from app.core.utils import to_iso8601_utc
 from app.models.exercise import Exercise
 from app.models.user import User
 from app.schemas.exercise import ExerciseCreate, ExerciseResponse
+from app.services.exercise_family_defs import family_for_name
 
 router = APIRouter()
 
@@ -364,14 +365,16 @@ async def create_custom_exercise(
             detail=f"Custom exercise '{exercise_data.name}' already exists"
         )
 
-    # Create new custom exercise
+    # Create new custom exercise. family_id is name-matched (ARISE v3 §4.2)
+    # so a custom "Bench Press" joins the bench family; unknown names stay NULL.
     new_exercise = Exercise(
         name=exercise_data.name,
         category=exercise_data.category,
         primary_muscle=exercise_data.primary_muscle,
         secondary_muscles=exercise_data.secondary_muscles,
         is_custom=True,
-        user_id=current_user.id
+        user_id=current_user.id,
+        family_id=family_for_name(exercise_data.name),
     )
 
     db.add(new_exercise)

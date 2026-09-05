@@ -17,6 +17,12 @@ class Exercise(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String, nullable=False, index=True)
     canonical_id = Column(String, nullable=True, index=True)  # For aliases (e.g., "squat")
+    # ARISE v3 family (spec §4.2): the one canonicalization scheme lifts key on.
+    # Backfilled from canonical_id via exercise_family_defs; NULL for cardio,
+    # sport and unmatched custom exercises.
+    family_id = Column(
+        String, ForeignKey("exercise_families.id"), nullable=True, index=True
+    )
 
     # Categorization
     category = Column(String, nullable=True)  # Push, Pull, Legs, Core, Accessories
@@ -32,5 +38,6 @@ class Exercise(Base):
 
     # Relationships
     user = relationship("User", back_populates="custom_exercises")
+    family = relationship("ExerciseFamily", back_populates="exercises")
     workout_exercises = relationship("WorkoutExercise", back_populates="exercise", cascade="all, delete-orphan")
     prs = relationship("PR", back_populates="exercise", cascade="all, delete-orphan")

@@ -39,6 +39,7 @@ from app.models.workout import WorkoutExercise, WorkoutSession
 from app.schemas.healthkit import HealthKitWorkout
 from app.services import screenshot_service
 from app.services.heart_rate_service import ingest_heart_rate
+from app.services.ingest_hooks import on_workout_ingested
 from app.services.whoop_service import _find_matching_session
 
 logger = logging.getLogger(__name__)
@@ -368,6 +369,23 @@ def import_healthkit_workouts(
     # ``quests_completed`` key (always empty) so the client contract is stable.
     quests_completed: List[str] = []
 
+    db.flush()
+
+    # ARISE v3 ingest seam: every created or HR-backfilled session goes
+    # through the hook (campaign linking + load recompute attach there),
+    # joined-loaded per the CLAUDE.md rule.
+    for session_id in sessions_created + sessions_updated:
+        hydrated = (
+            db.query(WorkoutSession)
+            .options(
+                joinedload(WorkoutSession.workout_exercises).joinedload(WorkoutExercise.sets),
+                joinedload(WorkoutSession.workout_exercises).joinedload(WorkoutExercise.exercise),
+            )
+            .filter(WorkoutSession.id == session_id)
+            .first()
+        )
+        if hydrated is not None:
+            on_workout_ingested(db, hydrated)
     db.flush()
 
     return {

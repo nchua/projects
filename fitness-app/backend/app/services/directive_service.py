@@ -28,8 +28,8 @@ from app.services.condition_service import (
 )
 from app.services.cooldown_service import calculate_cooldowns
 from app.services.pr_detection import _weight_bucket, get_canonical_exercise_ids
-from app.services.quest_service import calculate_todays_workout_stats
 from app.services.weekly_report_service import _get_exercise_weekly_sets
+from app.services.workout_stats import calculate_todays_workout_stats
 from app.services.xp_service import BIG_THREE, award_xp, get_or_create_user_progress
 
 # Rule 3: a muscle counts as "cleared overnight" if its cooldown finished

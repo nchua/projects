@@ -104,6 +104,9 @@ def calculate_workout_xp(
         exercise_name = workout_exercise.exercise.name.lower() if workout_exercise.exercise else ""
 
         for set_obj in workout_exercise.sets:
+            # Warm-ups earn nothing (ARISE v3 §7.5).
+            if getattr(set_obj, "is_warmup", False):
+                continue
             # Add to volume (weight * reps)
             set_volume = set_obj.weight * set_obj.reps
             total_volume += set_volume

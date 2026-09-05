@@ -76,3 +76,21 @@ def derive_local_date(dt: Optional[datetime]) -> Optional[date]:
     if dt.hour == 0 and dt.minute == 0 and dt.second == 0 and dt.microsecond == 0:
         return dt.date()
     return None
+
+
+KG_TO_LB = 2.20462
+
+
+def weight_to_lb(weight: Optional[float], unit: Optional[object]) -> Optional[float]:
+    """Normalize a logged weight to pounds.
+
+    ``unit`` may be the ``WeightUnit`` enum or its string value ("lb" / "kg");
+    anything that is not kg is treated as lb. Used at every ingest path so
+    ``Set.weight_lb`` (and the e1RM computed from it) is unit-safe.
+    """
+    if weight is None:
+        return None
+    raw = getattr(unit, "value", unit)
+    if isinstance(raw, str) and raw.strip().lower() == "kg":
+        return round(weight * KG_TO_LB, 3)
+    return float(weight)

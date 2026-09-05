@@ -1,6 +1,8 @@
 """
 Estimated 1RM (e1RM) calculation functions
 """
+from typing import Optional
+
 from sqlalchemy.orm import Session
 
 from app.models.user import E1RMFormula, UserProfile
@@ -82,6 +84,28 @@ def calculate_e1rm_from_rpe(weight: float, reps: int, rpe: int, formula: E1RMFor
 
     # Calculate e1RM with adjusted reps
     return calculate_e1rm(weight, adjusted_reps, formula)
+
+
+def e1rm_for_set(
+    weight_lb: float,
+    reps: int,
+    rpe: Optional[int],
+    rir: Optional[int],
+    formula: E1RMFormula = E1RMFormula.EPLEY,
+) -> float:
+    """e1RM for one logged set from its unit-normalized weight (lb).
+
+    RPE wins over RIR when both are present, mirroring the branching every
+    ingest path used inline before ARISE v3 centralized it here. The result
+    is rounded to 2 dp, the precision stored on ``Set.e1rm``.
+    """
+    if rpe is not None:
+        value = calculate_e1rm_from_rpe(weight_lb, reps, rpe, formula)
+    elif rir is not None:
+        value = calculate_e1rm_from_rir(weight_lb, reps, rir, formula)
+    else:
+        value = calculate_e1rm(weight_lb, reps, formula)
+    return round(value, 2)
 
 
 def calculate_e1rm_from_rir(weight: float, reps: int, rir: int, formula: E1RMFormula = E1RMFormula.EPLEY) -> float:

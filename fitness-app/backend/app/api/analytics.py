@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.core.utils import to_iso8601_utc
+from app.core.utils import derive_local_date, to_iso8601_utc
 from app.models.exercise import Exercise
 from app.models.pr import PR
 from app.models.pr import PRType as PRTypeModel
@@ -625,15 +625,24 @@ def compute_insights(db: Session, user_id: str) -> list:
         ))
         return insights
 
-    # Analyze exercise trends - aggregate by date using max e1RM per workout
+    # Analyze exercise trends - aggregate by local day using max e1RM per workout
     # This prevents false alerts from within-session fatigue (later sets have lower e1RM)
-    exercise_data = defaultdict(dict)  # {exercise_id: {date: {"e1rm": max_e1rm, "exercise_name": name}}}
+    # Bucketing follows the local_date rule (CLAUDE.md "Workout Dates"): the
+    # stamped local day, else the midnight convention, else the UTC day.
+    exercise_data = defaultdict(dict)  # {exercise_id: {local_day: {"e1rm": max_e1rm, "exercise_name": name}}}
     for workout in recent_workouts:
         for we in workout.workout_exercises:
-            best_e1rm = max((s.e1rm for s in we.sets if s.e1rm), default=None)
+            best_e1rm = max(
+                (s.e1rm for s in we.sets if s.e1rm and not getattr(s, "is_warmup", False)),
+                default=None,
+            )
             if best_e1rm:
                 exercise_id = we.exercise_id
-                workout_date = workout.date
+                workout_date = (
+                    workout.local_date
+                    or derive_local_date(workout.date)
+                    or workout.date.date()
+                )
                 exercise_name = we.exercise.name if we.exercise else "Unknown"
 
                 # Keep only the best e1RM per exercise per date
@@ -653,8 +662,11 @@ def compute_insights(db: Session, user_id: str) -> list:
         ]
 
     # Find improving and regressing exercises
-    # Require at least 4 distinct workout dates for meaningful trend analysis
+    # Require at least 4 distinct workout dates for meaningful trend analysis;
+    # a plateau needs >= 5 distinct local days inside the 28-day window
+    # (ARISE v3 0a item 8 — the old `> 8` had no explicit day cap).
     MIN_WORKOUTS_FOR_TREND = 4
+    MIN_DAYS_FOR_PLATEAU = 5
     for exercise_id, data in exercise_trends.items():
         if len(data) < MIN_WORKOUTS_FOR_TREND:
             continue
@@ -687,7 +699,7 @@ def compute_insights(db: Session, user_id: str) -> list:
                 exercise_name=exercise_name,
                 data={"percent_change": round(percent_change, 1)}
             ))
-        elif len(data) > 8 and abs(percent_change) < 2:
+        elif len(data) >= MIN_DAYS_FOR_PLATEAU and abs(percent_change) < 2:
             insights.append(Insight(
                 type=InsightType.PLATEAU,
                 priority=InsightPriority.MEDIUM,

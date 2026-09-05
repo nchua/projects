@@ -43,6 +43,9 @@ class SyncResult(BaseModel):
     entity_type: str
     entity_id: str
     status: str  # "created", "updated", "skipped", "conflict"
+    # ARISE v3 (spec §15.2): the planned hunt this session linked to, if any.
+    planned_hunt_id: Optional[str] = None
+    planned_hunt_status: Optional[str] = None
 
 
 class SyncResponse(BaseModel):

@@ -29,6 +29,7 @@ from app.models.workout import Set, WeightUnit, WorkoutExercise, WorkoutSession
 from app.services.achievement_service import check_and_unlock_achievements
 from app.services.directive_service import check_directive_completion
 from app.services.gate_service import check_gate_clear
+from app.services.ingest_hooks import on_workout_ingested
 from app.services.pr_detection import detect_and_create_prs
 from app.services.xp_service import award_xp, calculate_workout_xp, get_or_create_user_progress
 
@@ -787,6 +788,20 @@ def merge_extractions(extractions: List[Dict[str, Any]]) -> Dict[str, Any]:
     return result
 
 
+def _load_session_for_hooks(db: Session, session_id: str) -> WorkoutSession:
+    """Re-query a just-saved session with its collections eager-loaded
+    (CLAUDE.md joinedload rule) before handing it to the ingest hook."""
+    return (
+        db.query(WorkoutSession)
+        .options(
+            joinedload(WorkoutSession.workout_exercises).joinedload(WorkoutExercise.sets),
+            joinedload(WorkoutSession.workout_exercises).joinedload(WorkoutExercise.exercise),
+        )
+        .filter(WorkoutSession.id == session_id)
+        .first()
+    )
+
+
 async def save_extracted_workout(
     db: Session,
     user_id: str,
@@ -894,15 +909,19 @@ async def save_extracted_workout(
             # Create multiple sets if sets > 1
             for _ in range(num_sets):
                 if weight > 0 and reps > 0:
+                    # Extractor emits lb, so weight_lb == weight here.
                     e1rm = calculate_e1rm(weight, reps, e1rm_formula)
 
                     set_obj = Set(
                         workout_exercise_id=workout_exercise.id,
                         weight=weight,
                         weight_unit=WeightUnit.LB,
+                        weight_lb=weight,
                         reps=reps,
                         set_number=set_number,
-                        e1rm=round(e1rm, 2)
+                        e1rm=round(e1rm, 2),
+                        is_bodyweight=False,
+                        is_warmup=bool(set_data.get("is_warmup", False)),
                     )
                     db.add(set_obj)
                     exercise_sets.append(set_obj)
@@ -964,6 +983,9 @@ async def save_extracted_workout(
     }
 
     check_and_unlock_achievements(db, user_id, achievement_context)
+
+    # ARISE v3 ingest seam (campaign linking + load recompute attach here).
+    on_workout_ingested(db, _load_session_for_hooks(db, workout_session.id))
 
     logger.info(f"[SAVE] Final commit for workout {workout_session.id}")
     try:
@@ -1152,9 +1174,12 @@ async def save_whoop_activity(
                             workout_exercise_id=workout_exercise.id,
                             weight=weight,
                             weight_unit=WeightUnit.LB,
+                            weight_lb=weight,
                             reps=reps,
                             set_number=set_number,
-                            e1rm=round(e1rm, 2)
+                            e1rm=round(e1rm, 2),
+                            is_bodyweight=False,
+                            is_warmup=bool(set_data.get("is_warmup", False)),
                         )
                         db.add(set_obj)
                         exercise_sets.append(set_obj)
@@ -1242,6 +1267,10 @@ async def save_whoop_activity(
         # a scanned run breaks a rest directive but never completes a
         # maintain/frequency/streak one.
         check_directive_completion(db, user_id, workout_session.date)
+
+    # ARISE v3 ingest seam — runs for pure-cardio activities too, since the
+    # load series is built from every session.
+    on_workout_ingested(db, _load_session_for_hooks(db, workout_session.id))
 
     db.commit()
     return activity_id, workout_id

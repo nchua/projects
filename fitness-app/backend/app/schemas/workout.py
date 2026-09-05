@@ -1,7 +1,8 @@
 """
 Workout schemas for request/response validation
 """
-from datetime import date as date_type, datetime, timezone
+from datetime import date as date_type
+from datetime import datetime, timezone
 from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
@@ -17,6 +18,10 @@ class SetCreate(BaseModel):
     rpe: Optional[int] = Field(None, ge=1, le=10, description="Rate of Perceived Exertion (1-10)")
     rir: Optional[int] = Field(None, ge=0, le=5, description="Reps in Reserve (0-5)")
     set_number: int = Field(..., ge=1, description="Set number/order")
+    # LogView v2 set flags (ARISE v3 §7.5). Bodyweight: `weight` is the added
+    # load (0 allowed). Warm-ups are stored but excluded from PRs/volume/XP.
+    is_bodyweight: bool = Field(False, description="Bodyweight movement (weight = added load)")
+    is_warmup: bool = Field(False, description="Warm-up set (excluded from PRs, volume, XP)")
     # Wearable timing + HR (Apple Watch records boundaries live; WHOOP backfill
     # may infer them). All optional so existing clients are unaffected.
     start_time: Optional[datetime] = Field(None, description="Set start time (UTC)")
@@ -30,11 +35,16 @@ class SetResponse(BaseModel):
     id: str
     weight: float
     weight_unit: str
+    # Unit-normalized weight (lb); e1rm is computed from it. None only on
+    # rows written before the v3 backfill.
+    weight_lb: Optional[float] = None
     reps: int
     rpe: Optional[int]
     rir: Optional[int]
     set_number: int
     e1rm: Optional[float]
+    is_bodyweight: bool = False
+    is_warmup: bool = False
     start_time: Optional[str] = None
     end_time: Optional[str] = None
     avg_heart_rate: Optional[int] = None
@@ -87,6 +97,12 @@ class WorkoutCreate(BaseModel):
     local_date: Optional[date_type] = Field(None, description="Local calendar day (YYYY-MM-DD)")
     name: Optional[str] = Field(None, max_length=100, description="Custom hunt name")
     duration_minutes: Optional[int] = Field(None, ge=1, le=600, description="Workout duration in minutes")
+    # Exact session length (ARISE v3 §7.5). When sent without duration_minutes
+    # the server derives the minutes from it.
+    duration_seconds: Optional[int] = Field(None, ge=0, le=36000, description="Workout duration in seconds")
+    # The planned hunt this session executes (ARISE v3 §4.4); the campaign
+    # linker uses it as the preferred match before falling back to date/type.
+    planned_hunt_id: Optional[str] = Field(None, max_length=64, description="Planned hunt id (v3)")
     session_rpe: Optional[int] = Field(None, ge=1, le=10, description="Overall session RPE")
     notes: Optional[str] = Field(None, max_length=1000, description="Workout notes")
     exercises: List[WorkoutExerciseCreate] = Field(..., min_length=1, description="Exercises in workout")
@@ -227,6 +243,10 @@ class WorkoutCreateResponse(BaseModel):
     current_streak: int
     achievements_unlocked: List[AchievementUnlocked] = []
     prs_achieved: List[PRAchieved] = []
+    # ARISE v3 §15.2: filled by the campaign linker (ingest_hooks) once a
+    # planned hunt is matched; None for free-form hunts.
+    planned_hunt_id: Optional[str] = None
+    planned_hunt_status: Optional[str] = None
 
     class Config:
         from_attributes = True

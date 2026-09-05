@@ -84,8 +84,28 @@ def _schema():
     Base.metadata.drop_all(bind=_test_engine)
 
 
+@pytest.fixture(scope="session")
+def _families(_schema):
+    """Seed exercise_families once per session (ARISE v3 §4.2).
+
+    Prod gets the rows from the ``v3_exercise_families`` migration; the test
+    schema comes from create_all, so seed here so every ``db`` session sees
+    the family table populated exactly as the migration would leave it.
+    """
+    from app.services.exercise_family_service import assign_family_ids, ensure_families
+
+    session = _TestSessionLocal()
+    try:
+        ensure_families(session)
+        assign_family_ids(session, include_custom=False)
+        session.commit()
+    finally:
+        session.close()
+    yield
+
+
 @pytest.fixture
-def db(_schema) -> Session:
+def db(_families) -> Session:
     """
     Yield a Session wrapped in a SAVEPOINT-style transaction that is rolled
     back at the end of each test, giving full isolation without recreating

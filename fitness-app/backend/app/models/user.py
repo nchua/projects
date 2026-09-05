@@ -5,7 +5,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -75,6 +75,10 @@ class UserProfile(Base):
     training_experience = Column(Enum(TrainingExperience), default=TrainingExperience.BEGINNER)
     preferred_unit = Column(Enum(WeightUnit), default=WeightUnit.LB)
     e1rm_formula = Column(Enum(E1RMFormula), default=E1RMFormula.EPLEY)
+
+    # ── ARISE v3 coach / prescription inputs ──
+    injury_notes = Column(Text, nullable=True)        # spec §8.2 athlete context
+    run_hr_cap_bpm = Column(Integer, nullable=True)   # spec §5.2 easy-run HR cap override
 
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)

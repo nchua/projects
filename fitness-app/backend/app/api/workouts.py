@@ -10,14 +10,9 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.core.e1rm import (
-    calculate_e1rm,
-    calculate_e1rm_from_rir,
-    calculate_e1rm_from_rpe,
-    get_user_e1rm_formula,
-)
+from app.core.e1rm import e1rm_for_set, get_user_e1rm_formula
 from app.core.exertion import compute_arise_strain, compute_exertion_score
-from app.core.utils import derive_local_date, to_iso8601_utc
+from app.core.utils import derive_local_date, to_iso8601_utc, weight_to_lb
 from app.models.exercise import Exercise
 from app.models.pr import PR, PRType
 from app.models.user import User
@@ -45,6 +40,7 @@ from app.services.gate_service import check_gate_clear, evaluate_gate_spawns
 from app.services.goal_service import update_goal_progress
 from app.services.heart_rate_service import ingest_heart_rate
 from app.services.hunt_name_service import suggest_hunt_name
+from app.services.ingest_hooks import on_workout_ingested
 from app.services.notification_service import (
     notify_achievement_unlocked,
     notify_gate_opened,
@@ -52,6 +48,7 @@ from app.services.notification_service import (
     notify_rank_promotion,
 )
 from app.services.pr_detection import detect_and_create_prs
+from app.services.workout_ingest import resolve_duration_fields
 from app.services.xp_service import award_xp, calculate_workout_xp, get_or_create_user_progress
 
 logger = logging.getLogger(__name__)
@@ -273,6 +270,10 @@ async def _create_workout_impl(
                 prs_achieved=[],
             )
 
+    duration_minutes, duration_seconds = resolve_duration_fields(
+        workout_data.duration_minutes, workout_data.duration_seconds
+    )
+
     # Create workout session
     workout_session = WorkoutSession(
         user_id=current_user.id,
@@ -280,7 +281,8 @@ async def _create_workout_impl(
         date=workout_data.date,
         local_date=workout_data.local_date or derive_local_date(workout_data.date),
         name=(workout_data.name or "").strip() or None,
-        duration_minutes=workout_data.duration_minutes,
+        duration_minutes=duration_minutes,
+        duration_seconds=duration_seconds,
         session_rpe=workout_data.session_rpe,
         notes=workout_data.notes,
         # Wearable HR summary (from Apple Watch live session; WHOOP backfills
@@ -325,28 +327,26 @@ async def _create_workout_impl(
         # Create sets
         exercise_sets = []
         for set_data in exercise_data.sets:
-            # Calculate e1RM
-            if set_data.rpe is not None:
-                e1rm = calculate_e1rm_from_rpe(
-                    set_data.weight, set_data.reps, set_data.rpe, e1rm_formula
-                )
-            elif set_data.rir is not None:
-                e1rm = calculate_e1rm_from_rir(
-                    set_data.weight, set_data.reps, set_data.rir, e1rm_formula
-                )
-            else:
-                e1rm = calculate_e1rm(set_data.weight, set_data.reps, e1rm_formula)
+            # e1RM is computed from the unit-normalized weight so kg sets
+            # yield lb e1RMs (ARISE v3 0a).
+            weight_lb = weight_to_lb(set_data.weight, set_data.weight_unit)
+            e1rm = e1rm_for_set(
+                weight_lb, set_data.reps, set_data.rpe, set_data.rir, e1rm_formula
+            )
 
             # Create set
             set_obj = Set(
                 workout_exercise_id=workout_exercise.id,
                 weight=set_data.weight,
                 weight_unit=set_data.weight_unit,
+                weight_lb=weight_lb,
                 reps=set_data.reps,
                 rpe=set_data.rpe,
                 rir=set_data.rir,
                 set_number=set_data.set_number,
-                e1rm=round(e1rm, 2),
+                e1rm=e1rm,
+                is_bodyweight=set_data.is_bodyweight,
+                is_warmup=set_data.is_warmup,
                 start_time=set_data.start_time,
                 end_time=set_data.end_time,
                 avg_heart_rate=set_data.avg_heart_rate,
@@ -364,8 +364,12 @@ async def _create_workout_impl(
 
         # Update goal progress with best e1RM from this exercise
         if exercise_sets:
-            best_set = max(exercise_sets, key=lambda s: s.e1rm or 0)
-            if best_set.e1rm and best_set.e1rm > 0:
+            best_set = max(
+                (s for s in exercise_sets if not s.is_warmup),
+                key=lambda s: s.e1rm or 0,
+                default=None,
+            )
+            if best_set is not None and best_set.e1rm and best_set.e1rm > 0:
                 update_goal_progress(
                     db=db,
                     user_id=current_user.id,
@@ -456,6 +460,11 @@ async def _create_workout_impl(
     # achievements can unlock on the very workout that earns them.
     newly_unlocked = check_and_unlock_achievements(db, current_user.id, achievement_context)
 
+    # ARISE v3 ingest seam (campaign linking + load recompute attach here).
+    ingest_result = on_workout_ingested(
+        db, workout, planned_hunt_id=workout_data.planned_hunt_id
+    )
+
     db.commit()
 
     # Gate spawn rules run on workout create, after PR detection (§6.2).
@@ -534,7 +543,9 @@ async def _create_workout_impl(
         new_rank=xp_award["new_rank"] if xp_award["rank_changed"] else None,
         current_streak=xp_award["current_streak"],
         achievements_unlocked=achievements_unlocked,
-        prs_achieved=prs_achieved_list
+        prs_achieved=prs_achieved_list,
+        planned_hunt_id=ingest_result.get("planned_hunt_id"),
+        planned_hunt_status=ingest_result.get("planned_hunt_status"),
     )
 
 
@@ -830,36 +841,36 @@ async def update_workout(
             # Create sets
             exercise_sets = []
             for set_data in exercise_data.sets:
-                # Calculate e1RM
-                if set_data.rpe is not None:
-                    e1rm = calculate_e1rm_from_rpe(
-                        set_data.weight, set_data.reps, set_data.rpe, e1rm_formula
-                    )
-                elif set_data.rir is not None:
-                    e1rm = calculate_e1rm_from_rir(
-                        set_data.weight, set_data.reps, set_data.rir, e1rm_formula
-                    )
-                else:
-                    e1rm = calculate_e1rm(set_data.weight, set_data.reps, e1rm_formula)
+                weight_lb = weight_to_lb(set_data.weight, set_data.weight_unit)
+                e1rm = e1rm_for_set(
+                    weight_lb, set_data.reps, set_data.rpe, set_data.rir, e1rm_formula
+                )
 
                 # Create set
                 set_obj = Set(
                     workout_exercise_id=workout_exercise.id,
                     weight=set_data.weight,
                     weight_unit=set_data.weight_unit,
+                    weight_lb=weight_lb,
                     reps=set_data.reps,
                     rpe=set_data.rpe,
                     rir=set_data.rir,
                     set_number=set_data.set_number,
-                    e1rm=round(e1rm, 2)
+                    e1rm=e1rm,
+                    is_bodyweight=set_data.is_bodyweight,
+                    is_warmup=set_data.is_warmup,
                 )
                 db.add(set_obj)
                 exercise_sets.append(set_obj)
 
             # Update goal progress with best e1RM from this exercise
             if exercise_sets:
-                best_set = max(exercise_sets, key=lambda s: s.e1rm or 0)
-                if best_set.e1rm and best_set.e1rm > 0:
+                best_set = max(
+                (s for s in exercise_sets if not s.is_warmup),
+                key=lambda s: s.e1rm or 0,
+                default=None,
+            )
+                if best_set is not None and best_set.e1rm and best_set.e1rm > 0:
                     update_goal_progress(
                         db=db,
                         user_id=current_user.id,
@@ -943,6 +954,9 @@ def _build_workout_response(workout: WorkoutSession) -> WorkoutResponse:
                 rir=s.rir,
                 set_number=s.set_number,
                 e1rm=s.e1rm,
+                weight_lb=s.weight_lb,
+                is_bodyweight=bool(s.is_bodyweight),
+                is_warmup=bool(s.is_warmup),
                 start_time=to_iso8601_utc(s.start_time),
                 end_time=to_iso8601_utc(s.end_time),
                 avg_heart_rate=s.avg_heart_rate,

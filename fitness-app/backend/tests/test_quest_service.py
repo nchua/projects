@@ -1,9 +1,10 @@
 """
-Tests for the surviving quest_service helpers.
+Tests for the day-stat helpers that outlived quest_service.
 
 Daily-quest generation/claim (and the /quests API) were removed in ARISE v2
-Phase 0. ``user_has_wearable`` and ``calculate_todays_workout_stats`` survive
-because the Phase 1 Directive system will reuse them.
+Phase 0; ``user_has_wearable`` and ``calculate_todays_workout_stats`` now live
+in ``app.services.workout_stats`` (ARISE v3 §11 helper move) because the
+Directive engine reuses them.
 """
 
 
@@ -11,13 +12,13 @@ class TestUserHasWearable:
     """user_has_wearable() — wearable HR source detection."""
 
     def test_no_wearable_for_fresh_user(self, db, create_test_user):
-        from app.services.quest_service import user_has_wearable
+        from app.services.workout_stats import user_has_wearable
         user, _ = create_test_user(email="fresh@example.com")
         assert user_has_wearable(db, user.id) is False
 
     def test_wearable_via_whoop_connection(self, db, create_test_user):
         from app.models.whoop import WhoopConnection
-        from app.services.quest_service import user_has_wearable
+        from app.services.workout_stats import user_has_wearable
         user, _ = create_test_user(email="whoop@example.com")
         db.add(WhoopConnection(user_id=user.id))
         db.flush()
@@ -27,7 +28,7 @@ class TestUserHasWearable:
         from datetime import datetime, timezone
 
         from app.models.workout import WorkoutSession
-        from app.services.quest_service import user_has_wearable
+        from app.services.workout_stats import user_has_wearable
         user, _ = create_test_user(email="watch@example.com")
         db.add(WorkoutSession(
             user_id=user.id,
@@ -41,7 +42,7 @@ class TestUserHasWearable:
         from datetime import datetime, timedelta, timezone
 
         from app.models.workout import WorkoutSession
-        from app.services.quest_service import user_has_wearable
+        from app.services.workout_stats import user_has_wearable
         user, _ = create_test_user(email="stale@example.com")
         old = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=40)
         db.add(WorkoutSession(user_id=user.id, date=old, hr_source="apple_watch"))
@@ -52,7 +53,7 @@ class TestUserHasWearable:
         from datetime import datetime, timezone
 
         from app.models.workout import WorkoutSession
-        from app.services.quest_service import user_has_wearable
+        from app.services.workout_stats import user_has_wearable
         user, _ = create_test_user(email="nohr@example.com")
         db.add(WorkoutSession(
             user_id=user.id,
@@ -69,7 +70,7 @@ class TestCalculateTodaysWorkoutStats:
     def test_empty_day_returns_zeroes(self, db, create_test_user):
         from datetime import date
 
-        from app.services.quest_service import calculate_todays_workout_stats
+        from app.services.workout_stats import calculate_todays_workout_stats
         user, _ = create_test_user(email="empty@example.com")
 
         stats = calculate_todays_workout_stats(db, user.id, date.today())
@@ -83,7 +84,7 @@ class TestCalculateTodaysWorkoutStats:
         from datetime import datetime, timedelta, timezone
 
         from app.models.workout import WorkoutSession
-        from app.services.quest_service import calculate_todays_workout_stats
+        from app.services.workout_stats import calculate_todays_workout_stats
         user, _ = create_test_user(email="dates@example.com")
 
         now = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -99,7 +100,7 @@ class TestCalculateTodaysWorkoutStats:
         from datetime import datetime, timezone
 
         from app.models.workout import WorkoutSession
-        from app.services.quest_service import calculate_todays_workout_stats
+        from app.services.workout_stats import calculate_todays_workout_stats
         user, _ = create_test_user(email="hr@example.com")
 
         now = datetime.now(timezone.utc).replace(tzinfo=None)

@@ -8,13 +8,8 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.core.e1rm import (
-    calculate_e1rm,
-    calculate_e1rm_from_rir,
-    calculate_e1rm_from_rpe,
-    get_user_e1rm_formula,
-)
-from app.core.utils import derive_local_date, to_iso8601_utc
+from app.core.e1rm import e1rm_for_set, get_user_e1rm_formula
+from app.core.utils import derive_local_date, to_iso8601_utc, weight_to_lb
 from app.models.bodyweight import BodyweightEntry
 from app.models.exercise import Exercise
 from app.models.pr import PR
@@ -30,7 +25,9 @@ from app.schemas.sync import (
 from app.services.achievement_service import check_and_unlock_achievements
 from app.services.directive_service import check_directive_completion
 from app.services.gate_service import check_gate_clear
+from app.services.ingest_hooks import on_workout_ingested
 from app.services.pr_detection import detect_and_create_prs
+from app.services.workout_ingest import resolve_duration_fields
 from app.services.xp_service import award_xp, calculate_workout_xp, get_or_create_user_progress
 
 router = APIRouter()
@@ -153,12 +150,17 @@ async def sync_data(
                     details=f"Replaced workout from {workout_data.date}"
                 ))
 
+            duration_minutes, duration_seconds = resolve_duration_fields(
+                workout_data.duration_minutes, workout_data.duration_seconds
+            )
+
             # Create new workout
             workout_session = WorkoutSession(
                 user_id=current_user.id,
                 date=workout_data.date,
                 local_date=workout_data.local_date or derive_local_date(workout_data.date),
-                duration_minutes=workout_data.duration_minutes,
+                duration_minutes=duration_minutes,
+                duration_seconds=duration_seconds,
                 session_rpe=workout_data.session_rpe,
                 notes=workout_data.notes,
                 synced_at=datetime.now(timezone.utc)
@@ -182,27 +184,23 @@ async def sync_data(
 
                 exercise_sets = []
                 for set_data in exercise_data.sets:
-                    # Calculate e1RM
-                    if set_data.rpe is not None:
-                        e1rm = calculate_e1rm_from_rpe(
-                            set_data.weight, set_data.reps, set_data.rpe, e1rm_formula
-                        )
-                    elif set_data.rir is not None:
-                        e1rm = calculate_e1rm_from_rir(
-                            set_data.weight, set_data.reps, set_data.rir, e1rm_formula
-                        )
-                    else:
-                        e1rm = calculate_e1rm(set_data.weight, set_data.reps, e1rm_formula)
+                    weight_lb = weight_to_lb(set_data.weight, set_data.weight_unit)
+                    e1rm = e1rm_for_set(
+                        weight_lb, set_data.reps, set_data.rpe, set_data.rir, e1rm_formula
+                    )
 
                     set_obj = Set(
                         workout_exercise_id=workout_exercise.id,
                         weight=set_data.weight,
                         weight_unit=set_data.weight_unit,
+                        weight_lb=weight_lb,
                         reps=set_data.reps,
                         rpe=set_data.rpe,
                         rir=set_data.rir,
                         set_number=set_data.set_number,
-                        e1rm=round(e1rm, 2)
+                        e1rm=e1rm,
+                        is_bodyweight=set_data.is_bodyweight,
+                        is_warmup=set_data.is_warmup,
                     )
                     db.add(set_obj)
                     exercise_sets.append(set_obj)
@@ -227,10 +225,28 @@ async def sync_data(
             # so safe to run on the conflict path too.
             check_directive_completion(db, current_user.id, workout_session.date)
 
+            # ARISE v3 ingest seam — joined-loaded per the CLAUDE.md rule.
+            loaded = (
+                db.query(WorkoutSession)
+                .options(
+                    joinedload(WorkoutSession.workout_exercises)
+                    .joinedload(WorkoutExercise.sets),
+                    joinedload(WorkoutSession.workout_exercises)
+                    .joinedload(WorkoutExercise.exercise),
+                )
+                .filter(WorkoutSession.id == workout_session.id)
+                .first()
+            )
+            hook_result = on_workout_ingested(
+                db, loaded, planned_hunt_id=workout_data.planned_hunt_id
+            )
+
             results.append(SyncResult(
                 entity_type="workout",
                 entity_id=workout_session.id,
-                status="created"
+                status="created",
+                planned_hunt_id=hook_result.get("planned_hunt_id"),
+                planned_hunt_status=hook_result.get("planned_hunt_status"),
             ))
             workouts_synced += 1
 
