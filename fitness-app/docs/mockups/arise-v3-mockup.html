@@ -5,25 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="color-scheme" content="dark" />
 <title>ARISE v3 Mockup</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap">
 <style>
 /* ARISE v3 mockup — single-theme (the app is dark-only, preferredColorScheme(.dark)).
-   Tokens mirror ios/FitnessApp/Utils/Colors.swift + Fonts.swift and the v2 mockup. */
+   Tokens mirror ios/FitnessApp/Utils/Colors.swift as the LIVE cards use them (voidBlack/voidMedium/voidLight).
+   Fonts: the bundle carries Orbitron/Rajdhani/Inter/JetBrains Mono but Info.plist has no UIAppFonts, so
+   Fonts.swift falls back to the system font on device — the mockup renders what the phone renders. */
 :root {
-  --system-primary:#00D4FF; --success-green:#33FF88; --gold:#FFD700; --warning-red:#FF3333;
+  --system-primary:#00D4FF; --system-primary-dim:#00A8CC; --success-green:#33FF88; --gold:#FFD700; --warning-red:#FF3333;
   --orange:#FF9500; --purple:#7B61FF;
-  --bg-void:#050508; --bg-card:#0f1018; --bg-elevated:#141520; --bg-input:#1a1b28; --void-light:#252530;
+  --bg-void:#0A0A0F; --bg-card:#1A1A24; --bg-elevated:#12121A; --bg-input:#252530; --void-light:#252530;
   --text-primary:#FFFFFF; --text-secondary:#A0A0B0; --text-muted:#606070;
   --glass-border:rgba(255,255,255,0.04); --arise-border:rgba(0,212,255,0.20); --primary-010:rgba(0,212,255,0.10);
   --rank-b:#9B4A9B; --rank-a:#FFD700;
   --lift-squat:#3B82F6; --lift-bench:#EF4444; --lift-deadlift:#8B5CF6; --lift-row:#22C55E; --lift-ohp:#EC4899;
   --run:#FF9500; --light:#7B61FF;
-  --font-display:'Orbitron',ui-monospace,monospace;
-  --font-header:'Rajdhani',-apple-system,'Helvetica Neue',sans-serif;
-  --font-body:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
-  --font-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;
+  --font-display:ui-monospace,'SF Mono',SFMono-Regular,Menlo,monospace;
+  --font-header:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Helvetica,Arial,sans-serif;
+  --font-body:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,'SF Mono',SFMono-Regular,Menlo,monospace;
 }
 * { box-sizing:border-box; -webkit-tap-highlight-color:rgba(0,212,255,0.12); }
 html { background:var(--bg-void); }
@@ -73,10 +72,10 @@ button:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--system-
 .up { color:var(--success-green); } .down { color:#FF4757; } .flat { color:var(--text-muted); }
 
 /* hunter header */
-.hunter-head { display:flex; align-items:center; gap:12px; padding:16px 18px; border-radius:20px; border:1px solid var(--glass-border); background:linear-gradient(160deg, var(--bg-elevated), var(--bg-void)); flex-wrap:wrap; }
+.hunter-head { display:flex; align-items:center; gap:12px; padding:16px 18px; border-radius:20px; border:1px solid var(--glass-border); background:linear-gradient(160deg, #141520, #050508); flex-wrap:wrap; }
 .avatar { width:46px; height:46px; border-radius:50%; flex:none; background:var(--bg-input); border:1.5px solid var(--rank-b); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:16px; color:var(--rank-b); box-shadow:0 0 12px rgba(155,74,155,0.35); }
 .hh-mid { flex:1; min-width:0; }
-.hh-name { font-family:var(--font-header); font-weight:700; font-size:18px; letter-spacing:1.5px; color:#88DDFF; }
+.hh-name { font-family:var(--font-header); font-weight:700; font-size:18px; letter-spacing:1px; color:#88DDFF; }
 .hh-sub { font-family:var(--font-mono); font-size:9.5px; color:var(--text-muted); letter-spacing:.5px; margin-top:2px; } .hh-sub b { color:var(--rank-b); font-weight:600; }
 .hh-right { text-align:right; flex:none; }
 .hh-right .v { font-family:var(--font-display); font-weight:700; font-size:16px; color:var(--success-green); }
@@ -182,7 +181,7 @@ button:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--system-
 
 /* ---- HUNT tab: week strip + pace strip (new) ---- */
 .hunt-head { display:flex; justify-content:space-between; align-items:baseline; margin:4px 2px 10px; }
-.hunt-head .t { font-family:var(--font-header); font-weight:700; font-size:22px; letter-spacing:3px; }
+.hunt-head .t { font-family:var(--font-header); font-weight:700; font-size:22px; letter-spacing:2px; }
 .hunt-head .s { font-family:var(--font-mono); font-size:9px; color:var(--text-muted); letter-spacing:1px; }
 .resume { display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:12px; border:1px solid var(--arise-border); background:var(--primary-010); margin-bottom:12px; min-height:56px; }
 .resume .pulse { width:8px; height:8px; border-radius:50%; background:var(--system-primary); box-shadow:0 0 8px var(--system-primary); flex:none; }
