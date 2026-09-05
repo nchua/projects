@@ -1,4 +1,10 @@
-<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8" />\n<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />\n<meta name="color-scheme" content="dark" />\n<title>ARISE v3 Mockup</title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<title>ARISE v3 Mockup</title>
 <style>
 /* ARISE v3 mockup — single-theme (the app is dark-only, preferredColorScheme(.dark)).
    Tokens mirror ios/FitnessApp/Utils/Colors.swift as the LIVE cards use them (voidBlack/voidMedium/voidLight).
@@ -32,9 +38,8 @@ button:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--system-
 .mock-inner { max-width:430px; margin:0 auto; padding:8px 10px 6px; }
 .mock-title { font-family:var(--font-mono); font-size:9px; letter-spacing:1px; color:var(--text-muted); text-transform:uppercase; display:flex; gap:6px; align-items:center; margin:0 2px 6px; }
 .mock-title::before { content:"◆"; color:var(--system-primary); font-size:8px; }
-.scenes { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; scrollbar-width:none; }
-.scenes::-webkit-scrollbar { display:none; }
-.scene { flex:none; min-height:36px; padding:0 12px; border-radius:18px; border:1px solid var(--glass-border); background:var(--bg-card); font-family:var(--font-mono); font-size:9.5px; letter-spacing:.8px; color:var(--text-secondary); text-transform:uppercase; }
+.scenes { display:flex; flex-wrap:wrap; gap:6px; padding-bottom:4px; }
+.scene { flex:none; min-height:34px; padding:0 11px; border-radius:18px; border:1px solid var(--glass-border); background:var(--bg-card); font-family:var(--font-mono); font-size:9.5px; letter-spacing:.8px; color:var(--text-secondary); text-transform:uppercase; }
 .scene.active { color:var(--system-primary); background:var(--primary-010); border-color:var(--arise-border); }
 .scene:active { transform:scale(.96); }
 
@@ -350,7 +355,9 @@ button:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--system-
 .chart-title .t { font-family:var(--font-mono); font-size:9.5px; letter-spacing:1px; color:var(--text-muted); text-transform:uppercase; }
 .chart-title .v { font-family:var(--font-display); font-weight:700; font-size:16px; }
 .note { font-family:var(--font-mono); font-size:9.5px; color:var(--text-muted); letter-spacing:.3px; line-height:1.6; margin-top:10px; }
-</style>\n</head>\n<body>
+</style>
+</head>
+<body>
 
 <!-- ================= MOCKUP CHROME ================= -->
 <div class="mock">
@@ -1167,4 +1174,6 @@ function bumpDecide() {
 }
 renderRest();
 </script>
-\n</body>\n</html>\n
+
+</body>
+</html>
