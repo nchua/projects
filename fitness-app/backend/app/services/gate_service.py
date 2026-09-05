@@ -1,5 +1,5 @@
 """
-PR Gate engine (ARISE v2 spec §6).
+PR Gate engine (ARISE v2 spec §6, v3 §10).
 
 Spawn (§6.2): evaluated on workout create (after PR detection) and lazily on
 GET /gates — the latter stands in for the spec's nightly job since this
@@ -7,24 +7,41 @@ backend has no scheduler infrastructure (deliberate: no new infra for a solo
 deploy; the Status tab hits GET /gates on every open, so gates spawn at
 least daily in practice).
 
-Clear (§6.4): hooked into all three ingest paths right after
-detect_and_create_prs — any set with e1rm >= target on the gate's canonical
-lift clears it, awards XP immediately (no claim step).
+v3 (§10): lifts are grouped by **exercise family** (a Saturday back squat
+and a Sunday alias are one weekly point); the baseline is the **campaign
+best** (best e1RM since the active campaign's ``start_date``, else the last
+12 weeks) so an old heavy single no longer blocks a 5×5 trajectory; a gate
+needs 4 weekly points (fit over 6); with a Campaign the gate is spawned
+**onto the next planned hunt** containing that family, window = hunt + 7
+days; and when more lifts qualify than slots, lifts with an active strength
+objective win (§4.6 item 1).
+
+Clear (§6.4): hooked into all ingest paths right after
+detect_and_create_prs — any working (non-warm-up) set with e1rm >= target on
+the gate's family clears it, awards XP immediately (no claim step), and the
+create response carries ``gate_cleared`` (§10.5).
 
 Expiry: window passed → quiet row move to history. No penalty, no nag.
 """
 import statistics
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.e1rm import calculate_e1rm
 from app.core.utils import ensure_utc
+from app.models.campaign import PlannedHunt
+from app.models.exercise import Exercise
 from app.models.gate import GateRank, GateStatus, PRGate
 from app.models.user import UserProfile
 from app.models.workout import Set, WorkoutExercise, WorkoutSession
+from app.services import training_load_service
 from app.services.condition_service import CONDITION_BATTLE_READY_MIN, compute_condition
+from app.services.exercise_family_service import families_for_user, family_for_exercise
 from app.services.pr_detection import get_canonical_exercise_ids
+from app.services.training_load_service import local_date_window_filter
 from app.services.trend_service import (
     projected_e1rm as project_e1rm,
 )
@@ -32,12 +49,15 @@ from app.services.trend_service import (
     weekly_best_e1rm_series,
     weekly_slope,
 )
-from app.services.xp_service import BIG_THREE, award_xp
+from app.services.xp_service import award_xp
 
-# ── Spawn constants (spec §6.2) ──
-GATE_WINDOW_DAYS = 14
+# ── Spawn constants (spec §6.2 / §10) ──
+GATE_WINDOW_DAYS = 14          # window when no Campaign exists
+GATE_PLAN_GRACE_DAYS = 7       # with a plan: window = planned hunt + this (§10.3)
+BASELINE_FALLBACK_DAYS = 84    # baseline lookback before a Campaign exists (§10.1)
+STALE_LIFT_DAYS = 14           # no projection from a lift not trained this recently
 MAX_OPEN_GATES_TOTAL = 2       # scarcity keeps them special
-SPAWN_MIN_FACTOR = 1.01        # projected_e1rm(14) must beat baseline × this
+SPAWN_MIN_FACTOR = 1.01        # projected e1RM must beat baseline × this
 TARGET_MAX_FACTOR = 1.02       # target band top: projected × this
 
 # ── Ranking (spec §6.3): e1RM gain over baseline → rank, XP on clear ──
@@ -54,20 +74,66 @@ RANK_ORDER = [GateRank.C, GateRank.B, GateRank.A, GateRank.S]
 # Plate-milestone weights preferred for target sets (spec §6.2-5).
 PLATE_MILESTONES = {95, 135, 185, 225, 275, 315, 365, 405, 455, 495}
 
-# Short lift labels for generated gate names.
+# Short lift labels for generated gate names, keyed by family slug; other
+# families use their display name.
 _SHORT_NAMES = {
-    "squat": "Squat",
-    "bench": "Bench",
+    "back_squat": "Squat",
+    "bench_press": "Bench",
     "deadlift": "Deadlift",
     "overhead_press": "OHP",
-    "incline_bench": "Incline",
-    "row": "Row",
+    "incline_bench_press": "Incline",
+    "front_squat": "Front Squat",
+    "barbell_row": "Row",
 }
 
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
+
+# ── Cross-workstream shims (lazy; fallbacks removed at the freeze) ──────────
+
+def _next_planned_hunt_with_family(
+    db: Session, user_id: str, family_id: str, after: date
+) -> Optional[PlannedHunt]:
+    """W1's ``campaign_service.next_planned_hunt_with_family``; fallback: None
+    (no plan to spawn onto → the 14-day window)."""
+    try:
+        from app.services.campaign_service import next_planned_hunt_with_family
+    except ImportError:
+        return None
+    return next_planned_hunt_with_family(db, user_id, family_id, after=after)
+
+
+def _active_strength_goal_families(db: Session, user_id: str) -> set:
+    """W1's ``goal_service.active_strength_goal_families``; fallback: empty set."""
+    try:
+        from app.services.goal_service import active_strength_goal_families
+    except ImportError:
+        return set()
+    return set(active_strength_goal_families(db, user_id))
+
+
+def _template_families_fallback(template: Any) -> Dict[str, List[str]]:
+    """Read ``hunt_templates.items`` (spec §4.2 shape) grouped by role."""
+    out: Dict[str, List[str]] = {"main": [], "secondary": [], "accessory": []}
+    for item in (getattr(template, "items", None) or []):
+        if not isinstance(item, dict) or not item.get("family"):
+            continue
+        out.setdefault(item.get("role") or "accessory", []).append(item["family"])
+    return out
+
+
+def _template_families(template: Any) -> Dict[str, List[str]]:
+    """W1's ``campaign_service.template_families``; fallback: parse items."""
+    try:
+        from app.services.campaign_service import template_families
+    except ImportError:
+        return _template_families_fallback(template)
+    return template_families(template)
+
+
+# ── Lifecycle helpers ───────────────────────────────────────────────────────
 
 def expire_stale_gates(db: Session, user_id: str) -> int:
     """Move overdue open/active gates to expired (quiet — spec §6.4)."""
@@ -103,9 +169,8 @@ def _rank_for_gain(target_e1rm: float, baseline: float, is_big_three: bool) -> G
     return rank
 
 
-def _preferred_reps(db: Session, user_id: str, exercise_ids: List[str]) -> int:
+def _preferred_reps(db: Session, user_id: str, exercise_ids: List[str], today: date) -> int:
     """Median reps of the user's recent (4-week) working sets, clamped 1-8."""
-    cutoff = _now().replace(tzinfo=None) - timedelta(days=28)
     rows = (
         db.query(Set.reps)
         .join(WorkoutExercise, Set.workout_exercise_id == WorkoutExercise.id)
@@ -113,9 +178,10 @@ def _preferred_reps(db: Session, user_id: str, exercise_ids: List[str]) -> int:
         .filter(
             WorkoutSession.user_id == user_id,
             WorkoutSession.deleted_at.is_(None),
-            WorkoutSession.date >= cutoff,
+            local_date_window_filter(today - timedelta(days=28), today),
             WorkoutExercise.exercise_id.in_(exercise_ids),
             Set.reps.isnot(None),
+            Set.is_warmup.is_(False),
         )
         .all()
     )
@@ -155,75 +221,78 @@ def _select_target_set(
     return best[1], best[2], best[3]
 
 
-def _short_lift_name(exercise_name: str) -> str:
+def _short_lift_name(family_id: str, display_name: str) -> str:
     """Short display label for gate names ("Bench 225×4")."""
-    # Local import: analytics is an api module; keep the dependency lazy.
-    from app.api.analytics import get_exercise_canonical_id
-
-    key = get_exercise_canonical_id(exercise_name)
-    if key and key in _SHORT_NAMES:
-        return _SHORT_NAMES[key]
-    return exercise_name
+    return _SHORT_NAMES.get(family_id, display_name)
 
 
-def _candidate_lifts(db: Session, user_id: str) -> List[Dict[str, Any]]:
-    """Canonical lifts in STRENGTH_STANDARDS the user actually trains.
+def _candidate_lifts(db: Session, user_id: str, since: date) -> List[Dict[str, Any]]:
+    """Families the user trains, with their campaign-best baseline (§10.1-2).
 
-    One entry per canonical alias group: {root_id, name, exercise_ids,
-    baseline} where baseline is the all-time best e1RM across aliases (the
-    same aggregation PR detection uses).
+    One entry per family: {family_id, display_name, root_id, name,
+    exercise_ids, baseline, is_big_three, increment_lb}. ``root_id`` is the
+    family's most-logged exercise (the gate's ``exercise_id``); ``baseline``
+    is the best working-set e1RM on any exercise in the family whose local
+    day is on/after ``since``. Families with no e1RM since then are skipped.
     """
-    from sqlalchemy import func
+    families = families_for_user(db, user_id)
+    if not families:
+        return []
+    all_ids = sorted({eid for fam in families for eid in fam["exercise_ids"]})
 
-    from app.api.analytics import get_exercise_canonical_id
-    from app.models.exercise import Exercise
-
-    rows = (
-        db.query(
-            Exercise.id,
-            Exercise.name,
-            Exercise.canonical_id,
-            func.max(Set.e1rm).label("best_e1rm"),
-        )
-        .join(WorkoutExercise, WorkoutExercise.exercise_id == Exercise.id)
+    base_query = (
+        db.query(WorkoutExercise.exercise_id)
         .join(Set, Set.workout_exercise_id == WorkoutExercise.id)
         .join(WorkoutSession, WorkoutExercise.session_id == WorkoutSession.id)
         .filter(
             WorkoutSession.user_id == user_id,
             WorkoutSession.deleted_at.is_(None),
-            Set.e1rm.isnot(None),
+            WorkoutExercise.exercise_id.in_(all_ids),
+            Set.is_warmup.is_(False),
         )
-        .group_by(Exercise.id, Exercise.name, Exercise.canonical_id)
+    )
+    set_counts = dict(
+        base_query.add_columns(func.count(Set.id))
+        .group_by(WorkoutExercise.exercise_id)
         .all()
     )
+    best_since = dict(
+        base_query.add_columns(func.max(Set.e1rm))
+        .filter(Set.e1rm.isnot(None), local_date_window_filter(since, None))
+        .group_by(WorkoutExercise.exercise_id)
+        .all()
+    )
+    names = dict(db.query(Exercise.id, Exercise.name).filter(Exercise.id.in_(all_ids)).all())
 
-    groups: Dict[str, Dict[str, Any]] = {}
-    for exercise_id, name, canonical_id, best_e1rm in rows:
-        if get_exercise_canonical_id(name) is None:
-            continue  # not a lift with strength standards → no gate
-        root = canonical_id or exercise_id
-        entry = groups.setdefault(root, {
-            "root_id": root,
-            "name": name,
-            "exercise_ids": [],
-            "baseline": 0.0,
+    candidates: List[Dict[str, Any]] = []
+    for fam in families:
+        ids = fam["exercise_ids"]
+        baseline = max((best_since.get(eid) or 0.0 for eid in ids), default=0.0)
+        if baseline <= 0:
+            continue
+        root_id = sorted(ids, key=lambda eid: (-set_counts.get(eid, 0), eid))[0]
+        candidates.append({
+            "family_id": fam["family_id"],
+            "display_name": fam["display_name"],
+            "root_id": root_id,
+            "name": names.get(root_id, fam["display_name"]),
+            "exercise_ids": ids,
+            "baseline": float(baseline),
+            "is_big_three": bool(fam["is_big_three"]),
+            "increment_lb": fam["increment_lb"],
         })
-        entry["exercise_ids"].append(exercise_id)
-        if best_e1rm and best_e1rm > entry["baseline"]:
-            entry["baseline"] = best_e1rm
-            entry["name"] = name
-    return [g for g in groups.values() if g["baseline"] > 0]
+    return candidates
 
 
 def evaluate_gate_spawns(
     db: Session, user_id: str, client_date: Optional[date] = None
 ) -> List[PRGate]:
-    """Run the §6.2 spawn rules; returns newly spawned gates (committed).
+    """Run the spawn rules (§6.2 / §10); returns newly spawned gates (committed).
 
     Also expires overdue gates first, so a single GET /gates keeps the whole
-    lifecycle current. ``client_date`` pins the Condition gate (rule 3) to the
-    user's local day — without it an evening evaluation reads a mostly-empty
-    UTC "today" (v2.1, QA W2).
+    lifecycle current. ``client_date`` pins the Condition gate (rule 3) and
+    "today" to the user's local day — without it an evening evaluation reads
+    a mostly-empty UTC "today" (v2.1, QA W2).
     """
     expire_stale_gates(db, user_id)
 
@@ -248,28 +317,59 @@ def evaluate_gate_spawns(
         db.commit()
         return []
 
-    lifts_with_gates = {g.exercise_id for g in live_gates}
-    spawned: List[PRGate] = []
     now = _now()
+    today = client_date or now.date()
 
-    for lift in _candidate_lifts(db, user_id):
+    # §10.1: baseline = campaign best; before a Campaign exists, last 12 weeks.
+    campaign = training_load_service._get_active_campaign(db, user_id)
+    if campaign is not None and campaign.start_date is not None:
+        since = campaign.start_date
+    else:
+        since = today - timedelta(days=BASELINE_FALLBACK_DAYS)
+
+    # §4.6 item 1: lifts with an active strength objective take the slot first.
+    objective_families = _active_strength_goal_families(db, user_id)
+    candidates = _candidate_lifts(db, user_id, since)
+    candidates.sort(key=lambda c: 0 if c["family_id"] in objective_families else 1)
+
+    taken_families = {g.family_id for g in live_gates if g.family_id}
+    taken_exercises = {g.exercise_id for g in live_gates}
+    spawned: List[PRGate] = []
+
+    for lift in candidates:
         if slots <= 0:
             break
-        if lift["root_id"] in lifts_with_gates:
+        if lift["family_id"] in taken_families or lift["root_id"] in taken_exercises:
             continue  # rule 4: at most one open gate per lift
 
         series = weekly_best_e1rm_series(db, user_id, lift["exercise_ids"])
         slope = weekly_slope(series)
         if slope is None or slope <= 0:
-            continue  # <6 weeks of data, or not improving (§6.1)
+            continue  # <4 weekly points, or not improving (§10.2)
         # Projection from stale data is meaningless — require training on
         # this lift within the current or previous week.
         last_week = series[-1][0]
-        if (now.date() - last_week).days > 14:
+        if (today - last_week).days > STALE_LIFT_DAYS:
             continue
-
         current = series[-1][1]
-        projected = project_e1rm(current, slope, GATE_WINDOW_DAYS)
+
+        # §10.3: spawn onto the next planned hunt containing the family;
+        # window = that hunt + 7 days (end of day). No plan → 14 days.
+        hunt = None
+        if campaign is not None:
+            hunt = _next_planned_hunt_with_family(db, user_id, lift["family_id"], today)
+        if hunt is not None:
+            expires_at = datetime.combine(
+                hunt.date + timedelta(days=GATE_PLAN_GRACE_DAYS),
+                time(23, 59, 59),
+                tzinfo=timezone.utc,
+            )
+            window_days = max(1, (expires_at.date() - today).days)
+        else:
+            expires_at = now + timedelta(days=GATE_WINDOW_DAYS)
+            window_days = GATE_WINDOW_DAYS
+
+        projected = project_e1rm(current, slope, window_days)
         baseline = lift["baseline"]
         if projected < baseline * SPAWN_MIN_FACTOR:
             continue  # rule 2: no real PR projected inside the window
@@ -277,19 +377,20 @@ def evaluate_gate_spawns(
         low = baseline * SPAWN_MIN_FACTOR
         high = max(low, projected * TARGET_MAX_FACTOR)
         target = _select_target_set(
-            low, high, _preferred_reps(db, user_id, lift["exercise_ids"])
+            low, high, _preferred_reps(db, user_id, lift["exercise_ids"], today)
         )
         if target is None:
             continue
         target_weight, target_reps, target_e1rm = target
 
-        is_big_three = any(bt in lift["name"].lower() for bt in BIG_THREE)
-        rank = _rank_for_gain(target_e1rm, baseline, is_big_three)
-        short = _short_lift_name(lift["name"])
+        rank = _rank_for_gain(target_e1rm, baseline, lift["is_big_three"])
+        short = _short_lift_name(lift["family_id"], lift["display_name"])
 
         gate = PRGate(
             user_id=user_id,
             exercise_id=lift["root_id"],
+            family_id=lift["family_id"],
+            planned_hunt_id=hunt.id if hunt is not None else None,
             rank=rank.value,
             name=f"{rank.value}-Rank Gate: {short} {int(target_weight)}×{target_reps}",
             target_weight=target_weight,
@@ -301,16 +402,27 @@ def evaluate_gate_spawns(
             condition_at_spawn=condition["score"],
             status=GateStatus.OPEN.value,
             spawned_at=now,
-            expires_at=now + timedelta(days=GATE_WINDOW_DAYS),
+            expires_at=expires_at,
         )
         db.add(gate)
         spawned.append(gate)
+        taken_families.add(lift["family_id"])
         slots -= 1
 
     db.commit()
     for gate in spawned:
         db.refresh(gate)
     return spawned
+
+
+def _set_e1rm(set_row: Set) -> Optional[float]:
+    """The set's e1RM: the stored value, else Epley on ``weight_lb`` × reps."""
+    if set_row.e1rm is not None:
+        return float(set_row.e1rm)
+    weight = set_row.weight_lb if set_row.weight_lb is not None else set_row.weight
+    if weight and set_row.reps:
+        return calculate_e1rm(float(weight), int(set_row.reps))
+    return None
 
 
 def check_gate_clear(
@@ -321,11 +433,17 @@ def check_gate_clear(
 ) -> List[Dict[str, Any]]:
     """Clear-detection (§6.4) — call right after detect_and_create_prs.
 
-    Any set with e1rm >= target_e1rm on the gate's canonical lift clears it:
-    XP through award_xp immediately, no claim step. Returns one dict per
-    cleared gate: {gate, xp_award}.
+    Any **working** set (warm-ups never clear a gate) with e1rm >= target on
+    the gate's family — or, for pre-v3 gates without a family, the gate's
+    canonical lift — clears it: XP through award_xp immediately, no claim
+    step. Returns one dict per cleared gate: {gate, xp_award}.
     """
-    exercise_ids = set(get_canonical_exercise_ids(db, workout_exercise.exercise_id))
+    working = [s for s in sets if not s.is_warmup]
+    if not working:
+        return []
+
+    family_id = family_for_exercise(db, workout_exercise.exercise_id)
+    canonical_ids = set(get_canonical_exercise_ids(db, workout_exercise.exercise_id))
 
     open_gates = (
         db.query(PRGate)
@@ -339,14 +457,19 @@ def check_gate_clear(
     now = _now()
 
     for gate in open_gates:
-        if gate.exercise_id not in exercise_ids:
+        same_family = (
+            gate.family_id is not None and family_id is not None and gate.family_id == family_id
+        )
+        if not same_family and gate.exercise_id not in canonical_ids:
             continue
         if ensure_utc(gate.expires_at) < now:
             continue  # past window — expiry sweep will catch it
-        clearing_set = next(
-            (s for s in sets if s.e1rm is not None and s.e1rm >= gate.target_e1rm),
-            None,
-        )
+        clearing_set = None
+        for s in working:
+            e1rm = _set_e1rm(s)
+            if e1rm is not None and e1rm >= gate.target_e1rm:
+                clearing_set = s
+                break
         if clearing_set is None:
             continue
 
@@ -360,6 +483,52 @@ def check_gate_clear(
         cleared.append({"gate": gate, "xp_award": xp_award})
 
     return cleared
+
+
+def _prescription_families(prescription: Optional[Dict[str, Any]]) -> set:
+    """main/secondary family ids named by a stored prescription (§15.3)."""
+    exercises = (prescription or {}).get("exercises") or []
+    return {
+        e.get("family_id")
+        for e in exercises
+        if isinstance(e, dict) and e.get("family_id") and e.get("role") in ("main", "secondary")
+    }
+
+
+def gate_for_planned_hunt(
+    db: Session, user_id: str, planned_hunt: PlannedHunt
+) -> Optional[PRGate]:
+    """The open/active gate this hunt should carry as its attempt (§10.3-4).
+
+    Matches the gate spawned onto this hunt, else any live gate whose family
+    is a main/secondary family of the hunt's template (fallback: the stored
+    prescription) and whose window covers ``planned_hunt.date``.
+    """
+    live = get_live_gates(db, user_id)
+    if not live:
+        return None
+    for gate in live:
+        if gate.planned_hunt_id is not None and gate.planned_hunt_id == planned_hunt.id:
+            return gate
+
+    hunt_families: set = set()
+    template = getattr(planned_hunt, "template", None)
+    if template is not None:
+        by_role = _template_families(template)
+        hunt_families = set(by_role.get("main", [])) | set(by_role.get("secondary", []))
+    if not hunt_families:
+        hunt_families = _prescription_families(planned_hunt.prescription)
+    if not hunt_families:
+        return None
+
+    for gate in live:
+        if gate.family_id not in hunt_families:
+            continue
+        opens = ensure_utc(gate.spawned_at).date()
+        closes = ensure_utc(gate.expires_at).date()
+        if opens <= planned_hunt.date <= closes:
+            return gate
+    return None
 
 
 def get_live_gates(db: Session, user_id: str) -> List[PRGate]:

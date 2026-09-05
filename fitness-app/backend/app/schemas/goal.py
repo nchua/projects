@@ -4,20 +4,45 @@ Goal schemas - strength PR goal requests and responses
 from datetime import date
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Maximum active goals per user
 MAX_ACTIVE_GOALS = 5
 
 
 class GoalCreate(BaseModel):
-    """Request to create a new strength goal"""
-    exercise_id: str = Field(..., description="ID of the exercise to set goal for")
-    target_weight: float = Field(..., gt=0, description="Target weight to lift")
+    """Request to create a new objective (ARISE v3 §4.6).
+
+    v2 clients send ``exercise_id + target_weight + deadline`` and get a
+    strength objective; ``kind="run"`` objectives send ``target_miles`` +
+    ``run_scope`` and either a ``deadline`` or ``by="arc_end"``.
+    """
+    exercise_id: Optional[str] = Field(None, description="ID of the exercise to set goal for")
+    target_weight: Optional[float] = Field(None, gt=0, description="Target weight to lift")
     target_reps: int = Field(default=1, ge=1, le=20, description="Target reps (1 = true 1RM goal)")
     weight_unit: str = Field(default="lb", description="Weight unit (lb or kg)")
-    deadline: date = Field(..., description="Target date to achieve the goal")
+    deadline: Optional[date] = Field(None, description="Target date to achieve the goal")
     notes: Optional[str] = Field(None, max_length=500)
+    # ── ARISE v3 objectives ──
+    kind: str = Field(default="strength", pattern="^(strength|run)$")
+    campaign_id: Optional[str] = None
+    target_miles: Optional[float] = Field(None, gt=0)
+    run_scope: Optional[str] = Field(None, pattern="^(long_run|weekly)$")
+    by: Optional[str] = Field(None, pattern="^(arc_end|date)$")
+
+    @model_validator(mode="after")
+    def _shape_for_kind(self) -> "GoalCreate":
+        if self.kind == "run":
+            if self.target_miles is None or self.run_scope is None:
+                raise ValueError("run objectives need target_miles and run_scope")
+            if self.deadline is None and self.by != "arc_end":
+                raise ValueError("run objectives need a deadline or by='arc_end'")
+        else:
+            if not self.exercise_id or self.target_weight is None:
+                raise ValueError("strength objectives need exercise_id and target_weight")
+            if self.deadline is None and self.by != "arc_end":
+                raise ValueError("strength objectives need a deadline or by='arc_end'")
+        return self
 
 
 class GoalBatchCreate(BaseModel):
@@ -43,9 +68,9 @@ class GoalUpdate(BaseModel):
 
 
 class GoalResponse(BaseModel):
-    """A user's strength goal"""
+    """A user's objective (strength or run)"""
     id: str
-    exercise_id: str
+    exercise_id: Optional[str] = None
     exercise_name: str
     target_weight: float
     target_reps: int  # Target reps (1 = true 1RM goal)
@@ -63,6 +88,14 @@ class GoalResponse(BaseModel):
     weight_to_go: float  # Remaining e1RM to reach goal
     weeks_remaining: int
 
+    # ── ARISE v3 objectives (§4.6) ──
+    kind: str = "strength"
+    campaign_id: Optional[str] = None
+    target_miles: Optional[float] = None
+    run_scope: Optional[str] = None
+    pace_status: Optional[str] = None
+    deadline_extensions: int = 0
+
     class Config:
         from_attributes = True
 
@@ -78,6 +111,9 @@ class GoalSummaryResponse(BaseModel):
     deadline: str
     progress_percent: float
     status: str
+    kind: str = "strength"
+    target_miles: Optional[float] = None
+    run_scope: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -134,3 +170,21 @@ class GoalProgressResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ============ Objective preview (ARISE v3 §4.6) ============
+
+class GoalPreviewResponse(BaseModel):
+    """POST /goals/preview — the pace preview shown before saving."""
+    kind: str
+    current_e1rm: Optional[float] = None
+    target_e1rm: Optional[float] = None
+    required_weekly_gain_lb: Optional[float] = None
+    slope_6wk_lb: Optional[float] = None
+    weeks_remaining: float
+    deadline: str
+    ambitious: bool = False
+    pace_status: str = "on_track"
+    # Run objectives: the arc ramp at the deadline vs the target.
+    ramp_at_deadline: Optional[float] = None
+    target_miles: Optional[float] = None

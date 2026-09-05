@@ -24,7 +24,6 @@ from app.models.notification import DeviceToken, NotificationPreference, Notific
 from app.models.password_reset import PasswordResetToken
 from app.models.pr import PR, PRType
 from app.models.progress import HunterRank, UserProgress
-from app.models.quest import QuestDefinition, QuestDifficulty, QuestType, UserQuest
 from app.models.scan_balance import PurchaseRecord, ScanBalance
 from app.models.screenshot_usage import ScreenshotUsage
 from app.models.training_load import DailyTrainingLoad
@@ -60,10 +59,6 @@ __all__ = [
     "HunterRank",
     "AchievementDefinition",
     "UserAchievement",
-    "QuestDefinition",
-    "UserQuest",
-    "QuestType",
-    "QuestDifficulty",
     "UserDirective",
     "DirectiveType",
     "PRGate",

@@ -373,6 +373,8 @@ from app.api import (
     auth,
     bodyweight,
     calendar,
+    campaign,
+    coach,
     condition,
     directive,
     exercises,
@@ -380,6 +382,8 @@ from app.api import (
     friends,
     gates,
     goals,
+    hunts,
+    load,
     notifications,
     password_reset,
     profile,
@@ -416,6 +420,10 @@ app.include_router(weekly_report.router, prefix="/progress", tags=["Progress"])
 app.include_router(scan_balance.router, prefix="/scan-balance", tags=["Scan Balance"])
 app.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
 app.include_router(whoop.router, prefix="/whoop", tags=["WHOOP"])
+app.include_router(coach.router, prefix="/coach", tags=["Coach"])
+app.include_router(campaign.router, prefix="/campaign", tags=["Campaign"])
+app.include_router(hunts.router, prefix="/hunts", tags=["Hunts"])
+app.include_router(load.router, prefix="/load", tags=["Training Load"])
 
 if __name__ == "__main__":
     import uvicorn

@@ -9,6 +9,20 @@ from typing import Optional
 from pydantic import BaseModel
 
 
+class GateClearedInfo(BaseModel):
+    """Celebration payload on the workout-create response (v3 §10.5).
+
+    Deliberately small: the client already knows how to render a gate; this
+    is just enough for the one celebration screen (§7.5).
+    """
+    gate_id: str
+    name: str                     # "B-Rank Gate: Bench 225×4"
+    rank: str                     # C | B | A | S
+    xp_awarded: int
+    target_weight: float
+    target_reps: int
+
+
 class GateResponse(BaseModel):
     """One PR Gate (spec §13.3)."""
     id: str

@@ -9,6 +9,13 @@ tests cover the new proxy + time-based path:
 - A set-less cardio session now produces cooldown entries for its proxy muscles.
 - Longer duration and higher HR intensity both lengthen the cooldown.
 - Activities with no proxy (e.g. Yoga) still contribute nothing.
+
+ARISE v3 §6.1: the cardio volume input is now the session's training load
+(Edwards TRIMP from HR zones, else duration × 2.5) divided by
+``TRIMP_PER_EFFECTIVE_SET`` (30), with no per-session cap — the old
+15-min-per-set input saturated at 5 sets (~75 min), so a long run cost the
+same recovery as a 75-minute jog. Expected magnitudes under the new input
+are noted on the assertions they affect.
 """
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -165,4 +172,52 @@ def test_easy_long_cardio_recovers_faster_than_a_strength_day(db, create_test_us
 
     quads = _muscle(calculate_cooldowns(db, user.id), "quads")
     assert quads is not None
+    # v3: TRIMP 60×1 + 60×2 = 180 → 6.0 effective sets (was capped at 5.0),
+    # intensity 0.481, volume ×1.30 → 48 × 0.481 × 1.30 ≈ 30 h (was ≈ 27 h).
+    # Still comfortably under two days.
+    assert quads["fatigue_breakdown"]["effective_sets"] == 6.0
     assert quads["fatigue_breakdown"]["final_cooldown_hours"] < 48
+
+
+def test_long_run_costs_more_recovery_than_a_jog(db, create_test_user):
+    """v3 §6.1: the spec's complaint — a 90-min long run must cost more than
+    a 25-min easy run at the same zone mix (the old input capped both)."""
+    jog_user, _ = create_test_user(email="cardio-jog@example.com")
+    long_user, _ = create_test_user(email="cardio-longrun@example.com")
+    running = _make_exercise(db, "Running", "Legs")
+
+    # 25 min half z2 / half z3 → TRIMP 12.5×2 + 12.5×3 = 62.5 → ≈ 2.1 sets.
+    _seed_cardio_session(db, jog_user.id, running, duration_minutes=25,
+                         hr_zone_seconds={"z2": 750, "z3": 750})
+    # 90 min, 60 in z2 / 30 in z3 → TRIMP 120 + 90 = 210 → 7.0 sets.
+    _seed_cardio_session(db, long_user.id, running, duration_minutes=90,
+                         hr_zone_seconds={"z2": 3600, "z3": 1800})
+
+    jog = _muscle(calculate_cooldowns(db, jog_user.id), "quads")
+    long_run = _muscle(calculate_cooldowns(db, long_user.id), "quads")
+    assert jog is not None and long_run is not None
+    assert jog["fatigue_breakdown"]["effective_sets"] == 2.1
+    assert long_run["fatigue_breakdown"]["effective_sets"] == 7.0
+    assert (
+        long_run["fatigue_breakdown"]["final_cooldown_hours"]
+        > jog["fatigue_breakdown"]["final_cooldown_hours"]
+    )
+
+
+def test_cardio_volume_no_longer_saturates_at_75_minutes(db, create_test_user):
+    """The old CARDIO_MAX_EFFECTIVE_SETS made 75 and 120 minutes identical."""
+    mid_user, _ = create_test_user(email="cardio-75@example.com")
+    long_user, _ = create_test_user(email="cardio-120@example.com")
+    running = _make_exercise(db, "Running", "Legs")
+    # No zones → duration × 2.5 (estimated): 187.5 → 6.2 sets vs 300 → 10.0.
+    _seed_cardio_session(db, mid_user.id, running, duration_minutes=75)
+    _seed_cardio_session(db, long_user.id, running, duration_minutes=120)
+
+    mid = _muscle(calculate_cooldowns(db, mid_user.id), "quads")
+    long_run = _muscle(calculate_cooldowns(db, long_user.id), "quads")
+    assert mid is not None and long_run is not None
+    assert long_run["fatigue_breakdown"]["effective_sets"] > mid["fatigue_breakdown"]["effective_sets"]
+    assert (
+        long_run["fatigue_breakdown"]["final_cooldown_hours"]
+        > mid["fatigue_breakdown"]["final_cooldown_hours"]
+    )

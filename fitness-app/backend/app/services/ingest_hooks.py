@@ -30,11 +30,16 @@ plan or missing load history — a free-form hunt is the common case.
 """
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, Optional
 
 from sqlalchemy.orm import Session
 
 from app.models.workout import WorkoutSession
+from app.services.campaign_service import link_session_to_plan
+from app.services.training_load_service import recompute_daily_load
+
+logger = logging.getLogger(__name__)
 
 
 def on_workout_ingested(
@@ -52,9 +57,22 @@ def on_workout_ingested(
             (``WorkoutCreate.planned_hunt_id``), if any.
 
     Returns:
-        ``{}`` today. After the contract freeze: ``{"planned_hunt_id": ...,
-        "planned_hunt_status": ...}`` from W1's linker (W2's load recompute
-        contributes nothing to the response).
+        ``{"planned_hunt_id": ..., "planned_hunt_status": ...}`` from the
+        campaign linker (W1), or ``{}`` when the session matched no plan.
+        The training-load recompute (W2) contributes nothing to the response.
+
+    Neither step may abort the ingest: a free-form hunt with no campaign and
+    a user with no load history are the common cases, and a bug in either
+    service must surface in the logs, not as a failed workout save.
     """
-    _ = (db, session, planned_hunt_id)
-    return {}
+    result: Dict[str, Any] = {}
+    try:
+        result = link_session_to_plan(db, session, planned_hunt_id=planned_hunt_id) or {}
+    except Exception:  # noqa: BLE001 — never fail an ingest on the plan link
+        logger.exception("link_session_to_plan failed for session %s", session.id)
+        result = {}
+    try:
+        recompute_daily_load(db, session.user_id)
+    except Exception:  # noqa: BLE001 — never fail an ingest on the load recompute
+        logger.exception("recompute_daily_load failed for user %s", session.user_id)
+    return result

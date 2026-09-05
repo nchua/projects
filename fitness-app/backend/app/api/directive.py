@@ -1,5 +1,7 @@
 """
 System Directive API endpoints (ARISE v2 spec §5.3).
+
+DEPRECATED (ARISE v3): replaced by GET /hunts/today; removed after the v3 iOS build ships.
 """
 import logging
 from datetime import date

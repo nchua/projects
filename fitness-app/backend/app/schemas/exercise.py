@@ -33,3 +33,28 @@ class ExerciseResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ============ ARISE v3 §15.1 — last performance ============
+
+class LastPerformanceSet(BaseModel):
+    weight_lb: float
+    reps: int
+    rpe: Optional[int] = None
+    is_warmup: bool = False
+
+
+class LastPerformanceResponse(BaseModel):
+    """GET /exercises/{id}/last-performance — the LogView "LAST" column.
+
+    Contract-mirror note: canonical shape for the iOS ``LastPerformanceResponse``.
+    Spans the exercise's whole family (canonical alias group when the family
+    is unknown) so it never disagrees with the prescription engine's anchor.
+    """
+    exercise_id: str
+    family_id: Optional[str] = None
+    date: str                       # local YYYY-MM-DD
+    days_ago: int
+    sets: List[LastPerformanceSet]
+    best_e1rm: Optional[float] = None
+    best_e1rm_date: Optional[str] = None

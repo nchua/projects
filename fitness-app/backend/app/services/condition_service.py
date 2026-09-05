@@ -1,41 +1,51 @@
 """
-Hunter Condition — the 0-100 readiness score (ARISE v2 spec §4).
+Hunter Condition — the 0-100 readiness score (ARISE v2 spec §4, v3 §6.5).
 
-Computed on the fly (like ``exertion_score`` — never stored) from five inputs
+Computed on the fly (like ``exertion_score`` — never stored) from six inputs
 that all already land in the DB: WHOOP recovery, muscle cooldowns, sleep,
-yesterday's strain, and the resting-HR trend. Missing inputs are dropped and
-the remaining weights renormalized (graceful degradation), so Condition never
-comes up empty — muscle freshness is always computable.
+the acute-vs-chronic training-load ratio, the resting-HR trend and the HRV
+trend. Missing inputs are dropped and the remaining weights renormalized
+(graceful degradation), so Condition never comes up empty — muscle freshness
+is always computable.
+
+v3 (§6.5): input 4 "yesterday's strain" became the **training-load ratio**
+(``total_acwr`` from ``training_load_service``; unavailable until 28 days of
+history), and **HRV trend** was added as input 6 — when it is present,
+recovery's weight drops 0.40 → 0.30 so the weights still sum to 1.
 
 Band thresholds and weights are module constants because Gate spawning
-(Phase 2, spec §6.2) shares them: a Gate requires Condition >= BATTLE READY.
+(spec §6.2) shares them: a Gate requires Condition >= BATTLE READY.
 """
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy.orm import Session
 
-from app.core.exertion import compute_exertion_score
 from app.core.utils import to_iso8601_utc
 from app.models.activity import DailyActivity
-from app.models.workout import WorkoutSession
 from app.services.cooldown_service import COOLDOWN_TIMES, calculate_cooldowns
+from app.services.training_load_service import get_load_state
 
-# Input weights (spec §4.1). Renormalized over available inputs only.
+# Input weights (spec §4.1 / v3 §6.5). Renormalized over available inputs only.
+# ``recovery`` is 0.40 when HRV trend is unavailable and
+# RECOVERY_WEIGHT_WITH_HRV when it is present (both sum to 1.0).
 CONDITION_WEIGHTS: Dict[str, float] = {
     "recovery": 0.40,
     "cooldowns": 0.25,
     "sleep": 0.15,
-    "strain_yesterday": 0.10,
+    "load_ratio": 0.10,
     "rhr_trend": 0.10,
+    "hrv_trend": 0.10,
 }
+RECOVERY_WEIGHT_WITH_HRV = 0.30
 
 INPUT_LABELS: Dict[str, str] = {
     "recovery": "Recovery",
     "cooldowns": "Muscle Freshness",
     "sleep": "Sleep",
-    "strain_yesterday": "Yesterday's Strain",
+    "load_ratio": "Training Load",
     "rhr_trend": "Resting HR Trend",
+    "hrv_trend": "HRV Trend",
 }
 
 # Band thresholds (spec §4.2) — shared constants: Gates spawn only at
@@ -54,16 +64,26 @@ BAND_CRITICAL = "critical"
 SLEEP_FLOOR_HOURS = 4.0
 SLEEP_RANGE_HOURS = 3.5
 
-# Strain normalization: strain <= 10 doesn't suppress Condition at all;
-# 21 (max) maps to 40. Hard training is expected — only heavy strain counts.
-STRAIN_NEUTRAL_MAX = 10.0
-STRAIN_SCALE_MAX = 21.0
-STRAIN_MIN_SUBSCORE = 40.0
+# Training-load ratio (v3 §6.5): acute/chronic total load <= 1.0 doesn't
+# suppress Condition at all; 1.5 maps to 40 (floor). Hard weeks are expected —
+# only load that outruns fitness counts.
+LOAD_RATIO_NEUTRAL_MAX = 1.0
+LOAD_RATIO_FLOOR_AT = 1.5
+LOAD_RATIO_MIN_SUBSCORE = 40.0
 
 # RHR trend: each bpm above the 14-day mean costs 10 points, floor 40.
 RHR_LOOKBACK_DAYS = 14
 RHR_POINTS_PER_BPM = 10.0
 RHR_MIN_SUBSCORE = 40.0
+
+# HRV trend (v3 §6.5): 7-day mean vs 28-day mean; subscore
+# 100 − 300 × max(0, 1 − ratio), floor 40. Needs enough days in both windows.
+HRV_SHORT_DAYS = 7
+HRV_LONG_DAYS = 28
+HRV_MIN_SHORT_DAYS = 4
+HRV_MIN_LONG_DAYS = 10
+HRV_POINTS_PER_UNIT_DROP = 300.0
+HRV_MIN_SUBSCORE = 40.0
 
 
 def band_for_score(score: int) -> str:
@@ -84,6 +104,11 @@ def _source_badge(activity_source: Optional[str]) -> str:
     return "apple_watch"
 
 
+def _whoop_first(rows: List[DailyActivity]) -> List[DailyActivity]:
+    """Order a day's activity rows WHOOP-first (WHOOP-native metrics win)."""
+    return sorted(rows, key=lambda r: 0 if "whoop" in (r.source or "").lower() else 1)
+
+
 def _pick_activity_value(
     rows: List[DailyActivity], attr: str
 ) -> Tuple[Optional[float], Optional[str]]:
@@ -93,10 +118,7 @@ def _pick_activity_value(
     can hold several rows (apple_fitness + whoop_screenshot). WHOOP rows win
     because recovery/strain/sleep are WHOOP-native metrics.
     """
-    ordered = sorted(
-        rows, key=lambda r: 0 if "whoop" in (r.source or "").lower() else 1
-    )
-    for row in ordered:
+    for row in _whoop_first(rows):
         value = getattr(row, attr)
         if value is not None:
             return value, _source_badge(row.source)
@@ -123,33 +145,66 @@ def _freshness_subscore(muscles_cooling: List[Dict[str, Any]]) -> int:
     return round(_clamp(100.0 - remaining / len(COOLDOWN_TIMES)))
 
 
-def _strain_subscore(strain: float) -> int:
-    if strain <= STRAIN_NEUTRAL_MAX:
+def _load_ratio_subscore(ratio: float) -> int:
+    """100 at ratio <= 1.0, linear to 40 at 1.5, floor 40 (v3 §6.5)."""
+    if ratio <= LOAD_RATIO_NEUTRAL_MAX:
         return 100
-    fraction = (strain - STRAIN_NEUTRAL_MAX) / (STRAIN_SCALE_MAX - STRAIN_NEUTRAL_MAX)
-    return round(_clamp(100.0 - fraction * (100.0 - STRAIN_MIN_SUBSCORE),
-                        STRAIN_MIN_SUBSCORE, 100.0))
+    fraction = (ratio - LOAD_RATIO_NEUTRAL_MAX) / (LOAD_RATIO_FLOOR_AT - LOAD_RATIO_NEUTRAL_MAX)
+    return round(_clamp(
+        100.0 - fraction * (100.0 - LOAD_RATIO_MIN_SUBSCORE),
+        LOAD_RATIO_MIN_SUBSCORE, 100.0,
+    ))
 
 
-def _yesterday_exertion(db: Session, user_id: str, yesterday: date) -> Optional[float]:
-    """Max exertion score across yesterday's workouts (Apple-Watch fallback)."""
-    day_start = datetime.combine(yesterday, datetime.min.time())
-    day_end = day_start + timedelta(days=1)
-    workouts = (
-        db.query(WorkoutSession)
+def _hrv_subscore(ratio: float) -> int:
+    """100 − 300 × max(0, 1 − ratio), floor 40 (v3 §6.5)."""
+    return round(_clamp(
+        100.0 - HRV_POINTS_PER_UNIT_DROP * max(0.0, 1.0 - ratio),
+        HRV_MIN_SUBSCORE, 100.0,
+    ))
+
+
+def _hrv_trend(
+    db: Session, user_id: str, today: date
+) -> Tuple[Optional[float], Optional[str]]:
+    """7-day mean vs 28-day mean of ``DailyActivity.hrv`` → (ratio, badge).
+
+    One value per day (WHOOP rows preferred); needs >= HRV_MIN_SHORT_DAYS
+    days in the last 7 and >= HRV_MIN_LONG_DAYS in the last 28, else
+    unavailable. The badge follows the most recent HRV day's row source.
+    """
+    long_start = today - timedelta(days=HRV_LONG_DAYS - 1)
+    short_start = today - timedelta(days=HRV_SHORT_DAYS - 1)
+    rows = (
+        db.query(DailyActivity)
         .filter(
-            WorkoutSession.user_id == user_id,
-            WorkoutSession.deleted_at.is_(None),
-            WorkoutSession.date >= day_start,
-            WorkoutSession.date < day_end,
+            DailyActivity.user_id == user_id,
+            DailyActivity.date >= long_start,
+            DailyActivity.date <= today,
+            DailyActivity.hrv.isnot(None),
         )
         .all()
     )
-    scores = [
-        s for s in (compute_exertion_score(w.hr_zone_seconds) for w in workouts)
-        if s is not None
-    ]
-    return max(scores) if scores else None
+    by_day: Dict[date, List[DailyActivity]] = {}
+    for row in rows:
+        by_day.setdefault(row.date, []).append(row)
+
+    daily: Dict[date, Tuple[float, str]] = {}
+    for day, day_rows in by_day.items():
+        value, badge = _pick_activity_value(day_rows, "hrv")
+        if value is not None:
+            daily[day] = (float(value), badge or "apple_watch")
+
+    long_values = [v for _, (v, _) in daily.items()]
+    short_values = [v for d, (v, _) in daily.items() if d >= short_start]
+    if len(short_values) < HRV_MIN_SHORT_DAYS or len(long_values) < HRV_MIN_LONG_DAYS:
+        return None, None
+    long_mean = sum(long_values) / len(long_values)
+    if long_mean <= 0:
+        return None, None
+    ratio = (sum(short_values) / len(short_values)) / long_mean
+    latest_day = max(daily)
+    return round(ratio, 3), daily[latest_day][1]
 
 
 def compute_condition(
@@ -165,16 +220,10 @@ def compute_condition(
     ``muscles_cooling`` pass-through for the detail sheet.
     """
     today = client_date or date.today()
-    yesterday = today - timedelta(days=1)
 
     today_rows = (
         db.query(DailyActivity)
         .filter(DailyActivity.user_id == user_id, DailyActivity.date == today)
-        .all()
-    )
-    yesterday_rows = (
-        db.query(DailyActivity)
-        .filter(DailyActivity.user_id == user_id, DailyActivity.date == yesterday)
         .all()
     )
 
@@ -203,16 +252,13 @@ def compute_condition(
     else:
         inputs["sleep"] = (None, None, None)
 
-    # 4. Yesterday's strain — WHOOP day strain, else max workout exertion.
-    strain, _ = _pick_activity_value(yesterday_rows, "strain")
-    if strain is not None:
-        inputs["strain_yesterday"] = (float(strain), _strain_subscore(float(strain)), "whoop")
+    # 4. Training-load ratio — acute vs chronic total load (v3 §6.5).
+    # Unavailable (renormalized away) until 28 days of history.
+    load_ratio = get_load_state(db, user_id, today).get("total_acwr")
+    if load_ratio is not None:
+        inputs["load_ratio"] = (float(load_ratio), _load_ratio_subscore(float(load_ratio)), "app")
     else:
-        exertion = _yesterday_exertion(db, user_id, yesterday)
-        if exertion is not None:
-            inputs["strain_yesterday"] = (exertion, _strain_subscore(exertion), "apple_watch")
-        else:
-            inputs["strain_yesterday"] = (None, None, None)
+        inputs["load_ratio"] = (None, None, None)
 
     # 5. Resting-HR trend — today vs. 14-day mean.
     rhr_today, rhr_src = _pick_activity_value(today_rows, "resting_heart_rate")
@@ -237,12 +283,24 @@ def compute_condition(
     else:
         inputs["rhr_trend"] = (None, None, None)
 
+    # 6. HRV trend — 7-day mean vs 28-day mean (v3 §6.5).
+    hrv_ratio, hrv_src = _hrv_trend(db, user_id, today)
+    if hrv_ratio is not None:
+        inputs["hrv_trend"] = (hrv_ratio, _hrv_subscore(hrv_ratio), hrv_src)
+    else:
+        inputs["hrv_trend"] = (None, None, None)
+
+    # Weights: recovery yields 0.10 to HRV trend when it is present (§6.5).
+    weights = dict(CONDITION_WEIGHTS)
+    if inputs["hrv_trend"][1] is not None:
+        weights["recovery"] = RECOVERY_WEIGHT_WITH_HRV
+
     # Renormalize over available inputs (spec §4.1 graceful degradation).
     available_weight = sum(
-        CONDITION_WEIGHTS[key] for key, (_, sub, _) in inputs.items() if sub is not None
+        weights[key] for key, (_, sub, _) in inputs.items() if sub is not None
     )
     weighted_sum = sum(
-        sub * CONDITION_WEIGHTS[key]
+        sub * weights[key]
         for key, (_, sub, _) in inputs.items() if sub is not None
     )
     score = round(weighted_sum / available_weight) if available_weight > 0 else 0
@@ -251,7 +309,7 @@ def compute_condition(
     for key in CONDITION_WEIGHTS:
         raw, subscore, source = inputs[key]
         available = subscore is not None
-        weight = CONDITION_WEIGHTS[key]
+        weight = weights[key]
         input_payload.append({
             "key": key,
             "label": INPUT_LABELS[key],

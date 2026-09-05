@@ -39,6 +39,11 @@ from app.schemas.analytics import (
 )
 from app.schemas.cooldown import CooldownResponse
 from app.services.cooldown_service import calculate_cooldowns
+from app.services.training_load_service import (
+    local_date_window_filter,
+    local_day,
+    set_weight_lb,
+)
 
 router = APIRouter()
 
@@ -236,15 +241,17 @@ async def get_exercise_trend(
     ).all()
     exercise_ids = [ex.id for ex in related_exercises] if related_exercises else [exercise_id]
 
-    # Build date filter
+    # Build date filter (local_date rule, CLAUDE.md "Workout Dates")
     days = get_time_range_days(time_range)
     date_filter = []
     if days:
         start_date = date.today() - timedelta(days=days)
-        date_filter.append(WorkoutSession.date >= start_date)
+        date_filter.append(local_date_window_filter(start_date, None))
 
     # Query all sets for this exercise and its canonical variations
-    query = db.query(Set, WorkoutSession.date, WorkoutSession.id).join(
+    query = db.query(
+        Set, WorkoutSession.local_date, WorkoutSession.date, WorkoutSession.id
+    ).join(
         WorkoutExercise, Set.workout_exercise_id == WorkoutExercise.id
     ).join(
         WorkoutSession, WorkoutExercise.session_id == WorkoutSession.id
@@ -269,8 +276,9 @@ async def get_exercise_trend(
     # Group by date and get best e1RM per day (and optionally collect all sets)
     daily_best = {}  # date -> (e1rm, workout_id)
     daily_sets = defaultdict(list) if include_sets else None
-    for set_obj, workout_date, workout_id in query:
-        date_str = to_iso8601_utc(workout_date)
+    for set_obj, stamped_day, workout_date, workout_id in query:
+        # Daily buckets follow the local day, not the stored instant.
+        date_str = local_day(stamped_day, workout_date).isoformat()
         if set_obj.e1rm and set_obj.e1rm > 0:
             if date_str not in daily_best or set_obj.e1rm > daily_best[date_str][0]:
                 daily_best[date_str] = (set_obj.e1rm, workout_id)
@@ -399,7 +407,7 @@ async def get_exercise_history(
                 set_number=s.set_number
             ))
             total_sets += 1
-            session_volume += s.weight * s.reps
+            session_volume += set_weight_lb(s) * s.reps
             if s.e1rm and s.e1rm > best_e1rm:
                 best_e1rm = s.e1rm
 
@@ -613,7 +621,7 @@ def compute_insights(db: Session, user_id: str) -> list:
     recent_workouts = db.query(WorkoutSession).filter(
         WorkoutSession.user_id == user_id,
         WorkoutSession.deleted_at == None,
-        WorkoutSession.date >= four_weeks_ago
+        local_date_window_filter(four_weeks_ago, None),
     ).all()
 
     if not recent_workouts:
@@ -774,8 +782,7 @@ async def get_weekly_review(
     ).filter(
         WorkoutSession.user_id == current_user.id,
         WorkoutSession.deleted_at == None,
-        WorkoutSession.date >= week_start,
-        WorkoutSession.date <= week_end
+        local_date_window_filter(week_start, week_end),
     ).all()
 
     # Last week's workouts
@@ -784,8 +791,7 @@ async def get_weekly_review(
     ).filter(
         WorkoutSession.user_id == current_user.id,
         WorkoutSession.deleted_at == None,
-        WorkoutSession.date >= prev_week_start,
-        WorkoutSession.date <= prev_week_end
+        local_date_window_filter(prev_week_start, prev_week_end),
     ).all()
 
     # Calculate this week's stats
@@ -794,11 +800,14 @@ async def get_weekly_review(
     total_volume = 0
     exercise_e1rms = defaultdict(list)
 
+    # Tonnage in lb from weight_lb (§12 0b); warm-ups are not volume.
     for workout in this_week:
         for we in workout.workout_exercises:
             for s in we.sets:
+                if s.is_warmup:
+                    continue
                 total_sets += 1
-                total_volume += s.weight * s.reps
+                total_volume += set_weight_lb(s) * s.reps
                 if s.e1rm:
                     exercise_e1rms[we.exercise_id].append({
                         "e1rm": s.e1rm,
@@ -811,7 +820,9 @@ async def get_weekly_review(
     for workout in last_week:
         for we in workout.workout_exercises:
             for s in we.sets:
-                last_week_volume += s.weight * s.reps
+                if s.is_warmup:
+                    continue
+                last_week_volume += set_weight_lb(s) * s.reps
                 if s.e1rm:
                     last_week_e1rms[we.exercise_id].append(s.e1rm)
 

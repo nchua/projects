@@ -25,6 +25,7 @@ from app.schemas.weekly_report import (
     WeeklyProgressReportResponse,
 )
 from app.services.goal_service import get_goal_progress_data
+from app.services.training_load_service import local_date_window_filter, set_weight_lb
 
 
 def generate_weekly_report(
@@ -67,8 +68,7 @@ def generate_weekly_report(
         .filter(
             WorkoutSession.user_id == user_id,
             WorkoutSession.deleted_at == None,
-            WorkoutSession.date >= two_weeks_ago,
-            WorkoutSession.date < week_start,
+            local_date_window_filter(two_weeks_ago, week_start - timedelta(days=1)),
         )
         .count()
     )
@@ -110,8 +110,7 @@ def _get_weekly_workout_summary(
         .filter(
             WorkoutSession.user_id == user_id,
             WorkoutSession.deleted_at == None,
-            WorkoutSession.date >= week_start,
-            WorkoutSession.date <= week_end,
+            local_date_window_filter(week_start, week_end),
         )
         .all()
     )
@@ -119,11 +118,14 @@ def _get_weekly_workout_summary(
     total_workouts = len(this_week)
     total_sets = 0
     total_volume = 0.0
+    # Tonnage in lb from weight_lb (§12 0b); warm-ups are not volume.
     for w in this_week:
         for we in w.workout_exercises:
             for s in we.sets:
+                if s.is_warmup:
+                    continue
                 total_sets += 1
-                total_volume += s.weight * s.reps
+                total_volume += set_weight_lb(s) * s.reps
 
     # Last week volume for comparison
     last_week = (
@@ -134,8 +136,7 @@ def _get_weekly_workout_summary(
         .filter(
             WorkoutSession.user_id == user_id,
             WorkoutSession.deleted_at == None,
-            WorkoutSession.date >= prev_week_start,
-            WorkoutSession.date <= prev_week_end,
+            local_date_window_filter(prev_week_start, prev_week_end),
         )
         .all()
     )
@@ -143,7 +144,9 @@ def _get_weekly_workout_summary(
     for w in last_week:
         for we in w.workout_exercises:
             for s in we.sets:
-                last_week_volume += s.weight * s.reps
+                if s.is_warmup:
+                    continue
+                last_week_volume += set_weight_lb(s) * s.reps
 
     volume_change = None
     if last_week_volume > 0:
@@ -330,7 +333,7 @@ def _calculate_pace_status(
 def _get_exercise_weekly_sets(
     db: Session, user_id: str, week_start: date, week_end: date
 ) -> Dict[str, int]:
-    """Count sets per exercise_id for this week."""
+    """Count working sets per exercise_id for this week (local days)."""
     workouts = (
         db.query(WorkoutSession)
         .options(
@@ -339,15 +342,14 @@ def _get_exercise_weekly_sets(
         .filter(
             WorkoutSession.user_id == user_id,
             WorkoutSession.deleted_at == None,
-            WorkoutSession.date >= week_start,
-            WorkoutSession.date <= week_end,
+            local_date_window_filter(week_start, week_end),
         )
         .all()
     )
     counts: Dict[str, int] = defaultdict(int)
     for w in workouts:
         for we in w.workout_exercises:
-            counts[we.exercise_id] += len(we.sets)
+            counts[we.exercise_id] += sum(1 for s in we.sets if not s.is_warmup)
     return counts
 
 

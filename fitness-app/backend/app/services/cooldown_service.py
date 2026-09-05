@@ -26,6 +26,7 @@ from app.core.utils import ensure_utc, to_iso8601_utc
 from app.models.pr import PR, PRType
 from app.models.workout import WorkoutSession
 from app.services.activity_muscles import get_activity_muscles
+from app.services.training_load_service import cardio_session_load, set_weight_lb
 
 logger = logging.getLogger(__name__)
 
@@ -113,14 +114,16 @@ MIN_COOLDOWN_HOURS = 12       # Minimum even for light work
 # =============================================================================
 # CARDIO / SPORT FATIGUE (set-less Apple-Watch / WHOOP activities)
 # =============================================================================
-# Cardio sessions carry no sets, so time drives "volume" and the HR-zone mix
-# drives "intensity". 15 min of activity ≈ one effective set of load; a single
-# session is capped so a long easy walk can't dominate the recovery model.
-# The cap is deliberately low: endurance recovery is driven by central/glycogen
-# factors more than the eccentric muscle damage the strength curve models, so
-# duration must not stack into multi-day muscle cooldowns.
-CARDIO_MINUTES_PER_EFFECTIVE_SET = 15.0
-CARDIO_MAX_EFFECTIVE_SETS = 5.0      # ~75 min before volume saturates
+# Cardio sessions carry no sets, so the session's training load (ARISE v3
+# §6.1: Edwards TRIMP from the HR-zone mix, else duration × 2.5 flagged
+# estimated — see training_load_service.cardio_session_load) drives "volume"
+# and the average HR zone drives "intensity". TRIMP replaces the old
+# 15-min-per-set input with its 5-set cap so a long run finally costs more
+# recovery than a jog: a 25-min z2/z3 easy run (TRIMP ≈ 62) is ≈ 2 effective
+# sets, a 90-min z2-heavy long run (TRIMP ≈ 200+) is 6+. There is no
+# per-session cap any more — MAX_VOLUME_MULTIPLIER (2.0×, ≈ 12 effective
+# sets) is the only ceiling, as it is for lifting.
+TRIMP_PER_EFFECTIVE_SET = 30.0
 
 # Intensity multiplier mapped from the average HR zone (1-5). The low floor keeps
 # easy aerobic work (z1-z2 walks/jogs) cheap — true low-intensity cardio causes
@@ -706,11 +709,11 @@ def calculate_cooldowns(
             # and skip the (empty) set loop.
             if not sets:
                 cardio_primary, cardio_secondary = get_activity_muscles(exercise_name)
-                if (cardio_primary or cardio_secondary) and workout.duration_minutes:
-                    effective_sets = min(
-                        CARDIO_MAX_EFFECTIVE_SETS,
-                        max(1.0, workout.duration_minutes / CARDIO_MINUTES_PER_EFFECTIVE_SET),
-                    )
+                cardio_load, _estimated = cardio_session_load(workout)
+                if (cardio_primary or cardio_secondary) and cardio_load > 0:
+                    # TRIMP-derived volume (spec §6.1); floor of one effective
+                    # set so a short activity still registers.
+                    effective_sets = max(1.0, cardio_load / TRIMP_PER_EFFECTIVE_SET)
                     intensity = cardio_intensity_from_zones(workout.hr_zone_seconds)
                     for muscle in cardio_primary:
                         _apply_cardio_fatigue(
@@ -731,7 +734,7 @@ def calculate_cooldowns(
             for s in sets:
                 # Calculate fatigue score for this set
                 set_fatigue = calculate_set_fatigue_score(
-                    weight=s.weight or 0,
+                    weight=set_weight_lb(s),
                     reps=s.reps or 0,
                     user_e1rm=user_e1rm,
                     rpe=s.rpe,

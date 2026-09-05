@@ -1,11 +1,16 @@
 """
-Trend math for the Gate engine (ARISE v2 spec §6.1).
+Trend math for the Gate engine (ARISE v2 spec §6.1, v3 §10).
 
 Owns the weekly-best e1RM series plus the two extensions the trend endpoint
-never had: ``weekly_slope`` (least-squares over the last 6 weekly points,
-lb/week) and ``projected_e1rm(days)``. Gate spawning (gate_service) is the
-primary consumer; the /analytics trend endpoint keeps its own richer payload
-(data points, include_sets) untouched.
+never had: ``weekly_slope`` (least-squares over the last FIT_WINDOW_WEEKS
+weekly points, lb/week) and ``projected_e1rm(days)``. Gate spawning
+(gate_service) is the primary consumer; the /analytics trend endpoint keeps
+its own richer payload (data points, include_sets) untouched.
+
+v3 (§10.2): the single ``SLOPE_WINDOW_WEEKS`` was split into the minimum
+number of weekly points needed to fit (``MIN_WEEKLY_POINTS = 4``) and the fit
+window (``FIT_WINDOW_WEEKS = 6``), and weeks bucket on ``local_date`` (§12
+0b) so a Saturday squat and a Sunday alias land in the same week honestly.
 """
 from datetime import date, timedelta
 from typing import List, Optional, Tuple
@@ -13,22 +18,30 @@ from typing import List, Optional, Tuple
 from sqlalchemy.orm import Session
 
 from app.models.workout import Set, WorkoutExercise, WorkoutSession
+from app.services.training_load_service import local_day
 
-# Spec §6.1: slope is fit over the last 6 weekly-best points, and a lift needs
-# at least 6 weeks with data before it can project (else no Gate).
-SLOPE_WINDOW_WEEKS = 6
+# Spec §10.2: a lift needs at least MIN_WEEKLY_POINTS weeks with data before
+# it can project (else no Gate); the slope is fit over the last
+# FIT_WINDOW_WEEKS weekly-best points.
+MIN_WEEKLY_POINTS = 4
+FIT_WINDOW_WEEKS = 6
 
 
 def weekly_best_e1rm_series(
-    db: Session, user_id: str, exercise_ids: List[str]
+    db: Session,
+    user_id: str,
+    exercise_ids: List[str],
+    since: Optional[date] = None,
 ) -> List[Tuple[date, float]]:
-    """Weekly best e1RM across an exercise's canonical alias group.
+    """Weekly best e1RM across a family's exercise ids.
 
-    Weeks are keyed by their Monday. Returns (week_start, best_e1rm) sorted
-    ascending; weeks without training simply don't appear.
+    Weeks are keyed by their Monday (of the session's local day). Returns
+    (week_start, best_e1rm) sorted ascending; weeks without training simply
+    don't appear. Warm-up sets never count. ``since`` drops sets whose local
+    day precedes it (the campaign-best baseline, §10.1).
     """
     rows = (
-        db.query(WorkoutSession.date, Set.e1rm)
+        db.query(WorkoutSession.local_date, WorkoutSession.date, Set.e1rm)
         .join(WorkoutExercise, WorkoutExercise.session_id == WorkoutSession.id)
         .join(Set, Set.workout_exercise_id == WorkoutExercise.id)
         .filter(
@@ -37,12 +50,15 @@ def weekly_best_e1rm_series(
             WorkoutExercise.exercise_id.in_(exercise_ids),
             Set.e1rm.isnot(None),
             Set.e1rm > 0,
+            Set.is_warmup.is_(False),
         )
         .all()
     )
     weekly_best: dict = {}
-    for workout_date, e1rm in rows:
-        day = workout_date.date() if hasattr(workout_date, "date") else workout_date
+    for stamped_day, instant, e1rm in rows:
+        day = local_day(stamped_day, instant)
+        if day is None or (since is not None and day < since):
+            continue
         week_start = day - timedelta(days=day.weekday())
         if week_start not in weekly_best or e1rm > weekly_best[week_start]:
             weekly_best[week_start] = e1rm
@@ -50,15 +66,15 @@ def weekly_best_e1rm_series(
 
 
 def weekly_slope(series: List[Tuple[date, float]]) -> Optional[float]:
-    """Least-squares slope (lb/week) over the last SLOPE_WINDOW_WEEKS points.
+    """Least-squares slope (lb/week) over the last FIT_WINDOW_WEEKS points.
 
-    Requires at least SLOPE_WINDOW_WEEKS weeks with data (spec §6.1) — returns
-    None otherwise. The x-axis is real week offsets (so a gap week widens the
-    interval rather than being ignored).
+    Requires at least MIN_WEEKLY_POINTS weeks with data (spec §10.2) —
+    returns None otherwise. The x-axis is real week offsets (so a gap week
+    widens the interval rather than being ignored).
     """
-    if len(series) < SLOPE_WINDOW_WEEKS:
+    if len(series) < MIN_WEEKLY_POINTS:
         return None
-    window = series[-SLOPE_WINDOW_WEEKS:]
+    window = series[-FIT_WINDOW_WEEKS:]
     origin = window[0][0]
     xs = [(week - origin).days / 7.0 for week, _ in window]
     ys = [value for _, value in window]

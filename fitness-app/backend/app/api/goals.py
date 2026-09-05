@@ -16,6 +16,7 @@ from app.schemas.goal import (
     GoalBatchCreate,
     GoalBatchCreateResponse,
     GoalCreate,
+    GoalPreviewResponse,
     GoalProgressResponse,
     GoalResponse,
     GoalsListResponse,
@@ -25,12 +26,13 @@ from app.schemas.goal import (
 from app.services.goal_service import (
     MAX_ACTIVE_GOALS,
     GoalStatus,
-    create_goal,
+    create_objective,
     get_goal_by_id,
     get_goal_progress_data,
     get_user_goals,
     goal_to_response,
     goal_to_summary,
+    preview_goal,
     update_goal,
 )
 
@@ -70,26 +72,12 @@ async def create_new_goal(
             detail=f"Maximum {MAX_ACTIVE_GOALS} active goals allowed. Abandon or complete existing goals first."
         )
 
-    # Verify exercise exists
-    exercise = db.query(Exercise).filter(Exercise.id == goal_data.exercise_id).first()
-    if not exercise:
-        logger.error(f"Exercise not found: {goal_data.exercise_id}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Exercise not found"
-        )
-
-    # Create the goal
-    goal = create_goal(
-        db=db,
-        user_id=current_user.id,
-        exercise_id=goal_data.exercise_id,
-        target_weight=goal_data.target_weight,
-        weight_unit=goal_data.weight_unit,
-        deadline=goal_data.deadline,
-        target_reps=goal_data.target_reps,
-        notes=goal_data.notes
-    )
+    # Create the objective (validates the exercise / run shape, resolves by=arc_end)
+    try:
+        goal = create_objective(db, current_user.id, goal_data)
+    except ValueError as exc:
+        logger.error(f"Objective rejected: {exc}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
     db.commit()
     db.refresh(goal)
@@ -107,7 +95,21 @@ async def create_new_goal(
 
     logger.info(f"Goal verified after reload: {goal.id}, exercise={goal.exercise.name if goal.exercise else 'None'}")
 
-    return GoalResponse(**goal_to_response(goal))
+    return GoalResponse(**goal_to_response(goal, db))
+
+
+@router.post("/preview", response_model=GoalPreviewResponse)
+async def preview_objective(
+    goal_data: GoalCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Pace preview before saving (ARISE v3 §4.6): e1RM today, target e1RM,
+    required lb/week vs the 6-week slope; AMBITIOUS when required > 2× slope."""
+    try:
+        return GoalPreviewResponse(**preview_goal(db, current_user.id, goal_data))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
 @router.post("/batch", response_model=GoalBatchCreateResponse, status_code=status.HTTP_201_CREATED)
@@ -138,30 +140,25 @@ async def create_goals_batch(
             detail=f"Can only create {slots_available} more goals. You have {len(active_goals)} active goals."
         )
 
-    # Verify all exercises exist
-    exercise_ids = [g.exercise_id for g in batch_data.goals]
-    exercises = db.query(Exercise).filter(Exercise.id.in_(exercise_ids)).all()
+    # Verify all exercises exist (strength rows)
+    exercise_ids = [g.exercise_id for g in batch_data.goals if g.exercise_id]
+    exercises = db.query(Exercise).filter(Exercise.id.in_(exercise_ids)).all() if exercise_ids else []
     found_ids = {e.id for e in exercises}
     missing_ids = set(exercise_ids) - found_ids
     if missing_ids:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Exercises not found: {', '.join(missing_ids)}"
+            detail=f"Exercises not found: {', '.join(sorted(missing_ids))}"
         )
 
     # Create all goals
     created_goals = []
     for goal_data in batch_data.goals:
-        goal = create_goal(
-            db=db,
-            user_id=current_user.id,
-            exercise_id=goal_data.exercise_id,
-            target_weight=goal_data.target_weight,
-            weight_unit=goal_data.weight_unit,
-            deadline=goal_data.deadline,
-            target_reps=goal_data.target_reps,
-            notes=goal_data.notes
-        )
+        try:
+            goal = create_objective(db, current_user.id, goal_data)
+        except ValueError as exc:
+            db.rollback()
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
         created_goals.append(goal)
 
     db.commit()
@@ -176,7 +173,7 @@ async def create_goals_batch(
     active_goals = get_user_goals(db, current_user.id, include_inactive=False)
 
     return GoalBatchCreateResponse(
-        goals=[GoalResponse(**goal_to_response(g)) for g in loaded_goals],
+        goals=[GoalResponse(**goal_to_response(g, db)) for g in loaded_goals],
         created_count=len(loaded_goals),
         active_count=len(active_goals)
     )
@@ -204,7 +201,7 @@ async def list_goals(
     completed_count = sum(1 for g in goals if g.status == GoalStatus.COMPLETED.value)
 
     return GoalsListResponse(
-        goals=[GoalSummaryResponse(**goal_to_summary(g)) for g in goals],
+        goals=[GoalSummaryResponse(**goal_to_summary(g, db)) for g in goals],
         active_count=active_count,
         completed_count=completed_count,
         can_add_more=active_count < MAX_ACTIVE_GOALS,
@@ -235,7 +232,7 @@ async def get_goal(
             detail="Goal not found"
         )
 
-    return GoalResponse(**goal_to_response(goal))
+    return GoalResponse(**goal_to_response(goal, db))
 
 
 @router.put("/{goal_id}", response_model=GoalResponse)
@@ -286,7 +283,7 @@ async def update_existing_goal(
     # Reload with exercise relationship
     updated_goal = get_goal_by_id(db, current_user.id, goal_id)
 
-    return GoalResponse(**goal_to_response(updated_goal))
+    return GoalResponse(**goal_to_response(updated_goal, db))
 
 
 @router.delete("/{goal_id}")

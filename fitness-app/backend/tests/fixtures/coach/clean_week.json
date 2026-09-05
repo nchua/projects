@@ -1,0 +1,667 @@
+{
+ "version": "ctx_v1",
+ "week_start": "2026-08-24",
+ "week_end": "2026-08-30",
+ "as_of": "2026-08-30",
+ "campaign": {
+  "name": "Fall Base",
+  "goal": "Sub-50 10K and a 315 squat",
+  "start_date": "2026-08-03",
+  "arc": {
+   "name": "Base",
+   "index": 0
+  },
+  "week_in_arc": 4,
+  "week_in_campaign": 4,
+  "deload": true,
+  "deload_factor": 0.75,
+  "deload_every_n_weeks": 4,
+  "last_deload_week": null,
+  "week_target_miles": 11.0,
+  "next_week_target_miles": 12.0,
+  "next_hunts": [
+   {
+    "date": "2026-09-01",
+    "weekday": "Tue",
+    "type": "run",
+    "title": "Easy run",
+    "status": "planned",
+    "lifts": [],
+    "run": {
+     "kind": "easy",
+     "miles": 3.0,
+     "hr_cap": null
+    }
+   },
+   {
+    "date": "2026-09-03",
+    "weekday": "Thu",
+    "type": "run",
+    "title": "Easy run",
+    "status": "planned",
+    "lifts": [],
+    "run": {
+     "kind": "easy",
+     "miles": 3.5,
+     "hr_cap": null
+    }
+   },
+   {
+    "date": "2026-09-04",
+    "weekday": "Fri",
+    "type": "run",
+    "title": "Long run",
+    "status": "planned",
+    "lifts": [],
+    "run": {
+     "kind": "long",
+     "miles": "arc",
+     "hr_cap": null
+    }
+   },
+   {
+    "date": "2026-09-05",
+    "weekday": "Sat",
+    "type": "lift",
+    "title": "Heavy Squat",
+    "status": "planned",
+    "lifts": [
+     {
+      "family": "back_squat",
+      "role": "main",
+      "sets": 5,
+      "reps": 5,
+      "weight_lb": null
+     }
+    ],
+    "run": null
+   },
+   {
+    "date": "2026-09-06",
+    "weekday": "Sun",
+    "type": "lift",
+    "title": "Bench",
+    "status": "planned",
+    "lifts": [
+     {
+      "family": "bench_press",
+      "role": "main",
+      "sets": 5,
+      "reps": 5,
+      "weight_lb": null
+     }
+    ],
+    "run": null
+   }
+  ]
+ },
+ "sessions_4w": [
+  {
+   "week_start": "2026-08-03",
+   "run_miles": 8.0,
+   "lifts": [
+    {
+     "date": "2026-08-08",
+     "name": "Heavy Squat",
+     "rpe": 8,
+     "exercises": [
+      {
+       "name": "Barbell Back Squat",
+       "family": "back_squat",
+       "sets": [
+        "225x5@8",
+        "225x5@8",
+        "225x5@8",
+        "225x5@8",
+        "225x5@8"
+       ]
+      }
+     ]
+    },
+    {
+     "date": "2026-08-09",
+     "name": "Bench",
+     "rpe": 8,
+     "exercises": [
+      {
+       "name": "Barbell Bench Press",
+       "family": "bench_press",
+       "sets": [
+        "185x5@8",
+        "185x5@8",
+        "185x5@8",
+        "185x5@8",
+        "185x5@8"
+       ]
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "date": "2026-08-04",
+     "type": "Outdoor Run",
+     "is_run": true,
+     "miles": 2.0,
+     "pace_sec_per_mile": 570,
+     "avg_hr": 148
+    },
+    {
+     "date": "2026-08-06",
+     "type": "Outdoor Run",
+     "is_run": true,
+     "miles": 2.4,
+     "pace_sec_per_mile": 570,
+     "avg_hr": 148
+    },
+    {
+     "date": "2026-08-07",
+     "type": "Outdoor Run",
+     "is_run": true,
+     "miles": 3.6,
+     "pace_sec_per_mile": 570,
+     "avg_hr": 148
+    }
+   ]
+  },
+  {
+   "week_start": "2026-08-10",
+   "run_miles": 9.0,
+   "lifts": [
+    {
+     "date": "2026-08-15",
+     "name": "Heavy Squat",
+     "rpe": 8,
+     "exercises": [
+      {
+       "name": "Barbell Back Squat",
+       "family": "back_squat",
+       "sets": [
+        "230x5@8",
+        "230x5@8",
+        "230x5@8",
+        "230x5@8",
+        "230x5@8"
+       ]
+      }
+     ]
+    },
+    {
+     "date": "2026-08-16",
+     "name": "Bench",
+     "rpe": 8,
+     "exercises": [
+      {
+       "name": "Barbell Bench Press",
+       "family": "bench_press",
+       "sets": [
+        "190x5@8",
+        "190x5@8",
+        "190x5@8",
+        "190x5@8",
+        "190x5@8"
+       ]
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "date": "2026-08-11",
+     "type": "Outdoor Run",
+     "is_run": true,
+     "miles": 2.25,
+     "pace_sec_per_mile": 570,
+     "avg_hr": 148
+    },
+    {
+     "date": "2026-08-13",
+     "type": "Outdoor Run",
+     "is_run": true,
+     "miles": 2.7,
+     "pace_sec_per_mile": 570,
+     "avg_hr": 148
+    },
+    {
+     "date": "2026-08-14",
+     "type": "Outdoor Run",
+     "is_run": true,
+     "miles": 4.05,
+     "pace_sec_per_mile": 570,
+     "avg_hr": 148
+    }
+   ]
+  },
+  {
+   "week_start": "2026-08-17",
+   "run_miles": 10.0,
+   "lifts": [
+    {
+     "date": "2026-08-22",
+     "name": "Heavy Squat",
+     "rpe": 8,
+     "exercises": [
+      {
+       "name": "Barbell Back Squat",
+       "family": "back_squat",
+       "sets": [
+        "235x5@8",
+        "235x5@8",
+        "235x5@8",
+        "235x5@8",
+        "235x5@8"
+       ]
+      }
+     ]
+    },
+    {
+     "date": "2026-08-23",
+     "name": "Bench",
+     "rpe": 8,
+     "exercises": [
+      {
+       "name": "Barbell Bench Press",
+       "family": "bench_press",
+       "sets": [
+        "195x5@8",
+        "195x5@8",
+        "195x5@8",
+        "195x5@8",
+        "195x5@8"
+       ]
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "date": "2026-08-18",
+     "type": "Outdoor Run",
+     "is_run": true,
+     "miles": 2.5,
+     "pace_sec_per_mile": 570,
+     "avg_hr": 148
+    },
+    {
+     "date": "2026-08-20",
+     "type": "Outdoor Run",
+     "is_run": true,
+     "miles": 3.0,
+     "pace_sec_per_mile": 570,
+     "avg_hr": 148
+    },
+    {
+     "date": "2026-08-21",
+     "type": "Outdoor Run",
+     "is_run": true,
+     "miles": 4.5,
+     "pace_sec_per_mile": 570,
+     "avg_hr": 148
+    }
+   ]
+  },
+  {
+   "week_start": "2026-08-24",
+   "run_miles": 11.0,
+   "lifts": [
+    {
+     "date": "2026-08-29",
+     "name": "Heavy Squat",
+     "rpe": 8,
+     "exercises": [
+      {
+       "name": "Barbell Back Squat",
+       "family": "back_squat",
+       "sets": [
+        "240x5@8",
+        "240x5@8",
+        "240x5@8",
+        "240x5@8",
+        "240x5@8"
+       ]
+      }
+     ]
+    },
+    {
+     "date": "2026-08-30",
+     "name": "Bench",
+     "rpe": 8,
+     "exercises": [
+      {
+       "name": "Barbell Bench Press",
+       "family": "bench_press",
+       "sets": [
+        "200x5@8",
+        "200x5@8",
+        "200x5@8",
+        "200x5@8",
+        "200x5@8"
+       ]
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "date": "2026-08-25",
+     "type": "Outdoor Run",
+     "is_run": true,
+     "miles": 2.75,
+     "pace_sec_per_mile": 570,
+     "avg_hr": 148
+    },
+    {
+     "date": "2026-08-27",
+     "type": "Outdoor Run",
+     "is_run": true,
+     "miles": 3.3,
+     "pace_sec_per_mile": 570,
+     "avg_hr": 148
+    },
+    {
+     "date": "2026-08-28",
+     "type": "Outdoor Run",
+     "is_run": true,
+     "miles": 4.95,
+     "pace_sec_per_mile": 570,
+     "avg_hr": 148
+    }
+   ]
+  }
+ ],
+ "families": [
+  {
+   "family_id": "back_squat",
+   "display_name": "Back Squat",
+   "is_big_three": true,
+   "increment_lb": 5.0,
+   "weekly_best_e1rm": [
+    [
+     "2026-08-03",
+     262.5
+    ],
+    [
+     "2026-08-10",
+     268.3
+    ],
+    [
+     "2026-08-17",
+     274.2
+    ],
+    [
+     "2026-08-24",
+     280.0
+    ]
+   ],
+   "slope_6w": 5.83,
+   "projection_14d": 291.7,
+   "best_e1rm_campaign": 280.0
+  },
+  {
+   "family_id": "bench_press",
+   "display_name": "Bench Press",
+   "is_big_three": true,
+   "increment_lb": 5.0,
+   "weekly_best_e1rm": [
+    [
+     "2026-08-03",
+     215.8
+    ],
+    [
+     "2026-08-10",
+     221.7
+    ],
+    [
+     "2026-08-17",
+     227.5
+    ],
+    [
+     "2026-08-24",
+     233.3
+    ]
+   ],
+   "slope_6w": 5.83,
+   "projection_14d": 245.0,
+   "best_e1rm_campaign": 233.3
+  }
+ ],
+ "condition_today": {
+  "score": 90,
+  "band": "peak",
+  "inputs": [
+   {
+    "key": "recovery",
+    "subscore": 74
+   },
+   {
+    "key": "cooldowns",
+    "subscore": 100
+   },
+   {
+    "key": "sleep",
+    "subscore": 94
+   },
+   {
+    "key": "rhr_trend",
+    "subscore": 100
+   },
+   {
+    "key": "hrv_trend",
+    "subscore": 100
+   }
+  ],
+  "muscles_cooling": []
+ },
+ "load": {
+  "as_of": "2026-08-30",
+  "run_acwr": 1.05,
+  "total_acwr": 1.1,
+  "band": "green",
+  "miles_7d": 11.0,
+  "miles_plan_7d": 11.0,
+  "longest_run_7d": 4.95,
+  "flags": [],
+  "series": []
+ },
+ "wearable_14d": [
+  {
+   "local_date": "2026-08-17",
+   "sleep_hours": 7.3,
+   "hrv": 62.0,
+   "resting_heart_rate": 52.0,
+   "recovery_score": 74.0
+  },
+  {
+   "local_date": "2026-08-18",
+   "sleep_hours": 7.3,
+   "hrv": 62.0,
+   "resting_heart_rate": 52.0,
+   "recovery_score": 74.0
+  },
+  {
+   "local_date": "2026-08-19",
+   "sleep_hours": 7.3,
+   "hrv": 62.0,
+   "resting_heart_rate": 52.0,
+   "recovery_score": 74.0
+  },
+  {
+   "local_date": "2026-08-20",
+   "sleep_hours": 7.3,
+   "hrv": 62.0,
+   "resting_heart_rate": 52.0,
+   "recovery_score": 74.0
+  },
+  {
+   "local_date": "2026-08-21",
+   "sleep_hours": 7.3,
+   "hrv": 62.0,
+   "resting_heart_rate": 52.0,
+   "recovery_score": 74.0
+  },
+  {
+   "local_date": "2026-08-22",
+   "sleep_hours": 7.3,
+   "hrv": 62.0,
+   "resting_heart_rate": 52.0,
+   "recovery_score": 74.0
+  },
+  {
+   "local_date": "2026-08-23",
+   "sleep_hours": 7.3,
+   "hrv": 62.0,
+   "resting_heart_rate": 52.0,
+   "recovery_score": 74.0
+  },
+  {
+   "local_date": "2026-08-24",
+   "sleep_hours": 7.3,
+   "hrv": 62.0,
+   "resting_heart_rate": 52.0,
+   "recovery_score": 74.0
+  },
+  {
+   "local_date": "2026-08-25",
+   "sleep_hours": 7.3,
+   "hrv": 62.0,
+   "resting_heart_rate": 52.0,
+   "recovery_score": 74.0
+  },
+  {
+   "local_date": "2026-08-26",
+   "sleep_hours": 7.3,
+   "hrv": 62.0,
+   "resting_heart_rate": 52.0,
+   "recovery_score": 74.0
+  },
+  {
+   "local_date": "2026-08-27",
+   "sleep_hours": 7.3,
+   "hrv": 62.0,
+   "resting_heart_rate": 52.0,
+   "recovery_score": 74.0
+  },
+  {
+   "local_date": "2026-08-28",
+   "sleep_hours": 7.3,
+   "hrv": 62.0,
+   "resting_heart_rate": 52.0,
+   "recovery_score": 74.0
+  },
+  {
+   "local_date": "2026-08-29",
+   "sleep_hours": 7.3,
+   "hrv": 62.0,
+   "resting_heart_rate": 52.0,
+   "recovery_score": 74.0
+  },
+  {
+   "local_date": "2026-08-30",
+   "sleep_hours": 7.3,
+   "hrv": 62.0,
+   "resting_heart_rate": 52.0,
+   "recovery_score": 74.0
+  }
+ ],
+ "objectives": {
+  "goals": [
+   {
+    "goal_id": "684178e6-66f1-4564-83f6-d88896de769d",
+    "kind": "strength",
+    "family_id": "bench_press",
+    "exercise": "Barbell Bench Press",
+    "target_weight": 225.0,
+    "target_reps": 1,
+    "target_miles": null,
+    "deadline": "2026-10-25",
+    "deadline_extensions": 0,
+    "pace_status": null,
+    "goal_behind": false,
+    "goal_ambitious": false,
+    "required_weekly_gain": null,
+    "actual_weekly_gain": null
+   }
+  ],
+  "pace": [
+   {
+    "goal_id": "684178e6-66f1-4564-83f6-d88896de769d",
+    "exercise": "Barbell Bench Press",
+    "target": "225x1",
+    "deadline": "2026-10-25",
+    "status": "ahead",
+    "progress_percent": 100.0,
+    "required_weekly_gain": -1.17,
+    "actual_weekly_gain": null,
+    "weeks_remaining": 7.1
+   }
+  ],
+  "prs_week": [
+   {
+    "exercise": "Barbell Back Squat",
+    "type": "e1rm",
+    "weight_lb": 240.0,
+    "reps": 5,
+    "e1rm": 280.0,
+    "date": "2026-08-29"
+   }
+  ],
+  "gates_open": [],
+  "gates_closed_week": []
+ },
+ "candidates": {
+  "adherence": {
+   "planned": 5,
+   "done": 5,
+   "modified": 0,
+   "moved": 0,
+   "skipped": 0
+  },
+  "highlights": [
+   {
+    "kind": "pr",
+    "text": "Barbell Back Squat 240\u00d75 \u2192 e1RM 280 (+5.8)",
+    "numbers": {
+     "e1rm": 280.0,
+     "delta": 5.8
+    }
+   },
+   {
+    "kind": "week_completed_as_planned",
+    "text": "Week completed as planned: 5/5 hunts.",
+    "numbers": {
+     "planned": 5,
+     "done": 5,
+     "modified": 0,
+     "moved": 0,
+     "skipped": 0
+    }
+   },
+   {
+    "kind": "longest_run",
+    "text": "Longest run of the campaign: 4.95 mi (Fri)",
+    "numbers": {
+     "miles": 4.95,
+     "previous_best": 4.5
+    }
+   },
+   {
+    "kind": "four_weeks_on_plan",
+    "text": "Four consecutive weeks on plan.",
+    "numbers": {
+     "weeks": 4
+    }
+   }
+  ],
+  "concerns": [],
+  "candidate_ops": [],
+  "last_debrief_decisions": []
+ },
+ "profile": {
+  "age": 32,
+  "sex": "M",
+  "bodyweight_trend": [],
+  "injury_notes": "Left knee: no deep lunges.",
+  "preferred_unit": "lb"
+ },
+ "truncated": []
+}

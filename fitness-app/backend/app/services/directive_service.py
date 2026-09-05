@@ -28,6 +28,11 @@ from app.services.condition_service import (
 )
 from app.services.cooldown_service import calculate_cooldowns
 from app.services.pr_detection import _weight_bucket, get_canonical_exercise_ids
+from app.services.training_load_service import (
+    local_date_window_filter,
+    local_day,
+    set_weight_lb,
+)
 from app.services.weekly_report_service import _get_exercise_weekly_sets
 from app.services.workout_stats import calculate_todays_workout_stats
 from app.services.xp_service import BIG_THREE, award_xp, get_or_create_user_progress
@@ -65,25 +70,28 @@ def _week_windows(client_date: date) -> List[tuple]:
 def _median_daily_sets(
     db: Session, user_id: str, exercise_ids: List[str], client_date: date
 ) -> int:
-    """Median sets-per-training-day for an exercise group over 4 weeks."""
-    window_start = datetime.combine(client_date - timedelta(days=28), datetime.min.time())
-    window_end = datetime.combine(client_date, datetime.min.time())
+    """Median working sets-per-training-day for an exercise group over 4 weeks.
+
+    Days bucket on ``local_date`` (§12 0b); warm-ups don't count as volume.
+    """
     rows = (
-        db.query(WorkoutSession.date, Set.id)
+        db.query(WorkoutSession.local_date, WorkoutSession.date, Set.id)
         .join(WorkoutExercise, WorkoutExercise.session_id == WorkoutSession.id)
         .join(Set, Set.workout_exercise_id == WorkoutExercise.id)
         .filter(
             WorkoutSession.user_id == user_id,
             WorkoutSession.deleted_at.is_(None),
-            WorkoutSession.date >= window_start,
-            WorkoutSession.date < window_end,
+            local_date_window_filter(
+                client_date - timedelta(days=28), client_date - timedelta(days=1)
+            ),
             WorkoutExercise.exercise_id.in_(exercise_ids),
+            Set.is_warmup.is_(False),
         )
         .all()
     )
     per_day: Dict[date, int] = {}
-    for workout_date, _set_id in rows:
-        day = workout_date.date() if hasattr(workout_date, "date") else workout_date
+    for stamped_day, instant, _set_id in rows:
+        day = local_day(stamped_day, instant)
         per_day[day] = per_day.get(day, 0) + 1
     if not per_day:
         return 1
@@ -93,9 +101,7 @@ def _median_daily_sets(
 def _sets_today(
     db: Session, user_id: str, exercise_ids: List[str], target_date: date
 ) -> List[Set]:
-    """All sets logged on target_date for the given exercise-id group."""
-    day_start = datetime.combine(target_date, datetime.min.time())
-    day_end = day_start + timedelta(days=1)
+    """Working sets logged on the local day ``target_date`` for the exercise group."""
     return (
         db.query(Set)
         .join(WorkoutExercise, Set.workout_exercise_id == WorkoutExercise.id)
@@ -103,9 +109,9 @@ def _sets_today(
         .filter(
             WorkoutSession.user_id == user_id,
             WorkoutSession.deleted_at.is_(None),
-            WorkoutSession.date >= day_start,
-            WorkoutSession.date < day_end,
+            local_date_window_filter(target_date, target_date),
             WorkoutExercise.exercise_id.in_(exercise_ids),
+            Set.is_warmup.is_(False),
         )
         .all()
     )
@@ -114,26 +120,25 @@ def _sets_today(
 def _rep_buckets_before(
     db: Session, user_id: str, exercise_ids: List[str], target_date: date
 ) -> set:
-    """(weight_bucket, reps) combos used in the 4 weeks before target_date."""
-    window_start = datetime.combine(target_date - timedelta(days=28), datetime.min.time())
-    day_start = datetime.combine(target_date, datetime.min.time())
+    """(weight_bucket, reps) combos used in the 4 weeks before target_date (lb)."""
     rows = (
-        db.query(Set.weight, Set.reps)
+        db.query(Set.weight_lb, Set.weight, Set.reps)
         .join(WorkoutExercise, Set.workout_exercise_id == WorkoutExercise.id)
         .join(WorkoutSession, WorkoutExercise.session_id == WorkoutSession.id)
         .filter(
             WorkoutSession.user_id == user_id,
             WorkoutSession.deleted_at.is_(None),
-            WorkoutSession.date >= window_start,
-            WorkoutSession.date < day_start,
+            local_date_window_filter(
+                target_date - timedelta(days=28), target_date - timedelta(days=1)
+            ),
             WorkoutExercise.exercise_id.in_(exercise_ids),
         )
         .all()
     )
     return {
-        (_weight_bucket(weight), reps)
-        for weight, reps in rows
-        if weight is not None and reps is not None
+        (_weight_bucket(weight_lb if weight_lb is not None else weight), reps)
+        for weight_lb, weight, reps in rows
+        if (weight_lb is not None or weight is not None) and reps is not None
     }
 
 
@@ -190,37 +195,36 @@ def _big_three_exercise_groups(db: Session, user_id: str) -> List[Dict[str, Any]
 def _volume_lb(
     db: Session, user_id: str, exercise_ids: List[str], start: date, end: date
 ) -> float:
-    """Total tonnage (weight × reps) for an exercise group in [start, end]."""
-    day_start = datetime.combine(start, datetime.min.time())
-    day_end = datetime.combine(end + timedelta(days=1), datetime.min.time())
+    """Working-set tonnage (lb × reps) for an exercise group on local days [start, end]."""
     rows = (
-        db.query(Set.weight, Set.reps)
+        db.query(Set.weight_lb, Set.weight, Set.reps)
         .join(WorkoutExercise, Set.workout_exercise_id == WorkoutExercise.id)
         .join(WorkoutSession, WorkoutExercise.session_id == WorkoutSession.id)
         .filter(
             WorkoutSession.user_id == user_id,
             WorkoutSession.deleted_at.is_(None),
-            WorkoutSession.date >= day_start,
-            WorkoutSession.date < day_end,
+            local_date_window_filter(start, end),
             WorkoutExercise.exercise_id.in_(exercise_ids),
+            Set.is_warmup.is_(False),
         )
         .all()
     )
-    return sum(weight * reps for weight, reps in rows if weight and reps)
+    return sum(
+        (weight_lb if weight_lb is not None else weight) * reps
+        for weight_lb, weight, reps in rows
+        if (weight_lb or weight) and reps
+    )
 
 
 def _workouts_this_week(db: Session, user_id: str, client_date: date) -> int:
     """Workouts logged Monday..client_date (calendar week, matches This Week UI)."""
     week_start = client_date - timedelta(days=client_date.weekday())
-    day_start = datetime.combine(week_start, datetime.min.time())
-    day_end = datetime.combine(client_date + timedelta(days=1), datetime.min.time())
     return (
         db.query(WorkoutSession)
         .filter(
             WorkoutSession.user_id == user_id,
             WorkoutSession.deleted_at.is_(None),
-            WorkoutSession.date >= day_start,
-            WorkoutSession.date < day_end,
+            local_date_window_filter(week_start, client_date),
         )
         .count()
     )
@@ -552,9 +556,9 @@ def check_directive_completion(
             exercise_ids = get_canonical_exercise_ids(db, exercise_id)
             prior_buckets = _rep_buckets_before(db, user_id, exercise_ids, workout_date)
             completed = any(
-                (_weight_bucket(s.weight), s.reps) not in prior_buckets
+                (_weight_bucket(set_weight_lb(s)), s.reps) not in prior_buckets
                 for s in _sets_today(db, user_id, exercise_ids, workout_date)
-                if s.weight is not None and s.reps is not None
+                if s.reps is not None
             )
 
     elif dtype == DirectiveType.GATE_REMINDER.value:
@@ -575,9 +579,9 @@ def check_directive_completion(
         gap = params.get("volume_gap_lb", 0)
         if exercise_ids:
             tonnage = sum(
-                s.weight * s.reps
+                set_weight_lb(s) * s.reps
                 for s in _sets_today(db, user_id, exercise_ids, workout_date)
-                if s.weight is not None and s.reps is not None
+                if s.reps is not None
             )
             completed = tonnage >= gap
 

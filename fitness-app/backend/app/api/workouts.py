@@ -17,6 +17,7 @@ from app.models.exercise import Exercise
 from app.models.pr import PR, PRType
 from app.models.user import User
 from app.models.workout import Set, WorkoutExercise, WorkoutSession
+from app.schemas.gate import GateClearedInfo
 from app.schemas.healthkit import (
     HealthKitImportRequest,
     HealthKitImportResponse,
@@ -297,6 +298,9 @@ async def _create_workout_impl(
     db.add(workout_session)
     db.flush()  # Get workout_session.id
 
+    # Gates cleared by this workout (ARISE v3 §10.5) — first one is celebrated.
+    cleared_gates: list = []
+
     # Create exercises and sets
     for exercise_data in workout_data.exercises:
         # Verify exercise exists and user has access to it
@@ -360,7 +364,9 @@ async def _create_workout_impl(
         detect_and_create_prs(db, current_user.id, workout_exercise, exercise_sets)
 
         # Gate clear-detection (ARISE v2 §6.4) rides the same hook point.
-        check_gate_clear(db, current_user.id, workout_exercise, exercise_sets)
+        cleared_gates.extend(
+            check_gate_clear(db, current_user.id, workout_exercise, exercise_sets)
+        )
 
         # Update goal progress with best e1RM from this exercise
         if exercise_sets:
@@ -546,6 +552,17 @@ async def _create_workout_impl(
         prs_achieved=prs_achieved_list,
         planned_hunt_id=ingest_result.get("planned_hunt_id"),
         planned_hunt_status=ingest_result.get("planned_hunt_status"),
+        gate_cleared=(
+            GateClearedInfo(
+                gate_id=cleared_gates[0]["gate"].id,
+                name=cleared_gates[0]["gate"].name,
+                rank=cleared_gates[0]["gate"].rank,
+                xp_awarded=cleared_gates[0]["gate"].xp_awarded or 0,
+                target_weight=cleared_gates[0]["gate"].target_weight,
+                target_reps=cleared_gates[0]["gate"].target_reps,
+            )
+            if cleared_gates else None
+        ),
     )
 
 

@@ -14,6 +14,7 @@ from app.models.exercise import Exercise
 from app.models.gate import GateRank, GateStatus
 from app.models.workout import Set, WorkoutExercise, WorkoutSession
 from app.services import gate_service
+from app.services.exercise_family_defs import family_for_name
 from app.services.gate_service import (
     GATE_XP,
     _rank_for_gain,
@@ -31,9 +32,13 @@ def _mk_user(create_test_user):
 
 
 def _mk_exercise(db, name="Barbell Bench Press", primary="Chest"):
+    # v3: gates group by exercise family, so test exercises carry the same
+    # name-matched family_id the seed/backfill (and custom-exercise create)
+    # would assign.
     exercise = Exercise(
         id=str(uuid.uuid4()),
         name=name,
+        family_id=family_for_name(name),
         category="compound",
         primary_muscle=primary,
         secondary_muscles=[],
@@ -83,10 +88,13 @@ def _patch_condition(monkeypatch, score):
 
 # ── Trend math (§6.1) ───────────────────────────────────────────────────────
 
-def test_weekly_slope_requires_six_weeks():
-    today = date.today()
-    series = [(today - timedelta(weeks=i), 200.0 + i) for i in range(5)]
-    assert weekly_slope(series) is None
+def test_weekly_slope_requires_four_weeks():
+    """v3 §10.2: MIN_WEEKLY_POINTS = 4 (was 6); the fit window stays 6."""
+    monday = date.today() - timedelta(days=date.today().weekday())
+    three = [(monday - timedelta(weeks=2 - i), 200.0 + 5 * i) for i in range(3)]
+    assert weekly_slope(three) is None
+    four = [(monday - timedelta(weeks=3 - i), 200.0 + 5 * i) for i in range(4)]
+    assert weekly_slope(four) == 5.0
 
 
 def test_weekly_slope_linear_series():
@@ -183,10 +191,11 @@ def test_no_spawn_below_battle_ready(db, create_test_user, monkeypatch):
     assert evaluate_gate_spawns(db, user.id) == []
 
 
-def test_no_spawn_with_under_six_weeks(db, create_test_user, monkeypatch):
+def test_no_spawn_with_under_four_weeks(db, create_test_user, monkeypatch):
+    """v3 §10.2: three weekly points is one short of MIN_WEEKLY_POINTS."""
     user = _mk_user(create_test_user)
     exercise = _mk_exercise(db)
-    _seed_improving_bench(db, user.id, exercise, weeks=4)
+    _seed_improving_bench(db, user.id, exercise, weeks=3)
     _patch_condition(monkeypatch, 80)
 
     assert evaluate_gate_spawns(db, user.id) == []

@@ -1,6 +1,7 @@
 """
 Exercise API endpoints
 """
+from datetime import date
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -12,8 +13,9 @@ from app.core.dependencies import get_current_user
 from app.core.utils import to_iso8601_utc
 from app.models.exercise import Exercise
 from app.models.user import User
-from app.schemas.exercise import ExerciseCreate, ExerciseResponse
+from app.schemas.exercise import ExerciseCreate, ExerciseResponse, LastPerformanceResponse
 from app.services.exercise_family_defs import family_for_name
+from app.services.prescription_service import last_performance
 
 router = APIRouter()
 
@@ -454,3 +456,31 @@ async def get_exercise(
         updated_at=to_iso8601_utc(exercise.updated_at)
     )
 
+
+
+@router.get("/{exercise_id}/last-performance", response_model=LastPerformanceResponse)
+async def get_last_performance(
+    exercise_id: str,
+    client_date: Optional[str] = Query(None, description="Client's local date (YYYY-MM-DD) for days_ago"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    The user's most recent session containing any exercise in this
+    exercise's family (ARISE v3 §15.1). 404 when never performed.
+    """
+    exercise = db.query(Exercise).filter(Exercise.id == exercise_id).first()
+    if not exercise:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exercise not found")
+    if exercise.is_custom and exercise.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have access to this exercise")
+    parsed: Optional[date] = None
+    if client_date:
+        try:
+            parsed = date.fromisoformat(client_date)
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="client_date must be YYYY-MM-DD")
+    payload = last_performance(db, current_user.id, exercise, client_date=parsed)
+    if payload is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Never performed")
+    return LastPerformanceResponse(**payload)

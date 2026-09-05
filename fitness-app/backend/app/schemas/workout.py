@@ -8,6 +8,7 @@ from typing import List, Optional, Union
 from pydantic import BaseModel, Field, field_validator
 
 from app.models.workout import WeightUnit
+from app.schemas.gate import GateClearedInfo
 
 
 class SetCreate(BaseModel):
@@ -247,6 +248,9 @@ class WorkoutCreateResponse(BaseModel):
     # planned hunt is matched; None for free-form hunts.
     planned_hunt_id: Optional[str] = None
     planned_hunt_status: Optional[str] = None
+    # ARISE v3 §10.5: the gate this workout cleared (first one when several),
+    # for the celebration screen; None when no gate cleared.
+    gate_cleared: Optional[GateClearedInfo] = None
 
     class Config:
         from_attributes = True

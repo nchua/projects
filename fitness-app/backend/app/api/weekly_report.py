@@ -11,7 +11,6 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.weekly_report import WeeklyProgressReportResponse
-from app.services.notification_service import notify_weekly_report_ready
 from app.services.weekly_report_service import generate_weekly_report
 
 router = APIRouter()
@@ -46,10 +45,7 @@ async def get_weekly_progress_report(
         except ValueError:
             pass
 
-    report = generate_weekly_report(db, current_user.id, parsed_start, parsed_client_date)
-
-    # Notify user that weekly report is ready (fire-and-forget)
-    import asyncio
-    asyncio.ensure_future(notify_weekly_report_ready(db, current_user.id))
-
-    return report
+    # The weekly_report_ready push moved to the Debrief (ARISE v3 §8.4 / §9.3):
+    # it fires once from debrief_service.get_or_create_debrief when a debrief
+    # is first stored, not on every GET here.
+    return generate_weekly_report(db, current_user.id, parsed_start, parsed_client_date)

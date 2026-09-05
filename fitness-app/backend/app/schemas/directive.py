@@ -1,6 +1,8 @@
 """
 System Directive Pydantic schemas (ARISE v2 spec §5.3 / §13.2).
 
+DEPRECATED (ARISE v3): replaced by GET /hunts/today; removed after the v3 iOS build ships.
+
 Contract-mirror note: canonical shape for the iOS ``DirectiveResponse``
 struct in APITypes.swift.
 """

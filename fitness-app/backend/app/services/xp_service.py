@@ -23,8 +23,11 @@ XP_REWARDS = {
     "volume_bonus_per_1000lb": 5, # XP per 1000 lbs of volume
     "pr_achieved": 100,           # Personal record bonus
     "big_three_set": 3,           # Bonus per Squat/Bench/Deadlift working set
-    "streak_7_day": 150,          # 7-day streak bonus
-    "streak_30_day": 500,         # 30-day streak bonus
+    # Retired in ARISE v3 (spec §13): the week-on-plan bonus (+150, campaign
+    # linker) replaces streak XP. Constants kept for reference; award_xp no
+    # longer pays them. `current_streak` bookkeeping continues for Profile.
+    "streak_7_day": 150,
+    "streak_30_day": 500,
 }
 
 # Big Three exercise canonical names (lowercase for matching)
@@ -183,7 +186,8 @@ def award_xp(
     if rank_changed:
         progress.rank = new_rank
 
-    # Handle streak tracking
+    # Handle streak tracking. Streak XP is retired (ARISE v3 §13) — the
+    # bookkeeping stays so the Profile still shows current/longest streak.
     streak_bonus = 0
     if workout_date:
         today = to_date(workout_date)
@@ -195,15 +199,6 @@ def award_xp(
             if days_since == 1:
                 # Consecutive day - extend streak
                 progress.current_streak += 1
-
-                # Check for streak milestones
-                if progress.current_streak == 7:
-                    streak_bonus = XP_REWARDS["streak_7_day"]
-                elif progress.current_streak == 30:
-                    streak_bonus = XP_REWARDS["streak_30_day"]
-                elif progress.current_streak % 7 == 0:
-                    # Weekly streak bonus
-                    streak_bonus = XP_REWARDS["streak_7_day"] // 2
 
             elif days_since > 1:
                 # Streak broken
@@ -218,14 +213,6 @@ def award_xp(
             progress.longest_streak = progress.current_streak
 
         progress.last_workout_date = today
-
-    # Award streak bonus XP if earned
-    if streak_bonus > 0:
-        progress.total_xp += streak_bonus
-        # Re-check for level ups after streak bonus
-        while progress.total_xp >= xp_for_level(progress.level + 1):
-            progress.level += 1
-            levels_gained += 1
 
     # Update workout count (skip for reward claims)
     if count_workout:

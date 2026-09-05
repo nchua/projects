@@ -8,9 +8,12 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session, joinedload
 
-from app.core.utils import to_iso8601_utc
-from app.models.goal import Goal, GoalProgressSnapshot, GoalStatus
+from app.core.utils import ensure_utc, to_iso8601_utc
+from app.models.campaign import Campaign
+from app.models.exercise import Exercise
+from app.models.goal import Goal, GoalKind, GoalProgressSnapshot, GoalStatus
 from app.models.pr import PR
+from app.services.exercise_family_service import family_for_exercise
 
 logger = logging.getLogger(__name__)
 
@@ -52,42 +55,56 @@ def calculate_e1rm(weight: float, reps: int) -> float:
 def create_goal(
     db: Session,
     user_id: str,
-    exercise_id: str,
-    target_weight: float,
+    exercise_id: Optional[str],
+    target_weight: Optional[float],
     weight_unit: str,
     deadline: date,
     target_reps: int = 1,
-    notes: Optional[str] = None
+    notes: Optional[str] = None,
+    *,
+    kind: str = GoalKind.STRENGTH.value,
+    campaign_id: Optional[str] = None,
+    target_miles: Optional[float] = None,
+    run_scope: Optional[str] = None,
 ) -> Goal:
     """
-    Create a new strength PR goal.
+    Create a new objective (ARISE v3 §4.6): a strength PR goal or a run goal.
 
     Args:
         db: Database session
         user_id: User ID
-        exercise_id: Exercise to set goal for
-        target_weight: Target weight to lift
+        exercise_id: Exercise to set goal for (None for run objectives)
+        target_weight: Target weight to lift (ignored for run objectives)
         weight_unit: lb or kg
         deadline: Target date
         target_reps: Target reps (1 = true 1RM goal, higher = rep goal)
         notes: Optional notes
+        kind: strength | run
+        campaign_id: The campaign the objective lives under (nullable)
+        target_miles: Run objective target (long run or weekly total)
+        run_scope: long_run | weekly
 
     Returns:
         Created Goal object
     """
-    # Get current e1RM for this exercise (starting point)
-    current_pr = db.query(PR).filter(
-        PR.user_id == user_id,
-        PR.exercise_id == exercise_id
-    ).order_by(PR.value.desc()).first()
-
-    starting_e1rm = current_pr.value if current_pr else None
+    starting_e1rm = None
+    if kind == GoalKind.STRENGTH.value and exercise_id:
+        # Get current e1RM for this exercise (starting point)
+        current_pr = db.query(PR).filter(
+            PR.user_id == user_id,
+            PR.exercise_id == exercise_id
+        ).order_by(PR.value.desc()).first()
+        starting_e1rm = current_pr.value if current_pr else None
 
     goal = Goal(
         id=str(uuid.uuid4()),
         user_id=user_id,
-        exercise_id=exercise_id,
-        target_weight=target_weight,
+        exercise_id=exercise_id if kind == GoalKind.STRENGTH.value else None,
+        campaign_id=campaign_id,
+        kind=kind,
+        target_miles=target_miles if kind == GoalKind.RUN.value else None,
+        run_scope=run_scope if kind == GoalKind.RUN.value else None,
+        target_weight=float(target_weight) if (kind == GoalKind.STRENGTH.value and target_weight) else 0.0,
         target_reps=target_reps,
         weight_unit=weight_unit,
         deadline=deadline,
@@ -220,8 +237,17 @@ def update_goal_progress(
     return completed_goal_ids
 
 
-def calculate_goal_progress(goal: Goal) -> Dict[str, Any]:
-    """Calculate progress metrics for a goal"""
+def calculate_goal_progress(goal: Goal, db: Optional[Session] = None) -> Dict[str, Any]:
+    """Calculate progress metrics for a goal (run objectives use the arc ramp)."""
+    if (goal.kind or GoalKind.STRENGTH.value) == GoalKind.RUN.value:
+        ramp = run_goal_pace(db, goal) if db is not None else {}
+        return {
+            "progress_percent": ramp.get("progress_percent", 0.0),
+            "weight_to_go": round(max(0.0, float(goal.target_miles or 0) - float(ramp.get("ramp_now") or 0)), 1),
+            "weeks_remaining": weeks_until(goal.deadline),
+            "target_e1rm": float(goal.target_miles or 0),
+            "pace_status": ramp.get("pace_status"),
+        }
     current = goal.current_e1rm or goal.starting_e1rm or 0
     # Calculate target e1RM from weight and reps
     target_reps = goal.target_reps if goal.target_reps else 1
@@ -243,15 +269,23 @@ def calculate_goal_progress(goal: Goal) -> Dict[str, Any]:
     }
 
 
-def goal_to_response(goal: Goal) -> Dict[str, Any]:
+def _display_name(goal: Goal) -> str:
+    if goal.exercise:
+        return goal.exercise.name
+    if (goal.kind or GoalKind.STRENGTH.value) == GoalKind.RUN.value:
+        return "Long run" if goal.run_scope == "long_run" else "Weekly miles"
+    return "Unknown"
+
+
+def goal_to_response(goal: Goal, db: Optional[Session] = None) -> Dict[str, Any]:
     """Convert Goal model to response dict"""
-    progress = calculate_goal_progress(goal)
+    progress = calculate_goal_progress(goal, db=db)
     target_reps = goal.target_reps if goal.target_reps else 1
 
     return {
         "id": goal.id,
         "exercise_id": goal.exercise_id,
-        "exercise_name": goal.exercise.name if goal.exercise else "Unknown",
+        "exercise_name": _display_name(goal),
         "target_weight": goal.target_weight,
         "target_reps": target_reps,
         "target_e1rm": progress["target_e1rm"],
@@ -262,25 +296,33 @@ def goal_to_response(goal: Goal) -> Dict[str, Any]:
         "status": goal.status,
         "notes": goal.notes,
         "created_at": to_iso8601_utc(goal.created_at),
+        "kind": goal.kind or GoalKind.STRENGTH.value,
+        "campaign_id": goal.campaign_id,
+        "target_miles": goal.target_miles,
+        "run_scope": goal.run_scope,
+        "deadline_extensions": int(goal.deadline_extensions or 0),
         **progress
     }
 
 
-def goal_to_summary(goal: Goal) -> Dict[str, Any]:
+def goal_to_summary(goal: Goal, db: Optional[Session] = None) -> Dict[str, Any]:
     """Convert Goal model to summary dict"""
-    progress = calculate_goal_progress(goal)
+    progress = calculate_goal_progress(goal, db=db)
     target_reps = goal.target_reps if goal.target_reps else 1
 
     return {
         "id": goal.id,
-        "exercise_name": goal.exercise.name if goal.exercise else "Unknown",
+        "exercise_name": _display_name(goal),
         "target_weight": goal.target_weight,
         "target_reps": target_reps,
         "target_e1rm": progress["target_e1rm"],
         "weight_unit": goal.weight_unit,
         "deadline": goal.deadline.isoformat(),
         "progress_percent": progress["progress_percent"],
-        "status": goal.status
+        "status": goal.status,
+        "kind": goal.kind or GoalKind.STRENGTH.value,
+        "target_miles": goal.target_miles,
+        "run_scope": goal.run_scope,
     }
 
 
@@ -414,4 +456,335 @@ def get_goal_progress_data(db: Session, goal: Goal) -> Dict[str, Any]:
         "weeks_difference": weeks_diff,
         "weekly_gain_rate": round(weekly_gain_rate, 2),
         "required_gain_rate": round(required_gain_rate, 2)
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ARISE v3 §4.6 — Objectives under the Campaign
+# ═══════════════════════════════════════════════════════════════════════════
+
+MAX_DEADLINE_EXTENSION_DAYS = 28
+AMBITIOUS_SLOPE_FACTOR = 2.0
+
+
+def _active_campaign(db: Session, user_id: str) -> Optional[Campaign]:
+    from app.services.campaign_service import get_active_campaign  # lazy: cycle
+    return get_active_campaign(db, user_id)
+
+
+def resolve_objective_deadline(db: Session, user_id: str, data: Any, campaign: Optional[Campaign]) -> date:
+    """``by == "arc_end"`` → the current arc's last day; else the explicit deadline."""
+    if getattr(data, "by", None) == "arc_end":
+        from app.services.campaign_service import arc_bounds, week_context  # lazy: cycle
+        campaign = campaign or _active_campaign(db, user_id)
+        if campaign is None:
+            raise ValueError("no active campaign — set an explicit deadline")
+        ctx = week_context(campaign, max(get_today_utc(), campaign.start_date))
+        if ctx is None:
+            raise ValueError("the campaign has ended — set an explicit deadline")
+        for arc, _start, end in arc_bounds(campaign):
+            if arc.id == ctx["arc"].id:
+                return end
+    if data.deadline is None:
+        raise ValueError("deadline required")
+    return data.deadline
+
+
+def create_objective(db: Session, user_id: str, data: Any, campaign: Optional[Campaign] = None) -> Goal:
+    """Validate a ``GoalCreate`` and create it under the active campaign.
+
+    Raises ``ValueError`` with a human message (the API maps it to 400).
+    """
+    campaign = campaign or _active_campaign(db, user_id)
+    kind = data.kind or GoalKind.STRENGTH.value
+    if kind == GoalKind.STRENGTH.value:
+        exercise = db.query(Exercise).filter(Exercise.id == data.exercise_id).first()
+        if exercise is None:
+            raise ValueError("Exercise not found")
+    deadline = resolve_objective_deadline(db, user_id, data, campaign)
+    if deadline < get_today_utc():
+        raise ValueError("deadline is in the past")
+    return create_goal(
+        db=db,
+        user_id=user_id,
+        exercise_id=data.exercise_id,
+        target_weight=data.target_weight,
+        weight_unit=data.weight_unit,
+        deadline=deadline,
+        target_reps=data.target_reps,
+        notes=data.notes,
+        kind=kind,
+        campaign_id=data.campaign_id or (campaign.id if campaign else None),
+        target_miles=data.target_miles,
+        run_scope=data.run_scope,
+    )
+
+
+def family_for_goal(db: Session, goal: Goal) -> Optional[str]:
+    if not goal.exercise_id:
+        return None
+    return family_for_exercise(db, goal.exercise_id)
+
+
+def _family_exercise_ids(db: Session, goal: Goal, family_id: Optional[str]) -> List[str]:
+    if family_id:
+        ids = [r[0] for r in db.query(Exercise.id).filter(Exercise.family_id == family_id).all()]
+        if goal.exercise_id and goal.exercise_id not in ids:
+            ids.append(goal.exercise_id)
+        return ids
+    if goal.exercise_id:
+        from app.services.pr_detection import get_canonical_exercise_ids
+        return get_canonical_exercise_ids(db, goal.exercise_id)
+    return []
+
+
+def _weekly_gain_asof(snapshots: List[GoalProgressSnapshot], asof: datetime) -> Optional[float]:
+    """Average weekly e1RM gain over the 4 weeks before ``asof`` (weekly_report math)."""
+    rows = sorted((s for s in snapshots if ensure_utc(s.recorded_at) <= asof), key=lambda s: s.recorded_at)
+    if len(rows) < 2:
+        return None
+    recent = [s for s in rows if ensure_utc(s.recorded_at) >= asof - timedelta(weeks=4)]
+    if len(recent) < 2:
+        recent = rows
+    first, last = recent[0], recent[-1]
+    days = (ensure_utc(last.recorded_at) - ensure_utc(first.recorded_at)).days
+    if days <= 0:
+        return None
+    return (last.e1rm - first.e1rm) / (days / 7.0)
+
+
+def strength_goal_pace(goal: Goal, asof: Optional[datetime] = None) -> Dict[str, Any]:
+    """Pace of a strength objective as of a moment (default now), weekly-report math."""
+    from app.services.weekly_report_service import _calculate_pace_status  # read-only reuse
+
+    asof = asof or datetime.now(timezone.utc)
+    snapshots = list(goal.progress_snapshots or [])
+    starting = goal.starting_e1rm or 0
+    seen = [s.e1rm for s in snapshots if ensure_utc(s.recorded_at) <= asof]
+    current = max([starting, *seen]) if seen else (goal.current_e1rm or starting)
+    target_e1rm = calculate_e1rm(goal.target_weight, goal.target_reps or 1)
+    total = target_e1rm - starting if target_e1rm != starting else 1
+    progress_pct = max(0.0, min(100.0, ((current - starting) / total) * 100))
+    weeks_remaining = max((goal.deadline - asof.date()).days / 7.0, 0)
+    required = round((target_e1rm - current) / weeks_remaining, 2) if weeks_remaining > 0 else None
+    actual = _weekly_gain_asof(snapshots, asof)
+    status = _calculate_pace_status(required, actual, progress_pct)
+    return {
+        "pace_status": status.value if hasattr(status, "value") else str(status),
+        "required_weekly_gain": required,
+        "actual_weekly_gain": round(actual, 2) if actual is not None else None,
+        "current_e1rm": round(current, 1),
+        "target_e1rm": round(target_e1rm, 1),
+        "weeks_remaining": round(weeks_remaining, 1),
+        "progress_percent": round(progress_pct, 1),
+    }
+
+
+def run_goal_pace(db: Session, goal: Goal, today: Optional[date] = None) -> Dict[str, Any]:
+    """A run objective's pace is the arc ramp itself (spec §4.6)."""
+    from app.services.campaign_service import (  # lazy: cycle
+        get_campaign,
+        long_run_miles_for_week,
+        monday_of,
+        week_target_miles,
+    )
+
+    today = today or get_today_utc()
+    campaign = None
+    if goal.campaign_id:
+        campaign = get_campaign(db, goal.user_id, goal.campaign_id)
+    campaign = campaign or _active_campaign(db, goal.user_id)
+    target = float(goal.target_miles or 0)
+    if campaign is None or target <= 0:
+        return {"pace_status": "on_track", "progress_percent": 0.0, "ramp_now": None, "ramp_at_deadline": None}
+    if goal.run_scope == "long_run":
+        def ramp(c, ws, **kw):
+            return long_run_miles_for_week(c, ws, **kw)
+    else:
+        def ramp(c, ws, **kw):
+            return week_target_miles(db, c, ws, **kw)
+    now_week = monday_of(max(today, campaign.start_date))
+    ramp_now = ramp(campaign, now_week)
+    # Judge the deadline by the ramp the plan *intends* there — the linear ramp
+    # only reaches the arc's max on its last week, which is always a cutback.
+    ramp_at_deadline = ramp(campaign, monday_of(goal.deadline), include_deload=False)
+    if ramp_at_deadline is None or ramp_at_deadline + 1e-6 < target:
+        status = "behind"
+    elif ramp_now is not None and ramp_now + 1e-6 >= target:
+        status = "ahead"
+    else:
+        status = "on_track"
+    progress = min(100.0, (ramp_now or 0) / target * 100) if target else 0.0
+    return {
+        "pace_status": status,
+        "progress_percent": round(progress, 1),
+        "ramp_now": ramp_now,
+        "ramp_at_deadline": ramp_at_deadline,
+    }
+
+
+def strength_goal_chips(db: Session, user_id: str) -> Dict[str, Dict[str, Any]]:
+    """``{family_id: {goal_id, target_weight, target_reps, deadline, pace_status}}`` for active strength goals."""
+    goals = (
+        db.query(Goal)
+        .options(joinedload(Goal.progress_snapshots))
+        .filter(Goal.user_id == user_id, Goal.status == GoalStatus.ACTIVE.value,
+                Goal.kind == GoalKind.STRENGTH.value)
+        .all()
+    )
+    chips: Dict[str, Dict[str, Any]] = {}
+    for goal in goals:
+        fam = family_for_goal(db, goal)
+        if not fam or fam in chips:
+            continue
+        pace = strength_goal_pace(goal)
+        chips[fam] = {
+            "goal_id": goal.id,
+            "target_weight": goal.target_weight,
+            "target_reps": goal.target_reps or 1,
+            "deadline": goal.deadline.isoformat(),
+            "pace_status": pace["pace_status"],
+        }
+    return chips
+
+
+def active_strength_goal_families(db: Session, user_id: str) -> set:
+    goals = db.query(Goal).filter(
+        Goal.user_id == user_id, Goal.status == GoalStatus.ACTIVE.value,
+        Goal.kind == GoalKind.STRENGTH.value,
+    ).all()
+    return {fam for fam in (family_for_goal(db, g) for g in goals) if fam}
+
+
+def slope_for_family(db: Session, user_id: str, exercise_ids: List[str]) -> Optional[float]:
+    from app.services.trend_service import weekly_best_e1rm_series, weekly_slope
+    if not exercise_ids:
+        return None
+    return weekly_slope(weekly_best_e1rm_series(db, user_id, exercise_ids))
+
+
+def goal_flags(db: Session, user_id: str) -> List[Dict[str, Any]]:
+    """Per active objective: pace, ``goal_behind`` (behind 2 weeks running), ``goal_ambitious``."""
+    goals = (
+        db.query(Goal)
+        .options(joinedload(Goal.progress_snapshots), joinedload(Goal.exercise))
+        .filter(Goal.user_id == user_id, Goal.status == GoalStatus.ACTIVE.value)
+        .all()
+    )
+    now = datetime.now(timezone.utc)
+    out: List[Dict[str, Any]] = []
+    for goal in goals:
+        fam = family_for_goal(db, goal)
+        if (goal.kind or GoalKind.STRENGTH.value) == GoalKind.RUN.value:
+            pace = run_goal_pace(db, goal)
+            out.append({
+                "goal_id": goal.id, "kind": goal.kind, "family_id": None, "exercise_id": None,
+                "target_weight": None, "target_reps": None, "target_miles": goal.target_miles,
+                "run_scope": goal.run_scope, "deadline": goal.deadline.isoformat(),
+                "pace_status": pace["pace_status"],
+                "goal_behind": pace["pace_status"] == "behind",
+                "goal_ambitious": False,
+                "required_weekly_gain": None, "actual_weekly_gain": None,
+                "deadline_extensions": int(goal.deadline_extensions or 0),
+            })
+            continue
+        now_pace = strength_goal_pace(goal, now)
+        last_week = strength_goal_pace(goal, now - timedelta(days=7))
+        slope = slope_for_family(db, user_id, _family_exercise_ids(db, goal, fam))
+        required = now_pace["required_weekly_gain"]
+        ambitious = bool(
+            slope is not None and required is not None and required > 0
+            and required > AMBITIOUS_SLOPE_FACTOR * max(slope, 0.0)
+        )
+        out.append({
+            "goal_id": goal.id, "kind": GoalKind.STRENGTH.value, "family_id": fam,
+            "exercise_id": goal.exercise_id, "target_weight": goal.target_weight,
+            "target_reps": goal.target_reps or 1, "target_miles": None, "run_scope": None,
+            "deadline": goal.deadline.isoformat(),
+            "pace_status": now_pace["pace_status"],
+            "goal_behind": now_pace["pace_status"] == "behind" and last_week["pace_status"] == "behind",
+            "goal_ambitious": ambitious,
+            "required_weekly_gain": required,
+            "actual_weekly_gain": now_pace["actual_weekly_gain"],
+            "slope_6wk_lb": slope,
+            "deadline_extensions": int(goal.deadline_extensions or 0),
+        })
+    return out
+
+
+def extend_goal_deadline(db: Session, user_id: str, goal_id: str, deadline: date) -> Goal:
+    """``set_goal_deadline`` op: extend only, ≤ 4 weeks, once per objective."""
+    goal = get_goal_by_id(db, user_id, goal_id)
+    if goal is None:
+        raise ValueError("objective not found")
+    if goal.status != GoalStatus.ACTIVE.value:
+        raise ValueError("only active objectives can be extended")
+    if int(goal.deadline_extensions or 0) >= 1:
+        raise ValueError("this objective has already been extended once")
+    if deadline <= goal.deadline:
+        raise ValueError("deadlines can only move later")
+    if (deadline - goal.deadline).days > MAX_DEADLINE_EXTENSION_DAYS:
+        raise ValueError("extend by at most 4 weeks")
+    goal.deadline = deadline
+    goal.deadline_extensions = int(goal.deadline_extensions or 0) + 1
+    db.flush()
+    return goal
+
+
+def preview_goal(db: Session, user_id: str, data: Any, today: Optional[date] = None) -> Dict[str, Any]:
+    """POST /goals/preview — e1RM today, target e1RM, required lb/week vs the 6-week slope."""
+    from app.services.prescription_service import best_recent_set  # anchor query reuse
+
+    today = today or get_today_utc()
+    campaign = _active_campaign(db, user_id)
+    deadline = resolve_objective_deadline(db, user_id, data, campaign)
+    weeks_remaining = max((deadline - today).days / 7.0, 0)
+    if (data.kind or GoalKind.STRENGTH.value) == GoalKind.RUN.value:
+        probe = Goal(
+            user_id=user_id, kind=GoalKind.RUN.value, target_miles=data.target_miles,
+            run_scope=data.run_scope, deadline=deadline, target_weight=0.0,
+            campaign_id=campaign.id if campaign else None,
+        )
+        pace = run_goal_pace(db, probe, today)
+        return {
+            "kind": GoalKind.RUN.value, "current_e1rm": None, "target_e1rm": None,
+            "required_weekly_gain_lb": None, "slope_6wk_lb": None,
+            "weeks_remaining": round(weeks_remaining, 1), "deadline": deadline.isoformat(),
+            "ambitious": pace["pace_status"] == "behind", "pace_status": pace["pace_status"],
+            "ramp_at_deadline": pace["ramp_at_deadline"], "target_miles": data.target_miles,
+        }
+    exercise = db.query(Exercise).filter(Exercise.id == data.exercise_id).first()
+    if exercise is None:
+        raise ValueError("Exercise not found")
+    fam = family_for_exercise(db, exercise.id)
+    probe = Goal(user_id=user_id, exercise_id=exercise.id)
+    ids = _family_exercise_ids(db, probe, fam)
+    best = best_recent_set(db, user_id, ids, before=today + timedelta(days=1), days=90, max_reps=None)
+    current = round(best[0].e1rm, 1) if best else None
+    if current is None:
+        pr = db.query(PR).filter(PR.user_id == user_id, PR.exercise_id.in_(ids)).order_by(PR.value.desc()).first()
+        current = round(pr.value, 1) if pr else None
+    target_e1rm = round(calculate_e1rm(data.target_weight, data.target_reps or 1), 1)
+    required = None
+    if current is not None and weeks_remaining > 0:
+        required = round((target_e1rm - current) / weeks_remaining, 2)
+    slope = slope_for_family(db, user_id, ids)
+    ambitious = bool(
+        slope is not None and required is not None and required > 0
+        and required > AMBITIOUS_SLOPE_FACTOR * max(slope, 0.0)
+    )
+    if current is not None and current >= target_e1rm:
+        pace = "ahead"
+    elif required is None or slope is None:
+        pace = "on_track"
+    elif slope <= 0:
+        pace = "behind"
+    else:
+        ratio = slope / required if required > 0 else 2.0
+        pace = "ahead" if ratio >= 1.2 else ("on_track" if ratio >= 0.8 else "behind")
+    return {
+        "kind": GoalKind.STRENGTH.value, "current_e1rm": current, "target_e1rm": target_e1rm,
+        "required_weekly_gain_lb": required, "slope_6wk_lb": slope,
+        "weeks_remaining": round(weeks_remaining, 1), "deadline": deadline.isoformat(),
+        "ambitious": ambitious, "pace_status": pace, "ramp_at_deadline": None, "target_miles": None,
     }

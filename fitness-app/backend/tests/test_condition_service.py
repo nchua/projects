@@ -1,9 +1,10 @@
 """
-Tests for the Hunter Condition service (ARISE v2 spec §4).
+Tests for the Hunter Condition service (ARISE v2 spec §4, v3 §6.5).
 
 Covers the normalization formulas, the renormalization (graceful-degradation)
-rule, band mapping, WHOOP-row preference across multi-source days, the
-yesterday-strain exertion fallback, and the GET /condition endpoint shape.
+rule, band mapping, WHOOP-row preference across multi-source days, and the
+GET /condition endpoint shape. The v3 inputs (training-load ratio, HRV
+trend) have their own file: tests/test_condition_v2.py.
 """
 import uuid
 from datetime import date, datetime, timedelta, timezone
@@ -18,7 +19,6 @@ from app.services.condition_service import (
     BAND_STRAINED,
     CONDITION_WEIGHTS,
     _freshness_subscore,
-    _strain_subscore,
     band_for_score,
     compute_condition,
 )
@@ -34,17 +34,6 @@ def test_band_thresholds():
     assert band_for_score(40) == BAND_STRAINED
     assert band_for_score(39) == BAND_CRITICAL
     assert band_for_score(0) == BAND_CRITICAL
-
-
-def test_strain_subscore_neutral_below_10():
-    assert _strain_subscore(0.0) == 100
-    assert _strain_subscore(10.0) == 100
-
-
-def test_strain_subscore_linear_to_40_at_21():
-    assert _strain_subscore(21.0) == 40
-    # Midpoint 15.5 → 100 - 30 = 70
-    assert _strain_subscore(15.5) == 70
 
 
 def test_freshness_all_fresh_is_100():
@@ -81,7 +70,9 @@ def test_condition_with_no_data_leans_on_freshness(db, create_test_user):
     assert set(by_key) == set(CONDITION_WEIGHTS)
     assert by_key["cooldowns"]["available"] is True
     assert by_key["cooldowns"]["effective_weight"] == 1.0
-    for key in ("recovery", "sleep", "strain_yesterday", "rhr_trend"):
+    # v3: load_ratio is renormalized away until 28 days of history; hrv_trend
+    # until enough HRV days exist.
+    for key in ("recovery", "sleep", "load_ratio", "rhr_trend", "hrv_trend"):
         assert by_key[key]["available"] is False
         assert by_key[key]["subscore"] is None
         assert by_key[key]["effective_weight"] == 0.0
@@ -95,7 +86,9 @@ def test_condition_renormalizes_weights(db, create_test_user):
     result = compute_condition(db, user.id, today)
     by_key = {i["key"]: i for i in result["inputs"]}
 
-    # recovery (0.40) + cooldowns (0.25) available → weights renormalize
+    # recovery (0.40 — no HRV trend present) + cooldowns (0.25) available →
+    # weights renormalize over 0.65 (v3 §6.5 leaves this case unchanged).
+    assert by_key["recovery"]["weight"] == 0.40
     assert by_key["recovery"]["effective_weight"] == round(0.40 / 0.65, 4)
     assert by_key["cooldowns"]["effective_weight"] == round(0.25 / 0.65, 4)
     # score = (50*0.40 + 100*0.25) / 0.65 ≈ 69
@@ -126,39 +119,6 @@ def test_whoop_row_preferred_over_apple_fitness(db, create_test_user):
     assert by_key["sleep"]["raw"] == 7.5
     assert by_key["sleep"]["subscore"] == 100
     assert by_key["sleep"]["source"] == "whoop"
-
-
-def test_yesterday_strain_from_whoop(db, create_test_user):
-    user, _ = create_test_user(email=f"cond-{uuid.uuid4().hex[:8]}@example.com")
-    today = date.today()
-    _add_activity(db, user.id, today - timedelta(days=1), strain=15.5)
-
-    result = compute_condition(db, user.id, today)
-    by_key = {i["key"]: i for i in result["inputs"]}
-    assert by_key["strain_yesterday"]["subscore"] == 70
-    assert by_key["strain_yesterday"]["source"] == "whoop"
-
-
-def test_yesterday_strain_falls_back_to_exertion(db, create_test_user):
-    user, _ = create_test_user(email=f"cond-{uuid.uuid4().hex[:8]}@example.com")
-    today = date.today()
-    yesterday = datetime.combine(today - timedelta(days=1), datetime.min.time()) + timedelta(hours=18)
-    # One hour in z5 → weighted 18000 s → exertion 21.0 → subscore 40
-    workout = WorkoutSession(
-        user_id=user.id,
-        date=yesterday,
-        duration_minutes=60,
-        hr_source="apple_watch",
-        hr_zone_seconds={"z5": 3600},
-    )
-    db.add(workout)
-    db.commit()
-
-    result = compute_condition(db, user.id, today)
-    by_key = {i["key"]: i for i in result["inputs"]}
-    assert by_key["strain_yesterday"]["raw"] == 21.0
-    assert by_key["strain_yesterday"]["subscore"] == 40
-    assert by_key["strain_yesterday"]["source"] == "apple_watch"
 
 
 def test_rhr_trend_elevated_and_floor(db, create_test_user):
@@ -228,7 +188,9 @@ def test_get_condition_endpoint_shape(client, db, auth_headers, unique_email):
     assert set(data) == {"score", "band", "generated_at", "inputs", "muscles_cooling"}
     assert isinstance(data["score"], int)
     assert data["band"] in ("peak", "battle_ready", "strained", "critical")
-    assert len(data["inputs"]) == 5
+    # v3 §6.5: six inputs (load_ratio replaced strain_yesterday, hrv_trend added).
+    assert len(data["inputs"]) == 6
+    assert [i["key"] for i in data["inputs"]] == list(CONDITION_WEIGHTS)
     for entry in data["inputs"]:
         assert set(entry) == {
             "key", "label", "raw", "subscore", "weight",

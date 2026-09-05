@@ -13,7 +13,9 @@ from app.schemas.cooldown import MuscleCooldownStatus
 
 class ConditionInput(BaseModel):
     """One normalized Condition input with its post-renormalization weight."""
-    key: str            # recovery | cooldowns | sleep | strain_yesterday | rhr_trend
+    # v3 §6.5: strain_yesterday → load_ratio (acute/chronic total load);
+    # hrv_trend added (recovery's weight is 0.30 when it is present).
+    key: str            # recovery | cooldowns | sleep | load_ratio | rhr_trend | hrv_trend
     label: str
     raw: Optional[float] = None
     subscore: Optional[int] = None   # None when unavailable
