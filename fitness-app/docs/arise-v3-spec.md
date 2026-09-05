@@ -231,7 +231,34 @@ substring schemes are deleted when their last reader moves, not before.
 | `PUT /hunts/{id}` | `{status: skipped}` · `{moved_to: date}` · `{swap_with: id}` |
 | `POST /campaign/import`, `POST /campaign`, `PUT /campaign/{id}` | as above |
 
-### 4.6 UI
+### 4.6 Objectives (Goals, re-homed)
+
+v2's Goals survive unchanged in mechanics — `goals` rows of exercise + `target_weight` ×
+`target_reps` + `deadline`, max 5 active (`MAX_ACTIVE_GOALS`, `api/goals.py:26`), pace =
+required vs actual weekly e1RM gain (`weekly_report_service.py:219-227`) — but they move
+under the Campaign and gain a purpose:
+
+- **Schema:** `goals.campaign_id` FK (nullable for legacy rows) and `goals.kind ∈
+  strength | run`. A run objective is `{miles, by: arc_end | date}` for the long run or
+  the weekly total; its pace is the arc ramp itself, so it never needs its own math.
+- **Where set:** Hunter › Campaign › **Objectives** sheet (the existing `GoalSetupView`
+  flow, re-homed; the Power › Goals row stays as a second entry point). Campaign import
+  asks "what does this campaign end with?" and seeds objectives from the answer. The
+  setup form shows the pace preview before saving (e1RM today, target e1RM, required
+  lb/week vs the 6-week slope) and labels an objective AMBITIOUS when required > 2× slope.
+- **What they steer (and only these):**
+  1. **Gates:** when two lifts qualify for a spawn, the lift with an active strength
+     objective wins the slot.
+  2. **Debrief concerns:** `goal_behind` (pace status behind for 2 consecutive weeks)
+     and `goal_ambitious` are engine flags the model must address.
+  3. **Debrief ops:** a behind objective unlocks `change_reps` toward the objective's rep
+     target and a new op **`set_goal_deadline`** (extend only, ≤ 4 weeks, at most once per
+     objective). Objectives never change a prescription directly — pillar 6.
+- **Surfaces:** a goal chip in the Today's Hunt meta line when the hunt's main lift has
+  an objective ("SQUAT 315 BY FEB 1 · ON PACE"); the Debrief's goal line opens the sheet;
+  the Power snapshot cell shows the target.
+
+### 4.7 UI
 
 - **Status tab:** **TODAY'S HUNT** card takes the Directive card's slot (the System line
   renders inside it, §8.3). Type, title, location tag, the main lift's prescribed top set
@@ -537,7 +564,8 @@ context builder and the Debrief's concerns.
     {"op": "deload_now", "scope": "lifts|runs|all", "reason": "…"},
     {"op": "swap_days", "a": "2026-09-09", "b": "2026-09-10", "reason": "…"},
     {"op": "extend_arc", "weeks": 1, "reason": "…"},
-    {"op": "change_reps", "family": "bench_press", "sets": 3, "reps": [3,3], "reason": "…"}
+    {"op": "change_reps", "family": "bench_press", "sets": 3, "reps": [3,3], "reason": "…"},
+    {"op": "set_goal_deadline", "goal_id": "…", "deadline": "2026-11-29", "reason": "…"}
   ],
   "next_week_focus": "one line"
 }
@@ -545,7 +573,8 @@ context builder and the Debrief's concerns.
 
 - **Validators** (deterministic appliers in `campaign_service`): miles within ±15% of the
   arc's ramp value unless `deload_now`; increments equal to the family's increment; at most
-  one `deload_now` per 3 weeks; `extend_arc ≤ 2`; ≤ 3 adjustments; every family named must
+  one `deload_now` per 3 weeks; `extend_arc ≤ 2`; `set_goal_deadline` extends only, ≤ 4
+  weeks, once per objective; ≤ 3 adjustments; every family named must
   exist in the context. Out-of-bounds ops render as "suggested, out of bounds" — visible,
   not applied. Adherence, highlights, and all numbers come from the engine step, not the
   model output.
@@ -762,8 +791,9 @@ New achievements: `campaign_arc_complete`, `four_weeks_on_plan`, `guard_respecte
   calendar and log as today; planned-hunt sheet for future days; RESUME HUNT banner.
 - **Active hunt (LogView v2):** §7.
 - **Power:** unchanged.
-- **Hunter:** Campaign row (name, arc, week; edit/pause/import), Coach settings (HR cap
-  override, debrief time), Integrations gains a background-delivery status line.
+- **Hunter:** Campaign row (name, arc, week; edit/pause/import) with an **Objectives**
+  row → sheet (§4.6), Coach settings (HR cap override, debrief time), Integrations gains a
+  background-delivery status line.
 - **Sheets:** Planned Hunt, Debrief (replaces Weekly Report), Load.
 
 Design language unchanged. Mockup before Phase 1b per the house rule
@@ -913,6 +943,11 @@ dependency beyond the three set columns; Phase 2 depends on 1 (ghost plumbing); 
   CLAUDE.md "local_date is authoritative" rule while this spec was being reviewed. §12 item 2
   marked shipped; profile timezone deferred to Phase 5; alembic head updated; `local_day`
   renamed `local_date` throughout.
+
+- **v2.2 (2026-09-05):** Objectives (§4.6) — Goals re-homed under the Campaign with a
+  `kind`, a pace preview at setup, and three explicit uses (gate tie-break, debrief
+  concerns, `change_reps` / new `set_goal_deadline` ops). Added after the mockup review
+  showed goal-setting had no surface in v3.
 
 *Companion docs to be written: `docs/arise-v3-roadmap.md` after Phase 1;
 `docs/mockups/arise-v3-mockup.html` before Phase 2.*

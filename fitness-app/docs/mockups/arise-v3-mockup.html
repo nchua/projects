@@ -1,10 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<meta name="color-scheme" content="dark" />
-<title>ARISE v3 Mockup</title>
+<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8" />\n<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />\n<meta name="color-scheme" content="dark" />\n<title>ARISE v3 Mockup</title>
 <style>
 /* ARISE v3 mockup — single-theme (the app is dark-only, preferredColorScheme(.dark)).
    Tokens mirror ios/FitnessApp/Utils/Colors.swift as the LIVE cards use them (voidBlack/voidMedium/voidLight).
@@ -325,6 +319,27 @@ button:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--system-
 .loadbars .b i { display:block; border-radius:3px 3px 0 0; }
 .loadbars .b i.r { background:var(--run); opacity:.85; } .loadbars .b i.l { background:var(--lift-squat); opacity:.85; }
 .loadaxis { display:flex; gap:5px; margin-top:6px; } .loadaxis span { flex:1; text-align:center; font-family:var(--font-mono); font-size:8px; color:var(--text-muted); }
+/* objectives */
+.goal { display:grid; grid-template-columns:4px 1fr auto; gap:0 12px; align-items:center; padding:11px 0; border-top:1px solid var(--glass-border); }
+.goal:first-child { border-top:0; }
+.goal .acc { width:4px; height:30px; border-radius:2px; }
+.goal .nm { font-family:var(--font-header); font-weight:600; font-size:15px; }
+.goal .sub { font-family:var(--font-mono); font-size:9px; color:var(--text-muted); letter-spacing:.3px; margin-top:3px; }
+.goal .pace { text-align:right; font-family:var(--font-mono); font-size:10px; white-space:nowrap; }
+.goal .pace b { display:block; font-family:var(--font-display); font-weight:700; font-size:14px; color:var(--text-primary); }
+.gtrack { grid-column:2/-1; height:4px; background:var(--void-light); border-radius:2px; overflow:hidden; margin-top:8px; position:relative; }
+.gtrack i { display:block; height:100%; border-radius:2px; }
+.gtrack em { position:absolute; top:-3px; width:1px; height:10px; background:var(--text-secondary); }
+.form { margin-top:12px; border-radius:14px; border:1px dashed rgba(0,212,255,0.25); background:rgba(0,212,255,0.03); padding:12px 14px; }
+.form .lbl { font-family:var(--font-mono); font-size:8.5px; letter-spacing:1px; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px; }
+.form .chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+.form .chips button { min-height:36px; padding:0 12px; border-radius:18px; font-family:var(--font-mono); font-size:10px; letter-spacing:.5px; color:var(--text-secondary); background:var(--bg-card); border:1px solid var(--glass-border); }
+.form .chips button.on { color:var(--text-primary); border-color:var(--lift-bench); background:rgba(239,68,68,0.10); }
+.form .fields { display:grid; grid-template-columns:1fr 1fr 1.4fr; gap:8px; }
+.form .fld { min-height:44px; border-radius:10px; background:var(--bg-card); border:1px solid var(--glass-border); display:flex; align-items:center; justify-content:center; gap:4px; font-family:var(--font-mono); font-size:14px; }
+.form .fld small { font-size:9px; color:var(--text-muted); }
+.preview { margin-top:10px; padding:10px 12px; border-radius:10px; background:var(--bg-card); border-left:2px solid var(--gold); font-family:var(--font-mono); font-size:10.5px; line-height:1.6; color:var(--text-secondary); }
+.preview b { color:var(--gold); font-weight:600; }
 /* hunter tab rows */
 .rowline { display:flex; align-items:center; gap:12px; padding:12px 2px; min-height:52px; border-top:1px solid var(--glass-border); }
 .rowline:first-child { border-top:0; }
@@ -335,9 +350,7 @@ button:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--system-
 .chart-title .t { font-family:var(--font-mono); font-size:9.5px; letter-spacing:1px; color:var(--text-muted); text-transform:uppercase; }
 .chart-title .v { font-family:var(--font-display); font-weight:700; font-size:16px; }
 .note { font-family:var(--font-mono); font-size:9.5px; color:var(--text-muted); letter-spacing:.3px; line-height:1.6; margin-top:10px; }
-</style>
-</head>
-<body>
+</style>\n</head>\n<body>
 
 <!-- ================= MOCKUP CHROME ================= -->
 <div class="mock">
@@ -350,6 +363,7 @@ button:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--system-
       <button class="scene" type="button" data-scene="debrief">Debrief</button>
       <button class="scene" type="button" data-scene="load">Load</button>
       <button class="scene" type="button" data-scene="hunter">Hunter</button>
+      <button class="scene" type="button" data-scene="objectives">Objectives</button>
     </div>
   </div>
 </div>
@@ -405,7 +419,7 @@ button:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--system-
           <div class="type-glyph lift">LIFT</div>
           <div>
             <div class="hc-title">SQUAT DAY — HEAVY</div>
-            <div class="hc-meta">San Carlos · Arc 1 · Wk 5 of 8</div>
+            <div class="hc-meta">San Carlos · Arc 1 · Wk 5 of 8 · <span data-sheet="objectives" style="color:var(--system-primary)">SQUAT 315 BY FEB 1 · ON PACE</span></div>
           </div>
           <div class="hc-right"><div class="v" style="color:var(--gold)">A</div><div class="l">GATE TODAY</div></div>
         </div>
@@ -561,7 +575,7 @@ button:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--system-
     <div class="seclabel">Power Snapshot <span class="spacer"></span><button class="link" type="button" data-tab-link="2">DETAILS →</button></div>
     <div class="big3">
       <div class="b3"><div class="nm">SQUAT</div><div class="bar" style="background:var(--lift-squat)"></div><div class="v">278</div><div class="tr up">▲ 2.4 / WK</div></div>
-      <div class="b3"><div class="nm">BENCH</div><div class="bar" style="background:var(--lift-bench)"></div><div class="v">239</div><div class="tr flat">— HELD ×2</div></div>
+      <div class="b3"><div class="nm">BENCH</div><div class="bar" style="background:var(--lift-bench)"></div><div class="v">239</div><div class="tr flat">— HELD ×2 · 225 BY NOV 1</div></div>
       <div class="b3"><div class="nm">DEADLIFT</div><div class="bar" style="background:var(--lift-deadlift)"></div><div class="v">368</div><div class="tr up">▲ 1.1%</div></div>
     </div>
   </section>
@@ -636,6 +650,7 @@ button:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--system-
     <div class="seclabel">Campaign</div>
     <div class="card compact">
       <div class="rowline"><div class="ic">◆</div><div><div class="t">Run Base + Strength</div><div class="s">ARC 1 OF 3 · WK 5 OF 8 · 7–13 MI/WK · DELOAD EVERY 4TH</div></div><span class="r">EDIT</span></div>
+      <div class="rowline" data-sheet="objectives"><div class="ic">◎</div><div><div class="t">Objectives</div><div class="s">2 STRENGTH · 1 RUN · BENCH IS BEHIND PACE</div></div><span class="r" style="color:var(--system-primary)">OPEN →</span></div>
       <div class="rowline"><div class="ic">↻</div><div><div class="t">Imported from training-calendar</div><div class="s">AUG 3 2026 · 3 ARCS · 21 TEMPLATES · 2 ITEMS FLAGGED AS NOTES</div></div></div>
       <div class="rowline"><div class="ic">‖</div><div><div class="t">Pause campaign</div><div class="s">PLANNED HUNTS STOP MATERIALIZING · NOTHING IS DELETED</div></div></div>
     </div>
@@ -901,6 +916,50 @@ button:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--system-
   <p>Lifts never enter the veto path. A heavy weekend spiking Monday's total is the plan working, not a risk signal.</p>
 </div>
 
+<!-- Objectives (goals, re-homed under the Campaign) -->
+<div class="sheet" id="sheet-objectives">
+  <div class="grabber"></div>
+  <div class="sheet-head"><span class="sheet-title">[ OBJECTIVES ]</span><button class="close-btn" type="button" data-close="1">✕</button></div>
+  <h3>Run Base + Strength</h3>
+  <div class="sub">WHAT THIS CAMPAIGN ENDS WITH · 3 OF 5 SLOTS · PACE RECOMPUTED EVERY DEBRIEF</div>
+  <div class="rat" style="padding:4px 12px 8px">
+    <div class="goal">
+      <span class="acc" style="background:var(--lift-bench)"></span>
+      <div><div class="nm">Bench Press · 225 × 1</div><div class="sub">BY NOV 1 · 8 WKS LEFT · e1RM 239 → 250 (ANY REPS · EPLEY)</div></div>
+      <div class="pace" style="color:var(--gold)"><b>−11</b>BEHIND</div>
+      <div class="gtrack"><i style="width:58%;background:var(--gold)"></i><em style="left:71%"></em></div>
+      <div class="sub" style="grid-column:2/-1;margin-top:5px">NEEDS +1.9 LB/WK · ACTUAL +0.4 · <span style="color:var(--gold)">DEBRIEF PROPOSED 3×3 @ 215</span></div>
+    </div>
+    <div class="goal">
+      <span class="acc" style="background:var(--lift-squat)"></span>
+      <div><div class="nm">Back Squat · 315 × 1</div><div class="sub">BY FEB 1 · 21 WKS LEFT · e1RM 278 → 315</div></div>
+      <div class="pace" style="color:var(--success-green)"><b>+3</b>ON PACE</div>
+      <div class="gtrack"><i style="width:44%;background:var(--success-green)"></i><em style="left:41%"></em></div>
+      <div class="sub" style="grid-column:2/-1;margin-top:5px">NEEDS +1.8 LB/WK · ACTUAL +2.4 · GATES TIE-BREAK TO THIS LIFT</div>
+    </div>
+    <div class="goal">
+      <span class="acc" style="background:var(--run)"></span>
+      <div><div class="nm">Long run · 7.0 mi</div><div class="sub">BY END OF ARC 3 · FROM THE PLAN · CURRENT 4.0</div></div>
+      <div class="pace" style="color:var(--success-green)"><b>4.0</b>ON RAMP</div>
+      <div class="gtrack"><i style="width:57%;background:var(--run)"></i><em style="left:55%"></em></div>
+      <div class="sub" style="grid-column:2/-1;margin-top:5px">THE ARC RAMP IS THE PACE · THE GUARD OWNS THE CEILING</div>
+    </div>
+  </div>
+
+  <div class="form">
+    <div class="lbl">Add objective · strength</div>
+    <div class="chips"><button type="button">SQUAT</button><button type="button" class="on">BENCH</button><button type="button">DEADLIFT</button><button type="button">OHP</button><button type="button">OTHER…</button></div>
+    <div class="fields">
+      <div class="fld">225<small>lb</small></div>
+      <div class="fld">× 1<small>reps</small></div>
+      <div class="fld" style="font-size:12px">NOV 1 2026</div>
+    </div>
+    <div class="preview">e1RM today <b>239</b> · target <b>250</b> · 8 weeks → needs <b>+1.9 lb/wk</b>. Your 6-week slope is +0.4. The System accepts the objective, flags it AMBITIOUS, and the next debrief will propose a rep-scheme change or a later deadline. It will not silently inflate a prescription to chase it.</div>
+    <button class="sheet-cta primary" type="button" style="margin-top:12px">SET OBJECTIVE</button>
+  </div>
+  <p>Objectives are the old Goals, re-homed under the Campaign. They steer three things: which lift a Gate spawns on when two qualify, which concerns the Debrief raises, and which adjustment ops it is allowed to propose. They never change a load directly.</p>
+</div>
+
 <!-- Debrief -->
 <div class="sheet" id="sheet-debrief">
   <div class="grabber"></div>
@@ -953,7 +1012,7 @@ button:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--system-
 
   <div class="divider"></div>
   <div class="kv" style="border-top:0"><span class="k">NEXT WEEK'S FOCUS</span><span class="v">clear the Gate · protect sleep Tue–Thu</span></div>
-  <div class="kv"><span class="k">GOAL PACE · BENCH 225 BY NOV 1</span><span class="v flat">behind · needs +1.9 lb/wk</span></div>
+  <div class="kv" data-sheet="objectives" style="cursor:pointer"><span class="k">OBJECTIVE · BENCH 225 BY NOV 1</span><span class="v flat">behind · needs +1.9 lb/wk · tap →</span></div>
   <div class="kv"><span class="k">GENERATED</span><span class="v">Sun 20:04 · claude-opus-5 · context 9a3f…</span></div>
 </div>
 
@@ -995,7 +1054,7 @@ button:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--system-
 })('hunt-cal');
 
 // ------- scenes / tabs / sheets (event delegation, mobile-safe) -------
-const SCENE_TAB = { status: '0', hunt: '1', log: 'log', debrief: '0', load: '0', hunter: '3' };
+const SCENE_TAB = { status: '0', hunt: '1', log: 'log', debrief: '0', load: '0', hunter: '3', objectives: '3' };
 function showTab(id) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + id));
   document.querySelectorAll('#tabbar .tabbtn').forEach(b => b.classList.toggle('active', b.dataset.tab === String(id)));
@@ -1021,6 +1080,7 @@ function setScene(name) {
   showTab(SCENE_TAB[name] || '0');
   if (name === 'debrief') setTimeout(() => openSheet('debrief'), 60);
   if (name === 'load') setTimeout(() => openSheet('load'), 60);
+  if (name === 'objectives') setTimeout(() => openSheet('objectives'), 60);
 }
 function setVariant(v) {
   document.querySelectorAll('.variant-row .vbtn').forEach(b => b.classList.toggle('active', b.dataset.variant === v));
@@ -1107,6 +1167,4 @@ function bumpDecide() {
 }
 renderRest();
 </script>
-
-</body>
-</html>
+\n</body>\n</html>\n
