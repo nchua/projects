@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<title>ARISE v3 Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* ARISE v3 mockup — single-theme (the app is dark-only, preferredColorScheme(.dark)).
+   Tokens mirror ios/FitnessApp/Utils/Colors.swift + Fonts.swift and the v2 mockup. */
+:root {
+  --system-primary:#00D4FF; --success-green:#33FF88; --gold:#FFD700; --warning-red:#FF3333;
+  --orange:#FF9500; --purple:#7B61FF;
+  --bg-void:#050508; --bg-card:#0f1018; --bg-elevated:#141520; --bg-input:#1a1b28; --void-light:#252530;
+  --text-primary:#FFFFFF; --text-secondary:#A0A0B0; --text-muted:#606070;
+  --glass-border:rgba(255,255,255,0.04); --arise-border:rgba(0,212,255,0.20); --primary-010:rgba(0,212,255,0.10);
+  --rank-b:#9B4A9B; --rank-a:#FFD700;
+  --lift-squat:#3B82F6; --lift-bench:#EF4444; --lift-deadlift:#8B5CF6; --lift-row:#22C55E; --lift-ohp:#EC4899;
+  --run:#FF9500; --light:#7B61FF;
+  --font-display:'Orbitron',ui-monospace,monospace;
+  --font-header:'Rajdhani',-apple-system,'Helvetica Neue',sans-serif;
+  --font-body:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;
+}
+* { box-sizing:border-box; -webkit-tap-highlight-color:rgba(0,212,255,0.12); }
+html { background:var(--bg-void); }
+body { margin:0; font-family:var(--font-body); color:var(--text-primary); background:var(--bg-void); min-height:100vh; font-variant-numeric:tabular-nums; }
+body::before { content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:radial-gradient(60% 40% at 50% 0%, rgba(0,212,255,0.025), transparent 70%), radial-gradient(50% 36% at 85% 90%, rgba(0,212,255,0.015), transparent 70%); }
+button { -webkit-appearance:none; appearance:none; border:0; background:none; color:inherit; font:inherit; cursor:pointer; touch-action:manipulation; min-height:44px; }
+button:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--system-primary); outline-offset:2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition:none !important; animation:none !important; } }
+
+/* ---- mockup chrome (not part of the app) ---- */
+.mock { position:sticky; top:0; z-index:40; background:rgba(5,5,8,0.92); backdrop-filter:blur(8px); border-bottom:1px solid var(--glass-border); }
+.mock-inner { max-width:430px; margin:0 auto; padding:8px 10px 6px; }
+.mock-title { font-family:var(--font-mono); font-size:9px; letter-spacing:1px; color:var(--text-muted); text-transform:uppercase; display:flex; gap:6px; align-items:center; margin:0 2px 6px; }
+.mock-title::before { content:"◆"; color:var(--system-primary); font-size:8px; }
+.scenes { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; scrollbar-width:none; }
+.scenes::-webkit-scrollbar { display:none; }
+.scene { flex:none; min-height:36px; padding:0 12px; border-radius:18px; border:1px solid var(--glass-border); background:var(--bg-card); font-family:var(--font-mono); font-size:9.5px; letter-spacing:.8px; color:var(--text-secondary); text-transform:uppercase; }
+.scene.active { color:var(--system-primary); background:var(--primary-010); border-color:var(--arise-border); }
+.scene:active { transform:scale(.96); }
+
+.wrap { max-width:430px; margin:0 auto; padding:14px 14px 120px; position:relative; z-index:1; }
+.tab { display:none; } .tab.active { display:block; }
+
+/* ---- shared vocabulary (from the v2 mockup / Edge Flow) ---- */
+.seclabel { font-family:var(--font-header); font-weight:600; font-size:13px; letter-spacing:2px; color:var(--text-secondary); text-transform:uppercase; display:flex; align-items:center; gap:8px; margin:22px 2px 10px; }
+.seclabel::before { content:"◆"; color:var(--system-primary); font-size:9px; }
+.seclabel .spacer { flex:1; }
+.seclabel .link { font-family:var(--font-mono); font-size:10px; letter-spacing:.5px; color:var(--system-primary); min-height:44px; display:inline-flex; align-items:center; padding:0 4px; }
+.card { background:var(--bg-card); border:1px solid var(--glass-border); border-radius:20px; padding:18px; position:relative; box-shadow:0 8px 20px rgba(0,212,255,0.03); }
+.card.compact { border-radius:12px; padding:14px; }
+.card.tappable { transition:transform .08s ease; } .card.tappable:active { transform:scale(.98); }
+.card + .card { margin-top:12px; }
+.tag { font-family:var(--font-mono); font-size:9px; font-weight:600; letter-spacing:1px; text-transform:uppercase; }
+.chip { font-family:var(--font-mono); font-size:9px; font-weight:600; letter-spacing:.5px; padding:3px 8px; border-radius:4px; white-space:nowrap; display:inline-flex; align-items:center; gap:4px; }
+.chip.cyan { color:var(--system-primary); background:var(--primary-010); }
+.chip.green { color:var(--success-green); background:rgba(51,255,136,0.08); }
+.chip.gold { color:var(--gold); background:rgba(255,215,0,0.08); }
+.chip.red { color:var(--warning-red); background:rgba(255,51,51,0.10); }
+.chip.orange { color:var(--orange); background:rgba(255,149,0,0.10); }
+.chip.purple { color:var(--purple); background:rgba(123,97,255,0.12); }
+.chip.dim { color:var(--text-muted); background:var(--bg-input); }
+.mono { font-family:var(--font-mono); }
+.divider { height:1px; margin:14px 0; background:linear-gradient(90deg, transparent, rgba(0,212,255,0.3), transparent); }
+.kv { display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:9px 0; font-family:var(--font-mono); font-size:10px; border-top:1px solid var(--glass-border); }
+.kv .k { color:var(--text-muted); letter-spacing:.5px; } .kv .v { color:var(--text-primary); text-align:right; }
+.up { color:var(--success-green); } .down { color:#FF4757; } .flat { color:var(--text-muted); }
+
+/* hunter header */
+.hunter-head { display:flex; align-items:center; gap:12px; padding:16px 18px; border-radius:20px; border:1px solid var(--glass-border); background:linear-gradient(160deg, var(--bg-elevated), var(--bg-void)); flex-wrap:wrap; }
+.avatar { width:46px; height:46px; border-radius:50%; flex:none; background:var(--bg-input); border:1.5px solid var(--rank-b); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:16px; color:var(--rank-b); box-shadow:0 0 12px rgba(155,74,155,0.35); }
+.hh-mid { flex:1; min-width:0; }
+.hh-name { font-family:var(--font-header); font-weight:700; font-size:18px; letter-spacing:1.5px; color:#88DDFF; }
+.hh-sub { font-family:var(--font-mono); font-size:9.5px; color:var(--text-muted); letter-spacing:.5px; margin-top:2px; } .hh-sub b { color:var(--rank-b); font-weight:600; }
+.hh-right { text-align:right; flex:none; }
+.hh-right .v { font-family:var(--font-display); font-weight:700; font-size:16px; color:var(--success-green); }
+.hh-right .l { font-family:var(--font-mono); font-size:8px; color:var(--text-muted); letter-spacing:.5px; }
+.xpbar { flex-basis:100%; height:4px; background:var(--void-light); border-radius:2px; overflow:hidden; margin-top:4px; }
+.xpbar i { display:block; height:100%; border-radius:2px; background:linear-gradient(90deg,var(--system-primary),var(--purple)); }
+.xp-caption { flex-basis:100%; display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:8.5px; color:var(--text-muted); letter-spacing:.5px; }
+
+/* condition (compact in v3 — still the hero, less tall) */
+.cond { display:flex; align-items:center; gap:16px; padding:16px 18px; }
+.cond .ring { position:relative; width:84px; height:84px; flex:none; }
+.cond .ring .num { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:24px; color:var(--success-green); text-shadow:0 0 12px rgba(51,255,136,0.35); }
+.cond .band { font-family:var(--font-header); font-weight:700; font-size:16px; letter-spacing:3px; color:var(--success-green); }
+.cond .copy { font-family:var(--font-mono); font-size:10px; color:var(--text-secondary); margin-top:3px; }
+.prov { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.srcbadge { font-family:var(--font-mono); font-weight:600; font-size:8px; letter-spacing:.5px; border-radius:3px; padding:2px 5px; display:inline-flex; align-items:center; gap:3px; }
+.src-whoop { color:var(--orange); background:rgba(255,149,0,0.10); } .src-watch { color:var(--system-primary); background:rgba(0,212,255,0.10); }
+
+/* ---- TODAY'S HUNT (new) ---- */
+.hunt-card { padding:0; overflow:hidden; }
+.hunt-card .hc-top { display:flex; align-items:center; gap:10px; padding:14px 18px 12px; border-bottom:1px solid var(--glass-border); }
+.type-glyph { width:38px; height:38px; border-radius:11px; flex:none; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:11px; letter-spacing:.5px; }
+.type-glyph.lift { color:var(--lift-squat); background:rgba(59,130,246,0.12); }
+.type-glyph.run { color:var(--run); background:rgba(255,149,0,0.12); }
+.type-glyph.rest { color:var(--text-muted); background:var(--bg-input); }
+.hc-title { font-family:var(--font-header); font-weight:700; font-size:17px; letter-spacing:1px; line-height:1.1; }
+.hc-meta { font-family:var(--font-mono); font-size:9px; color:var(--text-muted); letter-spacing:.8px; margin-top:3px; text-transform:uppercase; }
+.hc-right { margin-left:auto; text-align:right; flex:none; }
+.hc-right .v { font-family:var(--font-display); font-weight:700; font-size:15px; }
+.hc-right .l { font-family:var(--font-mono); font-size:8px; color:var(--text-muted); letter-spacing:.5px; }
+/* System line — the one place the sharp mono dialect survives (v2 §9.2) */
+.sysline { margin:12px 14px 0; background:rgba(0,212,255,0.03); border:1px solid var(--arise-border); border-left:2px solid var(--system-primary); border-radius:4px; padding:10px 12px; }
+.sysline .d-tag { font-family:var(--font-mono); font-size:9px; font-weight:600; letter-spacing:1px; color:var(--system-primary); }
+.sysline .d-msg { font-family:var(--font-mono); font-size:11.5px; line-height:1.55; color:var(--text-primary); margin-top:6px; }
+.sysline .d-msg b { color:var(--gold); font-weight:600; }
+.sysline.guard { border-color:rgba(255,149,0,0.35); border-left-color:var(--orange); background:rgba(255,149,0,0.03); }
+.sysline.guard .d-tag { color:var(--orange); }
+.sysline.rest { border-color:rgba(255,51,51,0.3); border-left-color:var(--warning-red); background:rgba(255,51,51,0.03); }
+.sysline.rest .d-tag { color:var(--warning-red); }
+/* prescription list */
+.rx { padding:10px 14px 4px; }
+.rx-row { display:grid; grid-template-columns:4px 1fr auto; gap:0 10px; align-items:center; padding:9px 0; border-top:1px solid var(--glass-border); min-height:44px; }
+.rx-row:first-child { border-top:0; }
+.rx-row .acc { width:4px; height:26px; border-radius:2px; }
+.rx-row .nm { font-family:var(--font-header); font-weight:600; font-size:14.5px; letter-spacing:.3px; }
+.rx-row .sub { font-family:var(--font-mono); font-size:9px; color:var(--text-muted); letter-spacing:.3px; margin-top:2px; }
+.rx-row .tg { font-family:var(--font-mono); font-size:12px; text-align:right; white-space:nowrap; }
+.rx-row .tg b { font-weight:600; color:var(--text-primary); }
+.rx-row .tg .prog { display:block; font-size:9px; margin-top:2px; }
+.rx-row.gate .nm { color:var(--gold); } .rx-row.gate .acc { background:var(--gold); box-shadow:0 0 6px rgba(255,215,0,0.5); }
+.rx-row.note .nm { color:var(--text-secondary); font-weight:500; font-size:13px; }
+.hc-foot { display:flex; gap:10px; padding:12px 14px 14px; }
+.cta { flex:1; min-height:48px; border-radius:24px; font-family:var(--font-header); font-weight:700; font-size:15px; letter-spacing:2px; display:flex; align-items:center; justify-content:center; gap:8px; transition:transform .08s ease; }
+.cta:active { transform:scale(.96); }
+.cta.primary { background:linear-gradient(90deg,var(--system-primary),#0099CC); color:#031015; box-shadow:0 0 18px rgba(0,212,255,0.25); }
+.cta.secondary { background:var(--bg-input); color:var(--text-secondary); border:1px solid var(--glass-border); flex:0 0 118px; font-size:12px; letter-spacing:1.5px; }
+.cta.ghost { background:transparent; color:var(--text-secondary); border:1px solid var(--glass-border); }
+.cta.danger { background:rgba(255,51,51,0.08); color:var(--warning-red); border:1px solid rgba(255,51,51,0.3); }
+.variant-row { display:flex; gap:6px; margin:8px 0 0; }
+.variant-row .vbtn { flex:1; min-height:36px; border-radius:8px; font-family:var(--font-mono); font-size:9px; letter-spacing:.8px; color:var(--text-muted); border:1px dashed rgba(255,255,255,0.08); text-transform:uppercase; }
+.variant-row .vbtn.active { color:var(--system-primary); border-style:solid; border-color:var(--arise-border); background:var(--primary-010); }
+.variant { display:none; } .variant.active { display:block; }
+
+/* ---- LOAD strip (new) ---- */
+.load { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; padding:12px 16px; }
+.load .lbl { font-family:var(--font-mono); font-size:9px; letter-spacing:1px; color:var(--text-muted); text-transform:uppercase; display:flex; justify-content:space-between; }
+.load svg { display:block; width:100%; height:auto; margin-top:6px; }
+.load .acwr { text-align:center; min-width:74px; }
+.load .acwr .v { font-family:var(--font-display); font-weight:700; font-size:20px; color:var(--success-green); }
+.load .acwr .l { font-family:var(--font-mono); font-size:8px; color:var(--text-muted); letter-spacing:.5px; }
+.load .miles { grid-column:1/-1; display:flex; gap:10px; align-items:center; font-family:var(--font-mono); font-size:10px; color:var(--text-secondary); }
+.load .miles .track { flex:1; height:6px; background:var(--void-light); border-radius:3px; overflow:hidden; }
+.load .miles .track i { display:block; height:100%; width:86%; background:linear-gradient(90deg,#C77500,var(--run)); border-radius:3px; }
+.load .miles .track em { display:block; position:relative; top:-6px; left:100%; width:1px; height:6px; background:var(--text-secondary); }
+
+/* gate card */
+.gate-card { display:flex; align-items:center; gap:14px; border-color:rgba(255,215,0,0.28); }
+.sigil { width:44px; height:44px; flex:none; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:17px; position:relative; }
+.sigil i { position:absolute; width:34px; height:34px; transform:rotate(45deg); border:1.5px solid currentColor; border-radius:6px; opacity:.9; }
+.sigil span { position:relative; }
+.sigil.a { color:var(--rank-a); filter:drop-shadow(0 0 8px rgba(255,215,0,0.45)); }
+.gate-mid { flex:1; min-width:0; }
+.gate-name { font-family:var(--font-header); font-weight:700; font-size:15px; letter-spacing:1px; }
+.gate-target { font-family:var(--font-mono); font-size:10.5px; color:var(--text-secondary); margin-top:2px; } .gate-target b { color:var(--gold); font-weight:600; }
+.gate-foot { display:flex; justify-content:space-between; margin-top:8px; font-family:var(--font-mono); font-size:8.5px; color:var(--text-muted); letter-spacing:.5px; }
+
+/* this week (adherence ring) */
+.week { display:flex; align-items:center; gap:16px; }
+.ring { position:relative; width:64px; height:64px; flex:none; }
+.ring .c { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.ring .c b { font-family:var(--font-display); font-weight:700; font-size:15px; } .ring .c small { font-family:var(--font-mono); font-size:7.5px; color:var(--text-muted); letter-spacing:.5px; }
+.week-mid { flex:1; min-width:0; }
+.week-title { font-family:var(--font-header); font-weight:600; font-size:14px; letter-spacing:2px; color:var(--text-secondary); text-transform:uppercase; }
+.week-legend { display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; font-family:var(--font-mono); font-size:9px; color:var(--text-secondary); }
+.week-legend i { display:inline-block; width:7px; height:7px; border-radius:2px; margin-right:4px; vertical-align:0; }
+.report-link { display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:11px; border-top:1px solid var(--glass-border); font-family:var(--font-mono); font-size:10px; color:var(--text-muted); min-height:44px; }
+.report-link b { color:var(--system-primary); font-weight:500; }
+.big3 { display:flex; gap:10px; }
+.b3 { flex:1; text-align:center; background:var(--bg-card); border:1px solid var(--glass-border); border-radius:12px; padding:12px 6px; }
+.b3 .nm { font-family:var(--font-mono); font-size:8.5px; letter-spacing:1px; color:var(--text-muted); }
+.b3 .bar { height:3px; border-radius:2px; margin:8px 10px 7px; opacity:.85; }
+.b3 .v { font-family:var(--font-display); font-weight:700; font-size:19px; } .b3 .tr { font-family:var(--font-mono); font-size:9px; margin-top:3px; }
+
+/* ---- HUNT tab: week strip + pace strip (new) ---- */
+.hunt-head { display:flex; justify-content:space-between; align-items:baseline; margin:4px 2px 10px; }
+.hunt-head .t { font-family:var(--font-header); font-weight:700; font-size:22px; letter-spacing:3px; }
+.hunt-head .s { font-family:var(--font-mono); font-size:9px; color:var(--text-muted); letter-spacing:1px; }
+.resume { display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:12px; border:1px solid var(--arise-border); background:var(--primary-010); margin-bottom:12px; min-height:56px; }
+.resume .pulse { width:8px; height:8px; border-radius:50%; background:var(--system-primary); box-shadow:0 0 8px var(--system-primary); flex:none; }
+.resume .t { font-family:var(--font-header); font-weight:700; font-size:14px; letter-spacing:1.5px; }
+.resume .s { font-family:var(--font-mono); font-size:9px; color:var(--text-secondary); margin-top:2px; }
+.resume .go { margin-left:auto; font-family:var(--font-mono); font-size:10px; color:var(--system-primary); letter-spacing:.5px; }
+.wstrip { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+.wday { min-height:66px; border-radius:12px; background:var(--bg-card); border:1px solid var(--glass-border); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:6px 2px; transition:transform .08s ease; }
+.wday:active { transform:scale(.95); }
+.wday .d { font-family:var(--font-mono); font-size:8px; letter-spacing:.5px; color:var(--text-muted); }
+.wday .n { font-family:var(--font-header); font-weight:600; font-size:13px; color:var(--text-secondary); }
+.wday .g { width:22px; height:22px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:9px; font-weight:600; }
+.wday .g.run { color:var(--run); background:rgba(255,149,0,0.14); } .wday .g.lift { color:var(--lift-squat); background:rgba(59,130,246,0.14); }
+.wday .g.light { color:var(--light); background:rgba(123,97,255,0.14); } .wday .g.rest { color:var(--text-muted); background:var(--bg-input); }
+.wday .st { font-family:var(--font-mono); font-size:8px; letter-spacing:.3px; }
+.wday.done .st { color:var(--success-green); } .wday.moved .st { color:var(--gold); } .wday.skipped .st { color:var(--warning-red); }
+.wday.today { border-color:var(--arise-border); background:rgba(0,212,255,0.05); } .wday.today .n { color:var(--system-primary); }
+.wday.future { opacity:.6; }
+.pace { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px; padding:10px 14px; border-radius:10px; background:rgba(255,149,0,0.05); border:1px solid rgba(255,149,0,0.18); font-family:var(--font-mono); font-size:10px; color:var(--text-secondary); letter-spacing:.5px; min-height:44px; }
+.pace b { color:var(--text-primary); font-weight:600; } .pace .verdict { color:var(--success-green); font-weight:600; }
+.cta-row { display:flex; gap:10px; margin-top:14px; }
+.cal-head { display:flex; justify-content:space-between; align-items:center; margin:18px 0 6px; }
+.cal-month { font-family:var(--font-header); font-weight:700; font-size:15px; letter-spacing:2px; }
+.cal-nav { min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-size:16px; }
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+.cal-dow { text-align:center; font-family:var(--font-mono); font-size:8px; letter-spacing:1px; color:var(--text-muted); padding:6px 0; }
+.cal-day { min-height:40px; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+.cal-day .n { font-family:var(--font-header); font-weight:600; font-size:13px; color:var(--text-secondary); }
+.cal-day .mk { width:5px; height:5px; border-radius:50%; background:transparent; }
+.cal-day.hunted .n { color:var(--text-primary); } .cal-day.hunted .mk { background:var(--system-primary); }
+.cal-day.run .mk { background:var(--run); }
+.cal-day.today { border:1px solid var(--arise-border); background:rgba(0,212,255,0.04); } .cal-day.today .n { color:var(--system-primary); }
+.cal-day.out .n { color:var(--text-muted); opacity:.35; } .cal-day.future .n { opacity:.45; }
+.hunt-row { display:flex; overflow:hidden; padding:0; margin-top:10px; transition:transform .08s ease; }
+.hunt-row:active { transform:scale(.98); }
+.hunt-row .accent { width:3px; flex:none; }
+.hunt-row .body { flex:1; padding:13px 14px; min-width:0; }
+.hunt-row .top { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.hunt-row .date { font-family:var(--font-header); font-weight:600; font-size:15px; }
+.hunt-row .title { font-family:var(--font-mono); font-size:10px; color:var(--text-muted); letter-spacing:1px; }
+.hunt-row .meta { display:flex; gap:14px; margin-top:8px; font-family:var(--font-mono); font-size:10px; color:var(--text-secondary); flex-wrap:wrap; align-items:center; }
+.strain { color:var(--orange); font-weight:600; }
+
+/* ---- ACTIVE HUNT (LogView v2) ---- */
+.log-head { display:flex; align-items:center; gap:10px; padding:4px 2px 12px; }
+.log-head .x { min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-size:18px; border-radius:12px; }
+.log-head .t { font-family:var(--font-header); font-weight:700; font-size:18px; letter-spacing:2px; }
+.log-head .s { font-family:var(--font-mono); font-size:9px; color:var(--text-muted); letter-spacing:.8px; margin-top:2px; }
+.log-head .clock { margin-left:auto; text-align:right; }
+.log-head .clock .v { font-family:var(--font-display); font-weight:700; font-size:16px; color:var(--system-primary); }
+.log-head .clock .l { font-family:var(--font-mono); font-size:8px; color:var(--text-muted); letter-spacing:.5px; }
+.obj { background:var(--bg-card); border:1px solid var(--glass-border); border-radius:16px; overflow:hidden; margin-top:12px; }
+.obj-head { display:flex; align-items:center; gap:10px; padding:12px 14px; border-left:4px solid var(--lift-squat); background:var(--bg-elevated); }
+.obj-head .nm { font-family:var(--font-header); font-weight:600; font-size:16px; }
+.obj-head .sub { font-family:var(--font-mono); font-size:9px; color:var(--text-muted); letter-spacing:.3px; margin-top:3px; display:flex; gap:8px; flex-wrap:wrap; }
+.obj-head .cnt { margin-left:auto; font-family:var(--font-mono); font-size:11px; color:var(--text-secondary); white-space:nowrap; }
+.obj-head .cnt b { color:var(--success-green); font-weight:600; }
+.grid-head, .setrow { display:grid; grid-template-columns:30px 60px 1fr 52px 40px 44px; gap:6px; align-items:center; padding:0 10px 0 14px; }
+.grid-head { font-family:var(--font-mono); font-size:8.5px; font-weight:600; letter-spacing:1px; color:var(--text-muted); padding-top:9px; padding-bottom:7px; background:var(--bg-void); }
+.setrow { min-height:52px; border-top:1px solid var(--glass-border); font-family:var(--font-mono); }
+.setrow .sn { font-size:11px; color:var(--text-muted); }
+.setrow .last { font-size:10px; color:var(--text-muted); }
+.setrow .fld { min-height:38px; border-radius:8px; background:var(--bg-input); border:1px solid var(--glass-border); display:flex; align-items:center; justify-content:center; font-size:14px; gap:4px; }
+.setrow .fld small { font-size:9px; color:var(--text-muted); }
+.setrow .fld.ghost { color:var(--text-muted); font-style:italic; border-style:dashed; }
+.setrow .rpe { font-size:12px; color:var(--text-secondary); text-align:center; }
+.chk { width:40px; height:40px; border-radius:11px; border:1.5px solid var(--void-light); display:flex; align-items:center; justify-content:center; color:transparent; font-size:16px; justify-self:end; transition:transform .08s ease; }
+.chk:active { transform:scale(.9); }
+.setrow.current .chk { border-color:var(--system-primary); color:var(--system-primary); box-shadow:0 0 10px rgba(0,212,255,0.25); }
+.setrow.done .chk { background:rgba(51,255,136,0.12); border-color:var(--success-green); color:var(--success-green); }
+.setrow.done .fld { color:var(--text-primary); font-style:normal; border-style:solid; }
+.setrow.warm .fld, .setrow.warm .sn, .setrow.warm .last { opacity:.6; }
+.setrow.gaterow { background:linear-gradient(90deg, rgba(255,215,0,0.05), transparent 60%); }
+.setrow.gaterow .sn { color:var(--gold); font-weight:600; }
+.livehint { grid-column:1/-1; display:flex; gap:8px; align-items:center; padding:0 0 8px 0; font-family:var(--font-mono); font-size:9px; color:var(--text-muted); letter-spacing:.3px; }
+.obj-foot { display:flex; gap:6px; padding:8px 10px 10px; border-top:1px solid var(--glass-border); }
+.obj-foot button { flex:1; min-height:40px; border-radius:9px; font-family:var(--font-mono); font-size:9.5px; letter-spacing:.8px; color:var(--system-primary); background:rgba(0,212,255,0.04); }
+.obj-foot button.dim { color:var(--text-muted); background:transparent; }
+/* sticky rest / finish bar */
+.logbar { position:fixed; left:0; right:0; bottom:0; z-index:30; display:none; background:rgba(15,16,24,0.96); backdrop-filter:blur(10px); border-top:1px solid var(--arise-border); }
+.logbar.show { display:block; }
+.logbar-inner { max-width:430px; margin:0 auto; padding:10px 14px calc(10px + env(safe-area-inset-bottom)); display:flex; align-items:center; gap:12px; }
+.restring { position:relative; width:52px; height:52px; flex:none; }
+.restring .t { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:12px; color:var(--system-primary); }
+.logbar .nx { flex:1; min-width:0; }
+.logbar .nx .l { font-family:var(--font-mono); font-size:8px; letter-spacing:1px; color:var(--text-muted); text-transform:uppercase; }
+.logbar .nx .v { font-family:var(--font-header); font-weight:600; font-size:14px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.logbar .fin { flex:none; min-height:44px; padding:0 16px; border-radius:22px; background:linear-gradient(90deg,var(--system-primary),#0099CC); color:#031015; font-family:var(--font-header); font-weight:700; font-size:13px; letter-spacing:1.5px; }
+.logbar .skip { flex:none; min-width:44px; font-family:var(--font-mono); font-size:9px; color:var(--text-muted); letter-spacing:.5px; }
+
+/* ---- tab bar ---- */
+.tabbar { position:fixed; left:0; right:0; bottom:0; z-index:20; background:rgba(5,5,8,0.94); backdrop-filter:blur(10px); border-top:1px solid var(--glass-border); }
+.tabbar.hidden { display:none; }
+.tabbar-inner { max-width:430px; margin:0 auto; display:flex; padding:6px 8px calc(6px + env(safe-area-inset-bottom)); }
+.tabbtn { flex:1; min-height:50px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; color:var(--text-muted); border-radius:12px; }
+.tabbtn.active { color:var(--system-primary); }
+.tabbtn .tl { font-family:var(--font-body); font-size:10px; font-weight:600; }
+
+/* ---- sheets ---- */
+.backdrop { position:fixed; inset:0; z-index:50; background:rgba(0,0,0,0.6); display:none; }
+.backdrop.open { display:block; }
+.sheet { position:fixed; left:0; right:0; bottom:0; z-index:60; max-width:430px; margin:0 auto; max-height:88vh; overflow-y:auto; background:var(--bg-elevated); border:1px solid var(--glass-border); border-bottom:0; border-radius:22px 22px 0 0; padding:8px 18px calc(22px + env(safe-area-inset-bottom)); transform:translateY(105%); transition:transform .22s ease; }
+.sheet.open { transform:translateY(0); }
+.grabber { width:36px; height:4px; border-radius:2px; background:var(--void-light); margin:4px auto 12px; }
+.sheet-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.sheet-title { font-family:var(--font-mono); font-size:11px; font-weight:600; letter-spacing:1.5px; color:var(--system-primary); }
+.close-btn { min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-size:16px; border-radius:12px; }
+.sheet h3 { font-family:var(--font-header); font-weight:700; font-size:20px; letter-spacing:1px; margin:0; text-wrap:balance; }
+.sheet .sub { font-family:var(--font-mono); font-size:9.5px; color:var(--text-muted); letter-spacing:.5px; margin-top:4px; }
+.sheet p { font-family:var(--font-body); font-size:13.5px; line-height:1.55; color:var(--text-secondary); margin:10px 0 0; max-width:62ch; }
+.sheet p b { color:var(--text-primary); font-weight:600; }
+.sheet-cta { width:100%; min-height:50px; border-radius:25px; font-family:var(--font-header); font-weight:700; font-size:15px; letter-spacing:2px; margin-top:14px; transition:transform .08s ease; }
+.sheet-cta:active { transform:scale(.97); }
+.sheet-cta.primary { background:linear-gradient(90deg,var(--system-primary),#0099CC); color:#031015; }
+.rat { margin-top:10px; border-radius:10px; border:1px solid var(--glass-border); background:var(--bg-card); padding:4px 12px; }
+.rat .kv:first-child { border-top:0; }
+/* debrief */
+.adj { margin-top:10px; border-radius:14px; border:1px solid var(--glass-border); background:var(--bg-card); padding:12px 14px; }
+.adj .top { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.adj .op { font-family:var(--font-mono); font-size:9px; letter-spacing:1px; color:var(--text-muted); text-transform:uppercase; }
+.adj .what { font-family:var(--font-header); font-weight:700; font-size:16px; margin-top:5px; }
+.adj .why { font-family:var(--font-body); font-size:12.5px; line-height:1.5; color:var(--text-secondary); margin-top:4px; }
+.adj .acts { display:flex; gap:8px; margin-top:10px; }
+.adj .acts button { flex:1; min-height:42px; border-radius:21px; font-family:var(--font-header); font-weight:700; font-size:13px; letter-spacing:1.5px; }
+.adj .acts .ok { background:rgba(51,255,136,0.10); color:var(--success-green); border:1px solid rgba(51,255,136,0.3); }
+.adj .acts .no { background:transparent; color:var(--text-muted); border:1px solid var(--glass-border); }
+.adj.accepted { border-color:rgba(51,255,136,0.3); } .adj.accepted .acts { display:none; }
+.adj.dismissed { opacity:.5; } .adj.dismissed .acts { display:none; }
+.adj .state { display:none; margin-top:10px; font-family:var(--font-mono); font-size:9.5px; letter-spacing:.5px; }
+.adj.accepted .state.ok, .adj.dismissed .state.no { display:block; }
+.adj.oob { border-style:dashed; } .adj.oob .acts { display:none; }
+.concern { display:flex; gap:10px; align-items:flex-start; padding:9px 0; border-top:1px solid var(--glass-border); }
+.concern .chip { flex:none; margin-top:2px; }
+.concern .t { font-family:var(--font-body); font-size:12.5px; line-height:1.5; color:var(--text-secondary); }
+/* load sheet */
+.rule { display:grid; grid-template-columns:1fr auto auto; gap:10px; align-items:center; padding:10px 0; border-top:1px solid var(--glass-border); font-family:var(--font-mono); font-size:10px; }
+.rule .k { color:var(--text-secondary); } .rule .k small { display:block; color:var(--text-muted); font-size:8.5px; margin-top:2px; }
+.rule .v { color:var(--text-primary); text-align:right; }
+.loadbars { display:flex; align-items:flex-end; gap:5px; height:70px; margin-top:10px; }
+.loadbars .b { flex:1; display:flex; flex-direction:column; justify-content:flex-end; gap:2px; height:100%; }
+.loadbars .b i { display:block; border-radius:3px 3px 0 0; }
+.loadbars .b i.r { background:var(--run); opacity:.85; } .loadbars .b i.l { background:var(--lift-squat); opacity:.85; }
+.loadaxis { display:flex; gap:5px; margin-top:6px; } .loadaxis span { flex:1; text-align:center; font-family:var(--font-mono); font-size:8px; color:var(--text-muted); }
+/* hunter tab rows */
+.rowline { display:flex; align-items:center; gap:12px; padding:12px 2px; min-height:52px; border-top:1px solid var(--glass-border); }
+.rowline:first-child { border-top:0; }
+.rowline .ic { width:32px; height:32px; border-radius:9px; background:var(--bg-input); display:flex; align-items:center; justify-content:center; color:var(--text-secondary); font-size:13px; flex:none; }
+.rowline .t { font-family:var(--font-body); font-size:14px; font-weight:500; } .rowline .s { font-family:var(--font-mono); font-size:9px; color:var(--text-muted); margin-top:2px; letter-spacing:.3px; }
+.rowline .r { margin-left:auto; font-family:var(--font-mono); font-size:10px; color:var(--text-muted); }
+.chart-title { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; }
+.chart-title .t { font-family:var(--font-mono); font-size:9.5px; letter-spacing:1px; color:var(--text-muted); text-transform:uppercase; }
+.chart-title .v { font-family:var(--font-display); font-weight:700; font-size:16px; }
+.note { font-family:var(--font-mono); font-size:9.5px; color:var(--text-muted); letter-spacing:.3px; line-height:1.6; margin-top:10px; }
+</style>
+</head>
+<body>
+
+<!-- ================= MOCKUP CHROME ================= -->
+<div class="mock">
+  <div class="mock-inner">
+    <div class="mock-title">ARISE v3 mockup · spec docs/arise-v3-spec.md · mock data · today = sat sep 5 · campaign wk 5 / arc 1</div>
+    <div class="scenes" id="scenes">
+      <button class="scene active" type="button" data-scene="status">Status</button>
+      <button class="scene" type="button" data-scene="hunt">Hunt · week</button>
+      <button class="scene" type="button" data-scene="log">Active hunt</button>
+      <button class="scene" type="button" data-scene="debrief">Debrief</button>
+      <button class="scene" type="button" data-scene="load">Load</button>
+      <button class="scene" type="button" data-scene="hunter">Hunter</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ================= TAB 0: STATUS ================= -->
+  <section class="tab active" id="tab-0">
+    <div class="hunter-head">
+      <div class="avatar" data-tab-link="3"><span>B</span></div>
+      <div class="hh-mid">
+        <div class="hh-name">NICK</div>
+        <div class="hh-sub"><b>B-RANK · ELITE</b> · LV 54</div>
+      </div>
+      <div class="hh-right"><div class="v">4 / 5</div><div class="l">ON PLAN · WK 5</div></div>
+      <div class="xpbar"><i style="width:62%"></i></div>
+      <div class="xp-caption"><span>XP 37,910 / 39,731</span><span>+40 PER HUNT AS PLANNED</span></div>
+    </div>
+
+    <div class="seclabel">Hunter Condition</div>
+    <div class="card cond tappable" data-sheet="condition">
+      <div class="ring">
+        <svg width="84" height="84" viewBox="0 0 84 84" aria-hidden="true">
+          <circle cx="42" cy="42" r="36" fill="none" stroke="#252530" stroke-width="7"/>
+          <circle cx="42" cy="42" r="36" fill="none" stroke="#33FF88" stroke-width="7" stroke-linecap="round"
+                  stroke-dasharray="171.9 226.2" transform="rotate(-90 42 42)" style="filter:drop-shadow(0 0 5px rgba(51,255,136,0.5))"/>
+        </svg>
+        <div class="num">76</div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="band">BATTLE READY</div>
+        <div class="copy">Cleared for battle. HRV 62 ms · 7-day above 28-day.</div>
+        <div class="prov">
+          <span class="srcbadge src-whoop">◎ RECOVERY 72</span>
+          <span class="srcbadge src-watch">⌚ HRV · RHR</span>
+          <span class="chip dim">☾ 7.2H</span>
+          <span class="chip dim">LOAD 1.08</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="seclabel">Today's Hunt <span class="spacer"></span><span class="tag" style="color:var(--text-muted)">SAT SEP 5</span></div>
+    <div class="variant-row" aria-label="Mockup: readiness state">
+      <button class="vbtn active" type="button" data-variant="lift">Sat · lift day</button>
+      <button class="vbtn" type="button" data-variant="run">Mon · run + guard</button>
+      <button class="vbtn" type="button" data-variant="rest">Rest decreed</button>
+    </div>
+
+    <!-- Variant A: Saturday heavy lift, gate targets this hunt -->
+    <div class="variant active" id="var-lift">
+      <div class="card hunt-card" style="margin-top:10px">
+        <div class="hc-top">
+          <div class="type-glyph lift">LIFT</div>
+          <div>
+            <div class="hc-title">SQUAT DAY — HEAVY</div>
+            <div class="hc-meta">San Carlos · Arc 1 · Wk 5 of 8</div>
+          </div>
+          <div class="hc-right"><div class="v" style="color:var(--gold)">A</div><div class="l">GATE TODAY</div></div>
+        </div>
+        <div class="sysline" data-sheet="planned-sat">
+          <div class="d-tag">[ SYSTEM ]</div>
+          <div class="d-msg">Back Squat 5×5 @ <b>235</b> · +5 — last week 230×5×5 @ RPE 8, all sets clean. Condition 76, cleared. The Gate opens as set 1: <b>245 × 5</b>.</div>
+        </div>
+        <div class="rx">
+          <div class="rx-row gate">
+            <span class="acc"></span>
+            <div><div class="nm">Gate attempt · Back Squat</div><div class="sub">SET 1 AFTER WARM-UPS · CLEARS AT e1RM 286</div></div>
+            <div class="tg"><b>245 × 5</b><span class="prog" style="color:var(--gold)">A-RANK · +2.9%</span></div>
+          </div>
+          <div class="rx-row">
+            <span class="acc" style="background:var(--lift-squat)"></span>
+            <div><div class="nm">Back Squat</div><div class="sub">BACK-OFFS ON A GATE DAY · −10%</div></div>
+            <div class="tg"><b>4 × 5 @ 210</b><span class="prog up">↑ +5 next week if clean</span></div>
+          </div>
+          <div class="rx-row">
+            <span class="acc" style="background:var(--lift-deadlift)"></span>
+            <div><div class="nm">Deadlift</div><div class="sub">LAST 315 × 5,5,5,4</div></div>
+            <div class="tg"><b>4 × 5 @ 315</b><span class="prog flat">HOLD · 1 rep short</span></div>
+          </div>
+          <div class="rx-row">
+            <span class="acc" style="background:var(--lift-row)"></span>
+            <div><div class="nm">Leg Press</div><div class="sub">OR WALKING LUNGE · DOUBLE PROGRESSION</div></div>
+            <div class="tg"><b>3 × 10–12 @ 360</b><span class="prog up">reps 10 → 11</span></div>
+          </div>
+          <div class="rx-row">
+            <span class="acc" style="background:var(--text-muted)"></span>
+            <div><div class="nm">Hanging Leg Raise</div><div class="sub">BODYWEIGHT</div></div>
+            <div class="tg"><b>3 × 12</b></div>
+          </div>
+        </div>
+        <div class="hc-foot">
+          <button class="cta primary" type="button" data-scene="log">⚡ BEGIN HUNT</button>
+          <button class="cta secondary" type="button">START EMPTY</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Variant B: Monday easy run, Overreach Guard cut the distance -->
+    <div class="variant" id="var-run">
+      <div class="card hunt-card" style="margin-top:10px">
+        <div class="hc-top">
+          <div class="type-glyph run">RUN</div>
+          <div>
+            <div class="hc-title">EASY RUN</div>
+            <div class="hc-meta">Mon Sep 7 · Arc 1 · Wk 6 of 8</div>
+          </div>
+          <div class="hc-right"><div class="v" style="color:var(--run)">2.0</div><div class="l">MI · HR ≤ 150</div></div>
+        </div>
+        <div class="sysline guard" data-sheet="load">
+          <div class="d-tag">[ OVERREACH GUARD · RAMP_HIGH ]</div>
+          <div class="d-msg">Run cut to <b>2.0 mi</b> from 2.5: last 7 days ran 12.4 mi against a plan of 10.4 — 19% ahead of the arc's ramp. Long run untouched; easy days absorb the cut.</div>
+        </div>
+        <div class="rx">
+          <div class="rx-row">
+            <span class="acc" style="background:var(--run)"></span>
+            <div><div class="nm">Easy run</div><div class="sub">ZONE 2 · CAP 150 BPM · PACE NOT PRESCRIBED</div></div>
+            <div class="tg"><b>2.0 mi</b><span class="prog" style="color:var(--orange)">was 2.5</span></div>
+          </div>
+          <div class="rx-row note">
+            <span class="acc" style="background:var(--text-muted)"></span>
+            <div><div class="nm">Log it under the cut and the System rewards restraint: +30 XP.</div></div>
+            <div class="tg"></div>
+          </div>
+        </div>
+        <div class="hc-foot">
+          <button class="cta ghost" type="button">WATCH WILL IMPORT IT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Variant C: Condition critical → rest decreed -->
+    <div class="variant" id="var-rest">
+      <div class="card hunt-card" style="margin-top:10px">
+        <div class="hc-top">
+          <div class="type-glyph rest">REST</div>
+          <div>
+            <div class="hc-title">REST DECREED</div>
+            <div class="hc-meta">Condition 34 · CRITICAL</div>
+          </div>
+          <div class="hc-right"><div class="v" style="color:var(--warning-red)">34</div><div class="l">CONDITION</div></div>
+        </div>
+        <div class="sysline rest" data-sheet="condition">
+          <div class="d-tag">[ SYSTEM ]</div>
+          <div class="d-msg">Recovery 31, sleep 4h50, RHR +6 over your 14-day mean. The System forbids the hunt. Tomorrow's squat day stays on the plan; if Condition clears 65 by morning it runs as written.</div>
+        </div>
+        <div class="rx">
+          <div class="rx-row">
+            <span class="acc" style="background:var(--text-muted)"></span>
+            <div><div class="nm">Or: light hunt</div><div class="sub">MAIN LIFTS × 0.85 · 3 SETS · NO GATE ATTEMPT</div></div>
+            <div class="tg"><b>3 × 5 @ 200</b></div>
+          </div>
+        </div>
+        <div class="hc-foot">
+          <button class="cta danger" type="button">TAKE THE REST · +40 XP</button>
+          <button class="cta secondary" type="button">LIGHT HUNT</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card load tappable" data-sheet="load" style="margin-top:12px">
+      <div>
+        <div class="lbl"><span>Load · run acute vs chronic · 28d</span><span>TRIMP</span></div>
+        <svg viewBox="0 0 260 44" aria-hidden="true">
+          <line x1="0" x2="260" y1="22" y2="22" stroke="rgba(255,255,255,0.05)"/>
+          <polyline points="0,30 20,29 40,27 60,27 80,25 100,24 120,24 140,22 160,21 180,20 200,19 220,19 240,18 260,17" fill="none" stroke="#606070" stroke-width="1.5" stroke-dasharray="3 3"/>
+          <polygon points="0,34 20,31 40,36 60,26 80,30 100,22 120,27 140,18 160,24 180,15 200,20 220,13 240,17 260,14 260,44 0,44" fill="#FF9500" opacity="0.08"/>
+          <polyline points="0,34 20,31 40,36 60,26 80,30 100,22 120,27 140,18 160,24 180,15 200,20 220,13 240,17 260,14" fill="none" stroke="#FF9500" stroke-width="2" stroke-linejoin="round"/>
+          <circle cx="260" cy="14" r="3" fill="#FF9500"/>
+        </svg>
+      </div>
+      <div class="acwr"><div class="v">1.08</div><div class="l">ACWR · GREEN</div></div>
+      <div class="miles"><span>MILES</span><div class="track"><i></i><em></em></div><span><b style="color:var(--text-primary)">8.9</b> / 10.4 PLAN</span></div>
+    </div>
+
+    <div class="seclabel">Open Gate</div>
+    <div class="card gate-card tappable" data-sheet="gate">
+      <div class="sigil a"><i></i><span>A</span></div>
+      <div class="gate-mid">
+        <div class="gate-name">A-RANK GATE</div>
+        <div class="gate-target">BACK SQUAT · <b>245 LB × 5</b> · TARGETS TODAY'S HUNT</div>
+        <div class="gate-foot"><span>CAMPAIGN BEST 278 · SLOPE +2.4 LB/WK</span><span>WINDOW: SAT + 7 DAYS</span></div>
+      </div>
+    </div>
+
+    <div class="seclabel">This Week</div>
+    <div class="card">
+      <div class="week">
+        <div class="ring">
+          <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
+            <circle cx="32" cy="32" r="27" fill="none" stroke="#252530" stroke-width="6"/>
+            <circle cx="32" cy="32" r="27" fill="none" stroke="#33FF88" stroke-width="6" stroke-linecap="round" stroke-dasharray="101.8 169.6" transform="rotate(-90 32 32)"/>
+            <circle cx="32" cy="32" r="27" fill="none" stroke="#FF3333" stroke-width="6" stroke-linecap="round" stroke-dasharray="33.9 169.6" stroke-dashoffset="-135.7" transform="rotate(-90 32 32)"/>
+          </svg>
+          <div class="c"><b>4/5</b><small>ON PLAN</small></div>
+        </div>
+        <div class="week-mid">
+          <div class="week-title">Hunts · Wk 5</div>
+          <div class="week-legend">
+            <span><i style="background:var(--success-green)"></i>4 done</span>
+            <span><i style="background:var(--warning-red)"></i>1 skipped · Fri light</span>
+            <span><i style="background:var(--void-light)"></i>2 ahead</span>
+          </div>
+          <div class="week-legend" style="margin-top:4px;color:var(--text-muted)"><span>8.9 MI</span><span>34.2K LB</span><span style="color:var(--gold)">+1 PR</span></div>
+        </div>
+      </div>
+      <div class="report-link" data-sheet="debrief"><span>WEEKLY DEBRIEF · WK 4 · AUG 24 – 30</span><b>2 TO DECIDE →</b></div>
+    </div>
+
+    <div class="seclabel">Power Snapshot <span class="spacer"></span><button class="link" type="button" data-tab-link="2">DETAILS →</button></div>
+    <div class="big3">
+      <div class="b3"><div class="nm">SQUAT</div><div class="bar" style="background:var(--lift-squat)"></div><div class="v">278</div><div class="tr up">▲ 2.4 / WK</div></div>
+      <div class="b3"><div class="nm">BENCH</div><div class="bar" style="background:var(--lift-bench)"></div><div class="v">239</div><div class="tr flat">— HELD ×2</div></div>
+      <div class="b3"><div class="nm">DEADLIFT</div><div class="bar" style="background:var(--lift-deadlift)"></div><div class="v">368</div><div class="tr up">▲ 1.1%</div></div>
+    </div>
+  </section>
+
+  <!-- ================= TAB 1: HUNT ================= -->
+  <section class="tab" id="tab-1">
+    <div class="hunt-head"><span class="t">HUNT LOG</span><span class="s">RUN BASE + STRENGTH · ARC 1</span></div>
+
+    <div class="resume" data-scene="log">
+      <span class="pulse"></span>
+      <div><div class="t">RESUME HUNT</div><div class="s">Squat Day — Heavy · started 11:02 · 3 of 14 sets logged</div></div>
+      <span class="go">CONTINUE →</span>
+    </div>
+
+    <div class="wstrip" id="wstrip">
+      <button class="wday done" type="button" data-sheet="planned-mon"><span class="d">MON</span><span class="n">31</span><span class="g run">R</span><span class="st">2.4 ✓</span></button>
+      <button class="wday done" type="button" data-sheet="planned-tue"><span class="d">TUE</span><span class="n">1</span><span class="g light">L</span><span class="st">✓</span></button>
+      <button class="wday done" type="button" data-sheet="planned-wed"><span class="d">WED</span><span class="n">2</span><span class="g run">R</span><span class="st">2.5 ✓</span></button>
+      <button class="wday done" type="button" data-sheet="planned-thu"><span class="d">THU</span><span class="n">3</span><span class="g run">R</span><span class="st">4.0 ✓</span></button>
+      <button class="wday skipped" type="button" data-sheet="planned-fri"><span class="d">FRI</span><span class="n">4</span><span class="g light">L</span><span class="st">✕</span></button>
+      <button class="wday today" type="button" data-sheet="planned-sat"><span class="d">SAT</span><span class="n">5</span><span class="g lift">SQ</span><span class="st" style="color:var(--gold)">GATE</span></button>
+      <button class="wday future" type="button" data-sheet="planned-sun"><span class="d">SUN</span><span class="n">6</span><span class="g lift">BP</span><span class="st" style="color:var(--text-muted)">5×5</span></button>
+    </div>
+    <div class="pace"><span><b>WK 5</b> · <b>8.9</b> / 10.4 MI · <b>1</b> / 2 LIFTS</span><span class="verdict">ON PACE</span></div>
+
+    <div class="cta-row">
+      <button class="cta primary" type="button" data-scene="log">⚡ BEGIN HUNT</button>
+      <button class="cta secondary" type="button">REPEAT LAST</button>
+      <button class="cta secondary" type="button" style="flex:0 0 74px">SCAN</button>
+    </div>
+
+    <div class="cal-head"><span class="cal-nav">‹</span><span class="cal-month">SEPTEMBER 2026</span><span class="cal-nav">›</span></div>
+    <div class="cal-grid" id="hunt-cal"></div>
+
+    <div class="seclabel">Recent Hunts</div>
+    <div class="card hunt-row tappable">
+      <div class="accent" style="background:var(--run)"></div>
+      <div class="body">
+        <div class="top"><span class="date">THU SEP 3</span><span class="title">LONG RUN</span><span class="chip green">AS PLANNED</span></div>
+        <div class="meta"><span>4.0 MI</span><span>9:41 /MI</span><span>148 AVG</span><span class="strain">◎ 11.8</span><span class="srcbadge src-watch">⌚</span></div>
+      </div>
+    </div>
+    <div class="card hunt-row tappable">
+      <div class="accent" style="background:var(--light)"></div>
+      <div class="body">
+        <div class="top"><span class="date">TUE SEP 1</span><span class="title">LIGHT UPPER · APARTMENT</span><span class="chip green">AS PLANNED</span></div>
+        <div class="meta"><span>5 EXERCISES</span><span>14 SETS</span><span>6.2K LB</span><span>41 MIN</span></div>
+      </div>
+    </div>
+    <div class="card hunt-row tappable">
+      <div class="accent" style="background:var(--lift-bench)"></div>
+      <div class="body">
+        <div class="top"><span class="date">SUN AUG 30</span><span class="title">BENCH DAY — HEAVY</span><span class="chip gold">MOVED FROM SAT</span></div>
+        <div class="meta"><span>BP 205×5×5</span><span>OHP 115×6×4</span><span class="strain">◎ 13.1</span><span class="srcbadge src-whoop">◎</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= TAB 2: POWER (unchanged in v3) ================= -->
+  <section class="tab" id="tab-2">
+    <div class="hunt-head"><span class="t">POWER</span><span class="s">UNCHANGED IN V3</span></div>
+    <div class="card">
+      <div class="chart-title"><span class="t">Back Squat · weekly best e1RM</span><span class="v" style="color:var(--lift-squat)">278</span></div>
+      <div id="chart-e1rm"></div>
+      <div class="note">Load analytics live on Status (the strip) and in the Load sheet — no new Power segment in v3 (spec §6.6).</div>
+    </div>
+  </section>
+
+  <!-- ================= TAB 3: HUNTER ================= -->
+  <section class="tab" id="tab-3">
+    <div class="hunt-head"><span class="t">HUNTER</span><span class="s">B-RANK · ELITE · LV 54</span></div>
+    <div class="seclabel">Campaign</div>
+    <div class="card compact">
+      <div class="rowline"><div class="ic">◆</div><div><div class="t">Run Base + Strength</div><div class="s">ARC 1 OF 3 · WK 5 OF 8 · 7–13 MI/WK · DELOAD EVERY 4TH</div></div><span class="r">EDIT</span></div>
+      <div class="rowline"><div class="ic">↻</div><div><div class="t">Imported from training-calendar</div><div class="s">AUG 3 2026 · 3 ARCS · 21 TEMPLATES · 2 ITEMS FLAGGED AS NOTES</div></div></div>
+      <div class="rowline"><div class="ic">‖</div><div><div class="t">Pause campaign</div><div class="s">PLANNED HUNTS STOP MATERIALIZING · NOTHING IS DELETED</div></div></div>
+    </div>
+    <div class="seclabel">Coach</div>
+    <div class="card compact">
+      <div class="rowline"><div class="ic">☾</div><div><div class="t">Weekly debrief</div><div class="s">SUNDAY 20:00 · OR AFTER SATURDAY'S HUNT IS LOGGED</div></div><span class="r">ON</span></div>
+      <div class="rowline"><div class="ic">♥</div><div><div class="t">Easy-run HR cap</div><div class="s">ZONE 2 UPPER BOUND FROM YOUR ZONE TABLE</div></div><span class="r">150 BPM</span></div>
+      <div class="rowline"><div class="ic">▸</div><div><div class="t">Hunt briefing push</div><div class="s">TRAINING DAYS ONLY · V3.1</div></div><span class="r">OFF</span></div>
+    </div>
+    <div class="seclabel">Integrations</div>
+    <div class="card compact">
+      <div class="rowline"><div class="ic">⌚</div><div><div class="t">Apple Health</div><div class="s">BACKGROUND DELIVERY ON · LAST RUN IMPORTED 6 MIN AFTER SAVE</div></div><span class="r up">LIVE</span></div>
+      <div class="rowline"><div class="ic">◎</div><div><div class="t">WHOOP</div><div class="s">RECOVERY · SLEEP · STRAIN · SYNCED 06:12</div></div><span class="r up">LIVE</span></div>
+    </div>
+  </section>
+
+  <!-- ================= ACTIVE HUNT (LogView v2, full screen) ================= -->
+  <section class="tab" id="tab-log">
+    <div class="log-head">
+      <button class="x" type="button" data-scene="status" aria-label="Close">✕</button>
+      <div><div class="t">SQUAT DAY — HEAVY</div><div class="s">PRESCRIBED · SAN CARLOS · 3 / 14 SETS</div></div>
+      <div class="clock"><div class="v">23:41</div><div class="l">ELAPSED</div></div>
+    </div>
+
+    <div class="obj">
+      <div class="obj-head" style="border-left-color:var(--lift-squat)">
+        <div>
+          <div class="nm">Back Squat</div>
+          <div class="sub"><span class="chip gold">GATE · 245×5</span><span class="chip cyan">↑ +5 · 235</span><span>LAST 230×5×5 @ RPE 8</span></div>
+        </div>
+        <div class="cnt" id="sq-count"><b>3</b> / 8</div>
+      </div>
+      <div class="grid-head"><span>SET</span><span>LAST</span><span>WEIGHT</span><span>REPS</span><span>RPE</span><span></span></div>
+
+      <div class="setrow warm done" data-row><span class="sn">W1</span><span class="last">—</span><span class="fld">95<small>lb</small></span><span class="fld">5</span><span class="rpe">—</span><button class="chk" type="button" data-action="check" aria-label="Set done">✓</button></div>
+      <div class="setrow warm done" data-row><span class="sn">W2</span><span class="last">—</span><span class="fld">140<small>lb</small></span><span class="fld">5</span><span class="rpe">—</span><button class="chk" type="button" data-action="check" aria-label="Set done">✓</button></div>
+      <div class="setrow warm done" data-row><span class="sn">W3</span><span class="last">—</span><span class="fld">185<small>lb</small></span><span class="fld">3</span><span class="rpe">—</span><button class="chk" type="button" data-action="check" aria-label="Set done">✓</button></div>
+
+      <div class="setrow gaterow current" data-row data-next="Back Squat · set 2 · 210 × 5">
+        <span class="sn">◆ G</span><span class="last">230×5</span>
+        <span class="fld ghost" data-ghost="245">245<small>lb</small></span><span class="fld ghost" data-ghost="5">5</span><span class="rpe">—</span>
+        <button class="chk" type="button" data-action="check" aria-label="Accept prescribed set">✓</button>
+        <div class="livehint"><span class="chip gold">e1RM 286 · CLEARS THE GATE</span><span>tap ✓ to log 245 × 5 as written</span></div>
+      </div>
+      <div class="setrow" data-row data-next="Back Squat · set 3 · 210 × 5"><span class="sn">2</span><span class="last">230×5</span><span class="fld ghost" data-ghost="210">210<small>lb</small></span><span class="fld ghost" data-ghost="5">5</span><span class="rpe">—</span><button class="chk" type="button" data-action="check" aria-label="Accept prescribed set">✓</button></div>
+      <div class="setrow" data-row data-next="Back Squat · set 4 · 210 × 5"><span class="sn">3</span><span class="last">230×5</span><span class="fld ghost" data-ghost="210">210<small>lb</small></span><span class="fld ghost" data-ghost="5">5</span><span class="rpe">—</span><button class="chk" type="button" data-action="check" aria-label="Accept prescribed set">✓</button></div>
+      <div class="setrow" data-row data-next="Back Squat · set 5 · 210 × 5"><span class="sn">4</span><span class="last">230×5</span><span class="fld ghost" data-ghost="210">210<small>lb</small></span><span class="fld ghost" data-ghost="5">5</span><span class="rpe">—</span><button class="chk" type="button" data-action="check" aria-label="Accept prescribed set">✓</button></div>
+      <div class="setrow" data-row data-next="Deadlift · set 1 · 315 × 5"><span class="sn">5</span><span class="last">230×5</span><span class="fld ghost" data-ghost="210">210<small>lb</small></span><span class="fld ghost" data-ghost="5">5</span><span class="rpe">—</span><button class="chk" type="button" data-action="check" aria-label="Accept prescribed set">✓</button></div>
+      <div class="obj-foot">
+        <button type="button">+ ADD SET</button>
+        <button type="button" class="dim">PLATES · 245</button>
+        <button type="button" class="dim">SWAP</button>
+      </div>
+    </div>
+
+    <div class="obj">
+      <div class="obj-head" style="border-left-color:var(--lift-deadlift)">
+        <div>
+          <div class="nm">Deadlift</div>
+          <div class="sub"><span class="chip dim">HOLD · 315</span><span>LAST 315×5,5,5,4 · 1 REP SHORT</span></div>
+        </div>
+        <div class="cnt"><b>0</b> / 4</div>
+      </div>
+      <div class="grid-head"><span>SET</span><span>LAST</span><span>WEIGHT</span><span>REPS</span><span>RPE</span><span></span></div>
+      <div class="setrow" data-row data-next="Deadlift · set 2 · 315 × 5"><span class="sn">1</span><span class="last">315×5</span><span class="fld ghost" data-ghost="315">315<small>lb</small></span><span class="fld ghost" data-ghost="5">5</span><span class="rpe">—</span><button class="chk" type="button" data-action="check" aria-label="Accept prescribed set">✓</button></div>
+      <div class="setrow" data-row data-next="Deadlift · set 3 · 315 × 5"><span class="sn">2</span><span class="last">315×5</span><span class="fld ghost" data-ghost="315">315<small>lb</small></span><span class="fld ghost" data-ghost="5">5</span><span class="rpe">—</span><button class="chk" type="button" data-action="check" aria-label="Accept prescribed set">✓</button></div>
+      <div class="setrow" data-row data-next="Deadlift · set 4 · 315 × 5"><span class="sn">3</span><span class="last">315×5</span><span class="fld ghost" data-ghost="315">315<small>lb</small></span><span class="fld ghost" data-ghost="5">5</span><span class="rpe">—</span><button class="chk" type="button" data-action="check" aria-label="Accept prescribed set">✓</button></div>
+      <div class="setrow" data-row data-next="Leg Press · set 1 · 360 × 11"><span class="sn">4</span><span class="last">315×4</span><span class="fld ghost" data-ghost="315">315<small>lb</small></span><span class="fld ghost" data-ghost="5">5</span><span class="rpe">—</span><button class="chk" type="button" data-action="check" aria-label="Accept prescribed set">✓</button></div>
+      <div class="obj-foot"><button type="button">+ ADD SET</button><button type="button" class="dim">PLATES · 315</button><button type="button" class="dim">SWAP</button></div>
+    </div>
+
+    <div class="obj">
+      <div class="obj-head" style="border-left-color:var(--lift-row)">
+        <div>
+          <div class="nm">Leg Press</div>
+          <div class="sub"><span class="chip cyan">REPS 10 → 11</span><span>DOUBLE · +10 LB AT 12</span><span style="color:var(--text-muted)">ALT: WALKING LUNGE</span></div>
+        </div>
+        <div class="cnt"><b>0</b> / 3</div>
+      </div>
+      <div class="grid-head"><span>SET</span><span>LAST</span><span>WEIGHT</span><span>REPS</span><span>RPE</span><span></span></div>
+      <div class="setrow" data-row data-next="Leg Press · set 2 · 360 × 11"><span class="sn">1</span><span class="last">360×10</span><span class="fld ghost" data-ghost="360">360<small>lb</small></span><span class="fld ghost" data-ghost="11">11</span><span class="rpe">—</span><button class="chk" type="button" data-action="check" aria-label="Accept prescribed set">✓</button></div>
+      <div class="setrow" data-row data-next="Leg Press · set 3 · 360 × 11"><span class="sn">2</span><span class="last">360×10</span><span class="fld ghost" data-ghost="360">360<small>lb</small></span><span class="fld ghost" data-ghost="11">11</span><span class="rpe">—</span><button class="chk" type="button" data-action="check" aria-label="Accept prescribed set">✓</button></div>
+      <div class="setrow" data-row data-next="Hanging Leg Raise · set 1 · BW × 12"><span class="sn">3</span><span class="last">360×10</span><span class="fld ghost" data-ghost="360">360<small>lb</small></span><span class="fld ghost" data-ghost="11">11</span><span class="rpe">—</span><button class="chk" type="button" data-action="check" aria-label="Accept prescribed set">✓</button></div>
+      <div class="obj-foot"><button type="button">+ ADD SET</button><button type="button" class="dim">SWAP → LUNGE</button></div>
+    </div>
+
+    <div class="note" style="margin:14px 4px 0">Sets: tap ✓ on a dashed row to log it exactly as prescribed; type over a ghost value to adjust first. ✓ starts the rest countdown in the bar below. Draft autosaves — swipe away and RESUME HUNT brings it back.</div>
+  </section>
+
+</div>
+
+<!-- sticky rest / finish bar (Active hunt only) -->
+<div class="logbar" id="logbar">
+  <div class="logbar-inner">
+    <div class="restring">
+      <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
+        <circle cx="26" cy="26" r="22" fill="none" stroke="#252530" stroke-width="4"/>
+        <circle id="rest-arc" cx="26" cy="26" r="22" fill="none" stroke="#00D4FF" stroke-width="4" stroke-linecap="round" stroke-dasharray="138.2 138.2" stroke-dashoffset="0" transform="rotate(-90 26 26)"/>
+      </svg>
+      <div class="t" id="rest-time">3:00</div>
+    </div>
+    <div class="nx"><div class="l" id="rest-label">REST · MAIN LIFT</div><div class="v" id="next-set">NEXT · Gate attempt · 245 × 5</div></div>
+    <button class="skip" type="button" data-action="skip-rest">SKIP</button>
+    <button class="fin" type="button" data-scene="status">FINISH</button>
+  </div>
+</div>
+
+<!-- ================= TAB BAR ================= -->
+<nav class="tabbar" id="tabbar-nav">
+  <div class="tabbar-inner" id="tabbar">
+    <button class="tabbtn active" type="button" data-tab="0">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5 19.5 6v6c0 4.6-3.1 8-7.5 9.5C7.6 20 4.5 16.6 4.5 12V6Z"/></svg>
+      <span class="tl">Status</span>
+    </button>
+    <button class="tabbtn" type="button" data-tab="1">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M19.5 3.5 9.5 13.5M6.8 10.8l6.4 6.4M9 19.5 4.5 15M14.5 3.5h5v5"/></svg>
+      <span class="tl">Hunt</span>
+    </button>
+    <button class="tabbtn" type="button" data-tab="2">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4.5 13.5H11L9.5 22l10-12.5H13z"/></svg>
+      <span class="tl">Power</span>
+    </button>
+    <button class="tabbtn" type="button" data-tab="3">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="7.5" r="3.6"/><path d="M4.5 21c0-4.5 3-7 7.5-7s7.5 2.5 7.5 7" stroke-linecap="round"/></svg>
+      <span class="tl">Hunter</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ================= SHEETS ================= -->
+<div class="backdrop" id="backdrop" data-close="1"></div>
+
+<!-- Planned hunt (Saturday) -->
+<div class="sheet" id="sheet-planned-sat">
+  <div class="grabber"></div>
+  <div class="sheet-head"><span class="sheet-title">[ PLANNED HUNT ]</span><button class="close-btn" type="button" data-close="1">✕</button></div>
+  <h3>Squat Day — Heavy</h3>
+  <div class="sub">SAT SEP 5 · SAN CARLOS · ARC 1 WK 5 · PRESCRIPTION V2</div>
+  <div class="rat">
+    <div class="kv"><span class="k">BACK SQUAT · ANCHOR</span><span class="v">Aug 29 · 230×5×5 @ RPE 8</span></div>
+    <div class="kv"><span class="k">VERDICT</span><span class="v up">all sets clean → +5 → 235</span></div>
+    <div class="kv"><span class="k">GATE</span><span class="v" style="color:var(--gold)">245×5 as set 1 · working sets −10%</span></div>
+    <div class="kv"><span class="k">DEADLIFT · ANCHOR</span><span class="v">Aug 29 · 315×5,5,5,4</span></div>
+    <div class="kv"><span class="k">VERDICT</span><span class="v flat">1 rep short → hold 315</span></div>
+    <div class="kv"><span class="k">READINESS</span><span class="v">Condition 76 · no modulation</span></div>
+    <div class="kv"><span class="k">GUARD</span><span class="v">no flags · lifts never vetoed</span></div>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:14px">
+    <button class="sheet-cta" type="button" style="background:var(--bg-input);color:var(--text-secondary);border:1px solid var(--glass-border);margin-top:0">MOVE</button>
+    <button class="sheet-cta" type="button" style="background:var(--bg-input);color:var(--text-secondary);border:1px solid var(--glass-border);margin-top:0">SKIP</button>
+  </div>
+  <button class="sheet-cta primary" type="button" data-scene="log">⚡ BEGIN HUNT</button>
+</div>
+
+<!-- Planned hunt (Sunday, future) -->
+<div class="sheet" id="sheet-planned-sun">
+  <div class="grabber"></div>
+  <div class="sheet-head"><span class="sheet-title">[ PLANNED HUNT ]</span><button class="close-btn" type="button" data-close="1">✕</button></div>
+  <h3>Bench Day — Heavy</h3>
+  <div class="sub">SUN SEP 6 · SAN CARLOS · PRESCRIBED NOW, MODULATED SUNDAY MORNING</div>
+  <div class="rat">
+    <div class="kv"><span class="k">BENCH PRESS</span><span class="v">5×5 @ 205 · <span class="flat">hold ×2</span></span></div>
+    <div class="kv"><span class="k">OVERHEAD PRESS</span><span class="v">4×6 @ 115 · <span class="up">+5</span></span></div>
+    <div class="kv"><span class="k">BARBELL ROW</span><span class="v">4×8 @ 165 · <span class="up">+5</span></span></div>
+    <div class="kv"><span class="k">CLOSE-GRIP BENCH</span><span class="v">3×10 @ 155</span></div>
+    <div class="kv"><span class="k">NOTE</span><span class="v flat">bench held twice — a debrief op is waiting</span></div>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:14px">
+    <button class="sheet-cta" type="button" id="move-sun" data-action="move" style="background:var(--bg-input);color:var(--text-secondary);border:1px solid var(--glass-border);margin-top:0">MOVE TO MON</button>
+    <button class="sheet-cta" type="button" id="skip-sun" data-action="skip" style="background:var(--bg-input);color:var(--text-secondary);border:1px solid var(--glass-border);margin-top:0">SKIP</button>
+  </div>
+</div>
+
+<!-- Planned hunt (Friday, skipped) -->
+<div class="sheet" id="sheet-planned-fri">
+  <div class="grabber"></div>
+  <div class="sheet-head"><span class="sheet-title">[ PLANNED HUNT ]</span><button class="close-btn" type="button" data-close="1">✕</button></div>
+  <h3>Optional Light Work</h3>
+  <div class="sub">FRI SEP 4 · APARTMENT · <span style="color:var(--warning-red)">SKIPPED</span></div>
+  <p>Nothing was logged Friday and no same-type hunt landed within two days, so the day counts as skipped. Light days carry no XP penalty; they do count in adherence.</p>
+  <div class="rat">
+    <div class="kv"><span class="k">BARBELL ROW OR PULL-UPS</span><span class="v">3×10</span></div>
+    <div class="kv"><span class="k">CURLS / TRICEPS</span><span class="v">3×12</span></div>
+  </div>
+</div>
+
+<!-- Planned hunt (done days — one generic sheet reused) -->
+<div class="sheet" id="sheet-planned-thu">
+  <div class="grabber"></div>
+  <div class="sheet-head"><span class="sheet-title">[ PLANNED HUNT ]</span><button class="close-btn" type="button" data-close="1">✕</button></div>
+  <h3>Long Run</h3>
+  <div class="sub">THU SEP 3 · <span class="up">DONE AS PLANNED</span> · +40 XP</div>
+  <div class="rat">
+    <div class="kv"><span class="k">PRESCRIBED</span><span class="v">4.0 mi · HR ≤ 150</span></div>
+    <div class="kv"><span class="k">LOGGED</span><span class="v">4.02 mi · 38:57 · 148 avg · 9:41 /mi</span></div>
+    <div class="kv"><span class="k">SPLITS</span><span class="v">9:52 · 9:44 · 9:31 · 9:38</span></div>
+    <div class="kv"><span class="k">LOAD</span><span class="v">TRIMP 96 · strain 11.8</span></div>
+    <div class="kv"><span class="k">SOURCE</span><span class="v">⌚ imported 6 min after save</span></div>
+  </div>
+</div>
+<div class="sheet" id="sheet-planned-mon"><div class="grabber"></div><div class="sheet-head"><span class="sheet-title">[ PLANNED HUNT ]</span><button class="close-btn" type="button" data-close="1">✕</button></div><h3>Easy Run</h3><div class="sub">MON AUG 31 · <span class="up">DONE AS PLANNED</span></div><div class="rat"><div class="kv"><span class="k">PRESCRIBED</span><span class="v">2.0–2.5 mi · HR ≤ 150</span></div><div class="kv"><span class="k">LOGGED</span><span class="v">2.41 mi · 24:10 · 143 avg</span></div></div></div>
+<div class="sheet" id="sheet-planned-tue"><div class="grabber"></div><div class="sheet-head"><span class="sheet-title">[ PLANNED HUNT ]</span><button class="close-btn" type="button" data-close="1">✕</button></div><h3>Optional Light Work</h3><div class="sub">TUE SEP 1 · APARTMENT · <span class="up">DONE AS PLANNED</span></div><div class="rat"><div class="kv"><span class="k">DB INCLINE PRESS</span><span class="v">3×12 @ 70 (35s)</span></div><div class="kv"><span class="k">LATERAL RAISES</span><span class="v">3×15 @ 30</span></div><div class="kv"><span class="k">CORE CIRCUIT</span><span class="v">note · 10 min</span></div></div></div>
+<div class="sheet" id="sheet-planned-wed"><div class="grabber"></div><div class="sheet-head"><span class="sheet-title">[ PLANNED HUNT ]</span><button class="close-btn" type="button" data-close="1">✕</button></div><h3>Easy Run</h3><div class="sub">WED SEP 2 · <span class="up">DONE AS PLANNED</span></div><div class="rat"><div class="kv"><span class="k">PRESCRIBED</span><span class="v">2.0–2.5 mi · HR ≤ 150</span></div><div class="kv"><span class="k">LOGGED</span><span class="v">2.53 mi · 25:02 · 146 avg</span></div></div></div>
+
+<!-- Gate -->
+<div class="sheet" id="sheet-gate">
+  <div class="grabber"></div>
+  <div class="sheet-head"><span class="sheet-title">[ GATE ]</span><button class="close-btn" type="button" data-close="1">✕</button></div>
+  <div style="display:flex;align-items:center;gap:14px"><div class="sigil a"><i></i><span>A</span></div><div><h3>A-Rank Gate</h3><div class="sub">BACK SQUAT · 245 × 5 · e1RM 286</div></div></div>
+  <div class="rat">
+    <div class="kv"><span class="k">CAMPAIGN BEST</span><span class="v">278 · Aug 22 · 230×5×5</span></div>
+    <div class="kv"><span class="k">LIFETIME BEST</span><span class="v flat">292 · Nov 2025 · not the target</span></div>
+    <div class="kv"><span class="k">WEEKLY SLOPE</span><span class="v up">+2.4 lb/wk over 6 points</span></div>
+    <div class="kv"><span class="k">PROJECTED (14D)</span><span class="v">283 → target 286 · +2.9%</span></div>
+    <div class="kv"><span class="k">SPAWNED ONTO</span><span class="v">Sat Sep 5 · Squat Day</span></div>
+    <div class="kv"><span class="k">WINDOW</span><span class="v">Sat + 7 days · Strained defers one hunt</span></div>
+    <div class="kv"><span class="k">REWARD</span><span class="v" style="color:var(--gold)">800 XP · Gate Breaker</span></div>
+  </div>
+  <p>The attempt is set 1 after warm-ups; the working sets back off 10%. Miss it and nothing happens — the window rolls to the next squat day.</p>
+</div>
+
+<!-- Condition (compact) -->
+<div class="sheet" id="sheet-condition">
+  <div class="grabber"></div>
+  <div class="sheet-head"><span class="sheet-title">[ HUNTER CONDITION ]</span><button class="close-btn" type="button" data-close="1">✕</button></div>
+  <h3>76 · Battle Ready</h3>
+  <div class="sub">SIX INPUTS · WEIGHTS RENORMALIZED OVER WHAT'S PRESENT</div>
+  <div class="rat">
+    <div class="kv"><span class="k">RECOVERY ◎</span><span class="v">72 · 30% of score</span></div>
+    <div class="kv"><span class="k">MUSCLE FRESHNESS</span><span class="v">81 · 25%</span></div>
+    <div class="kv"><span class="k">SLEEP ☾</span><span class="v">7.2 h → 91 · 15%</span></div>
+    <div class="kv"><span class="k">HRV TREND ⌚ <span class="chip cyan">NEW</span></span><span class="v">62 vs 58 ms → 100 · 10%</span></div>
+    <div class="kv"><span class="k">LOAD RATIO <span class="chip cyan">NEW</span></span><span class="v">1.08 → 90 · 10%</span></div>
+    <div class="kv"><span class="k">RESTING HR TREND</span><span class="v">51 vs 52 mean → 100 · 10%</span></div>
+  </div>
+  <p>"Yesterday's strain" is gone; the load ratio reads the whole 28 days. HRV was stored since v2.1 and finally counts.</p>
+</div>
+
+<!-- Load -->
+<div class="sheet" id="sheet-load">
+  <div class="grabber"></div>
+  <div class="sheet-head"><span class="sheet-title">[ TRAINING LOAD ]</span><button class="close-btn" type="button" data-close="1">✕</button></div>
+  <h3>Run ACWR 1.08 · Green</h3>
+  <div class="sub">ACUTE 7D EWMA 118 · CHRONIC 28D EWMA 109 · RUN LOAD ONLY</div>
+  <div class="loadbars" aria-label="This week's load by day">
+    <div class="b"><i class="r" style="height:38%"></i></div>
+    <div class="b"><i class="l" style="height:22%"></i></div>
+    <div class="b"><i class="r" style="height:40%"></i></div>
+    <div class="b"><i class="r" style="height:70%"></i></div>
+    <div class="b"><i class="l" style="height:0%"></i></div>
+    <div class="b"><i class="l" style="height:12%"></i></div>
+    <div class="b"><i class="l" style="height:0%"></i></div>
+  </div>
+  <div class="loadaxis"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+  <div class="week-legend" style="justify-content:center;margin-top:8px"><span><i style="background:var(--run)"></i>run · TRIMP</span><span><i style="background:var(--lift-squat)"></i>lift · session-RPE</span></div>
+  <div class="divider"></div>
+  <div class="tag" style="color:var(--text-muted)">RULES · STATED AGAINST THE PLAN, NOT LAST WEEK</div>
+  <div class="rule"><span class="k">Ramp<small>miles_7d ≤ 1.20 × plan</small></span><span class="v">8.9 / 12.5</span><span class="chip green">OK</span></div>
+  <div class="rule"><span class="k">Long-run share<small>only when ≥ 15 mi/wk</small></span><span class="v">n/a</span><span class="chip dim">—</span></div>
+  <div class="rule"><span class="k">Run ACWR<small>flag &gt; 1.30 · critical &gt; 1.50</small></span><span class="v">1.08</span><span class="chip green">OK</span></div>
+  <div class="rule"><span class="k">Cold start<small>no flags before 28 days of runs</small></span><span class="v">day 33</span><span class="chip green">ARMED</span></div>
+  <div class="rule"><span class="k">Deload due<small>every 4th week · or 2 lift deloads</small></span><span class="v">wk 8</span><span class="chip dim">3 WKS</span></div>
+  <p>Lifts never enter the veto path. A heavy weekend spiking Monday's total is the plan working, not a risk signal.</p>
+</div>
+
+<!-- Debrief -->
+<div class="sheet" id="sheet-debrief">
+  <div class="grabber"></div>
+  <div class="sheet-head"><span class="sheet-title">[ WEEKLY DEBRIEF ]</span><button class="close-btn" type="button" data-close="1">✕</button></div>
+  <div style="display:flex;align-items:center;gap:14px">
+    <div class="ring">
+      <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="32" r="27" fill="none" stroke="#252530" stroke-width="6"/>
+        <circle cx="32" cy="32" r="27" fill="none" stroke="#33FF88" stroke-width="6" stroke-linecap="round" stroke-dasharray="121.1 169.6" transform="rotate(-90 32 32)"/>
+        <circle cx="32" cy="32" r="27" fill="none" stroke="#FFD700" stroke-width="6" stroke-linecap="round" stroke-dasharray="24.2 169.6" stroke-dashoffset="-121.1" transform="rotate(-90 32 32)"/>
+        <circle cx="32" cy="32" r="27" fill="none" stroke="#FF3333" stroke-width="6" stroke-linecap="round" stroke-dasharray="24.2 169.6" stroke-dashoffset="-145.3" transform="rotate(-90 32 32)"/>
+      </svg>
+      <div class="c"><b>6/7</b><small>ON PLAN</small></div>
+    </div>
+    <div><h3>Week 4 · Deload</h3><div class="sub">AUG 24 – 30 · 5 DONE · 1 MOVED · 1 SKIPPED · +150 XP NOT EARNED</div></div>
+  </div>
+  <p>Deload week held: <b>6.1 mi</b> against 5.5 planned and both heavy days logged, Saturday's bench moved to Sunday. Bench held at <b>205 × 5</b> for the second week while sleep averaged <b>5 h 50</b> Tuesday to Thursday — the stall and the sleep line up, so the fix is not more bench. Squat 230 × 5 × 5 at RPE 8 was clean; it earns the +5 and an A-rank Gate this Saturday.</p>
+
+  <div class="divider"></div>
+  <div class="tag" style="color:var(--text-muted)">CONCERNS · FROM FLAGS</div>
+  <div class="concern"><span class="chip red">SLEEP_LOW</span><span class="t">Three nights under 6 h. Condition dipped to 58 on Thursday; the guard did not fire, but the model links it to the bench stall.</span></div>
+  <div class="concern"><span class="chip gold">LIFT_STALL</span><span class="t">Bench Press: two consecutive holds at 205. Linear progression rule says a change of pattern, not a deload, is next.</span></div>
+
+  <div class="divider"></div>
+  <div class="tag" style="color:var(--text-muted)">ADJUSTMENTS · ENGINE PROPOSES, MODEL RANKS, YOU DECIDE</div>
+
+  <div class="adj" data-adj>
+    <div class="top"><span class="op">set_progression</span><span class="chip dim">ENGINE</span><span class="chip green">HIGH</span></div>
+    <div class="what">Back Squat · +5 lb → 235</div>
+    <div class="why">Five clean sets at RPE 8 last week. Standard linear step; the Gate attempt rides on top of it.</div>
+    <div class="acts"><button class="ok" type="button" data-action="accept">ACCEPT</button><button class="no" type="button" data-action="dismiss">DISMISS</button></div>
+    <div class="state ok up">ACCEPTED · SATURDAY'S PRESCRIPTION REWRITTEN</div>
+    <div class="state no flat">DISMISSED · SQUAT HOLDS AT 230</div>
+  </div>
+
+  <div class="adj" data-adj>
+    <div class="top"><span class="op">change_reps</span><span class="chip purple">MODEL</span><span class="chip gold">MEDIUM</span></div>
+    <div class="what">Bench Press · 5×5 → 3×3 @ 215 for two weeks</div>
+    <div class="why">Two holds at 205 × 5. A heavier triple at RPE 7–8 resets the pattern without a deload; back to 5×5 at 210 in week 7. Within bounds: same family increment, no deload used.</div>
+    <div class="acts"><button class="ok" type="button" data-action="accept">ACCEPT</button><button class="no" type="button" data-action="dismiss">DISMISS</button></div>
+    <div class="state ok up">ACCEPTED · SUNDAY'S BENCH REWRITTEN TO 3×3 @ 215</div>
+    <div class="state no flat">DISMISSED · BENCH STAYS 5×5 @ 205</div>
+  </div>
+
+  <div class="adj oob" data-adj>
+    <div class="top"><span class="op">deload_now · lifts</span><span class="chip purple">MODEL</span><span class="chip red">OUT OF BOUNDS</span></div>
+    <div class="what">Suggested, not applied</div>
+    <div class="why">Validator: one deload per three weeks, and week 4 was the deload. The model's reasoning is kept for the record; the op cannot be accepted.</div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="kv" style="border-top:0"><span class="k">NEXT WEEK'S FOCUS</span><span class="v">clear the Gate · protect sleep Tue–Thu</span></div>
+  <div class="kv"><span class="k">GOAL PACE · BENCH 225 BY NOV 1</span><span class="v flat">behind · needs +1.9 lb/wk</span></div>
+  <div class="kv"><span class="k">GENERATED</span><span class="v">Sun 20:04 · claude-opus-5 · context 9a3f…</span></div>
+</div>
+
+<script>
+// ------- tiny chart (Power tab, unchanged surface) -------
+(function lineChart(el, values, color) {
+  const w = 340, h = 88, pad = 8;
+  const min = Math.min(...values), max = Math.max(...values), span = (max - min) || 1;
+  const x = i => pad + i * (w - 2 * pad) / (values.length - 1);
+  const y = v => h - pad - (v - min) / span * (h - 2 * pad);
+  const pts = values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const area = `${pad},${h - pad} ${pts} ${w - pad},${h - pad}`;
+  const lx = x(values.length - 1), ly = y(values[values.length - 1]);
+  document.getElementById(el).innerHTML =
+    `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block" aria-hidden="true">
+      <polygon points="${area}" fill="${color}" opacity="0.07"/>
+      <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="3.5" fill="${color}"/>
+    </svg>`;
+})('chart-e1rm', [262, 265, 268, 270, 274, 273, 276, 278], '#3B82F6');
+
+// ------- September 2026 calendar (Sep 1 = Tuesday; Mon-start grid; today = Sat 5) -------
+(function monthCal(el) {
+  const DAYS = 30, PREV_TAIL = [31], TODAY = 5;
+  const LIFT = [5], RUN = [2, 3], LIGHT = [1];
+  const cells = [];
+  ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach(d => cells.push(`<span class="cal-dow">${d}</span>`));
+  PREV_TAIL.forEach(n => cells.push(`<div class="cal-day out hunted run"><span class="n">${n}</span><span class="mk"></span></div>`));
+  for (let n = 1; n <= DAYS; n++) {
+    const cls = ['cal-day'];
+    if (LIFT.includes(n) || RUN.includes(n) || LIGHT.includes(n)) cls.push('hunted');
+    if (RUN.includes(n)) cls.push('run');
+    if (n === TODAY) cls.push('today');
+    if (n > TODAY) cls.push('future');
+    cells.push(`<div class="${cls.join(' ')}"><span class="n">${n}</span><span class="mk"></span></div>`);
+  }
+  for (let n = 1; n <= 4; n++) cells.push(`<div class="cal-day out"><span class="n">${n}</span><span class="mk"></span></div>`);
+  document.getElementById(el).innerHTML = cells.join('');
+})('hunt-cal');
+
+// ------- scenes / tabs / sheets (event delegation, mobile-safe) -------
+const SCENE_TAB = { status: '0', hunt: '1', log: 'log', debrief: '0', load: '0', hunter: '3' };
+function showTab(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + id));
+  document.querySelectorAll('#tabbar .tabbtn').forEach(b => b.classList.toggle('active', b.dataset.tab === String(id)));
+  const isLog = id === 'log';
+  document.getElementById('tabbar-nav').classList.toggle('hidden', isLog);
+  document.getElementById('logbar').classList.toggle('show', isLog);
+  window.scrollTo({ top: 0 });
+}
+function closeSheets() {
+  document.querySelectorAll('.sheet').forEach(s => s.classList.remove('open'));
+  document.getElementById('backdrop').classList.remove('open');
+}
+function openSheet(name) {
+  const el = document.getElementById('sheet-' + name);
+  if (!el) return;
+  closeSheets();
+  el.classList.add('open');
+  document.getElementById('backdrop').classList.add('open');
+}
+function setScene(name) {
+  document.querySelectorAll('#scenes .scene').forEach(b => b.classList.toggle('active', b.dataset.scene === name));
+  closeSheets();
+  showTab(SCENE_TAB[name] || '0');
+  if (name === 'debrief') setTimeout(() => openSheet('debrief'), 60);
+  if (name === 'load') setTimeout(() => openSheet('load'), 60);
+}
+function setVariant(v) {
+  document.querySelectorAll('.variant-row .vbtn').forEach(b => b.classList.toggle('active', b.dataset.variant === v));
+  document.querySelectorAll('.variant').forEach(p => p.classList.toggle('active', p.id === 'var-' + v));
+}
+
+// ------- rest countdown (starts on ✓, per-exercise default) -------
+let restEnd = null, restTotal = 180, restTimer = null;
+const ARC = 138.2;
+function renderRest() {
+  const t = document.getElementById('rest-time'), arc = document.getElementById('rest-arc');
+  if (!restEnd) { t.textContent = '3:00'; arc.style.strokeDashoffset = 0; return; }
+  const left = Math.max(0, Math.round((restEnd - Date.now()) / 1000));
+  const m = Math.floor(left / 60), s = left % 60;
+  t.textContent = `${m}:${String(s).padStart(2, '0')}`;
+  arc.style.strokeDashoffset = (ARC * (1 - left / restTotal)).toFixed(1);
+  if (left === 0) { t.textContent = 'GO'; clearInterval(restTimer); restTimer = null; }
+}
+function startRest(seconds) {
+  restTotal = seconds; restEnd = Date.now() + seconds * 1000;
+  if (restTimer) clearInterval(restTimer);
+  restTimer = setInterval(renderRest, 250);
+  renderRest();
+}
+function updateSquatCount() {
+  const rows = document.querySelectorAll('#tab-log .obj:first-of-type .setrow');
+  const done = [...rows].filter(r => r.classList.contains('done')).length;
+  document.getElementById('sq-count').innerHTML = `<b>${done}</b> / ${rows.length}`;
+  const hdr = document.querySelector('#tab-log .log-head .s');
+  const all = document.querySelectorAll('#tab-log .setrow'), allDone = [...all].filter(r => r.classList.contains('done')).length;
+  hdr.textContent = `PRESCRIBED · SAN CARLOS · ${allDone} / ${all.length} SETS`;
+}
+
+document.addEventListener('click', e => {
+  const scene = e.target.closest('[data-scene]');
+  if (scene) { setScene(scene.dataset.scene); return; }
+  const tabBtn = e.target.closest('[data-tab]');
+  if (tabBtn) { showTab(tabBtn.dataset.tab); return; }
+  const tabLink = e.target.closest('[data-tab-link]');
+  if (tabLink) { showTab(tabLink.dataset.tabLink); return; }
+  const closer = e.target.closest('[data-close]');
+  if (closer) { closeSheets(); return; }
+  const variant = e.target.closest('[data-variant]');
+  if (variant) { setVariant(variant.dataset.variant); return; }
+
+  const check = e.target.closest('[data-action="check"]');
+  if (check) {
+    const row = check.closest('[data-row]');
+    if (row.classList.contains('done')) { row.classList.remove('done'); updateSquatCount(); return; }
+    row.classList.remove('current');
+    row.classList.add('done');
+    row.querySelectorAll('.fld.ghost').forEach(f => f.classList.remove('ghost'));
+    const hint = row.querySelector('.livehint');
+    if (hint) hint.innerHTML = '<span class="chip gold">GATE CLEARED · e1RM 286 · +800 XP AT FINISH</span>';
+    const next = row.nextElementSibling && row.nextElementSibling.matches('[data-row]') ? row.nextElementSibling : null;
+    if (next) next.classList.add('current');
+    document.getElementById('next-set').textContent = 'NEXT · ' + (row.dataset.next || 'Finish hunt');
+    const isMain = row.closest('.obj') === document.querySelector('#tab-log .obj');
+    document.getElementById('rest-label').textContent = isMain ? 'REST · MAIN LIFT · 3:00' : 'REST · 2:00';
+    startRest(isMain ? 180 : 120);
+    updateSquatCount();
+    return;
+  }
+  const skip = e.target.closest('[data-action="skip-rest"]');
+  if (skip) { restEnd = null; if (restTimer) clearInterval(restTimer); restTimer = null; renderRest(); return; }
+
+  const accept = e.target.closest('[data-action="accept"]');
+  if (accept) { accept.closest('[data-adj]').classList.add('accepted'); bumpDecide(); return; }
+  const dismiss = e.target.closest('[data-action="dismiss"]');
+  if (dismiss) { dismiss.closest('[data-adj]').classList.add('dismissed'); bumpDecide(); return; }
+
+  const move = e.target.closest('[data-action="move"]');
+  if (move) { move.textContent = 'MOVED → MON SEP 7'; move.style.color = 'var(--gold)'; document.querySelector('[data-sheet="planned-sun"] .st').textContent = '↷ MON'; return; }
+  const skipHunt = e.target.closest('[data-action="skip"]');
+  if (skipHunt) { skipHunt.textContent = 'SKIPPED'; skipHunt.style.color = 'var(--warning-red)'; const w = document.querySelector('[data-sheet="planned-sun"]'); w.classList.add('skipped'); w.querySelector('.st').textContent = '✕'; return; }
+
+  const opener = e.target.closest('[data-sheet]');
+  if (opener) { openSheet(opener.dataset.sheet); return; }
+});
+function bumpDecide() {
+  const left = document.querySelectorAll('[data-adj]:not(.accepted):not(.dismissed):not(.oob)').length;
+  const link = document.querySelector('[data-sheet="debrief"] b');
+  if (link) link.textContent = left ? `${left} TO DECIDE →` : 'ALL DECIDED ✓';
+}
+renderRest();
+</script>
+
+</body>
+</html>
