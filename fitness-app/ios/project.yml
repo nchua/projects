@@ -38,11 +38,20 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: NO
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
-    entitlements:
-      path: FitnessApp/FitnessApp.entitlements
-      properties:
-        com.apple.developer.healthkit: true
-        aps-environment: development
+      configs:
+        # Entitlements differ only by aps-environment. Debug/dev builds need
+        # `development` (sandbox APNs); archive/TestFlight/App Store builds need
+        # `production`, or the device hands back a sandbox token that production
+        # pushes silently fail against.
+        #
+        # These two files are hand-maintained rather than generated: xcodegen's
+        # `entitlements:` key writes CODE_SIGN_ENTITLEMENTS into every config and
+        # would clobber the per-config split below. Add new capabilities to BOTH
+        # files; ios/scripts/lint-entitlements.sh enforces they stay in sync.
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: FitnessApp/FitnessApp.entitlements
+        Release:
+          CODE_SIGN_ENTITLEMENTS: FitnessApp/FitnessAppRelease.entitlements
     capabilities:
       HealthKit: true
       InAppPurchase: true
@@ -54,6 +63,9 @@ targets:
         CFBundleDisplayName: Fitness Tracker
         CFBundleShortVersionString: "1.0"
         CFBundleVersion: "1"
+        # Only standard HTTPS/TLS + bcrypt-over-TLS. Exempt under CCATS;
+        # declaring it here skips the export-compliance prompt on every upload.
+        ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
         NSHealthShareUsageDescription: "Arise syncs your steps, calories, and activity data to track your overall fitness progress alongside your workouts."
         NSHealthUpdateUsageDescription: "Arise can log your strength workouts to Apple Health."

@@ -20,6 +20,8 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Arise syncs your steps, calories, and activity data to track your overall fitness progress alongside your workouts.</string>
 	<key>NSHealthUpdateUsageDescription</key>

@@ -70,7 +70,7 @@ from contextlib import asynccontextmanager  # noqa: E402
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.core.config import settings
 
@@ -320,17 +320,16 @@ if os.environ.get("ALLOW_SMOKE_TEST_ENDPOINT", "").lower() == "true":
         raise RuntimeError("sentry-canary: intentional smoke-test failure")
 
 
-@app.get("/privacy")
-async def privacy_policy():
-    """Serve the privacy policy page"""
-    from fastapi.responses import HTMLResponse
-    html = """<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ARISE - Privacy Policy</title>
-<style>
+# ---------------------------------------------------------------------------
+# Static legal / support pages.
+#
+# App Store Connect requires a reachable privacy-policy URL and a support URL,
+# and both are user-visible from inside the app (ScanPaywallView links here).
+# They live on the API host so there is exactly one deployed thing to keep alive.
+# See docs/app-store-launch.md.
+# ---------------------------------------------------------------------------
+
+_LEGAL_PAGE_CSS = """
   body { background: #0a0a0f; color: #c8ccd4; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.7; margin: 0; padding: 20px; }
   .container { max-width: 700px; margin: 0 auto; padding: 24px 0; }
   h1 { color: #00e5ff; font-size: 24px; letter-spacing: 2px; text-transform: uppercase; border-bottom: 1px solid #1a1a2e; padding-bottom: 16px; }
@@ -339,11 +338,36 @@ async def privacy_policy():
   ul { padding-left: 20px; }
   a { color: #00e5ff; text-decoration: none; }
   .updated { font-size: 12px; color: #555; margin-top: 40px; border-top: 1px solid #1a1a2e; padding-top: 16px; }
-</style>
+"""
+
+
+def _legal_page(title: str, body: str) -> HTMLResponse:
+    """Wrap page body HTML in the shared dark-theme shell."""
+    return HTMLResponse(
+        content=f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{title}</title>
+<style>{_LEGAL_PAGE_CSS}</style>
 </head>
 <body>
 <div class="container">
-<h1>ARISE Privacy Policy</h1>
+{body}
+</div>
+</body>
+</html>"""
+    )
+
+
+
+@app.get("/privacy")
+async def privacy_policy():
+    """Serve the privacy policy page."""
+    return _legal_page(
+        "ARISE - Privacy Policy",
+        """<h1>ARISE Privacy Policy</h1>
 <p>ARISE ("we", "our", "the app") is a fitness tracking application. This policy describes how we collect, use, and protect your data.</p>
 
 <h2>Data We Collect</h2>
@@ -388,11 +412,117 @@ async def privacy_policy():
 <h2>Contact</h2>
 <p>For privacy inquiries, contact us at <a href="mailto:privacy@arise-fitness.app">privacy@arise-fitness.app</a>.</p>
 
-<p class="updated">Last updated: July 12, 2026</p>
-</div>
-</body>
-</html>"""
-    return HTMLResponse(content=html)
+<p class="updated">Last updated: July 12, 2026</p>""",
+    )
+
+
+@app.get("/terms")
+async def terms_of_service():
+    """Serve the terms of service page.
+
+    The paywall links Apple's standard EULA for the app licence itself; these
+    terms cover the hosted service around it (accounts, data, purchases).
+    """
+    return _legal_page(
+        "ARISE - Terms of Service",
+        """<h1>ARISE Terms of Service</h1>
+<p>By creating an account or using ARISE ("the app", "the service"), you agree to these terms.</p>
+
+<h2>The Service</h2>
+<p>ARISE is a fitness tracking application. It records the training data you enter, derives
+analytics from it, and optionally syncs with Apple Health and WHOOP. It is provided as-is,
+without warranty of any kind.</p>
+
+<h2>Not Medical Advice</h2>
+<p>ARISE is not a medical device and does not provide medical advice. Estimated one-rep maxes,
+readiness scores, recovery indicators, and training suggestions are informational only and are
+derived from data you and your connected devices provide. Consult a qualified professional
+before beginning or changing any exercise program. You train at your own risk.</p>
+
+<h2>Your Account</h2>
+<ul>
+  <li>You must be at least 13 years old to create an account.</li>
+  <li>You are responsible for keeping your password secure and for activity under your account.</li>
+  <li>One person per account. Do not share credentials.</li>
+  <li>You may delete your account at any time from the Profile screen.</li>
+</ul>
+
+<h2>Your Data</h2>
+<p>You retain ownership of the training data you enter. We store and process it to operate the
+service, as described in our <a href="/privacy">Privacy Policy</a>. We do not sell your data.</p>
+
+<h2>Purchases</h2>
+<ul>
+  <li>Screenshot scanning consumes credits. Accounts receive a free monthly allowance.</li>
+  <li>Additional credits and the unlimited unlock are sold as in-app purchases through Apple.
+      All payments are handled by Apple, never by us.</li>
+  <li>Refunds are handled by Apple under their standard policy. We cannot issue refunds directly.</li>
+  <li>Purchased credits have no cash value and are non-transferable between accounts.</li>
+  <li>If the service is discontinued, we will give reasonable notice and stop selling credits.</li>
+</ul>
+
+<h2>Acceptable Use</h2>
+<p>Do not attempt to circumvent scan limits or purchase verification, access other users' data,
+disrupt or overload the service, or reverse-engineer it. We may suspend or terminate accounts
+that do.</p>
+
+<h2>Third-Party Services</h2>
+<p>Screenshot processing sends images to Anthropic's Claude API. Connecting WHOOP grants access
+to your WHOOP data via OAuth, revocable from your WHOOP account. Each is governed by its own
+terms and privacy policy.</p>
+
+<h2>Changes</h2>
+<p>We may update these terms. Continued use after an update constitutes acceptance. Material
+changes will be surfaced in the app.</p>
+
+<h2>Limitation of Liability</h2>
+<p>To the maximum extent permitted by law, we are not liable for indirect, incidental, or
+consequential damages, for lost data, or for injury arising from your use of the service.</p>
+
+<h2>Contact</h2>
+<p>Questions about these terms: <a href="mailto:support@arise-fitness.app">support@arise-fitness.app</a>.</p>
+
+<p class="updated">Last updated: September 6, 2026</p>""",
+    )
+
+
+@app.get("/support")
+async def support_page():
+    """Serve the support page.
+
+    App Store Connect requires a reachable Support URL for every submission.
+    """
+    return _legal_page(
+        "ARISE - Support",
+        """<h1>ARISE Support</h1>
+<p>Need help, found a bug, or want a feature? Get in touch and we'll get back to you.</p>
+
+<h2>Contact</h2>
+<p><a href="mailto:support@arise-fitness.app">support@arise-fitness.app</a></p>
+
+<h2>Common Questions</h2>
+<ul>
+  <li><strong>A screenshot didn't scan correctly.</strong> You can edit every extracted
+      value before saving the workout. If a particular app's layout consistently fails,
+      email us the screenshot and we'll improve the extraction for it.</li>
+  <li><strong>I ran out of scan credits.</strong> Free accounts get an allowance that resets
+      monthly. Credit packs and an unlimited unlock are available in the app under Log &rarr; Scan.</li>
+  <li><strong>I bought credits but don't see them.</strong> Open the scan paywall and tap
+      <em>Restore Purchases</em>. If they still don't appear, email us with the date of purchase.</li>
+  <li><strong>Apple Health isn't syncing.</strong> Check iOS Settings &rarr; Privacy &amp; Security &rarr;
+      Health &rarr; ARISE and confirm the categories are enabled. The app works fully without it.</li>
+  <li><strong>How do I delete my account?</strong> Profile &rarr; Delete Account. It requires your
+      password. Access ends immediately and all data is permanently purged after 30 days.</li>
+  <li><strong>How do I export my data?</strong> Email us and we'll send you a copy.</li>
+</ul>
+
+<h2>Also See</h2>
+<ul>
+  <li><a href="/privacy">Privacy Policy</a></li>
+  <li><a href="/terms">Terms of Service</a></li>
+</ul>""",
+    )
+
 
 
 # Import and include API routers

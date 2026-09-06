@@ -134,6 +134,7 @@
 		0ED58B7E30BB84AE9A98C885 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
 		0EE3DE6119CAF129687F65FF /* RankUpCelebrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RankUpCelebrationView.swift; sourceTree = "<group>"; };
 		0FCA59D77C62E3D316AC25A2 /* Orbitron-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Orbitron-Variable.ttf"; sourceTree = "<group>"; };
+		103CFD6CD5EFA191B059E585 /* FitnessAppRelease.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FitnessAppRelease.entitlements; sourceTree = "<group>"; };
 		13F99BA4A73BE646FEA4B710 /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
 		17E1E2C6490F31EE347BF51F /* FitnessApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = FitnessApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1E202C43D8779CC3093A43BB /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
@@ -375,6 +376,7 @@
 				DB83BF408BFC9A75EE16A3DD /* Assets.xcassets */,
 				0114621C271DB4344EA5C9D7 /* FitnessApp.entitlements */,
 				A7192790992313FDD5201B37 /* FitnessApp.swift */,
+				103CFD6CD5EFA191B059E585 /* FitnessAppRelease.entitlements */,
 				79D6F3EF62252EE76DC35FC0 /* Info.plist */,
 			);
 			path = FitnessApp;
@@ -755,7 +757,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = FitnessApp/FitnessApp.entitlements;
+				CODE_SIGN_ENTITLEMENTS = FitnessApp/FitnessAppRelease.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = FitnessApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Fitness Tracker";

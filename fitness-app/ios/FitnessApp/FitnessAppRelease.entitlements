@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Release/archive entitlements. Must mirror FitnessApp.entitlements (which
+	  xcodegen generates from project.yml for Debug) except for aps-environment,
+	  which has to be `production` for TestFlight and App Store builds — a
+	  `development` value there yields sandbox APNs tokens that production
+	  pushes silently fail against.
+
+	  This file is hand-maintained: xcodegen does not generate it. When you add
+	  a capability in project.yml, add it here too.
+	  ios/scripts/lint-entitlements.sh enforces that the two stay in sync.
+	-->
+	<key>aps-environment</key>
+	<string>production</string>
+	<key>com.apple.developer.healthkit</key>
+	<true/>
+</dict>
+</plist>
