@@ -713,7 +713,7 @@ Expected effect for a Sat/Sun 5×5 lifter: first gate within 4–5 weeks of cons
 | `user_directives` + `directive_service` rule engine | Retire in Phase 4; first move `calculate_todays_workout_stats` and `user_has_wearable` out of `quest_service.py` (`directive_service.py:31` imports from it) into a neutral module | replaced by the engine line + Debrief concerns |
 | `weekly_report_service._generate_suggestions` | Delete in Phase 4 | replaced by Debrief |
 | `quest_definitions` / `user_quests` tables | Drop (idempotent `IF EXISTS`) in Phase 4 after the helper move above and the `app/models/__init__.py` registration is removed | dead weight |
-| `exercise_equivalence.py` + the substring canonicalizers | Replace with `family_id` reads, per consumer, as each phase touches it | audit item 2 |
+| `exercise_equivalence.py` + the substring canonicalizers | Replace with `family_id` reads, per consumer, as each phase touches it. **`exercise_equivalence.py` removed 2026-09-06** (no consumer remained); the substring canonicalizers are still open | audit item 2 |
 | Power › Exertion segment | Leave as is; no Power › Load segment is built | unopened; Load lives on Status |
 | `streak_at_risk` + streak XP | Retire in Phase 2 when plan-adherence XP ships | HealthKit runs never sustain streaks (no `award_xp` in the import path) |
 | Scan-credit paywall for the owner | One-time `has_unlimited = true` for the owner via an admin script; IAP code stays | the owner should not be paywalled out of his own scanner |

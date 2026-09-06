@@ -20,7 +20,7 @@ from app.models.scan_balance import PurchaseRecord, ScanBalance
 from app.models.training_load import DailyTrainingLoad
 from app.models.whoop import WhoopConnection
 from app.models.workout import WorkoutSession
-from app.services import admin_service
+from app.services import admin_read_service
 from app.services import entitlement_service as es
 from app.services.campaign_service import materialize_range
 from app.services.training_load_service import get_load_state
@@ -430,7 +430,7 @@ class TestUserDetail:
         get_load_state(db, user.id, yesterday)  # the app's own read computes through yesterday
         assert db.query(DailyTrainingLoad).filter_by(user_id=user.id, local_date=TODAY).first() is None
 
-        detail = admin_service.get_user_detail(db, user, today=TODAY)
+        detail = admin_read_service.get_user_detail(db, user, today=TODAY)
         assert detail.preview.load.as_of == yesterday.isoformat()  # newest stored row, not recomputed
         assert db.query(DailyTrainingLoad).filter_by(user_id=user.id, local_date=TODAY).first() is None
         assert detail.progress.level == 1
@@ -446,7 +446,7 @@ class TestUserDetail:
         db.commit()
         planned = next(h for h in hunts if h.status == "planned")
 
-        detail = admin_service.get_user_detail(db, user, today=planned.date)
+        detail = admin_read_service.get_user_detail(db, user, today=planned.date)
         assert detail.campaign is not None
         assert detail.campaign.id == campaign.id and detail.campaign.arcs == 3
         assert detail.campaign.next_planned_hunt == planned.date.isoformat()

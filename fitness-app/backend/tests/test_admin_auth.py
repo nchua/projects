@@ -23,7 +23,7 @@ from app.core.security import (
 from app.models.admin import AdminAuditLog
 from app.models.password_reset import PasswordResetToken
 from app.models.user import User
-from app.services.admin_service import mint_admin_session
+from app.services.admin_session_service import mint_admin_session
 from tests.helpers_admin import make_request
 
 

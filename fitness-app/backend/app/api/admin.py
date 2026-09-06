@@ -63,7 +63,13 @@ from app.schemas.admin import (
     UserSort,
     UserUsageResponse,
 )
-from app.services import admin_service, admin_usage_service, purge_service
+from app.services import (
+    admin_mutation_service,
+    admin_read_service,
+    admin_session_service,
+    admin_usage_service,
+    purge_service,
+)
 
 session_router = APIRouter()
 router = APIRouter(dependencies=[Depends(require_admin)])
@@ -93,7 +99,7 @@ async def create_session(
 ):
     """Mint a 15-minute admin token (spec §4.2). 401 / 403 / 423 per the service."""
     request.state.audit_ip = client_ip(request)
-    token, expires_at = admin_service.mint_admin_session(
+    token, expires_at = admin_session_service.mint_admin_session(
         db, email=body.email, password=body.password, request=request
     )
     return AdminSessionResponse(admin_token=token, expires_at=expires_at)
@@ -122,7 +128,7 @@ async def list_users(
     db: Session = Depends(get_read_only_db),
 ):
     """The Hunters table (spec §9.1): filters, sort, offset paging."""
-    items, total = admin_service.list_users(
+    items, total = admin_read_service.list_users(
         db,
         q=q,
         deleted=deleted,
@@ -141,7 +147,7 @@ async def get_user(
     user: User = Depends(get_target_user), db: Session = Depends(get_read_only_db)
 ):
     """Every card of the Hunter detail (spec §9.1 / §10.3)."""
-    return admin_service.get_user_detail(db, user)
+    return admin_read_service.get_user_detail(db, user)
 
 
 @router.get("/users/{user_id}/usage", response_model=UserUsageResponse)
@@ -173,7 +179,7 @@ async def list_audit(
     db: Session = Depends(get_read_only_db),
 ):
     """Newest-first page of the append-only audit log (spec §5)."""
-    items, total = admin_service.list_audit(
+    items, total = admin_read_service.list_audit(
         db,
         target_type=target_type,
         target_id=target_id,
@@ -188,7 +194,7 @@ async def list_audit(
 @router.get("/products", response_model=List[ProductResponse])
 async def list_products(db: Session = Depends(get_read_only_db)):
     """The product catalog in display order (active and inactive)."""
-    return admin_service.list_products(db)
+    return admin_read_service.list_products(db)
 
 
 # ── mutations (spec §7, §8, §13) ────────────────────────────────────────────
@@ -205,7 +211,7 @@ async def adjust_credits(
     """Add ``delta`` credits (spec §7.1). ``Idempotency-Key`` is required (400 without)."""
     if not idempotency_key:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Idempotency-Key header required")
-    result = admin_service.adjust_credits(
+    result = admin_mutation_service.adjust_credits(
         db,
         actor=actor,
         user=user,
@@ -232,7 +238,7 @@ async def grant_entitlement(
     db: Session = Depends(get_db),
 ) -> EntitlementResponse:
     """Grant a keyed right or limit (spec §6.3); ``scans.unlimited`` syncs the cached flag."""
-    result = admin_service.grant_entitlement(
+    result = admin_mutation_service.grant_entitlement(
         db,
         actor=actor,
         user=user,
@@ -258,7 +264,7 @@ async def revoke_entitlement(
     db: Session = Depends(get_db),
 ) -> EntitlementResponse:
     """Revoke one entitlement row (destructive tier); survives Restore Purchases."""
-    result = admin_service.revoke_entitlement(
+    result = admin_mutation_service.revoke_entitlement(
         db,
         actor=actor,
         user=user,
@@ -288,7 +294,7 @@ async def import_campaign(
 
     201 with the campaign; a dry run parses only and answers 200 with ``arcs_preview``.
     """
-    result = admin_service.import_campaign_for_user(db, actor=actor, user=user, body=body, request=request)
+    result = admin_mutation_service.import_campaign_for_user(db, actor=actor, user=user, body=body, request=request)
     db.commit()
     if body.dry_run:
         response.status_code = status.HTTP_200_OK
@@ -304,7 +310,7 @@ async def soft_delete_user(
     db: Session = Depends(get_db),
 ) -> AdminUserStateResponse:
     """Soft-delete (spec §8.1): the user's next request is a 401, login a 403."""
-    result = admin_service.soft_delete_user(
+    result = admin_mutation_service.soft_delete_user(
         db, actor=actor, user=user, password=body.password, reason=body.reason, request=request
     )
     db.commit()
@@ -320,7 +326,7 @@ async def restore_user(
     db: Session = Depends(get_db),
 ) -> AdminUserStateResponse:
     """Undo a soft-delete and bump ``token_version`` (spec §8.1)."""
-    result = admin_service.restore_user(
+    result = admin_mutation_service.restore_user(
         db, actor=actor, user=user, password=body.password, reason=body.reason, request=request
     )
     db.commit()
@@ -358,7 +364,7 @@ async def backfill_exercise_families(
     db: Session = Depends(get_db),
 ) -> FamilyBackfillResponse:
     """Exercise-family backfill (spec §7.3): dry run by default, apply is destructive tier."""
-    result = admin_service.backfill_families(
+    result = admin_mutation_service.backfill_families(
         db,
         actor=actor,
         dry_run=body.dry_run,
@@ -378,7 +384,7 @@ async def seed_achievements(
     db: Session = Depends(get_db),
 ) -> SeedAchievementsResponse:
     """Audited seed of the achievement definitions (spec §7.4)."""
-    seeded = admin_service.seed_achievements(db, actor=actor, reason=body.reason, request=request)
+    seeded = admin_mutation_service.seed_achievements(db, actor=actor, reason=body.reason, request=request)
     db.commit()
     return SeedAchievementsResponse(seeded=seeded)
 
@@ -411,7 +417,7 @@ async def create_product(
     db: Session = Depends(get_db),
 ) -> ProductResponse:
     """Add a catalog SKU (spec §6.4). 409 if the id exists."""
-    result = admin_service.upsert_product(db, actor=actor, body=body, request=request)
+    result = admin_mutation_service.upsert_product(db, actor=actor, body=body, request=request)
     db.commit()
     return result
 
@@ -425,7 +431,7 @@ async def update_product(
     db: Session = Depends(get_db),
 ) -> ProductResponse:
     """Edit a SKU; the id is immutable and ``active=false`` is destructive tier (no DELETE)."""
-    result = admin_service.upsert_product(
+    result = admin_mutation_service.upsert_product(
         db, actor=actor, body=body, product_id=product_id, request=request
     )
     db.commit()

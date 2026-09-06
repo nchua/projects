@@ -264,7 +264,7 @@ JSON column precedent: `app/models/campaign.py:74,132,169`.
 before=None, after=None, reason=None, request=None, idempotency_key=None, body_sha256=None)`
 does `db.add` + `db.flush()` and **never commits**; the caller commits the change and the audit
 row together, so a failure after `audit()` rolls both back. Every admin mutation lives in
-`admin_service.py`, `entitlement_service.py`, or `purge_service.py`, takes `actor`, and calls
+`admin_mutation_service.py`, `entitlement_service.py`, or `purge_service.py`, takes `actor`, and calls
 `audit()` before returning; `tests/test_admin_audit.py` parametrizes over that list and asserts
 exactly one new row per call carrying the round-tripped `X-Request-ID`.
 
@@ -710,25 +710,25 @@ Schemas in `app/schemas/admin.py`. `StepUpBody{password, reason}` marks the dest
 
 | Method & path | Request | Response | Wraps |
 |---|---|---|---|
-| `POST /session` (no auth; `LOGIN_RATE_LIMIT` + lockout) | `AdminSessionRequest{email, password}` | `AdminSessionResponse{admin_token, expires_at}` | `admin_service.mint_admin_session`; audit `session.create` |
+| `POST /session` (no auth; `LOGIN_RATE_LIMIT` + lockout) | `AdminSessionRequest{email, password}` | `AdminSessionResponse{admin_token, expires_at}` | `admin_session_service.mint_admin_session`; audit `session.create` |
 | `GET /me` | — | `AdminMeResponse{user_id, token_expires_at}` | `require_admin` |
-| `GET /users` | `q?, deleted?, unlimited?, active_days?, sort=last_active\|created\|email\|credits, order=asc\|desc, limit=50, offset=0` | `AdminUserListResponse{items: [AdminUserRow], total}` | `admin_service.list_users` |
-| `GET /users/{id}` | — | `AdminUserDetailResponse{user, profile, progress, balance{…, purchases}, entitlements, campaign?, integrations, data_health, preview, recent_audit, usage}` | `admin_service.get_user_detail` (§9.1) |
+| `GET /users` | `q?, deleted?, unlimited?, active_days?, sort=last_active\|created\|email\|credits, order=asc\|desc, limit=50, offset=0` | `AdminUserListResponse{items: [AdminUserRow], total}` | `admin_read_service.list_users` |
+| `GET /users/{id}` | — | `AdminUserDetailResponse{user, profile, progress, balance{…, purchases}, entitlements, campaign?, integrations, data_health, preview, recent_audit, usage}` | `admin_read_service.get_user_detail` (§9.1) |
 | `GET /users/{id}/usage` | `weeks=20` | `UserUsageResponse` (§9.3) | `admin_usage_service.user_usage` |
 | `GET /usage` | `weeks=20` | `FleetUsageResponse` (§9.3) | `admin_usage_service.fleet_usage` |
-| `POST /users/{id}/credits` (header `Idempotency-Key`) | `CreditsAdjustRequest{delta ≠ 0, reason, password?}` | `CreditsAdjustResponse{scan_credits_before, scan_credits_after, audit_id, replayed}` | `admin_service.adjust_credits` (`FOR UPDATE`); audit `credits.adjust` |
+| `POST /users/{id}/credits` (header `Idempotency-Key`) | `CreditsAdjustRequest{delta ≠ 0, reason, password?}` | `CreditsAdjustResponse{scan_credits_before, scan_credits_after, audit_id, replayed}` | `admin_mutation_service.adjust_credits` (`FOR UPDATE`); audit `credits.adjust` |
 | `POST /users/{id}/entitlements` | `EntitlementGrantRequest{key, value, expires_at?, reason}` | `EntitlementResponse{id, user_id, key, value, source, granted_by, purchase_record_id?, expires_at, revoked_at, created_at}` | `entitlement_service.grant` + `sync_unlimited_flag`; audit `entitlement.grant` |
 | `POST /users/{id}/entitlements/{eid}/revoke` | `StepUpBody` | `EntitlementResponse` | `entitlement_service.revoke` + sync; audit `entitlement.revoke` |
 | `POST /users/{id}/campaign/import` | `AdminCampaignImportRequest(CampaignImportRequest){phases?, template?, dry_run=false, replace, name, start_date?, client_date?, goal?, objectives, password?}` | `AdminCampaignImportResponse(CampaignImportResponse){dry_run, retired_campaign_id?, planned_hunts_deleted, arcs_preview?}` | `parse_phases` / `import_campaign` + `create_objective`; audit `campaign.import` |
 | `POST /maintenance/exercise-families` | `FamilyBackfillRequest{dry_run=true, reason, password?}` | `FamilyBackfillResponse{dry_run, families_changed, exercises_updated, assigned, total, unresolved}` | `ensure_families` / `assign_family_ids(dry_run=)`; audit on apply |
 | `POST /maintenance/seed-achievements` | `ReasonBody` | `{seeded}` | `seed_achievement_definitions`; audit |
 | `POST /maintenance/purge-eligible` | `PurgeSweepRequest{dry_run=true, password?, reason}` | `PurgeSweepResponse{eligible: [{user_id, deleted_at, days_deleted}], purged: [PurgeResponse]}` | `purge_service.purge_eligible` |
-| `POST /users/{id}/delete` | `StepUpBody` | `AdminUserStateResponse{id, is_deleted, deleted_at}` | `admin_service.soft_delete_user`; audit `user.soft_delete` |
-| `POST /users/{id}/restore` | `StepUpBody` | `AdminUserStateResponse` | `admin_service.restore_user` (+ `token_version`); audit `user.restore` |
+| `POST /users/{id}/delete` | `StepUpBody` | `AdminUserStateResponse{id, is_deleted, deleted_at}` | `admin_mutation_service.soft_delete_user`; audit `user.soft_delete` |
+| `POST /users/{id}/restore` | `StepUpBody` | `AdminUserStateResponse` | `admin_mutation_service.restore_user` (+ `token_version`); audit `user.restore` |
 | `POST /users/{id}/purge` | `PurgeRequest(StepUpBody){confirm_email, force=false}` | `PurgeResponse{user_id, deleted_at, tables: {str: int}, audit_id}` | `purge_service.purge_user`; audit `user.purge` |
-| `GET /audit` | `target_type?, target_id?, actor_user_id?, action?, limit=50, offset=0` | `AuditListResponse{items: [AuditEntry], total}` | `admin_service.list_audit` |
+| `GET /audit` | `target_type?, target_id?, actor_user_id?, action?, limit=50, offset=0` | `AuditListResponse{items: [AuditEntry], total}` | `admin_read_service.list_audit` |
 | `GET /products` | — | `[ProductResponse]` | query |
-| `POST /products` / `PATCH /products/{id}` | `ProductUpsertRequest{id, kind, credits, entitlement_key?, display_name, active, sort_order, password?, reason}` | `ProductResponse` | `admin_service.upsert_product` (id immutable; deactivate = step-up); audit `product.upsert` |
+| `POST /products` / `PATCH /products/{id}` | `ProductUpsertRequest{id, kind, credits, entitlement_key?, display_name, active, sort_order, password?, reason}` | `ProductResponse` | `admin_mutation_service.upsert_product` (id immutable; deactivate = step-up); audit `product.upsert` |
 | `GET /ui` (no auth, no schema) | — | HTML + headers (§10.1) | file read |
 
 Non-admin contract changes: `POST /scan-balance/verify-purchase` reads `products`, applies the
@@ -772,7 +772,7 @@ commit, verified Railway SUCCESS. `/evaluate` after W0 and after W2 (4+ files, m
 | Phase | Scope | Size | Ship signal |
 |---|---|---|---|
 | **W0 — foundations** | models + both migrations (§12); `Settings` additions; `admin_auth.py` (`create_admin_token`, `require_admin`, `verify_step_up`); `admin_bootstrap.py` (bootstrap + sweep hook); `audit_service.py`; `entitlement_service.py` (`ensure_products`, `is_entitled`, `effective_limits`, `grant`, `revoke`, `sync_unlimited_flag`, `get_or_create_balance`); rewire `scan_balance.py` (products, entitlement path, interim caps) and `screenshot.py` (`effective_limits`, daily check after the lock); `user_token_claims()` + `ver` in login / refresh / `get_current_user`; hygiene (§11 MUSTs); conftest fixtures; `test_admin_auth`, `test_admin_entitlements`, `test_admin_migrations`, mass-assignment and token-class tests | ½ session | `ADMIN_BOOTSTRAP_EMAIL` set on Railway → `POST /admin/session` returns a token; `GET /scan-balance` unchanged for every user; the two rate-limit tests patch `settings` |
-| **W1 — reads** | `api/admin.py` (`/session`, `/me`, `/users`, `/users/{id}`, `/users/{id}/usage`, `/usage`, `/audit`, `/products` GET); `admin_service.list_users` / `get_user_detail`; `admin_usage_service`; router in `main.py` with `no-store` + `include_in_schema=False`; `test_admin_users`, `test_admin_usage`, `test_admin_audit` (read half) | ⅓ session | the next "how is X doing" is a `curl` of `/admin/users/{id}`, not `usage_snapshot.py` |
+| **W1 — reads** | `api/admin.py` (`/session`, `/me`, `/users`, `/users/{id}`, `/users/{id}/usage`, `/usage`, `/audit`, `/products` GET); `admin_read_service.list_users` / `get_user_detail`; `admin_usage_service`; router in `main.py` with `no-store` + `include_in_schema=False`; `test_admin_users`, `test_admin_usage`, `test_admin_audit` (read half) | ⅓ session | the next "how is X doing" is a `curl` of `/admin/users/{id}`, not `usage_snapshot.py` |
 | **W2 — mutations** | credits (+ idempotency), entitlement grant/revoke, products upsert, campaign import (+ `campaign_templates/owner_hybrid.json`, parser moved), family backfill `dry_run`, seed-achievements, soft-delete / restore, `purge_service` + sweep; `test_admin_credits`, `_campaign_import`, `_families`, `_purge`, `_step_up`, `_audit` (parametrized); script docstrings → "fallback — prefer `/admin/ui`" | ½ session | grant-unlimited via `curl` yields the row the script yields; **purge is the slip point** if the session runs long |
 | **W3 — console** | `app/admin_ui/{index.html, admin.js, admin.css}` on a `StaticFiles` mount at `/admin/ui/` + headers + CSP; desktop layout first, then the phone lane; `test_admin_ui`; v3 spec §11 row (line 719) → points at the console; memory update | ½ session | the full customer view is readable on a 13-inch laptop without scrolling the top of both columns; login → grant → ∞ on the phone in under a minute; `PURGE_SWEEP_ENABLED` flipped after a clean dry-run |
 | **Follow-ups** | JWS verification (server); iOS: pass `jwsRepresentation`, Hunter › System Settings "Admin console" link, drop the public seed route | own sessions | |
@@ -914,3 +914,8 @@ second agent against the frozen W1/W2 contracts.
   zero-count audit row. `ensure_families` / `assign_family_ids` / `seed_achievement_definitions`
   gained `dry_run` / `commit` keywords (defaults unchanged) so the console commits the change
   and its audit row together.
+  Later the same day: `admin_service.py` was split by concern into `admin_session_service.py`
+  (§4.2), `admin_read_service.py` (§9) and `admin_mutation_service.py` (§7, §8.1) so a session
+  reads only the part it touches; the dead `exercise_equivalence.py` (no consumer since the
+  family tables) and its tests were removed; `scripts/dev/surface.py` and
+  `scripts/dev/schema_map.py` print a module's signatures and the table/FK map.

@@ -50,15 +50,15 @@ class TestScriptsShareServiceSymbols:
     """The console routes and the fallback scripts call the same functions (spec §16)."""
 
     def test_backfill_script_and_route_share_the_family_functions(self):
-        from app.services import admin_service, exercise_family_service
+        from app.services import admin_mutation_service, exercise_family_service
 
         module = load_script("backfill_exercise_families")
         assert module.ensure_families is exercise_family_service.ensure_families
         assert module.assign_family_ids is exercise_family_service.assign_family_ids
         # The route runs the two halves ``assign_family_ids`` is built from.
-        assert admin_service.ensure_families is exercise_family_service.ensure_families
-        assert admin_service.planned_family_updates is exercise_family_service.planned_family_updates
-        assert admin_service.apply_family_updates is exercise_family_service.apply_family_updates
+        assert admin_mutation_service.ensure_families is exercise_family_service.ensure_families
+        assert admin_mutation_service.planned_family_updates is exercise_family_service.planned_family_updates
+        assert admin_mutation_service.apply_family_updates is exercise_family_service.apply_family_updates
 
     def test_import_script_uses_the_console_parser_and_the_committed_template_matches(self):
         from app.services import campaign_templates

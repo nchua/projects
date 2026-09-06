@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.models.admin import AdminAuditLog
 from app.models.scan_balance import ScanBalance
-from app.services import admin_service
+from app.services import admin_mutation_service
 from app.services.audit_service import audit, body_hash, scrub, snapshot
 from tests.helpers_admin import MUTATIONS, MutationContext, assert_no_secret_keys, drive
 
@@ -203,13 +203,13 @@ class TestAuditMutations:
         headers, _ = admin_headers(email="audit-boom-admin@example.com")
         target, _ = create_test_user(email="audit-boom-target@example.com")
         seed_scan_balance(target.id, credits=3)
-        real_audit = admin_service.audit
+        real_audit = admin_mutation_service.audit
 
         def audit_then_fail(*args, **kwargs):
             real_audit(*args, **kwargs)
             raise RuntimeError("after audit()")
 
-        monkeypatch.setattr(admin_service, "audit", audit_then_fail)
+        monkeypatch.setattr(admin_mutation_service, "audit", audit_then_fail)
         response = client.post(
             f"/admin/users/{target.id}/credits", json={"delta": 5, "reason": "boom"},
             headers={**headers, "Idempotency-Key": "boom-key", "X-Request-ID": "req-boom"},

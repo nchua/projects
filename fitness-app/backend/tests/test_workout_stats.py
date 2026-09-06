@@ -1,10 +1,7 @@
 """
-Tests for the day-stat helpers that outlived quest_service.
-
-Daily-quest generation/claim (and the /quests API) were removed in ARISE v2
-Phase 0; ``user_has_wearable`` and ``calculate_todays_workout_stats`` now live
-in ``app.services.workout_stats`` (ARISE v3 §11 helper move) because the
-Directive engine reuses them.
+Tests for ``workout_stats`` — the day-stat helpers that outlived the quest
+system (daily quests and the /quests API were removed in ARISE v2 Phase 0;
+``user_has_wearable`` and ``calculate_todays_workout_stats`` moved here).
 """
 
 
