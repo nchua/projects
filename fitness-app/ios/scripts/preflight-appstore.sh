@@ -163,6 +163,16 @@ fi
 # --- 8. Release build settings --------------------------------------------
 echo "--- Release build settings ---"
 if [ -d "$IOS/FitnessApp.xcodeproj" ]; then
+    fam=$(xcodebuild -project "$IOS/FitnessApp.xcodeproj" -target FitnessApp -configuration Release -showBuildSettings 2>/dev/null | awk '/ TARGETED_DEVICE_FAMILY =/ {print $3}')
+    if [ "$fam" = "1" ]; then
+        pass "iPhone only (TARGETED_DEVICE_FAMILY = 1)"
+    else
+        warn "TARGETED_DEVICE_FAMILY is '$fam', expected 1 (iPhone only)" \
+             "Claiming iPad obligates a separate iPad screenshot set and an" \
+             "iPad-worthy layout. Decided iPhone-only 2026-09-06; see" \
+             "docs/app-store-launch.md Phase 0.3."
+    fi
+
     rel_ent=$(xcodebuild -project "$IOS/FitnessApp.xcodeproj" -target FitnessApp -configuration Release -showBuildSettings 2>/dev/null | awk '/ CODE_SIGN_ENTITLEMENTS =/ {print $3}')
     if [ "$rel_ent" = "FitnessApp/FitnessAppRelease.entitlements" ]; then
         pass "Release uses production entitlements ($rel_ent)"

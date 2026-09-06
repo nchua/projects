@@ -37,6 +37,7 @@ Verified by inspection on the audit date, not assumed:
 | **App Review demo account** | ❌ **BLOCKER** | Phase 5 — the app is fully login-gated |
 | Support URL | ⚠️ | `GET /support` written (2026-09-06), **not yet deployed** |
 | Final app name | ❌ | Phase 0 — deferred by decision, but blocks the ASC record |
+| iPad scope | ✅ *(decided 2026-09-06)* | iPhone only — one screenshot set, no iPad layout risk |
 
 ---
 
@@ -69,16 +70,14 @@ The app is Solo Leveling–*inspired*, which is fine. Two specifics are not:
 
 This is a rejection *and* a takedown risk, and it is cheap to avoid.
 
-### 0.3 iPad: support it or drop it
+### 0.3 iPad — DECIDED 2026-09-06: iPhone only ✅
 
-`TARGETED_DEVICE_FAMILY: "1,2"` currently claims iPad support. That obligates you to:
-- supply a separate iPad screenshot set, and
-- have the app actually look right on a 13" canvas — this is a portrait-locked,
-  phone-shaped SwiftUI layout, and reviewers do test iPad when you claim it.
+`TARGETED_DEVICE_FAMILY` is now `"1"`. There was no iPad-conditional code in the
+app, so nothing had to be unwound. This removes the iPad screenshot set, the iPad
+orientation obligations, and a class of layout rejections. The
+"All interface orientations must be supported" build warning is gone as a result.
 
-Dropping to `"1"` (iPhone only) removes a screenshot set and a whole class of
-layout rejections. You can add iPad back in a later version. **Recommendation:
-ship iPhone-only** unless iPad is a real use case.
+iPad can be added back in a later version if it becomes a real use case.
 
 ### 0.4 IAP pricing
 
@@ -146,9 +145,9 @@ subscription. See Phase 6.
 Draft copy, keywords, and the privacy nutrition-label answers live in
 [`app-store-metadata.md`](./app-store-metadata.md).
 
-- [ ] **Screenshots.** iPhone 6.9" is the required set; if you keep iPad, a 13" set
-      too. Confirm exact pixel dimensions in ASC at upload time — Apple changes them.
+- [ ] **Screenshots.** iPhone 6.9" is the only required set. Confirm exact pixel dimensions in ASC at upload time — Apple changes them.
       Capture on the simulators already installed (iPhone 17 Pro Max / iPhone Air).
+      iPad set is **not** needed — iPhone-only was decided in Phase 0.3.
       Screenshots must show the *actual* app, not mockups or marketing renders.
 - [ ] Name (30), subtitle (30), promotional text (170), description (4000),
       keywords (100, comma-separated, no spaces).
