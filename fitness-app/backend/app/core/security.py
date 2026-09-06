@@ -10,6 +10,13 @@ from jose import JWTError, jwt
 
 from app.core.config import settings
 
+# Audience claim on admin tokens (control-plane spec §4.2). ``decode_token``
+# passes no ``audience=`` so python-jose rejects any token carrying ``aud`` —
+# admin tokens therefore fail on every normal route for free. The enforced
+# discriminator is still ``type == "admin"``: jose accepts a token WITHOUT
+# ``aud`` when decoding with ``audience=``, so ``aud`` alone cannot gate.
+ADMIN_AUDIENCE = "arise-admin"
+
 
 def _prehash(password: str) -> bytes:
     """
@@ -98,7 +105,7 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
-    to_encode.update({"exp": expire, "type": "access"})
+    to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc), "type": "access"})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
@@ -115,7 +122,7 @@ def create_refresh_token(data: Dict[str, Any]) -> str:
     """
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire, "type": "refresh"})
+    to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc), "type": "refresh"})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
@@ -156,4 +163,62 @@ def verify_token(token: str, token_type: str = "access") -> Optional[Dict[str, A
     if payload.get("type") != token_type:
         return None
 
+    return payload
+
+
+# ── Token versioning + admin tokens (control-plane spec §4) ──────────────────
+
+def user_token_claims(user: Any) -> Dict[str, Any]:
+    """Claims every token minted for ``user`` must carry: ``sub`` and ``ver``.
+
+    ``ver`` mirrors ``users.token_version``; bumping the column revokes every
+    outstanding token (restore, repeated failed step-ups, "log out
+    everywhere"). Tokens minted before the column existed carry no ``ver``
+    and are treated as version 0 by :func:`token_version_matches`.
+    """
+    return {"sub": user.id, "ver": user.token_version}
+
+
+def token_version_matches(payload: Dict[str, Any], user: Any) -> bool:
+    """True when the token's ``ver`` equals the user's current ``token_version``."""
+    try:
+        token_ver = int(payload.get("ver", 0) or 0)
+    except (TypeError, ValueError):
+        return False
+    return token_ver == user.token_version
+
+
+def create_admin_token(user: Any) -> Tuple[str, datetime]:
+    """Mint a short-lived admin token (no refresh token exists for it).
+
+    Claims: ``sub``, ``ver``, ``type="admin"``, ``aud=ADMIN_AUDIENCE``,
+    ``iat``, ``exp`` (+``ADMIN_TOKEN_EXPIRE_MINUTES``). Returns the encoded
+    token and its expiry.
+    """
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(minutes=settings.ADMIN_TOKEN_EXPIRE_MINUTES)
+    payload = {
+        **user_token_claims(user),
+        "type": "admin",
+        "aud": ADMIN_AUDIENCE,
+        "iat": now,
+        "exp": expire,
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM), expire
+
+
+def decode_admin_token(token: str) -> Optional[Dict[str, Any]]:
+    """Decode an admin token; None unless it is a valid admin-type token
+    for :data:`ADMIN_AUDIENCE`. Never accepts a normal access/refresh token."""
+    try:
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+            audience=ADMIN_AUDIENCE,
+        )
+    except JWTError:
+        return None
+    if payload.get("type") != "admin" or payload.get("aud") != ADMIN_AUDIENCE:
+        return None
     return payload

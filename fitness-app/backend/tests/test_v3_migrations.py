@@ -109,8 +109,8 @@ def test_alembic_has_exactly_one_head():
     cfg = Config(str(BACKEND / "alembic.ini"))
     cfg.set_main_option("script_location", str(BACKEND / "alembic"))
     heads = ScriptDirectory.from_config(cfg).get_heads()
-    # W3 chained the quest-table drop after the W0 foundations.
-    assert heads == ["v3_drop_quest_tables"]
+    # The control-plane migrations chain after the v3 quest-table drop.
+    assert heads == ["admin_seed_backfill"]
 
 
 def test_chain_is_linear_from_workout_local_date():

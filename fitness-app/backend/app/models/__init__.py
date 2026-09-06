@@ -2,6 +2,7 @@
 
 from app.models.achievement import AchievementDefinition, UserAchievement
 from app.models.activity import DailyActivity
+from app.models.admin import AdminAuditLog
 from app.models.bodyweight import BodyweightEntry
 from app.models.campaign import (
     Campaign,
@@ -15,6 +16,7 @@ from app.models.campaign import (
 )
 from app.models.coach import CoachOutput, CoachOutputKind, CoachOutputSource
 from app.models.directive import DirectiveType, UserDirective
+from app.models.entitlement import EntitlementSource, Product, ProductKind, UserEntitlement
 from app.models.exercise import Exercise
 from app.models.exercise_family import ExerciseFamily
 from app.models.friend import FriendRequest, FriendRequestStatus, Friendship
@@ -91,4 +93,9 @@ __all__ = [
     "DeviceToken",
     "NotificationPreference",
     "NotificationType",
+    "AdminAuditLog",
+    "Product",
+    "ProductKind",
+    "UserEntitlement",
+    "EntitlementSource",
 ]

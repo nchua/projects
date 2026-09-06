@@ -11,6 +11,7 @@ WHOOP_REDIRECT_URI). When unset, the connect/sync endpoints return 503 so the
 rest of the app keeps working without WHOOP configured.
 """
 import logging
+from html import escape as html_escape
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import HTMLResponse
@@ -156,7 +157,14 @@ async def whoop_status(
 
 
 def _callback_page(title: str, message: str, ok: bool) -> HTMLResponse:
-    """Minimal styled confirmation page shown after the OAuth redirect."""
+    """Minimal styled confirmation page shown after the OAuth redirect.
+
+    ``message`` can carry the provider's ``error`` query parameter, so both
+    strings are HTML-escaped: this page shares the API origin with the owner
+    console (control-plane spec §11).
+    """
+    title = html_escape(title)
+    message = html_escape(message)
     accent = "#00e5ff" if ok else "#ff5470"
     html = f"""<!DOCTYPE html>
 <html lang="en">

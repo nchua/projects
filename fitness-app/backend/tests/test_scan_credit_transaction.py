@@ -20,6 +20,7 @@ import anthropic
 os.environ.setdefault("ANTHROPIC_API_KEY", "test-key")
 
 from app.api.screenshot import _reserve_scan_credits
+from app.core.config import settings
 from app.models.exercise import Exercise
 from app.models.scan_balance import ScanBalance
 
@@ -159,7 +160,7 @@ class TestScreenshotCreditRace:
         # Bypass cooldown: we're specifically testing credit atomicity, not
         # the throttle. The `_check_screenshot_rate_limit` function still
         # validates the feature flag and daily cap.
-        with patch("app.api.screenshot.COOLDOWN_SECONDS", 0), \
+        with patch.object(settings, "COOLDOWN_SECONDS", 0), \
              patch("app.services.screenshot_service.anthropic.Anthropic") as MockClient:
             instance = MagicMock()
             instance.messages.create.return_value = mock_msg

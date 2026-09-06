@@ -8,10 +8,19 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import verify_token
+from app.core.security import token_version_matches, verify_token
 from app.models.user import User
 
 security = HTTPBearer()
+
+
+def unauthorized(detail: str) -> HTTPException:
+    """401 carrying the Bearer challenge header — the shape every token gate uses."""
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail=detail,
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 async def get_current_user(
@@ -65,6 +74,16 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Account has been deleted",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Reject tokens minted before the user's token_version was bumped
+    # (restore, repeated failed admin step-ups). Legacy tokens without a
+    # ``ver`` claim count as version 0 (control-plane spec §4.3).
+    if not token_version_matches(payload, user):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session has been revoked",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

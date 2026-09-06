@@ -14,6 +14,8 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     hash_password,
+    token_version_matches,
+    user_token_claims,
     verify_password,
     verify_password_with_rehash,
     verify_token,
@@ -144,9 +146,10 @@ async def login(request: Request, user_data: UserLogin, db: Session = Depends(ge
         user.password_hash = hash_password(user_data.password)
         db.commit()
 
-    # Create tokens
-    access_token = create_access_token(data={"sub": user.id})
-    refresh_token = create_refresh_token(data={"sub": user.id})
+    # Create tokens (carry ``ver`` so a token_version bump revokes them)
+    claims = user_token_claims(user)
+    access_token = create_access_token(data=claims)
+    refresh_token = create_refresh_token(data=claims)
 
     return Token(
         access_token=access_token,
@@ -205,9 +208,19 @@ async def refresh_token(token_data: TokenRefresh, db: Session = Depends(get_db))
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Reject refresh tokens minted before a token_version bump (restore,
+    # password reset, repeated failed admin step-ups).
+    if not token_version_matches(payload, user):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     # Create new tokens
-    access_token = create_access_token(data={"sub": user.id})
-    new_refresh_token = create_refresh_token(data={"sub": user.id})
+    claims = user_token_claims(user)
+    access_token = create_access_token(data=claims)
+    new_refresh_token = create_refresh_token(data=claims)
 
     return Token(
         access_token=access_token,

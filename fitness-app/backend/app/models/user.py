@@ -44,6 +44,16 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     is_deleted = Column(Boolean, default=False, nullable=False, server_default="false")
     deleted_at = Column(DateTime, nullable=True)
+    # ── Owner console (control-plane spec §4) ──
+    # Set only by the startup bootstrap (ADMIN_BOOTSTRAP_EMAIL); no request
+    # path may write it. Never declare it on a request schema.
+    is_admin = Column(Boolean, default=False, nullable=False, server_default="false")
+    # Embedded as ``ver`` in every token; bump to revoke all sessions.
+    token_version = Column(Integer, default=0, nullable=False, server_default="0")
+    # Admin login / step-up lockout counters (DB-backed because the slowapi
+    # limiter is per-process and resets on deploy).
+    admin_failed_logins = Column(Integer, default=0, nullable=False, server_default="0")
+    admin_locked_until = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 

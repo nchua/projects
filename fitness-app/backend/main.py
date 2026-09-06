@@ -66,18 +66,30 @@ if SENTRY_DSN:
 else:
     logger.info("SENTRY_DSN not set — Sentry disabled")
 
+from contextlib import asynccontextmanager  # noqa: E402
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    """Startup hook: admin bootstrap (control-plane spec §4.1). Never raises."""
+    from app.core.admin_bootstrap import run_startup_tasks
+
+    run_startup_tasks()
+    yield
+
+
 # Migrations run via Railway's startCommand (alembic upgrade head). We used to
 # re-run them here with a Base.metadata.create_all() fallback, which silently
 # masked schema drift and bypassed Alembic entirely — removed to make broken
 # migrations fail loudly.
-
 app = FastAPI(
+    lifespan=_lifespan,
     title=settings.APP_NAME,
     description="API for fitness tracking iOS app with workout logging, analytics, and progress tracking",
     version="0.1.0",
@@ -145,7 +157,10 @@ async def validation_exception_handler(request, exc):
     # password-strength validator), which JSONResponse can't serialize directly
     # — without this, a failed custom validator 500s instead of returning 422.
     errors = jsonable_encoder(exc.errors())
-    print(f"VALIDATION ERROR on {request.url.path}: {errors}", flush=True)
+    # Never log ``input``/``ctx``: they echo the submitted value (a rejected
+    # password, an admin reason) into Railway logs and Sentry breadcrumbs.
+    logged = [{k: v for k, v in e.items() if k not in ("input", "ctx")} for e in errors]
+    print(f"VALIDATION ERROR on {request.url.path}: {logged}", flush=True)
     return JSONResponse(
         status_code=422,
         content={"detail": errors},

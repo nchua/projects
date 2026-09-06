@@ -10,7 +10,7 @@ from slowapi import Limiter
 from starlette.requests import Request
 
 
-def _client_ip(request: Request) -> str:
+def client_ip(request: Request) -> str:
     """Best-effort true client IP honoring Railway's edge proxy.
 
     slowapi's default `get_remote_address` returns `request.client.host`,
@@ -47,7 +47,7 @@ def _client_ip(request: Request) -> str:
 # Single source of truth for rate-limit state.
 # TODO: in-memory storage is per-worker and resets on deploy. For real brute-force protection,
 # wire Redis via storage_uri="redis://...". Tracked in PR #8 review.
-limiter = Limiter(key_func=_client_ip)
+limiter = Limiter(key_func=client_ip)
 
 # Login brute-force protection — tight, because the attack shape is
 # per-account credential stuffing. Shared-NAT false positives are

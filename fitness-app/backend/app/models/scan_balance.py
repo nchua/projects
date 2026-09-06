@@ -31,7 +31,8 @@ class PurchaseRecord(Base):
     __tablename__ = "purchase_records"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    # Nullable: hard purge unlinks receipts instead of deleting them (spec §8.2).
+    user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
     product_id = Column(String, nullable=False)
     transaction_id = Column(String, nullable=False, unique=True)
     credits_added = Column(Integer, nullable=False, default=0)

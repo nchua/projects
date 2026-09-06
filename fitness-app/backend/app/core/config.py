@@ -42,6 +42,28 @@ class Settings(BaseSettings):
 
     # Scan balance (screenshot scanner monetization)
     FREE_MONTHLY_SCANS: int = Field(default=3)
+    # Scanner anti-abuse defaults (were module constants in api/screenshot.py;
+    # overridable per user through entitlements — control-plane spec §6.1).
+    DAILY_SCREENSHOT_LIMIT: int = Field(default=20)
+    COOLDOWN_SECONDS: int = Field(default=10)
+    # verify-purchase interim caps until App Store JWS verification ships (§6.5).
+    PURCHASE_MAX_CREDITS_PER_DAY: int = Field(default=100)
+    PURCHASE_MAX_VERIFICATIONS_PER_DAY: int = Field(default=5)
+
+    # ── Owner console / control plane (docs/arise-control-plane-spec.md) ──
+    # The only way an account becomes admin: the startup bootstrap promotes
+    # the existing, non-deleted account with this email (§4.1).
+    ADMIN_BOOTSTRAP_EMAIL: str = Field(default="")
+    # Where owner alerts (unlimited grants) go; falls back to the bootstrap email.
+    ADMIN_ALERT_EMAIL: str = Field(default="")
+    ADMIN_TOKEN_EXPIRE_MINUTES: int = Field(default=15)
+    ADMIN_LOCKOUT_THRESHOLD: int = Field(default=10)
+    ADMIN_LOCKOUT_MINUTES: int = Field(default=15)
+    ADMIN_STEP_UP_FAILURES_TO_REVOKE: int = Field(default=5)
+    # Hard-purge grace window; must match the /privacy promise (§8.2).
+    PURGE_GRACE_DAYS: int = Field(default=30)
+    # Deploy-time purge sweep (§8.3). Off by default; enable after a clean dry-run.
+    PURGE_SWEEP_ENABLED: bool = Field(default=False)
 
     # APNs push notifications
     APNS_KEY_ID: str = Field(default="")

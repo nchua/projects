@@ -10,15 +10,16 @@ JSON-compatible after that — logs in as the owner and POSTs the phases to
 credentials.
 
 Usage:
-    SEED_USER_EMAIL=... SEED_USER_PASSWORD=... \\
-    venv/bin/python scripts/import_training_calendar.py [--name NAME] \\
+    SEED_USER_EMAIL=... venv/bin/python scripts/import_training_calendar.py [--name NAME] \\
         [--start-date YYYY-MM-DD] [--goal TEXT] [--replace] [--dry-run]
 
+    Prompts for the owner password (not echoed) unless SEED_USER_PASSWORD is set.
     API_BASE_URL defaults to the Railway backend.
 """
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 import os
 import re
@@ -85,10 +86,18 @@ def main(argv: List[str] | None = None) -> int:
         return 0
 
     email = os.environ.get("SEED_USER_EMAIL")
-    password = os.environ.get("SEED_USER_PASSWORD")
-    if not email or not password:
-        print("Set SEED_USER_EMAIL and SEED_USER_PASSWORD in the environment.", file=sys.stderr)
+    if not email:
+        print("Set SEED_USER_EMAIL in the environment.", file=sys.stderr)
         return 2
+    # Never require the password on argv/env: prompt for it (not echoed) so it
+    # cannot land in a shell history or a session transcript (spec §11).
+    password = os.environ.get("SEED_USER_PASSWORD")
+    if not password:
+        if not sys.stdin.isatty():
+            print("Set SEED_USER_PASSWORD or run interactively to be prompted.", file=sys.stderr)
+            return 2
+        prompt = "Owner password (not echoed): "
+        password = getpass.getpass(prompt)
     base_url = os.environ.get("API_BASE_URL", DEFAULT_BASE_URL).rstrip("/")
 
     with httpx.Client(base_url=base_url, timeout=TIMEOUT) as client:

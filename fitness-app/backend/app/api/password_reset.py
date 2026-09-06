@@ -152,6 +152,8 @@ async def verify_password_reset(
 
     # Hash and update password
     user.password_hash = hash_password(verify_data.new_password)
+    # Invalidate every outstanding access/refresh token (control-plane spec §4.3).
+    user.token_version = (user.token_version or 0) + 1
     user.updated_at = datetime.now(timezone.utc)
 
     # Mark token as used

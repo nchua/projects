@@ -22,9 +22,9 @@ from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
-# Rate limiting constants
-DAILY_SCREENSHOT_LIMIT = 20
-COOLDOWN_SECONDS = 10
+# Rate-limit defaults live on ``settings`` (DAILY_SCREENSHOT_LIMIT,
+# COOLDOWN_SECONDS, FREE_MONTHLY_SCANS) and are overridable per user through
+# entitlements — see ``entitlement_service.effective_limits`` (spec §6.1).
 from app.schemas.screenshot import (
     ActivitySaveRequest,
     ActivitySaveResponse,
@@ -34,6 +34,8 @@ from app.schemas.screenshot import (
     ScreenshotBatchResponse,
     ScreenshotProcessResponse,
 )
+from app.services import entitlement_service
+from app.services.entitlement_service import ScanLimits
 from app.services.screenshot_service import (
     extract_workout_from_screenshot,
     merge_extractions,
@@ -42,47 +44,6 @@ from app.services.screenshot_service import (
 )
 
 router = APIRouter()
-
-
-def _get_or_create_balance(db: Session, user_id: str) -> ScanBalance:
-    """Get existing scan balance or create a new one with default free credits."""
-    balance = db.query(ScanBalance).filter(ScanBalance.user_id == user_id).first()
-    if not balance:
-        balance = ScanBalance(
-            user_id=user_id,
-            scan_credits=settings.FREE_MONTHLY_SCANS,
-            has_unlimited=False,
-            free_scans_reset_at=datetime.now(timezone.utc) + timedelta(days=30),
-        )
-        db.add(balance)
-        db.commit()
-        db.refresh(balance)
-    return balance
-
-
-def _apply_monthly_reset_if_needed(balance: ScanBalance) -> bool:
-    """
-    Apply the monthly free-scan reset to an already-locked balance row, if due.
-
-    Mutates `balance` in place but does NOT commit — the caller owns the
-    surrounding transaction. This is intentional: it must run inside the same
-    `FOR UPDATE` critical section as the deduction so two concurrent callers
-    cannot each commit a separate reset (which would double-credit the user).
-
-    Returns True if a reset was applied, False otherwise.
-    """
-    now = datetime.now(timezone.utc)
-    reset_at = ensure_utc(balance.free_scans_reset_at)
-    if reset_at and now >= reset_at:
-        balance.scan_credits += settings.FREE_MONTHLY_SCANS
-        # Advance the reset date forward until it is in the future. Using a
-        # local variable avoids repeated SQLAlchemy attribute round-trips.
-        new_reset_at = balance.free_scans_reset_at
-        while ensure_utc(new_reset_at) <= now:
-            new_reset_at = new_reset_at + timedelta(days=30)
-        balance.free_scans_reset_at = new_reset_at
-        return True
-    return False
 
 
 def _refund_scan_credits(db: Session, user_id: str, count: int) -> None:
@@ -165,12 +126,37 @@ def _refund_scan_credits_safe(
     return False
 
 
-def _check_screenshot_rate_limit(db: Session, user_id: str, screenshot_count: int = 1) -> None:
+def _assert_daily_cap(db: Session, user_id: str, screenshot_count: int, daily_limit: int) -> None:
+    """Raise 429 if ``screenshot_count`` more scans would exceed today's hard cap."""
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_usage = db.query(func.sum(ScreenshotUsage.screenshots_count)).filter(
+        ScreenshotUsage.user_id == user_id,
+        ScreenshotUsage.created_at >= today_start
+    ).scalar() or 0
+
+    if today_usage + screenshot_count > daily_limit:
+        resets_at = today_start + timedelta(days=1)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Daily limit reached. You've used {today_usage}/{daily_limit} screenshots today.",
+            headers={"Retry-After": str(int((resets_at - datetime.now(timezone.utc)).total_seconds()))}
+        )
+
+
+def _check_screenshot_rate_limit(
+    db: Session,
+    user_id: str,
+    screenshot_count: int = 1,
+    *,
+    limits: Optional[ScanLimits] = None,
+) -> None:
     """
     Check non-monetary rate limits (feature flag, daily abuse cap, cooldown).
 
     Does NOT check or deduct scan credits — that happens atomically in
-    `_reserve_scan_credits`. Raises HTTPException if limits are exceeded.
+    `_reserve_scan_credits`, which re-checks the daily cap under the row
+    lock (the pre-check here is a fast fail). Raises HTTPException if
+    limits are exceeded.
     """
     if not settings.SCREENSHOT_PROCESSING_ENABLED:
         raise HTTPException(
@@ -178,36 +164,32 @@ def _check_screenshot_rate_limit(db: Session, user_id: str, screenshot_count: in
             detail="Screenshot scanning temporarily unavailable"
         )
 
-    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    if limits is None:
+        limits = entitlement_service.effective_limits(db, user_id)
 
     # Check daily abuse limit (hard cap regardless of payment)
-    today_usage = db.query(func.sum(ScreenshotUsage.screenshots_count)).filter(
-        ScreenshotUsage.user_id == user_id,
-        ScreenshotUsage.created_at >= today_start
-    ).scalar() or 0
+    _assert_daily_cap(db, user_id, screenshot_count, limits.daily_limit)
 
-    if today_usage + screenshot_count > DAILY_SCREENSHOT_LIMIT:
-        resets_at = today_start + timedelta(days=1)
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Daily limit reached. You've used {today_usage}/{DAILY_SCREENSHOT_LIMIT} screenshots today.",
-            headers={"Retry-After": str(int((resets_at - datetime.now(timezone.utc)).total_seconds()))}
-        )
-
-    # Check cooldown (10 seconds between requests)
+    # Check cooldown between requests
     last_usage = db.query(ScreenshotUsage).filter(
         ScreenshotUsage.user_id == user_id
     ).order_by(ScreenshotUsage.created_at.desc()).first()
 
-    if last_usage and (datetime.now(timezone.utc) - ensure_utc(last_usage.created_at)).total_seconds() < COOLDOWN_SECONDS:
+    if last_usage and (datetime.now(timezone.utc) - ensure_utc(last_usage.created_at)).total_seconds() < limits.cooldown_seconds:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Please wait a few seconds between screenshot requests.",
-            headers={"Retry-After": str(COOLDOWN_SECONDS)}
+            headers={"Retry-After": str(limits.cooldown_seconds)}
         )
 
 
-def _reserve_scan_credits(db: Session, user_id: str, count: int = 1) -> bool:
+def _reserve_scan_credits(
+    db: Session,
+    user_id: str,
+    count: int = 1,
+    *,
+    limits: Optional[ScanLimits] = None,
+) -> bool:
     """
     Atomically check balance and reserve (deduct) `count` credits.
 
@@ -225,9 +207,12 @@ def _reserve_scan_credits(db: Session, user_id: str, count: int = 1) -> bool:
         True if credits were reserved (including unlimited users).
         False if the user has insufficient credits — caller should 402.
     """
-    # Ensure a balance row exists before taking the row lock. Row creation
-    # commits on its own (happens at most once per user).
-    _get_or_create_balance(db, user_id)
+    # Resolve per-user limits BEFORE taking the lock (one indexed query; a
+    # stale read costs at most one scan). Ensure a balance row exists before
+    # taking the row lock — creation commits on its own (once per user).
+    if limits is None:
+        limits = entitlement_service.effective_limits(db, user_id)
+    entitlement_service.get_or_create_balance(db, user_id, free_monthly=limits.free_monthly)
 
     # Re-query under row lock to prevent read/modify/write race. The monthly
     # reset is applied INSIDE this locked section so two concurrent
@@ -240,13 +225,17 @@ def _reserve_scan_credits(db: Session, user_id: str, count: int = 1) -> bool:
         .first()
     )
     if locked_balance is None:
-        # Should not happen — _get_or_create_balance just created it.
+        # Should not happen — get_or_create_balance just created it.
         return False
+
+    # Authoritative daily-cap check under the lock: two concurrent scans
+    # can both pass the unlocked pre-check in _check_screenshot_rate_limit.
+    _assert_daily_cap(db, user_id, count, limits.daily_limit)
 
     # Apply monthly reset if due. Mutates the locked row without committing;
     # the same transaction that will do the deduction (or the caller's
     # rollback) also persists/reverts the reset.
-    _apply_monthly_reset_if_needed(locked_balance)
+    entitlement_service.apply_monthly_reset(locked_balance, limits.free_monthly)
 
     if locked_balance.has_unlimited:
         db.flush()
@@ -320,7 +309,8 @@ async def process_screenshot(
         HTTPException: If file type is invalid, file is too large, or processing fails
     """
     # Non-monetary rate limiting (feature flag, daily cap, cooldown)
-    _check_screenshot_rate_limit(db, current_user.id, screenshot_count=1)
+    limits = entitlement_service.effective_limits(db, current_user.id)
+    _check_screenshot_rate_limit(db, current_user.id, screenshot_count=1, limits=limits)
 
     import sys
     # Read first few bytes to check actual file format
@@ -353,7 +343,7 @@ async def process_screenshot(
     # Atomic credit reservation + processing + usage record. Everything runs
     # inside a single transaction so a failure rolls back the deduction.
     try:
-        reserved = _reserve_scan_credits(db, current_user.id, count=1)
+        reserved = _reserve_scan_credits(db, current_user.id, count=1, limits=limits)
         if not reserved:
             # Abandon the transaction opened by _reserve_scan_credits (no
             # mutations persisted since we short-circuit before flush).
@@ -554,7 +544,8 @@ async def process_screenshots_batch(
         )
 
     # Non-monetary rate limiting (feature flag, daily cap, cooldown)
-    _check_screenshot_rate_limit(db, current_user.id, screenshot_count=len(files))
+    limits = entitlement_service.effective_limits(db, current_user.id)
+    _check_screenshot_rate_limit(db, current_user.id, screenshot_count=len(files), limits=limits)
 
     if len(files) > 10:
         raise HTTPException(
@@ -593,7 +584,7 @@ async def process_screenshots_batch(
     # Successful-but-partial batches are reconciled via a best-effort
     # refund in a separate short transaction below.
     try:
-        reserved = _reserve_scan_credits(db, current_user.id, count=len(files))
+        reserved = _reserve_scan_credits(db, current_user.id, count=len(files), limits=limits)
         if not reserved:
             db.rollback()
             raise HTTPException(

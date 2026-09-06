@@ -7,6 +7,8 @@ import os
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Content, Email, Mail, To
 
+from app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
@@ -100,11 +102,34 @@ def send_password_reset_email(to_email: str, code: str) -> bool:
         html_content=Content("text/html", html_content)
     )
 
+    return _send(message, "password reset email")
+
+
+def send_owner_alert(subject: str, body: str) -> bool:
+    """Best-effort plain-text alert to the owner (control-plane spec §6.5).
+
+    Recipient is ``ADMIN_ALERT_EMAIL``, falling back to ``ADMIN_BOOTSTRAP_EMAIL``.
+    Returns False (and logs) instead of raising when unconfigured or failing.
+    """
+    to_email = (settings.ADMIN_ALERT_EMAIL or settings.ADMIN_BOOTSTRAP_EMAIL or "").strip()
+    if not SENDGRID_API_KEY or not to_email:
+        logger.info("owner alert skipped (SendGrid or recipient not configured): %s", subject)
+        return False
+    message = Mail(
+        from_email=Email(SENDGRID_FROM_EMAIL, "ARISE System"),
+        to_emails=To(to_email),
+        subject=f"[ARISE] {subject}",
+        plain_text_content=Content("text/plain", body),
+    )
+    return _send(message, "owner alert")
+
+
+def _send(message: Mail, label: str) -> bool:
+    """Send via SendGrid; log outcome by label only (never the recipient). Never raises."""
     try:
-        sg = SendGridAPIClient(SENDGRID_API_KEY)
-        response = sg.send(message)
-        logger.info(f"Password reset email sent to {to_email}, status: {response.status_code}")
+        response = SendGridAPIClient(SENDGRID_API_KEY).send(message)
+        logger.info("%s sent, status: %s", label, response.status_code)
         return response.status_code in (200, 202)
-    except Exception as e:
-        logger.error(f"Failed to send password reset email to {to_email}: {e}")
+    except Exception as e:  # noqa: BLE001 - email must never break the request
+        logger.error("%s failed: %s", label, e)
         return False

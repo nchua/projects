@@ -207,7 +207,8 @@ no `ver` is treated as 0, so every existing token keeps working until the first 
 
 Bumps: **restore** (kills refresh tokens minted before deletion, which `/auth/refresh` would
 otherwise honour for 30 days — it only checks `is_deleted`, `auth.py:201`), **five failed
-step-ups**, and a future "log out everywhere". `SECRET_KEY` rotation is **not** a revocation
+step-ups**, **a completed password reset** (every device is logged out after a reset), and a
+future "log out everywhere". `SECRET_KEY` rotation is **not** a revocation
 mechanism: it also bricks every stored WHOOP token (`app/core/crypto.py:8-10`).
 
 ### 4.4 Lockout
@@ -244,7 +245,7 @@ admin token and — for mutations — a reason.
 | Column | Type | Notes |
 |---|---|---|
 | `id` | String PK (uuid4) | |
-| `actor_user_id` | String FK `users.id` `ondelete=SET NULL`, nullable | NULL = system (bootstrap, sweep) |
+| `actor_user_id` | String, nullable, **not an FK** | NULL = system (bootstrap, sweep); a purged actor's id stays in the trail, and a SET NULL cascade would itself be an UPDATE the trigger rejects |
 | `action` | String, indexed | dotted verbs: `session.create`, `admin.bootstrap`, `credits.adjust`, `entitlement.grant`, `entitlement.revoke`, `product.upsert`, `campaign.import`, `maintenance.family_backfill`, `maintenance.seed_achievements`, `maintenance.purge_sweep`, `user.soft_delete`, `user.restore`, `user.purge` |
 | `target_type` | String | `user` / `product` / `entitlement` / `campaign` / `system` |
 | `target_id` | String, nullable, **not an FK** | survives purge — the trail outlives the row |
@@ -372,11 +373,15 @@ because today's users are trusted. Interim controls shipped in W0:
 
 - per-user caps inside `verify_purchase`: ≤ 100 credits per 24 h, at most one unlimited grant
   ever (a second unlimited transaction id → 409, logged);
-- `@limiter.limit("5/day")` keyed by user id on the route;
+- at most 5 verifications per user per 24 h, counted from `purchase_records` in the DB rather
+  than a slowapi limit (the in-memory limiter is per-process and resets on deploy);
 - reject a non-numeric `transaction_id` (StoreKit ids are integers);
 - email the owner on every unlimited grant via the existing SendGrid service
   (`app/services/email_service.py`);
 - iOS starts passing `verification.jwsRepresentation` now, so the follow-up is server-only.
+
+All caps are evaluated **after** taking the balance row lock, so concurrent calls with distinct
+fabricated ids are serialised per user instead of each seeing zero prior purchases.
 
 The console's Purchases card shows every row (product, credits, date, truncated transaction
 id) so fabricated ids are visible next to the entitlement they produced.
@@ -472,11 +477,11 @@ device_tokens · notification_preferences · whoop_connections · friend_request
 friendships (both) · user_profiles → users
 ```
 
-Two exceptions survive: **`admin_audit_log`** (`target_id` is a string; `actor_user_id` SET
-NULL) and **`purchase_records`**, whose `user_id` becomes nullable and is **SET NULL** rather than
+Two exceptions survive: **`admin_audit_log`** (neither `actor_user_id` nor `target_id` is an
+FK, so purge never touches it) and **`purchase_records`**, whose `user_id` becomes nullable and is **SET NULL** rather than
 deleted — refund disputes cite transaction ids and Apple holds the receipts. Response
 `{tables: {name: rows}}`; audit `before` = those counts. A metadata test asserts every table with
-an FK to `users.id` appears in `PURGE_ORDER` (exempting the audit actor FK), so a future table
+an FK to `users.id` appears in `PURGE_ORDER`, so a future table
 cannot be forgotten silently; the seeded end-to-end purge test is the guard on *order*. Verify
 while building: `create_workout` must never let user B reference user A's custom exercise, or
 deleting A's exercises cascades into B's `workout_exercises`
@@ -854,7 +859,7 @@ second agent against the frozen W1/W2 contracts.
 - [ ] Admin token ≤ 15 min, no refresh, `ver` claim, JS memory only.
 - [ ] Every destructive action re-verifies the password and requires a reason; purge also requires `confirm_email`.
 - [ ] Every mutation is single-target; backfill and sweep are dry-run by default.
-- [ ] Audit row in the same transaction; `target_id` non-FK; allow-listed before/after; PG trigger.
+- [ ] Audit row in the same transaction; neither audit id column is an FK; allow-listed before/after; PG trigger.
 - [ ] Response schemas are explicit allow-lists; audit JSON and logs carry ids only.
 - [ ] Restore bumps `token_version`; `/auth/refresh` checks `ver`.
 - [ ] Admin UI files are static, `no-store`, `X-Frame-Options: DENY`, CSP without `'unsafe-inline'`; `/admin/*` hidden from OpenAPI.
@@ -889,3 +894,12 @@ second agent against the frozen W1/W2 contracts.
   files on one `StaticFiles` mount (CSP without `'unsafe-inline'`); `sort`/`order` added to
   `GET /admin/users`; a desktop readability criterion added to W3 and §17; mockup redone at
   1280 px with one phone-lane frame.
+
+- **v1.2 (2026-09-06, W0 build):** amendments from the W0 `/evaluate` pass. `admin_audit_log.actor_user_id`
+  is a plain string, not an FK — the SET NULL cascade would have been an UPDATE the append-only
+  trigger rejects, and the trail should keep the actor id after a purge. Purchase caps are checked
+  under the balance lock; the 5/day cap is a DB count, not a slowapi limit. A completed password
+  reset bumps `token_version`. `get_or_create_balance` gains `commit=False` for callers inside a
+  transaction so `grant`/`revoke` never commit underneath the audit row. The break-glass
+  `grant_owner_unlimited_scans.py` now grants through `entitlement_service` and audits as the
+  system actor; `import_training_calendar.py` prompts for the password with `getpass`.

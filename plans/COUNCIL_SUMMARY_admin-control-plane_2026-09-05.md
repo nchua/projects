@@ -27,7 +27,7 @@ Give the ARISE owner one place — a phone-and-laptop web console served by the 
 **Revocation:** `users.token_version` int, embedded as `ver` in all tokens (missing ⇒ 0); checked in `get_current_user`, `/auth/refresh`, `require_admin`. Restore bumps it; 5 failed step-ups bump it.
 **Lockout:** `users.admin_failed_logins` + `admin_locked_until` (10 failures → 15 min), counted only on bad-password 401s; break-glass SQL documented.
 **Step-up:** `verify_step_up(db, actor, password)` called first in every destructive service function; bodies inherit `StepUpBody{password, reason}`; purge adds `confirm_email`.
-**Audit:** `admin_audit_log` (actor FK SET NULL, `target_id` non-FK string, allow-listed before/after JSON, reason, request_id, ip, idempotency_key + body_sha256, created_at); same transaction as the change; Postgres BEFORE UPDATE/DELETE trigger, dialect-guarded; only `GET /admin/audit`.
+**Audit:** `admin_audit_log` (`actor_user_id` and `target_id` plain strings, not FKs — a SET NULL cascade would trip the trigger, allow-listed before/after JSON, reason, request_id, ip, idempotency_key + body_sha256, created_at); same transaction as the change; Postgres BEFORE UPDATE/DELETE trigger, dialect-guarded; only `GET /admin/audit`.
 **Entitlements:** `user_entitlements` (key, value JSON, source purchase|admin_grant|backfill, granted_by, purchase_record_id, expires_at, revoked_at). `scan_balances.has_unlimited` stays a cached column with one writer `sync_unlimited_flag()` run inside the balance `FOR UPDATE`. Keys: `scans.unlimited`, `scans.daily_limit`, `scans.cooldown_seconds`, `scans.free_monthly`. `effective_limits()` overlays overrides on `Settings` defaults.
 **Products:** `products` table seeded from `PRODUCT_CREDITS`; id immutable; no delete; deactivate is destructive-tier.
 **Purchases interim controls:** per-user cap (100 credits/24h, one unlimited grant ever), `5/day` limit, numeric `transaction_id`, owner email on unlimited grant, iOS starts sending `jwsRepresentation`. Full JWS verification = separate follow-up.
@@ -46,7 +46,7 @@ Give the ARISE owner one place — a phone-and-laptop web console served by the 
 - Campaign import with the committed template reproduces the script's result (3 arcs, 21 templates, 0 warnings); 409 without `replace`; replace records `planned_hunts_deleted`.
 - Backfill dry-run writes nothing and returns unresolved names; apply twice → 0 updates.
 - Soft-delete → next user request 401; restore → login 200 and old refresh tokens 401 (`token_version`).
-- Purge inside grace → 409; `force` + reason + password + `confirm_email` → 200; audit row survives; metadata test covers every FK to `users.id`.
+- Purge inside grace → 409; `force` + reason + password + `confirm_email` → 200; audit row survives (no FK to purge through); metadata test covers every FK to `users.id`.
 - Reason mandatory (422 blank); console disables Confirm until typed.
 - Console: login → grant → `∞` in under a minute on iOS Safari; no inline handlers; 44px targets.
 - Ship gates: ruff, pytest, single alembic head, Railway SUCCESS.

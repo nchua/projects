@@ -10,17 +10,19 @@ Covers:
 - Monthly free-scan reset: expired free_scans_reset_at re-credits
   FREE_MONTHLY_SCANS and advances the reset date in 30-day steps past now,
   both on GET /scan-balance and inside the /screenshot/process credit
-  reservation (_apply_monthly_reset_if_needed).
+  reservation (entitlement_service.apply_monthly_reset).
 """
 import uuid
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
-from app.api.scan_balance import PRODUCT_CREDITS, UNLIMITED_PRODUCT_ID
 from app.core.config import settings
 from app.models.scan_balance import PurchaseRecord, ScanBalance
+from app.services.entitlement_service import DEFAULT_PRODUCTS, UNLIMITED_PRODUCT_ID
 
 SCAN_20_PRODUCT_ID = "com.nickchua.fitnessapp.scan_20"
+# Catalog now lives in the products table; mirror it for the assertions below.
+PRODUCT_CREDITS = {p["id"]: p["credits"] for p in DEFAULT_PRODUCTS}
 
 
 def _parse_utc(value: str) -> datetime:
@@ -56,7 +58,7 @@ class TestVerifyPurchase:
         response = client.post(
             "/scan-balance/verify-purchase",
             headers=headers,
-            json={"transaction_id": "txn-scan20-1", "product_id": SCAN_20_PRODUCT_ID},
+            json={"transaction_id": "1000000001", "product_id": SCAN_20_PRODUCT_ID},
         )
 
         assert response.status_code == 200, response.text
@@ -70,7 +72,7 @@ class TestVerifyPurchase:
         """App Store retries replay the same transaction_id — the second call
         must be a no-op (credits_added=0, balance unchanged)."""
         headers, user = auth_headers(email="retry-txn@example.com")
-        payload = {"transaction_id": "txn-retry-1", "product_id": SCAN_20_PRODUCT_ID}
+        payload = {"transaction_id": "1000000002", "product_id": SCAN_20_PRODUCT_ID}
 
         first = client.post("/scan-balance/verify-purchase", headers=headers, json=payload)
         assert first.status_code == 200
@@ -89,7 +91,7 @@ class TestVerifyPurchase:
         response = client.post(
             "/scan-balance/verify-purchase",
             headers=headers,
-            json={"transaction_id": "txn-bogus-1", "product_id": "com.bogus.not_a_product"},
+            json={"transaction_id": "1000000003", "product_id": "com.bogus.not_a_product"},
         )
 
         assert response.status_code == 400
@@ -101,7 +103,7 @@ class TestVerifyPurchase:
         response = client.post(
             "/scan-balance/verify-purchase",
             headers=headers,
-            json={"transaction_id": "txn-unlimited-1", "product_id": UNLIMITED_PRODUCT_ID},
+            json={"transaction_id": "1000000004", "product_id": UNLIMITED_PRODUCT_ID},
         )
 
         assert response.status_code == 200, response.text
@@ -170,7 +172,7 @@ class TestMonthlyFreeScanReset:
         self, client, db, auth_headers, seed_scan_balance, mock_anthropic,
         png_bytes, anthropic_api_key
     ):
-        """_apply_monthly_reset_if_needed runs inside the credit reservation,
+        """apply_monthly_reset runs inside the credit reservation,
         so a 0-credit user whose reset elapsed can scan without first
         touching GET /scan-balance."""
         headers, user = auth_headers(email="reset-scan@example.com")

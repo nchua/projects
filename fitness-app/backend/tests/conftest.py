@@ -22,6 +22,11 @@ import pytest
 # xdist-safe (each worker gets its own process + its own in-memory DB) and
 # leaves no stale `.test.db` file between runs.
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+# Control-plane startup hooks must be inert in tests, whatever backend/.env
+# says: the lifespan runs on every TestClient enter and would otherwise open
+# a second session on the shared StaticPool connection.
+os.environ["ADMIN_BOOTSTRAP_EMAIL"] = ""
+os.environ["PURGE_SWEEP_ENABLED"] = "false"
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-testing-only")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-testing-only")
 
@@ -104,8 +109,26 @@ def _families(_schema):
     yield
 
 
+@pytest.fixture(scope="session")
+def _products(_schema):
+    """Seed the product catalog once per session (control-plane spec §6.4).
+
+    Prod gets the rows from the ``admin_seed_backfill`` migration; the test
+    schema comes from create_all, so seed here.
+    """
+    from app.services.entitlement_service import ensure_products
+
+    session = _TestSessionLocal()
+    try:
+        ensure_products(session)
+        session.commit()
+    finally:
+        session.close()
+    yield
+
+
 @pytest.fixture
-def db(_families) -> Session:
+def db(_families, _products) -> Session:
     """
     Yield a Session wrapped in a SAVEPOINT-style transaction that is rolled
     back at the end of each test, giving full isolation without recreating
@@ -201,6 +224,33 @@ def auth_headers(client: TestClient, create_test_user):
         response = client.post("/auth/login", json={"email": email, "password": pwd})
         assert response.status_code == 200, f"Login failed: {response.json()}"
         token = response.json()["access_token"]
+        return {"Authorization": f"Bearer {token}"}, user
+
+    return _auth
+
+
+@pytest.fixture
+def admin_user(db: Session, create_test_user):
+    """Factory: a real user with ``is_admin=True`` (set directly — no request
+    path may do this). Returns (user, plain_password)."""
+    def _make(email: str = "owner@example.com", password: str = "TestPass123!") -> Tuple:
+        user, pwd = create_test_user(email=email, password=password)
+        user.is_admin = True
+        db.commit()
+        db.refresh(user)
+        return user, pwd
+
+    return _make
+
+
+@pytest.fixture
+def admin_headers(admin_user):
+    """Factory: admin user + Bearer admin-token headers. Returns (headers, user)."""
+    from app.core.security import create_admin_token
+
+    def _auth(email: str = "owner@example.com", password: str = "TestPass123!") -> Tuple:
+        user, _ = admin_user(email=email, password=password)
+        token, _ = create_admin_token(user)
         return {"Authorization": f"Bearer {token}"}, user
 
     return _auth
