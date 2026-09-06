@@ -28,6 +28,11 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import httpx
+from dotenv import load_dotenv
+
+# Same convention as the other owner scripts: SEED_USER_EMAIL (and DATABASE_URL)
+# come from backend/.env; SEED_USER_PASSWORD is passed on the command line.
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 DEFAULT_BASE_URL = "https://backend-production-e316.up.railway.app"
 DATA_JS = Path(__file__).resolve().parents[3] / "training-calendar" / "data.js"
