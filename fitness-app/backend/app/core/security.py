@@ -216,6 +216,7 @@ def decode_admin_token(token: str) -> Optional[Dict[str, Any]]:
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM],
             audience=ADMIN_AUDIENCE,
+            options={"require_exp": True},
         )
     except JWTError:
         return None

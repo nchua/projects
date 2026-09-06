@@ -212,12 +212,16 @@ def compute_condition(
     user_id: str,
     client_date: Optional[date] = None,
     user_age: Optional[int] = None,
+    *,
+    load_state: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Compute the Hunter Condition payload (spec §4.3 shape).
 
     Returns the full response dict: score, band, generated_at, per-input
     breakdown (with post-renormalization ``effective_weight``), and the
-    ``muscles_cooling`` pass-through for the detail sheet.
+    ``muscles_cooling`` pass-through for the detail sheet. Pass ``load_state``
+    (a ``get_load_state`` / ``read_load_state`` result) to reuse one the
+    caller already holds instead of reading it again.
     """
     today = client_date or date.today()
 
@@ -254,7 +258,9 @@ def compute_condition(
 
     # 4. Training-load ratio — acute vs chronic total load (v3 §6.5).
     # Unavailable (renormalized away) until 28 days of history.
-    load_ratio = get_load_state(db, user_id, today).get("total_acwr")
+    if load_state is None:
+        load_state = get_load_state(db, user_id, today)
+    load_ratio = load_state.get("total_acwr")
     if load_ratio is not None:
         inputs["load_ratio"] = (float(load_ratio), _load_ratio_subscore(float(load_ratio)), "app")
     else:

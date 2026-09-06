@@ -18,6 +18,21 @@ def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
     return dt
 
 
+def utcnow() -> datetime:
+    """Timezone-aware UTC now (the one spelling, instead of per-module ``_utcnow``)."""
+    return datetime.now(timezone.utc)
+
+
+def to_naive_utc(dt: datetime) -> datetime:
+    """A naive UTC instant for SQL comparisons against ``DateTime`` columns.
+
+    SQLite stores naive values and the Postgres columns are ``timestamp
+    without time zone``, so binding an aware datetime would be interpreted
+    in the connection's timezone.
+    """
+    return dt.astimezone(timezone.utc).replace(tzinfo=None) if dt.tzinfo else dt
+
+
 def to_iso8601_utc(dt: Optional[Union[datetime, date]]) -> Optional[str]:
     """
     Convert datetime/date to ISO8601 string.

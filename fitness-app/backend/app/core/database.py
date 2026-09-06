@@ -1,9 +1,9 @@
 """
 Database connection and session management
 """
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
 
@@ -39,3 +39,15 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def mark_read_only(db: Session) -> None:
+    """Make the rest of this transaction read-only where the dialect supports it.
+
+    Postgres allows switching a transaction *to* read-only at any point (only
+    the reverse is restricted), so this is safe after earlier reads in the
+    same request. No-op on SQLite. Any accidental write then fails loudly
+    instead of silently persisting.
+    """
+    if db.get_bind().dialect.name == "postgresql":
+        db.execute(text("SET LOCAL transaction_read_only = on"))

@@ -57,11 +57,20 @@ def add_lift(
     duration_minutes: int = 60,
     name: Optional[str] = None,
     unit: WeightUnit = WeightUnit.LB,
+    instant: Optional[datetime] = None,
+    stamp_local: bool = True,
+    **fields: Any,
 ) -> WorkoutSession:
-    """A strength session on ``day`` (local) with the given exercises/sets."""
+    """A strength session on ``day`` (local) with the given exercises/sets.
+
+    ``instant`` overrides the stored ``date`` (default 10:00 on ``day``);
+    ``stamp_local=False`` leaves ``local_date`` NULL to model a legacy row.
+    Extra ``fields`` go straight onto the ``WorkoutSession``.
+    """
     session = WorkoutSession(
-        user_id=user_id, date=datetime.combine(day, time(10, 0)), local_date=day,
-        duration_minutes=duration_minutes, name=name,
+        user_id=user_id, date=instant or datetime.combine(day, time(10, 0)),
+        local_date=day if stamp_local else None,
+        duration_minutes=duration_minutes, name=name, **fields,
     )
     db.add(session)
     db.flush()
@@ -83,11 +92,26 @@ def add_lift(
     return session
 
 
-def add_run(db, user_id: str, day: date, miles: float, *, activity: str = "Outdoor Run") -> WorkoutSession:
-    session = WorkoutSession(
-        user_id=user_id, date=datetime.combine(day, time(7, 0)), local_date=day,
+def add_run(
+    db,
+    user_id: str,
+    day: date,
+    miles: float,
+    *,
+    activity: str = "Outdoor Run",
+    instant: Optional[datetime] = None,
+    stamp_local: bool = True,
+    **fields: Any,
+) -> WorkoutSession:
+    """A cardio session of ``miles`` on ``day``; same ``instant``/``stamp_local`` knobs as ``add_lift``."""
+    values: Dict[str, Any] = dict(
         duration_minutes=int(miles * 10), duration_seconds=int(miles * 600),
         activity_type=activity, distance_meters=miles * 1609.344, hr_source="apple_watch",
+    )
+    values.update(fields)
+    session = WorkoutSession(
+        user_id=user_id, date=instant or datetime.combine(day, time(7, 0)),
+        local_date=day if stamp_local else None, **values,
     )
     db.add(session)
     db.commit()

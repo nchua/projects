@@ -99,7 +99,8 @@ def validate_grant(key: str, value: Any) -> None:
             raise ValueError(f"{key} expects a non-negative integer")
 
 
-def _is_active(row: UserEntitlement, now: datetime) -> bool:
+def is_active(row: UserEntitlement, now: datetime) -> bool:
+    """True when ``row`` is unrevoked and unexpired at ``now`` (the §6.1 active rule)."""
     if row.revoked_at is not None:
         return False
     expires = ensure_utc(row.expires_at)
@@ -123,7 +124,7 @@ def active_entitlements(db: Session, user_id: str, keys: Iterable[str]) -> List[
         .order_by(UserEntitlement.created_at.desc(), UserEntitlement.id.desc())
         .all()
     )
-    return [row for row in rows if _is_active(row, now)]
+    return [row for row in rows if is_active(row, now)]
 
 
 def list_entitlements(db: Session, user_id: str) -> List[UserEntitlement]:

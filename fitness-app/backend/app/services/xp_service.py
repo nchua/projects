@@ -237,10 +237,22 @@ def award_xp(
     }
 
 
-def get_user_progress_summary(db: Session, user_id: str) -> Dict[str, Any]:
-    """Get user's current progress summary for display"""
-    progress = get_or_create_user_progress(db, user_id)
-
+def summarize_progress(progress: Optional[UserProgress]) -> Dict[str, Any]:
+    """Display summary of a progress row; ``None`` (never trained) → level-1 defaults."""
+    if progress is None:
+        return {
+            "total_xp": 0,
+            "level": 1,
+            "rank": HunterRank.E.value,
+            "current_streak": 0,
+            "longest_streak": 0,
+            "total_workouts": 0,
+            "total_volume_lb": 0,
+            "total_prs": 0,
+            "xp_to_next_level": xp_to_next_level(1, 0),
+            "level_progress": level_progress(1, 0),
+            "last_workout_date": None,
+        }
     return {
         "total_xp": progress.total_xp,
         "level": progress.level,
@@ -254,3 +266,15 @@ def get_user_progress_summary(db: Session, user_id: str) -> Dict[str, Any]:
         "level_progress": level_progress(progress.level, progress.total_xp),
         "last_workout_date": to_iso8601_utc(progress.last_workout_date)
     }
+
+
+def get_user_progress_summary(db: Session, user_id: str) -> Dict[str, Any]:
+    """Get user's current progress summary for display (creates the row if missing)."""
+    return summarize_progress(get_or_create_user_progress(db, user_id))
+
+
+def read_user_progress_summary(db: Session, user_id: str) -> Dict[str, Any]:
+    """``get_user_progress_summary`` without create-on-read (owner-console reads)."""
+    return summarize_progress(
+        db.query(UserProgress).filter(UserProgress.user_id == user_id).first()
+    )

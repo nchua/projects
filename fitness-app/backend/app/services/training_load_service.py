@@ -26,7 +26,7 @@ from __future__ import annotations
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import and_, func, or_
+from sqlalchemy import Date, and_, func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.exertion import ZONE_WEIGHTS
@@ -107,6 +107,17 @@ def local_day(local_date: Optional[date], instant: Optional[datetime]) -> Option
 def session_local_day(session: WorkoutSession) -> date:
     """``local_day`` for a ``WorkoutSession`` row."""
     return local_day(session.local_date, session.date)  # type: ignore[return-value]
+
+
+def local_day_sql():
+    """SQL twin of :func:`local_day`: ``coalesce(local_date, date(date))``.
+
+    ``date(instant)`` is the UTC calendar day, which is exactly what
+    ``derive_local_date(dt) or dt.date()`` yields for a NULL ``local_date``
+    (a midnight-stored instant's date part IS that day). Dialect-neutral:
+    both SQLite and Postgres have ``date()``.
+    """
+    return func.coalesce(WorkoutSession.local_date, func.date(WorkoutSession.date, type_=Date))
 
 
 def local_date_window_filter(start: Optional[date], end: Optional[date]):
@@ -593,27 +604,34 @@ def _series_point(row: DailyTrainingLoad) -> Dict[str, Any]:
     }
 
 
-def get_load_state(db: Session, user_id: str, as_of: date) -> Dict[str, Any]:
-    """The load state the guard, Condition and ``GET /load`` read (§15.4 shape).
+def _stored_load_row(db: Session, user_id: str, day: date) -> Optional[DailyTrainingLoad]:
+    return (
+        db.query(DailyTrainingLoad)
+        .filter(DailyTrainingLoad.user_id == user_id, DailyTrainingLoad.local_date == day)
+        .first()
+    )
 
-    Recomputes (and commits) when the ``as_of`` row is missing or older than
-    the newest session write; otherwise serves the stored rows.
+
+def read_load_state(db: Session, user_id: str, as_of: date) -> Dict[str, Any]:
+    """The stored load state on or before ``as_of`` — a pure read (§15.4 shape).
+
+    Serves the newest stored row on or before ``as_of`` (``as_of`` in the
+    result then names that row's day) and a cold-start state when the series
+    has never been computed. Owner-console reads call this directly;
+    :func:`get_load_state` refreshes first.
     """
     row = (
         db.query(DailyTrainingLoad)
-        .filter(DailyTrainingLoad.user_id == user_id, DailyTrainingLoad.local_date == as_of)
+        .filter(DailyTrainingLoad.user_id == user_id, DailyTrainingLoad.local_date <= as_of)
+        .order_by(DailyTrainingLoad.local_date.desc())
         .first()
     )
-    newest = _newest_session_update(db, user_id)
-    stale = row is None or (newest is not None and newest > ensure_utc(row.computed_at))
-    if stale:
-        recompute_daily_load(db, user_id, as_of=as_of)
-        db.commit()
-        row = (
-            db.query(DailyTrainingLoad)
-            .filter(DailyTrainingLoad.user_id == user_id, DailyTrainingLoad.local_date == as_of)
-            .first()
-        )
+    if row is not None:
+        as_of = row.local_date
+    else:
+        # Transient, never added: every column is None, so the ``or 0.0`` /
+        # ``band_for_acwr(None)`` fallbacks below produce the cold-start state.
+        row = DailyTrainingLoad()
 
     series_start = as_of - timedelta(days=SERIES_DAYS - 1)
     stored = {
@@ -651,6 +669,22 @@ def get_load_state(db: Session, user_id: str, as_of: date) -> Dict[str, Any]:
         "flags": list(row.flags or []),
         "series": series,
     }
+
+
+def get_load_state(db: Session, user_id: str, as_of: date) -> Dict[str, Any]:
+    """The load state the guard, Condition and ``GET /load`` read (§15.4 shape).
+
+    Recomputes (and commits) when the ``as_of`` row is missing or older than
+    the newest session write, then serves the stored rows via
+    :func:`read_load_state`.
+    """
+    row = _stored_load_row(db, user_id, as_of)
+    newest = _newest_session_update(db, user_id)
+    stale = row is None or (newest is not None and newest > ensure_utc(row.computed_at))
+    if stale:
+        recompute_daily_load(db, user_id, as_of=as_of)
+        db.commit()
+    return read_load_state(db, user_id, as_of)
 
 
 def guard_flags_for_date(db: Session, user_id: str, local_date: date) -> List[str]:

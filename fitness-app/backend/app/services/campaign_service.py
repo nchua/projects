@@ -916,6 +916,12 @@ def _future_planned(db: Session, campaign: Campaign, today: date, *, week_start:
     return q.order_by(PlannedHunt.date.asc()).all()
 
 
+def next_planned_hunt(db: Session, campaign: Campaign, today: date) -> Optional[PlannedHunt]:
+    """The first still-``planned`` hunt on or after ``today``, or None."""
+    hunts = _future_planned(db, campaign, today)
+    return hunts[0] if hunts else None
+
+
 def refresh_planned_hunts(db: Session, campaign: Campaign, hunts: Iterable[PlannedHunt]) -> List[str]:
     """Recompute arc/template/week target and re-prescribe; drop rows that no longer apply."""
     templates_by_arc = {arc.id: _templates_by_weekday(arc) for arc in campaign.arcs}

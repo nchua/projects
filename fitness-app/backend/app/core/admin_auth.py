@@ -13,6 +13,7 @@ function calls first (§4.5).
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, status
@@ -78,6 +79,11 @@ async def require_admin(
 
     request.state.audit_ip = client_ip(request)
     request.state.admin_actor_id = user.id
+    # ``GET /admin/me`` reports the token's expiry so the console can count down
+    # (``decode_admin_token`` requires ``exp``).
+    request.state.admin_token_expires_at = datetime.fromtimestamp(
+        int(payload["exp"]), tz=timezone.utc
+    )
     return user
 
 

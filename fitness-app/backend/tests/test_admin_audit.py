@@ -1,6 +1,7 @@
 """Audit helper: same-transaction rule, scrubbing, hashing, idempotency index (spec §5)."""
 import enum
 import os
+import uuid
 from datetime import datetime, timezone
 
 import pytest
@@ -109,3 +110,64 @@ def test_postgres_trigger_rejects_update_and_delete():
         with pytest.raises(Exception, match="append-only"):
             with engine.begin() as conn:
                 conn.execute(sa.text(stmt))
+
+
+class TestAuditRead:
+    """``GET /admin/audit`` — the only route under /admin/audit (spec §5, §13)."""
+
+    def test_lists_newest_first_with_filters_and_paging(self, client, db, admin_headers):
+        headers, owner = admin_headers(email="audit-read@example.com")
+        target = f"target-{uuid.uuid4().hex[:8]}"
+        first = audit(db, actor=owner, action="credits.adjust", target_type="user",
+                      target_id=target, before={"scan_credits": 1}, after={"scan_credits": 4},
+                      reason="first")
+        db.commit()
+        second = audit(db, actor=owner, action="entitlement.grant", target_type="user",
+                       target_id=target, reason="second")
+        audit(db, actor=None, action="maintenance.purge_sweep", target_type="system")
+        db.commit()
+
+        response = client.get("/admin/audit", headers=headers, params={"target_id": target})
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["total"] == 2
+        assert [row["id"] for row in body["items"]] == [second.id, first.id]
+        row = body["items"][1]
+        assert row["before"] == {"scan_credits": 1} and row["after"] == {"scan_credits": 4}
+        assert row["reason"] == "first" and row["actor_user_id"] == owner.id
+        assert set(row) == {
+            "id", "actor_user_id", "action", "target_type", "target_id", "before", "after",
+            "reason", "request_id", "ip", "idempotency_key", "created_at",
+        }
+        assert response.headers["cache-control"] == "no-store"
+
+        by_action = client.get("/admin/audit", headers=headers,
+                               params={"action": "credits.adjust", "target_id": target}).json()
+        assert [r["id"] for r in by_action["items"]] == [first.id]
+        by_actor = client.get("/admin/audit", headers=headers,
+                              params={"actor_user_id": owner.id, "target_type": "user"}).json()
+        assert {r["id"] for r in by_actor["items"]} >= {first.id, second.id}
+        system = client.get("/admin/audit", headers=headers, params={"target_type": "system"}).json()
+        assert all(r["actor_user_id"] is None for r in system["items"])
+
+        page = client.get("/admin/audit", headers=headers,
+                          params={"target_id": target, "limit": 1, "offset": 1}).json()
+        assert page["total"] == 2 and [r["id"] for r in page["items"]] == [first.id]
+
+    def test_session_create_row_carries_request_id_and_ip(self, client, admin_user):
+        user, pwd = admin_user(email="audit-sess@example.com")
+        minted = client.post("/admin/session", json={"email": user.email, "password": pwd},
+                             headers={"X-Request-ID": "audit-req-42",
+                                      "X-Forwarded-For": "198.51.100.7"})
+        token = minted.json()["admin_token"]
+        rows = client.get("/admin/audit", headers={"Authorization": f"Bearer {token}"},
+                          params={"actor_user_id": user.id, "action": "session.create"}).json()
+        assert rows["total"] == 1
+        assert rows["items"][0]["request_id"] == "audit-req-42"
+        assert rows["items"][0]["ip"] == "198.51.100.7"
+        assert rows["items"][0]["target_id"] == user.id
+
+    def test_only_get_is_routed(self, client, admin_headers):
+        headers, _ = admin_headers(email="audit-methods@example.com")
+        for method in ("POST", "PUT", "PATCH", "DELETE"):
+            assert client.request(method, "/admin/audit", headers=headers).status_code == 405

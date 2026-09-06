@@ -141,13 +141,23 @@ from fastapi.encoders import jsonable_encoder  # noqa: E402
 from fastapi.exceptions import RequestValidationError  # noqa: E402
 from starlette.exceptions import HTTPException as StarletteHTTPException  # noqa: E402
 
+from app.core.admin_headers import (  # noqa: E402
+    ADMIN_RESPONSE_HEADERS,
+    AdminResponseHeadersMiddleware,
+    is_admin_path,
+)
+
 
 def _error_headers(request: Request) -> dict:
-    """Propagate request id onto error responses."""
+    """Propagate request id onto error responses (+ the /admin headers, since
+    the 500 handler runs outside the middleware stack)."""
+    headers: dict = {}
     rid = getattr(getattr(request, "state", None), "request_id", None) or get_request_id()
-    if not rid or rid == "-":
-        return {}
-    return {REQUEST_ID_HEADER: rid}
+    if rid and rid != "-":
+        headers[REQUEST_ID_HEADER] = rid
+    if is_admin_path(request.url.path):
+        headers.update(ADMIN_RESPONSE_HEADERS)
+    return headers
 
 
 @app.exception_handler(RequestValidationError)
@@ -219,6 +229,10 @@ app.add_middleware(
 # decorators; the rate-limiting in this service runs through the decorators
 # and the RateLimitExceeded exception handler above.
 app.add_middleware(RequestIDMiddleware)
+
+# Owner console: no-store + X-Frame-Options on every /admin/* response,
+# including error bodies (control-plane spec §10.1).
+app.add_middleware(AdminResponseHeadersMiddleware)
 
 # Debug middleware to log all requests/responses
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
@@ -384,6 +398,7 @@ async def privacy_policy():
 # Import and include API routers
 from app.api import (
     activity,
+    admin,
     analytics,
     auth,
     bodyweight,
@@ -439,6 +454,11 @@ app.include_router(coach.router, prefix="/coach", tags=["Coach"])
 app.include_router(campaign.router, prefix="/campaign", tags=["Campaign"])
 app.include_router(hunts.router, prefix="/hunts", tags=["Hunts"])
 app.include_router(load.router, prefix="/load", tags=["Training Load"])
+
+# Owner console (control-plane spec §13): hidden from OpenAPI; the session
+# router has no admin dependency (it mints the token), the rest requires it.
+app.include_router(admin.session_router, prefix="/admin", include_in_schema=False)
+app.include_router(admin.router, prefix="/admin", include_in_schema=False)
 
 if __name__ == "__main__":
     import uvicorn
