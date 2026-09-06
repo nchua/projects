@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="dark">
-<title>ARISE Admin Control Plane — Mockup</title>
+<title>ARISE Admin Control Plane — Desktop Mockup</title>
 <style>
-/* Minimal Void tokens — mirrored from docs/mockups/arise-v3-mockup.html / ios Colors.swift */
+/* Minimal Void palette — mirrored from docs/mockups/arise-v3-mockup.html / ios Colors.swift */
 :root{
   --system-primary:#00D4FF;--system-primary-dim:#00A8CC;--success-green:#33FF88;--gold:#FFD700;--warning-red:#FF3333;
   --orange:#FF9500;--purple:#7B61FF;
@@ -22,502 +22,476 @@
 html{background:#050508}
 body{margin:0;font-family:var(--font-header);color:var(--text-primary);background:#050508;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
 button{-webkit-appearance:none;appearance:none;border:0;background:none;color:inherit;font:inherit;cursor:pointer;touch-action:manipulation;min-height:44px}
-button:active{transform:scale(.97)}
-button:disabled{opacity:.35;cursor:not-allowed}
+button:active{transform:scale(.97)} button:disabled{opacity:.35;cursor:not-allowed}
 button:focus-visible,input:focus-visible{outline:2px solid var(--system-primary);outline-offset:2px}
 input{-webkit-appearance:none;appearance:none;font:inherit;color:inherit}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
 
 /* ---- mockup chrome (not part of the product) ---- */
-.mock{position:sticky;top:0;z-index:40;background:rgba(5,5,8,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--glass-border);padding:12px 16px 10px}
+.mock{position:sticky;top:0;z-index:40;background:rgba(5,5,8,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--glass-border);padding:12px 18px 10px}
 .mock h1{margin:0;font-family:var(--font-mono);font-size:11px;letter-spacing:1.5px;color:var(--system-primary);text-transform:uppercase;display:flex;gap:8px;align-items:center}
 .mock h1::before{content:"◆";font-size:9px}
-.mock p{margin:6px 0 0;font-size:12px;line-height:1.5;color:var(--text-secondary);max-width:960px}
-.mock p b{color:var(--text-primary);font-weight:600}
-.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:6px 16px;margin:10px 0 8px;padding:0;list-style:none;max-width:1100px}
-.legend li{font-family:var(--font-mono);font-size:10px;color:var(--text-secondary);line-height:1.45}
-.legend li b{color:var(--text-primary);font-weight:600}
+.mock p{margin:6px 0 0;font-size:12px;line-height:1.5;color:var(--text-secondary);max-width:1100px} .mock p b{color:var(--text-primary);font-weight:600}
+.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:4px 18px;margin:10px 0 8px;padding:0;list-style:none;max-width:1280px}
+.legend li{font-family:var(--font-mono);font-size:10px;color:var(--text-secondary);line-height:1.45} .legend li b{color:var(--text-primary);font-weight:600}
 .scenes{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .scene{flex:none;min-height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--glass-border);background:var(--bg-card);font-family:var(--font-mono);font-size:9.5px;letter-spacing:.8px;color:var(--text-secondary);text-transform:uppercase}
 .scene:active{background:var(--primary-010);color:var(--system-primary)}
+.frames{display:flex;flex-direction:column;gap:40px;padding:26px 18px 80px;overflow-x:auto;align-items:flex-start}
+.frame{flex:none} .fr-label{font-family:var(--font-mono);font-size:9.5px;letter-spacing:1.5px;color:var(--text-muted);text-transform:uppercase;margin:0 4px 8px} .fr-label b{color:var(--system-primary);font-weight:600}
 
-/* ---- frame rail ---- */
-.frames{display:flex;gap:28px;overflow-x:auto;padding:22px 16px 60px;align-items:flex-start;scroll-snap-type:x proximity}
-.frame{flex:none;width:390px;scroll-snap-align:center}
-@media (max-width:480px){.frames{flex-direction:column;overflow:visible;align-items:center}.frame{width:min(390px,100%)}}
-.fr-label{font-family:var(--font-mono);font-size:9.5px;letter-spacing:1.5px;color:var(--text-muted);text-transform:uppercase;margin:0 6px 8px}
-.fr-label b{color:var(--system-primary);font-weight:600}
-.phone{background:var(--bg-void);border:1px solid rgba(255,255,255,.08);border-radius:30px;overflow:hidden;position:relative;box-shadow:0 20px 50px rgba(0,0,0,.6)}
-.phone::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(60% 40% at 50% 0%,rgba(0,212,255,.03),transparent 70%)}
-.status{display:flex;justify-content:space-between;padding:12px 24px 0;font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text-secondary)}
-.topbar{display:flex;align-items:center;gap:8px;padding:10px 16px 8px;border-bottom:1px solid var(--glass-border)}
-.brand{font-family:var(--font-header);font-weight:700;font-size:15px;letter-spacing:2px;color:#88DDFF}
-.brand i{font-style:normal;font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;color:var(--text-muted);margin-left:6px;font-weight:500}
-.topbar .sp{flex:1}
-.back{min-width:44px;min-height:44px;display:inline-flex;align-items:center;font-family:var(--font-mono);font-size:11px;color:var(--system-primary);letter-spacing:.5px;margin-left:-8px}
-.screen{padding:12px 14px 96px;position:relative;min-height:560px}
-.tabbar{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(5,1fr);background:rgba(10,10,15,.96);backdrop-filter:blur(10px);border-top:1px solid var(--glass-border);padding:6px 4px 18px}
-.tabbar button{display:flex;flex-direction:column;align-items:center;gap:3px;font-family:var(--font-mono);font-size:8px;letter-spacing:.8px;color:var(--text-muted);min-height:44px;justify-content:center}
-.tabbar button i{font-style:normal;font-size:15px;line-height:1}
-.tabbar button.on{color:var(--system-primary)}
+/* ---- browser wrapper + app shell ---- */
+.bw{width:1280px;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.08);box-shadow:0 24px 60px rgba(0,0,0,.6)}
+.bchrome{height:38px;background:#16161f;display:flex;align-items:center;gap:6px;padding:0 14px;border-bottom:1px solid var(--glass-border)}
+.bchrome i{width:10px;height:10px;border-radius:50%;background:#2c2c38;display:inline-block} .bchrome .url{margin-left:14px;flex:1;max-width:480px;background:#0d0d13;border-radius:6px;padding:5px 10px;font-family:var(--font-mono);font-size:10px;color:var(--text-muted)}
+.bbody{display:flex;min-height:800px;position:relative;background:var(--bg-void)}
+.bbody::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(60% 40% at 50% 0%,rgba(0,212,255,.025),transparent 70%)}
+.fold{position:absolute;left:220px;right:0;top:800px;border-top:1px dashed rgba(255,255,255,.14);pointer-events:none;z-index:3}
+.fold span{position:absolute;right:10px;top:-8px;font-family:var(--font-mono);font-size:8px;letter-spacing:1px;color:var(--text-muted);background:var(--bg-void);padding:0 6px}
+.rail{width:220px;flex:none;border-right:1px solid var(--glass-border);display:flex;flex-direction:column;padding:20px 14px 16px;position:relative;z-index:1;background:rgba(10,10,15,.6)}
+.wm{font-family:var(--font-header);font-weight:700;font-size:22px;letter-spacing:6px;color:#88DDFF;text-shadow:0 0 14px rgba(0,212,255,.3);padding-left:4px} .wm-s{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:var(--text-muted);margin:2px 0 16px;padding-left:4px}
+.rnav{display:flex;flex-direction:column;gap:2px;margin-top:12px}
+.rnav button{justify-content:flex-start;display:flex;gap:10px;align-items:center;padding:0 12px;border-radius:9px;font-family:var(--font-mono);font-size:11px;letter-spacing:.8px;color:var(--text-secondary);text-transform:uppercase;min-height:40px}
+.rnav button.on{color:var(--system-primary);background:var(--primary-010)}
+.rfoot{margin-top:auto;padding-top:14px;border-top:1px solid var(--glass-border);font-family:var(--font-mono);font-size:9.5px;color:var(--text-muted);display:flex;flex-direction:column;gap:5px}
+.rfoot .sess{color:var(--text-secondary);letter-spacing:1px} .rfoot .who{overflow:hidden;text-overflow:ellipsis}
+.content{flex:1;min-width:0;padding:22px 26px 40px;position:relative;z-index:1}
+.ph{display:flex;align-items:center;gap:12px;margin-bottom:14px} .ph h2{margin:0;font-weight:700;font-size:18px;letter-spacing:2px;text-transform:uppercase} .ph .sp{flex:1}
+.ph .cnt{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:.5px}
+
+/* ---- drawer (push, 420px) ---- */
+.drawer{width:420px;flex:none;border-left:1px solid var(--arise-border);background:var(--bg-elevated);padding:20px 22px 30px;position:relative;z-index:2;box-shadow:-20px 0 40px rgba(0,0,0,.45)}
+.drawer.danger{border-left-color:rgba(255,51,51,.4)}
+.drawer .sl{margin-top:0} .drawer.danger .sl{color:var(--warning-red)}
+.drawer .x{position:absolute;top:12px;right:12px;min-width:36px;min-height:36px;border-radius:8px;font-family:var(--font-mono);color:var(--text-muted);font-size:14px}
+.drawer .who{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin:-4px 0 12px}
 
 /* ---- shared vocabulary ---- */
-.sl{font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:1.5px;color:var(--text-secondary);text-transform:uppercase;display:flex;align-items:center;gap:8px;margin:18px 2px 8px}
-.sl .sp{flex:1}
-.sl .link{font-size:9.5px;color:var(--system-primary);min-height:44px;display:inline-flex;align-items:center;padding:0 4px;letter-spacing:.5px;font-weight:600}
+.sl{font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:1.5px;color:var(--text-secondary);text-transform:uppercase;display:flex;align-items:center;gap:8px;margin:0 2px 8px} .sl .sp{flex:1}
+.sl .link{font-size:9.5px;color:var(--system-primary);min-height:36px;display:inline-flex;align-items:center;padding:0 4px;letter-spacing:.5px;font-weight:600}
+.sl .ro{font-size:8.5px;color:var(--text-muted);font-weight:500;letter-spacing:1px}
 .card{background:var(--bg-card);border:1px solid var(--glass-border);border-radius:14px;padding:14px;position:relative;box-shadow:0 8px 20px rgba(0,212,255,.03)}
-.card+.card{margin-top:10px}
 .card.warn{border-color:rgba(255,149,0,.25)} .card.danger{border-color:rgba(255,51,51,.28)}
 .chip{font-family:var(--font-mono);font-size:8.5px;font-weight:600;letter-spacing:.6px;padding:3px 7px;border-radius:4px;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;text-transform:uppercase}
 .chip.cyan{color:var(--system-primary);background:var(--primary-010)} .chip.green{color:var(--success-green);background:rgba(51,255,136,.08)}
 .chip.gold{color:var(--gold);background:rgba(255,215,0,.08)} .chip.red{color:var(--warning-red);background:rgba(255,51,51,.10)}
-.chip.orange{color:var(--orange);background:rgba(255,149,0,.10)} .chip.purple{color:var(--purple);background:rgba(123,97,255,.12)}
-.chip.dim{color:var(--text-muted);background:var(--bg-input)}
-.mono{font-family:var(--font-mono)}
-.kv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:8px 0;font-family:var(--font-mono);font-size:10px;border-top:1px solid var(--glass-border)}
-.kv:first-of-type{border-top:0;padding-top:2px}
-.kv .k{color:var(--text-muted);letter-spacing:.5px} .kv .v{color:var(--text-primary);text-align:right}
+.chip.orange{color:var(--orange);background:rgba(255,149,0,.10)} .chip.purple{color:var(--purple);background:rgba(123,97,255,.12)} .chip.dim{color:var(--text-muted);background:var(--bg-input)}
+.kv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 0;font-family:var(--font-mono);font-size:10px;border-top:1px solid var(--glass-border)}
+.kv:first-of-type{border-top:0;padding-top:0} .kv .k{color:var(--text-muted);letter-spacing:.5px} .kv .v{color:var(--text-primary);text-align:right}
 .kv .v.m{color:var(--text-muted)} .kv .v.ov{color:var(--gold)} .kv .v.warnv{color:var(--orange)}
-.divider{height:1px;margin:10px 0;background:linear-gradient(90deg,transparent,rgba(0,212,255,.3),transparent)}
 .acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
-.btn{min-height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--arise-border);background:var(--primary-010);font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:1px;color:var(--system-primary);display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:1;text-transform:uppercase}
-.btn.ghost{border-color:var(--glass-border);background:var(--bg-input);color:var(--text-secondary)}
-.btn.primary{background:var(--system-primary);color:#041018;border-color:transparent}
-.btn.danger{border-color:rgba(255,51,51,.35);background:rgba(255,51,51,.08);color:var(--warning-red)}
-.btn.danger.solid{background:var(--warning-red);color:#fff;border-color:transparent}
-.btn.gold{border-color:rgba(255,215,0,.3);background:rgba(255,215,0,.08);color:var(--gold)}
-.btn.sm{flex:none;min-height:36px;padding:0 10px;font-size:9px}
-.field{background:var(--bg-input);border:1px solid var(--glass-border);border-radius:10px;min-height:44px;padding:0 12px;font-family:var(--font-mono);font-size:11.5px;color:var(--text-primary);width:100%;display:flex;align-items:center}
-.field::placeholder{color:var(--text-muted)}
-.field.area{min-height:56px;align-items:flex-start;padding-top:10px;line-height:1.4}
-.flabel{font-family:var(--font-mono);font-size:8.5px;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;margin:12px 0 6px;display:flex;justify-content:space-between}
-.flabel b{color:var(--warning-red);font-weight:600}
-.hint{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);line-height:1.5;margin-top:6px}
-.hint.err{color:var(--warning-red)} .hint.ok{color:var(--success-green)}
-
-/* stat tiles */
-.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.stat{background:var(--bg-card);border:1px solid var(--glass-border);border-radius:12px;padding:12px 12px 10px}
-.stat .v{font-family:var(--font-display);font-weight:700;font-size:22px;line-height:1;color:var(--text-primary)}
-.stat .v.c{color:var(--system-primary);text-shadow:0 0 10px rgba(0,212,255,.35)} .stat .v.g{color:var(--success-green);text-shadow:0 0 10px rgba(51,255,136,.35)}
-.stat .v.y{color:var(--gold);text-shadow:0 0 10px rgba(255,215,0,.3)} .stat .v.r{color:var(--warning-red)} .stat .v.o{color:var(--orange)}
-.stat .l{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.8px;color:var(--text-muted);text-transform:uppercase;margin-top:6px}
-.stat .d{font-family:var(--font-mono);font-size:9px;color:var(--text-secondary);margin-top:2px}
-/* sysline (the one sharp-mono dialect kept) */
-.sysline{background:rgba(0,212,255,.03);border:1px solid var(--arise-border);border-left:2px solid var(--system-primary);border-radius:4px;padding:9px 11px;margin-top:8px}
-.sysline .t{font-family:var(--font-mono);font-size:8.5px;font-weight:600;letter-spacing:1px;color:var(--system-primary)}
-.sysline .m{font-family:var(--font-mono);font-size:10.5px;line-height:1.5;color:var(--text-primary);margin-top:4px}
-.sysline .m b{color:var(--gold);font-weight:600}
-.sysline.guard{border-color:rgba(255,149,0,.35);border-left-color:var(--orange);background:rgba(255,149,0,.03)} .sysline.guard .t{color:var(--orange)}
-.sysline.err{border-color:rgba(255,51,51,.3);border-left-color:var(--warning-red);background:rgba(255,51,51,.03)} .sysline.err .t{color:var(--warning-red)}
-.sysline .row{display:flex;align-items:center;gap:8px} .sysline .row .m{flex:1;margin-top:0}
-/* attention list */
-.att{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:10px 0;border-top:1px solid var(--glass-border);min-height:44px}
-.att:first-child{border-top:0;padding-top:0}
-.att .a{font-size:12px;color:var(--text-primary);line-height:1.35} .att .a small{display:block;font-family:var(--font-mono);font-size:9px;color:var(--text-muted);margin-top:2px}
-
-/* users list */
-.search{display:flex;gap:8px;align-items:center;margin-bottom:8px}
-.search .field{flex:1}
-.fchips{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:4px;scrollbar-width:none}
-.fchip{flex:none;min-height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--glass-border);background:var(--bg-card);font-family:var(--font-mono);font-size:9px;letter-spacing:.8px;color:var(--text-secondary);text-transform:uppercase}
+.btn{min-height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--arise-border);background:var(--primary-010);font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:1px;color:var(--system-primary);display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:1;text-transform:uppercase}
+.btn.ghost{border-color:var(--glass-border);background:var(--bg-input);color:var(--text-secondary)} .btn.primary{background:var(--system-primary);color:#041018;border-color:transparent}
+.btn.danger{border-color:rgba(255,51,51,.35);background:rgba(255,51,51,.08);color:var(--warning-red)} .btn.danger.solid{background:var(--warning-red);color:#fff;border-color:transparent}
+.btn.gold{border-color:rgba(255,215,0,.3);background:rgba(255,215,0,.08);color:var(--gold)} .btn.sm{flex:none;min-height:34px;padding:0 10px;font-size:9px}
+.field{background:var(--bg-input);border:1px solid var(--glass-border);border-radius:10px;min-height:40px;padding:0 12px;font-family:var(--font-mono);font-size:11px;color:var(--text-primary);width:100%;display:flex;align-items:center}
+.field::placeholder{color:var(--text-muted)} .field.area{min-height:56px;align-items:flex-start;padding-top:10px;line-height:1.4}
+.flabel{font-family:var(--font-mono);font-size:8.5px;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;margin:12px 0 6px;display:flex;justify-content:space-between} .flabel b{color:var(--warning-red);font-weight:600}
+.hint{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);line-height:1.5;margin-top:6px} .hint.err{color:var(--warning-red)} .hint.ok{color:var(--success-green)}
+.fchips{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.fchip{flex:none;min-height:34px;padding:0 12px;border-radius:17px;border:1px solid var(--glass-border);background:var(--bg-card);font-family:var(--font-mono);font-size:9px;letter-spacing:.8px;color:var(--text-secondary);text-transform:uppercase}
 .fchip.active{color:var(--system-primary);background:var(--primary-010);border-color:var(--arise-border)}
-.sortrow{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:9px;color:var(--text-muted);letter-spacing:.5px;margin:6px 2px 4px}
-.urow{display:grid;grid-template-columns:38px 1fr auto;gap:10px;align-items:center;padding:10px 12px;min-height:60px;background:var(--bg-card);border:1px solid var(--glass-border);border-radius:12px;width:100%;text-align:left}
-.urow+.urow{margin-top:8px}
-.urow.deleted{opacity:.55}
-.av{width:38px;height:38px;border-radius:50%;background:var(--bg-input);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:700;font-size:14px;border:1.5px solid}
+.sel{min-height:34px;padding:0 10px;border-radius:9px;border:1px solid var(--glass-border);background:var(--bg-input);font-family:var(--font-mono);font-size:9.5px;color:var(--text-secondary);display:inline-flex;align-items:center;gap:8px} .sel::after{content:"⌄";color:var(--text-muted)}
+.sysline{background:rgba(0,212,255,.03);border:1px solid var(--arise-border);border-left:2px solid var(--system-primary);border-radius:4px;padding:9px 11px}
+.sysline .t{font-family:var(--font-mono);font-size:8.5px;font-weight:600;letter-spacing:1px;color:var(--system-primary)} .sysline .m{font-family:var(--font-mono);font-size:10.5px;line-height:1.5;color:var(--text-primary);margin-top:4px} .sysline .m b{color:var(--gold);font-weight:600}
+.sysline.guard{border-color:rgba(255,149,0,.35);border-left-color:var(--orange);background:rgba(255,149,0,.03)} .sysline.guard .t{color:var(--orange)}
+/* tables */
+.tbl{width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:10.5px;background:var(--bg-card);border:1px solid var(--glass-border);border-radius:12px;overflow:hidden}
+.tbl th{font-size:8.5px;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;text-align:left;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06);font-weight:600;white-space:nowrap}
+.tbl th.sorted{color:var(--system-primary)} .tbl td{padding:11px 12px;border-bottom:1px solid var(--glass-border);vertical-align:middle;white-space:nowrap;color:var(--text-primary)}
+.tbl tr:last-child td{border-bottom:0} .tbl tr.deleted td{opacity:.5} .tbl td.m{color:var(--text-muted)} .tbl td.r{text-align:right} .tbl td.g{color:var(--success-green)} .tbl td.y{color:var(--gold)}
+.tbl tr.row{cursor:pointer} .tbl tr.row:hover td{background:rgba(0,212,255,.03)} .tbl .un{font-family:var(--font-header);font-weight:600;font-size:12px}
+.tbl .expand td{background:rgba(0,212,255,.02);white-space:normal;padding:14px 16px}
+.json2{display:grid;grid-template-columns:1fr 1fr;gap:12px} .json2 pre{margin:0;background:var(--bg-void);border:1px solid var(--glass-border);border-radius:8px;padding:10px 12px;font-size:10px;line-height:1.5;color:var(--text-secondary)}
+.json2 .lbl{font-size:8.5px;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px} .json2 .chg{color:var(--success-green)} .json2 .old{color:var(--warning-red)}
+.tog{width:34px;height:20px;border-radius:10px;background:var(--void-light);position:relative;display:inline-block;vertical-align:middle} .tog::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--text-muted)}
+.tog.on{background:rgba(51,255,136,.25)} .tog.on::after{left:17px;background:var(--success-green)}
+/* stats + attention + audit rows */
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.stat{background:var(--bg-card);border:1px solid var(--glass-border);border-radius:12px;padding:14px 14px 12px}
+.stat .v{font-family:var(--font-display);font-weight:700;font-size:26px;line-height:1;color:var(--text-primary)} .stat .v small{font-size:13px;color:var(--text-muted);font-weight:500}
+.stat .v.c{color:var(--system-primary);text-shadow:0 0 10px rgba(0,212,255,.35)} .stat .v.g{color:var(--success-green);text-shadow:0 0 10px rgba(51,255,136,.35)} .stat .v.y{color:var(--gold);text-shadow:0 0 10px rgba(255,215,0,.3)} .stat .v.r{color:var(--warning-red)} .stat .v.o{color:var(--orange)}
+.stat .l{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.8px;color:var(--text-muted);text-transform:uppercase;margin-top:8px} .stat .d{font-family:var(--font-mono);font-size:9px;color:var(--text-secondary);margin-top:2px}
+.att{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:10px 0;border-top:1px solid var(--glass-border);min-height:44px} .att:first-child{border-top:0;padding-top:0}
+.att .a{font-size:12.5px;color:var(--text-primary);line-height:1.35} .att .a small{display:block;font-family:var(--font-mono);font-size:9px;color:var(--text-muted);margin-top:2px}
+.arow{padding:9px 0;border-top:1px solid var(--glass-border);width:100%;text-align:left;display:block;min-height:40px} .arow:first-child{border-top:0;padding-top:0}
+.arow .h{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:9px;color:var(--text-muted)} .arow .h .sp{flex:1}
+.arow .s{font-size:12px;color:var(--text-primary);margin-top:4px;line-height:1.4} .arow .s .from{color:var(--text-muted)} .arow .s .to{color:var(--success-green)} .arow .s .to.dn{color:var(--warning-red)}
+.arow .q{font-family:var(--font-mono);font-size:9.5px;color:var(--text-secondary);margin-top:3px} .arow .q::before{content:"“"} .arow .q::after{content:"”"}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start} .col{display:flex;flex-direction:column;gap:14px} .full{grid-column:1/-1}
+.ihead{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:16px;border:1px solid var(--glass-border);background:linear-gradient(160deg,#141520,#050508);margin-bottom:14px}
+.av{width:38px;height:38px;border-radius:50%;background:var(--bg-input);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:700;font-size:14px;border:1.5px solid;flex:none}
 .av.a{color:var(--rank-a);border-color:var(--rank-a);box-shadow:0 0 10px rgba(255,215,0,.3)} .av.c{color:var(--rank-c);border-color:var(--rank-c)} .av.e{color:var(--rank-e);border-color:var(--rank-e)} .av.d{color:var(--rank-d);border-color:var(--rank-d)}
-.un{font-weight:600;font-size:14px;letter-spacing:.3px} .em{font-family:var(--font-mono);font-size:9.5px;color:var(--text-muted);margin-top:2px}
-.ur{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px} .ur .la{font-family:var(--font-mono);font-size:9px;color:var(--text-muted)}
-.ur .chips{display:flex;gap:4px}
-
-/* identity header */
-.ihead{display:flex;align-items:center;gap:12px;padding:14px;border-radius:16px;border:1px solid var(--glass-border);background:linear-gradient(160deg,#141520,#050508);flex-wrap:wrap}
-.ihead .av{width:48px;height:48px;font-size:18px}
-.ihead .mid{flex:1;min-width:0} .ihead .nm{font-weight:700;font-size:18px;letter-spacing:1px;color:#88DDFF}
-.ihead .sub{font-family:var(--font-mono);font-size:9.5px;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ihead .chips{flex-basis:100%;display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
-.viewas{display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:6px 6px 6px 12px;border-radius:10px;background:rgba(123,97,255,.10);border:1px dashed rgba(123,97,255,.45);font-family:var(--font-mono);font-size:9.5px;color:var(--purple);letter-spacing:.5px}
-.viewas .sp{flex:1}
-.viewas button{min-height:36px;padding:0 10px;font-family:var(--font-mono);font-size:9px;font-weight:600;color:var(--purple);border:1px solid rgba(123,97,255,.4);border-radius:8px}
-/* purchases / audit rows */
-.prow{display:grid;grid-template-columns:1fr auto;gap:6px 10px;padding:9px 0;border-top:1px solid var(--glass-border);font-family:var(--font-mono);font-size:10px}
-.prow:first-child{border-top:0;padding-top:0}
+.ihead .av{width:52px;height:52px;font-size:20px} .ihead .mid{flex:1;min-width:0} .ihead .nm{font-weight:700;font-size:20px;letter-spacing:1px;color:#88DDFF}
+.ihead .sub{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-top:3px} .ihead .chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.prow{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:8px 0;border-top:1px solid var(--glass-border);font-family:var(--font-mono);font-size:10px} .prow:first-child{border-top:0;padding-top:0}
 .prow .n{color:var(--text-primary)} .prow .s{color:var(--text-muted);font-size:9px} .prow .r{text-align:right;color:var(--success-green);font-weight:600}
-.arow{padding:10px 0;border-top:1px solid var(--glass-border);width:100%;text-align:left;display:block;min-height:44px}
-.arow:first-child{border-top:0;padding-top:0}
-.arow .h{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:9px;color:var(--text-muted)}
-.arow .h .sp{flex:1}
-.arow .s{font-size:12px;color:var(--text-primary);margin-top:4px;line-height:1.4}
-.arow .s .from{color:var(--text-muted)} .arow .s .to{color:var(--success-green)} .arow .s .to.dn{color:var(--warning-red)}
-.arow .q{font-family:var(--font-mono);font-size:9.5px;color:var(--text-secondary);margin-top:3px}
-.arow .q::before{content:"“"} .arow .q::after{content:"”"}
-.sk{height:11px;border-radius:6px;background:linear-gradient(90deg,var(--void-light),#2d2d3a,var(--void-light));background-size:200% 100%;animation:sh 1.4s linear infinite;margin:9px 0}
-@keyframes sh{to{background-position:-200% 0}}
-.toast{position:absolute;left:14px;right:14px;top:8px;z-index:5;background:var(--bg-card);border:1px solid var(--glass-border);border-left:2px solid var(--success-green);border-radius:8px;padding:9px 11px;font-family:var(--font-mono);font-size:10px;color:var(--text-primary);box-shadow:0 10px 24px rgba(0,0,0,.5);display:flex;gap:8px;align-items:center}
+.toast{position:absolute;right:22px;top:16px;z-index:5;background:var(--bg-card);border:1px solid var(--glass-border);border-left:2px solid var(--success-green);border-radius:8px;padding:10px 12px;font-family:var(--font-mono);font-size:10px;color:var(--text-primary);box-shadow:0 10px 24px rgba(0,0,0,.5);display:flex;gap:10px;align-items:center;min-width:300px}
 .toast .sp{flex:1} .toast a{color:var(--system-primary);text-decoration:none;font-weight:600}
-
-/* sheets */
-.dim{opacity:.28;filter:blur(1px);pointer-events:none}
-.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--bg-elevated);border-top:1px solid var(--arise-border);border-radius:22px 22px 0 0;padding:10px 16px 26px;box-shadow:0 -20px 40px rgba(0,0,0,.6);z-index:6}
-.sheet.danger{border-top-color:rgba(255,51,51,.4)}
-.grab{width:36px;height:4px;border-radius:2px;background:var(--void-light);margin:0 auto 12px}
-.sheet .sl{margin-top:2px}
-.sheet.danger .sl{color:var(--warning-red)}
+/* drawer widgets */
 .stepper{display:grid;grid-template-columns:52px 1fr 52px;gap:8px;align-items:center;margin:4px 0 8px}
 .stepper button{min-height:48px;border-radius:12px;background:var(--bg-input);border:1px solid var(--glass-border);font-family:var(--font-display);font-size:20px;color:var(--system-primary)}
-.stepper .n{text-align:center;font-family:var(--font-display);font-weight:700;font-size:30px;color:var(--success-green);text-shadow:0 0 12px rgba(51,255,136,.35)}
-.stepper .n.neg{color:var(--warning-red);text-shadow:none}
+.stepper .n{text-align:center;font-family:var(--font-display);font-weight:700;font-size:30px;color:var(--success-green);text-shadow:0 0 12px rgba(51,255,136,.35)} .stepper .n.neg{color:var(--warning-red);text-shadow:none}
 .stepper small{display:block;font-family:var(--font-mono);font-size:8.5px;color:var(--text-muted);letter-spacing:1px;font-weight:500}
+.presets{display:flex;gap:6px;margin-bottom:8px} .presets button{flex:1;min-height:34px;border-radius:8px;background:var(--bg-input);border:1px solid var(--glass-border);font-family:var(--font-mono);font-size:9.5px;color:var(--text-secondary)}
 .diff{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--glass-border);font-family:var(--font-mono);font-size:10.5px}
-.diff .k{color:var(--text-muted);letter-spacing:.5px} .diff .from{color:var(--text-muted)} .diff .ar{color:var(--text-muted);font-size:9px}
-.diff .to{color:var(--success-green);font-weight:600} .diff .to.dn{color:var(--warning-red)}
+.diff .k{color:var(--text-muted);letter-spacing:.5px} .diff .from{color:var(--text-muted)} .diff .ar{color:var(--text-muted);font-size:9px} .diff .to{color:var(--success-green);font-weight:600} .diff .to.dn{color:var(--warning-red)}
 .diff.same{opacity:.45} .diff.same .to{color:var(--text-secondary);font-weight:400}
-.presets{display:flex;gap:6px;margin-bottom:6px}
-.presets button{flex:1;min-height:36px;border-radius:8px;background:var(--bg-input);border:1px solid var(--glass-border);font-family:var(--font-mono);font-size:9.5px;color:var(--text-secondary)}
-.sheet .acts{margin-top:14px}
-.impact{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
-.impact div{background:rgba(255,51,51,.05);border:1px solid rgba(255,51,51,.15);border-radius:8px;padding:8px 6px;text-align:center}
-.impact b{display:block;font-family:var(--font-display);font-size:16px;color:var(--warning-red)} .impact small{font-family:var(--font-mono);font-size:8px;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase}
-.check{display:flex;align-items:center;gap:10px;min-height:44px;font-family:var(--font-mono);font-size:10.5px;color:var(--text-primary)}
+.impact{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px} .impact div{background:rgba(255,51,51,.05);border:1px solid rgba(255,51,51,.15);border-radius:8px;padding:8px 4px;text-align:center}
+.impact b{display:block;font-family:var(--font-display);font-size:15px;color:var(--warning-red)} .impact small{font-family:var(--font-mono);font-size:7.5px;color:var(--text-muted);letter-spacing:.4px;text-transform:uppercase}
+.check{display:flex;align-items:center;gap:10px;min-height:40px;font-family:var(--font-mono);font-size:10.5px;color:var(--text-primary);margin-top:6px}
 .check i{width:20px;height:20px;border-radius:5px;border:1px solid rgba(255,51,51,.5);display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:12px;color:var(--warning-red);background:rgba(255,51,51,.1)}
-/* login */
-.login{min-height:640px;display:flex;flex-direction:column;justify-content:center;padding:24px 22px 40px}
-.logo{text-align:center;margin-bottom:26px}
-.logo .w{font-family:var(--font-header);font-weight:700;font-size:30px;letter-spacing:8px;color:#88DDFF;text-shadow:0 0 18px rgba(0,212,255,.35)}
-.logo .s{font-family:var(--font-mono);font-size:10px;letter-spacing:3px;color:var(--text-muted);margin-top:6px}
-.login .btn.primary{width:100%;margin-top:18px;min-height:50px;font-size:11px}
+/* preview card (status tab as the user sees it) */
+.pv{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;padding:10px;border-radius:10px;background:var(--bg-void);border:1px solid var(--glass-border)} .pv+.pv{margin-top:8px}
+.pv .big{font-family:var(--font-display);font-weight:700;font-size:22px;color:var(--success-green);text-shadow:0 0 10px rgba(51,255,136,.35);min-width:48px;text-align:center}
+.pv .big.c{color:var(--system-primary);text-shadow:0 0 10px rgba(0,212,255,.35)} .pv .t{font-weight:700;font-size:13px;letter-spacing:.5px} .pv .d{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);margin-top:2px}
+/* phone lane */
+.lane{display:flex;gap:24px;align-items:flex-start}
+.phone{width:390px;background:var(--bg-void);border:1px solid rgba(255,255,255,.08);border-radius:30px;overflow:hidden;position:relative;box-shadow:0 20px 50px rgba(0,0,0,.6);height:760px}
+.status{display:flex;justify-content:space-between;padding:12px 24px 0;font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text-secondary)}
+.topbar{display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid var(--glass-border)} .topbar .sp{flex:1}
+.brand{font-weight:700;font-size:15px;letter-spacing:2px;color:#88DDFF} .brand i{font-style:normal;font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;color:var(--text-muted);margin-left:6px;font-weight:500}
+.back{min-width:44px;min-height:44px;display:inline-flex;align-items:center;font-family:var(--font-mono);font-size:11px;color:var(--system-primary);margin-left:-8px}
+.screen{padding:12px 14px 90px;position:relative} .screen .card+.card{margin-top:10px} .screen .sl{margin-top:16px}
+.tabbar{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,1fr);background:rgba(10,10,15,.96);backdrop-filter:blur(10px);border-top:1px solid var(--glass-border);padding:6px 4px 18px;z-index:4}
+.tabbar button{display:flex;flex-direction:column;align-items:center;gap:3px;font-family:var(--font-mono);font-size:8px;letter-spacing:.8px;color:var(--text-muted);min-height:44px;justify-content:center} .tabbar button i{font-style:normal;font-size:15px;line-height:1} .tabbar button.on{color:var(--system-primary)}
+.urow{display:grid;grid-template-columns:38px 1fr auto;gap:10px;align-items:center;padding:10px 12px;min-height:60px;background:var(--bg-card);border:1px solid var(--glass-border);border-radius:12px;width:100%;text-align:left} .urow+.urow{margin-top:8px} .urow.deleted{opacity:.55}
+.urow .un{font-weight:600;font-size:14px} .urow .em{font-family:var(--font-mono);font-size:9.5px;color:var(--text-muted);margin-top:2px} .ur{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px} .ur .la{font-family:var(--font-mono);font-size:9px;color:var(--text-muted)} .ur .chips{display:flex;gap:4px}
+.qa{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 4px} .qa .btn{min-height:44px}
+.dim{opacity:.28;filter:blur(1px);pointer-events:none}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--bg-elevated);border-top:1px solid var(--arise-border);border-radius:22px 22px 0 0;padding:10px 16px 26px;box-shadow:0 -20px 40px rgba(0,0,0,.6);z-index:6}
+.grab{width:36px;height:4px;border-radius:2px;background:var(--void-light);margin:0 auto 12px} .sheet .btn{min-height:44px}
 </style>
 </head>
 <body>
 <header class="mock">
-  <h1>ARISE · Admin Control Plane — mockup (static, no backend)</h1>
-  <p><b>Surface:</b> one self-contained HTML page served by FastAPI at <b>/admin</b> (same deploy as the backend, like <b>/privacy</b>). Phone-first at 390px; on ≥900px the bottom tab bar becomes a left rail, user-detail cards flow two-up, and bottom sheets become centered dialogs (max 480px). Nothing here is real data — placeholders only.</p>
+  <h1>ARISE · Admin Control Plane — desktop-first mockup (static, no backend)</h1>
+  <p><b>Surface:</b> one HTML page served by FastAPI at <b>/admin</b>, desktop-first (1280 frames below) with a deliberate <b>phone quick-action lane</b> (frame 07). Left rail + content; every mutation opens a <b>420px right drawer</b> that pushes the page (it stays visible) with a before → after diff, a required reason, and Confirm. Placeholders only — nothing here is real data.</p>
   <ul class="legend">
-    <li><b>01 Login</b> — owner email + password → 12h admin session. Non-owner accounts get the same generic error.</li>
-    <li><b>02 Overview</b> — fleet numbers, an Attention list that links straight into actions, and the last audit rows.</li>
-    <li><b>03 Hunters</b> — search by email/username, filter chips (Deleted · Unlimited · Inactive 30d), sort by last active.</li>
-    <li><b>04 Hunter detail</b> — the workhorse "customer view": identity header + status chips, then grouped cards each with inline actions. Dashed strip = the optional read-only "view as" banner when active.</li>
-    <li><b>05 Adjust credits</b> — every mutation: tap → bottom sheet with before/after diff + required reason → confirm. Live stepper.</li>
-    <li><b>06 Hard purge</b> — destructive tier: impact counts, grace-window guard, typed username, force toggle, password re-prompt. Try the typed field.</li>
-    <li><b>07 Audit</b> — result toast + the new row; filter by actor / action / target; older rows load as skeletons.</li>
+    <li><b>01 Hunters</b> — filter chips + search, dense sortable table, owner row with ∞ + ADMIN, deleted row dimmed.</li>
+    <li><b>02 Hunter detail</b> — identity header, two-column card grid, Danger zone full-width, Adjust-credits drawer open (live stepper).</li>
+    <li><b>03 Purge drawer</b> — deleted hunter; grace guard, per-table impact, FORCE, typed-email unlock (live), reason, re-auth.</li>
+    <li><b>04 Audit</b> — filter row, table, one row expanded with before/after JSON side by side, success toast top-right.</li>
+    <li><b>05 Overview</b> — six stat tiles, Attention list with deep links, recent audit rows.</li>
+    <li><b>06 Catalog + Settings</b> — products table with an edit drawer for scan_50; Settings read-only ("edit on Railway").</li>
+    <li><b>07 Phone lane</b> — Hunters results + Hunter detail in phone order with the Grant-unlimited sheet; tabs Hunters · Audit · Overview only.</li>
   </ul>
   <div class="scenes">
-    <button class="scene" data-action="jump" data-target="f-login">01 Login</button>
-    <button class="scene" data-action="jump" data-target="f-overview">02 Overview</button>
-    <button class="scene" data-action="jump" data-target="f-users">03 Hunters</button>
-    <button class="scene" data-action="jump" data-target="f-detail">04 Detail</button>
-    <button class="scene" data-action="jump" data-target="f-credits">05 Credits sheet</button>
-    <button class="scene" data-action="jump" data-target="f-purge">06 Purge sheet</button>
-    <button class="scene" data-action="jump" data-target="f-audit">07 Audit</button>
+    <button class="scene" data-action="jump" data-target="f-hunters">01 Hunters</button><button class="scene" data-action="jump" data-target="f-detail">02 Detail + credits</button><button class="scene" data-action="jump" data-target="f-purge">03 Purge</button><button class="scene" data-action="jump" data-target="f-audit">04 Audit</button><button class="scene" data-action="jump" data-target="f-overview">05 Overview</button><button class="scene" data-action="jump" data-target="f-catalog">06 Catalog + Settings</button><button class="scene" data-action="jump" data-target="f-phone">07 Phone lane</button>
   </div>
 </header>
 
 <main class="frames">
 
-<!-- 01 LOGIN -->
-<section class="frame" id="f-login">
-  <div class="fr-label"><b>01</b> · Login · /admin</div>
-  <div class="phone">
-    <div class="status"><span>9:41</span><span>●●●● ⌁</span></div>
-    <div class="login">
-      <div class="logo"><div class="w">ARISE</div><div class="s">[ SYSTEM ADMIN ]</div></div>
-      <div class="sysline"><div class="t">SYSTEM</div><div class="m">Session expired after 12h. Authenticate again to enter the control plane.</div></div>
-      <div class="flabel">Owner email</div>
-      <input class="field" type="email" value="owner@example.com" autocomplete="username" inputmode="email">
-      <div class="flabel">Password</div>
-      <input class="field" type="password" placeholder="••••••••••••" autocomplete="current-password">
-      <button class="btn primary" data-action="noop">ENTER THE SYSTEM</button>
-      <div class="hint" style="text-align:center;margin-top:14px">Owner accounts only · same credentials as the app · no password reset from this page.<br>Invalid or non-owner sign-in shows one generic error: “Access denied.”</div>
+<!-- 01 HUNTERS -->
+<section class="frame" id="f-hunters">
+  <div class="fr-label"><b>01</b> · Hunters · 1280 × 800</div>
+  <div class="bw"><div class="bchrome"><i></i><i></i><i></i><span class="url">arise.example/admin#/hunters?sort=last_active</span></div>
+  <div class="bbody">
+    <aside class="rail"><div class="wm">ARISE</div><div class="wm-s">[ SYSTEM ADMIN ]</div>
+      <input class="field" type="search" placeholder="Search email, username, id">
+      <nav class="rnav"><button data-action="jump" data-target="f-overview">◈ Overview</button><button class="on">◉ Hunters</button><button data-action="jump" data-target="f-audit">≡ Audit</button><button data-action="jump" data-target="f-catalog">▤ Catalog</button><button data-action="jump" data-target="f-catalog">⚙ Settings</button></nav>
+      <div class="rfoot"><span class="chip orange" style="align-self:flex-start">PROD</span><div class="sess">SESSION 11:42:07</div><div class="who">owner@example.com</div></div>
+    </aside>
+    <div class="content">
+      <div class="ph"><h2>Hunters</h2><span class="cnt">4 accounts · 3 active</span><span class="sp"></span>
+        <div class="fchips"><button class="fchip active" data-action="filter">All · 4</button><button class="fchip" data-action="filter">Deleted · 1</button><button class="fchip" data-action="filter">Unlimited · 1</button><button class="fchip" data-action="filter">Inactive 30d · 2</button></div></div>
+      <table class="tbl">
+        <thead><tr><th>ID</th><th>Email</th><th>Username</th><th>Rank · Lv</th><th class="sorted">Last active ↓</th><th>Sessions</th><th>Credits</th><th>Campaign</th><th>WHOOP</th><th>State</th></tr></thead>
+        <tbody>
+          <tr class="row" data-action="jump" data-target="f-detail"><td class="m">a1c9…77e0</td><td>owner@example.com</td><td class="un">shadow_monarch</td><td>A · 41</td><td>2h ago</td><td class="r">312</td><td class="y">∞</td><td>Run Base + Strength</td><td class="g">synced 2h</td><td><span class="chip gold">Admin</span> <span class="chip green">Active</span></td></tr>
+          <tr class="row" data-action="jump" data-target="f-detail"><td class="m">7f3a…c21e</td><td>hunter2@example.com</td><td class="un">iron_hunter</td><td>C · 14</td><td>1d ago</td><td class="r">63</td><td>12</td><td>Run Base + Strength</td><td style="color:var(--orange)">sync failed</td><td><span class="chip green">Active</span> <span class="chip gold">Override</span></td></tr>
+          <tr class="row" data-action="jump" data-target="f-detail"><td class="m">e8d1…30b4</td><td>novice@example.com</td><td class="un">lv1_novice</td><td>E · 2</td><td>41d ago</td><td class="r">4</td><td>3</td><td class="m">—</td><td class="m">—</td><td><span class="chip dim">Inactive</span></td></tr>
+          <tr class="row deleted" data-action="jump" data-target="f-purge"><td class="m">91be…04aa</td><td>gone@example.com</td><td class="un">old_hunter</td><td>D · 8</td><td>Aug 16</td><td class="r">41</td><td>0</td><td class="m">Summer Cut (paused)</td><td class="m">—</td><td><span class="chip red">Deleted · purge in 12d</span></td></tr>
+        </tbody>
+      </table>
+      <div class="hint" style="margin-top:10px">Click a header to sort; the rail search matches email, username, or id prefix. Deleted hunters stay listed until purge. Empty result: “No hunter matches ‘x’ — try the Deleted filter.”</div>
     </div>
-  </div>
+  </div></div>
 </section>
 
-<!-- 02 OVERVIEW -->
+<!-- 02 HUNTER DETAIL + CREDITS DRAWER -->
+<section class="frame" id="f-detail">
+  <div class="fr-label"><b>02</b> · Hunter detail · Adjust-credits drawer open · 1280 wide, fold marked at 800</div>
+  <div class="bw"><div class="bchrome"><i></i><i></i><i></i><span class="url">arise.example/admin#/hunters/7f3a…c21e</span></div>
+  <div class="bbody"><div class="fold"><span>800px fold</span></div>
+    <aside class="rail"><div class="wm">ARISE</div><div class="wm-s">[ SYSTEM ADMIN ]</div>
+      <input class="field" type="search" placeholder="Search email, username, id">
+      <nav class="rnav"><button data-action="jump" data-target="f-overview">◈ Overview</button><button class="on">◉ Hunters</button><button data-action="jump" data-target="f-audit">≡ Audit</button><button data-action="jump" data-target="f-catalog">▤ Catalog</button><button data-action="jump" data-target="f-catalog">⚙ Settings</button></nav>
+      <div class="rfoot"><span class="chip orange" style="align-self:flex-start">PROD</span><div class="sess">SESSION 11:41:30</div><div class="who">owner@example.com</div></div>
+    </aside>
+    <div class="content">
+      <div class="ph"><button class="back" data-action="jump" data-target="f-hunters">‹ HUNTERS</button><span class="sp"></span><span class="cnt">7f3a2c…c21e</span></div>
+      <div class="ihead"><div class="av c">C</div><div class="mid"><div class="nm">iron_hunter</div><div class="sub">hunter2@example.com · id 7f3a2c9e-…-c21e · created 2026-05-02</div></div>
+        <div class="chips"><span class="chip green">Active</span><span class="chip cyan">C-rank · Lv 14</span><span class="chip cyan">12 credits</span><span class="chip orange">WHOOP</span><span class="chip gold">Override</span></div></div>
+      <div class="grid2">
+        <div class="col">
+          <div class="card"><div class="sl">[ IDENTITY ]<span class="sp"></span><button class="link" data-action="noop">COPY ID</button></div>
+            <div class="kv"><span class="k">EMAIL</span><span class="v">hunter2@example.com</span></div><div class="kv"><span class="k">USERNAME</span><span class="v">iron_hunter</span></div><div class="kv"><span class="k">CREATED</span><span class="v">2026-05-02 · 126d</span></div><div class="kv"><span class="k">LAST ACTIVE</span><span class="v">Sep 4 · 21:10</span></div><div class="kv"><span class="k">EXPERIENCE · UNIT</span><span class="v">intermediate · lb</span></div></div>
+          <div class="card"><div class="sl">[ SCANS ]</div>
+            <div class="kv"><span class="k">SCAN_CREDITS</span><span class="v">12</span></div><div class="kv"><span class="k">HAS_UNLIMITED</span><span class="v m">false</span></div><div class="kv"><span class="k">FREE RESET</span><span class="v">2026-09-21 · in 16d</span></div><div class="kv"><span class="k">USED 30D</span><span class="v">4 · last Sep 2</span></div>
+            <div class="acts"><button class="btn" data-action="noop">− / + CREDITS</button><button class="btn gold" data-action="noop">GRANT UNLIMITED</button></div></div>
+          <div class="card"><div class="sl">[ ENTITLEMENTS ]<span class="sp"></span><span class="ro">override · default</span></div>
+            <div class="kv"><span class="k">FREE MONTHLY SCANS</span><span class="v ov">5 <span style="color:var(--text-muted)">· 3</span></span></div><div class="kv"><span class="k">DAILY SCAN CAP</span><span class="v m">— · 10</span></div><div class="kv"><span class="k">SCAN COOLDOWN</span><span class="v m">— · 60s</span></div>
+            <div class="acts"><button class="btn" data-action="noop">SET LIMITS</button><button class="btn ghost" data-action="noop">RESET TO DEFAULTS</button></div></div>
+          <div class="card"><div class="sl">[ PURCHASES ]<span class="sp"></span><span class="ro">read-only</span></div>
+            <div class="prow"><span class="n">scan_20 <span class="s">consumable</span></span><span class="r">+20</span><span class="s">2026-08-14 · txn 2000…8841</span><span class="s" style="text-align:right">verified</span></div>
+            <div class="prow"><span class="n">scan_20 <span class="s">consumable</span></span><span class="r">+20</span><span class="s">2026-06-30 · txn 2000…1190</span><span class="s" style="text-align:right">verified</span></div></div>
+          <div class="card"><div class="sl">[ CAMPAIGN ]</div>
+            <div class="kv"><span class="k">NAME</span><span class="v">Run Base + Strength</span></div><div class="kv"><span class="k">STATUS · SOURCE</span><span class="v"><span class="chip green">Active</span> · template</span></div><div class="kv"><span class="k">START · ARC</span><span class="v">2026-08-31 · Base 2 (wk 1/6)</span></div><div class="kv"><span class="k">ARCS</span><span class="v">3 · 18 weeks</span></div><div class="kv"><span class="k">NEXT HUNT</span><span class="v">Sat Sep 6 · LIFT · Squat + Press</span></div>
+            <div class="acts"><button class="btn" data-action="noop">IMPORT / REPLACE</button><button class="btn ghost" data-action="noop">VIEW ARCS</button></div></div>
+        </div>
+        <div class="col">
+          <div class="card"><div class="sl">[ PROGRESS ]<span class="sp"></span><span class="ro">read-only</span></div>
+            <div class="kv"><span class="k">LEVEL · RANK</span><span class="v">14 · C</span></div><div class="kv"><span class="k">TOTAL XP</span><span class="v">6,420</span></div><div class="kv"><span class="k">STREAK · LONGEST</span><span class="v">5 · 11</span></div><div class="kv"><span class="k">WORKOUTS · PRS</span><span class="v">63 · 9</span></div><div class="kv"><span class="k">LAST WORKOUT</span><span class="v">2026-09-04</span></div></div>
+          <div class="card warn"><div class="sl">[ INTEGRATIONS ]<span class="sp"></span><span class="ro">read-only</span></div>
+            <div class="kv"><span class="k">WHOOP</span><span class="v warnv">connected · sync failed 08:00</span></div><div class="kv"><span class="k">LAST SYNC · SCOPE</span><span class="v">Sep 4 · 22:15 · workout recovery sleep</span></div><div class="kv"><span class="k">PUSH DEVICES</span><span class="v">2 active · ios</span></div><div class="kv"><span class="k">HEALTHKIT SOURCE</span><span class="v m">none seen yet</span></div></div>
+          <div class="card warn"><div class="sl">[ DATA HEALTH ]</div>
+            <div class="kv"><span class="k">EXERCISES W/O FAMILY</span><span class="v warnv">4</span></div><div class="kv"><span class="k">SESSIONS W/O LOCAL_DATE</span><span class="v warnv">2</span></div><div class="kv"><span class="k">LAST BACKFILL</span><span class="v">Sep 1 · applied · fleet</span></div>
+            <div class="acts"><button class="btn" data-action="noop">DRY-RUN BACKFILL</button></div><div class="hint">Dry-run lists the proposed exercise → family mapping in the drawer; APPLY is the second confirm on that same drawer.</div></div>
+          <div class="card"><div class="sl">[ PREVIEW ]<span class="sp"></span><span class="ro">status tab as the hunter sees it</span></div>
+            <div class="pv"><div class="big c">SAT</div><div><div class="t">Today's Hunt · Squat + Press</div><div class="d">LIFT · 4 ITEMS · BASE 2 WK 1 · ARC RAMP 14.2 MI</div></div></div>
+            <div class="pv"><div class="big" style="color:var(--gold);text-shadow:none">1.12</div><div><div class="t">Load · ACWR</div><div class="d">7D 14.2 MI · LIFT LOAD 62 · GUARD: NONE</div></div></div>
+            <div class="pv"><div class="big">72</div><div><div class="t">Condition · READY</div><div class="d">WHOOP RECOVERY 68 · HRV 54 · SLEEP 7H12</div></div></div></div>
+          <div class="card"><div class="sl">[ AUDIT · THIS HUNTER ]<span class="sp"></span><button class="link" data-action="jump" data-target="f-audit">VIEW ALL</button></div>
+            <div class="arow"><div class="h">Aug 20 · 18:02 <span class="chip gold">limits.set</span><span class="sp"></span>owner</div><div class="s">free_monthly_scans <span class="from">3</span> → <span class="to">5</span></div><div class="q">Beta tester — extra scans while WHOOP import stabilizes</div></div>
+            <div class="arow"><div class="h">Aug 14 · 09:30 <span class="chip green">purchase.verified</span><span class="sp"></span>system</div><div class="s">scan_20 · <span class="to">+20</span> credits</div></div></div>
+        </div>
+        <div class="card danger full"><div class="sl" style="color:var(--warning-red)">[ DANGER ZONE ]</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:14px;align-items:center"><div class="kv" style="border:0;padding:0"><span class="k">IS_DELETED</span><span class="v m">false</span></div><div class="kv" style="border:0;padding:0"><span class="k">GRACE WINDOW</span><span class="v m">30 days after soft-delete</span></div><button class="btn danger sm" data-action="noop">SOFT-DELETE</button></div>
+          <div class="hint">Restore and Purge replace Soft-delete once the hunter is soft-deleted (frame 03).</div></div>
+      </div>
+    </div>
+    <aside class="drawer"><button class="x" data-action="noop" aria-label="close">✕</button>
+      <div class="sl">[ ADJUST CREDITS ]</div><div class="who">iron_hunter · hunter2@example.com</div>
+      <div class="stepper"><button data-action="step" data-delta="-1" aria-label="minus one">−</button><div class="n" id="delta" data-v="10">+10<small>CREDITS</small></div><button data-action="step" data-delta="1" aria-label="plus one">+</button></div>
+      <div class="presets"><button data-action="preset" data-v="-5">−5</button><button data-action="preset" data-v="5">+5</button><button data-action="preset" data-v="20">+20</button><button data-action="preset" data-v="50">+50</button></div>
+      <div class="diff"><span class="k">SCAN_CREDITS</span><span class="from">12</span><span class="ar">→</span><span class="to" id="cred-to">22</span></div>
+      <div class="diff same"><span class="k">HAS_UNLIMITED</span><span class="from">false</span><span class="ar">→</span><span class="to">false</span></div>
+      <div class="diff same"><span class="k">FREE_SCANS_RESET_AT</span><span class="from">Sep 21</span><span class="ar">→</span><span class="to">Sep 21</span></div>
+      <div class="flabel">Reason <b>required · written to audit</b></div>
+      <div class="field area">Refund — batch of 10 scans failed on Sep 2 (support #12)</div>
+      <div class="hint">Logged as <span style="color:var(--text-secondary)">credits.adjust</span> by owner → iron_hunter. Before/after is captured server-side, not from this form.</div>
+      <div class="acts"><button class="btn ghost" data-action="noop">CANCEL</button><button class="btn primary" id="confirm-cred" data-action="noop">CONFIRM +10 CREDITS</button></div>
+    </aside>
+  </div></div>
+</section>
+
+<!-- 03 PURGE DRAWER -->
+<section class="frame" id="f-purge">
+  <div class="fr-label"><b>03</b> · Hunter detail (deleted) · Purge drawer open · 1280 × 800</div>
+  <div class="bw"><div class="bchrome"><i></i><i></i><i></i><span class="url">arise.example/admin#/hunters/91be…04aa</span></div>
+  <div class="bbody">
+    <aside class="rail"><div class="wm">ARISE</div><div class="wm-s">[ SYSTEM ADMIN ]</div>
+      <input class="field" type="search" placeholder="Search email, username, id">
+      <nav class="rnav"><button data-action="jump" data-target="f-overview">◈ Overview</button><button class="on">◉ Hunters</button><button data-action="jump" data-target="f-audit">≡ Audit</button><button data-action="jump" data-target="f-catalog">▤ Catalog</button><button data-action="jump" data-target="f-catalog">⚙ Settings</button></nav>
+      <div class="rfoot"><span class="chip orange" style="align-self:flex-start">PROD</span><div class="sess">SESSION 11:40:02</div><div class="who">owner@example.com</div></div>
+    </aside>
+    <div class="content">
+      <div class="ph"><button class="back" data-action="jump" data-target="f-hunters">‹ HUNTERS</button><span class="sp"></span><span class="cnt">91be…04aa</span></div>
+      <div class="ihead"><div class="av d">D</div><div class="mid"><div class="nm">old_hunter</div><div class="sub">gone@example.com · id 91be7a10-…-04aa · created 2026-03-11</div></div>
+        <div class="chips"><span class="chip red">Deleted Aug 18</span><span class="chip dim">D-rank · Lv 8</span><span class="chip dim">0 credits</span><span class="chip dim">Purge eligible Sep 17</span></div></div>
+      <div class="grid2">
+        <div class="col">
+          <div class="card"><div class="sl">[ IDENTITY ]</div>
+            <div class="kv"><span class="k">EMAIL</span><span class="v">gone@example.com</span></div><div class="kv"><span class="k">USERNAME</span><span class="v">old_hunter</span></div><div class="kv"><span class="k">LAST ACTIVE</span><span class="v">Aug 16 · 07:40</span></div></div>
+          <div class="card"><div class="sl">[ SCANS ]<span class="sp"></span><span class="ro">frozen while deleted</span></div>
+            <div class="kv"><span class="k">SCAN_CREDITS</span><span class="v m">0</span></div><div class="kv"><span class="k">HAS_UNLIMITED</span><span class="v m">false</span></div></div>
+        </div>
+        <div class="col">
+          <div class="card"><div class="sl">[ PROGRESS ]<span class="sp"></span><span class="ro">read-only</span></div>
+            <div class="kv"><span class="k">LEVEL · RANK</span><span class="v">8 · D</span></div><div class="kv"><span class="k">WORKOUTS · PRS</span><span class="v">41 · 9</span></div></div>
+          <div class="card"><div class="sl">[ CAMPAIGN ]<span class="sp"></span><span class="ro">read-only</span></div>
+            <div class="kv"><span class="k">NAME · STATUS</span><span class="v">Summer Cut · <span class="chip dim">Paused</span></span></div></div>
+        </div>
+        <div class="card danger full"><div class="sl" style="color:var(--warning-red)">[ DANGER ZONE ]</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr auto auto;gap:14px;align-items:center"><div class="kv" style="border:0;padding:0"><span class="k">IS_DELETED · DELETED_AT</span><span class="v">true · 2026-08-18 11:05</span></div><div class="kv" style="border:0;padding:0"><span class="k">DAYS UNTIL PURGE</span><span class="v warnv">12 · sweep Sep 17</span></div><button class="btn sm" data-action="noop">RESTORE</button><button class="btn danger sm" data-action="noop">PURGE</button></div></div>
+      </div>
+    </div>
+    <aside class="drawer danger"><button class="x" data-action="noop" aria-label="close">✕</button>
+      <div class="sl">[ HARD PURGE ]</div><div class="who">old_hunter · gone@example.com</div>
+      <div class="sysline guard"><div class="t">GUARD · GRACE WINDOW OPEN</div><div class="m">Deleted <b>18 of 30</b> days ago. Purge is blocked until <b>Sep 17</b> unless FORCE is set — the override is its own audit event.</div></div>
+      <div class="impact"><div><b>41</b><small>sessions</small></div><div><b>388</b><small>sets</small></div><div><b>9</b><small>prs</small></div><div><b>126</b><small>planned hunts</small></div><div><b>1</b><small>campaign</small></div><div><b>30</b><small>bodyweight</small></div><div><b>1</b><small>push devices</small></div><div><b>0</b><small>whoop</small></div></div>
+      <div class="hint err">Deletes the user row and every cascade above. Purchase receipts are kept but detached. Cannot be undone or restored.</div>
+      <label class="check"><i>✓</i>FORCE — purge before the grace window ends</label>
+      <div class="flabel">Type the email to confirm</div>
+      <input class="field" id="typed-email" type="email" value="gone@examp" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="gone@example.com">
+      <div class="hint err" id="typed-hint">Type gone@example.com exactly to unlock</div>
+      <div class="flabel">Reason <b>required · written to audit</b></div>
+      <div class="field area">User emailed on Sep 4 asking for immediate erasure (GDPR request)</div>
+      <div class="flabel">
+        Re-enter admin password</div>
+      <input class="field"
+        type="password"
+        placeholder="••••••••">
+      <div class="acts"><button class="btn ghost" data-action="noop">CANCEL</button><button class="btn danger solid" id="purge-btn" data-action="noop" disabled>PURGE old_hunter</button></div>
+    </aside>
+  </div></div>
+</section>
+
+<!-- 04 AUDIT -->
+<section class="frame" id="f-audit">
+  <div class="fr-label"><b>04</b> · Audit log · one row expanded · 1280 × 800</div>
+  <div class="bw"><div class="bchrome"><i></i><i></i><i></i><span class="url">arise.example/admin#/audit?actor=owner</span></div>
+  <div class="bbody">
+    <aside class="rail"><div class="wm">ARISE</div><div class="wm-s">[ SYSTEM ADMIN ]</div>
+      <input class="field" type="search" placeholder="Search email, username, id">
+      <nav class="rnav"><button data-action="jump" data-target="f-overview">◈ Overview</button><button data-action="jump" data-target="f-hunters">◉ Hunters</button><button class="on">≡ Audit</button><button data-action="jump" data-target="f-catalog">▤ Catalog</button><button data-action="jump" data-target="f-catalog">⚙ Settings</button></nav>
+      <div class="rfoot"><span class="chip orange" style="align-self:flex-start">PROD</span><div class="sess">SESSION 11:39:44</div><div class="who">owner@example.com</div></div>
+    </aside>
+    <div class="content">
+      <div class="toast">✓<span class="sp">Credits adjusted · iron_hunter 12 → 22</span><a href="#f-audit" data-action="noop">audit #4821</a></div>
+      <div class="ph"><h2>Audit</h2><span class="cnt">48 events · append-only</span></div>
+      <div class="fchips" style="margin-bottom:12px"><span class="sel">Actor: all</span><span class="sel">Action: all</span><input class="field" type="search" placeholder="Target: username, email, campaign" style="width:260px"><span class="sel">Last 30 days</span><button class="fchip" data-action="filter">Destructive only</button><button class="fchip" data-action="filter">Credits</button></div>
+      <table class="tbl">
+        <thead><tr><th class="sorted">Time ↓</th><th>Actor</th><th>Action</th><th>Target</th><th>Reason</th><th>Request</th></tr></thead>
+        <tbody>
+          <tr class="row" data-action="noop"><td>Today 14:02</td><td>owner</td><td><span class="chip cyan">credits.adjust</span></td><td class="un">iron_hunter</td><td>Refund — batch of 10 scans failed on Sep 2 (support #12)</td><td class="m">req_9f2…a1 · #4821</td></tr>
+          <tr class="expand"><td colspan="6"><div class="json2">
+            <div><div class="lbl">Before</div><pre>{ "scan_credits": <span class="old">12</span>,
+  "has_unlimited": false,
+  "free_scans_reset_at": "2026-09-21" }</pre></div>
+            <div><div class="lbl">After</div><pre>{ "scan_credits": <span class="chg">22</span>,
+  "has_unlimited": false,
+  "free_scans_reset_at": "2026-09-21" }</pre></div></div>
+            <div class="hint">actor owner@example.com · ip 203.0.113.9 · ua Safari macOS · duration 41 ms · idempotency key 5c1…7d</div></td></tr>
+          <tr class="row" data-action="noop"><td>Today 13:58</td><td>owner</td><td><span class="chip dim">admin.login</span></td><td class="m">—</td><td class="m">Safari macOS · session 12h</td><td class="m">req_9e7…c0</td></tr>
+          <tr class="row" data-action="noop"><td>Sep 3 09:12</td><td>owner</td><td><span class="chip cyan">campaign.import</span></td><td class="un">shadow_monarch</td><td>Fall block start · template run-base-v3 · replaced “Summer Cut”</td><td class="m">req_8b1…4e</td></tr>
+          <tr class="row" data-action="noop"><td>Sep 1 20:40</td><td>owner</td><td><span class="chip green">families.backfill</span></td><td>fleet</td><td>Post v3 migration cleanup · apply · 11 → 0 unassigned</td><td class="m">req_77a…19</td></tr>
+          <tr class="row" data-action="noop"><td>Aug 18 11:05</td><td>owner</td><td><span class="chip red">user.soft_delete</span></td><td class="un">old_hunter</td><td>Requested via email</td><td class="m">req_61c…b2</td></tr>
+          <tr class="row" data-action="noop"><td>Aug 14 09:30</td><td>system</td><td><span class="chip green">purchase.verified</span></td><td class="un">iron_hunter</td><td class="m">scan_20 · +20 credits · txn 2000…8841</td><td class="m">req_5d0…e8</td></tr>
+          <tr class="row" data-action="noop"><td>Aug 14 08:12</td><td>owner</td><td><span class="chip gold">unlimited.grant</span></td><td class="un">shadow_monarch</td><td>Owner account</td><td class="m">req_5cf…02</td></tr>
+        </tbody>
+      </table>
+      <div class="hint" style="margin-top:10px">Rows are append-only; no delete endpoint. Click a row to expand the before/after JSON. Empty filter: “No actions match. Every mutation lands here — nothing is silent.”</div>
+    </div>
+  </div></div>
+</section>
+
+<!-- 05 OVERVIEW -->
 <section class="frame" id="f-overview">
-  <div class="fr-label"><b>02</b> · Overview</div>
-  <div class="phone">
-    <div class="status"><span>9:41</span><span>●●●● ⌁</span></div>
-    <div class="topbar"><span class="brand">ARISE<i>SYSTEM ADMIN</i></span><span class="sp"></span><span class="chip orange">PROD</span><span class="chip dim">owner</span></div>
-    <div class="screen">
-      <div class="sl">[ FLEET ]<span class="sp"></span><span class="link mono">Sep 5 · 09:41</span></div>
+  <div class="fr-label"><b>05</b> · Overview · 1280 × 800</div>
+  <div class="bw"><div class="bchrome"><i></i><i></i><i></i><span class="url">arise.example/admin#/</span></div>
+  <div class="bbody">
+    <aside class="rail"><div class="wm">ARISE</div><div class="wm-s">[ SYSTEM ADMIN ]</div>
+      <input class="field" type="search" placeholder="Search email, username, id">
+      <nav class="rnav"><button class="on">◈ Overview</button><button data-action="jump" data-target="f-hunters">◉ Hunters</button><button data-action="jump" data-target="f-audit">≡ Audit</button><button data-action="jump" data-target="f-catalog">▤ Catalog</button><button data-action="jump" data-target="f-catalog">⚙ Settings</button></nav>
+      <div class="rfoot"><span class="chip orange" style="align-self:flex-start">PROD</span><div class="sess">SESSION 11:58:10</div><div class="who">owner@example.com</div></div>
+    </aside>
+    <div class="content">
+      <div class="ph"><h2>Overview</h2><span class="cnt">Sep 5 · 09:41 · refreshed 20s ago</span></div>
       <div class="stats">
         <div class="stat"><div class="v c">4</div><div class="l">Hunters</div><div class="d">3 active · 1 deleted</div></div>
-        <div class="stat"><div class="v g">2 <span style="font-size:13px;color:var(--text-muted)">/ 3</span></div><div class="l">Active 7d / 30d</div><div class="d">last: 2h ago</div></div>
+        <div class="stat"><div class="v g">2 <small>/ 3</small></div><div class="l">Active 7d / 30d</div><div class="d">last seen 2h ago</div></div>
         <div class="stat"><div class="v">27</div><div class="l">Scans this month</div><div class="d">4 hunters · 0 failed</div></div>
-        <div class="stat"><div class="v y">70</div><div class="l">Credits sold</div><div class="d">2 purchases · 30d</div></div>
+        <div class="stat"><div class="v y">70</div><div class="l">Credits sold 30d</div><div class="d">2 purchases · scan_20 ×2</div></div>
         <div class="stat"><div class="v r">1</div><div class="l">Pending purge</div><div class="d">eligible Sep 17</div></div>
-        <div class="stat"><div class="v o">6 <span style="font-size:13px;color:var(--text-muted)">· 2</span></div><div class="l">Data health</div><div class="d">no family · no local_date</div></div>
+        <div class="stat"><div class="v o">6 <small>· 2</small></div><div class="l">Data health</div><div class="d">no family · no local_date</div></div>
       </div>
-      <div class="sl">[ ATTENTION ]</div>
-      <div class="card">
-        <div class="att"><div class="a">old_hunter is 12 days from hard purge<small>soft-deleted Aug 18 · grace ends Sep 17</small></div><button class="btn sm ghost" data-action="jump" data-target="f-purge">OPEN</button></div>
-        <div class="att"><div class="a">6 exercises without a family<small>2 hunters · blocks prescriptions and gates</small></div><button class="btn sm" data-action="noop">DRY-RUN</button></div>
-        <div class="att"><div class="a">2 sessions missing local_date<small>iron_hunter · imported before v3</small></div><button class="btn sm" data-action="noop">REPAIR</button></div>
-      </div>
-      <div class="sysline err"><div class="t">INTEGRATION ERROR · 08:00</div><div class="row"><div class="m">WHOOP sync failed for <b>iron_hunter</b> — refresh token rejected.</div>
-<button class="btn sm ghost" data-action="noop">RETRY</button></div></div>
-      <div class="sl">[ RECENT ACTIONS ]<span class="sp"></span><button class="link" data-action="jump" data-target="f-audit">VIEW AUDIT</button></div>
-      <div class="card">
-        <div class="arow"><div class="h">Sep 3 · 09:12 <span class="chip cyan">campaign.import</span><span class="sp"></span>shadow_monarch</div><div class="s">Run Base + Strength <span class="from">replaced “Summer Cut”</span></div></div>
-        <div class="arow"><div class="h">Sep 1 · 20:40 <span class="chip green">families.backfill</span><span class="sp"></span>fleet</div><div class="s"><span class="from">11 unassigned</span> → <span class="to">0</span></div></div>
-      </div>
-    </div>
-    <nav class="tabbar">
-      <button class="on"><i>◈</i>OVERVIEW</button><button><i>◉</i>HUNTERS</button><button><i>≡</i>AUDIT</button><button><i>▤</i>CATALOG</button><button><i>⚙</i>SETTINGS</button>
-    </nav>
-  </div>
-</section>
-
-<!-- 03 USERS LIST -->
-<section class="frame" id="f-users">
-  <div class="fr-label"><b>03</b> · Hunters (users list)</div>
-  <div class="phone">
-    <div class="status"><span>9:41</span><span>●●●● ⌁</span></div>
-    <div class="topbar"><span class="brand">ARISE<i>HUNTERS</i></span><span class="sp"></span><span class="chip orange">PROD</span></div>
-    <div class="screen">
-      <div class="search"><input class="field" type="search" placeholder="Search email or username" value=""></div>
-      <div class="fchips">
-        <button class="fchip active" data-action="filter">All · 4</button>
-        <button class="fchip" data-action="filter">Deleted · 1</button>
-        <button class="fchip" data-action="filter">Unlimited · 1</button>
-        <button class="fchip" data-action="filter">Inactive 30d · 2</button>
-      </div>
-      <div class="sortrow"><span>SORT: LAST ACTIVE ↓</span><span>4 HUNTERS</span></div>
-      <button class="urow" data-action="jump" data-target="f-detail">
-        <div class="av a">A</div>
-        <div><div class="un">shadow_monarch</div><div class="em">owner@example.com · Lv 41</div></div>
-        <div class="ur"><div class="la">2h ago</div><div class="chips"><span class="chip gold">Unlimited</span><span class="chip dim">Owner</span></div></div>
-      </button>
-      <button class="urow" data-action="jump" data-target="f-detail">
-        <div class="av c">C</div>
-        <div><div class="un">iron_hunter</div><div class="em">hunter2@example.com · Lv 14</div></div>
-        <div class="ur"><div class="la">1d ago</div><div class="chips"><span class="chip cyan">12 credits</span><span class="chip orange">WHOOP</span></div></div>
-      </button>
-      <button class="urow" data-action="jump" data-target="f-detail">
-        <div class="av e">E</div>
-        <div><div class="un">lv1_novice</div><div class="em">novice@example.com · Lv 2</div></div>
-        <div class="ur"><div class="la">41d ago</div><div class="chips"><span class="chip dim">Inactive</span></div></div>
-      </button>
-      <button class="urow deleted" data-action="jump" data-target="f-purge">
-        <div class="av d">D</div>
-        <div><div class="un">old_hunter</div><div class="em">gone@example.com · Lv 8</div></div>
-        <div class="ur"><div class="la">Aug 16</div><div class="chips"><span class="chip red">Deleted · purge 12d</span></div></div>
-      </button>
-      <div class="hint" style="text-align:center;margin-top:16px">Tap a hunter for the detail page. Deleted hunters stay listed (dimmed) until purge.<br>Empty search: “No hunter matches ‘x’ — check the Deleted filter.”</div>
-    </div>
-    <nav class="tabbar">
-      <button><i>◈</i>OVERVIEW</button><button class="on"><i>◉</i>HUNTERS</button><button><i>≡</i>AUDIT</button><button><i>▤</i>CATALOG</button><button><i>⚙</i>SETTINGS</button>
-    </nav>
-  </div>
-</section>
-
-<!-- 04 USER DETAIL -->
-<section class="frame" id="f-detail">
-  <div class="fr-label"><b>04</b> · Hunter detail (all cards)</div>
-  <div class="phone">
-    <div class="status"><span>9:41</span><span>●●●● ⌁</span></div>
-    <div class="topbar"><button class="back">‹ HUNTERS</button><span class="sp"></span><span class="chip orange">PROD</span></div>
-    <div class="screen">
-      <div class="viewas">VIEWING AS iron_hunter · READ-ONLY<span class="sp"></span><button data-action="noop">EXIT</button></div>
-      <div class="ihead">
-        <div class="av c">C</div>
-        <div class="mid"><div class="nm">iron_hunter</div><div class="sub">hunter2@example.com · 7f3a…c21e</div></div>
-        <button class="btn sm ghost" data-action="noop">VIEW AS</button>
-        <div class="chips"><span class="chip green">Active</span><span class="chip cyan">C-rank · Lv 14</span><span class="chip cyan">12 credits</span><span class="chip orange">WHOOP</span><span class="chip gold">Override</span></div>
-      </div>
-
-      <div class="sl">[ IDENTITY ]<span class="sp"></span><button class="link" data-action="noop">COPY ID</button></div>
-      <div class="card">
-        <div class="kv"><span class="k">EMAIL</span><span class="v">hunter2@example.com</span></div>
-        <div class="kv"><span class="k">USERNAME</span><span class="v">iron_hunter</span></div>
-        <div class="kv"><span class="k">CREATED</span><span class="v">2026-05-02 · 126d</span></div>
-        <div class="kv"><span class="k">LAST ACTIVE</span><span class="v">Sep 4 · 21:10 (1d)</span></div>
-        <div class="kv"><span class="k">EXPERIENCE · UNIT</span><span class="v">intermediate · lb</span></div>
-      </div>
-
-      <div class="sl">[ PROGRESS ]</div>
-      <div class="card">
-        <div class="kv"><span class="k">LEVEL · RANK</span><span class="v">14 · C</span></div>
-        <div class="kv"><span class="k">TOTAL XP</span><span class="v">6,420</span></div>
-        <div class="kv"><span class="k">STREAK · LONGEST</span><span class="v">5 · 11</span></div>
-        <div class="kv"><span class="k">WORKOUTS · PRS</span><span class="v">63 · 9</span></div>
-        <div class="kv"><span class="k">LAST WORKOUT</span><span class="v">2026-09-04</span></div>
-      </div>
-
-      <div class="sl">[ SCANS ]</div>
-      <div class="card">
-        <div class="kv"><span class="k">SCAN_CREDITS</span><span class="v">12</span></div>
-        <div class="kv"><span class="k">HAS_UNLIMITED</span><span class="v m">false</span></div>
-        <div class="kv"><span class="k">FREE RESET</span><span class="v">2026-09-21 · in 16d</span></div>
-        <div class="kv"><span class="k">USED 30D</span><span class="v">4 scans · last Sep 2</span></div>
-        <div class="acts"><button class="btn" data-action="jump" data-target="f-credits">− / + CREDITS</button><button class="btn gold" data-action="noop">GRANT UNLIMITED</button></div>
-      </div>
-
-      <div class="sl">[ ENTITLEMENTS ]<span class="sp"></span><span class="link mono" style="color:var(--text-muted)">override · default</span></div>
-      <div class="card">
-        <div class="kv"><span class="k">FREE MONTHLY SCANS</span><span class="v ov">5 <span style="color:var(--text-muted)">· 3</span></span></div>
-        <div class="kv"><span class="k">DAILY SCAN CAP</span><span class="v m">— · 10</span></div>
-        <div class="kv"><span class="k">SCAN COOLDOWN</span><span class="v m">— · 60s</span></div>
-        <div class="acts"><button class="btn" data-action="noop">SET LIMITS</button><button class="btn ghost" data-action="noop">RESET TO DEFAULTS</button></div>
-      </div>
-
-      <div class="sl">[ PURCHASES ]</div>
-      <div class="card">
-        <div class="prow"><span class="n">scan_20 <span class="s">consumable</span></span><span class="r">+20</span><span class="s">2026-08-14 · txn 2000…8841</span><span class="s" style="text-align:right">verified</span></div>
-        <div class="prow"><span class="n">scan_20 <span class="s">consumable</span></span><span class="r">+20</span><span class="s">2026-06-30 · txn 2000…1190</span><span class="s" style="text-align:right">verified</span></div>
-      </div>
-
-      <div class="sl">[ CAMPAIGN ]</div>
-      <div class="card">
-        <div class="kv"><span class="k">NAME</span><span class="v">Run Base + Strength</span></div>
-        <div class="kv"><span class="k">STATUS · SOURCE</span><span class="v"><span class="chip green">Active</span> · template</span></div>
-        <div class="kv"><span class="k">START · ARC</span><span class="v">2026-08-31 · Base 2 (wk 1 / 6)</span></div>
-        <div class="kv"><span class="k">ARCS</span><span class="v">3 · 18 weeks</span></div>
-        <div class="kv"><span class="k">NEXT HUNT</span><span class="v">Sat Sep 6 · LIFT · Squat + Press</span></div>
-        <div class="acts"><button class="btn" data-action="noop">IMPORT / REPLACE</button><button class="btn ghost" data-action="noop">VIEW ARCS</button></div>
-      </div>
-
-      <div class="sl">[ INTEGRATIONS ]</div>
-      <div class="card warn">
-        <div class="kv"><span class="k">WHOOP</span><span class="v warnv">connected · sync failed 08:00</span></div>
-        <div class="kv"><span class="k">LAST SYNC · SCOPE</span><span class="v">Sep 4 · 22:15 · workout recovery sleep</span></div>
-        <div class="kv"><span class="k">PUSH DEVICES</span><span class="v">2 active · ios</span></div>
-        <div class="kv"><span class="k">HEALTHKIT SOURCE</span><span class="v m">none seen yet</span></div>
-        <div class="acts"><button class="btn" data-action="noop">RETRY SYNC</button><button class="btn ghost" data-action="noop">SEND TEST PUSH</button></div>
-      </div>
-
-      <div class="sl">[ DATA HEALTH ]</div>
-      <div class="card warn">
-        <div class="kv"><span class="k">EXERCISES W/O FAMILY</span><span class="v warnv">4</span></div>
-        <div class="kv"><span class="k">SESSIONS W/O LOCAL_DATE</span><span class="v warnv">2</span></div>
-        <div class="kv"><span class="k">LAST BACKFILL</span><span class="v">Sep 1 · applied · fleet</span></div>
-        <div class="acts"><button class="btn" data-action="noop">DRY-RUN BACKFILL</button><button class="btn ghost" data-action="noop">REPAIR DATES</button></div>
-        <div class="hint">Dry-run returns the proposed mapping (exercise → family) in the sheet; APPLY is a second confirm on that same sheet.</div>
-      </div>
-
-      <div class="sl" style="color:var(--warning-red)">[ DANGER ZONE ]</div>
-      <div class="card danger">
-        <div class="kv"><span class="k">IS_DELETED</span><span class="v m">false</span></div>
-        <div class="kv"><span class="k">GRACE WINDOW</span><span class="v m">30 days after soft-delete</span></div>
-        <div class="acts"><button class="btn danger" data-action="noop">SOFT-DELETE</button></div>
-        <div class="hint">Restore and Purge appear here once the hunter is soft-deleted (see frame 06).</div>
-      </div>
-
-      <div class="sl">[ AUDIT · THIS HUNTER ]<span class="sp"></span><button class="link" data-action="jump" data-target="f-audit">VIEW ALL</button></div>
-      <div class="card">
-        <div class="arow"><div class="h">Aug 20 · 18:02 <span class="chip gold">limits.set</span><span class="sp"></span>owner</div><div class="s">free_monthly_scans <span class="from">3</span> → <span class="to">5</span></div><div class="q">Beta tester — extra scans while WHOOP import stabilizes</div></div>
-        <div class="arow"><div class="h">Aug 14 · 09:30 <span class="chip green">purchase.verified</span><span class="sp"></span>system</div><div class="s">scan_20 · <span class="to">+20</span> credits</div></div>
+      <div class="grid2" style="margin-top:14px">
+        <div class="card"><div class="sl">[ ATTENTION ]</div>
+          <div class="att"><div class="a">old_hunter is 12 days from hard purge<small>soft-deleted Aug 18 · eligible for the deploy-time sweep from Sep 17 · restore or purge early</small></div><button class="btn sm ghost" data-action="jump" data-target="f-purge">OPEN</button></div>
+          <div class="att"><div class="a">6 exercises without a family<small>2 hunters · blocks prescriptions and gates</small></div><button class="btn sm" data-action="noop">DRY-RUN</button></div>
+          <div class="att"><div class="a">Unlimited-flag drift: 1 hunter<small>shadow_monarch has_unlimited=true with no scan_unlimited purchase · expected (owner grant Aug 14)</small></div><button class="btn sm ghost" data-action="jump" data-target="f-detail">OPEN</button></div>
+          <div class="att"><div class="a">WHOOP sync failing for iron_hunter<small>refresh rejected 08:00 · hunter must reconnect in-app</small></div><button class="btn sm ghost" data-action="jump" data-target="f-detail">OPEN</button></div></div>
+        <div class="card"><div class="sl">[ RECENT ACTIONS ]<span class="sp"></span><button class="link" data-action="jump" data-target="f-audit">VIEW AUDIT</button></div>
+          <div class="arow"><div class="h">Today · 14:02 <span class="chip cyan">credits.adjust</span><span class="sp"></span>owner → iron_hunter</div><div class="s">scan_credits <span class="from">12</span> → <span class="to">22</span></div><div class="q">Refund — batch of 10 scans failed on Sep 2</div></div>
+          <div class="arow"><div class="h">Sep 3 · 09:12 <span class="chip cyan">campaign.import</span><span class="sp"></span>owner → shadow_monarch</div><div class="s">Run Base + Strength <span class="from">replaced “Summer Cut”</span></div></div>
+          <div class="arow"><div class="h">Sep 1 · 20:40 <span class="chip green">families.backfill</span><span class="sp"></span>owner → fleet</div><div class="s"><span class="from">11 unassigned</span> → <span class="to">0</span></div></div>
+          <div class="arow"><div class="h">Aug 18 · 11:05 <span class="chip red">user.soft_delete</span><span class="sp"></span>owner → old_hunter</div><div class="s">is_deleted <span class="from">false</span> → <span class="to dn">true</span></div></div></div>
       </div>
     </div>
-    <nav class="tabbar">
-      <button><i>◈</i>OVERVIEW</button><button class="on"><i>◉</i>HUNTERS</button><button><i>≡</i>AUDIT</button><button><i>▤</i>CATALOG</button><button><i>⚙</i>SETTINGS</button>
-    </nav>
-  </div>
+  </div></div>
 </section>
 
-<!-- 05 ADJUST CREDITS SHEET -->
-<section class="frame" id="f-credits">
-  <div class="fr-label"><b>05</b> · Adjust credits · confirmation sheet</div>
-  <div class="phone">
-    <div class="status"><span>9:41</span><span>●●●● ⌁</span></div>
-    <div class="topbar dim"><button class="back">‹ HUNTERS</button><span class="sp"></span><span class="chip orange">PROD</span></div>
-    <div class="screen" style="min-height:640px">
-      <div class="dim">
-        <div class="ihead"><div class="av c">C</div><div class="mid"><div class="nm">iron_hunter</div><div class="sub">hunter2@example.com · 7f3a…c21e</div></div><div class="chips"><span class="chip green">Active</span><span class="chip cyan">C-rank · Lv 14</span><span class="chip cyan">12 credits</span></div></div>
+<!-- 06 CATALOG + SETTINGS -->
+<section class="frame" id="f-catalog">
+  <div class="fr-label"><b>06</b> · Catalog + Settings · edit drawer for scan_50 · 1280 × 800</div>
+  <div class="bw"><div class="bchrome"><i></i><i></i><i></i><span class="url">arise.example/admin#/catalog/scan_50</span></div>
+  <div class="bbody">
+    <aside class="rail"><div class="wm">ARISE</div><div class="wm-s">[ SYSTEM ADMIN ]</div>
+      <input class="field" type="search" placeholder="Search email, username, id">
+      <nav class="rnav"><button data-action="jump" data-target="f-overview">◈ Overview</button><button data-action="jump" data-target="f-hunters">◉ Hunters</button><button data-action="jump" data-target="f-audit">≡ Audit</button><button class="on">▤ Catalog</button><button class="on" style="opacity:.7">⚙ Settings</button></nav>
+      <div class="rfoot"><span class="chip orange" style="align-self:flex-start">PROD</span><div class="sess">SESSION 11:36:20</div><div class="who">owner@example.com</div></div>
+    </aside>
+    <div class="content">
+      <div class="ph"><h2>Catalog</h2><span class="cnt">3 products · StoreKit ids mirror app/api/scan_balance.py</span></div>
+      <table class="tbl">
+        <thead><tr><th>Product id</th><th>Kind</th><th>Credits</th><th>Entitlement key</th><th>Active</th><th class="sorted">Sort ↓</th><th></th></tr></thead>
+        <tbody>
+          <tr class="row"><td>com.nickchua.fitnessapp.scan_20</td><td>consumable</td><td class="g">+20</td><td class="m">scan.credits</td><td><span class="tog on"></span></td><td class="m">1</td><td class="r"><button class="btn sm ghost" data-action="noop">EDIT</button></td></tr>
+          <tr class="row" style="outline:1px solid var(--arise-border)"><td>com.nickchua.fitnessapp.scan_50</td><td>consumable</td><td class="g">+50</td><td class="m">scan.credits</td><td><span class="tog on"></span></td><td class="m">2</td><td class="r"><button class="btn sm" data-action="noop">EDITING</button></td></tr>
+          <tr class="row"><td>com.nickchua.fitnessapp.scan_unlimited</td><td>non_consumable</td><td class="y">∞</td><td class="m">scan.unlimited</td><td><span class="tog on"></span></td><td class="m">3</td><td class="r"><button class="btn sm ghost" data-action="noop">EDIT</button></td></tr>
+        </tbody>
+      </table>
+      <div class="hint" style="margin:8px 0 18px">Toggling Active hides the product from the paywall; it does not touch App Store Connect. Credits changes apply to future purchases only.</div>
+      <div class="ph"><h2>Settings</h2><span class="cnt">read-only · edit on Railway (env vars) · redeploy applies</span></div>
+      <div class="card" style="max-width:560px">
+        <div class="kv"><span class="k">FREE_MONTHLY_SCANS</span><span class="v">3</span></div><div class="kv"><span class="k">DAILY SCAN CAP</span><span class="v">10</span></div><div class="kv"><span class="k">SCAN COOLDOWN</span><span class="v">60s</span></div>
+        <div class="kv"><span class="k">SCREENSHOT_PROCESSING_ENABLED</span><span class="v"><span class="chip green">ON</span></span></div><div class="kv"><span class="k">PURGE GRACE DAYS</span><span class="v">30</span></div><div class="kv"><span class="k">PURGE SWEEP ENABLED</span><span class="v"><span class="chip green">true</span> · daily 03:00 UTC</span></div>
+        <div class="hint">Values are read from the running config. Change them in the Railway service variables; the audit log records the deploy that changed them.</div></div>
+    </div>
+    <aside class="drawer"><button class="x" data-action="noop" aria-label="close">✕</button>
+      <div class="sl">[ EDIT PRODUCT ]</div><div class="who">com.nickchua.fitnessapp.scan_50</div>
+      <div class="flabel">Credits per purchase</div><input class="field" type="number" value="60" inputmode="numeric">
+      <div class="diff" style="margin-top:8px"><span class="k">CREDITS</span><span class="from">50</span><span class="ar">→</span><span class="to">60</span></div>
+      <div class="diff same"><span class="k">KIND</span><span class="from">consumable</span><span class="ar">→</span><span class="to">consumable</span></div>
+      <div class="diff same"><span class="k">ACTIVE</span><span class="from">true</span><span class="ar">→</span><span class="to">true</span></div>
+      <div class="diff same"><span class="k">SORT</span><span class="from">2</span><span class="ar">→</span><span class="to">2</span></div>
+      <div class="flabel">Reason <b>required · written to audit</b></div>
+      <div class="field area">Launch promo — 20% bonus credits through Oct 1</div>
+      <div class="hint">Logged as catalog.update by owner. Existing balances are untouched; only purchases verified after confirm receive 60.</div>
+      <div class="acts"><button class="btn ghost" data-action="noop">CANCEL</button><button class="btn primary" data-action="noop">CONFIRM 50 → 60</button></div>
+    </aside>
+  </div></div>
+</section>
+
+<!-- 07 PHONE LANE -->
+<section class="frame" id="f-phone">
+  <div class="fr-label"><b>07</b> · Phone quick-action lane · 390 · Hunters results + Hunter detail (phone order) with Grant-unlimited sheet</div>
+  <div class="lane">
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>●●●● ⌁</span></div>
+      <div class="topbar"><span class="brand">ARISE<i>HUNTERS</i></span><span class="sp"></span><span class="chip orange">PROD</span></div>
+      <div class="screen">
+        <input class="field" type="search" value="hunt" style="min-height:44px">
+        <div class="fchips" style="margin:8px 0 10px"><button class="fchip active" data-action="filter">All</button><button class="fchip" data-action="filter">Deleted</button><button class="fchip" data-action="filter">Unlimited</button><button class="fchip" data-action="filter">Inactive 30d</button></div>
+        <button class="urow" data-action="noop"><div class="av c">C</div><div><div class="un">iron_hunter</div><div class="em">hunter2@example.com · Lv 14</div></div><div class="ur"><div class="la">1d ago</div><div class="chips"><span class="chip cyan">12 credits</span><span class="chip orange">WHOOP</span></div></div></button>
+        <button class="urow deleted" data-action="noop"><div class="av d">D</div><div><div class="un">old_hunter</div><div class="em">gone@example.com · Lv 8</div></div><div class="ur"><div class="la">Aug 16</div><div class="chips"><span class="chip red">Deleted · purge 12d</span></div></div></button>
+        <div class="hint" style="text-align:center;margin-top:14px">2 matches for “hunt”. Tap for the quick-action detail.<br>Phone lane = lookups + the few actions a friend's text triggers.</div>
+      </div>
+      <nav class="tabbar"><button class="on"><i>◉</i>HUNTERS</button><button><i>≡</i>AUDIT</button><button><i>◈</i>OVERVIEW</button></nav>
+    </div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>●●●● ⌁</span></div>
+      <div class="topbar dim"><button class="back">‹ HUNTERS</button><span class="sp"></span><span class="chip orange">PROD</span></div>
+      <div class="screen dim">
+        <div class="ihead" style="padding:12px;margin-bottom:0"><div class="av c" style="width:42px;height:42px;font-size:16px">C</div><div class="mid"><div class="nm" style="font-size:17px">iron_hunter</div><div class="sub">hunter2@example.com</div></div></div>
+        <div class="fchips" style="margin:8px 0 4px"><span class="chip green">Active</span><span class="chip cyan">C · Lv 14</span><span class="chip cyan">12 credits</span><span class="chip orange">WHOOP</span><span class="chip gold">Override</span></div>
         <div class="sl">[ SCANS ]</div>
-        <div class="card"><div class="kv"><span class="k">SCAN_CREDITS</span><span class="v">12</span></div><div class="kv"><span class="k">HAS_UNLIMITED</span><span class="v m">false</span></div></div>
+        <div class="card"><div class="kv"><span class="k">SCAN_CREDITS</span><span class="v">12</span></div><div class="kv"><span class="k">HAS_UNLIMITED</span><span class="v m">false</span></div>
+          <div class="qa"><button class="btn" data-action="noop">− / + CREDITS</button><button class="btn gold" data-action="noop">GRANT UNLIMITED</button></div></div>
+        <div class="sl">[ ENTITLEMENTS ]</div>
+        <div class="card"><div class="kv"><span class="k">FREE MONTHLY</span><span class="v ov">5 · 3</span></div><div class="acts"><button class="btn" data-action="noop">SET LIMITS</button></div></div>
+        <div class="sl" style="color:var(--warning-red)">[ DANGER ZONE ]</div>
+        <div class="card danger"><div class="acts" style="margin-top:0"><button class="btn danger" data-action="noop">SOFT-DELETE</button></div></div>
+        <div class="sl">[ IDENTITY ]</div><div class="card"><div class="kv"><span class="k">CREATED</span><span class="v">2026-05-02</span></div></div>
       </div>
       <div class="sheet">
         <div class="grab"></div>
-        <div class="sl">[ ADJUST CREDITS ]<span class="sp"></span><span class="link mono" style="color:var(--text-muted)">iron_hunter</span></div>
-        <div class="stepper">
-          <button data-action="step" data-delta="-1" aria-label="minus one">−</button>
-          <div class="n" id="delta" data-v="10">+10<small>CREDITS</small></div>
-          <button data-action="step" data-delta="1" aria-label="plus one">+</button>
-        </div>
-        <div class="presets"><button data-action="preset" data-v="-5">−5</button><button data-action="preset" data-v="5">+5</button><button data-action="preset" data-v="20">+20</button><button data-action="preset" data-v="50">+50</button></div>
-        <div class="diff"><span class="k">SCAN_CREDITS</span><span class="from">12</span><span class="ar">→</span><span class="to" id="cred-to">22</span></div>
-        <div class="diff same"><span class="k">HAS_UNLIMITED</span><span class="from">false</span><span class="ar">→</span><span class="to">false</span></div>
-        <div class="diff same"><span class="k">FREE RESET</span><span class="from">Sep 21</span><span class="ar">→</span><span class="to">Sep 21</span></div>
+        <div class="sl" style="margin:0 0 4px">[ GRANT UNLIMITED ]<span class="sp"></span><span class="ro">iron_hunter</span></div>
+        <div class="diff"><span class="k">HAS_UNLIMITED</span><span class="from">false</span><span class="ar">→</span><span class="to">true</span></div>
+        <div class="diff same"><span class="k">SCAN_CREDITS</span><span class="from">12</span><span class="ar">→</span><span class="to">12 (kept)</span></div>
+        <div class="diff same"><span class="k">FREE_SCANS_RESET_AT</span><span class="from">Sep 21</span><span class="ar">→</span><span class="to">Sep 21</span></div>
         <div class="flabel">Reason <b>required · written to audit</b></div>
-        <div class="field area">Refund — batch of 10 scans failed on Sep 2 (support #12)</div>
-        <div class="hint">Logged as <span style="color:var(--text-secondary)">credits.adjust</span> by owner · target iron_hunter · before/after captured server-side, not from this form.</div>
-        <div class="acts"><button class="btn ghost" data-action="noop">CANCEL</button><button class="btn primary" id="confirm-cred" data-action="noop">CONFIRM +10 CREDITS</button></div>
+        <div class="field area">Friend of the owner — comped while the paywall is in beta</div>
+        <div class="hint">Logged as unlimited.grant · owner → iron_hunter. Revoke is a destructive-tier action (password re-entry) from the same card.</div>
+        <div class="acts"><button class="btn ghost" data-action="noop">CANCEL</button><button class="btn gold" data-action="noop" style="border-color:transparent;background:var(--gold);color:#241c00">CONFIRM GRANT</button></div>
       </div>
+      <nav class="tabbar"><button class="on"><i>◉</i>HUNTERS</button><button><i>≡</i>AUDIT</button><button><i>◈</i>OVERVIEW</button></nav>
     </div>
   </div>
-</section>
-
-<!-- 06 PURGE SHEET -->
-<section class="frame" id="f-purge">
-  <div class="fr-label"><b>06</b> · Hard purge · typed confirmation + re-auth</div>
-  <div class="phone">
-    <div class="status"><span>9:41</span><span>●●●● ⌁</span></div>
-    <div class="topbar dim"><button class="back">‹ HUNTERS</button><span class="sp"></span><span class="chip orange">PROD</span></div>
-    <div class="screen" style="min-height:760px">
-      <div class="dim">
-        <div class="ihead"><div class="av d">D</div><div class="mid"><div class="nm">old_hunter</div><div class="sub">gone@example.com · 91be…04aa</div></div><div class="chips"><span class="chip red">Deleted Aug 18</span><span class="chip dim">Purge eligible Sep 17</span></div></div>
-        <div class="sl" style="color:var(--warning-red)">[ DANGER ZONE ]</div>
-        <div class="card danger"><div class="kv"><span class="k">IS_DELETED · DELETED_AT</span><span class="v">true · 2026-08-18</span></div><div class="kv"><span class="k">DAYS UNTIL PURGE</span><span class="v warnv">12</span></div><div class="acts"><button class="btn">RESTORE</button><button class="btn danger">PURGE</button></div></div>
-      </div>
-      <div class="sheet danger">
-        <div class="grab"></div>
-        <div class="sl">[ HARD PURGE ]<span class="sp"></span><span class="link mono" style="color:var(--text-muted)">old_hunter</span></div>
-        <div class="sysline guard"><div class="t">GUARD · GRACE WINDOW OPEN</div><div class="m">Deleted <b>18 of 30</b> days ago. Purge is normally blocked until <b>Sep 17</b>. Enable FORCE to override — the override is itself an audit event.</div></div>
-        <div class="impact">
-          <div><b>41</b><small>sessions</small></div><div><b>388</b><small>sets</small></div><div><b>9</b><small>PRs</small></div>
-          <div><b>1</b><small>campaign</small></div><div><b>1</b><small>device token</small></div><div><b>0</b><small>WHOOP</small></div>
-        </div>
-        <div class="hint err">Permanently deletes the user row and every cascade above. Purchases are kept (receipt records) but detached. This cannot be undone or restored.</div>
-        <label class="check"><i>✓</i>FORCE — purge before the grace window ends</label>
-        <div class="flabel">Type the username to confirm</div>
-        <input class="field" id="typed" type="text" value="old_hunter" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="old_hunter">
-        <div class="hint ok" id="typed-hint">Matches — purge unlocked</div>
-        <div class="flabel">Reason <b>required · written to audit</b></div>
-        <div class="field area">User emailed on Sep 4 asking for immediate erasure (GDPR request)</div>
-        <div class="flabel">Re-enter admin password</div>
-        <input class="field" type="password" placeholder="••••••••••••" autocomplete="current-password">
-        <div class="acts"><button class="btn ghost" data-action="noop">CANCEL</button><button class="btn danger solid" id="purge-btn" data-action="noop">PURGE old_hunter</button></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- 07 AUDIT LOG -->
-<section class="frame" id="f-audit">
-  <div class="fr-label"><b>07</b> · Audit log · with result toast</div>
-  <div class="phone">
-    <div class="status"><span>9:41</span><span>●●●● ⌁</span></div>
-    <div class="topbar"><span class="brand">ARISE<i>AUDIT</i></span><span class="sp"></span><span class="chip orange">PROD</span></div>
-    <div class="screen">
-      <div class="toast">✓<span class="sp">Credits adjusted · iron_hunter 12 → 22</span><a href="#f-audit" data-action="noop">#4821</a></div>
-      <div style="height:38px"></div>
-      <div class="fchips">
-        <button class="fchip active" data-action="filter">All actors</button>
-        <button class="fchip" data-action="filter">owner</button>
-        <button class="fchip" data-action="filter">system</button>
-        <button class="fchip" data-action="filter">Destructive</button>
-        <button class="fchip" data-action="filter">Credits</button>
-      </div>
-      <div class="search"><input class="field" type="search" placeholder="Target: username, email, or campaign" value=""></div>
-      <div class="sortrow"><span>NEWEST FIRST</span><span>6 OF 48</span></div>
-      <div class="card">
-        <button class="arow" data-action="noop"><div class="h">Today · 14:02 <span class="chip cyan">credits.adjust</span><span class="sp"></span>owner → iron_hunter</div><div class="s">scan_credits <span class="from">12</span> → <span class="to">22</span> (+10)</div><div class="q">Refund — batch of 10 scans failed on Sep 2 (support #12)</div></button>
-        <button class="arow" data-action="noop"><div class="h">Today · 13:58 <span class="chip dim">admin.login</span><span class="sp"></span>owner</div><div class="s">iPhone · Safari · session 12h</div></button>
-        <button class="arow" data-action="noop"><div class="h">Sep 3 · 09:12 <span class="chip cyan">campaign.import</span><span class="sp"></span>owner → shadow_monarch</div><div class="s">Run Base + Strength · template run-base-v3 · start 2026-08-31 <span class="from">· replaced “Summer Cut” (paused)</span></div><div class="q">Fall block start</div></button>
-        <button class="arow" data-action="noop"><div class="h">Sep 1 · 20:40 <span class="chip green">families.backfill</span><span class="sp"></span>owner → fleet</div><div class="s">apply · exercises w/o family <span class="from">11</span> → <span class="to">0</span></div><div class="q">Post v3 migration cleanup</div></button>
-        <button class="arow" data-action="noop"><div class="h">Aug 18 · 11:05 <span class="chip red">user.soft_delete</span><span class="sp"></span>owner → old_hunter</div><div class="s">is_deleted <span class="from">false</span> → <span class="to dn">true</span> · purge eligible Sep 17</div><div class="q">Requested via email</div></button>
-        <button class="arow" data-action="noop"><div class="h">Aug 14 · 08:12 <span class="chip gold">unlimited.grant</span><span class="sp"></span>owner → shadow_monarch</div><div class="s">has_unlimited <span class="from">false</span> → <span class="to">true</span></div><div class="q">Owner account</div></button>
-        <div class="sk" style="width:70%"></div><div class="sk" style="width:90%"></div><div class="sk" style="width:55%"></div>
-      </div>
-      <div class="hint" style="text-align:center;margin-top:12px">Rows are append-only. Tap a row for the full before/after JSON, request id, and IP.<br>Empty filter: “No actions match. Every mutation lands here — nothing is silent.”</div>
-    </div>
-    <nav class="tabbar">
-      <button><i>◈</i>OVERVIEW</button><button><i>◉</i>HUNTERS</button><button class="on"><i>≡</i>AUDIT</button><button><i>▤</i>CATALOG</button><button><i>⚙</i>SETTINGS</button>
-    </nav>
-  </div>
+  <div class="hint" style="max-width:820px;margin-top:10px">Phone detail order: Scans → Entitlements → Danger zone → Identity → Progress → Purchases → Campaign (read-only) → Integrations → Data health (read-only) → Audit. No Preview, no Catalog, no Settings on the phone. Import/replace campaign, backfill, and purge are desktop-only.</div>
 </section>
 
 </main>
@@ -535,17 +509,17 @@ input{-webkit-appearance:none;appearance:none;font:inherit;color:inherit}
   document.addEventListener('click', function (e) {
     var el = e.target.closest('[data-action]'); if (!el) return;
     var a = el.dataset.action;
-    if (a === 'jump') { e.preventDefault(); var t = document.getElementById(el.dataset.target); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'center' }); }
+    if (a === 'jump') { e.preventDefault(); var t = document.getElementById(el.dataset.target); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     else if (a === 'step') { setDelta(parseInt(document.getElementById('delta').dataset.v, 10) + parseInt(el.dataset.delta, 10)); }
     else if (a === 'preset') { setDelta(parseInt(el.dataset.v, 10)); }
     else if (a === 'filter') { var sib = el.parentNode.querySelectorAll('.fchip'); for (var i = 0; i < sib.length; i++) sib[i].classList.remove('active'); el.classList.add('active'); }
     else if (a === 'noop') { e.preventDefault(); /* static mockup: mutations are described in the spec, not wired */ }
   });
-  // Typed-confirm rule: the purge button is disabled until the input equals the username exactly.
-  var typed = document.getElementById('typed');
+  // Typed-confirm rule: the purge button stays disabled until the input equals the target email exactly.
+  var typed = document.getElementById('typed-email');
   if (typed) typed.addEventListener('input', function () {
-    var ok = typed.value === 'old_hunter', h = document.getElementById('typed-hint'), b = document.getElementById('purge-btn');
-    b.disabled = !ok; h.textContent = ok ? 'Matches — purge unlocked' : 'Type old_hunter exactly to unlock'; h.className = 'hint ' + (ok ? 'ok' : 'err');
+    var ok = typed.value.trim().toLowerCase() === 'gone@example.com', h = document.getElementById('typed-hint'), b = document.getElementById('purge-btn');
+    b.disabled = !ok; h.textContent = ok ? 'Matches — purge unlocked' : 'Type gone@example.com exactly to unlock'; h.className = 'hint ' + (ok ? 'ok' : 'err');
   });
 })();
 </script>

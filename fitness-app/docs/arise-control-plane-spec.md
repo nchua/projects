@@ -53,7 +53,8 @@ before→after diff and a mandatory reason that lands in an append-only audit lo
    window, an explicit delete order (21 foreign keys to `users.id` have no cascade), and a
    startup sweep behind an env flag so the privacy promise becomes true at zero infra.
 6. **Read surfaces and the console** (§9–§10): user list, the user detail "customer view", fleet
-   usage, audit; one phone-first HTML file with a confirm-with-reason pattern for every action.
+   usage, audit; a desktop-first static page with a scoped phone lane and a confirm-with-reason
+   pattern for every action.
 7. **Hygiene folded in** (§11): the pre-existing holes that share the console's origin — a
    reflected XSS on the WHOOP callback, passwords echoed into logs by the validation handler,
    an unverified purchase endpoint — get their cheap fixes in the same workstream.
@@ -67,7 +68,7 @@ behavior changes at the end of W1: the next "how is X doing" is a URL, not a scr
 
 | # | Job | Today | v1 |
 |---|---|---|---|
-| O1 | Grant or take back a permission for one person, from my phone, in under a minute | script + terminal | Hunter detail › Scans / Entitlements card |
+| O1 | Grant or take back a permission for one person — from my desk in seconds, from my phone in under a minute | script + terminal | Hunter detail › Scans / Entitlements card (phone lane) |
 | O2 | Put a training plan into someone's Campaign without their password | script logs in as them | Hunter detail › Campaign › Import (dry-run, then apply) |
 | O3 | Fix data after a dictionary or rule change and see what is still unresolved | script, no preview | Overview › Attention › Backfill (dry-run, then apply) |
 | O4 | See how any user is doing without opening the database | `usage_snapshot.py` | Hunter detail + Usage |
@@ -502,8 +503,9 @@ two instances racing find zero rows on the second delete.
 ### 9.1 User list and detail
 
 `GET /admin/users` — filters `q` (email/username `ILIKE`), `deleted`, `unlimited`,
-`active_days` (any `workout_sessions.local_date >= today − N`, `deleted_at IS NULL`);
-`limit/offset` (keyset paging is unnecessary at this scale). Row: id, email, username,
+`active_days` (any `workout_sessions.local_date >= today − N`, `deleted_at IS NULL`); `sort`
+(`last_active` default, `created`, `email`, `credits`) + `order`; `limit/offset` (keyset paging
+is unnecessary at this scale). Row: id, email, username,
 created, deleted state, `is_admin`, level/rank, last workout date, session count, credits,
 unlimited.
 
@@ -550,91 +552,104 @@ Read routes use a read-only transaction where the dialect supports it (precedent
 
 ### 10.1 Surface
 
-**A single HTML file served at `GET /admin/ui`**, the `/privacy` pattern (`main.py:294-366`)
-but file-backed (`app/admin_ui/index.html`, read once at startup, `include_in_schema=False`).
-Zero server-side interpolation: the shell contains no data; every `fetch` carries the admin
-token; API base is `window.location.origin`. Deploys on the same push as the endpoints it
-calls, so UI and API cannot drift; works from the phone and the laptop; no build step; the
-Minimal Void tokens from `docs/mockups/arise-v3-mockup.html` are a complete palette.
+**Static files served by FastAPI at `/admin/ui/`** — the `/privacy` pattern (`main.py:294-366`)
+grown to three files (`app/admin_ui/index.html`, `admin.js`, `admin.css`) under one
+`StaticFiles` mount, `include_in_schema=False`, no build step. Zero server-side interpolation:
+the shell contains no data; every `fetch` carries the admin token; API base is
+`window.location.origin`. Deploys on the same push as the endpoints it calls, so UI and API
+cannot drift; works from the laptop and the phone; the Minimal Void tokens from
+`docs/mockups/arise-v3-mockup.html` are a complete palette. Vanilla JS with a hash router is
+enough for six screens; graduate to a bundled frontend (Vite output served from the same mount)
+only when charts or a second admin arrive.
+
+**Desktop-first, with a phone lane.** Control planes are operated at a desk: Stripe Dashboard,
+RevenueCat, and Django admin are desktop-first with responsive layouts, and Stripe's mobile app
+is a deliberately reduced lane for lookups and a few actions. This console follows that split.
+The desktop layout is the primary design target (dense tables, a two-column customer view, a
+side drawer for actions, JSON diffs). The phone gets a **scoped lane** rather than a responsive
+fallback, because the highest-frequency actions — grant, adjust credits, restore — are triggered
+by a friend's text message away from the laptop.
 
 Rejected: **an in-app Hunter › Admin section** (every change is an Xcode build + TestFlight,
 the laptop is excluded, pasted-JSON import and dry-run diffs are painful in native forms, and
 the phone build would carry a privileged surface that must be hidden from every other user) and
 **a separate Next.js / Retool app** (a second deploy target, auth integration, and env set — the
 exact premature infra the house rules forbid; Retool would also need a third party on the prod
-connection). Once the page exists, a Hunter › System Settings row that opens `/admin/ui` in
+connection). Once the page exists, a Hunter › System Settings row that opens `/admin/ui/` in
 Safari is a one-line iOS follow-up.
 
 Headers on the page and on every `/admin/*` JSON: `Cache-Control: no-store`,
-`X-Frame-Options: DENY`, and a CSP (`default-src 'self'; script-src 'self' 'unsafe-inline'`
-for the single inline script, or a nonce). The global mobile touch rules apply: delegated
-`click` on `closest('[data-action]')`, no inline handlers, `touch-action: manipulation`,
-44 px targets, `:active` feedback.
+`X-Frame-Options: DENY`, and a CSP (`default-src 'self'; script-src 'self'` — the split into
+`admin.js` removes the need for `'unsafe-inline'`). The global mobile touch rules apply to the
+phone lane: delegated `click` on `closest('[data-action]')`, no inline handlers,
+`touch-action: manipulation`, 44 px targets, `:active` feedback.
 
 ### 10.2 Information architecture
 
-Phone: a 5-tab bottom bar. ≥ 900 px: a left rail, detail cards two-up. Hierarchy: **Fleet →
+Desktop (≥ 1024 px): a 220 px left rail (wordmark, nav, a persistent search box, the session
+countdown and admin email at the bottom) and a content area. Phone (< 768 px): a bottom tab bar
+with Hunters · Audit · Overview; Catalog and Settings are not reachable. Hierarchy: **Fleet →
 Hunter → per-user objects**; Catalog and Settings are fleet singletons.
 
-| Screen | Purpose | Actions |
-|---|---|---|
-| Login | owner sign-in → 15-min session, countdown in the header | sign in; generic error for non-admins; re-login on expiry |
-| Overview | fleet numbers, **Attention** list (purge-eligible, exercises without family, unlimited drift), last audit rows | Attention rows deep-link into the target action |
-| Hunters | find a user | search; filters Deleted / Unlimited / Inactive 30 d; sort by last active; deleted rows stay listed, dimmed |
-| Hunter detail | the customer view (§10.3) | all per-user mutations, inline per card |
-| Audit | the append-only history | filter by actor / action / target; tap a row for the full JSON |
-| Catalog | `products` | active toggle (destructive when deactivating); edit credits / display name; add a SKU |
-| Settings | global defaults and kill switches | **read-only in v1** (values come from `Settings`; editing needs an `app_settings` table — §14) |
+| Screen | Purpose | Desktop | Phone lane |
+|---|---|---|---|
+| Overview | fleet numbers, **Attention** list (purge-eligible, exercises without family, unlimited drift), last audit rows | stat tiles + attention list with deep-link buttons + recent audit | tiles + attention list |
+| Hunters | find a user | dense sortable table (id, email, username, rank·level, last active, sessions, credits/∞, campaign, WHOOP, state); filter chips Deleted / Unlimited / Inactive 30 d; sort headers via `sort`/`order` on `GET /admin/users` | search + filter chips; compact rows |
+| Hunter detail | the customer view (§10.3) | header + two-column card grid + full-width danger zone | single column, quick-action order, Preview hidden |
+| Audit | the append-only history | table (time, actor, action, target, reason, request id); a row expands to before/after JSON side by side; filters by actor / action / target | list; tap a row for the JSON |
+| Catalog | `products` | table with active toggle (destructive when deactivating), edit drawer (credits, display name, sort), add a SKU | — |
+| Settings | global defaults and kill switches | **read-only in v1** with a note "edit on Railway" (editing needs an `app_settings` table — §14) | — |
 
-### 10.3 Hunter detail, cards in order
+### 10.3 Hunter detail
 
-1. **Identity header** — rank-lettered avatar, username, email, truncated id; chips:
-   Active/Deleted, rank·level, credits or ∞, WHOOP, Override, Admin.
-2. `[ IDENTITY ]` — email, username, created (+age), last active, experience · unit. Copy id.
-3. `[ PROGRESS ]` — level·rank, XP, streak·longest, workouts·PRs, last workout. **Read-only.**
-4. `[ SCANS ]` — credits, unlimited, reset date, used 30 d. **− / + Credits**, **Grant / Revoke
-   unlimited** (revoke shows the source; purchase-sourced gets a warning line).
-5. `[ ENTITLEMENTS ]` — override · default columns for free monthly, daily cap, cooldown.
-   **Set limits**, **Reset to defaults** (revokes the override rows).
-6. `[ PURCHASES ]` — product, kind, credits, date, truncated transaction id. Read-only.
-7. `[ CAMPAIGN ]` — name, status·source, start·current arc, arcs, next planned hunt.
-   **Import / Replace** (template or pasted phases → dry-run → apply), **View arcs**.
-8. `[ INTEGRATIONS ]` — WHOOP last sync / scope with a failure state, active device tokens,
-   HealthKit last seen. Read-only in v1.
-9. `[ DATA HEALTH ]` — exercises without a family (fleet-wide count + this user's custom ones),
-   sessions with `local_date` NULL, last backfill. **Dry-run backfill → Apply**.
-10. `[ DANGER ZONE ]` — deleted state, days until purge. **Soft-delete** (active) / **Restore**
-    + **Purge** (deleted).
-11. `[ AUDIT · THIS HUNTER ]` — last rows scoped to this target; link to the full log.
-12. `[ PREVIEW ]` — the Status tab as the user sees it (§9.2).
+Desktop: the identity header spans the width (rank-lettered avatar, username, email, truncated
+id; chips: Active/Deleted, rank·level, credits or ∞, WHOOP, Override, Admin), then a two-column
+card grid sized so the cards the owner touches most are visible without scrolling on a
+13-inch laptop:
+
+| Left column | Right column |
+|---|---|
+| `[ IDENTITY ]` email, username, created (+age), last active, experience · unit. Copy id | `[ PROGRESS ]` level·rank, XP, streak·longest, workouts·PRs, last workout. **Read-only** |
+| `[ SCANS ]` credits, unlimited, reset date, used 30 d. **− / + Credits**, **Grant / Revoke unlimited** (revoke shows the source; purchase-sourced gets a warning line) | `[ INTEGRATIONS ]` WHOOP last sync / scope with a failure state, active push devices, HealthKit last seen. Read-only in v1 |
+| `[ ENTITLEMENTS ]` override · default columns for free monthly, daily cap, cooldown. **Set limits**, **Reset to defaults** | `[ DATA HEALTH ]` exercises without a family (fleet count + this user's custom ones), sessions with `local_date` NULL, last backfill. **Dry-run backfill → Apply** |
+| `[ PURCHASES ]` product, kind, credits, date, truncated transaction id. Read-only | `[ PREVIEW ]` the Status tab as the user sees it (§9.2) |
+| `[ CAMPAIGN ]` name, status·source, start·current arc, arcs, next planned hunt. **Import / Replace** (template or pasted phases → dry-run → apply), **View arcs** | `[ AUDIT · THIS HUNTER ]` last rows scoped to this target; link to the full log |
+| `[ DANGER ZONE ]` (full width) deleted state, days until purge. **Soft-delete** (active) / **Restore** + **Purge** (deleted) | |
+
+Phone lane: one column in quick-action order — Scans → Entitlements → Danger zone (soft-delete /
+restore; purge is desktop-only) → Identity → Progress → Purchases → Campaign (read-only; import is
+desktop-only) → Integrations → Data health (read-only; backfill is desktop-only) → Audit. Preview
+is hidden.
 
 ### 10.4 Interaction model
 
-- **Action pattern.** Tap → bottom sheet (centered dialog on desktop) with a field-level
-  **before → after diff** (unchanged fields dimmed so the operator sees the full record state), a
-  **required reason**, Cancel / Confirm. The form's diff is a preview; the server computes and
-  stores the real one. Result: toast with the summary and the new audit row id; the card
-  re-renders. Dry-run actions render the proposal in the same sheet and turn Confirm into
-  **Apply**.
+- **Action pattern.** Desktop: an action opens a **420 px right-side drawer**; the record stays
+  visible behind it while the operator types the reason. Phone: a bottom sheet. Both show a
+  field-level **before → after diff** (unchanged fields dimmed so the operator sees the full
+  record state), a **required reason**, Cancel / Confirm. The form's diff is a preview; the server
+  computes and stores the real one. Result: toast (top-right on desktop) with the summary and the
+  new audit row id; the card re-renders. Dry-run actions render the proposal in the same drawer
+  and turn Confirm into **Apply**. Esc closes the drawer.
 - **Destructive tier.** Impact counts up front, typed-email unlock (purge), and the password
-  re-prompt in the sheet (§4.5). The Confirm button stays disabled until the reason is typed and
-  the typed email matches.
-- **Login / expiry.** Email + password → admin session; countdown in the header; a 401 from any
-  call clears the in-memory token and returns to Login with the sheet's reason preserved.
+  re-prompt in the drawer (§4.5). Confirm stays disabled until the reason is typed and the typed
+  email matches.
+- **Tables.** Rows are clickable; header click sorts (server-side `sort`/`order`); filters are
+  chips above the table; pagination at 50.
+- **Login / expiry.** Email + password → admin session; countdown in the rail; a 401 from any
+  call clears the in-memory token and returns to Login with the drawer's reason preserved.
 - **Empty / loading / error.** Directive empty copy ("No hunter matches 'x' — check the Deleted
   filter"); skeleton rows, never spinners; errors as the app's `sysline` block with inline Retry;
-  a failed mutation keeps the sheet open with the error above Confirm.
+  a failed mutation keeps the drawer open with the error above Confirm.
 - **Idempotency.** Every credits form generates a UUID on open and sends it as
   `Idempotency-Key`; a retry after a network error reuses it.
 
 ### 10.5 Mockup
 
-`docs/mockups/admin-control-plane-mockup.html` — seven static phone-width frames: Login,
-Overview, Hunters, Hunter detail (all cards), Adjust-credits sheet (live stepper + diff +
-reason), Purge sheet (grace-window guard, impact counts, FORCE, typed-email unlock, password),
-Audit (toast + filters + rows). Placeholder data only. Two things in the mockup are **not** in v1
-and should be ignored when building: the "VIEWING AS" banner (§9.2) and the Retry-sync / Send
-test push / Repair dates buttons (§14).
+`docs/mockups/admin-control-plane-mockup.html` — desktop frames at 1280 px stacked vertically:
+Hunters table, Hunter detail with the Adjust-credits drawer open, Hunter detail (deleted user)
+with the Purge drawer open, Audit with one row expanded, Overview, Catalog + read-only Settings;
+plus one phone-lane frame (search results and the detail in quick-action order with a
+Grant-unlimited sheet open). Placeholder data only. Nothing in the mockup is outside v1.
 
 ---
 
@@ -691,7 +706,7 @@ Schemas in `app/schemas/admin.py`. `StepUpBody{password, reason}` marks the dest
 |---|---|---|---|
 | `POST /session` (no auth; `LOGIN_RATE_LIMIT` + lockout) | `AdminSessionRequest{email, password}` | `AdminSessionResponse{admin_token, expires_at}` | `admin_service.mint_admin_session`; audit `session.create` |
 | `GET /me` | — | `AdminMeResponse{user_id, token_expires_at}` | `require_admin` |
-| `GET /users` | `q?, deleted?, unlimited?, active_days?, limit=50, offset=0` | `AdminUserListResponse{items: [AdminUserRow], total}` | `admin_service.list_users` |
+| `GET /users` | `q?, deleted?, unlimited?, active_days?, sort=last_active\|created\|email\|credits, order=asc\|desc, limit=50, offset=0` | `AdminUserListResponse{items: [AdminUserRow], total}` | `admin_service.list_users` |
 | `GET /users/{id}` | — | `AdminUserDetailResponse{user, profile, progress, balance{…, purchases}, entitlements, campaign?, integrations, data_health, preview, recent_audit, usage}` | `admin_service.get_user_detail` (§9.1) |
 | `GET /users/{id}/usage` | `weeks=20` | `UserUsageResponse` (§9.3) | `admin_usage_service.user_usage` |
 | `GET /usage` | `weeks=20` | `FleetUsageResponse` (§9.3) | `admin_usage_service.fleet_usage` |
@@ -753,10 +768,10 @@ commit, verified Railway SUCCESS. `/evaluate` after W0 and after W2 (4+ files, m
 | **W0 — foundations** | models + both migrations (§12); `Settings` additions; `admin_auth.py` (`create_admin_token`, `require_admin`, `verify_step_up`); `admin_bootstrap.py` (bootstrap + sweep hook); `audit_service.py`; `entitlement_service.py` (`ensure_products`, `is_entitled`, `effective_limits`, `grant`, `revoke`, `sync_unlimited_flag`, `get_or_create_balance`); rewire `scan_balance.py` (products, entitlement path, interim caps) and `screenshot.py` (`effective_limits`, daily check after the lock); `user_token_claims()` + `ver` in login / refresh / `get_current_user`; hygiene (§11 MUSTs); conftest fixtures; `test_admin_auth`, `test_admin_entitlements`, `test_admin_migrations`, mass-assignment and token-class tests | ½ session | `ADMIN_BOOTSTRAP_EMAIL` set on Railway → `POST /admin/session` returns a token; `GET /scan-balance` unchanged for every user; the two rate-limit tests patch `settings` |
 | **W1 — reads** | `api/admin.py` (`/session`, `/me`, `/users`, `/users/{id}`, `/users/{id}/usage`, `/usage`, `/audit`, `/products` GET); `admin_service.list_users` / `get_user_detail`; `admin_usage_service`; router in `main.py` with `no-store` + `include_in_schema=False`; `test_admin_users`, `test_admin_usage`, `test_admin_audit` (read half) | ⅓ session | the next "how is X doing" is a `curl` of `/admin/users/{id}`, not `usage_snapshot.py` |
 | **W2 — mutations** | credits (+ idempotency), entitlement grant/revoke, products upsert, campaign import (+ `campaign_templates/owner_hybrid.json`, parser moved), family backfill `dry_run`, seed-achievements, soft-delete / restore, `purge_service` + sweep; `test_admin_credits`, `_campaign_import`, `_families`, `_purge`, `_step_up`, `_audit` (parametrized); script docstrings → "fallback — prefer `/admin/ui`" | ½ session | grant-unlimited via `curl` yields the row the script yields; **purge is the slip point** if the session runs long |
-| **W3 — console** | `app/admin_ui/index.html`; `GET /admin/ui` + headers + CSP; `test_admin_ui`; v3 spec §11 row (line 719) → points at the console; memory update | ⅓–½ session | login → grant → ∞ on the phone in under a minute; `PURGE_SWEEP_ENABLED` flipped after a clean dry-run |
+| **W3 — console** | `app/admin_ui/{index.html, admin.js, admin.css}` on a `StaticFiles` mount at `/admin/ui/` + headers + CSP; desktop layout first, then the phone lane; `test_admin_ui`; v3 spec §11 row (line 719) → points at the console; memory update | ½ session | the full customer view is readable on a 13-inch laptop without scrolling the top of both columns; login → grant → ∞ on the phone in under a minute; `PURGE_SWEEP_ENABLED` flipped after a clean dry-run |
 | **Follow-ups** | JWS verification (server); iOS: pass `jwsRepresentation`, Hunter › System Settings "Admin console" link, drop the public seed route | own sessions | |
 
-Total: **~1.5–2 sessions.** W0 → W1 → W2 share files (`admin.py`, `entitlement_service.py`,
+Total: **~2 sessions.** W0 → W1 → W2 share files (`admin.py`, `entitlement_service.py`,
 `scan_balance.py`, `screenshot.py`, conftest) and run as one agent in sequence; W3 can be a
 second agent against the frozen W1/W2 contracts.
 
@@ -777,7 +792,7 @@ second agent against the frozen W1/W2 contracts.
 | `test_admin_families.py` | dry-run returns unresolved and writes nothing; apply updates custom rows; second apply → 0 |
 | `test_admin_usage.py` | fleet + per-user on SQLite bucketed by `local_date`; drift list |
 | `test_admin_migrations.py` | `CHAIN = ["admin_schema", "admin_seed_backfill"]` round-trip; products seeded; backfill rows; re-run no-op |
-| `test_admin_ui.py` | `/admin/ui` 200 with `no-store`, `X-Frame-Options`, CSP; `/admin/users` JSON `no-store`; no inline `onclick` in the file |
+| `test_admin_ui.py` | `/admin/ui/` 200 with `no-store`, `X-Frame-Options`, CSP; `/admin/users` JSON `no-store`; no inline `onclick` in `index.html` or `admin.js`; `sort`/`order` on `/admin/users` |
 | existing | `test_scan_balance_api.py:19` stops importing `PRODUCT_CREDITS`; the two rate-limit tests patch `settings`; a symbol test asserts the scripts and the routes import the same service functions |
 
 ---
@@ -787,7 +802,8 @@ second agent against the frozen W1/W2 contracts.
 | Job | Metric | Baseline | Target |
 |---|---|---|---|
 | O1–O3 | owner script runs against prod in the 30 days after W3 | 3 in one session (2026-09-05) | 0 |
-| O1 | seconds from phone unlock to ∞ visible in the app | minutes + a laptop | ≤ 60 |
+| O1 | seconds from phone unlock to ∞ visible in the app (phone lane) | minutes + a laptop | ≤ 60 |
+| O4 | a user's full customer view readable on a 13-inch laptop without scrolling the top of both columns | `usage_snapshot.py` output in a terminal | yes |
 | O5 | admin-driven changes to `has_unlimited`, `campaigns.status`, `users.is_deleted` with a matching audit row | 0% | 100% (asserted by tests; shown as a reconciliation count on Audit) |
 | O6 | soft-deleted accounts recovered without a terminal | impossible | one console action |
 | Trust | prod credentials required in a terminal for a routine owner task | `DATABASE_URL` + a password | none |
@@ -841,7 +857,7 @@ second agent against the frozen W1/W2 contracts.
 - [ ] Audit row in the same transaction; `target_id` non-FK; allow-listed before/after; PG trigger.
 - [ ] Response schemas are explicit allow-lists; audit JSON and logs carry ids only.
 - [ ] Restore bumps `token_version`; `/auth/refresh` checks `ver`.
-- [ ] Admin HTML is static, `no-store`, `X-Frame-Options: DENY`, CSP; `/admin/*` hidden from OpenAPI.
+- [ ] Admin UI files are static, `no-store`, `X-Frame-Options: DENY`, CSP without `'unsafe-inline'`; `/admin/*` hidden from OpenAPI.
 - [ ] `/admin/session`: `LOGIN_RATE_LIMIT` + DB lockout; counter increments only on bad-password 401s.
 - [ ] `verify-purchase` interim caps in place; revoke survives `restore-purchases`.
 - [ ] Purge: 30-day grace unless `force`; audit rows survive; `purchase_records` unlinked not deleted; sweep behind `PURGE_SWEEP_ENABLED`.
@@ -864,3 +880,12 @@ second agent against the frozen W1/W2 contracts.
   beside the idempotency key, `purchase_records.user_id` SET NULL on purge, `PURGE_SWEEP_ENABLED`,
   `sync_unlimited_flag` inside the balance lock, daily-count check after the lock, and the
   interim purchase caps.
+
+- **v1.1 (2026-09-05, evening):** console re-targeted **desktop-first with a scoped phone lane**
+  after the owner's review ("the web app should be the first-class experience"). §10 rewritten:
+  left rail + dense tables + two-column customer view + right-side drawer on desktop; the phone
+  keeps search, Scans / Entitlements / Danger zone, and Audit as a bottom-sheet lane; Catalog,
+  Settings, fleet usage, and paste-JSON import are desktop-only. Static page split into three
+  files on one `StaticFiles` mount (CSP without `'unsafe-inline'`); `sort`/`order` added to
+  `GET /admin/users`; a desktop readability criterion added to W3 and §17; mockup redone at
+  1280 px with one phone-lane frame.

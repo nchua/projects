@@ -11,13 +11,14 @@ Give the ARISE owner one place — a phone-and-laptop web console served by the 
 **In scope:** admin identity + session model, audit log, entitlements + product catalog, per-user scan limits, credits adjust, campaign import for a target user, family backfill, soft-delete/restore/purge + startup sweep, user list/detail/usage, single-file console at `/admin/ui`, and the pre-existing security fixes that share the console's origin.
 **Out of scope:** App Store JWS verification of purchases (separate follow-up; interim caps only), impersonation tokens, multi-admin RBAC, MFA, editable global settings, a separate admin deployable, push broadcast, cohorts, pricing experiments.
 
-## Design (Product Designer)
+## Design (Product Designer, revised after owner review)
 
-- **Surface:** single-file HTML at `/admin/ui`, same pattern as `/privacy` (`backend/main.py:294`). Phone-first (390px), left rail ≥900px. No build step; deploys with the API it calls.
-- **IA:** Overview → Hunters (list) → Hunter detail (the customer view: identity header + status chips, then cards Identity · Progress · Scans · Entitlements · Purchases · Campaign · Integrations · Data health · Danger zone · Audit-this-hunter) → Audit → Catalog → Settings (read-only in v1).
-- **Action pattern:** tap → bottom sheet with before→after diff + required reason → confirm → toast with audit id. Destructive tier adds typed-email confirm and password re-entry. Dry-run actions (backfill, campaign import) render the proposal in the same sheet; Confirm becomes Apply.
+- **Surface:** static files (`index.html`, `admin.js`, `admin.css`) served by FastAPI on one `StaticFiles` mount at `/admin/ui/`, same pattern as `/privacy` (`backend/main.py:294`). No build step; deploys with the API it calls.
+- **Desktop-first with a scoped phone lane** (owner decision 2026-09-05: "the web app should be the first-class experience"). Desktop ≥1024px: 220px left rail, dense sortable Hunters table, two-column customer view, right-side 420px drawer for actions, audit table with expandable JSON. Phone <768px: bottom tabs Hunters · Audit · Overview; detail in quick-action order (Scans → Entitlements → Danger zone → …); bottom sheets; Catalog, Settings, fleet usage, and paste-JSON import are desktop-only.
+- **IA:** Overview → Hunters → Hunter detail (Identity · Scans · Entitlements · Purchases · Campaign | Progress · Integrations · Data health · Preview · Audit-this-hunter; Danger zone full-width) → Audit → Catalog → Settings (read-only in v1).
+- **Action pattern:** drawer (desktop) / sheet (phone) with before→after diff + required reason → confirm → toast with audit id. Destructive tier adds typed-email confirm and password re-entry. Dry-run actions render the proposal in place; Confirm becomes Apply.
 - **Cut from the designer's draft (no-extraneous-features):** Retry WHOOP sync, Send test push, Repair dates, editable global defaults, "view as" banner.
-- Mockup: 7 frames (Login, Overview, Hunters, Hunter detail, Adjust-credits sheet, Purge sheet, Audit), Minimal Void tokens, event delegation, 44px targets, placeholder emails only.
+- Mockup: desktop frames at 1280px (Hunters, detail + credits drawer, detail + purge drawer, Audit, Overview, Catalog + Settings) plus one phone-lane frame; Minimal Void tokens, event delegation, placeholder emails only.
 
 ## Technical Plan (Senior Staff Engineer, after security cross-review)
 
@@ -64,7 +65,7 @@ Give the ARISE owner one place — a phone-and-laptop web console served by the 
 
 ## Execution Strategy
 
-**Recommended:** Single Agent for W0→W2 (one backend session; the files overlap heavily: `admin.py`, `entitlement_service.py`, `scan_balance.py`, `screenshot.py`, conftest), then a second short session for W3 where the UI can be a separate agent against the frozen W1/W2 contracts. Run `/evaluate` after W0 and after W2 (4+ files, multi-layer); `contract-mirror-check` is not triggered until the iOS link lands.
+**Recommended:** Single Agent for W0→W2 (one backend session; the files overlap heavily: `admin.py`, `entitlement_service.py`, `scan_balance.py`, `screenshot.py`, conftest), then a second short session for W3 where the UI (desktop layout first, then the phone lane) can be a separate agent against the frozen W1/W2 contracts. Run `/evaluate` after W0 and after W2 (4+ files, multi-layer); `contract-mirror-check` is not triggered until the iOS link lands.
 
 ## Risks & Open Questions
 
