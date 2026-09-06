@@ -467,6 +467,19 @@ MAX_DEADLINE_EXTENSION_DAYS = 28
 AMBITIOUS_SLOPE_FACTOR = 2.0
 
 
+def _visible_exercise(db: Session, user_id: str, exercise_id: Optional[str]) -> Exercise:
+    """The exercise a goal may target: seeded, or the user's own custom row.
+
+    Another user's custom exercise is "not found" (as ``create_workout`` treats
+    it), so a purge of that user can delete their custom rows without a
+    foreign goal pinning them (control-plane spec §8.2).
+    """
+    exercise = db.query(Exercise).filter(Exercise.id == exercise_id).first()
+    if exercise is None or (exercise.is_custom and exercise.user_id != user_id):
+        raise ValueError("Exercise not found")
+    return exercise
+
+
 def _active_campaign(db: Session, user_id: str) -> Optional[Campaign]:
     from app.services.campaign_service import get_active_campaign  # lazy: cycle
     return get_active_campaign(db, user_id)
@@ -498,9 +511,7 @@ def create_objective(db: Session, user_id: str, data: Any, campaign: Optional[Ca
     campaign = campaign or _active_campaign(db, user_id)
     kind = data.kind or GoalKind.STRENGTH.value
     if kind == GoalKind.STRENGTH.value:
-        exercise = db.query(Exercise).filter(Exercise.id == data.exercise_id).first()
-        if exercise is None:
-            raise ValueError("Exercise not found")
+        _visible_exercise(db, user_id, data.exercise_id)
     deadline = resolve_objective_deadline(db, user_id, data, campaign)
     if deadline < get_today_utc():
         raise ValueError("deadline is in the past")
@@ -753,9 +764,7 @@ def preview_goal(db: Session, user_id: str, data: Any, today: Optional[date] = N
             "ambitious": pace["pace_status"] == "behind", "pace_status": pace["pace_status"],
             "ramp_at_deadline": pace["ramp_at_deadline"], "target_miles": data.target_miles,
         }
-    exercise = db.query(Exercise).filter(Exercise.id == data.exercise_id).first()
-    if exercise is None:
-        raise ValueError("Exercise not found")
+    exercise = _visible_exercise(db, user_id, data.exercise_id)
     fam = family_for_exercise(db, exercise.id)
     probe = Goal(user_id=user_id, exercise_id=exercise.id)
     ids = _family_exercise_ids(db, probe, fam)

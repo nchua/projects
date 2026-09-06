@@ -370,8 +370,12 @@ def _any_lift_cardiac_cost_drop(db: Session, user_id: str, drop_pct: int) -> boo
     return False
 
 
-def seed_achievement_definitions(db: Session):
-    """Seed the database with default achievement definitions"""
+def seed_achievement_definitions(db: Session, *, commit: bool = True) -> int:
+    """Insert any missing default achievement definitions.
+
+    Idempotent. Returns the number inserted; ``commit=False`` flushes so a
+    caller can commit together with its audit row (control-plane spec §7.4).
+    """
 
     achievements = [
         # Milestone achievements
@@ -834,13 +838,9 @@ def seed_achievement_definitions(db: Session):
         },
     ]
 
-    for ach_data in achievements:
-        existing = db.query(AchievementDefinition).filter(
-            AchievementDefinition.id == ach_data["id"]
-        ).first()
-
-        if not existing:
-            achievement = AchievementDefinition(**ach_data)
-            db.add(achievement)
-
-    db.commit()
+    existing = {row.id for row in db.query(AchievementDefinition.id).all()}
+    missing = [ach_data for ach_data in achievements if ach_data["id"] not in existing]
+    db.add_all(AchievementDefinition(**ach_data) for ach_data in missing)
+    if missing:
+        db.commit() if commit else db.flush()
+    return len(missing)

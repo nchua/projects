@@ -188,13 +188,13 @@ class TestImportService:
         campaign_service.materialize_range(db, user.id, MONDAY, MONDAY + timedelta(days=13), today=MONDAY)
         db.commit()
         assert db.query(PlannedHunt).filter(PlannedHunt.campaign_id == old.id).count() == 14
-        new, _, _ = campaign_service.import_campaign(
+        new = campaign_service.import_campaign(
             db, user.id, name="v2", phases=load_phases(), start_date=MONDAY, replace=True
         )
         db.commit()
         assert db.query(Campaign).get(old.id).status == CampaignStatus.COMPLETED.value
         assert db.query(PlannedHunt).filter(PlannedHunt.campaign_id == old.id).count() == 0
-        assert campaign_service.get_active_campaign(db, user.id).id == new.id
+        assert campaign_service.get_active_campaign(db, user.id).id == new.campaign.id
 
 
 class TestImportApi:

@@ -11,10 +11,18 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import EmailStr, Field
+from pydantic import EmailStr, Field, field_validator, model_validator
 
 from app.schemas.base import UTCModel
+from app.schemas.campaign import (
+    ArcResponse,
+    CampaignImportRequest,
+    CampaignImportResponse,
+    PhaseIn,
+)
 from app.schemas.progress import UserProgressResponse
+from app.services.campaign_templates import TEMPLATE_NAMES
+from app.services.entitlement_service import ENTITLEMENT_KEYS, validate_grant
 
 UserSort = Literal["last_active", "created", "email", "credits"]
 SortOrder = Literal["asc", "desc"]
@@ -475,3 +483,204 @@ class AdminUserDetailResponse(UTCModel):
     preview: AdminPreview
     recent_audit: List[AuditEntry]
     usage: UserUsageResponse
+
+
+# ── mutations (spec §4.5, §7, §8, §13) ───────────────────────────────────────
+
+# Every request that changes state carries a ``reason`` (spec §5); the
+# destructive tier adds ``password`` (``StepUpBody``). Routes whose tier
+# depends on the body (large credit deltas, ``replace``, ``dry_run=false``,
+# ``active=false``) take ``OptionalStepUpBody`` and the service decides.
+FORCE_REASON_MIN_LENGTH = 10
+
+
+class ReasonBody(UTCModel):
+    reason: str = Field(min_length=3, max_length=500)
+
+
+class StepUpBody(ReasonBody):
+    """Marks the destructive tier: the admin re-enters their password."""
+
+    password: str = Field(min_length=1)
+
+
+class OptionalStepUpBody(ReasonBody):
+    """A body whose tier depends on its content; the service asks for ``password`` when needed."""
+
+    password: Optional[str] = None
+
+
+class DryRunBody(OptionalStepUpBody):
+    """Dry run by default; ``dry_run=false`` is the destructive apply."""
+
+    dry_run: bool = True
+
+
+class CreditsAdjustRequest(OptionalStepUpBody):
+    """``POST /admin/users/{id}/credits`` (+ ``Idempotency-Key`` header)."""
+
+    delta: int
+
+    @field_validator("delta")
+    @classmethod
+    def _non_zero(cls, value: int) -> int:
+        if value == 0:
+            raise ValueError("delta must not be 0")
+        return value
+
+
+class CreditsAdjustResponse(UTCModel):
+    scan_credits_before: int
+    scan_credits_after: int
+    audit_id: str
+    replayed: bool = False
+
+
+class EntitlementGrantRequest(ReasonBody):
+    key: str = Field(min_length=1, max_length=64)
+    value: Any
+    expires_at: Optional[datetime] = None
+
+    @model_validator(mode="after")
+    def _registered_key_and_typed_value(self) -> "EntitlementGrantRequest":
+        validate_grant(self.key, self.value)  # ValueError → 422
+        return self
+
+
+class AdminUserStateResponse(UTCModel):
+    """Soft-delete / restore result."""
+
+    id: str
+    is_deleted: bool
+    deleted_at: Optional[datetime] = None
+
+
+class PurgeRequest(StepUpBody):
+    confirm_email: str = Field(min_length=3)
+    force: bool = False
+
+    @model_validator(mode="after")
+    def _forced_purge_needs_a_real_reason(self) -> "PurgeRequest":
+        if self.force and len(self.reason.strip()) < FORCE_REASON_MIN_LENGTH:
+            raise ValueError(f"a forced purge needs a reason of at least {FORCE_REASON_MIN_LENGTH} characters")
+        return self
+
+
+class PurgeResponse(UTCModel):
+    user_id: str
+    deleted_at: Optional[datetime] = None
+    tables: Dict[str, int]
+    audit_id: str
+
+
+class PurgeEligibleRow(UTCModel):
+    user_id: str
+    deleted_at: datetime
+    days_deleted: int
+
+
+class PurgeSweepRequest(DryRunBody):
+    """``POST /admin/maintenance/purge-eligible``."""
+
+
+class PurgeSweepResponse(UTCModel):
+    dry_run: bool
+    eligible: List[PurgeEligibleRow]
+    purged: List[PurgeResponse] = Field(default_factory=list)
+
+
+class ProductUpsertRequest(OptionalStepUpBody):
+    """``POST /admin/products`` creates, ``PATCH /admin/products/{id}`` edits (id immutable)."""
+
+    id: str = Field(min_length=1, max_length=200)
+    kind: Literal["consumable", "non_consumable", "subscription"]
+    credits: int = Field(0, ge=0)
+    entitlement_key: Optional[str] = None
+    display_name: str = Field(min_length=1, max_length=120)
+    active: bool = True
+    sort_order: int = 0
+
+    @field_validator("entitlement_key")
+    @classmethod
+    def _registered_key(cls, value: Optional[str]) -> Optional[str]:
+        if value is not None and value not in ENTITLEMENT_KEYS:
+            raise ValueError(f"unknown entitlement key: {value}")
+        return value
+
+
+class FamilyBackfillRequest(DryRunBody):
+    """``POST /admin/maintenance/exercise-families``."""
+
+
+class UnresolvedExercise(UTCModel):
+    name: str
+    is_custom: bool
+    user_id: Optional[str] = None
+
+
+class FamilyBackfillResponse(UTCModel):
+    dry_run: bool
+    families_changed: int
+    exercises_updated: int
+    assigned: int
+    total: int
+    unresolved: List[UnresolvedExercise] = Field(default_factory=list)
+
+
+class SeedAchievementsResponse(UTCModel):
+    seeded: int
+
+
+class AdminCampaignImportRequest(CampaignImportRequest, OptionalStepUpBody):
+    """``POST /admin/users/{id}/campaign/import``: pasted ``phases`` XOR a server ``template``."""
+
+    phases: Optional[List[PhaseIn]] = Field(None, min_length=1)
+    template: Optional[str] = None
+    dry_run: bool = False
+
+    @field_validator("template")
+    @classmethod
+    def _known_template(cls, value: Optional[str]) -> Optional[str]:
+        if value is not None and value not in TEMPLATE_NAMES:
+            raise ValueError(f"unknown template: {value} (known: {', '.join(TEMPLATE_NAMES)})")
+        return value
+
+    @model_validator(mode="after")
+    def _phases_xor_template(self) -> "AdminCampaignImportRequest":
+        if (self.phases is None) == (self.template is None):
+            raise ValueError("send exactly one of phases or template")
+        return self
+
+
+class ArcPreview(UTCModel):
+    """One arc as a dry run would create it."""
+
+    index: int
+    name: str
+    weeks: int
+    run_miles_min: Optional[float] = None
+    run_miles_max: Optional[float] = None
+    long_run_miles: Optional[float] = None
+    templates: int
+    notes: Optional[str] = None
+
+
+class AdminCampaignImportResponse(CampaignImportResponse):
+    """The public import response plus the admin facts.
+
+    A dry run creates no campaign, so the ``CampaignResponse`` identity
+    fields relax to optional and ``arcs_preview`` carries the plan instead.
+    """
+
+    id: Optional[str] = None
+    name: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    status: Optional[str] = None
+    source: Optional[str] = None
+    arcs: List[ArcResponse] = Field(default_factory=list)
+    week_start: Optional[str] = None
+    dry_run: bool = False
+    retired_campaign_id: Optional[str] = None
+    planned_hunts_deleted: int = 0
+    arcs_preview: Optional[List[ArcPreview]] = None

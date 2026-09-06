@@ -17,7 +17,6 @@ from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import Date, case, func, select
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.core.utils import to_naive_utc, utcnow
 from app.models.achievement import UserAchievement
 from app.models.activity import DailyActivity
@@ -57,6 +56,7 @@ from app.schemas.admin import (
 from app.services.campaign_service import monday_of
 from app.services.coach_context_service import run_miles, run_pace_sec
 from app.services.entitlement_service import KEY_UNLIMITED, is_active
+from app.services.purge_service import eligible_filter
 from app.services.training_load_service import (
     METERS_PER_MILE,
     local_date_window_filter,
@@ -105,16 +105,6 @@ def _active_session_filter(user_id: Optional[str], since: Optional[date]) -> Lis
 
 def _count_by(rows: List[Tuple[Any, int]]) -> Dict[str, int]:
     return {str(k): int(n) for k, n in rows}
-
-
-def purge_eligible_cutoff(now: Optional[datetime] = None) -> datetime:
-    """Accounts soft-deleted at or before this instant are past the grace period."""
-    return (now or utcnow()) - timedelta(days=settings.PURGE_GRACE_DAYS)
-
-
-def purge_eligible_at(deleted_at: datetime) -> datetime:
-    """When a soft-deleted account becomes purge-eligible."""
-    return deleted_at + timedelta(days=settings.PURGE_GRACE_DAYS)
 
 
 # ── per-user ────────────────────────────────────────────────────────────────
@@ -480,15 +470,7 @@ def fleet_usage(db: Session, *, weeks: int = 20, today: Optional[date] = None) -
         count_where(User.is_deleted == True),
         count_where(User.is_admin == True),
     ).one()
-    purge_eligible = (
-        db.query(func.count(User.id))
-        .filter(
-            User.is_deleted == True,
-            User.deleted_at.isnot(None),
-            User.deleted_at <= to_naive_utc(purge_eligible_cutoff(now)),
-        )
-        .scalar()
-    )
+    purge_eligible = db.query(func.count(User.id)).filter(*eligible_filter(now)).scalar()
 
     # Sessions of live users grouped by (user, local day) in SQL; ISO weeks in Python.
     day = local_day_sql()

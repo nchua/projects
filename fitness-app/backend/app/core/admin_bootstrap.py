@@ -8,7 +8,9 @@ an audit row. It runs on every boot, so setting the variable after the first
 deploy still works; consequently, demoting the bootstrap account means
 removing the variable and redeploying.
 
-``run_startup_tasks`` is called from the FastAPI lifespan and never raises.
+``run_startup_tasks`` is called from the FastAPI lifespan and never raises:
+it bootstraps the admin, then schedules the purge sweep
+(``purge_service.schedule_startup_sweep``, behind ``PURGE_SWEEP_ENABLED``).
 """
 from __future__ import annotations
 
@@ -21,6 +23,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.user import User
 from app.services.audit_service import audit
+from app.services.purge_service import schedule_startup_sweep
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +71,7 @@ def bootstrap_admin(db: Session) -> Optional[str]:
 
 
 def run_startup_tasks() -> None:
-    """Lifespan hook: bootstrap the admin. Never raises, never blocks boot."""
+    """Lifespan hook: bootstrap the admin, schedule the sweep. Never raises, never blocks boot."""
     from app.core import database  # resolved at call time so tests can patch SessionLocal
 
     try:
@@ -79,3 +82,7 @@ def run_startup_tasks() -> None:
             db.close()
     except Exception:  # noqa: BLE001 - startup must not fail on this
         logger.exception("admin bootstrap failed")
+    try:
+        schedule_startup_sweep()
+    except Exception:  # noqa: BLE001
+        logger.exception("purge sweep scheduling failed")

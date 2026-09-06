@@ -9,7 +9,8 @@ rejects admin tokens automatically (``decode_token`` passes no audience), so
 the two token classes cannot cross.
 
 ``verify_step_up`` is the password re-check every destructive service
-function calls first (§4.5).
+function calls first (§4.5); ``protect_account`` is the 403 for acting on
+yourself or on another admin (§8.1).
 """
 from __future__ import annotations
 
@@ -117,3 +118,15 @@ def verify_step_up(db: Session, actor: User, password: Optional[str]) -> None:
     if revoked:
         raise unauthorized("Admin session revoked after repeated failed confirmations")
     raise unauthorized("Incorrect password")
+
+
+def protect_account(actor: User, user: User) -> None:
+    """403 for the acting admin's own account and for every other admin (spec §8.1)."""
+    if user.id == actor.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Refusing to act on your own account"
+        )
+    if user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Refusing to act on another admin"
+        )

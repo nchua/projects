@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import copy
 import re
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -472,6 +473,32 @@ def _increment_lookup(db: Session):
     return _for
 
 
+def preview_import(
+    db: Session, phases: Sequence[Dict[str, Any]]
+) -> Tuple[List[Dict[str, Any]], List[str]]:
+    """``parse_phases`` with the DB's per-family increments — a write-free dry run."""
+    return parse_phases(phases, _increment_lookup(db))
+
+
+class ActiveCampaignExists(ValueError):
+    """A campaign is already active and ``replace`` is false (the API answers 409)."""
+
+    def __init__(self) -> None:
+        super().__init__("active campaign exists")
+
+
+@dataclass
+class CampaignImport:
+    """What an import did: the campaign plus the facts the audit row records."""
+
+    campaign: Campaign
+    warnings: List[str] = field(default_factory=list)
+    templates_created: int = 0
+    objectives_created: int = 0
+    retired_campaign_id: Optional[str] = None
+    planned_hunts_deleted: int = 0
+
+
 def retire_campaign(db: Session, campaign: Campaign) -> int:
     """Mark a campaign completed and delete its future ``planned`` hunts."""
     campaign.status = CampaignStatus.COMPLETED.value
@@ -498,17 +525,20 @@ def import_campaign(
     client_date: Optional[date] = None,
     goal: Optional[str] = None,
     replace: bool = False,
-) -> Tuple[Campaign, List[str], int]:
+) -> CampaignImport:
     """POST /campaign/import body → Campaign + arcs + templates.
 
-    Raises ``ValueError("active campaign exists")`` when one is active and
-    ``replace`` is false (the API maps it to 409).
+    Raises :class:`ActiveCampaignExists` when one is active and ``replace``
+    is false; with ``replace`` the old campaign is retired and the result
+    records its id and how many future planned hunts went with it.
     """
+    result = CampaignImport(campaign=None)  # type: ignore[arg-type]  # filled below
     active = get_active_campaign(db, user_id)
     if active is not None:
         if not replace:
-            raise ValueError("active campaign exists")
-        retire_campaign(db, active)
+            raise ActiveCampaignExists()
+        result.planned_hunts_deleted = retire_campaign(db, active)
+        result.retired_campaign_id = active.id
 
     today = client_date or date.today()
     start = start_date or monday_of(today)
@@ -531,7 +561,50 @@ def import_campaign(
             templates_created += 1
     db.flush()
     db.expire(campaign, ["arcs"])
-    return get_campaign(db, user_id, campaign.id), warnings, templates_created
+    result.campaign = get_campaign(db, user_id, campaign.id)
+    result.warnings = warnings
+    result.templates_created = templates_created
+    return result
+
+
+def apply_import(
+    db: Session,
+    user_id: str,
+    *,
+    name: str,
+    phases: Sequence[Dict[str, Any]],
+    objectives: Sequence[Any] = (),
+    start_date: Optional[date] = None,
+    client_date: Optional[date] = None,
+    goal: Optional[str] = None,
+    replace: bool = False,
+) -> Tuple[CampaignImport, Dict[str, Any]]:
+    """Import + seed objectives + build the ``CampaignImportResponse`` payload.
+
+    The one apply path behind ``POST /campaign/import`` and the admin import
+    (control-plane spec §7.2). Flushes, never commits. Objectives that fail
+    validation become warnings rather than aborting the import.
+    """
+    from app.services.goal_service import create_objective  # lazy: cycle
+
+    result = import_campaign(
+        db, user_id, name=name, phases=phases, start_date=start_date,
+        client_date=client_date, goal=goal, replace=replace,
+    )
+    for row in objectives:
+        try:
+            create_objective(db, user_id, row, result.campaign)
+            result.objectives_created += 1
+        except ValueError as exc:
+            result.warnings.append(f"objective skipped: {exc}")
+    db.flush()
+    payload = campaign_to_dict(db, result.campaign, client_date)
+    payload.update(
+        warnings=result.warnings,
+        templates_created=result.templates_created,
+        objectives_created=result.objectives_created,
+    )
+    return result, payload
 
 
 def create_campaign(
@@ -546,7 +619,7 @@ def create_campaign(
 ) -> Campaign:
     """POST /campaign — minimal manual create (arcs only, no templates)."""
     if get_active_campaign(db, user_id) is not None:
-        raise ValueError("active campaign exists")
+        raise ActiveCampaignExists()
     today = client_date or date.today()
     campaign = Campaign(
         user_id=user_id, name=name, goal=goal, start_date=start_date or monday_of(today),

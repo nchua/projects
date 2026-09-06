@@ -19,7 +19,6 @@ from app.schemas.campaign import (
     CampaignUpdate,
 )
 from app.services import campaign_service
-from app.services.goal_service import create_objective
 
 router = APIRouter()
 
@@ -58,39 +57,24 @@ async def import_campaign(
     one is completed and its future planned hunts deleted).
     """
     try:
-        campaign, warnings, templates_created = campaign_service.import_campaign(
+        _, payload = campaign_service.apply_import(
             db, current_user.id,
             name=body.name,
             phases=[p.model_dump() for p in body.phases],
+            objectives=body.objectives,
             start_date=body.start_date,
             client_date=body.client_date,
             goal=body.goal,
             replace=body.replace,
         )
+    except campaign_service.ActiveCampaignExists:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An active campaign already exists; send replace=true to retire it.",
+        )
     except ValueError as exc:
-        if "active campaign exists" in str(exc):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="An active campaign already exists; send replace=true to retire it.",
-            )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-
-    objectives_created = 0
-    for row in body.objectives:
-        try:
-            create_objective(db, current_user.id, row, campaign)
-            objectives_created += 1
-        except ValueError as exc:
-            warnings.append(f"objective skipped: {exc}")
     db.commit()
-
-    campaign = campaign_service.get_campaign(db, current_user.id, campaign.id)
-    payload = campaign_service.campaign_to_dict(db, campaign, body.client_date)
-    payload.update(
-        warnings=warnings,
-        templates_created=templates_created,
-        objectives_created=objectives_created,
-    )
     return payload
 
 
@@ -111,9 +95,9 @@ async def create_campaign(
             client_date=body.client_date,
             goal=body.goal,
         )
+    except campaign_service.ActiveCampaignExists:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An active campaign already exists")
     except ValueError as exc:
-        if "active campaign exists" in str(exc):
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An active campaign already exists")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     db.commit()
     return campaign_service.campaign_to_dict(db, campaign, body.client_date)

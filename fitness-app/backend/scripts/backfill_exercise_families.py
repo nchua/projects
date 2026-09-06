@@ -1,4 +1,8 @@
-"""Backfill exercise families (ARISE v3 spec §4.2).
+"""Backfill exercise families (ARISE v3 spec §4.2) — fallback, prefer ``/admin/ui``.
+
+The owner console runs the same thing as ``POST /admin/maintenance/exercise-families``
+(dry run by default, audited on apply; control-plane spec §7.3). Use this
+script only when the console is unreachable.
 
 Run from fitness-app/backend: venv/bin/python scripts/backfill_exercise_families.py
 

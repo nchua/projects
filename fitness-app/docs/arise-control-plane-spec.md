@@ -408,9 +408,10 @@ Replaces `scripts/import_training_calendar.py`. `AdminCampaignImportRequest` ext
 `CampaignImportRequest` (`app/schemas/campaign.py:38-45`) with `phases` optional plus
 `template: "owner_hybrid" | None` and `dry_run` — exactly one of `phases` / `template`. The
 server-side template is a committed copy of the PWA's `PHASES`
-(`app/services/campaign_templates/owner_hybrid.json`; v3 spec §4.3 "one seed"), and the regex
+(`backend/campaign_templates/owner_hybrid.json`; v3 spec §4.3 "one seed"), and the regex
 parser moves out of the script (`import_training_calendar.py:42-55`) into
-`campaign_templates.py`. Dry-run calls `parse_phases` (`app/services/campaign_service.py:273`)
+`app/services/campaign_templates.py` (the JSON sits beside `app/`, not inside the package, so
+the module and the directory do not collide). Dry-run calls `parse_phases` (`app/services/campaign_service.py:273`)
 only and returns warnings + an arc summary. Apply wraps `import_campaign(db, user_id, …,
 replace=)` (`campaign_service.py:491-534`) and handles `objectives` exactly as
 `app/api/campaign.py:78-85`. `replace = true` is destructive tier because `retire_campaign`
@@ -902,3 +903,14 @@ second agent against the frozen W1/W2 contracts.
   transaction so `grant`/`revoke` never commit underneath the audit row. The break-glass
   `grant_owner_unlimited_scans.py` now grants through `entitlement_service` and audits as the
   system actor; `import_training_calendar.py` prompts for the password with `getpass`.
+
+- **v1.3 (2026-09-06, W2 build):** amendments from the W2 build and `/evaluate` pass. The
+  committed template lives at `backend/campaign_templates/owner_hybrid.json` (§7.2). Campaign
+  import audits with `target_type = user` / `target_id = <target user>` (the campaign id is in
+  `after`) so the row shows in the hunter's audit view; a dry run answers 200, not 201. Purge
+  maps a foreign non-cascading reference (another account's goal on the target's custom
+  exercise) to 409 instead of a 500, `create_objective` now refuses another user's custom
+  exercise (the `create_workout` rule), and a sweep that loses the two-instance race writes no
+  zero-count audit row. `ensure_families` / `assign_family_ids` / `seed_achievement_definitions`
+  gained `dry_run` / `commit` keywords (defaults unchanged) so the console commits the change
+  and its audit row together.

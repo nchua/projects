@@ -119,11 +119,11 @@ def add_run(
 
 
 def import_plan(db, user_id: str, start: date = MONDAY, phases=None, *, name: str = "Run Base + Strength"):
-    campaign, warnings, _ = campaign_service.import_campaign(
+    result = campaign_service.import_campaign(
         db, user_id, name=name, phases=phases or load_phases(), start_date=start, client_date=start,
     )
     db.commit()
-    return campaign, warnings
+    return result.campaign, result.warnings
 
 
 def condition(score: int) -> Dict[str, Any]:

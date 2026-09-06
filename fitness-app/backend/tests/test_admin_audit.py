@@ -1,4 +1,4 @@
-"""Audit helper: same-transaction rule, scrubbing, hashing, idempotency index (spec §5)."""
+"""Audit log (spec §5): the helper, the read route, and one row per mutation."""
 import enum
 import os
 import uuid
@@ -8,7 +8,10 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from app.models.admin import AdminAuditLog
+from app.models.scan_balance import ScanBalance
+from app.services import admin_service
 from app.services.audit_service import audit, body_hash, scrub, snapshot
+from tests.helpers_admin import MUTATIONS, MutationContext, assert_no_secret_keys, drive
 
 
 class _Kind(str, enum.Enum):
@@ -171,3 +174,48 @@ class TestAuditRead:
         headers, _ = admin_headers(email="audit-methods@example.com")
         for method in ("POST", "PUT", "PATCH", "DELETE"):
             assert client.request(method, "/admin/audit", headers=headers).status_code == 405
+
+
+class TestAuditMutations:
+    """Every mutation route writes exactly one row, in the same transaction (spec §5, §16)."""
+
+    @pytest.mark.parametrize("case", MUTATIONS, ids=[c.name for c in MUTATIONS])
+    def test_one_row_with_request_id_ip_reason_and_no_secrets(self, client, db, admin_pair, case):
+        headers, actor, target, _ = admin_pair("audit")
+        ctx = MutationContext(db=db, actor=actor, target=target, password="TestPass123!")
+        request_id = f"req-{ctx.tag}"
+
+        response, call = drive(
+            client, headers, case, ctx, **{"X-Request-ID": request_id, "X-Forwarded-For": "198.51.100.9"}
+        )
+        assert response.status_code == call.expect, (case.name, response.text)
+        rows = db.query(AdminAuditLog).filter(AdminAuditLog.request_id == request_id).all()
+        assert len(rows) == 1, [r.action for r in rows]
+        row = rows[0]
+        assert row.action == case.action and row.actor_user_id == actor.id
+        assert row.ip == "198.51.100.9" and row.reason
+        assert_no_secret_keys({"before": row.before, "after": row.after})
+        assert_no_secret_keys(response.json())
+
+    def test_failure_after_audit_rolls_back_the_change_and_the_row(
+        self, client, db, admin_headers, create_test_user, seed_scan_balance, monkeypatch
+    ):
+        headers, _ = admin_headers(email="audit-boom-admin@example.com")
+        target, _ = create_test_user(email="audit-boom-target@example.com")
+        seed_scan_balance(target.id, credits=3)
+        real_audit = admin_service.audit
+
+        def audit_then_fail(*args, **kwargs):
+            real_audit(*args, **kwargs)
+            raise RuntimeError("after audit()")
+
+        monkeypatch.setattr(admin_service, "audit", audit_then_fail)
+        response = client.post(
+            f"/admin/users/{target.id}/credits", json={"delta": 5, "reason": "boom"},
+            headers={**headers, "Idempotency-Key": "boom-key", "X-Request-ID": "req-boom"},
+        )
+        assert response.status_code == 500
+        db.rollback()  # what ``get_db``'s close() does for the failed request
+        assert db.query(AdminAuditLog).filter(AdminAuditLog.request_id == "req-boom").count() == 0
+        db.expire_all()
+        assert db.query(ScanBalance).filter(ScanBalance.user_id == target.id).one().scan_credits == 3

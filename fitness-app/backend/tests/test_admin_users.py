@@ -6,7 +6,7 @@ Owner console read surfaces (control-plane spec §9, §13, §16):
 """
 import uuid
 from datetime import date, datetime, time, timedelta, timezone
-from typing import Any, Iterator, List, Set, Tuple
+from typing import List, Set, Tuple
 
 import pytest
 
@@ -25,34 +25,17 @@ from app.services import entitlement_service as es
 from app.services.campaign_service import materialize_range
 from app.services.training_load_service import get_load_state
 from main import app
-from tests.helpers_admin import grant_admin
+from tests.helpers_admin import (
+    CASE_BY_ROUTE,
+    MutationContext,
+    assert_no_secret_keys,
+    drive,
+    grant_admin,
+)
 from tests.helpers_w1 import MONDAY, add_lift, import_plan
 
 TODAY = date.today()
 SESSION_ROUTE = ("POST", "/admin/session")
-
-# Key shapes that must never appear anywhere in an admin response body.
-_SECRET_EXACT = {"password", "password_hash", "code", "token", "secret", "secret_key"}
-_SECRET_SUFFIX = ("_token", "_encrypted", "_secret", "_hash")
-
-
-def _walk_keys(value: Any) -> Iterator[str]:
-    if isinstance(value, dict):
-        for k, v in value.items():
-            yield str(k)
-            yield from _walk_keys(v)
-    elif isinstance(value, list):
-        for v in value:
-            yield from _walk_keys(v)
-
-
-def assert_no_secret_keys(payload: Any) -> None:
-    leaked = {
-        k for k in _walk_keys(payload)
-        if k.lower() in _SECRET_EXACT or k.lower().endswith(_SECRET_SUFFIX)
-    }
-    assert not leaked, f"secret-shaped keys in admin response: {sorted(leaked)}"
-
 
 def _admin_routes() -> List[Tuple[str, str]]:
     """Every (method, path) under /admin except the public session mint."""
@@ -159,8 +142,16 @@ class TestRouteEnumeration:
             if path.startswith("/admin/audit"):
                 assert method == "GET", (method, path)
 
+    def test_no_delete_route_anywhere_under_admin(self):
+        """Products deactivate, accounts soft-delete, purge is a POST (spec §6.4, §8)."""
+        assert not [(m, p) for m, p in _admin_routes() if m == "DELETE"]
+
+    def test_every_mutation_route_is_in_the_registry(self):
+        mutating = {(m, p) for m, p in _admin_routes() if m != "GET"}
+        assert mutating == set(CASE_BY_ROUTE)
+
     @pytest.mark.parametrize("method,path", _admin_routes())
-    def test_gate(self, client, create_test_user, admin_headers, method, path):
+    def test_gate(self, client, db, create_test_user, admin_headers, method, path):
         url = _fill(path)
         plain, _ = create_test_user(email=f"gate-{uuid.uuid4().hex[:8]}@example.com")
         access = create_access_token(data=user_token_claims(plain))
@@ -178,11 +169,17 @@ class TestRouteEnumeration:
         )
         assert non_admin.status_code == 403, (method, path, non_admin.text)
 
+        headers, actor = admin_headers(email=f"gate-admin-{uuid.uuid4().hex[:8]}@example.com")
         if method == "GET":  # the 200 leg: a real admin against a real user id
-            headers, _ = admin_headers(email=f"gate-admin-{uuid.uuid4().hex[:8]}@example.com")
             ok = client.get(path.replace("{user_id}", plain.id), headers=headers)
-            assert ok.status_code == 200, (method, path, ok.text)
-            assert ok.headers["cache-control"] == "no-store"
+            expected = 200
+        else:  # the 200/201 leg: the registry knows how to drive every mutation route
+            ctx = MutationContext(db=db, actor=actor, target=plain, password="TestPass123!")
+            ok, call = drive(client, headers, CASE_BY_ROUTE[(method, path)], ctx)
+            expected = call.expect
+        assert ok.status_code == expected, (method, path, ok.text)
+        assert ok.headers["cache-control"] == "no-store"
+        assert_no_secret_keys(ok.json())
 
 
 @pytest.fixture
@@ -506,3 +503,66 @@ class TestProducts:
             "id", "kind", "credits", "entitlement_key", "display_name", "active", "sort_order",
             "created_at", "updated_at",
         }
+
+
+class TestLifecycle:
+    """Soft-delete / restore (spec §8.1, §16)."""
+
+    def test_soft_delete_locks_the_user_out_and_restore_lets_them_back_in(
+        self, client, db, admin_pair, step_up_body
+    ):
+        headers, actor, user, pwd = admin_pair("life")
+        login = client.post("/auth/login", json={"email": user.email, "password": pwd}).json()
+        access = {"Authorization": f"Bearer {login['access_token']}"}
+        refresh = {"refresh_token": login["refresh_token"]}
+        assert client.get("/profile", headers=access).status_code == 200
+
+        deleted = client.post(f"/admin/users/{user.id}/delete", json=step_up_body(reason="spam account"), headers=headers)
+        assert deleted.status_code == 200, deleted.text
+        assert deleted.json()["id"] == user.id and deleted.json()["is_deleted"] is True
+        assert deleted.json()["deleted_at"] is not None
+        assert client.get("/profile", headers=access).status_code == 401  # the next request
+        assert client.post("/auth/login", json={"email": user.email, "password": pwd}).status_code == 403
+        assert client.post("/auth/refresh", json=refresh).status_code != 200
+        listed = client.get("/admin/users", headers=headers, params={"deleted": True}).json()
+        assert user.id in {row["id"] for row in listed["items"]}
+        db.expire_all()
+        version = user.token_version
+
+        restored = client.post(f"/admin/users/{user.id}/restore", json=step_up_body(reason="false alarm"), headers=headers)
+        assert restored.status_code == 200, restored.text
+        assert restored.json() == {"id": user.id, "is_deleted": False, "deleted_at": None}
+        db.expire_all()
+        assert user.token_version == version + 1
+        assert client.post("/auth/login", json={"email": user.email, "password": pwd}).status_code == 200
+        assert client.post("/auth/refresh", json=refresh).status_code == 401  # pre-deletion token
+        assert client.get("/profile", headers=access).status_code == 401
+
+        rows = db.query(AdminAuditLog).filter(AdminAuditLog.target_id == user.id).order_by(AdminAuditLog.created_at).all()
+        assert [r.action for r in rows] == ["user.soft_delete", "user.restore"]
+        assert rows[0].before["is_deleted"] is False and rows[0].after["is_deleted"] is True
+        assert rows[1].after["token_version"] == version + 1 and rows[1].actor_user_id == actor.id
+
+    def test_409_on_state_mismatch(self, client, db, admin_pair, step_up_body):
+        headers, _, user, _ = admin_pair("life")
+        assert client.post(f"/admin/users/{user.id}/restore", json=step_up_body(), headers=headers).status_code == 409
+        assert client.post(f"/admin/users/{user.id}/delete", json=step_up_body(), headers=headers).status_code == 200
+        assert client.post(f"/admin/users/{user.id}/delete", json=step_up_body(), headers=headers).status_code == 409
+        assert db.query(AdminAuditLog).filter(AdminAuditLog.target_id == user.id).count() == 1
+
+    def test_self_and_other_admins_are_refused(self, client, db, admin_pair, admin_user, step_up_body):
+        headers, actor, _, _ = admin_pair("life")
+        other, _ = admin_user(email=f"life-other-admin-{uuid.uuid4().hex[:8]}@example.com")
+        assert client.post(f"/admin/users/{actor.id}/delete", json=step_up_body(), headers=headers).status_code == 403
+        assert client.post(f"/admin/users/{other.id}/delete", json=step_up_body(), headers=headers).status_code == 403
+        other.is_deleted = True
+        other.deleted_at = datetime.now(timezone.utc)
+        db.commit()
+        assert client.post(f"/admin/users/{other.id}/restore", json=step_up_body(), headers=headers).status_code == 403
+        assert db.query(AdminAuditLog).filter(AdminAuditLog.target_id.in_([actor.id, other.id]),
+                                              AdminAuditLog.action != "session.create").count() == 0
+
+    def test_short_reason_and_unknown_user(self, client, admin_pair, step_up_body):
+        headers, _, user, _ = admin_pair("life")
+        assert client.post(f"/admin/users/{user.id}/delete", json=step_up_body(reason="no"), headers=headers).status_code == 422
+        assert client.post("/admin/users/nope/delete", json=step_up_body(), headers=headers).status_code == 404

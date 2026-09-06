@@ -10,7 +10,7 @@ ask — "which families has this user logged, with which exercise ids?" and
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from sqlalchemy.orm import Session
 
@@ -24,12 +24,13 @@ from app.services.exercise_family_defs import (
 )
 
 
-def ensure_families(db: Session) -> int:
+def ensure_families(db: Session, *, dry_run: bool = False, commit: bool = True) -> int:
     """Upsert every ``FAMILY_DEFS`` row into ``exercise_families``.
 
     Inserts missing families and refreshes changed attributes on existing
-    ones; never deletes. Commits. Returns the number of rows inserted or
-    updated (0 on a no-op re-run).
+    ones; never deletes. Returns the number of rows inserted or updated (0
+    on a no-op re-run). ``dry_run`` only counts; ``commit=False`` flushes so
+    a caller can commit the change together with its audit row.
     """
     existing: Dict[str, ExerciseFamily] = {
         f.id: f for f in db.query(ExerciseFamily).all()
@@ -38,50 +39,80 @@ def ensure_families(db: Session) -> int:
     for slug, defn in FAMILY_DEFS.items():
         row = existing.get(slug)
         if row is None:
-            db.add(ExerciseFamily(id=slug, **defn))
+            if not dry_run:
+                db.add(ExerciseFamily(id=slug, **defn))
             changed += 1
             continue
-        dirty = False
-        for key, value in defn.items():
-            if getattr(row, key) != value:
-                setattr(row, key, value)
-                dirty = True
+        dirty = {key: value for key, value in defn.items() if getattr(row, key) != value}
         if dirty:
+            if not dry_run:
+                for key, value in dirty.items():
+                    setattr(row, key, value)
             changed += 1
-    if changed:
-        db.commit()
+    if changed and not dry_run:
+        db.commit() if commit else db.flush()
     return changed
 
 
-def assign_family_ids(db: Session, *, include_custom: bool = True) -> int:
-    """Set ``exercises.family_id`` from canonical / alias names.
+def planned_family_updates(
+    db: Session,
+    *,
+    include_custom: bool = True,
+    dry_run: bool = False,
+    rows: Optional[List[Exercise]] = None,
+) -> List[Tuple[Exercise, str]]:
+    """The ``(exercise, family)`` pairs :func:`assign_family_ids` would write.
 
     Seeded rows resolve by exact name and inherit through ``canonical_id``;
     custom rows (``include_custom=True``) are name-matched case-insensitively.
     Existing non-NULL assignments are only changed when the dict disagrees,
-    and a NULL result never clears a value already set. Commits. Returns the
-    number of rows updated (0 on a re-run).
+    and a NULL result never clears a value already set. In ``dry_run`` the
+    families :func:`ensure_families` has not inserted yet still count as
+    known, so the preview matches the apply. Pass ``rows`` to reuse a scan
+    the caller already made.
     """
-    query = db.query(Exercise)
-    if not include_custom:
-        query = query.filter(Exercise.is_custom == False)
-    rows: List[Exercise] = query.all()
+    if rows is None:
+        query = db.query(Exercise)
+        if not include_custom:
+            query = query.filter(Exercise.is_custom == False)
+        rows = query.all()
 
     known = {f.id for f in db.query(ExerciseFamily.id).all()}
+    if dry_run:
+        known |= set(FAMILY_DEFS)
     assignments = resolve_family_assignments(
         (ex.id, ex.name, ex.canonical_id) for ex in rows
     )
+    return [
+        (ex, fam)
+        for ex in rows
+        if (fam := assignments.get(ex.id)) is not None and fam in known and ex.family_id != fam
+    ]
 
-    updated = 0
-    for ex in rows:
-        fam = assignments.get(ex.id)
-        if fam is None or fam not in known or ex.family_id == fam:
-            continue
+
+def apply_family_updates(
+    db: Session, updates: List[Tuple[Exercise, str]], *, commit: bool = True
+) -> int:
+    """Write a plan from :func:`planned_family_updates`; returns the row count."""
+    for ex, fam in updates:
         ex.family_id = fam
-        updated += 1
-    if updated:
-        db.commit()
-    return updated
+    if updates:
+        db.commit() if commit else db.flush()
+    return len(updates)
+
+
+def assign_family_ids(
+    db: Session, *, include_custom: bool = True, dry_run: bool = False, commit: bool = True
+) -> int:
+    """Set ``exercises.family_id`` from canonical / alias names.
+
+    Plans with :func:`planned_family_updates` and writes with
+    :func:`apply_family_updates`. Returns the number of rows updated (0 on a
+    re-run); ``dry_run`` only counts, ``commit=False`` flushes so the caller
+    can commit alongside its audit row.
+    """
+    updates = planned_family_updates(db, include_custom=include_custom, dry_run=dry_run)
+    return len(updates) if dry_run else apply_family_updates(db, updates, commit=commit)
 
 
 def families_for_user(db: Session, user_id: str) -> List[dict]:
@@ -169,5 +200,7 @@ __all__ = [
     "ensure_families",
     "families_for_user",
     "family_for_exercise",
+    "apply_family_updates",
     "family_for_name",
+    "planned_family_updates",
 ]

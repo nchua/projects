@@ -9,6 +9,7 @@ from fastapi import HTTPException
 
 from app.api.screenshot import _check_screenshot_rate_limit, _reserve_scan_credits
 from app.core.config import settings
+from app.models.admin import AdminAuditLog
 from app.models.entitlement import EntitlementSource, Product, UserEntitlement
 from app.models.scan_balance import ScanBalance
 from app.models.screenshot_usage import ScreenshotUsage
@@ -281,3 +282,106 @@ class TestOwnerAlert:
         headers, _ = auth_headers(email="alert-pack@example.com")
         assert _verify(client, headers, "4000000002", SCAN_20).status_code == 200
         assert calls == []
+
+
+class TestAdminRoutes:
+    """Grant / revoke through the console routes (spec §6.3, §13)."""
+
+    @staticmethod
+    def _grant(client, headers, user_id, **body):
+        payload = {"key": es.KEY_UNLIMITED, "value": True, "reason": "friend of the owner", **body}
+        return client.post(f"/admin/users/{user_id}/entitlements", json=payload, headers=headers)
+
+    def test_grant_unlimited_via_route_sets_flag_and_scanner_passes(
+        self, client, db, admin_headers, create_test_user, seed_scan_balance
+    ):
+        headers, actor = admin_headers(email="ent-route-admin@example.com")
+        user, _ = create_test_user(email="ent-route-grant@example.com")
+        seed_scan_balance(user.id, credits=0)
+
+        response = self._grant(client, headers, user.id)
+        assert response.status_code == 201, response.text
+        body = response.json()
+        assert body["key"] == es.KEY_UNLIMITED and body["value"] is True
+        assert body["source"] == "admin_grant" and body["granted_by"] == actor.id
+        assert body["user_id"] == user.id and body["active"] is True and body["revoked_at"] is None
+        assert _balance(db, user.id).has_unlimited is True
+        assert _reserve_scan_credits(db, user.id) is True
+        assert _balance(db, user.id).scan_credits == 0
+
+        row = db.query(AdminAuditLog).filter(AdminAuditLog.action == "entitlement.grant",
+                                             AdminAuditLog.target_id == user.id).one()
+        assert row.actor_user_id == actor.id and row.after["key"] == es.KEY_UNLIMITED
+        assert row.target_type == "user" and row.reason == "friend of the owner"
+
+    def test_revoke_via_route_clears_flag_and_scanner_fails(
+        self, client, db, admin_headers, create_test_user, seed_scan_balance, step_up_body
+    ):
+        headers, actor = admin_headers(email="ent-route-admin2@example.com")
+        user, _ = create_test_user(email="ent-route-revoke@example.com")
+        seed_scan_balance(user.id, credits=0)
+        row_id = self._grant(client, headers, user.id).json()["id"]
+
+        url = f"/admin/users/{user.id}/entitlements/{row_id}/revoke"
+        response = client.post(url, json=step_up_body(reason="trial over"), headers=headers)
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["id"] == row_id and body["revoked_at"] is not None and body["active"] is False
+        assert _balance(db, user.id).has_unlimited is False
+        assert _reserve_scan_credits(db, user.id) is False  # the 402 path
+
+        assert client.post(url, json=step_up_body(), headers=headers).status_code == 409
+        assert client.post(f"/admin/users/{user.id}/entitlements/nope/revoke",
+                           json=step_up_body(), headers=headers).status_code == 404
+        audit = db.query(AdminAuditLog).filter(AdminAuditLog.action == "entitlement.revoke",
+                                               AdminAuditLog.target_id == user.id).one()
+        assert audit.before["revoked_at"] is None and audit.after["revoked_at"] is not None
+
+    def test_revoke_of_purchase_sourced_row_survives_restore_purchases(
+        self, client, db, admin_headers, auth_headers, step_up_body
+    ):
+        headers, _ = admin_headers(email="ent-route-admin3@example.com")
+        user_headers, user = auth_headers(email="ent-route-purchase@example.com")
+        assert _verify(client, user_headers, "3000000041", es.UNLIMITED_PRODUCT_ID).status_code == 200
+        row = db.query(UserEntitlement).filter(UserEntitlement.user_id == user.id).one()
+        assert row.source == "purchase"
+
+        response = client.post(f"/admin/users/{user.id}/entitlements/{row.id}/revoke",
+                               json=step_up_body(reason="fabricated receipt"), headers=headers)
+        assert response.status_code == 200, response.text
+        assert _balance(db, user.id).has_unlimited is False
+
+        restored = client.post("/scan-balance/restore-purchases", headers=user_headers)
+        assert restored.status_code == 200 and restored.json()["has_unlimited"] is False
+        assert db.query(UserEntitlement).filter(UserEntitlement.user_id == user.id).count() == 1
+
+    def test_expired_grant_is_inactive_and_ignored(self, client, db, admin_headers, create_test_user, seed_scan_balance):
+        headers, _ = admin_headers(email="ent-route-admin4@example.com")
+        user, _ = create_test_user(email="ent-route-expired@example.com")
+        seed_scan_balance(user.id, credits=0)
+        past = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+        response = self._grant(client, headers, user.id, expires_at=past)
+        assert response.status_code == 201, response.text
+        assert response.json()["active"] is False
+        assert _balance(db, user.id).has_unlimited is False
+        assert _reserve_scan_credits(db, user.id) is False
+
+    def test_unknown_key_and_wrong_type_are_422(self, client, db, admin_headers, create_test_user):
+        headers, _ = admin_headers(email="ent-route-admin5@example.com")
+        user, _ = create_test_user(email="ent-route-bad@example.com")
+        assert self._grant(client, headers, user.id, key="beta.moon").status_code == 422
+        assert self._grant(client, headers, user.id, key=es.KEY_DAILY_LIMIT, value="ten").status_code == 422
+        assert self._grant(client, headers, user.id, value=True, reason="").status_code == 422
+        assert db.query(UserEntitlement).filter(UserEntitlement.user_id == user.id).count() == 0
+        assert db.query(AdminAuditLog).filter(AdminAuditLog.target_id == user.id).count() == 0
+
+    def test_entitlement_of_another_user_is_404(self, client, db, admin_headers, create_test_user, step_up_body):
+        headers, _ = admin_headers(email="ent-route-admin6@example.com")
+        a, _ = create_test_user(email="ent-route-a@example.com")
+        b, _ = create_test_user(email="ent-route-b@example.com")
+        row_id = self._grant(client, headers, a.id).json()["id"]
+        response = client.post(f"/admin/users/{b.id}/entitlements/{row_id}/revoke",
+                               json=step_up_body(), headers=headers)
+        assert response.status_code == 404
+        db.expire_all()
+        assert db.query(UserEntitlement).filter(UserEntitlement.id == row_id).one().revoked_at is None

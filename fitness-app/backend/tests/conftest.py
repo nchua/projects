@@ -257,6 +257,28 @@ def admin_headers(admin_user):
 
 
 @pytest.fixture
+def step_up_body():
+    """Factory: a destructive-tier body (spec §4.5) — ``tests.helpers_admin.step_up_body``."""
+    from tests.helpers_admin import step_up_body as _step_up_body
+
+    return _step_up_body
+
+
+@pytest.fixture
+def admin_pair(admin_headers, create_test_user):
+    """Factory: an admin and a fresh target with unique emails.
+
+    Returns ``(headers, actor, target, target_password)``."""
+    def _make(prefix: str = "pair") -> Tuple:
+        tag = uuid.uuid4().hex[:8]
+        headers, actor = admin_headers(email=f"{prefix}-admin-{tag}@example.com")
+        target, password = create_test_user(email=f"{prefix}-target-{tag}@example.com")
+        return headers, actor, target, password
+
+    return _make
+
+
+@pytest.fixture
 def unique_email():
     """
     Factory fixture that returns a unique email per invocation.

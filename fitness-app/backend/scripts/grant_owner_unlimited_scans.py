@@ -1,9 +1,10 @@
-"""Grant the owner unlimited screenshot scans (break-glass fallback).
+"""Grant the owner unlimited screenshot scans — fallback, prefer ``/admin/ui``.
 
 Run from fitness-app/backend:
     SEED_USER_EMAIL=<owner email> venv/bin/python scripts/grant_owner_unlimited_scans.py
 
-Prefer the owner console (``/admin/ui``); this script is the fallback and
+The owner console does this as ``POST /admin/users/{id}/entitlements``
+(control-plane spec §6.3); this script is the break-glass fallback and
 goes through the same service the console uses: it grants a
 ``scans.unlimited`` entitlement (``source = admin_grant``), which is the one
 path that may set ``scan_balances.has_unlimited`` (control-plane spec §6.2),

@@ -1,50 +1,73 @@
 """
-Owner console API — the ``/admin/*`` read surfaces (control-plane spec §9, §13).
+Owner console API — every ``/admin/*`` route (control-plane spec §7-§9, §13).
 
-Two routers, both mounted under ``/admin`` and hidden from OpenAPI:
+Three routers, all mounted under ``/admin`` and hidden from OpenAPI:
 
 * ``session_router`` — ``POST /admin/session`` only. It runs *before*
   ``require_admin`` (there is no token yet), so it is rate-limited with the
   login policy and stamps ``request.state.audit_ip`` itself so the
   ``session.create`` audit row carries the caller's IP.
-* ``router`` — everything else, with ``require_admin`` attached at the
-  router level so no handler can forget it.
-
-Read handlers take ``Depends(get_read_only_db)``: the same request session,
-marked read-only on Postgres so an accidental write fails loudly (spec §9.3).
-W2's mutation handlers take plain ``get_db``.
+* ``router`` — the reads, with ``require_admin`` attached at the router
+  level so no handler can forget it. Handlers take ``Depends(get_read_only_db)``:
+  the same request session, marked read-only on Postgres so an accidental
+  write fails loudly (spec §9.3).
+* ``mutation_router`` — the writes, same router-level ``require_admin`` but
+  plain ``get_db``. Each handler calls one service function (which
+  re-verifies the password on the destructive tier and writes the audit
+  row) and then commits, so the change and its audit row land together.
+  There is no ``DELETE`` anywhere under ``/admin``: products deactivate,
+  accounts soft-delete, and purge is an explicit ``POST``.
 
 ``Cache-Control: no-store`` (and ``X-Frame-Options: DENY``) on every
 ``/admin/*`` response is added by ``AdminResponseHeadersMiddleware`` in
 ``main.py`` so error responses carry it too.
 """
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.admin_auth import require_admin
 from app.core.database import get_db, mark_read_only
+from app.core.dependencies import not_found
 from app.core.rate_limit import LOGIN_RATE_LIMIT, client_ip, limiter
 from app.models.user import User
 from app.schemas.admin import (
+    AdminCampaignImportRequest,
+    AdminCampaignImportResponse,
     AdminMeResponse,
     AdminSessionRequest,
     AdminSessionResponse,
     AdminUserDetailResponse,
     AdminUserListResponse,
+    AdminUserStateResponse,
     AuditListResponse,
+    CreditsAdjustRequest,
+    CreditsAdjustResponse,
+    EntitlementGrantRequest,
+    EntitlementResponse,
+    FamilyBackfillRequest,
+    FamilyBackfillResponse,
     FleetUsageResponse,
     ProductResponse,
+    ProductUpsertRequest,
+    PurgeRequest,
+    PurgeResponse,
+    PurgeSweepRequest,
+    PurgeSweepResponse,
+    ReasonBody,
+    SeedAchievementsResponse,
     SortOrder,
+    StepUpBody,
     UserSort,
     UserUsageResponse,
 )
-from app.services import admin_service, admin_usage_service
+from app.services import admin_service, admin_usage_service, purge_service
 
 session_router = APIRouter()
 router = APIRouter(dependencies=[Depends(require_admin)])
+mutation_router = APIRouter(dependencies=[Depends(require_admin)])
 
 
 def get_read_only_db(db: Session = Depends(get_db)) -> Session:
@@ -57,7 +80,7 @@ def get_target_user(user_id: str, db: Session = Depends(get_db)) -> User:
     """The ``{user_id}`` path target (deleted accounts included), or 404."""
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise not_found("User not found")
     return user
 
 
@@ -166,3 +189,244 @@ async def list_audit(
 async def list_products(db: Session = Depends(get_read_only_db)):
     """The product catalog in display order (active and inactive)."""
     return admin_service.list_products(db)
+
+
+# ── mutations (spec §7, §8, §13) ────────────────────────────────────────────
+
+@mutation_router.post("/users/{user_id}/credits", response_model=CreditsAdjustResponse)
+async def adjust_credits(
+    request: Request,
+    body: CreditsAdjustRequest,
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key", max_length=128),
+    user: User = Depends(get_target_user),
+    actor: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> CreditsAdjustResponse:
+    """Add ``delta`` credits (spec §7.1). ``Idempotency-Key`` is required (400 without)."""
+    if not idempotency_key:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Idempotency-Key header required")
+    result = admin_service.adjust_credits(
+        db,
+        actor=actor,
+        user=user,
+        delta=body.delta,
+        reason=body.reason,
+        password=body.password,
+        idempotency_key=idempotency_key,
+        request=request,
+    )
+    db.commit()
+    return result
+
+
+@mutation_router.post(
+    "/users/{user_id}/entitlements",
+    response_model=EntitlementResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def grant_entitlement(
+    request: Request,
+    body: EntitlementGrantRequest,
+    user: User = Depends(get_target_user),
+    actor: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> EntitlementResponse:
+    """Grant a keyed right or limit (spec §6.3); ``scans.unlimited`` syncs the cached flag."""
+    result = admin_service.grant_entitlement(
+        db,
+        actor=actor,
+        user=user,
+        key=body.key,
+        value=body.value,
+        expires_at=body.expires_at,
+        reason=body.reason,
+        request=request,
+    )
+    db.commit()
+    return result
+
+
+@mutation_router.post(
+    "/users/{user_id}/entitlements/{entitlement_id}/revoke", response_model=EntitlementResponse
+)
+async def revoke_entitlement(
+    request: Request,
+    entitlement_id: str,
+    body: StepUpBody,
+    user: User = Depends(get_target_user),
+    actor: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> EntitlementResponse:
+    """Revoke one entitlement row (destructive tier); survives Restore Purchases."""
+    result = admin_service.revoke_entitlement(
+        db,
+        actor=actor,
+        user=user,
+        entitlement_id=entitlement_id,
+        password=body.password,
+        reason=body.reason,
+        request=request,
+    )
+    db.commit()
+    return result
+
+
+@mutation_router.post(
+    "/users/{user_id}/campaign/import",
+    response_model=AdminCampaignImportResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def import_campaign(
+    request: Request,
+    response: Response,
+    body: AdminCampaignImportRequest,
+    user: User = Depends(get_target_user),
+    actor: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Import a plan for the target user from pasted phases or a template (spec §7.2).
+
+    201 with the campaign; a dry run parses only and answers 200 with ``arcs_preview``.
+    """
+    result = admin_service.import_campaign_for_user(db, actor=actor, user=user, body=body, request=request)
+    db.commit()
+    if body.dry_run:
+        response.status_code = status.HTTP_200_OK
+    return result
+
+
+@mutation_router.post("/users/{user_id}/delete", response_model=AdminUserStateResponse)
+async def soft_delete_user(
+    request: Request,
+    body: StepUpBody,
+    user: User = Depends(get_target_user),
+    actor: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> AdminUserStateResponse:
+    """Soft-delete (spec §8.1): the user's next request is a 401, login a 403."""
+    result = admin_service.soft_delete_user(
+        db, actor=actor, user=user, password=body.password, reason=body.reason, request=request
+    )
+    db.commit()
+    return result
+
+
+@mutation_router.post("/users/{user_id}/restore", response_model=AdminUserStateResponse)
+async def restore_user(
+    request: Request,
+    body: StepUpBody,
+    user: User = Depends(get_target_user),
+    actor: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> AdminUserStateResponse:
+    """Undo a soft-delete and bump ``token_version`` (spec §8.1)."""
+    result = admin_service.restore_user(
+        db, actor=actor, user=user, password=body.password, reason=body.reason, request=request
+    )
+    db.commit()
+    return result
+
+
+@mutation_router.post("/users/{user_id}/purge", response_model=PurgeResponse)
+async def purge_user(
+    request: Request,
+    body: PurgeRequest,
+    user: User = Depends(get_target_user),
+    actor: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> PurgeResponse:
+    """Hard purge (spec §8.2): password + typed email; past grace or ``force`` with a reason."""
+    result = purge_service.purge_user(
+        db,
+        actor=actor,
+        user=user,
+        password=body.password,
+        confirm_email=body.confirm_email,
+        force=body.force,
+        reason=body.reason,
+        request=request,
+    )
+    db.commit()
+    return result
+
+
+@mutation_router.post("/maintenance/exercise-families", response_model=FamilyBackfillResponse)
+async def backfill_exercise_families(
+    request: Request,
+    body: FamilyBackfillRequest,
+    actor: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> FamilyBackfillResponse:
+    """Exercise-family backfill (spec §7.3): dry run by default, apply is destructive tier."""
+    result = admin_service.backfill_families(
+        db,
+        actor=actor,
+        dry_run=body.dry_run,
+        password=body.password,
+        reason=body.reason,
+        request=request,
+    )
+    db.commit()
+    return result
+
+
+@mutation_router.post("/maintenance/seed-achievements", response_model=SeedAchievementsResponse)
+async def seed_achievements(
+    request: Request,
+    body: ReasonBody,
+    actor: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> SeedAchievementsResponse:
+    """Audited seed of the achievement definitions (spec §7.4)."""
+    seeded = admin_service.seed_achievements(db, actor=actor, reason=body.reason, request=request)
+    db.commit()
+    return SeedAchievementsResponse(seeded=seeded)
+
+
+@mutation_router.post("/maintenance/purge-eligible", response_model=PurgeSweepResponse)
+async def purge_eligible(
+    request: Request,
+    body: PurgeSweepRequest,
+    actor: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> PurgeSweepResponse:
+    """The visible sweep (spec §8.3): list accounts past grace; ``dry_run=false`` purges them."""
+    result = purge_service.purge_eligible(
+        db,
+        actor=actor,
+        dry_run=body.dry_run,
+        password=body.password,
+        reason=body.reason,
+        request=request,
+    )
+    db.commit()
+    return result
+
+
+@mutation_router.post("/products", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
+async def create_product(
+    request: Request,
+    body: ProductUpsertRequest,
+    actor: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> ProductResponse:
+    """Add a catalog SKU (spec §6.4). 409 if the id exists."""
+    result = admin_service.upsert_product(db, actor=actor, body=body, request=request)
+    db.commit()
+    return result
+
+
+@mutation_router.patch("/products/{product_id}", response_model=ProductResponse)
+async def update_product(
+    request: Request,
+    product_id: str,
+    body: ProductUpsertRequest,
+    actor: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> ProductResponse:
+    """Edit a SKU; the id is immutable and ``active=false`` is destructive tier (no DELETE)."""
+    result = admin_service.upsert_product(
+        db, actor=actor, body=body, product_id=product_id, request=request
+    )
+    db.commit()
+    return result

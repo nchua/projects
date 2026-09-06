@@ -459,6 +459,7 @@ app.include_router(load.router, prefix="/load", tags=["Training Load"])
 # router has no admin dependency (it mints the token), the rest requires it.
 app.include_router(admin.session_router, prefix="/admin", include_in_schema=False)
 app.include_router(admin.router, prefix="/admin", include_in_schema=False)
+app.include_router(admin.mutation_router, prefix="/admin", include_in_schema=False)
 
 if __name__ == "__main__":
     import uvicorn

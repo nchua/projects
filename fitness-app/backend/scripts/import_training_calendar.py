@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
-One-time import of the training-calendar PWA plan into the owner's Campaign
-(ARISE v3 spec §4.3).
+Import the training-calendar PWA plan into the owner's Campaign (ARISE v3
+spec §4.3) — fallback, prefer ``/admin/ui``.
 
-Reads ``../../training-calendar/data.js`` (relative to this repo's backend),
-strips the ``const PHASES =`` wrapper and trailing ``;`` — the file is
-JSON-compatible after that — logs in as the owner and POSTs the phases to
-``/campaign/import``. Prints the response summary and warnings. Never prints
-credentials.
+The owner console imports the committed copy of the same plan for any user
+as ``POST /admin/users/{id}/campaign/import {template: "owner_hybrid"}``
+(control-plane spec §7.2). This script reads ``../../training-calendar/data.js``
+(relative to this repo's backend) with the parser the console shares
+(``app.services.campaign_templates.load_phases_js``), logs in as the owner
+and POSTs the phases to ``/campaign/import``. Prints the response summary
+and warnings. Never prints credentials.
 
 Usage:
     SEED_USER_EMAIL=... venv/bin/python scripts/import_training_calendar.py [--name NAME] \\
@@ -22,7 +24,6 @@ import argparse
 import getpass
 import json
 import os
-import re
 import sys
 from datetime import date
 from pathlib import Path
@@ -31,29 +32,22 @@ from typing import Any, Dict, List
 import httpx
 from dotenv import load_dotenv
 
+_BACKEND_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_BACKEND_DIR))
 # Same convention as the other owner scripts: SEED_USER_EMAIL (and DATABASE_URL)
 # come from backend/.env; SEED_USER_PASSWORD is passed on the command line.
-load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+load_dotenv(_BACKEND_DIR / ".env")
+
+from app.services.campaign_templates import load_phases_js  # noqa: E402
 
 DEFAULT_BASE_URL = "https://backend-production-e316.up.railway.app"
-DATA_JS = Path(__file__).resolve().parents[3] / "training-calendar" / "data.js"
+DATA_JS = _BACKEND_DIR.parents[1] / "training-calendar" / "data.js"
 TIMEOUT = 60.0
 
 
 def load_phases(path: Path = DATA_JS) -> List[Dict[str, Any]]:
-    """Parse ``data.js`` into the PHASES list."""
-    text = path.read_text(encoding="utf-8")
-    text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)          # header comment
-    match = re.search(r"const\s+PHASES\s*=\s*", text)
-    if not match:
-        raise ValueError(f"{path}: no `const PHASES =` found")
-    body = text[match.end():].strip()
-    if body.endswith(";"):
-        body = body[:-1].rstrip()
-    phases = json.loads(body)
-    if not isinstance(phases, list) or not phases:
-        raise ValueError(f"{path}: PHASES is not a non-empty list")
-    return phases
+    """Parse ``data.js`` into the PHASES list (the console's parser)."""
+    return load_phases_js(path)
 
 
 def main(argv: List[str] | None = None) -> int:
