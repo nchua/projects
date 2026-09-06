@@ -34,7 +34,7 @@ Give the ARISE owner one place — a phone-and-laptop web console served by the 
 **Support actions:** credits adjust (FOR UPDATE, Idempotency-Key), campaign import for `{user_id}` from pasted phases or the committed `owner_hybrid` template (dry-run via `parse_phases`), family backfill (dry-run default), seed-achievements duplicate under `/admin/maintenance`.
 **Lifecycle:** admin soft-delete/restore mirror `auth.py:238-239`; `purge_service.PURGE_ORDER` explicit deletes (21 FKs to `users.id` lack cascade), `purchase_records.user_id` SET NULL instead of delete, one transaction per user, grace 30 d unless `force`; startup sweep behind `PURGE_SWEEP_ENABLED` (default false), skipped on SQLite, actor NULL.
 **Reads:** list/detail/usage compose existing `user_id`-taking services; `usage_snapshot.py` ported dialect-neutral on `local_date`.
-**Hygiene on the shared origin:** `html.escape` in `whoop.py` callback; strip `input`/`ctx` from `main.py:148`; `/admin/*` out of OpenAPI; `no-store` + `X-Frame-Options: DENY` + CSP; daily-count check moved after the balance lock; scripts keep working as fallbacks with `getpass`; rotate the leaked password.
+**Hygiene on the shared origin:** `html.escape` in `whoop.py` callback; strip `input`/`ctx` from `main.py:148`; `/admin/*` out of OpenAPI; `no-store` + `X-Frame-Options: DENY` + CSP; daily-count check moved after the balance lock; scripts keep working as fallbacks with `getpass`.
 **Migrations:** `admin_schema` (users columns, admin_audit_log, products, user_entitlements, PG trigger) → `admin_seed_backfill` (3 products; `scans.unlimited` rows for existing `has_unlimited` users). Head: `admin_seed_backfill`.
 
 ## Acceptance Criteria (Product Manager, amended)
@@ -74,4 +74,4 @@ Give the ARISE owner one place — a phone-and-laptop web console served by the 
 - Purge order correctness for non-cascading child FKs (`prs.set_id`, `pr_gates.*`, `goal_progress_snapshots.workout_id`, `goals.campaign_id`); the seeded end-to-end test is the guard.
 - Per-account lockout lets an attacker lock the owner out of the console; break-glass is one SQL line.
 - Bootstrap re-promotes on every boot: demoting the bootstrap account = remove the env var + redeploy.
-- Open: rotate the owner's password (leaked into a transcript last session); confirm `PURGE_GRACE_DAYS` (30) stays aligned with `/privacy`; confirm friends' plans will be authored as `data.js` phases vs in-app `POST /campaign`.
+- Open: confirm `PURGE_GRACE_DAYS` (30) stays aligned with `/privacy`; confirm friends' plans will be authored as `data.js` phases vs in-app `POST /campaign`.

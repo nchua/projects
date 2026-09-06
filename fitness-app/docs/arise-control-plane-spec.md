@@ -21,8 +21,8 @@
 ## 0. TL;DR
 
 Today every per-user change on prod is a script the owner runs from a terminal, with the prod
-`DATABASE_URL` in a local `.env` and — once — the owner's password in a Claude transcript
-(`fitness-app/session-state.md:24`). That does not scale past one user, and it is also the
+`DATABASE_URL` in a local `.env` and the owner's password passed to the script by hand. That
+does not scale past one user, and it is also the
 reason Claude cannot help operate the app: the auto-mode classifier blocks prod-DB access.
 
 | Owner job today | How it is done | Problem |
@@ -673,7 +673,7 @@ console's origin or its auth path, so they ship in W0 rather than as a separate 
 | `app/api/password_reset.py:56,86,89,91`, `app/services/email_service.py:106,109` | emails in INFO/ERROR logs become Sentry breadcrumbs despite `send_default_pii=False` (`main.py:54`) | log user ids | SHOULD |
 | `app/api/friends.py:263` | `current_user.email` used as the push sender name shown to another user | `username or "A hunter"` | SHOULD |
 | `app/api/workouts.py:173-190` | `debug-error` returns tracebacks when `DEBUG` (prod forbids DEBUG, `config.py:104`) | delete, or `include_in_schema=False` + keep the guard | SHOULD |
-| `scripts/import_training_calendar.py:87-99` | password from env/argv landed in a transcript (`session-state.md:24`) | `getpass.getpass()` fallback when the env var is absent; retire the script once §7.2 ships; **rotate the password now** | MUST |
+| `scripts/import_training_calendar.py:87-99` | a password passed on argv is visible in shell history and process lists | `getpass.getpass()` fallback when the env var is absent; retire the script once §7.2 ships | MUST |
 | `backend/.env` | holds the prod public `DATABASE_URL` on the laptop | consider `railway run` injection; keep FileVault on | note |
 
 ---
@@ -839,14 +839,13 @@ second agent against the frozen W1/W2 contracts.
 
 **Open questions**
 
-1. Rotate the owner's password now (it was in a transcript on 2026-09-05)? Recommended before W0.
-2. `coach.debrief` global kill switch in v1 (one flag + a 503)? Recommended if friends onboard
+1. `coach.debrief` global kill switch in v1 (one flag + a 503)? Recommended if friends onboard
    before v2's per-user overrides.
-3. Will friends' plans be authored as `data.js` phases (the console needs the parser) or created
+2. Will friends' plans be authored as `data.js` phases (the console needs the parser) or created
    in-app via `POST /campaign` (`app/api/campaign.py:97`)? Determines whether admin import stays
    owner-only.
-4. `PURGE_GRACE_DAYS = 30` matches `/privacy` — any plan to change the policy text?
-5. Keep the three scripts as documented fallbacks (the memory note says yes) or delete after one
+3. `PURGE_GRACE_DAYS = 30` matches `/privacy` — any plan to change the policy text?
+4. Keep the three scripts as documented fallbacks (the memory note says yes) or delete after one
    clean month?
 
 ---
@@ -868,7 +867,7 @@ second agent against the frozen W1/W2 contracts.
 - [ ] Purge: 30-day grace unless `force`; audit rows survive; `purchase_records` unlinked not deleted; sweep behind `PURGE_SWEEP_ENABLED`.
 - [ ] No impersonation token is accepted by `get_current_user`.
 - [ ] Tests named in §16 exist: route enumeration, mass-assignment, token-class rejection both ways, same-transaction audit, purge-keeps-audit, step-up enforcement.
-- [ ] WHOOP callback escaped; validation log strips `input`; the leaked password rotated; `getpass` in the import script.
+- [ ] WHOOP callback escaped; validation log strips `input`; `getpass` in the import script.
 
 ---
 
