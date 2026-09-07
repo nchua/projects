@@ -429,7 +429,7 @@ async def privacy_policy():
 <p>ARISE is not intended for users under 13. We do not knowingly collect data from children.</p>
 
 <h2>Contact</h2>
-<p>For privacy inquiries, contact us at <a href="mailto:privacy@arise-fitness.app">privacy@arise-fitness.app</a>.</p>
+<p>For privacy inquiries, contact us at <a href="mailto:shadowgainsapp@gmail.com">shadowgainsapp@gmail.com</a>.</p>
 
 <p class="updated">Last updated: July 12, 2026</p>""",
     )
@@ -499,7 +499,7 @@ changes will be surfaced in the app.</p>
 consequential damages, for lost data, or for injury arising from your use of the service.</p>
 
 <h2>Contact</h2>
-<p>Questions about these terms: <a href="mailto:support@arise-fitness.app">support@arise-fitness.app</a>.</p>
+<p>Questions about these terms: <a href="mailto:shadowgainsapp@gmail.com">shadowgainsapp@gmail.com</a>.</p>
 
 <p class="updated">Last updated: September 6, 2026</p>""",
     )
@@ -517,7 +517,7 @@ async def support_page():
 <p>Need help, found a bug, or want a feature? Get in touch and we'll get back to you.</p>
 
 <h2>Contact</h2>
-<p><a href="mailto:support@arise-fitness.app">support@arise-fitness.app</a></p>
+<p><a href="mailto:shadowgainsapp@gmail.com">shadowgainsapp@gmail.com</a></p>
 
 <h2>Common Questions</h2>
 <ul>

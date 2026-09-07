@@ -216,9 +216,13 @@ The backend stops being "my app" the moment it is public. Worth a hard look:
 - [ ] Confirm `alembic upgrade head` is clean and prod schema matches (there's a
       known history of stamp drift — check, don't assume).
 - [ ] Error monitoring / alerting for a user base that isn't you.
-- [ ] A real, monitored support email. `/privacy` currently advertises
-      `privacy@arise-fitness.app` — confirm that domain exists and receives mail,
-      or change it. A dead contact address on a published privacy policy is bad.
+- [x] A real, monitored support email. *(2026-09-07)* `arise-fitness.app` was never
+      registered, so `/privacy`, `/terms` and `/support` now advertise
+      `shadowgainsapp@gmail.com` — the Google account that already sends reset codes
+      via SendGrid. **Turn on forwarding from that account to your main Gmail** so
+      support mail is actually read. Revisit under Phase 0.1 when the name is locked:
+      buy the matching domain, forward `support@`/`privacy@`, and move
+      `SENDGRID_FROM_EMAIL` onto it so SendGrid can authenticate the sender.
 
 ---
 
