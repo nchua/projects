@@ -60,3 +60,12 @@ LOGIN_RATE_LIMIT = "5/10minutes"
 # would lock out signup bursts from a team demo or family sharing a
 # connection. Still tight enough to deter mass account creation.
 REGISTER_RATE_LIMIT = "20/10minutes"
+
+# Password-reset *request* is about mail-send cost and sender reputation,
+# not account compromise: the endpoint already enforces a 2-minute
+# per-email cooldown and answers identically for unknown addresses, so the
+# remaining abuse shape is one IP spraying many addresses — every hit is a
+# SendGrid send from our domain. Sized between login and register: a
+# shared NAT (gym, dorm, office VPN) sees a handful of genuine resets in
+# ten minutes, never dozens.
+PASSWORD_RESET_RATE_LIMIT = "10/10minutes"

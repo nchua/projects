@@ -180,11 +180,30 @@ async def validation_exception_handler(request, exc):
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):
     print(f"HTTP EXCEPTION on {request.url.path}: status={exc.status_code}, detail={exc.detail}", flush=True)
+    # Keep the headers the endpoint set (Retry-After on the scanner's daily
+    # cap, cooldown and spend-ceiling responses) — building a fresh dict
+    # here used to drop them.
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail},
-        headers=_error_headers(request),
+        headers={**(exc.headers or {}), **_error_headers(request)},
     )
+
+
+from app.api.screenshot import SpendCeilingExceeded
+
+
+@app.exception_handler(SpendCeilingExceeded)
+async def spend_ceiling_handler(request, exc):
+    """The global Anthropic ceiling 503 (app-store-launch spec §G4.1).
+
+    Same JSON shape as every other HTTP error, plus the owner alert the
+    exception carries — attached here as the response's background task
+    because FastAPI drops ``BackgroundTasks`` when an endpoint raises.
+    """
+    response = await http_exception_handler(request, exc)
+    response.background = exc.alert
+    return response
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request, exc):

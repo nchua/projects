@@ -4,10 +4,11 @@ Password Reset API endpoints
 import logging
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.rate_limit import PASSWORD_RESET_RATE_LIMIT, limiter
 from app.core.security import hash_password
 from app.models.password_reset import PasswordResetToken, generate_reset_code
 from app.models.user import User
@@ -30,7 +31,9 @@ COOLDOWN_MINUTES = 2
 
 
 @router.post("/request", response_model=PasswordResetRequestResponse)
+@limiter.limit(PASSWORD_RESET_RATE_LIMIT)
 async def request_password_reset(
+    request: Request,
     request_data: PasswordResetRequest,
     db: Session = Depends(get_db)
 ):
@@ -40,7 +43,9 @@ async def request_password_reset(
     Always returns success to prevent email enumeration.
     If the email exists, sends a 6-digit code.
 
-    Rate limited: one request per email every 2 minutes.
+    Rate limited: one request per email every 2 minutes, plus a per-IP
+    ceiling (``PASSWORD_RESET_RATE_LIMIT``) so one client cannot spray
+    many addresses and burn mail sends.
     """
     email = request_data.email.lower()
 

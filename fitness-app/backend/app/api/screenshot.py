@@ -3,14 +3,25 @@ Screenshot Processing API endpoints
 Handles workout screenshot uploads and Claude Vision extraction
 """
 import logging
+import threading
 import traceback
-from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Tuple
+from datetime import date, datetime, timedelta, timezone
+from typing import Dict, List, Optional, Tuple
 
 import anthropic
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+    status,
+)
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from starlette.background import BackgroundTask
 
 from app.core.config import settings
 from app.core.database import SessionLocal, get_db
@@ -35,6 +46,7 @@ from app.schemas.screenshot import (
     ScreenshotProcessResponse,
 )
 from app.services import entitlement_service
+from app.services.email_service import send_owner_alert
 from app.services.entitlement_service import ScanLimits
 from app.services.screenshot_service import (
     extract_workout_from_screenshot,
@@ -143,26 +155,140 @@ def _assert_daily_cap(db: Session, user_id: str, screenshot_count: int, daily_li
         )
 
 
+# ── Global Anthropic spend ceiling (app-store-launch spec §G4.1) ──────────
+# Every other scanner control above and below is per user. This one sums
+# today's vision calls across ALL users — from the same screenshot_usage
+# table the daily cap reads, so no new table and no new writes — and
+# refuses new scans past ``ANTHROPIC_DAILY_CALL_CEILING``. It runs before
+# any credit is reserved, so a refused scan costs the user nothing.
+
+
+class SpendCeilingExceeded(HTTPException):
+    """503 for the global ceiling, carrying the owner alert to send.
+
+    FastAPI attaches ``BackgroundTasks`` to the *success* response only — a
+    task queued before ``raise`` is dropped — so the exception carries the
+    alert as a ``BackgroundTask`` and the handler in ``main.py`` attaches it
+    to the 503 instead. SendGrid stays off the event loop either way.
+    """
+
+    def __init__(self, detail: str, retry_after: int, alert: Optional[BackgroundTask]) -> None:
+        super().__init__(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=detail,
+            headers={"Retry-After": str(retry_after)},
+        )
+        self.alert = alert
+
+
+# UTC day each alert kind ("warn" / "ceiling") last went out. Per process
+# and reset on deploy — the same caveat as the rate limiter (rate_limit.py);
+# Railway runs one worker, and a repeat email after a deploy is harmless.
+_spend_alert_sent_on: Dict[str, date] = {}
+_spend_alert_lock = threading.Lock()
+
+
+def send_spend_alert_once(kind: str, day: date, subject: str, body: str) -> bool:
+    """Send at most one owner alert per ``kind`` per UTC day.
+
+    Runs as a background task. The dedup happens here, at send time, not
+    when the task is queued: a task queued on a request that later fails
+    (402, per-user cap) is dropped by FastAPI, and marking it sent early
+    would swallow the day's only alert.
+    """
+    with _spend_alert_lock:
+        if _spend_alert_sent_on.get(kind) == day:
+            return False
+        _spend_alert_sent_on[kind] = day
+    return send_owner_alert(subject, body)
+
+
+def _global_usage_today(db: Session, today_start: datetime) -> int:
+    """Vision calls recorded since UTC midnight, every user."""
+    return (
+        db.query(func.sum(ScreenshotUsage.screenshots_count))
+        .filter(ScreenshotUsage.created_at >= today_start)
+        .scalar()
+        or 0
+    )
+
+
+def _assert_spend_ceiling(
+    db: Session, screenshot_count: int, background: Optional[BackgroundTasks]
+) -> None:
+    """Refuse ``screenshot_count`` more vision calls if they would push
+    today's global total past the ceiling; warn the owner on the way up.
+
+    Raises :class:`SpendCeilingExceeded` (503, no credit debited) past the
+    ceiling. Queues the pre-cap warning once the projected total reaches
+    ``ANTHROPIC_DAILY_CALL_WARN_PERCENT`` of the ceiling, when the caller
+    has a ``BackgroundTasks`` to queue it on.
+    """
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today = today_start.date()
+    ceiling = int(settings.ANTHROPIC_DAILY_CALL_CEILING)
+    used = _global_usage_today(db, today_start)
+    projected = used + screenshot_count
+
+    if projected > ceiling:
+        retry_after = int((today_start + timedelta(days=1) - now).total_seconds())
+        raise SpendCeilingExceeded(
+            detail=(
+                "Screenshot scanning is at capacity for today. "
+                "No credit was consumed — please try again tomorrow."
+            ),
+            retry_after=retry_after,
+            alert=BackgroundTask(
+                send_spend_alert_once,
+                "ceiling",
+                today,
+                "Anthropic daily call ceiling reached",
+                f"{used} vision calls recorded today; a request for {screenshot_count} "
+                f"more was refused (ceiling {ceiling}). Scans return 503 until UTC "
+                "midnight. Raise ANTHROPIC_DAILY_CALL_CEILING if this is legitimate load.",
+            ),
+        )
+
+    warn_percent = int(settings.ANTHROPIC_DAILY_CALL_WARN_PERCENT)
+    if background is not None and projected >= ceiling * warn_percent // 100:
+        background.add_task(
+            send_spend_alert_once,
+            "warn",
+            today,
+            "Anthropic daily calls approaching ceiling",
+            f"{projected} of {ceiling} vision calls used today ({warn_percent}% warn "
+            "threshold). Scans will return 503 at the ceiling.",
+        )
+
+
 def _check_screenshot_rate_limit(
     db: Session,
     user_id: str,
     screenshot_count: int = 1,
     *,
     limits: Optional[ScanLimits] = None,
+    background: Optional[BackgroundTasks] = None,
 ) -> None:
     """
-    Check non-monetary rate limits (feature flag, daily abuse cap, cooldown).
+    Check non-monetary rate limits (feature flag, global spend ceiling,
+    daily abuse cap, cooldown).
 
     Does NOT check or deduct scan credits — that happens atomically in
     `_reserve_scan_credits`, which re-checks the daily cap under the row
     lock (the pre-check here is a fast fail). Raises HTTPException if
-    limits are exceeded.
+    limits are exceeded. ``background`` carries the pre-cap owner warning
+    (§G4.1); pass the endpoint's ``BackgroundTasks``.
     """
     if not settings.SCREENSHOT_PROCESSING_ENABLED:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Screenshot scanning temporarily unavailable"
         )
+
+    # Aggregate spend, before any per-user check: past the ceiling nobody
+    # scans, whatever their own limits say.
+    _assert_spend_ceiling(db, screenshot_count, background)
 
     if limits is None:
         limits = entitlement_service.effective_limits(db, user_id)
@@ -273,6 +399,7 @@ MAX_FILE_SIZE = 10 * 1024 * 1024
 @router.post("/process", response_model=ScreenshotProcessResponse)
 @router.post("/process/", response_model=ScreenshotProcessResponse)
 async def process_screenshot(
+    background: BackgroundTasks,
     file: UploadFile = File(..., description="Workout screenshot image"),
     save_workout: bool = Form(default=False, description="Auto-save as workout"),
     save_activity: bool = Form(
@@ -308,9 +435,11 @@ async def process_screenshot(
     Raises:
         HTTPException: If file type is invalid, file is too large, or processing fails
     """
-    # Non-monetary rate limiting (feature flag, daily cap, cooldown)
+    # Non-monetary rate limiting (feature flag, spend ceiling, daily cap, cooldown)
     limits = entitlement_service.effective_limits(db, current_user.id)
-    _check_screenshot_rate_limit(db, current_user.id, screenshot_count=1, limits=limits)
+    _check_screenshot_rate_limit(
+        db, current_user.id, screenshot_count=1, limits=limits, background=background
+    )
 
     import sys
     # Read first few bytes to check actual file format
@@ -510,6 +639,7 @@ async def process_screenshot(
 @router.post("/process/batch", response_model=ScreenshotBatchResponse)
 @router.post("/process/batch/", response_model=ScreenshotBatchResponse)
 async def process_screenshots_batch(
+    background: BackgroundTasks,
     files: List[UploadFile] = File(..., description="Multiple workout screenshot images"),
     save_workout: bool = Form(default=True, description="Auto-save as workout"),
     session_date: Optional[str] = Form(default=None, description="Override session date (YYYY-MM-DD)"),
@@ -543,9 +673,12 @@ async def process_screenshots_batch(
             detail="No files provided"
         )
 
-    # Non-monetary rate limiting (feature flag, daily cap, cooldown)
+    # Non-monetary rate limiting (feature flag, spend ceiling, daily cap, cooldown).
+    # Batch counts every screenshot against the ceiling, not one.
     limits = entitlement_service.effective_limits(db, current_user.id)
-    _check_screenshot_rate_limit(db, current_user.id, screenshot_count=len(files), limits=limits)
+    _check_screenshot_rate_limit(
+        db, current_user.id, screenshot_count=len(files), limits=limits, background=background
+    )
 
     if len(files) > 10:
         raise HTTPException(

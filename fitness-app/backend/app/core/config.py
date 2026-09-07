@@ -49,6 +49,15 @@ class Settings(BaseSettings):
     # verify-purchase interim caps until App Store JWS verification ships (§6.5).
     PURCHASE_MAX_CREDITS_PER_DAY: int = Field(default=100)
     PURCHASE_MAX_VERIFICATIONS_PER_DAY: int = Field(default=5)
+    # Global Anthropic spend ceiling (app-store-launch spec §G4.1). Every
+    # other scanner control is per user; this bounds *aggregate* vision calls
+    # per UTC day across all users, summed from screenshot_usage. Past it the
+    # scan endpoints 503 without debiting a credit. Sized well above real
+    # usage — it catches runaway abuse, it does not throttle a good day.
+    ANTHROPIC_DAILY_CALL_CEILING: int = Field(default=500)
+    # Owner alert when today's calls reach this percent of the ceiling — a
+    # ceiling you only learn about by being down is the worse outage.
+    ANTHROPIC_DAILY_CALL_WARN_PERCENT: int = Field(default=80)
 
     # ── Owner console / control plane (docs/arise-control-plane-spec.md) ──
     # The only way an account becomes admin: the startup bootstrap promotes
