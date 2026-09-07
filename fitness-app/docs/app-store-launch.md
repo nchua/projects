@@ -20,7 +20,7 @@ Verified by inspection on the audit date, not assumed:
 | App icon (1024×1024, no alpha) | ✅ | `Assets.xcassets/AppIcon.appiconset` |
 | Account deletion in-app | ✅ | `HunterView.swift:210` → `APIClient.deleteAccount` — Apple requires this for any app with account creation |
 | Privacy policy live + reachable | ✅ | `GET /privacy` → 200 |
-| Terms of service | ⚠️ *(added 2026-09-06)* | `GET /terms` written, **not yet deployed** |
+| Terms of service | ✅ *(deployed 2026-09-06)* | `GET /terms` → 200 in production |
 | Preflight check script | ✅ *(added 2026-09-06)* | `bash ios/scripts/preflight-appstore.sh` |
 | Restore Purchases in UI | ✅ | `ScanPaywallView.swift:135` — required for non-consumable `scan_unlimited` |
 | Terms + privacy links on paywall | ✅ | `ScanPaywallView.swift:143,149` |
@@ -34,8 +34,10 @@ Verified by inspection on the audit date, not assumed:
 | **IAP products created in ASC** | ❌ **BLOCKER** | Phase 2 — three SKUs exist in code only |
 | **App Store Connect app record** | ❌ **BLOCKER** | Phase 1 |
 | **Screenshots** | ❌ **BLOCKER** | Phase 4 |
-| **App Review demo account** | ❌ **BLOCKER** | Phase 5 — the app is fully login-gated |
-| Support URL | ⚠️ | `GET /support` written (2026-09-06), **not yet deployed** |
+| **App Review demo account** | ⚠️ *(script ready 2026-09-06)* | `backend/scripts/seed_review_account.py` + tests. **Run it against prod, then paste the credentials into ASC** (Phase 5) |
+| Support URL | ✅ *(deployed 2026-09-06)* | `GET /support` → 200 in production; preflight checks it |
+| Anthropic spend ceiling | ✅ *(added 2026-09-06)* | `ANTHROPIC_DAILY_CALL_CEILING` (default 500 calls/day, owner warned at 80%) — over it scans 503 and debit nothing. **Set the number from real usage** |
+| Auth rate limits | ✅ *(password-reset added 2026-09-06)* | login 5/10min, register 20/10min, password-reset request 10/10min — all per client IP |
 | Final app name | ❌ | Phase 0 — deferred by decision, but blocks the ASC record |
 | iPad scope | ✅ *(decided 2026-09-06)* | iPhone only — one screenshot set, no iPad layout risk |
 
@@ -152,8 +154,7 @@ Draft copy, keywords, and the privacy nutrition-label answers live in
 - [ ] Name (30), subtitle (30), promotional text (170), description (4000),
       keywords (100, comma-separated, no spaces).
 - [ ] **Support URL** — required. `https://backend-production-e316.up.railway.app/support`
-      (route exists in `backend/main.py`; **push to Railway before submitting** —
-      preflight fails until it returns 200).
+      (deployed 2026-09-06; preflight verifies it returns 200).
 - [ ] Marketing URL — optional.
 - [ ] License agreement: keep Apple's standard EULA (the paywall already links it).
       `GET /terms` covers the hosted service around it — accounts, data, purchases.
@@ -171,6 +172,9 @@ Draft copy, keywords, and the privacy nutrition-label answers live in
       Seed it with real-looking workout history so the reviewer sees a populated
       app rather than empty states, and give it unlimited scans so screenshot
       processing can be exercised without hitting the credit wall.
+      Script (2026-09-06): from `backend/`,
+      `SEED_USER_EMAIL=… SEED_USER_PASSWORD=… venv/bin/python scripts/seed_review_account.py`
+      — ten weeks ending yesterday through the real ingest path; idempotent.
 - [ ] **Give the demo account a working HealthKit story.** A reviewer on a fresh
       simulator/device has no Health data. Note in Review Notes that HealthKit is
       optional and the app is fully functional without granting it.
@@ -197,16 +201,18 @@ Draft copy, keywords, and the privacy nutrition-label answers live in
 
 The backend stops being "my app" the moment it is public. Worth a hard look:
 
-- [ ] **Anthropic API cost ceiling.** Screenshot scanning calls Claude Vision on your
-      key. The scan-credit system caps *free* usage, and `scan_balance.py` §6.5 caps
-      fraudulent purchases — but confirm there is a hard spend limit you'd survive.
-      `scan_unlimited` is the exposure: one-time payment, unbounded recurring cost.
+- [x] **Anthropic API cost ceiling.** *(2026-09-06)* `ANTHROPIC_DAILY_CALL_CEILING`
+      bounds aggregate vision calls per UTC day across all users (spec §G4.1):
+      over it both scan endpoints 503 without debiting a credit, and the owner
+      is emailed once at the warn threshold and once at the cap. Default is a
+      generous 500/day — **set it from real usage**. `scan_unlimited` remains a
+      one-time payment against a recurring cost; the ceiling bounds the blast radius.
 - [ ] **Close the IAP verification hole.** `verify-purchase` currently trusts the
       client's `transaction_id` (documented at `app/api/scan_balance.py:1-14`);
       `StoreKitManager` passes `signedTransaction: nil`. The interim caps bound the
       damage but a determined user can mint credits. Verifying the StoreKit 2 JWS
       server-side is the real fix. **Acceptable to launch with the caps; track it.**
-- [ ] Rate limiting on auth endpoints (registration, login, password reset).
+- [x] Rate limiting on auth endpoints (registration, login, password reset). *(password-reset request limit added 2026-09-06)*
 - [ ] Confirm `alembic upgrade head` is clean and prod schema matches (there's a
       known history of stamp drift — check, don't assume).
 - [ ] Error monitoring / alerting for a user base that isn't you.

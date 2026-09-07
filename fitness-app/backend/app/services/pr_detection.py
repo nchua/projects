@@ -2,7 +2,7 @@
 PR (Personal Record) detection service
 """
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -89,6 +89,13 @@ def is_loadable_exercise(db: Session, exercise_id: str) -> bool:
     return _is_loadable(exercise, group_rows)
 
 
+def _session_date(workout_exercise: WorkoutExercise) -> Optional[datetime]:
+    """The date of the session this exercise belongs to, if it is flushed."""
+    session = getattr(workout_exercise, "session", None)
+    when = getattr(session, "date", None)
+    return when if isinstance(when, datetime) else None
+
+
 def _weight_bucket(weight: float) -> float:
     """Round a weight to the nearest 2.5 lb — the smallest commercially
     plate-able increment. Using the same bucketing for both storage and
@@ -170,11 +177,17 @@ def detect_and_create_prs(
         if reps > rep_pr_map.get(key, 0):
             rep_pr_map[key] = reps
 
+    # PRs are stamped with the session's date, not the clock: a backdated or
+    # imported log (a screenshot with a session_date, an offline-queued
+    # workout synced days later, the App Review seed) shows its PR on the
+    # day it was lifted, and "PRs this week" means lifted this week. Live
+    # logs are unaffected — their session date is the save instant.
+    achieved_at = _session_date(workout_exercise) or datetime.now(timezone.utc)
+
     # Check each set for PRs. Warm-ups (ARISE v3 §7.5) never mint PRs.
     for set_obj in sets:
         if getattr(set_obj, "is_warmup", False):
             continue
-        achieved_at = datetime.now(timezone.utc)
 
         # Check for e1RM PR
         if set_obj.e1rm and set_obj.e1rm > current_best_e1rm:
