@@ -36,7 +36,7 @@ Verified by inspection on the audit date, not assumed:
 | **Screenshots** | ❌ **BLOCKER** | Phase 4 |
 | **App Review demo account** | ⚠️ *(script ready 2026-09-06)* | `backend/scripts/seed_review_account.py` + tests. **Run it against prod, then paste the credentials into ASC** (Phase 5) |
 | Support URL | ✅ *(deployed 2026-09-06)* | `GET /support` → 200 in production; preflight checks it |
-| Anthropic spend ceiling | ✅ *(added 2026-09-06)* | `ANTHROPIC_DAILY_CALL_CEILING` (default 500 calls/day, owner warned at 80%) — over it scans 503 and debit nothing. **Set the number from real usage** |
+| Anthropic spend ceiling | ✅ *(added 2026-09-06, set 2026-09-07)* | `ANTHROPIC_DAILY_CALL_CEILING` = **100/day on Railway** (code default 500; owner warned at 80%). Sonnet 5 costs ≈ $0.017/scan, so 100/day ≈ $1.70/day worst-typical. Over it scans 503 and debit nothing |
 | Auth rate limits | ✅ *(password-reset added 2026-09-06)* | login 5/10min, register 20/10min, password-reset request 10/10min — all per client IP |
 | Final app name | ❌ | Phase 0 — deferred by decision, but blocks the ASC record |
 | iPad scope | ✅ *(decided 2026-09-06)* | iPhone only — one screenshot set, no iPad layout risk |
@@ -204,9 +204,11 @@ The backend stops being "my app" the moment it is public. Worth a hard look:
 - [x] **Anthropic API cost ceiling.** *(2026-09-06)* `ANTHROPIC_DAILY_CALL_CEILING`
       bounds aggregate vision calls per UTC day across all users (spec §G4.1):
       over it both scan endpoints 503 without debiting a credit, and the owner
-      is emailed once at the warn threshold and once at the cap. Default is a
-      generous 500/day — **set it from real usage**. `scan_unlimited` remains a
-      one-time payment against a recurring cost; the ceiling bounds the blast radius.
+      is emailed once at the warn threshold and once at the cap. Code default is
+      500/day; **Railway is set to 100/day** (2026-09-07, ≈ $1.70/day at Sonnet 5
+      prices). Raise the variable when real usage approaches it. `scan_unlimited`
+      remains a one-time payment against a recurring cost; the ceiling bounds the
+      blast radius.
 - [ ] **Close the IAP verification hole.** `verify-purchase` currently trusts the
       client's `transaction_id` (documented at `app/api/scan_balance.py:1-14`);
       `StoreKitManager` passes `signedTransaction: nil`. The interim caps bound the
