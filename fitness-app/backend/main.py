@@ -4,6 +4,7 @@ Fitness Tracker API - Main application entry point
 import logging
 import os
 import sys
+from pathlib import Path
 
 # Configure logging to stdout for Railway. The format includes `request_id`
 # (populated by RequestIdLogFilter) so every line is traceable across a
@@ -71,6 +72,7 @@ from contextlib import asynccontextmanager  # noqa: E402
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
+from starlette.staticfiles import StaticFiles
 
 from app.core.config import settings
 
@@ -609,6 +611,13 @@ app.include_router(load.router, prefix="/load", tags=["Training Load"])
 app.include_router(admin.session_router, prefix="/admin", include_in_schema=False)
 app.include_router(admin.router, prefix="/admin", include_in_schema=False)
 app.include_router(admin.mutation_router, prefix="/admin", include_in_schema=False)
+
+# The console itself (spec §10.1): three static files on one mount, no build
+# step, zero server-side interpolation. The headers (no-store, X-Frame-Options,
+# CSP) come from AdminResponseHeadersMiddleware like every other /admin path;
+# a Mount is never part of the OpenAPI schema.
+ADMIN_UI_DIR = Path(__file__).resolve().parent / "app" / "admin_ui"
+app.mount("/admin/ui", StaticFiles(directory=str(ADMIN_UI_DIR), html=True), name="admin_ui")
 
 if __name__ == "__main__":
     import uvicorn

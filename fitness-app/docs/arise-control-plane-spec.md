@@ -729,7 +729,7 @@ Schemas in `app/schemas/admin.py`. `StepUpBody{password, reason}` marks the dest
 | `GET /audit` | `target_type?, target_id?, actor_user_id?, action?, limit=50, offset=0` | `AuditListResponse{items: [AuditEntry], total}` | `admin_read_service.list_audit` |
 | `GET /products` | — | `[ProductResponse]` | query |
 | `POST /products` / `PATCH /products/{id}` | `ProductUpsertRequest{id, kind, credits, entitlement_key?, display_name, active, sort_order, password?, reason}` | `ProductResponse` | `admin_mutation_service.upsert_product` (id immutable; deactivate = step-up); audit `product.upsert` |
-| `GET /ui` (no auth, no schema) | — | HTML + headers (§10.1) | file read |
+| `GET /ui/` (no auth, no schema) + `/ui/admin.js`, `/ui/admin.css` | — | the static console + headers (§10.1) | one `StaticFiles` mount, `html=True` |
 
 Non-admin contract changes: `POST /scan-balance/verify-purchase` reads `products`, applies the
 §6.5 caps, and accepts (and the follow-up will verify) `signed_transaction`; `/auth/login` and
@@ -919,3 +919,24 @@ second agent against the frozen W1/W2 contracts.
   reads only the part it touches; the dead `exercise_equivalence.py` (no consumer since the
   family tables) and its tests were removed; `scripts/dev/surface.py` and
   `scripts/dev/schema_map.py` print a module's signatures and the table/FK map.
+
+- **v1.4 (2026-09-07, W3 build):** the console shipped as `app/admin_ui/{index.html, admin.js,
+  admin.css}` on one `StaticFiles` mount at `/admin/ui/` (a plain `app.mount`; a `Mount` never
+  reaches OpenAPI, and the route-enumeration gate reads `include_in_schema` with a default). The CSP
+  (`default-src 'self'; script-src 'self'; frame-ancestors 'none'`) is stamped by
+  `AdminResponseHeadersMiddleware` on every `/admin/*` response, JSON included, where it is inert.
+  Amendments forced by the frozen W1/W2 contract, none re-opening a §20 decision: the Hunters
+  filter chip is **Active 30 d** (`active_days=30`), because `GET /admin/users` filters by
+  activity *within* a window and the API is frozen — an "inactive" chip would need a new query
+  param; the Hunters table has no Campaign / WHOOP columns (`AdminUserRow` carries neither; both
+  live on the detail); Campaign has no **View arcs** (no admin arcs read; the dry-run preview is
+  the arcs view); Settings shows the live scan defaults via `effective_limits.defaults` and names
+  the Railway-only variables it cannot read. Every toast links the audit row: mutations that
+  return no `audit_id` look it up with one `GET /admin/audit?limit=1` scoped to the target.
+  One refinement of the §10.4 401 rule: `verify_step_up` answers 401 too, so the console
+  probes `GET /admin/me` once on any 401 — a live token means "Incorrect password" and the
+  drawer stays open with the error above Confirm; only a dead token clears the token and returns
+  to Login (reason preserved). Two label deviations from §10.3: Scans shows **USED · 4 WK**
+  (usage is week-bucketed, so four ISO weeks is the honest window, not 30 days) and Data health
+  has no fleet count / last-backfill lines (`AdminDataHealth` carries neither; the fleet count is
+  on Overview).

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>ARISE · System Admin</title>
+<link rel="stylesheet" href="./admin.css">
+</head>
+<body>
+<!-- Static shell: no data is rendered server-side. Every fetch in admin.js
+     carries the admin token from a JavaScript variable (spec §4.2, §10.1).
+     Interaction is delegated on [data-action]; there are no inline handlers. -->
+
+<section id="login" hidden>
+  <form class="login-card" id="login-form" method="post" action="/admin/ui/" autocomplete="on">
+    <div class="wm">ARISE</div>
+    <div class="wm-s">[ SYSTEM ADMIN ]</div>
+    <div id="login-msg"></div>
+    <label class="flabel first" for="login-email">Email</label>
+    <input class="field" id="login-email" name="email" type="email" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+    <label class="flabel" for="login-password">Password</label>
+    <input class="field" id="login-password" name="password" type="password" autocomplete="current-password" required>
+    <div class="acts"><button class="btn primary wide" type="submit" id="login-submit">Open session · 15 min</button></div>
+    <div class="hint">The token lives in this tab's memory only. Ten bad passwords lock the account for fifteen minutes.</div>
+  </form>
+</section>
+
+<div id="app" hidden>
+  <aside class="rail">
+    <div class="wm">ARISE</div>
+    <div class="wm-s">[ SYSTEM ADMIN ]</div>
+    <input class="field" id="search" type="search" placeholder="Search email or username" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Search hunters">
+    <nav class="rnav" aria-label="Sections">
+      <button type="button" data-action="nav" data-nav="overview">◈ Overview</button>
+      <button type="button" data-action="nav" data-nav="hunters">◉ Hunters</button>
+      <button type="button" data-action="nav" data-nav="audit">≡ Audit</button>
+      <button type="button" data-action="nav" data-nav="catalog">▤ Catalog</button>
+      <button type="button" data-action="nav" data-nav="settings">⚙ Settings</button>
+    </nav>
+    <div class="rfoot">
+      <span class="chip env" id="env-chip"></span>
+      <div class="sess" id="sess-count">SESSION --:--</div>
+      <div class="who" id="sess-who"></div>
+      <button type="button" class="linkbtn" data-action="logout">End session</button>
+    </div>
+  </aside>
+  <div class="main">
+    <main class="content" id="content" aria-live="polite"></main>
+    <div class="scrim" id="scrim" data-action="drawer-close" hidden></div>
+    <aside class="drawer" id="drawer" hidden aria-modal="true" role="dialog"></aside>
+  </div>
+  <nav class="tabbar" aria-label="Sections">
+    <button type="button" data-action="nav" data-nav="hunters"><i>◉</i>HUNTERS</button>
+    <button type="button" data-action="nav" data-nav="audit"><i>≡</i>AUDIT</button>
+    <button type="button" data-action="nav" data-nav="overview"><i>◈</i>OVERVIEW</button>
+  </nav>
+</div>
+
+<div id="toasts" aria-live="polite"></div>
+<noscript><div class="empty">The console needs JavaScript (served from this origin only).</div></noscript>
+<script src="./admin.js" defer></script>
+</body>
+</html>

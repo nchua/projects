@@ -1,5 +1,8 @@
 """Read-only prod usage snapshot (companion to gate_diagnostic.py).
 
+Fallback — prefer the owner console (`/admin/ui/` → Overview, Hunter detail), which
+serves the same read without prod credentials in a terminal (control-plane spec §9.3).
+
 Run from fitness-app/backend: venv/bin/python scripts/usage_snapshot.py
 
 Opens the Railway Postgres in a READ ONLY transaction, picks the primary

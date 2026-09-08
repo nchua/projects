@@ -716,7 +716,7 @@ Expected effect for a Sat/Sun 5×5 lifter: first gate within 4–5 weeks of cons
 | `exercise_equivalence.py` + the substring canonicalizers | Replace with `family_id` reads, per consumer, as each phase touches it. **`exercise_equivalence.py` removed 2026-09-06** (no consumer remained); the substring canonicalizers are still open | audit item 2 |
 | Power › Exertion segment | Leave as is; no Power › Load segment is built | unopened; Load lives on Status |
 | `streak_at_risk` + streak XP | Retire in Phase 2 when plan-adherence XP ships | HealthKit runs never sustain streaks (no `award_xp` in the import path) |
-| Scan-credit paywall for the owner | One-time `has_unlimited = true` for the owner via an admin script; IAP code stays | the owner should not be paywalled out of his own scanner |
+| Scan-credit paywall for the owner | Grant `scans.unlimited` from the owner console (`/admin/ui/` → Hunter › Scans › Grant unlimited; control-plane spec §6.3, §10.3); `grant_owner_unlimited_scans.py` is the break-glass fallback; IAP code stays | the owner should not be paywalled out of his own scanner |
 | Plate calculator, briefing-history sheet, second campaign template, `set_logged` instrumentation, `overreach_warning` push, daily LLM line | **v3.1 or never** | overbuilt for N=1 |
 | Friends UI | No change | already demoted |
 
@@ -894,9 +894,11 @@ dependency beyond the three set columns; Phase 2 depends on 1 (ghost plumbing); 
 
 1. **Prod usage is unverified.** This session's read-only prod snapshot was blocked by the
    permission classifier; the JTBD "served" estimates are inferred from code and docs.
-   `backend/scripts/usage_snapshot.py` (committed, read-only) prints sessions/week split
-   lift vs run, logged lift names (the family backfill depends on them), directive type
-   distribution, gate history, and daily-activity coverage. Run it before Phase 2.
+   The owner console (`/admin/ui/` → Overview for the fleet, Hunter detail for one user;
+   control-plane spec §9.3, §10) now serves this read without a terminal or prod credentials —
+   sessions/week split lift vs run, logged lift names (the family backfill depends on them),
+   gate history, and daily-activity coverage. `backend/scripts/usage_snapshot.py` remains as the
+   read-only fallback. Check it before Phase 2.
 2. **Which plan is the plan.** PWA plan (Sat squat / Sun bench, 5×5) is the default
    import; the Cowork Week 1 plan is not. Confirm before Phase 2.
 3. **Guard thresholds are literature defaults** (1.20× plan, 1.3/1.5 ACWR, 40% long-run

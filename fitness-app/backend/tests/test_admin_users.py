@@ -134,7 +134,8 @@ class TestRouteEnumeration:
     def test_every_admin_route_is_hidden_from_openapi(self):
         hidden = [r for r in app.routes if getattr(r, "path", "").startswith("/admin")]
         assert hidden, "no /admin routes registered"
-        assert all(r.include_in_schema is False for r in hidden)
+        # a Mount (the static console) has no include_in_schema and can never reach the schema
+        assert all(getattr(r, "include_in_schema", False) is False for r in hidden)
         assert not any(p.startswith("/admin") for p in app.openapi()["paths"])
 
     def test_no_mutating_route_under_audit(self):
