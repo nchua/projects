@@ -628,7 +628,7 @@
     var purchases = '<div class="card c-purchases">' + sl('PURCHASES', ro()) +
       ((b.purchases || []).length ? b.purchases.map(function (r) {
         return '<div class="prow"><span class="n">' + esc(r.product_id.replace(/^.*\./, '')) + ' <span class="s">' + esc(r.purchase_type) + '</span></span><span class="r">' + (r.credits_added ? '+' + esc(num(r.credits_added)) : r.purchase_type === 'non_consumable' ? '∞' : '0') + '</span>' +
-          '<span class="s">' + esc(fmtDate(r.created_at)) + ' · txn ' + esc(shortId(r.transaction_id)) + '</span><span class="s right">' + esc(shortId(r.id)) + '</span></div>';
+          '<span class="s">' + esc(fmtDate(r.created_at)) + ' · txn ' + esc(shortId(r.transaction_id)) + '</span><span class="s right">' + (r.verified ? chip('verified · ' + (r.environment || '?'), 'green') : chip('unverified', 'dim')) + '</span></div>';
       }).join('') : empty('No purchases.')) + '</div>';
 
     var campaign = '<div class="card c-campaign">' + sl('CAMPAIGN', u.is_deleted ? ro() : '') +

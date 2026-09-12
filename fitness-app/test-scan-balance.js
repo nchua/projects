@@ -7,9 +7,11 @@
 const http = require('http');
 const https = require('https');
 
-// Default to localhost: verify-purchase does no App Store validation, so a
-// default run against production would silently add real scan credits to the
-// prod seed account. Set API_BASE_URL explicitly to target another server.
+// Default to localhost: this script sends no signed_transaction (JWS), which
+// the server still accepts as an unverified claim until PURCHASE_REQUIRE_JWS
+// flips, so a default run against production would silently add real scan
+// credits to the prod seed account. Set API_BASE_URL explicitly to target
+// another server.
 const BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
 
 let authToken = null;

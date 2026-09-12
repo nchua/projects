@@ -46,9 +46,23 @@ class Settings(BaseSettings):
     # overridable per user through entitlements — control-plane spec §6.1).
     DAILY_SCREENSHOT_LIMIT: int = Field(default=20)
     COOLDOWN_SECONDS: int = Field(default=10)
-    # verify-purchase interim caps until App Store JWS verification ships (§6.5).
+    # verify-purchase interim caps (§6.5). Kept even with JWS verification:
+    # they are cheap and still bound an unverified (phase-1) claim.
     PURCHASE_MAX_CREDITS_PER_DAY: int = Field(default=100)
     PURCHASE_MAX_VERIFICATIONS_PER_DAY: int = Field(default=5)
+    # App Store JWS verification of verify-purchase (§6.5), two-phase behind
+    # one flag. Phase 1 (False): a signed_transaction is verified when present
+    # and the row is recorded unverified when absent — phones built before the
+    # iOS change send none. Phase 2 (True): absent → 422. Flip only after the
+    # new build has produced a verified=true row in the console. Exit
+    # criterion: once phase 2 is stable, make PurchaseVerifyRequest.
+    # signed_transaction required and delete this flag (Pydantic then owns
+    # the 422); the `verified` column stays as history for pre-flip rows.
+    PURCHASE_REQUIRE_JWS: bool = Field(default=False)
+    # Comma-separated. TestFlight / Xcode builds sign Sandbox transactions and
+    # App Store builds Production; both verify against the same Apple root.
+    PURCHASE_ALLOWED_ENVIRONMENTS: str = Field(default="Production,Sandbox")
+    APP_STORE_BUNDLE_ID: str = Field(default="com.nickchua.fitnessapp")
     # Global Anthropic spend ceiling (app-store-launch spec §G4.1). Every
     # other scanner control is per user; this bounds *aggregate* vision calls
     # per UTC day across all users, summed from screenshot_usage. Past it the

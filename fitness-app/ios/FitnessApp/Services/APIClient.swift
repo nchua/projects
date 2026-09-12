@@ -73,6 +73,24 @@ class APIClient {
         }
     }
 
+    /// The backend user id: the `sub` claim of the stored access token.
+    /// Decoded without signature checks — it only binds a StoreKit purchase to
+    /// this account (`appAccountToken`); the server verifies the receipt.
+    var currentUserId: String? {
+        guard let token = accessToken else { return nil }
+        let parts = token.split(separator: ".")
+        guard parts.count == 3 else { return nil }
+        var payload = String(parts[1])
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        while payload.count % 4 != 0 { payload += "=" }
+        guard let data = Data(base64Encoded: payload),
+              let claims = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        return claims["sub"] as? String
+    }
+
     private var refreshToken: String? {
         get { KeychainManager.shared.get(forKey: "refreshToken") }
         set {

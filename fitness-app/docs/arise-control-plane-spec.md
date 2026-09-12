@@ -361,30 +361,64 @@ Subscriptions are representable (`kind`, `expires_at`) but no expiry re-sync exi
 subscription SKU actually ships, switch `_reserve_scan_credits` to `is_entitled()` (one indexed
 query) instead of the cached flag. Not built now.
 
-### 6.5 Purchases: interim controls, verification later
+### 6.5 Purchases: JWS verification (shipped 2026-09-12) and the interim caps
 
-`POST /scan-balance/verify-purchase` (`scan_balance.py:83-153`) credits packs and sets unlimited
-from a client-supplied `transaction_id` + `product_id`; `signed_transaction` is accepted and
-ignored, and iOS sends `nil` (`ios/FitnessApp/Services/StoreKitManager.swift:93`). With any user
-who is not the owner, that is a self-serve unlimited grant and unbounded Vision spend. Full
-StoreKit 2 JWS verification (x5c chain to Apple Root CA G3; `bundleId`, `productId`,
-`transactionId` match) is a **separate follow-up session**; the unlimited SKU stays enabled
-because today's users are trusted. Interim controls shipped in W0:
+`POST /scan-balance/verify-purchase` (`app/api/scan_balance.py`) credits packs and sets
+unlimited from a `transaction_id` + `product_id` and, since 2026-09-12, verifies the StoreKit 2
+`signed_transaction` (`VerificationResult.jwsRepresentation`) the app sends with it. The
+verifier is `app/core/app_store_jws.py`, hand-rolled on `cryptography` (Apple's
+`app-store-server-library` needs the App Store Connect app id for Production, one verifier per
+environment, and pulls `requests` / `PyJWT` for what is ~150 lines here):
+
+- compact JWS, `alg == "ES256"` only; `x5c` leaf → intermediate → the **pinned** Apple Root CA -
+  G3 (`app/core/certs/AppleRootCA-G3.pem`; SHA-256 asserted against Apple's published value in
+  `test_app_store_jws.py`; the root Apple ships inside `x5c` is ignored);
+- Apple's marker extensions: leaf `1.2.840.113635.100.6.11.1` (App Store receipt signing),
+  intermediate `1.2.840.113635.100.6.2.1` (WWDR) — the pair Apple's library requires;
+- ES256 signature with the leaf's P-256 key; leaf and intermediate validity windows evaluated at
+  the payload's `signedDate` (Apple's rule: a transaction signed under a then-valid leaf stays
+  valid); no online OCSP.
+- Request binding in the route (after the duplicate check, before the product lookup):
+  `transactionId == transaction_id`, `productId == product_id`, `bundleId ==
+  APP_STORE_BUNDLE_ID`, `environment ∈ PURCHASE_ALLOWED_ENVIRONMENTS` (default
+  `Production,Sandbox` — TestFlight / Xcode builds sign Sandbox, App Store builds Production),
+  `revocationDate` absent, and `appAccountToken == current_user.id` when present. Every failure
+  is **422** with one non-revealing detail; the reason and transaction id are logged, the JWS
+  never is. The duplicate check runs first, so an App Store retry stays idempotent even with a
+  bad JWS.
+
+**Two-phase rollout behind `PURCHASE_REQUIRE_JWS`** (default `False`). Phones built before the
+iOS change send no JWS, and requiring it would break every purchase and every restore-driven
+re-verify until the new build is installed. Phase 1: verify when present, accept an absent JWS
+and record the row `verified = false`. Phase 2 (`True`): absent → 422 `signed_transaction
+required`. Flip on Railway only after the TestFlight build with the iOS change is on the owner's
+phone and one real Sandbox purchase or restore shows **verified · Sandbox** in the console.
+
+`purchase_records` gained `verified` (NOT NULL default false), `environment`,
+`original_transaction_id`, `purchase_date` (migration `purchase_verification`); pre-existing rows
+stay `verified = false` — they were client claims. The interim caps from W0 stay in force for
+verified and unverified rows alike (cheap, and they still bound a phase-1 claim):
 
 - per-user caps inside `verify_purchase`: ≤ 100 credits per 24 h, at most one unlimited grant
   ever (a second unlimited transaction id → 409, logged);
 - at most 5 verifications per user per 24 h, counted from `purchase_records` in the DB rather
   than a slowapi limit (the in-memory limiter is per-process and resets on deploy);
 - reject a non-numeric `transaction_id` (StoreKit ids are integers);
-- email the owner on every unlimited grant via the existing SendGrid service
-  (`app/services/email_service.py`);
-- iOS starts passing `verification.jwsRepresentation` now, so the follow-up is server-only.
+- email the owner on every unlimited grant via the existing SendGrid service; the body now says
+  `verified (Production|Sandbox)` or `unverified client claim`.
 
 All caps are evaluated **after** taking the balance row lock, so concurrent calls with distinct
 fabricated ids are serialised per user instead of each seeing zero prior purchases.
 
-The console's Purchases card shows every row (product, credits, date, truncated transaction
-id) so fabricated ids are visible next to the entitlement they produced.
+iOS (`StoreKitManager.swift`, same day): all three call sites — purchase, `currentEntitlements`
+in Restore, `Transaction.updates` — pass `jwsRepresentation`, and `product.purchase(options:
+[.appAccountToken(userId)])` binds the receipt to the account (`APIClient.currentUserId` reads
+the token's `sub`). Before this the app sent `nil`; the v1 claim that it "starts passing the JWS
+now" was wrong.
+
+The console's Purchases card shows every row (product, credits, date, truncated transaction id)
+with a green **verified · Production/Sandbox** or dim **unverified** tag, so fabricated ids are
+visible next to the entitlement they produced.
 
 ---
 
@@ -670,7 +704,7 @@ console's origin or its auth path, so they ship in W0 rather than as a separate 
 | `main.py:148` | prints Pydantic v2 `errors()` including `input` — verified: a weak-password register attempt echoes the password into Railway logs; admin bodies with `password`/`reason` would too | strip `input` and `ctx` from the log line (keep them in the 422 body) | MUST |
 | `main.py:84-85` | OpenAPI is public | all `/admin/*` routes `include_in_schema=False` | MUST |
 | `app/api/screenshot.py:168-207` → `:210-262` | the daily-count check runs before the balance lock, so two concurrent scans can both pass `DAILY_SCREENSHOT_LIMIT` | move the daily-count check after `with_for_update()` while wiring `effective_limits` | SHOULD |
-| `app/api/scan_balance.py:83-153` | unverified purchases (§6.5) | interim caps now; JWS verification follow-up | MUST (interim) |
+| `app/api/scan_balance.py:83-153` | unverified purchases (§6.5) | interim caps (W0); JWS verification shipped 2026-09-12, phase 1 (`PURCHASE_REQUIRE_JWS=false`) | MUST — done |
 | `app/api/password_reset.py:56,86,89,91`, `app/services/email_service.py:106,109` | emails in INFO/ERROR logs become Sentry breadcrumbs despite `send_default_pii=False` (`main.py:54`) | log user ids | SHOULD |
 | `app/api/friends.py:263` | `current_user.email` used as the push sender name shown to another user | `username or "A hunter"` | SHOULD |
 | `app/api/workouts.py:173-190` | `debug-error` returns tracebacks when `DEBUG` (prod forbids DEBUG, `config.py:104`) | delete, or `include_in_schema=False` + keep the guard | SHOULD |
@@ -732,10 +766,14 @@ Schemas in `app/schemas/admin.py`. `StepUpBody{password, reason}` marks the dest
 | `GET /ui/` (no auth, no schema) + `/ui/admin.js`, `/ui/admin.css` | — | the static console + headers (§10.1) | one `StaticFiles` mount, `html=True` |
 
 Non-admin contract changes: `POST /scan-balance/verify-purchase` reads `products`, applies the
-§6.5 caps, and accepts (and the follow-up will verify) `signed_transaction`; `/auth/login` and
-`/auth/refresh` tokens gain `ver`. No iOS mirror changes in v1 — `ScanBalanceResponse` and
-`PurchaseVerifyResponse` are unchanged — so `contract-mirror-check` is not triggered until the
-iOS follow-up (pass `jwsRepresentation`; Admin console link).
+§6.5 caps, and verifies `signed_transaction` (optional until `PURCHASE_REQUIRE_JWS` flips; 422
+`signed_transaction could not be verified for this purchase` on any failed check, 422
+`signed_transaction required` once required); `/auth/login` and `/auth/refresh` tokens gain
+`ver`. The wire shapes are unchanged — `PurchaseVerifyRequest` already carried
+`signed_transaction`, and `ScanBalanceResponse` / `PurchaseVerifyResponse` did not change — so
+the 2026-09-12 iOS change (pass `jwsRepresentation`, `appAccountToken`) needed no `APITypes`
+edit; `AdminPurchaseRow` gained read-only `verified` / `environment` (console only, no iOS
+mirror). Still open on iOS: the Admin console link.
 
 ---
 
@@ -751,7 +789,7 @@ iOS follow-up (pass `jwsRepresentation`; Admin console link).
 | Support notes on a user; promo credit codes; push broadcast; cohorts | v2 | more than a handful of users |
 | Login-notification email on every admin session | v2 | noisy at a 15-min TTL; revisit if a second admin or an incident |
 | Subscription expiry re-sync (`is_entitled()` in the scanner) | v2 | the first subscription SKU |
-| App Store JWS verification of purchases | **follow-up session, before any non-trusted user** | §6.5 |
+| App Store JWS verification of purchases | **done 2026-09-12** (phase 1; `PURCHASE_REQUIRE_JWS` flips after the first verified Sandbox row) | §6.5 |
 | Remove the public `seed-achievements` route | with the next iOS release | iOS calls it (§7.4) |
 | Multi-admin RBAC, `role` enum | never (for now) | one admin; a boolean plus a promote route covers a second |
 | MFA / TOTP / WebAuthn, IP allowlisting | never (for now) | one admin, 15-min token, step-up, DB lockout; phone-first on cellular makes IP lists unworkable |
@@ -775,7 +813,7 @@ commit, verified Railway SUCCESS. `/evaluate` after W0 and after W2 (4+ files, m
 | **W1 — reads** | `api/admin.py` (`/session`, `/me`, `/users`, `/users/{id}`, `/users/{id}/usage`, `/usage`, `/audit`, `/products` GET); `admin_read_service.list_users` / `get_user_detail`; `admin_usage_service`; router in `main.py` with `no-store` + `include_in_schema=False`; `test_admin_users`, `test_admin_usage`, `test_admin_audit` (read half) | ⅓ session | the next "how is X doing" is a `curl` of `/admin/users/{id}`, not `usage_snapshot.py` |
 | **W2 — mutations** | credits (+ idempotency), entitlement grant/revoke, products upsert, campaign import (+ `campaign_templates/owner_hybrid.json`, parser moved), family backfill `dry_run`, seed-achievements, soft-delete / restore, `purge_service` + sweep; `test_admin_credits`, `_campaign_import`, `_families`, `_purge`, `_step_up`, `_audit` (parametrized); script docstrings → "fallback — prefer `/admin/ui`" | ½ session | grant-unlimited via `curl` yields the row the script yields; **purge is the slip point** if the session runs long |
 | **W3 — console** | `app/admin_ui/{index.html, admin.js, admin.css}` on a `StaticFiles` mount at `/admin/ui/` + headers + CSP; desktop layout first, then the phone lane; `test_admin_ui`; v3 spec §11 row (line 719) → points at the console; memory update | ½ session | the full customer view is readable on a 13-inch laptop without scrolling the top of both columns; login → grant → ∞ on the phone in under a minute; `PURGE_SWEEP_ENABLED` flipped after a clean dry-run |
-| **Follow-ups** | JWS verification (server); iOS: pass `jwsRepresentation`, Hunter › System Settings "Admin console" link, drop the public seed route | own sessions | |
+| **Follow-ups** | ~~JWS verification (server); iOS: pass `jwsRepresentation`~~ shipped 2026-09-12 (§6.5); iOS: Hunter › System Settings "Admin console" link, drop the public seed route | own sessions | |
 
 Total: **~2 sessions.** W0 → W1 → W2 share files (`admin.py`, `entitlement_service.py`,
 `scan_balance.py`, `screenshot.py`, conftest) and run as one agent in sequence; W3 can be a
@@ -792,6 +830,7 @@ second agent against the frozen W1/W2 contracts.
 | `test_admin_users.py` | filters, search, pagination; detail composes every block on a fresh user (no balance, no campaign, no sessions) and never emits `password_hash`; soft-delete → login 403; **restore → login 200 and a pre-deletion refresh token → 401**; 409 on state mismatch; self/admin refused |
 | `test_admin_credits.py` | ± delta with before/after; negative → 409; same key + same body → one change, one audit row, `replayed`; same key + different body → 422; missing key → 400; `> 50` needs step-up |
 | `test_admin_entitlements.py` | grant `scans.unlimited` → flag true and `_reserve_scan_credits` passes with 0 credits (`_seed_balance`, `tests/test_scan_credit_transaction.py:49`); revoke → 402 path; revoke of a purchase-sourced row survives `restore-purchases`; `daily_limit = 2` → 429 on the third; `cooldown_seconds = 0`; `free_monthly = 10` → reset credits 10; expired row ignored; unknown key → 422; `verify-purchase` of the unlimited SKU creates a `source = purchase` row; products drive `credits_added`; inactive product → 400; interim caps (101 credits / 24 h → 409; second unlimited → 409; non-numeric id → 422) |
+| `test_app_store_jws.py` | throwaway ES256 chain (root → WWDR-marked intermediate → receipt-marked leaf), pinned root monkeypatched: valid → payload; wrong alg / other intermediate / unpinned root (x5c root ignored) / expired leaf at `signedDate` / missing leaf or intermediate OID / tampered payload / foreign key / malformed → rejected; vendored root SHA-256 == Apple's; route: transaction / product / bundle / revoked / `appAccountToken` mismatch → 422 with one detail and no JWS in the log; Sandbox rejected when only Production allowed; absent JWS → unverified row (phase 1) / 422 (phase 2); duplicate stays idempotent with a bad JWS; caps still apply; alert says `verified (Production)` |
 | `test_admin_audit.py` | one row per mutation with the sent `X-Request-ID`; failure after `audit()` → no row (monkeypatch); no mutating route under `/admin/audit`; PG trigger test `skipif` on SQLite; allow-list never contains email / hash / token keys |
 | `test_admin_purge.py` | not deleted → 409; inside grace → 409; `force` + reason + password + `confirm_email` → 200; wrong `confirm_email` → 422; admin / self → 403; a user seeded across every table is gone, `purchase_records.user_id` is NULL, the audit row remains with `target_id`; **metadata: every FK to `users.id` is in `PURGE_ORDER`** (audit actor exempt); `purge_eligible` dry-run lists only > 30 d; sweep is inert when `PURGE_SWEEP_ENABLED` is false and on SQLite |
 | `test_admin_campaign_import.py` | phases vs template; both / neither → 422; 409 without `replace`; replace retires + deletes future hunts and records the count; dry-run writes nothing; the committed template reproduces 3 arcs / 21 templates / 0 warnings |
@@ -821,9 +860,10 @@ second agent against the frozen W1/W2 contracts.
 
 **Risks**
 
-1. **`verify-purchase` remains self-serve** until JWS verification ships; the interim caps bound
-   the damage (≤ 100 credits / day, one unlimited ever, owner email) and the console makes it
-   visible, but a trusted user base is the real control today.
+1. **`verify-purchase` remains self-serve until `PURCHASE_REQUIRE_JWS` flips** (phase 1 accepts
+   an absent JWS from old builds); the interim caps bound the damage (≤ 100 credits / day, one
+   unlimited ever, owner email) and the console's verified / unverified tag makes it visible.
+   Flip after the first verified Sandbox row, before any non-trusted user.
 2. **Cached `has_unlimited` drift** if a future writer bypasses `sync_unlimited_flag()`;
    mitigated by the single-writer convention, the migration backfill, and the drift list.
 3. **Purge order** for non-cascading child FKs (`prs.set_id`, `pr_gates.cleared_by_set_id` /
@@ -864,7 +904,7 @@ second agent against the frozen W1/W2 contracts.
 - [ ] Restore bumps `token_version`; `/auth/refresh` checks `ver`.
 - [ ] Admin UI files are static, `no-store`, `X-Frame-Options: DENY`, CSP without `'unsafe-inline'`; `/admin/*` hidden from OpenAPI.
 - [ ] `/admin/session`: `LOGIN_RATE_LIMIT` + DB lockout; counter increments only on bad-password 401s.
-- [ ] `verify-purchase` interim caps in place; revoke survives `restore-purchases`.
+- [ ] `verify-purchase` interim caps in place; revoke survives `restore-purchases`; a present `signed_transaction` is verified (pinned root, ES256 only, request binding) and the JWS is never logged; `PURCHASE_REQUIRE_JWS` flipped before any non-trusted user.
 - [ ] Purge: 30-day grace unless `force`; audit rows survive; `purchase_records` unlinked not deleted; sweep behind `PURGE_SWEEP_ENABLED`.
 - [ ] No impersonation token is accepted by `get_current_user`.
 - [ ] Tests named in §16 exist: route enumeration, mass-assignment, token-class rejection both ways, same-transaction audit, purge-keeps-audit, step-up enforcement.
@@ -940,3 +980,19 @@ second agent against the frozen W1/W2 contracts.
   (usage is week-bucketed, so four ISO weeks is the honest window, not 30 days) and Data health
   has no fleet count / last-backfill lines (`AdminDataHealth` carries neither; the fleet count is
   on Overview).
+
+- **v1.5 (2026-09-12, JWS verification):** §6.5 rewritten from "verification later" to what
+  shipped: `app/core/app_store_jws.py` (hand-rolled on `cryptography`; pinned Apple Root CA - G3
+  under `app/core/certs/`; ES256 only; leaf / WWDR marker OIDs; validity at `signedDate`), the
+  request binding in `verify_purchase` between the duplicate check and the product lookup, and
+  the two-phase `PURCHASE_REQUIRE_JWS` rollout (phase 1 records an absent JWS as
+  `verified = false`; the flip waits for the first verified Sandbox row from the new build).
+  `purchase_records` + `purchase_verification` migration (head moves from `admin_seed_backfill`).
+  The only console touch: `AdminPurchaseRow.verified / environment` and the Purchases-card tag
+  (admin API otherwise frozen; no §20 decision re-opened). Corrected the v1 claim that iOS
+  already passed `jwsRepresentation` — it sent `nil` at all three call sites until this change.
+  `AuthManager.currentUserId` (stored the *access token* under a plaintext `UserDefaults` key,
+  no consumers) is removed; the app clears that key on launch and `APIClient.currentUserId`
+  (token `sub`) is the single owner. The verifier does not own an environment list — the
+  route's allow-list does. §11 row, §13 note, §14 row, §15 follow-ups, §18 risk 1 and §19
+  updated to match.

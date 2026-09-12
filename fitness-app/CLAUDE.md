@@ -52,7 +52,7 @@ node test-bodyweight.js           # Bodyweight CRUD + trends
 node test-exercises.js            # Exercise list/search + custom isolation
 node test-analytics.js            # Analytics endpoints
 node test-notifications.js        # Device tokens + preferences (prod-safe, self-reverting)
-node test-scan-balance.js         # IAP credit flow (NEVER run against prod: verify-purchase has no App Store validation)
+node test-scan-balance.js         # IAP credit flow (NEVER run against prod: it sends no JWS, which prod still accepts until PURCHASE_REQUIRE_JWS flips)
 ```
 
 ---

@@ -4,7 +4,7 @@ Scan balance and purchase record models for screenshot scanner paywall
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, false
 
 from app.core.database import Base
 
@@ -38,3 +38,11 @@ class PurchaseRecord(Base):
     credits_added = Column(Integer, nullable=False, default=0)
     purchase_type = Column(String, nullable=False)  # "consumable" or "non_consumable"
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    # App Store JWS verification (spec §6.5). ``verified`` is True only when the
+    # row was written from a signed transaction that chained to Apple's root;
+    # rows recorded from a bare client claim (phase 1, or pre-verification
+    # history) stay False. The other three are copied from the verified payload.
+    verified = Column(Boolean, nullable=False, default=False, server_default=false())
+    environment = Column(String, nullable=True)  # "Production" | "Sandbox"
+    original_transaction_id = Column(String, nullable=True)
+    purchase_date = Column(DateTime, nullable=True)

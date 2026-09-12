@@ -360,6 +360,12 @@ class TestUserDetail:
         db.add(PurchaseRecord(
             user_id=user.id, product_id="com.nickchua.fitnessapp.scan_20",
             transaction_id="1000000123", credits_added=20, purchase_type="consumable",
+            verified=True, environment="Sandbox", original_transaction_id="1000000123",
+            purchase_date=datetime(2026, 9, 10, 8, 0),
+        ))
+        db.add(PurchaseRecord(
+            user_id=user.id, product_id="com.nickchua.fitnessapp.scan_50",
+            transaction_id="1000000124", credits_added=50, purchase_type="consumable",
         ))
         db.add(DeviceToken(user_id=user.id, token=f"apns-{uuid.uuid4().hex}", is_active=True))
         db.add(DeviceToken(user_id=user.id, token=f"apns-{uuid.uuid4().hex}", is_active=False))
@@ -393,7 +399,14 @@ class TestUserDetail:
         assert body["balance"]["exists"] is True
         assert body["balance"]["scan_credits"] == 7
         assert body["balance"]["has_unlimited"] is True  # grant synced the cached flag
-        assert body["balance"]["purchases"][0]["transaction_id"] == "1000000123"
+        purchases = {p["transaction_id"]: p for p in body["balance"]["purchases"]}
+        assert set(purchases) == {"1000000123", "1000000124"}
+        # §6.5 read surface: verification provenance, never the JWS or its payload.
+        assert purchases["1000000123"]["verified"] is True
+        assert purchases["1000000123"]["environment"] == "Sandbox"
+        assert purchases["1000000124"]["verified"] is False
+        assert purchases["1000000124"]["environment"] is None
+        assert "original_transaction_id" not in purchases["1000000123"]
         keys = {e["key"]: e for e in body["entitlements"]}
         assert keys[es.KEY_UNLIMITED]["active"] is True and keys[es.KEY_UNLIMITED]["source"] == "admin_grant"
         assert body["effective_limits"]["daily_limit"] == 3

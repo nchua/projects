@@ -639,3 +639,13 @@ def create_goal(
         target_reps=target_reps,
         **{k: v for k, v in kwargs.items() if k not in ["id"]}
     )
+
+
+@pytest.fixture
+def captured_owner_alerts(monkeypatch) -> list:
+    """Capture ``send_owner_alert`` bodies from the scan-balance route instead of emailing."""
+    from app.api import scan_balance as api
+
+    bodies: list = []
+    monkeypatch.setattr(api, "send_owner_alert", lambda subject, body: bodies.append(body) or True)
+    return bodies

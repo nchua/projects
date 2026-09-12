@@ -119,6 +119,9 @@ class AdminPurchaseRow(UTCModel):
     credits_added: int
     purchase_type: str
     created_at: datetime
+    # App Store JWS verification (§6.5): False for a bare client claim.
+    verified: bool = False
+    environment: Optional[str] = None
 
 
 class AdminBalanceBlock(UTCModel):

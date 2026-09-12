@@ -126,7 +126,9 @@ subscription. See Phase 6.
 - [ ] Attach all three to the first version so they review together. IAPs submitted
       separately from the binary get reviewed separately and can lag.
 - [ ] Test the full purchase → `verify-purchase` → credit flow in Sandbox on a real
-      device, including **Restore Purchases** on a second device.
+      device, including **Restore Purchases** on a second device. Confirm the row shows
+      **verified · Sandbox** in `/admin/ui/` › hunter › Purchases, then flip
+      `PURCHASE_REQUIRE_JWS=true` on Railway.
 
 ## Phase 3 — Build & upload
 
@@ -209,11 +211,13 @@ The backend stops being "my app" the moment it is public. Worth a hard look:
       prices). Raise the variable when real usage approaches it. `scan_unlimited`
       remains a one-time payment against a recurring cost; the ceiling bounds the
       blast radius.
-- [ ] **Close the IAP verification hole.** `verify-purchase` currently trusts the
-      client's `transaction_id` (documented at `app/api/scan_balance.py:1-14`);
-      `StoreKitManager` passes `signedTransaction: nil`. The interim caps bound the
-      damage but a determined user can mint credits. Verifying the StoreKit 2 JWS
-      server-side is the real fix. **Acceptable to launch with the caps; track it.**
+- [x] **Close the IAP verification hole.** *(2026-09-12)* `verify-purchase` now verifies
+      the StoreKit 2 JWS server-side (`app/core/app_store_jws.py`, pinned Apple Root
+      CA - G3) and `StoreKitManager` passes `jwsRepresentation` + `appAccountToken` at
+      all three call sites (control-plane spec §6.5). **One step left before launch:**
+      set `PURCHASE_REQUIRE_JWS=true` on Railway once the build with the iOS change
+      has produced a **verified · Sandbox** row in the console's Purchases card —
+      until then old builds' unsigned claims are still accepted (caps still apply).
 - [x] Rate limiting on auth endpoints (registration, login, password reset). *(password-reset request limit added 2026-09-06)*
 - [ ] Confirm `alembic upgrade head` is clean and prod schema matches (there's a
       known history of stamp drift — check, don't assume).

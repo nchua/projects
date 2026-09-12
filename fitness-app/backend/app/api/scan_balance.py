@@ -6,19 +6,29 @@ Products come from the ``products`` table (control-plane spec §6.4) and the
 unlimited SKU is an entitlement (§6.3); ``scan_balances.has_unlimited`` is a
 cached flag whose only writer is ``entitlement_service.sync_unlimited_flag``.
 
-``verify-purchase`` still trusts the client's transaction id — App Store
-JWS verification is a separate follow-up — so the §6.5 interim caps bound
-the damage: numeric ids only, a daily verification count, a daily credit
-cap, one unlimited grant per account, and an owner alert on every unlimited
-grant. The caps are evaluated under the balance row lock.
+``verify-purchase`` verifies the StoreKit 2 ``signed_transaction`` (JWS,
+``app/core/app_store_jws.py``) when the client sends one and binds it to the
+request, the app, the environment allow-list and the account. The rollout is
+two-phase behind ``PURCHASE_REQUIRE_JWS``: phones built before the iOS change
+send no JWS, so until the flag flips an absent JWS is accepted and the row is
+recorded ``verified = false``. The §6.5 interim caps stay in force either way:
+numeric ids only, a daily verification count, a daily credit cap, one
+unlimited grant per account, and an owner alert on every unlimited grant.
+The caps are evaluated under the balance row lock.
 """
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Optional, Set
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.app_store_jws import (
+    InvalidSignedTransaction,
+    SignedTransaction,
+    verify_signed_transaction,
+)
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
@@ -117,6 +127,63 @@ def _enforce_purchase_caps(db: Session, user_id: str, product: Product) -> None:
         )
 
 
+SIGNED_TRANSACTION_REJECTED = "signed_transaction could not be verified for this purchase"
+
+
+def _allowed_environments() -> Set[str]:
+    return {e.strip() for e in settings.PURCHASE_ALLOWED_ENVIRONMENTS.split(",") if e.strip()}
+
+
+def _reject_signed(reason: str, request: PurchaseVerifyRequest, user: User) -> HTTPException:
+    """422 with one non-revealing detail; the reason and ids go to the log only."""
+    logger.warning(
+        "signed_transaction rejected: reason=%s transaction=%s user=…%s",
+        reason, request.transaction_id, user.id[-4:],
+    )
+    return HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=SIGNED_TRANSACTION_REJECTED
+    )
+
+
+def _verified_transaction(
+    request: PurchaseVerifyRequest, user: User
+) -> Optional[SignedTransaction]:
+    """Verify ``request.signed_transaction`` and bind it to this request (spec §6.5).
+
+    Returns the payload, or None when no JWS was sent and
+    ``PURCHASE_REQUIRE_JWS`` is off (phase 1: record the row unverified).
+    Every failure is a 422 whose detail never says which check failed.
+    """
+    jws = request.signed_transaction
+    if not jws:
+        if settings.PURCHASE_REQUIRE_JWS:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="signed_transaction required",
+            )
+        return None
+    try:
+        payload = verify_signed_transaction(jws)
+    except InvalidSignedTransaction as exc:
+        raise _reject_signed(exc.reason, request, user) from None
+
+    checks = (
+        ("transaction mismatch", payload.transaction_id == request.transaction_id),
+        ("product mismatch", payload.product_id == request.product_id),
+        ("bundle mismatch", payload.bundle_id == settings.APP_STORE_BUNDLE_ID),
+        ("environment not allowed", payload.environment in _allowed_environments()),
+        ("revoked", not payload.revoked),
+        (
+            "appAccountToken mismatch",
+            payload.app_account_token is None or payload.app_account_token == user.id.lower(),
+        ),
+    )
+    for reason, ok in checks:
+        if not ok:
+            raise _reject_signed(reason, request, user)
+    return payload
+
+
 @router.post("/verify-purchase", response_model=PurchaseVerifyResponse)
 @router.post("/verify-purchase/", response_model=PurchaseVerifyResponse)
 async def verify_purchase(
@@ -129,6 +196,8 @@ async def verify_purchase(
     Verify an App Store purchase and credit the user's scan balance.
 
     - Validates transaction_id uniqueness (prevents double-crediting)
+    - Verifies the StoreKit 2 JWS when present (required once
+      ``PURCHASE_REQUIRE_JWS`` is on) and binds it to the request
     - Maps product_id to its effect through the ``products`` table
     - Grants the unlimited entitlement or adds credits, under the balance row lock
     """
@@ -149,6 +218,8 @@ async def verify_purchase(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="transaction_id must be a numeric StoreKit transaction id",
         )
+
+    signed = _verified_transaction(request, current_user)
 
     product = entitlement_service.get_product(db, request.product_id)
     if product is None or not product.active:
@@ -176,6 +247,10 @@ async def verify_purchase(
         transaction_id=request.transaction_id,
         credits_added=credits_to_add,
         purchase_type=entitlement_service.purchase_type_for(product),
+        verified=signed is not None,
+        environment=signed.environment if signed else None,
+        original_transaction_id=signed.original_transaction_id if signed else None,
+        purchase_date=signed.purchase_date if signed else None,
     )
     db.add(record)
     db.flush()
@@ -189,9 +264,10 @@ async def verify_purchase(
     db.commit()
     db.refresh(balance)
 
+    provenance = f"verified ({signed.environment})" if signed else "unverified client claim"
     logger.info(
-        f"Purchase verified: user={current_user.id}, product={product.id}, "
-        f"credits_added={credits_to_add}, unlimited={is_unlimited}"
+        f"Purchase recorded: user={current_user.id}, product={product.id}, "
+        f"credits_added={credits_to_add}, unlimited={is_unlimited}, {provenance}"
     )
     if is_unlimited:
         # Off the event loop: SendGrid is a blocking HTTP call.
@@ -199,7 +275,7 @@ async def verify_purchase(
             send_owner_alert,
             "Unlimited scanner granted by purchase",
             f"user …{current_user.id[-4:]} product {product.id} "
-            f"transaction {request.transaction_id} (unverified client claim)",
+            f"transaction {request.transaction_id} ({provenance})",
         )
 
     return _purchase_response(balance, credits_to_add)

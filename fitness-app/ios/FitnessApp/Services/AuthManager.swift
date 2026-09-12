@@ -9,17 +9,18 @@ class AuthManager: ObservableObject {
     @Published var isValidatingSession = false
     @Published var isLoading = false
     @Published var error: String?
-    @Published var currentUserId: String?
 
     private init() {
         // One-time migration: move tokens from UserDefaults to Keychain
         migrateTokensToKeychain()
+        // An earlier build mistakenly persisted the access token under this
+        // key; the user id now comes from APIClient.currentUserId (token `sub`).
+        UserDefaults.standard.removeObject(forKey: "currentUserId")
 
         // Check for existing token
         if KeychainManager.shared.get(forKey: "accessToken") != nil {
             isAuthenticated = true
             isValidatingSession = true
-            currentUserId = UserDefaults.standard.string(forKey: "currentUserId")
 
             Task {
                 await validateSession()
@@ -87,9 +88,7 @@ class AuthManager: ObservableObject {
         error = nil
 
         do {
-            let response = try await APIClient.shared.login(email: email, password: password)
-            currentUserId = response.accessToken // Store user ID if available
-            UserDefaults.standard.set(currentUserId, forKey: "currentUserId")
+            _ = try await APIClient.shared.login(email: email, password: password)
             isAuthenticated = true
         } catch {
             self.error = error.localizedDescription
@@ -108,8 +107,6 @@ class AuthManager: ObservableObject {
         APIClient.shared.logout()
         isAuthenticated = false
         isValidatingSession = false
-        currentUserId = nil
-        UserDefaults.standard.removeObject(forKey: "currentUserId")
     }
 
     func refreshToken() async {

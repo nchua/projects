@@ -60,7 +60,7 @@ def test_single_head_chained_after_w0():
     cfg = Config(str(BACKEND / "alembic.ini"))
     cfg.set_main_option("script_location", str(BACKEND / "alembic"))
     # The control-plane migrations now chain after this one; the head moved.
-    assert ScriptDirectory.from_config(cfg).get_heads() == ["admin_seed_backfill"]
+    assert ScriptDirectory.from_config(cfg).get_heads() == ["purchase_verification"]
     module = _load()
     assert module.revision == NAME
     assert module.down_revision == "v3_campaign_tables"

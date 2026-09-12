@@ -80,17 +80,23 @@ class StoreKitManager: ObservableObject {
         lastPurchaseResult = nil
 
         do {
-            let result = try await product.purchase()
+            // Bind the receipt to this account: the backend rejects a JWS whose
+            // appAccountToken is another user's id (control-plane spec §6.5).
+            var options: Set<Product.PurchaseOption> = []
+            if let userId = APIClient.shared.currentUserId, let token = UUID(uuidString: userId) {
+                options.insert(.appAccountToken(token))
+            }
+            let result = try await product.purchase(options: options)
 
             switch result {
             case .success(let verification):
                 let transaction = try checkVerified(verification)
 
-                // Verify with backend
+                // Verify with backend — the JWS is what the server verifies.
                 let verifyResponse = try await APIClient.shared.verifyPurchase(
                     transactionId: String(transaction.id),
                     productId: product.id,
-                    signedTransaction: nil
+                    signedTransaction: verification.jwsRepresentation
                 )
                 lastPurchaseResult = verifyResponse
 
@@ -137,7 +143,7 @@ class StoreKitManager: ObservableObject {
                         let _ = try? await APIClient.shared.verifyPurchase(
                             transactionId: String(transaction.id),
                             productId: transaction.productID,
-                            signedTransaction: nil
+                            signedTransaction: result.jwsRepresentation
                         )
                     }
                 }
@@ -160,7 +166,7 @@ class StoreKitManager: ObservableObject {
                     let _ = try? await APIClient.shared.verifyPurchase(
                         transactionId: String(transaction.id),
                         productId: transaction.productID,
-                        signedTransaction: nil
+                        signedTransaction: result.jwsRepresentation
                     )
                     await transaction.finish()
                     await self?.fetchBalance()

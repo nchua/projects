@@ -21,11 +21,12 @@ from tests.helpers_migrations import (
     upgrade_all,
 )
 
-CHAIN = ["admin_schema", "admin_seed_backfill"]
+CHAIN = ["admin_schema", "admin_seed_backfill", "purchase_verification"]
 
 NEW_TABLES = {"admin_audit_log", "products", "user_entitlements"}
 NEW_COLUMNS = {
     "users": {"is_admin", "token_version", "admin_failed_logins", "admin_locked_until"},
+    "purchase_records": {"verified", "environment", "original_transaction_id", "purchase_date"},
 }
 UNLIMITED = "com.nickchua.fitnessapp.scan_unlimited"
 
@@ -54,12 +55,13 @@ def test_alembic_has_exactly_one_head():
     cfg = Config(str(BACKEND / "alembic.ini"))
     cfg.set_main_option("script_location", str(BACKEND / "alembic"))
     heads = ScriptDirectory.from_config(cfg).get_heads()
-    assert heads == ["admin_seed_backfill"]
+    assert heads == ["purchase_verification"]
 
 
 def test_chain_is_linear_from_quest_drop():
     assert load_migration("admin_schema").down_revision == "v3_drop_quest_tables"
     assert load_migration("admin_seed_backfill").down_revision == "admin_schema"
+    assert load_migration("purchase_verification").down_revision == "admin_seed_backfill"
 
 
 def test_already_applied_schema_is_a_noop(engine):
@@ -83,8 +85,27 @@ def test_round_trip(engine):
 def test_purchase_records_user_id_is_nullable_after_upgrade(engine):
     downgrade_all(engine, CHAIN)
     upgrade_all(engine, CHAIN)
-    col = {c["name"]: c for c in sa.inspect(engine).get_columns("purchase_records")}["user_id"]
-    assert col["nullable"] is True
+    cols = {c["name"]: c for c in sa.inspect(engine).get_columns("purchase_records")}
+    assert cols["user_id"]["nullable"] is True
+    # JWS verification columns (§6.5): existing rows must read verified = false.
+    assert cols["verified"]["nullable"] is False and cols["verified"]["default"] is not None
+    assert cols["environment"]["nullable"] and cols["purchase_date"]["nullable"]
+
+
+def test_pre_verification_rows_read_unverified_after_upgrade(engine):
+    downgrade_all(engine, CHAIN)
+    upgrade_all(engine, CHAIN[:-1])
+    with engine.begin() as conn:
+        conn.execute(sa.text(
+            "INSERT INTO purchase_records (id, product_id, transaction_id, credits_added, purchase_type, created_at) "
+            "VALUES ('pr-old', 'com.nickchua.fitnessapp.scan_20', '1000000777', 20, 'consumable', :now)"
+        ), {"now": datetime.now(timezone.utc)})
+    upgrade_all(engine, CHAIN[-1:])
+    with engine.connect() as conn:
+        row = conn.execute(sa.text(
+            "SELECT verified, environment, original_transaction_id, purchase_date FROM purchase_records WHERE id = 'pr-old'"
+        )).one()
+    assert (bool(row[0]), row[1], row[2], row[3]) == (False, None, None, None)
 
 
 def test_indexes_created(engine):
