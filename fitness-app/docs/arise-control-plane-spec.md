@@ -773,7 +773,9 @@ Non-admin contract changes: `POST /scan-balance/verify-purchase` reads `products
 `signed_transaction`, and `ScanBalanceResponse` / `PurchaseVerifyResponse` did not change — so
 the 2026-09-12 iOS change (pass `jwsRepresentation`, `appAccountToken`) needed no `APITypes`
 edit; `AdminPurchaseRow` gained read-only `verified` / `environment` (console only, no iOS
-mirror). Still open on iOS: the Admin console link.
+mirror). The Hunter › System Settings **Admin Console** row (opens `/admin/ui/` in Safari)
+shipped the same day; it is a plain link, visible to every account, because the console's own
+login is the gate and `/profile` does not expose `is_admin`.
 
 ---
 
@@ -813,7 +815,7 @@ commit, verified Railway SUCCESS. `/evaluate` after W0 and after W2 (4+ files, m
 | **W1 — reads** | `api/admin.py` (`/session`, `/me`, `/users`, `/users/{id}`, `/users/{id}/usage`, `/usage`, `/audit`, `/products` GET); `admin_read_service.list_users` / `get_user_detail`; `admin_usage_service`; router in `main.py` with `no-store` + `include_in_schema=False`; `test_admin_users`, `test_admin_usage`, `test_admin_audit` (read half) | ⅓ session | the next "how is X doing" is a `curl` of `/admin/users/{id}`, not `usage_snapshot.py` |
 | **W2 — mutations** | credits (+ idempotency), entitlement grant/revoke, products upsert, campaign import (+ `campaign_templates/owner_hybrid.json`, parser moved), family backfill `dry_run`, seed-achievements, soft-delete / restore, `purge_service` + sweep; `test_admin_credits`, `_campaign_import`, `_families`, `_purge`, `_step_up`, `_audit` (parametrized); script docstrings → "fallback — prefer `/admin/ui`" | ½ session | grant-unlimited via `curl` yields the row the script yields; **purge is the slip point** if the session runs long |
 | **W3 — console** | `app/admin_ui/{index.html, admin.js, admin.css}` on a `StaticFiles` mount at `/admin/ui/` + headers + CSP; desktop layout first, then the phone lane; `test_admin_ui`; v3 spec §11 row (line 719) → points at the console; memory update | ½ session | the full customer view is readable on a 13-inch laptop without scrolling the top of both columns; login → grant → ∞ on the phone in under a minute; `PURGE_SWEEP_ENABLED` flipped after a clean dry-run |
-| **Follow-ups** | ~~JWS verification (server); iOS: pass `jwsRepresentation`~~ shipped 2026-09-12 (§6.5); iOS: Hunter › System Settings "Admin console" link, drop the public seed route | own sessions | |
+| **Follow-ups** | ~~JWS verification (server); iOS: pass `jwsRepresentation`; Hunter › System Settings "Admin console" link~~ shipped 2026-09-12 (§6.5, §13); iOS: drop the public seed route | own sessions | |
 
 Total: **~2 sessions.** W0 → W1 → W2 share files (`admin.py`, `entitlement_service.py`,
 `scan_balance.py`, `screenshot.py`, conftest) and run as one agent in sequence; W3 can be a
@@ -995,4 +997,6 @@ second agent against the frozen W1/W2 contracts.
   no consumers) is removed; the app clears that key on launch and `APIClient.currentUserId`
   (token `sub`) is the single owner. The verifier does not own an environment list — the
   route's allow-list does. §11 row, §13 note, §14 row, §15 follow-ups, §18 risk 1 and §19
-  updated to match.
+  updated to match. Same day: the Hunter › System Settings **Admin Console** row (§10.1's
+  one-line iOS follow-up) — a Safari link to `/admin/ui/`, ungated on the client because the
+  console login is the gate.

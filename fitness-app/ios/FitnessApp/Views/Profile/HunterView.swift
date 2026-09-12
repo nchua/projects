@@ -1113,6 +1113,29 @@ struct SystemSettingsSection: View {
                         }
                     )
                 }
+
+                AriseDivider()
+
+                // Owner console (control-plane spec §10.1). Opens in Safari: the
+                // console has its own 15-minute admin login, so this is a plain
+                // link, not an in-app session. Non-admin accounts get the same
+                // login screen and cannot mint a token.
+                Button {
+                    if let url = URL(string: "https://backend-production-e316.up.railway.app/admin/ui/") {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
+                    AriseSettingsRow(
+                        icon: "lock.shield.fill",
+                        iconColor: .textSecondary,
+                        title: "Admin Console",
+                        trailing: {
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.system(size: 12))
+                                .foregroundColor(.textMuted)
+                        }
+                    )
+                }
             }
             .edgeFlowCard()
             .padding(.horizontal)
