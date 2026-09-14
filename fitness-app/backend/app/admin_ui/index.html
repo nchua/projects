@@ -11,7 +11,7 @@
 </head>
 <body>
 <!-- Static shell: no data is rendered server-side. Every fetch in admin.js
-     carries the admin token from a JavaScript variable (spec §4.2, §10.1).
+     carries the admin token from a JavaScript variable (spec §4.2, §10.1; console v2 §4).
      Interaction is delegated on [data-action]; there are no inline handlers. -->
 
 <section id="login" hidden>
@@ -32,13 +32,14 @@
   <aside class="rail">
     <div class="wm">ARISE</div>
     <div class="wm-s">[ SYSTEM ADMIN ]</div>
-    <input class="field" id="search" type="search" placeholder="Search email or username" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Search hunters">
+    <input class="field" id="search" type="search" placeholder="Jump to hunter · ⌘K" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Search hunters">
+    <div class="palette" id="palette" hidden role="listbox" aria-label="Jump to hunter"></div>
     <nav class="rnav" aria-label="Sections">
-      <button type="button" data-action="nav" data-nav="overview">◈ Overview</button>
       <button type="button" data-action="nav" data-nav="hunters">◉ Hunters</button>
+      <button type="button" data-action="nav" data-nav="overview">◈ Overview</button>
       <button type="button" data-action="nav" data-nav="audit">≡ Audit</button>
-      <button type="button" data-action="nav" data-nav="catalog">▤ Catalog</button>
       <button type="button" data-action="nav" data-nav="settings">⚙ Settings</button>
+      <button type="button" data-action="nav" data-nav="catalog">▤ Catalog</button>
     </nav>
     <div class="rfoot">
       <span class="chip env" id="env-chip"></span>
@@ -54,8 +55,8 @@
   </div>
   <nav class="tabbar" aria-label="Sections">
     <button type="button" data-action="nav" data-nav="hunters"><i>◉</i>HUNTERS</button>
-    <button type="button" data-action="nav" data-nav="audit"><i>≡</i>AUDIT</button>
     <button type="button" data-action="nav" data-nav="overview"><i>◈</i>OVERVIEW</button>
+    <button type="button" data-action="nav" data-nav="audit"><i>≡</i>AUDIT</button>
   </nav>
 </div>
 

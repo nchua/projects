@@ -1,4 +1,4 @@
-/* ARISE owner console — control-plane spec §10.
+/* ARISE owner console — control-plane spec §10; console v2 spec §4–§5.
  *
  * Vanilla JS, hash router, no build step. The admin token lives in the
  * `token` variable below and nowhere else (spec §4.2): never Web Storage
@@ -18,7 +18,7 @@
   var renderSeq = 0;       // ignore late responses after navigation or logout
   var countdownTimer = null;
   var searchTimer = null;
-  var state = { detail: null, products: null };  // what the open drawers read
+  var state = { detail: null, products: null, thresholds: { grace: 30, inactive: 30 }, selected: {}, palette: null };  // what the open drawers read
 
   var LIMIT_KEYS = [
     { key: 'scans.free_monthly', field: 'free_monthly', label: 'FREE MONTHLY SCANS', unit: '' },
@@ -32,7 +32,9 @@
     'maintenance.family_backfill', 'maintenance.purge_sweep', 'maintenance.seed_achievements'
   ];
   var DESTRUCTIVE_ACTIONS = ['entitlement.revoke', 'user.soft_delete', 'user.restore', 'user.purge', 'maintenance.purge_sweep'];
-  var LIST_KEYS = ['q', 'deleted', 'unlimited', 'active_days', 'sort', 'order', 'offset'];
+  var SEARCH_DEBOUNCE = 250;
+  var PALETTE_LIMIT = 8;
+  var ALL_STATUS = 'active,inactive,deleted,purge_eligible';
   var AUDIT_KEYS = ['target_type', 'target_id', 'actor_user_id', 'action', 'offset'];
   var TEMPLATES = ['owner_hybrid'];
   var CREDITS_STEP_UP = 50;
@@ -145,6 +147,52 @@
     }, Promise.resolve([]));
   }
 
+  // ── hunters hash state (pure; test_admin_ui runs this block under node) ──
+  //
+  // #/hunters?status=…&plan=…&q=…&joined_days=…&sort=…&order=…&offset=…
+  // Defaults are omitted from the hash so `#/hunters` is the canonical
+  // "Active + Inactive, every plan, newest activity first" view (spec §4.3).
+  var HS_STATUS = ['active', 'inactive', 'deleted', 'purge_eligible'];
+  var HS_PLAN = ['free', 'credits', 'unlimited', 'override'];
+  var HS_SORT = ['last_active', 'plan', 'status', 'scans_4wk', 'level', 'created_at', 'email', 'credits'];
+  var HS_JOINED = [7, 30, 90];
+  var HS_DEFAULT_STATUS = ['active', 'inactive'];
+  function parseHuntersState(search) {
+    var p = new URLSearchParams(String(search || '').replace(/^[#/]*hunters/, '').replace(/^\?/, ''));
+    var csv = function (key, allowed) {
+      var seen = {};
+      return String(p.get(key) || '').split(',').map(function (t) { return t.trim(); })
+        .filter(function (t) { if (allowed.indexOf(t) < 0 || seen[t]) return false; seen[t] = true; return true; })
+        .sort(function (a, b) { return allowed.indexOf(a) - allowed.indexOf(b); });
+    };
+    var status = p.get('deleted') === 'true' ? ['deleted', 'purge_eligible'] : csv('status', HS_STATUS);   // v1 `deleted=true` links still land
+    var plan = p.get('unlimited') === 'true' ? ['unlimited'] : csv('plan', HS_PLAN);
+    var joined = parseInt(p.get('joined_days'), 10);
+    var sort = p.get('sort') === 'created' ? 'created_at' : p.get('sort');
+    return {
+      q: String(p.get('q') || '').trim(),
+      status: status.length ? status : HS_DEFAULT_STATUS.slice(),
+      plan: plan,
+      joined: HS_JOINED.indexOf(joined) >= 0 ? joined : null,
+      sort: HS_SORT.indexOf(sort) >= 0 ? sort : 'last_active',
+      order: p.get('order') === 'asc' ? 'asc' : 'desc',
+      offset: Math.max(0, parseInt(p.get('offset'), 10) || 0)
+    };
+  }
+  function serializeHuntersState(s) {
+    var p = new URLSearchParams();
+    if (s.q) p.set('q', s.q);
+    if (s.status.length && s.status.join(',') !== HS_DEFAULT_STATUS.join(',')) p.set('status', s.status.join(','));
+    if (s.plan.length && s.plan.length < HS_PLAN.length) p.set('plan', s.plan.join(','));
+    if (s.joined) p.set('joined_days', String(s.joined));
+    if (s.sort !== 'last_active') p.set('sort', s.sort);
+    if (s.order !== 'desc') p.set('order', s.order);
+    if (s.offset) p.set('offset', String(s.offset));
+    var out = p.toString().replace(/%2C/gi, ',');
+    return out ? '?' + out : '';
+  }
+  // ── end hunters hash state ─────────────────────────────────────────────
+
   // ── html fragments ─────────────────────────────────────────────────────
 
   function chip(text, cls) { return '<span class="chip ' + (cls || 'dim') + '">' + esc(text) + '</span>'; }
@@ -218,6 +266,33 @@
     else if (action === 'session.create' || action === 'admin.bootstrap') cls = 'dim';
     else if (/^maintenance\./.test(action) || action === 'product.upsert') cls = 'green';
     return chip(action, cls);
+  }
+  var PLAN_SOURCE = { purchase: 'purchase', admin_grant: 'admin', backfill: 'backfill' };
+  // `u` is an AdminUserRow, or a detail's plan block merged with its account block (planTarget).
+  function planChip(u, clickable) {
+    var label, cls;
+    if (u.plan === 'unlimited') {
+      label = '∞ Unlimited' + (u.plan_source ? ' · ' + (PLAN_SOURCE[u.plan_source] || u.plan_source) : '') + (u.plan_expires_at ? ' · ' + fmtDate(u.plan_expires_at) : '');
+      cls = 'green';
+    } else if (u.plan === 'override') {
+      label = 'Override' + (u.override_keys && u.override_keys.length ? ' · ' + u.override_keys.map(function (k) { return k.replace(/^scans\./, ''); }).join(' ') : '');
+      cls = 'orange';
+    } else if (u.plan === 'credits') {
+      label = 'Credits · ' + num(u.scan_credits);
+      cls = 'blue';
+    } else {
+      label = 'Free · ' + num(u.scan_credits === null || u.scan_credits === undefined ? u.free_monthly : u.scan_credits) + ' / ' + num(u.free_monthly);
+      cls = 'dim';
+    }
+    if (!clickable) return chip(label, cls);
+    return '<button type="button" class="chip act ' + cls + '" data-action="act" data-act="change-plan" data-id="' + esc(u.id) + '" title="Change plan">' + esc(label) + '</button>';
+  }
+  function statusChip(u) {
+    var grace = state.thresholds.grace;
+    if (u.status === 'purge_eligible') return chip('Purge-eligible' + (u.deleted_at ? ' · ' + Math.max(0, daysSince(u.deleted_at) - grace) + ' d' : ''), 'red');
+    if (u.status === 'deleted') return chip('Deleted' + (u.deleted_at ? ' · ' + Math.max(0, grace - daysSince(u.deleted_at)) + ' d' : ''), 'orange');
+    if (u.status === 'inactive') return chip('Inactive', 'dim');
+    return chip('Active', 'green');
   }
   function stateChips(u) {
     var out = '';
@@ -372,28 +447,36 @@
     var raw = location.hash.replace(/^#\/?/, '');
     var parts = raw.split('?');
     var segs = parts[0].split('/').filter(Boolean).map(function (seg) { try { return decodeURIComponent(seg); } catch (_) { return seg; } });
-    return { name: segs[0] || 'overview', id: segs[1] || null, params: new URLSearchParams(parts[1] || '') };
+    return { name: segs[0] || 'hunters', id: segs[1] || null, params: new URLSearchParams(parts[1] || ''), search: parts[1] || '' };   // `#/` → Hunters (spec §4.1)
   }
   function go(path, params) { location.hash = '#/' + path + qs(params); }
-  // Rewrite the Hunters query in place (sort headers, filter chips, search)
-  function updateHunters(mutate) {
-    var q = pick(parseHash().params, LIST_KEYS);
-    delete q.offset;
-    mutate(q);
-    go('hunters', q);
+  function huntersHref(s) { return '#/hunters' + serializeHuntersState(s); }
+  // Rewrite the Hunters state in place (sort headers, filter chips, search); a filter change resets paging.
+  function updateHunters(mutate, keepOffset) {
+    var s = parseHuntersState(parseHash().search);
+    if (!keepOffset) s.offset = 0;
+    mutate(s);
+    location.hash = huntersHref(s);
   }
 
+  // A navigation closes any drawer; a refresh after a bulk action keeps it open (renderRoute).
   function onRoute() {
     if (!token) { showLogin(); return; }
-    var route = parseHash();
     closeDrawer(true);
+    closePalette();
+    renderRoute();
+  }
+  function renderRoute() {
+    var route = parseHash();
+    if (route.name !== 'hunters' || route.id) state.selected = {};
     $$('[data-nav]').forEach(function (b) { b.classList.toggle('on', b.dataset.nav === route.name); });
     if (route.name === 'hunters' && route.id) return screenHunter(route.id);
-    if (route.name === 'hunters') return screenHunters(route.params);
+    if (route.name === 'hunters') return screenHunters(route.search);
     if (route.name === 'audit') return screenAudit(route.params);
     if (route.name === 'catalog') return screenCatalog();
     if (route.name === 'settings') return screenSettings();
-    return screenOverview();
+    if (route.name === 'overview') return screenOverview();
+    location.hash = '#/hunters';
   }
 
   // Every screen: skeleton now, render when the load lands — unless another
@@ -501,24 +584,25 @@
 
   // ── hunters ────────────────────────────────────────────────────────────
 
-  function screenHunters(params) {
-    var q = pick(params, LIST_KEYS);
-    $('#search').value = q.q || '';
+  // The list request for one hash state (spec §6.2): csv filters, offset paging at PAGE.
+  function huntersApiQuery(s) {
+    return { q: s.q, status: s.status.join(','), plan: s.plan.join(','), joined_days: s.joined, sort: s.sort, order: s.order, limit: PAGE, offset: s.offset };
+  }
+
+  function screenHunters(search) {
+    var s = parseHuntersState(search);
+    var q = { q: s.q, sort: s.sort, order: s.order, offset: s.offset };
+    if (isPhone()) $('#search').value = s.q;
     loadScreen({
       skeleton: huntersHeader(q, null) + skelTable(8, 8),
-      load: function () { return api('GET', '/admin/users' + qs(Object.assign({ limit: PAGE, offset: 0, sort: 'last_active', order: 'desc' }, q))); },
+      load: function () { return api('GET', '/admin/users' + qs(huntersApiQuery(s))); },
       render: function (r) { return huntersHeader(q, r) + renderHunters(q, r); },
       fallback: function (e) { return huntersHeader(q, null) + errorBlock(e, true); }
     });
   }
 
   function huntersHeader(q, r) {
-    var fch = function (label, key, value) {
-      var on = key ? q[key] === value : !q.deleted && !q.unlimited && !q.active_days;
-      return '<button type="button" class="fchip' + (on ? ' active' : '') + '" data-action="chip" data-key="' + esc(key || '') + '" data-value="' + esc(value || '') + '">' + esc(label) + '</button>';
-    };
-    return pageHeader('Hunters', (r ? esc(plural(num(r.total), 'match', 'matches')) : '…') + (q.q ? ' for “' + esc(q.q) + '”' : ''),
-      '<div class="fchips">' + fch('All', null) + fch('Deleted', 'deleted', 'true') + fch('Unlimited', 'unlimited', 'true') + fch('Active 30 d', 'active_days', '30') + '</div>');
+    return pageHeader('Hunters', (r ? esc(plural(num(r.total), 'match', 'matches')) : '…') + (q.q ? ' for “' + esc(q.q) + '”' : ''));
   }
 
   function renderHunters(q, r) {
@@ -552,7 +636,7 @@
   }
 
   function pager(q, total) {
-    var offset = parseInt(q.offset || '0', 10) || 0;
+    var offset = parseInt(q.offset || 0, 10) || 0;
     if (total <= PAGE && offset === 0) return '';
     var from = offset + 1, to = Math.min(offset + PAGE, total);
     return '<div class="pager"><button type="button" class="btn sm ghost" data-action="page" data-offset="' + Math.max(0, offset - PAGE) + '"' + (offset === 0 ? ' disabled' : '') + '>‹ PREV</button>' +
@@ -813,6 +897,72 @@
 
   function desktopOnly(name) {
     return pageHeader(name) + sysline('DESKTOP ONLY', esc(name) + ' is not part of the phone lane. Open the console on a laptop.', 'guard', '<a class="btn sm ghost" href="#/hunters">HUNTERS</a>');
+  }
+
+  // Change plan for one or many rows (AdminUserRow shapes) — spec §5.2.
+  function openChangePlan(rows) {
+    if (rows.length === 1) go('hunters/' + encodeURIComponent(rows[0].id));
+  }
+
+  // ── ⌘K palette (spec §4.1) ─────────────────────────────────────────────
+
+  var paletteEl = $('#palette');
+  var paletteSeq = 0;
+  function closePalette() {
+    state.palette = null;
+    paletteEl.hidden = true;
+    paletteEl.innerHTML = '';
+  }
+  function searchPalette(q) {
+    var seq = ++paletteSeq;
+    if (!q) { closePalette(); return; }
+    api('GET', '/admin/users' + qs({ q: q, status: ALL_STATUS, limit: PALETTE_LIMIT })).then(function (r) {
+      if (seq !== paletteSeq || $('#search').value.trim() !== q) return;
+      state.palette = { rows: r.items, idx: 0, q: q };
+      renderPalette();
+    }).catch(function (e) {
+      if (seq !== paletteSeq) return;
+      state.palette = { rows: [], idx: 0, q: q, error: e };
+      renderPalette();
+    });
+  }
+  function renderPalette() {
+    var p = state.palette;
+    if (!p) return;
+    paletteEl.hidden = false;
+    if (p.error) { paletteEl.innerHTML = '<div class="pal-empty err">' + esc(p.error.message) + '</div>'; return; }
+    if (!p.rows.length) { paletteEl.innerHTML = '<div class="pal-empty">No hunter matches “' + esc(p.q) + '”</div>'; return; }
+    paletteEl.innerHTML = p.rows.map(function (u, i) {
+      return '<div class="pal-row' + (i === p.idx ? ' on' : '') + '" role="option" aria-selected="' + (i === p.idx) + '">' +
+        '<button type="button" class="pal-main" data-action="pal-open" data-id="' + esc(u.id) + '"><span class="nm">' + esc(u.username || shortId(u.id)) + '</span><span class="em">' + esc(u.email) + '</span></button>' +
+        '<span class="pal-chips">' + planChip(u) + statusChip(u) + '</span>' +
+        '<button type="button" class="pal-plan" data-action="pal-plan" data-id="' + esc(u.id) + '" title="Change plan (⇧↵)">PLAN</button></div>';
+    }).join('') + '<div class="pal-hint">↵ open · ⇧↵ change plan · esc close</div>';
+  }
+  function openPaletteRow(id, changePlan) {
+    var p = state.palette;
+    var row = p && p.rows.filter(function (u) { return u.id === id; })[0];
+    closePalette();
+    if (!row) return;
+    if (changePlan) openChangePlan([row]);
+    else go('hunters/' + encodeURIComponent(row.id));
+  }
+  // Keys on the rail box while the palette is open; returns true when handled.
+  function paletteKey(e) {
+    var p = state.palette;
+    if (e.key === 'Escape') { closePalette(); e.target.blur(); return true; }
+    if (!p || !p.rows.length) {
+      if (e.key === 'Enter') { e.preventDefault(); clearTimeout(searchTimer); closePalette(); go('hunters', { q: e.target.value.trim() }); return true; }
+      return false;
+    }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      p.idx = (p.idx + (e.key === 'ArrowDown' ? 1 : p.rows.length - 1)) % p.rows.length;
+      renderPalette();
+      return true;
+    }
+    if (e.key === 'Enter') { e.preventDefault(); clearTimeout(searchTimer); openPaletteRow(p.rows[p.idx].id, e.shiftKey); return true; }
+    return false;
   }
 
   // ── drawer engine (spec §10.4) ─────────────────────────────────────────
@@ -1125,7 +1275,7 @@
       onSuccess: function (r) {
         var tables = Object.keys(r.tables || {});
         var rows = tables.reduce(function (a, k) { return a + (r.tables[k] || 0); }, 0);
-        return { message: 'Purged ' + u.email + ' · ' + rows + ' rows across ' + plural(tables.length, 'table'), auditId: r.audit_id, auditLookup: auditFor(d), after: function () { go('hunters', { deleted: 'true' }); } };
+        return { message: 'Purged ' + u.email + ' · ' + rows + ' rows across ' + plural(tables.length, 'table'), auditId: r.audit_id, auditLookup: auditFor(d), after: function () { location.hash = huntersHref(Object.assign(parseHuntersState(''), { status: ['deleted', 'purge_eligible'] })); } };
       }
     };
   }
@@ -1300,25 +1450,20 @@
     if (a === 'retry') { onRoute(); return; }
     if (a === 'open-hunter') { go('hunters/' + encodeURIComponent(el.dataset.id)); return; }
     if (a === 'sort') {
-      updateHunters(function (q) {
-        q.order = (q.sort || 'last_active') === el.dataset.sort && (q.order || 'desc') === 'desc' ? 'asc' : 'desc';
-        q.sort = el.dataset.sort;
-      });
-      return;
-    }
-    if (a === 'chip') {
-      updateHunters(function (q) {
-        if (!el.dataset.key) { delete q.deleted; delete q.unlimited; delete q.active_days; }
-        else if (q[el.dataset.key] === el.dataset.value) delete q[el.dataset.key];
-        else q[el.dataset.key] = el.dataset.value;
+      updateHunters(function (s) {
+        s.order = s.sort === el.dataset.sort && s.order === 'desc' ? 'asc' : 'desc';
+        s.sort = el.dataset.sort;
       });
       return;
     }
     if (a === 'page') {
-      var r = parseHash(), q = pick(r.params, r.name === 'audit' ? AUDIT_KEYS : LIST_KEYS);
-      q.offset = el.dataset.offset === '0' ? undefined : el.dataset.offset;
-      go(r.name, q); return;
+      var r = parseHash();
+      if (r.name === 'audit') { var q = pick(r.params, AUDIT_KEYS); q.offset = el.dataset.offset === '0' ? undefined : el.dataset.offset; go('audit', q); }
+      else updateHunters(function (s) { s.offset = parseInt(el.dataset.offset, 10) || 0; }, true);
+      return;
     }
+    if (a === 'pal-open') { closePalette(); go('hunters/' + encodeURIComponent(el.dataset.id)); return; }
+    if (a === 'pal-plan') { openPaletteRow(el.dataset.id, true); return; }
     if (a === 'audit-toggle') { var x = $('#audit-x-' + el.dataset.idx); if (x) x.hidden = !x.hidden; return; }
     if (a === 'copy-id') {
       var id = el.dataset.id;
@@ -1365,20 +1510,34 @@
   });
 
   document.addEventListener('keydown', function (e) {
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && String(e.key).toLowerCase() === 'k') {   // ⌘K / Ctrl-K → the jump-to-user palette (spec §4.1)
+      if (!token) return;
+      e.preventDefault();
+      var box = $('#search');
+      box.focus(); box.select();
+      if (!isPhone() && box.value.trim()) searchPalette(box.value.trim());
+      return;
+    }
+    if (e.target === $('#search')) { if (paletteKey(e)) return; }
     if (e.key !== 'Escape' && e.key !== 'Enter') return;
     if (e.key === 'Escape' && drawer) { closeDrawer(false); return; }
-    if (e.key === 'Enter' && e.target === $('#search')) { e.preventDefault(); clearTimeout(searchTimer); go('hunters', { q: e.target.value.trim() }); }
     if (e.key === 'Enter' && drawer && e.target.tagName === 'INPUT' && drawerEl.contains(e.target)) { e.preventDefault(); confirmDrawer(); }   // self-gated
     if (e.key === 'Enter' && e.target.matches && e.target.matches('tr.row[data-action]')) { e.preventDefault(); e.target.click(); }
   });
+  // Desktop: the rail box is the ⌘K palette (top 8 matches, Enter → detail, ⇧Enter → Change plan).
+  // Phone: the same box is the Hunters search field (spec §4.1) — it rewrites `q` in the hash.
   $('#search').addEventListener('input', function (e) {
     clearTimeout(searchTimer);
     var v = e.target.value.trim();
     searchTimer = setTimeout(function () {
+      if (!isPhone()) { searchPalette(v); return; }
       var r = parseHash();
-      if (r.name === 'hunters' && !r.id && (r.params.get('q') || '') !== v) updateHunters(function (q) { q.q = v; });
-    }, 350);
+      if (r.name === 'hunters' && !r.id) updateHunters(function (s) { s.q = v; });
+      else if (v) go('hunters', { q: v });
+    }, SEARCH_DEBOUNCE);
   });
+  $('#search').addEventListener('focus', function (e) { if (!isPhone() && e.target.value.trim()) searchPalette(e.target.value.trim()); });
+  document.addEventListener('click', function (e) { if (state.palette && !e.target.closest('#palette, #search')) closePalette(); });
 
   window.addEventListener('hashchange', onRoute);
   window.addEventListener('beforeunload', function () { token = null; });
