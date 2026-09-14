@@ -1486,15 +1486,21 @@
   }
   function post(path, body, headers) { return api('POST', path, { body: body, headers: headers }); }
 
+  // Adjust credits (v1 drawer + the two §5.3 amendments: the purchased · free split beside the delta, and the ownership line).
   function creditsSpec(d) {
     var before = d.balance.exists ? d.balance.scan_credits : 0;
+    var pl = d.plan || {};
+    var purchased = Number(pl.purchased_credits) || 0;
+    var free = Math.max(0, before - purchased);
     var display = function (v) { return '<div class="n' + (v.delta < 0 ? ' neg' : '') + '">' + esc(sign(v.delta || 0)) + '<small>CREDITS</small></div>'; };
     return {
       title: 'ADJUST CREDITS', who: who(d), values: { delta: 10 },
       fields: function (v) {
         return '<div class="stepper"><button type="button" data-action="dr" data-op="step" data-n="-1" aria-label="minus one">−</button>' + display(v) + '<button type="button" data-action="dr" data-op="step" data-n="1" aria-label="plus one">+</button></div>' +
           '<div class="presets">' + [-20, -5, 5, 20, 50, 100].map(function (n) { return '<button type="button" data-action="dr" data-op="preset" data-n="' + n + '">' + sign(n) + '</button>'; }).join('') + '</div>' +
-          '<input class="field" type="number" step="1" inputmode="numeric" data-field="delta" value="' + esc(v.delta) + '" aria-label="Delta">';
+          fieldRow('Delta', num(purchased) + ' purchased · ' + num(free) + ' free' + (pl.free_monthly !== undefined ? ' of ' + num(pl.free_monthly) + ' / month' : ''),
+            '<input class="field" type="number" step="1" inputmode="numeric" data-field="delta" value="' + esc(v.delta) + '" aria-label="Delta">') +
+          '<div class="hint">Purchased credits are the hunter\'s. Remove them only for a refund or a mistaken top-up.</div>';
       },
       onAction: function (op, el, v) {
         if (op === 'step') v.delta = (parseInt(v.delta, 10) || 0) + parseInt(el.dataset.n, 10);
@@ -1509,12 +1515,12 @@
       validate: function (v) {
         var delta = Number(v.delta);
         if (!Number.isInteger(delta) || delta === 0) return 'Delta must be a non-zero whole number.';
-        if (before + delta < 0) return 'That would leave ' + (before + delta) + ' credits — the server refuses a negative balance (409).';
+        if (before + delta < 0) return 'That would leave ' + (before + delta) + ' credits — the server refuses a negative balance (409). The balance is ' + before + '.';
         return null;
       },
       password: function (v) { return Math.abs(parseInt(v.delta, 10) || 0) > CREDITS_STEP_UP; },
       confirmLabel: function (v) { return 'CONFIRM ' + sign(parseInt(v.delta, 10) || 0) + ' CREDITS'; },
-      hint: 'Logged as credits.adjust. Over ±' + CREDITS_STEP_UP + ' needs your password. The Idempotency-Key was minted when this drawer opened, so a retry after a network error cannot double-apply.',
+      hint: 'Logged as credits.adjust. Over ±' + CREDITS_STEP_UP + ' needs your password. A negative delta beyond the ' + num(purchased) + ' purchased credits takes back part of the free grant. The Idempotency-Key was minted when this drawer opened, so a retry after a network error cannot double-apply.',
       submit: function (v, reason, password, dr) {
         return post(userPath(d.user.id, '/credits'), stepUp({ delta: parseInt(v.delta, 10) }, reason, password), { 'Idempotency-Key': dr.idem });
       },
