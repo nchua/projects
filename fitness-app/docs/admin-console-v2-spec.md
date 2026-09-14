@@ -651,3 +651,44 @@ section), fix every Error, `/simplify`, pathspec commit, push, `deploy-watch`, o
   Postgres note: the SQL plan twin casts the JSON `value` to text (`= 'true'`) and to integer
   (free-monthly override) via the I/O conversion cast; tests run on SQLite, so the W4 prod check
   exercises `GET /admin/users?sort=plan` and `?plan=override` (§7.1).
+
+- **v2.2 (2026-09-14, W5 build):** §4.1–§4.3, §4.2, §5.2–§5.4 shipped in `app/admin_ui/`
+  (`admin.js` / `admin.css` / `index.html`, no backend change): `#/` → Hunters; nav Hunters ·
+  Overview · Audit · Settings · Catalog; the Hunters filter + sort state lives in the hash through
+  one pure `parseHuntersState` / `serializeHuntersState` pair (`test_admin_ui` runs it under
+  node); the table per §4.3 with 44-px rows, progressive hiding below 1280 px, sortable headers,
+  Status / Plan / Joined chip groups, the 250 ms search, saved views (three seeded), checkbox
+  column + sticky bulk bar with the 100-row cap and client-side CSV; ⌘K palette (Enter → detail,
+  ⇧Enter → Change plan); Overview as eight linked tiles + Attention (hidden at zero) +
+  Maintenance + Recent audit; Change plan single + bulk, Adjust credits amendments, bulk
+  soft-delete / restore / purge (dry run → typed count + password). Drove on a scratch SQLite:
+  Cleanup view → select 3 → purge dry run → apply; Free → Unlimited → skipped → Remove with
+  step-up from a row chip; bulk Unlimited with a purchase-sourced row skipped; the phone lane
+  (search → plan chip → sheet → apply). Amendments and follow-ups forced by the console, none
+  re-opening a decision:
+  - `test_admin_ui` no longer forbids `localStorage` outright: saved views (§4.3) need it, so
+    every use must sit on a line naming `VIEWS_KEY` and none may mention the token. Views store
+    filter + sort; the "visible columns" part of a view waits for a column chooser (W6 or v3).
+  - The client skips the rows its own diff says will not change (already unlimited by purchase
+    / backfill, same expiry, not unlimited for Remove) and sends the bulk route only the rest;
+    the server's `skipped` group is still rendered when it disagrees. Bulk mode generalized the
+    v1 typed-email unlock into `spec.typed` (the purge count) and added a keep-open result phase.
+  - Change plan from a row chip, the palette and the bulk bar reads `AdminUserRow` alone (no
+    detail fetch); Adjust credits / Set limits / Soft-delete / Restore from the row menu fetch
+    the detail first (they are v1 detail drawers). The Deleted chip's "n d" is computed from
+    `deleted_at` + `PURGE_GRACE_DAYS` read once per session from `GET /admin/settings`, which
+    also feeds the Inactive tile's day count.
+  - Grant / Revoke unlimited drawers are gone; the detail's Scans card and header plan chip open
+    Change plan (the W6 detail rewrite keeps that). The drift hint points at Change plan.
+  - **W6 backend follow-ups (the API lacks the shape, written down instead of added mid-W5):**
+    the Unlimited tile's purchase · granted · backfill split and the Credits tile's outstanding
+    purchased credits are summed client-side from a 200-row `GET /admin/users?plan=…` page (the
+    tile says "first 200 of n" past that) → add `by_plan_source` and `purchased_credits_total`
+    to `FleetUsageResponse`; the Scans tile's "x free · y paid · z unlimited" split is not on the
+    API → `scans_4wk_by_plan` on the same response (the tile shows screenshots · 4 wk meanwhile);
+    the audit toast cannot group a batch by `request_id` because `GET /admin/audit` has no such
+    filter → add `request_id`; the row plan chip cannot list override keys because
+    `AdminUserRow` has no `override_keys` (the detail header does) → optional row field.
+  - Select-all takes the current page (50 rows); the 100-row cap binds across pages on the
+    Cleanup view exactly as §5.4 intends. Phone: the rail box is the Hunters search field; the
+    palette is desktop-only; no bulk bar, no Purge on the phone (as §4.7).

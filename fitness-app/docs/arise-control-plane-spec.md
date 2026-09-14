@@ -590,6 +590,12 @@ Read routes use a read-only transaction where the dialect supports it (precedent
 
 ## 10. The console
 
+> **Console v2 (2026-09-14):** `docs/admin-console-v2-spec.md` §4 supersedes this section's
+> screen table for **Overview** and **Hunters** (W5 shipped: Hunters is the default route, filter
+> state lives in the hash, Overview is a launchpad of linked tiles) and §5 adds Change plan and
+> bulk mode to the drawer engine described in §10.4. The shell (§10.1), the drawer engine
+> (§10.4) and — until W6 — the Hunter detail (§10.3) stay as written here.
+
 ### 10.1 Surface
 
 **Static files served by FastAPI at `/admin/ui/`** — the `/privacy` pattern (`main.py:294-366`)
