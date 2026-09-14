@@ -106,8 +106,13 @@ class TestShellSource:
 
     def test_js_never_persists_the_token_or_sets_inline_styles(self):
         js = JS.read_text(encoding="utf-8")
-        for forbidden in ("localStorage", "sessionStorage", "document.cookie", "indexedDB", "eval(", "new Function("):
+        for forbidden in ("sessionStorage", "document.cookie", "indexedDB", "eval(", "new Function("):
             assert forbidden not in js, forbidden
+        # localStorage exists for saved views only (console v2 §4.3): every use names VIEWS_KEY and none mentions the token
+        storage_lines = [line for line in js.splitlines() if "localStorage" in line]
+        assert storage_lines, "saved views live in localStorage"
+        for line in storage_lines:
+            assert "VIEWS_KEY" in line and "token" not in line, line.strip()
         assert not re.search(r"\.setAttribute\(\s*['\"]style['\"]", js)
         assert not re.search(r"\sstyle=\\?[\"']", js), "inline style attribute in a template"
         assert "window.location.origin" in js

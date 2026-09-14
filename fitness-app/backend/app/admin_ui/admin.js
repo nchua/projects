@@ -139,6 +139,10 @@
     keys.forEach(function (k) { var v = params.get(k); if (v) q[k] = v; });
     return q;
   }
+  function toggleToken(list, token, order) {
+    var out = list.indexOf(token) >= 0 ? list.filter(function (t) { return t !== token; }) : list.concat([token]);
+    return out.sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); });
+  }
   // Run `fn` over `items` one at a time (a failed step stops the chain; each
   // destructive POST re-verifies the password, so parallel would multiply strikes).
   function sequential(items, fn) {
@@ -582,57 +586,194 @@
     return String(v);
   }
 
-  // ── hunters ────────────────────────────────────────────────────────────
+  // ── hunters (spec §4.3) ────────────────────────────────────────────────
+
+  var BULK_MAX = 100;
+  var VIEWS_KEY = 'arise.console.views';   // saved views only — never the token (test_admin_ui pins this)
+  var SEEDED_VIEWS = [
+    { name: 'Paying', search: '?plan=credits,unlimited' },
+    { name: 'Cleanup', search: '?status=purge_eligible' },
+    { name: 'New this month', search: '?joined_days=30' }
+  ];
+  var STATUS_LABEL = { active: 'Active', inactive: 'Inactive', deleted: 'Deleted', purge_eligible: 'Purge-eligible' };
+  var PLAN_LABEL = { free: 'Free', credits: 'Credits', unlimited: 'Unlimited', override: 'Override' };
 
   // The list request for one hash state (spec §6.2): csv filters, offset paging at PAGE.
   function huntersApiQuery(s) {
     return { q: s.q, status: s.status.join(','), plan: s.plan.join(','), joined_days: s.joined, sort: s.sort, order: s.order, limit: PAGE, offset: s.offset };
   }
+  function viewSearch(s) { var c = Object.assign({}, s, { offset: 0 }); return serializeHuntersState(c); }
+
+  // Saved views (spec §4.3): the three seeded ones plus what this browser stored under VIEWS_KEY, by name.
+  function loadViews() {
+    var stored = [];
+    try { stored = JSON.parse(window.localStorage.getItem(VIEWS_KEY) || '[]'); } catch (_) { stored = []; }
+    if (!Array.isArray(stored)) stored = [];
+    var byName = {};
+    SEEDED_VIEWS.forEach(function (v) { byName[v.name] = { name: v.name, search: v.search, seeded: true }; });
+    stored.forEach(function (v) { if (v && typeof v.name === 'string' && typeof v.search === 'string') byName[v.name] = { name: v.name, search: v.search, seeded: false }; });
+    return Object.keys(byName).map(function (k) { return byName[k]; });
+  }
+  function storeViews(views) {
+    var own = views.filter(function (v) { return !v.seeded; }).map(function (v) { return { name: v.name, search: v.search }; });
+    try { window.localStorage.setItem(VIEWS_KEY, JSON.stringify(own)); } catch (_) { toast('This browser refused to store the view'); }
+  }
+  function saveView(name) {
+    var s = parseHuntersState(parseHash().search);
+    var views = loadViews().filter(function (v) { return v.name !== name; });
+    views.push({ name: name, search: viewSearch(s), seeded: false });
+    storeViews(views);
+    toast('Saved view · ' + name);
+    renderRoute();
+  }
+  function deleteView(name) {
+    storeViews(loadViews().filter(function (v) { return v.name !== name; }));
+    toast('Removed view · ' + name);
+    renderRoute();
+  }
+
+  var thresholdsLoaded = false;
+  function loadThresholds() {
+    if (thresholdsLoaded) return Promise.resolve(state.thresholds);
+    return api('GET', '/admin/settings').then(function (rows) {
+      (rows || []).forEach(function (r) {
+        if (r.key === 'PURGE_GRACE_DAYS') state.thresholds.grace = Number(r.value) || state.thresholds.grace;
+        if (r.key === 'inactive_after_days') state.thresholds.inactive = Number(r.value) || state.thresholds.inactive;
+      });
+      thresholdsLoaded = true;
+      return state.thresholds;
+    }).catch(function () { return state.thresholds; });   // the chips fall back to the 30-day defaults
+  }
 
   function screenHunters(search) {
     var s = parseHuntersState(search);
-    var q = { q: s.q, sort: s.sort, order: s.order, offset: s.offset };
+    state.rows = {};
     if (isPhone()) $('#search').value = s.q;
     loadScreen({
-      skeleton: huntersHeader(q, null) + skelTable(8, 8),
-      load: function () { return api('GET', '/admin/users' + qs(huntersApiQuery(s))); },
-      render: function (r) { return huntersHeader(q, r) + renderHunters(q, r); },
-      fallback: function (e) { return huntersHeader(q, null) + errorBlock(e, true); }
+      skeleton: huntersHeader(s, null) + huntersFilters(s) + '<div id="bulkbar"></div>' + skelTable(9, 8),
+      load: function () { return Promise.all([loadThresholds(), api('GET', '/admin/users' + qs(huntersApiQuery(s)))]).then(function (r) { return r[1]; }); },
+      render: function (r) {
+        r.items.forEach(function (u) { state.rows[u.id] = u; });
+        return huntersHeader(s, r) + huntersFilters(s) + '<div id="bulkbar">' + bulkBar(r) + '</div>' + renderHunters(s, r);
+      },
+      fallback: function (e) { return huntersHeader(s, null) + huntersFilters(s) + errorBlock(e, true); }
     });
   }
 
-  function huntersHeader(q, r) {
-    return pageHeader('Hunters', (r ? esc(plural(num(r.total), 'match', 'matches')) : '…') + (q.q ? ' for “' + esc(q.q) + '”' : ''));
+  function huntersHeader(s, r) {
+    var sub = r ? esc(plural(num(r.total), 'match', 'matches')) : '…';
+    if (s.q) sub += ' for “' + esc(s.q) + '”';
+    sub += ' · sorted by ' + esc(sortLabel(s.sort)) + (s.order === 'asc' ? ' ↑' : ' ↓');
+    return pageHeader('Hunters', sub, '<button type="button" class="btn sm ghost dk" data-action="bulk" data-bulk="csv" title="CSV of the selected rows, or the page when nothing is selected">EXPORT CSV</button>');
+  }
+  function sortLabel(key) {
+    return { last_active: 'last active', plan: 'plan', status: 'status', scans_4wk: 'scans · 4 wk', level: 'rank', created_at: 'joined', email: 'email', credits: 'credits' }[key] || key;
   }
 
-  function renderHunters(q, r) {
-    var sort = q.sort || 'last_active', order = q.order || 'desc';
-    if (!r.items.length) {
-      return empty(q.q ? 'No hunter matches “' + esc(q.q) + '” — check the Deleted filter, or search by username.' : 'No hunter matches these filters.', true);
-    }
-    var th = function (label, key) {
-      if (!key) return '<th>' + esc(label) + '</th>';
-      var on = sort === key;
-      return '<th class="' + (on ? 'sorted' : '') + '"><button type="button" data-action="sort" data-sort="' + key + '">' + esc(label) + (on ? (order === 'desc' ? ' ↓' : ' ↑') : '') + '</button></th>';
+  function huntersFilters(s) {
+    var fch = function (action, value, label, on) {
+      return '<button type="button" class="fchip' + (on ? ' active' : '') + '" data-action="' + action + '" data-value="' + esc(value) + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(label) + '</button>';
     };
-    var rows = r.items.map(function (u) {
-      var credits = u.has_unlimited ? '<td class="y">∞</td>' : '<td class="r">' + (u.scan_credits === null ? muted('—') : esc(num(u.scan_credits))) + '</td>';
-      return '<tr class="row' + (u.is_deleted ? ' deleted' : '') + '" data-action="open-hunter" data-id="' + esc(u.id) + '" tabindex="0">' +
-        '<td class="m">' + esc(shortId(u.id)) + '</td><td>' + esc(u.email) + '</td><td class="un">' + esc(u.username || '—') + '</td>' +
-        '<td>' + (u.rank ? esc(rankLetter(u.rank)) + ' · ' + esc(u.level) : muted('—')) + '</td>' +
-        '<td>' + (u.last_workout_date ? esc(ago(u.last_workout_date)) : muted('never')) + '</td>' +
-        '<td class="r">' + esc(num(u.session_count)) + '</td>' + credits +
-        '<td class="m">' + esc(fmtDate(u.created_at)) + '</td><td>' + stateChips(u) + '</td></tr>';
+    var group = function (label, chips) { return '<div class="fgroup"><span class="lbl">' + esc(label) + '</span>' + chips + '</div>'; };
+    var status = group('Status', HS_STATUS.map(function (k) { return fch('fstatus', k, STATUS_LABEL[k], s.status.indexOf(k) >= 0); }).join(''));
+    var plan = group('Plan', HS_PLAN.map(function (k) { return fch('fplan', k, PLAN_LABEL[k], !s.plan.length || s.plan.indexOf(k) >= 0); }).join(''));
+    var joined = group('Joined', HS_JOINED.map(function (d) { return fch('fjoined', String(d), d + ' d', s.joined === d); }).join('') + fch('fjoined', '', 'Any', !s.joined));
+    var search = '<input class="field fsearch dk" id="hq" type="search" value="' + esc(s.q) + '" placeholder="username · email · id" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Search hunters">';
+    var current = viewSearch(s);
+    var views = loadViews().map(function (v) {
+      return '<span class="vchip' + (v.search === current ? ' active' : '') + '"><button type="button" class="fchip' + (v.search === current ? ' active' : '') + '" data-action="view-apply" data-search="' + esc(v.search) + '">' + esc(v.name) + '</button>' +
+        (v.seeded ? '' : '<button type="button" class="vx" data-action="view-del" data-name="' + esc(v.name) + '" aria-label="Remove view ' + esc(v.name) + '">×</button>') + '</span>';
     }).join('');
-    var desktop = table('dk', th('ID') + th('Email', 'email') + th('Username') + th('Rank · Lv') + th('Last active', 'last_active') +
-      th('Sessions') + th('Credits', 'credits') + th('Created', 'created') + th('State'), rows);
+    var save = '<form class="vsave" id="view-save" hidden><input class="field" name="name" placeholder="View name" maxlength="40" required aria-label="View name"><button type="submit" class="btn sm">SAVE</button></form>' +
+      '<button type="button" class="fchip" data-action="view-save">+ Save</button>';
+    var isDefault = current === '';
+    return '<div class="filters hf">' + status + plan + joined + search +
+      (isDefault ? '' : '<button type="button" class="fchip clear" data-action="fclear">Clear filters</button>') +
+      '<div class="views dk"><span class="lbl">Views</span>' + views + save + '</div></div>';
+  }
+
+  function activeFilterNames(s) {
+    var out = [];
+    if (s.status.join(',') !== HS_DEFAULT_STATUS.join(',')) out.push('Status ' + s.status.map(function (k) { return STATUS_LABEL[k]; }).join(' + '));
+    if (s.plan.length) out.push('Plan ' + s.plan.map(function (k) { return PLAN_LABEL[k]; }).join(' + '));
+    if (s.joined) out.push('Joined ≤ ' + s.joined + ' d');
+    if (s.q) out.push('“' + s.q + '”');
+    return out;
+  }
+
+  function selectedRows() { return Object.keys(state.selected).map(function (id) { return state.selected[id]; }); }
+  function bulkBar(r) {
+    var rows = selectedRows();
+    if (!rows.length) return '';
+    var over = rows.length > BULK_MAX;
+    var allEligible = rows.every(function (u) { return u.status === 'purge_eligible'; });
+    var btn = function (key, label, cls, disabled, title) {
+      return '<button type="button" class="btn sm ' + (cls || '') + '" data-action="bulk" data-bulk="' + key + '"' + (disabled ? ' disabled' : '') + (title ? ' title="' + esc(title) + '"' : '') + '>' + esc(label) + '</button>';
+    };
+    var count = over ? BULK_MAX + ' of ' + num(rows.length) + ' selected — narrow the filter' : plural(rows.length, 'hunter') + ' selected';
+    return '<div class="bulk dk"><span class="cnt">' + esc(count) + '</span>' +
+      btn('plan', 'Change plan…', 'primary', over) + btn('delete', 'Soft-delete', 'danger', over) + btn('restore', 'Restore', '', over) +
+      btn('purge', 'Purge…', 'danger', over || !allEligible, allEligible ? '' : 'only when every selected row is purge-eligible') +
+      '<span class="sp"></span>' + btn('csv', 'Export CSV', 'ghost') + btn('clear', 'Clear', 'ghost') +
+      (r && rows.length < r.total && !over ? '<span class="hint">select-all takes this page · ' + esc(num(r.total)) + ' match</span>' : '') + '</div>';
+  }
+  function refreshBulkBar() { var el = $('#bulkbar'); if (el) el.innerHTML = bulkBar(null); }
+
+  function lastActiveCell(u) {
+    if (!u.last_active) return '<span class="rel cold" title="never">never</span>';
+    var days = daysSince(u.last_active);
+    var cls = days <= 7 ? 'hot' : days > state.thresholds.inactive ? 'cold' : '';
+    var kind = u.last_active_kind ? ' · ' + u.last_active_kind : '';
+    return '<span class="rel ' + cls + '" title="' + esc(fmtDate(u.last_active) + kind) + '">' + esc(days === 0 ? 'today' : days === 1 ? 'yesterday' : days + ' d ago') + '</span>';
+  }
+  function hunterCell(u) {
+    return '<div class="hunter">' + avatar(u.rank, 'sm') + '<div class="hid"><div class="nm">' + (u.username ? esc(u.username) : muted('no username')) + (u.is_admin ? ' ' + chip('Admin', 'gold') : '') + '</div><div class="em">' + esc(u.email) + '</div></div></div>';
+  }
+  function rowMenu(u) {
+    var item = function (act, label, cls) { return '<button type="button" class="mi ' + (cls || '') + '" data-action="act" data-act="' + act + '" data-id="' + esc(u.id) + '">' + esc(label) + '</button>'; };
+    return '<div class="menuwrap"><button type="button" class="rowmenu" data-action="row-menu" data-id="' + esc(u.id) + '" aria-label="Row actions" aria-haspopup="menu">⋯</button>' +
+      '<div class="menu" id="menu-' + esc(u.id) + '" role="menu" hidden>' + item('change-plan', 'Change plan') + item('row-credits', 'Adjust credits') + item('row-limits', 'Set limits') +
+      (u.is_admin ? '' : u.is_deleted ? item('row-restore', 'Restore') : item('row-delete', 'Soft-delete', 'danger')) +
+      '<button type="button" class="mi" data-action="copy-id" data-id="' + esc(u.id) + '">Copy id</button>' +
+      '<a class="mi" href="' + hunterHref(u.id) + '" target="_blank" rel="noopener">Open in new tab</a></div></div>';
+  }
+
+  function renderHunters(s, r) {
+    if (!r.items.length) {
+      var names = activeFilterNames(s);
+      return empty('No hunter matches' + (names.length ? ' · ' + esc(names.join(' · ')) : '') + '.<div class="acts center"><button type="button" class="btn sm ghost" data-action="fclear">CLEAR FILTERS</button></div>', true);
+    }
+    var th = function (label, key, cls) {
+      if (!key) return '<th class="' + (cls || '') + '">' + esc(label) + '</th>';
+      var on = s.sort === key;
+      return '<th class="' + (cls || '') + (on ? ' sorted' : '') + '"><button type="button" data-action="sort" data-sort="' + key + '">' + esc(label) + (on ? (s.order === 'desc' ? ' ↓' : ' ↑') : '') + '</button></th>';
+    };
+    var allOn = r.items.every(function (u) { return state.selected[u.id]; });
+    var rows = r.items.map(function (u) {
+      var on = !!state.selected[u.id];
+      return '<tr class="row' + (u.is_deleted ? ' deleted' : '') + (on ? ' sel' : '') + '" data-action="open-hunter" data-id="' + esc(u.id) + '" tabindex="0">' +
+        '<td class="c-sel"><input type="checkbox" data-action="sel" data-id="' + esc(u.id) + '"' + (on ? ' checked' : '') + ' aria-label="Select ' + esc(u.username || u.email) + '"></td>' +
+        '<td class="c-hunter">' + hunterCell(u) + '</td>' +
+        '<td class="c-plan">' + planChip(u, !u.is_deleted) + '</td>' +
+        '<td class="c-status">' + statusChip(u) + '</td>' +
+        '<td class="c-last">' + lastActiveCell(u) + '</td>' +
+        '<td class="c-scans r">' + esc(num(u.scans_4wk)) + '</td>' +
+        '<td class="c-sessions r">' + esc(num(u.session_count)) + '</td>' +
+        '<td class="c-rank m">' + (u.rank ? esc(rankLetter(u.rank)) + ' · ' + esc(u.level) : '—') + '</td>' +
+        '<td class="c-joined m" title="' + esc(fmtDT(u.created_at)) + '">' + esc(fmtDate(u.created_at)) + '</td>' +
+        '<td class="c-menu">' + rowMenu(u) + '</td></tr>';
+    }).join('');
+    var head = '<th class="c-sel"><input type="checkbox" data-action="sel-all"' + (allOn ? ' checked' : '') + ' aria-label="Select every row on this page"></th>' +
+      th('Hunter', 'email', 'c-hunter') + th('Plan', 'plan', 'c-plan') + th('Status', 'status', 'c-status') + th('Last active', 'last_active', 'c-last') +
+      th('Scans · 4 wk', 'scans_4wk', 'c-scans r') + th('Sessions', null, 'c-sessions r') + th('Rank', 'level', 'c-rank') + th('Joined', 'created_at', 'c-joined') + th('', null, 'c-menu');
+    var desktop = table('dk hunters', head, rows);
     var phone = '<div class="ph-only">' + r.items.map(function (u) {
-      return '<button type="button" class="urow' + (u.is_deleted ? ' deleted' : '') + '" data-action="open-hunter" data-id="' + esc(u.id) + '">' + avatar(u.rank, 'sm') +
-        '<div><div class="un">' + esc(u.username || shortId(u.id)) + '</div><div class="em">' + esc(u.email) + (u.level ? ' · Lv ' + esc(u.level) : '') + '</div></div>' +
-        '<div class="ur"><div class="la">' + esc(u.last_workout_date ? ago(u.last_workout_date) : 'never') + '</div><div class="chips">' +
-        creditsChip(u.has_unlimited, u.scan_credits) + (u.is_deleted ? chip('Deleted', 'red') : '') + '</div></div></button>';
+      return '<div class="urow' + (u.is_deleted ? ' deleted' : '') + '" data-action="open-hunter" data-id="' + esc(u.id) + '" role="button" tabindex="0">' + avatar(u.rank, 'sm') +
+        '<div><div class="un">' + esc(u.username || shortId(u.id)) + (u.is_admin ? ' ' + chip('Admin', 'gold') : '') + '</div><div class="em">' + esc(u.email) + '</div>' +
+        '<div class="chips">' + planChip(u, !u.is_deleted) + statusChip(u) + '</div></div>' +
+        '<div class="ur">' + lastActiveCell(u) + '</div></div>';
     }).join('') + '</div>';
-    return desktop + phone + pager(q, r.total);
+    return desktop + phone + pager({ offset: s.offset }, r.total);
   }
 
   function pager(q, total) {
@@ -642,6 +783,56 @@
     return '<div class="pager"><button type="button" class="btn sm ghost" data-action="page" data-offset="' + Math.max(0, offset - PAGE) + '"' + (offset === 0 ? ' disabled' : '') + '>‹ PREV</button>' +
       '<span>' + from + '–' + to + ' of ' + esc(num(total)) + '</span>' +
       '<button type="button" class="btn sm ghost" data-action="page" data-offset="' + (offset + PAGE) + '"' + (to >= total ? ' disabled' : '') + '>NEXT ›</button></div>';
+  }
+
+  // Client-side CSV of the selected rows (or the page): the visible columns, RFC 4180 quoting.
+  var CSV_COLUMNS = [['username', 'username'], ['email', 'email'], ['id', 'id'], ['plan', 'plan'], ['plan_source', 'plan_source'], ['scan_credits', 'scan_credits'], ['purchased_credits', 'purchased_credits'],
+    ['status', 'status'], ['last_active', 'last_active'], ['scans_4wk', 'scans_4wk'], ['sessions', 'session_count'], ['rank', 'rank'], ['level', 'level'], ['joined', 'created_at'], ['is_admin', 'is_admin']];
+  function exportCsv(rows) {
+    var cell = function (v) { var t = v === null || v === undefined ? '' : String(v); return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+    var lines = [CSV_COLUMNS.map(function (c) { return c[0]; }).join(',')].concat(rows.map(function (u) { return CSV_COLUMNS.map(function (c) { return cell(u[c[1]]); }).join(','); }));
+    var blob = new Blob([lines.join('\r\n') + '\r\n'], { type: 'text/csv' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'hunters-' + todayISO() + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    toast('Exported ' + plural(rows.length, 'row') + ' · ' + a.download);
+  }
+
+  function closeMenus(except) { $$('.menu').forEach(function (m) { if (m !== except) m.hidden = true; }); }
+
+  // Row-scoped actions: the row (or a detail's plan block) is enough for Change plan;
+  // the v1 detail drawers fetch the detail first.
+  function rowById(id) {
+    if (state.rows && state.rows[id]) return state.rows[id];
+    if (state.selected[id]) return state.selected[id];
+    if (state.detail && state.detail.user.id === id) return planTarget(state.detail);
+    var p = state.palette && state.palette.rows.filter(function (u) { return u.id === id; })[0];
+    return p || null;
+  }
+  function withDetail(id) {
+    if (state.detail && state.detail.user.id === id) return Promise.resolve(state.detail);
+    return api('GET', userPath(id)).then(function (d) { state.detail = d; return d; });
+  }
+  function openDetailSpec(id, build) {
+    withDetail(id).then(function (d) { var spec = build(d); if (spec) openDrawer(spec); }).catch(function (e) { toast(e.message); });
+  }
+  var ROW_ACTIONS = {
+    'change-plan': function (el) { var row = rowById(el.dataset.id); if (row) openChangePlan([row]); },
+    'row-credits': function (el) { openDetailSpec(el.dataset.id, creditsSpec); },
+    'row-limits': function (el) { openDetailSpec(el.dataset.id, setLimitsSpec); },
+    'row-delete': function (el) { openDetailSpec(el.dataset.id, softDeleteSpec); },
+    'row-restore': function (el) { openDetailSpec(el.dataset.id, restoreSpec); }
+  };
+  function bulkAction(key) {
+    var rows = selectedRows();
+    if (key === 'clear') { state.selected = {}; renderRoute(); return; }
+    if (key === 'csv') { exportCsv(rows.length ? rows : Object.keys(state.rows || {}).map(function (id) { return state.rows[id]; })); return; }
+    if (!rows.length || rows.length > BULK_MAX) return;
+    if (key === 'plan') openChangePlan(rows);
+    else if (key === 'delete' || key === 'restore') openDrawer(bulkStateSpec(rows, key));
+    else if (key === 'purge' && rows.every(function (u) { return u.status === 'purge_eligible'; })) openDrawer(bulkPurgeSpec(rows));
   }
 
   // ── hunter detail ──────────────────────────────────────────────────────
@@ -899,10 +1090,21 @@
     return pageHeader(name) + sysline('DESKTOP ONLY', esc(name) + ' is not part of the phone lane. Open the console on a laptop.', 'guard', '<a class="btn sm ghost" href="#/hunters">HUNTERS</a>');
   }
 
-  // Change plan for one or many rows (AdminUserRow shapes) — spec §5.2.
+  // A detail response as the row shape Change plan reads (id · names · plan block · status).
+  function planTarget(d) {
+    var pl = d.plan || {}, acc = d.account || {};
+    return {
+      id: d.user.id, username: d.user.username, email: d.user.email, is_admin: d.user.is_admin, is_deleted: d.user.is_deleted, deleted_at: d.user.deleted_at,
+      plan: pl.plan, plan_source: pl.plan_source, plan_expires_at: pl.expires_at, scan_credits: pl.scan_credits, purchased_credits: pl.purchased_credits, free_monthly: pl.free_monthly,
+      override_keys: pl.override_keys || [], status: acc.status, last_active: acc.last_active, last_active_kind: acc.last_active_kind, rank: d.progress && d.progress.rank, level: d.progress && d.progress.level
+    };
+  }
+  // Change plan for one or many rows (AdminUserRow shapes) — spec §5.2 (drawer lands with the next commit).
   function openChangePlan(rows) {
     if (rows.length === 1) go('hunters/' + encodeURIComponent(rows[0].id));
   }
+  function bulkStateSpec(rows, action) { return { title: action === 'delete' ? 'SOFT-DELETE' : 'RESTORE', who: plural(rows.length, 'hunter'), intro: sysline('NOT YET', 'Bulk ' + action + ' lands with the next commit.', 'guard'), validate: function () { return 'Not available yet.'; } }; }
+  function bulkPurgeSpec(rows) { return { title: 'PURGE', who: plural(rows.length, 'hunter'), danger: true, intro: sysline('NOT YET', 'Bulk purge lands with the next commit.', 'guard'), validate: function () { return 'Not available yet.'; } }; }
 
   // ── ⌘K palette (spec §4.1) ─────────────────────────────────────────────
 
@@ -1435,6 +1637,7 @@
     }
   };
   function openAction(act, el) {
+    if (ROW_ACTIONS[act]) { ROW_ACTIONS[act](el); return; }
     var spec = DETAIL_SPECS[act] ? (state.detail && DETAIL_SPECS[act](state.detail, el)) : FLEET_SPECS[act] && FLEET_SPECS[act](el);
     if (spec) openDrawer(spec);
   }
@@ -1463,6 +1666,23 @@
       return;
     }
     if (a === 'pal-open') { closePalette(); go('hunters/' + encodeURIComponent(el.dataset.id)); return; }
+    if (a === 'fstatus') { updateHunters(function (s) { s.status = toggleToken(s.status, el.dataset.value, HS_STATUS); }); return; }
+    if (a === 'fplan') {
+      updateHunters(function (s) {
+        var all = s.plan.length ? s.plan : HS_PLAN.slice();   // "all" is the empty list; a first click narrows to the others
+        s.plan = toggleToken(all, el.dataset.value, HS_PLAN);
+        if (s.plan.length === HS_PLAN.length) s.plan = [];
+      });
+      return;
+    }
+    if (a === 'fjoined') { updateHunters(function (s) { s.joined = parseInt(el.dataset.value, 10) || null; }); return; }
+    if (a === 'fclear') { state.selected = {}; location.hash = '#/hunters'; return; }
+    if (a === 'view-apply') { state.selected = {}; location.hash = '#/hunters' + el.dataset.search; return; }
+    if (a === 'view-save') { var vf = $('#view-save'); if (vf) { vf.hidden = false; vf.name.focus(); } return; }
+    if (a === 'view-del') { deleteView(el.dataset.name); return; }
+    if (a === 'sel' || a === 'sel-all') return;   // checkboxes report on `change`
+    if (a === 'bulk') { bulkAction(el.dataset.bulk); return; }
+    if (a === 'row-menu') { var m = $('#menu-' + CSS.escape(el.dataset.id)); closeMenus(m); if (m) m.hidden = !m.hidden; return; }
     if (a === 'pal-plan') { openPaletteRow(el.dataset.id, true); return; }
     if (a === 'audit-toggle') { var x = $('#audit-x-' + el.dataset.idx); if (x) x.hidden = !x.hidden; return; }
     if (a === 'copy-id') {
@@ -1470,7 +1690,7 @@
       (navigator.clipboard ? navigator.clipboard.writeText(id) : Promise.reject()).then(function () { toast('Copied ' + id); }, function () { toast(id); });
       return;
     }
-    if (a === 'act') { openAction(el.dataset.act, el); return; }
+    if (a === 'act') { closeMenus(); openAction(el.dataset.act, el); return; }
     if (a === 'drawer-close') { closeDrawer(false); return; }
     if (a === 'drawer-confirm') { confirmDrawer(); return; }
     if (a === 'dr') {
@@ -1501,6 +1721,7 @@
 
   document.addEventListener('submit', function (e) {
     if (e.target.id === 'login-form') { e.preventDefault(); login(e.target); return; }
+    if (e.target.id === 'view-save') { e.preventDefault(); var name = e.target.name.value.trim(); if (name) saveView(name); return; }
     if (e.target.id === 'audit-filters') {
       e.preventDefault();
       var f = e.target, q = {};
@@ -1522,7 +1743,7 @@
     if (e.key !== 'Escape' && e.key !== 'Enter') return;
     if (e.key === 'Escape' && drawer) { closeDrawer(false); return; }
     if (e.key === 'Enter' && drawer && e.target.tagName === 'INPUT' && drawerEl.contains(e.target)) { e.preventDefault(); confirmDrawer(); }   // self-gated
-    if (e.key === 'Enter' && e.target.matches && e.target.matches('tr.row[data-action]')) { e.preventDefault(); e.target.click(); }
+    if (e.key === 'Enter' && e.target.matches && e.target.matches('tr.row[data-action], .urow[data-action]')) { e.preventDefault(); e.target.click(); }
   });
   // Desktop: the rail box is the ⌘K palette (top 8 matches, Enter → detail, ⇧Enter → Change plan).
   // Phone: the same box is the Hunters search field (spec §4.1) — it rewrites `q` in the hash.
@@ -1537,7 +1758,31 @@
     }, SEARCH_DEBOUNCE);
   });
   $('#search').addEventListener('focus', function (e) { if (!isPhone() && e.target.value.trim()) searchPalette(e.target.value.trim()); });
-  document.addEventListener('click', function (e) { if (state.palette && !e.target.closest('#palette, #search')) closePalette(); });
+  document.addEventListener('click', function (e) {
+    if (state.palette && !e.target.closest('#palette, #search')) closePalette();
+    if (!e.target.closest('.menuwrap')) closeMenus();
+  });
+  // Row selection (checkbox column) → the sticky bulk bar; select-all takes the page.
+  document.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.dataset.action === 'sel') {
+      var row = state.rows && state.rows[t.dataset.id];
+      if (t.checked && row) state.selected[t.dataset.id] = row; else delete state.selected[t.dataset.id];
+      var tr = t.closest('tr'); if (tr) tr.classList.toggle('sel', t.checked);
+      refreshBulkBar();
+    } else if (t.dataset.action === 'sel-all') {
+      Object.keys(state.rows || {}).forEach(function (id) { if (t.checked) state.selected[id] = state.rows[id]; else delete state.selected[id]; });
+      $$('input[data-action="sel"]').forEach(function (cb) { cb.checked = t.checked; var tr = cb.closest('tr'); if (tr) tr.classList.toggle('sel', t.checked); });
+      refreshBulkBar();
+    }
+  });
+  // The Hunters search field (spec §4.3): `q` in the hash, 250 ms debounce.
+  document.addEventListener('input', function (e) {
+    if (e.target.id !== 'hq') return;
+    clearTimeout(searchTimer);
+    var v = e.target.value.trim();
+    searchTimer = setTimeout(function () { var r = parseHash(); if (r.name === 'hunters' && !r.id) updateHunters(function (s) { s.q = v; }); }, SEARCH_DEBOUNCE);
+  });
 
   window.addEventListener('hashchange', onRoute);
   window.addEventListener('beforeunload', function () { token = null; });
