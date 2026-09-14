@@ -1088,8 +1088,6 @@
       override_keys: pl.override_keys || [], status: acc.status, last_active: acc.last_active, last_active_kind: acc.last_active_kind, rank: d.progress && d.progress.rank, level: d.progress && d.progress.level
     };
   }
-  function bulkStateSpec(rows, action) { return { title: action === 'delete' ? 'SOFT-DELETE' : 'RESTORE', who: plural(rows.length, 'hunter'), intro: sysline('NOT YET', 'Bulk ' + action + ' lands with the next commit.', 'guard'), validate: function () { return 'Not available yet.'; } }; }
-  function bulkPurgeSpec(rows) { return { title: 'PURGE', who: plural(rows.length, 'hunter'), danger: true, intro: sysline('NOT YET', 'Bulk purge lands with the next commit.', 'guard'), validate: function () { return 'Not available yet.'; } }; }
 
   // ── change plan (spec §5.2, bulk §5.4) ──────────────────────────────────
 
@@ -1247,6 +1245,85 @@
     };
   }
   function openChangePlan(rows) { if (rows.length) openDrawer(changePlanSpec(rows)); }
+
+  // ── bulk soft-delete / restore / purge (spec §5.4) ──────────────────────
+
+  function bulkStateSpec(rows, action) {
+    var del = action === 'delete';
+    var admins = rows.filter(function (u) { return u.is_admin; });
+    var skippedWhy = function (u) {
+      if (u.is_admin) return 'admin account';
+      if (del && u.is_deleted) return 'already deleted';
+      if (!del && !u.is_deleted) return 'not deleted';
+      return null;
+    };
+    var changing = rows.filter(function (u) { return !skippedWhy(u); });
+    return {
+      title: del ? 'SOFT-DELETE' : 'RESTORE', who: rowsWho(rows), rows: rows, danger: del, password: true,
+      intro: admins.length ? sysline('ADMIN ACCOUNTS', esc(admins.map(hunterName).join(', ')) + ' — admin accounts cannot be deleted from the console; they are skipped.', 'guard') : '',
+      diff: function () {
+        return '<div class="pdiff">' + rows.map(function (u) {
+          var why = skippedWhy(u);
+          return '<div class="prow2' + (why ? ' same' : '') + '"><span class="k">' + esc(hunterName(u)) + '</span><span class="v"><span class="before">' + (u.is_deleted ? 'deleted' : 'active') + '</span> → ' +
+            (why ? '<span class="skip">unchanged (skipped: ' + esc(why) + ')</span>' : '<span class="after">' + (del ? 'deleted · purge-eligible in ' + state.thresholds.grace + ' d' : 'active · token_version +1') + '</span>') + '</span></div>';
+        }).join('') + '</div>';
+      },
+      validate: function () { return changing.length ? null : 'Every selected hunter is ' + (del ? 'already deleted.' : 'not deleted.'); },
+      confirmLabel: function () { return (del ? 'SOFT-DELETE ' : 'RESTORE ') + plural(changing.length, 'HUNTER'); },
+      hint: del ? 'Each hunter\'s next request answers 401 and login 403; data stays until purge. One user.soft_delete audit row per hunter, one transaction each.'
+        : 'Bumps token_version per hunter so old refresh tokens die; each logs in again. One user.restore audit row per hunter.',
+      submit: function (v, reason, password) { return post('/admin/users/state', stepUp({ user_ids: changing.map(function (u) { return u.id; }), action: action }, reason, password)); },
+      onSuccess: function (r) {
+        var clientSkipped = rows.filter(skippedWhy).map(function (u) { return { user_id: u.id, why: skippedWhy(u) }; });
+        var merged = { applied: r.applied || [], skipped: (r.skipped || []).concat(clientSkipped), failed: r.failed || [] };
+        return {
+          message: (del ? 'Soft-deleted · ' : 'Restored · ') + plural(merged.applied.length, 'hunter'), auditLookup: { action: del ? 'user.soft_delete' : 'user.restore' },
+          keepOpen: true, render: bulkResult(rows, merged, function (x) { return 'is_deleted → ' + esc(String(x.is_deleted)) + (x.deleted_at ? ' · ' + esc(fmtDT(x.deleted_at)) : ''); })
+        };
+      }
+    };
+  }
+
+  function purgeTablesLine(tables) {
+    var keys = Object.keys(tables || {}).filter(function (k) { return tables[k]; });
+    var total = keys.reduce(function (a, k) { return a + (tables[k] || 0); }, 0);
+    return '<b>' + esc(num(total)) + '</b> rows' + (keys.length ? ' · ' + keys.map(function (k) { return esc(k) + ' ' + esc(num(tables[k])); }).join(' · ') : ' · nothing beyond the user row');
+  }
+
+  function bulkPurgeSpec(rows) {
+    var ids = rows.map(function (u) { return u.id; });
+    var n = rows.length;
+    return {
+      title: 'PURGE ' + plural(n, 'HUNTER').toUpperCase(), who: rowsWho(rows), rows: rows, danger: true, password: true,
+      typed: { label: 'Type the row count to confirm', expected: String(n), type: 'text', placeholder: 'type ' + n + ' to confirm' },
+      intro: sysline('PAST GRACE · ' + n + ' SELECTED', 'Every selected hunter is purge-eligible (the server 422s any other id). Dry run lists the per-table counts; Apply deletes each user row and every table in PURGE_ORDER, one transaction per hunter. Purchase receipts are kept but detached. Cannot be undone.', 'guard'),
+      dryRun: {
+        label: 'DRY RUN', applyLabel: 'PURGE ' + plural(n, 'HUNTER').toUpperCase(),
+        run: function (v, reason) { return post('/admin/users/purge', stepUp({ user_ids: ids, dry_run: true }, reason)); },
+        render: function (r) {
+          var preview = r.preview || [];
+          var byId = {};
+          rows.forEach(function (u) { byId[u.id] = u; });
+          var total = preview.reduce(function (a, p) { return a + Object.keys(p.tables || {}).reduce(function (b, k) { return b + (p.tables[k] || 0); }, 0); }, 0);
+          return sysline('DRY RUN', '<b>' + esc(preview.length) + '</b> ' + esc(preview.length === 1 ? 'hunter' : 'hunters') + ' would be purged · <b>' + esc(num(total)) + '</b> rows across their tables.', 'ok') +
+            '<div class="rgroup"><div class="rt">Per hunter</div>' + preview.map(function (p) {
+              var u = byId[p.user_id];
+              return '<div class="rrow"><span class="nm">' + esc(u ? hunterName(u) : shortId(p.user_id)) + '</span><span class="d">' + purgeTablesLine(p.tables) + '</span></div>';
+            }).join('') + '</div>';
+        },
+        canApply: function (r) { return r && r.preview && r.preview.length > 0; }
+      },
+      hint: 'Logged as user.purge per hunter with the per-table counts; the batch shares one request id. Apply needs your password and the typed row count.',
+      submit: function (v, reason, password) { return post('/admin/users/purge', stepUp({ user_ids: ids, dry_run: false, confirm_count: n }, reason, password)); },
+      onSuccess: function (r) {
+        var first = (r.applied || [])[0];
+        return {
+          message: 'Purged ' + plural((r.applied || []).length, 'hunter'), auditId: first ? first.audit_id : null, auditLookup: { action: 'user.purge' },
+          keepOpen: true, render: bulkResult(rows, r, function (x) { return purgeTablesLine(x.tables) + (x.audit_id ? ' ' + muted('· audit ' + shortId(x.audit_id)) : ''); })
+        };
+      }
+    };
+  }
 
   // ── ⌘K palette (spec §4.1) ─────────────────────────────────────────────
 
