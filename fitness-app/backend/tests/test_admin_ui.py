@@ -8,6 +8,8 @@ The tests here read the shipped files the way a reviewer would, plus the
 header contract on the page and on the JSON it calls.
 """
 import re
+import shutil
+import subprocess
 import uuid
 from pathlib import Path
 
@@ -130,6 +132,75 @@ class TestShellSource:
         assert "@media (max-width: 767px)" in css
         assert "touch-action: manipulation" in css
         assert "min-height: 44px" in css
+
+
+class TestConsoleV2Shell:
+    """Console v2 §4.1 / §4.3 / §7.2: the default route, the nav order, and the hash-state pair."""
+
+    def test_default_route_is_hunters(self):
+        js = JS.read_text(encoding="utf-8")
+        assert "segs[0] || 'hunters'" in js  # `#/` → Hunters (spec §4.1)
+        assert "location.hash = '#/hunters'" in js  # an unknown screen lands on Hunters too
+
+    def test_nav_order_by_job_frequency(self):
+        html = INDEX.read_text(encoding="utf-8")
+        rail = re.search(r'<nav class="rnav".*?</nav>', html, re.DOTALL).group(0)
+        assert re.findall(r'data-nav="([a-z]+)"', rail) == ["hunters", "overview", "audit", "settings", "catalog"]
+        tabs = re.search(r'<nav class="tabbar".*?</nav>', html, re.DOTALL).group(0)
+        assert re.findall(r'data-nav="([a-z]+)"', tabs) == ["hunters", "overview", "audit"]  # the phone lane (spec §4.1)
+
+    def test_js_carries_the_v2_contract_details(self):
+        js = JS.read_text(encoding="utf-8")
+        for needle in ("'/plan'", "/admin/users/plan", "/admin/users/state", "/admin/users/purge", "confirm_count", "remove_unlimited", "user.plan_change"):
+            assert needle in js, needle
+        assert re.search(r"userPath\(rows\[0\]\.id, '/plan'\), body, \{ 'Idempotency-Key': dr\.idem \}", js)  # single Change plan is idempotent (§7.4 v2.1)
+
+    @staticmethod
+    def _hash_state_block() -> str:
+        js = JS.read_text(encoding="utf-8")
+        start = js.index("// ── hunters hash state")
+        end = js.index("// ── end hunters hash state")
+        return js[start:end]
+
+    def test_hash_state_pair_is_pure(self):
+        block = self._hash_state_block()
+        for forbidden in ("document", "window", "location", "api(", "state.", "$("):
+            assert forbidden not in block, forbidden
+
+    def test_filter_state_round_trips_through_the_hash(self, tmp_path):
+        node = shutil.which("node")
+        if not node:
+            pytest.skip("node is not installed here; the hash-state pair runs in the browser")
+        harness = self._hash_state_block() + """
+const assert = require('assert');
+const rt = s => parseHuntersState(serializeHuntersState(parseHuntersState(s)));
+// the default view is the empty hash
+assert.deepStrictEqual(parseHuntersState(''), { q: '', status: ['active', 'inactive'], plan: [], joined: null, sort: 'last_active', order: 'desc', offset: 0 });
+assert.strictEqual(serializeHuntersState(parseHuntersState('')), '');
+assert.strictEqual(serializeHuntersState(parseHuntersState('?status=active,inactive&sort=last_active&order=desc')), '');
+// every filter survives a round trip, and the serialized form is stable
+for (const s of ['?status=purge_eligible', '?status=deleted,purge_eligible&plan=free&q=nick&sort=plan&order=asc&joined_days=30&offset=50', '?plan=credits,unlimited', '?joined_days=7', '?sort=scans_4wk&order=desc', '?q=a%20b']) {
+  assert.deepStrictEqual(rt(s), parseHuntersState(s), s);
+  assert.strictEqual(serializeHuntersState(rt(s)), serializeHuntersState(parseHuntersState(s)), s);
+}
+// tokens are normalized: order by the allow-list, duplicates dropped, unknown values ignored, "all plans" collapses to the default
+assert.deepStrictEqual(parseHuntersState('?status=inactive,active,active,bogus').status, ['active', 'inactive']);
+assert.strictEqual(serializeHuntersState(parseHuntersState('?plan=free,credits,unlimited,override')), '');
+assert.strictEqual(parseHuntersState('?sort=password_hash&order=sideways&joined_days=12&offset=-3').sort, 'last_active');
+assert.deepStrictEqual(parseHuntersState('?joined_days=12&offset=-3'), Object.assign(parseHuntersState(''), {}));
+// the csv stays readable in the address bar, and a full hash is accepted as input
+assert.strictEqual(serializeHuntersState(parseHuntersState('?status=deleted,purge_eligible')), '?status=deleted,purge_eligible');
+assert.strictEqual(serializeHuntersState(parseHuntersState('#/hunters?plan=unlimited&sort=created')), '?plan=unlimited&sort=created_at');
+// the v1 links Overview used to emit still land on the right view
+assert.deepStrictEqual(parseHuntersState('?deleted=true').status, ['deleted', 'purge_eligible']);
+assert.deepStrictEqual(parseHuntersState('?unlimited=true').plan, ['unlimited']);
+console.log('ok');
+"""
+        script = tmp_path / "hash_state.js"
+        script.write_text(harness, encoding="utf-8")
+        result = subprocess.run([node, str(script)], capture_output=True, text=True, timeout=30)
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == "ok"
 
 
 class TestSortOrder:
