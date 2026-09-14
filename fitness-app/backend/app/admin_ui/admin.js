@@ -269,6 +269,11 @@
     return chip(action, cls);
   }
   var PLAN_SOURCE = { purchase: 'purchase', admin_grant: 'admin', backfill: 'backfill' };
+  function creditsOf(u, fallback) { return u.scan_credits === null || u.scan_credits === undefined ? fallback : u.scan_credits; }
+  // An AdminPlanSnapshot (audit before / after, PlanChangeResponse) in the row shape planChip / planLabel read.
+  function snapshotRow(snap) {
+    return { plan: snap.plan, plan_source: snap.plan_source, plan_expires_at: snap.expires_at, scan_credits: snap.scan_credits, purchased_credits: snap.purchased_credits, free_monthly: snap.free_monthly };
+  }
   // `u` is an AdminUserRow, or a detail's plan block merged with its account block (planTarget).
   function planChip(u, clickable) {
     var label, cls;
@@ -282,7 +287,7 @@
       label = 'Credits · ' + num(u.scan_credits);
       cls = 'blue';
     } else {
-      label = 'Free · ' + num(u.scan_credits === null || u.scan_credits === undefined ? u.free_monthly : u.scan_credits) + ' / ' + num(u.free_monthly);
+      label = 'Free · ' + num(creditsOf(u, u.free_monthly)) + ' / ' + num(u.free_monthly);
       cls = 'dim';
     }
     if (!clickable) return chip(label, cls);
@@ -741,11 +746,12 @@
   }
   function rowMenu(u) {
     var item = function (act, label, cls) { return '<button type="button" class="mi ' + (cls || '') + '" data-action="act" data-act="' + act + '" data-id="' + esc(u.id) + '">' + esc(label) + '</button>'; };
+    var live = u.is_deleted ? '' : item('change-plan', 'Change plan') + item('row-credits', 'Adjust credits') + item('row-limits', 'Set limits');
     return '<div class="menuwrap"><button type="button" class="rowmenu" data-action="row-menu" data-id="' + esc(u.id) + '" aria-label="Row actions" aria-haspopup="menu">⋯</button>' +
-      '<div class="menu" id="menu-' + esc(u.id) + '" role="menu" hidden>' + item('change-plan', 'Change plan') + item('row-credits', 'Adjust credits') + item('row-limits', 'Set limits') +
+      '<div class="menu" id="menu-' + esc(u.id) + '" role="menu" hidden>' + live +
       (u.is_admin ? '' : u.is_deleted ? item('row-restore', 'Restore') : item('row-delete', 'Soft-delete', 'danger')) +
       '<button type="button" class="mi" data-action="copy-id" data-id="' + esc(u.id) + '">Copy id</button>' +
-      '<a class="mi" href="' + hunterHref(u.id) + '" target="_blank" rel="noopener">Open in new tab</a></div></div>';
+      '<a class="mi" href="' + hunterHref(u.id) + '" target="_blank" rel="noopener" data-action="menu-link">Open in new tab</a></div></div>';
   }
 
   function renderHunters(s, r) {
@@ -1102,11 +1108,10 @@
   // A detail response as the row shape Change plan reads (id · names · plan block · status).
   function planTarget(d) {
     var pl = d.plan || {}, acc = d.account || {};
-    return {
+    return Object.assign(snapshotRow(pl), {
       id: d.user.id, username: d.user.username, email: d.user.email, is_admin: d.user.is_admin, is_deleted: d.user.is_deleted, deleted_at: d.user.deleted_at,
-      plan: pl.plan, plan_source: pl.plan_source, plan_expires_at: pl.expires_at, scan_credits: pl.scan_credits, purchased_credits: pl.purchased_credits, free_monthly: pl.free_monthly,
       override_keys: pl.override_keys || [], status: acc.status, last_active: acc.last_active, last_active_kind: acc.last_active_kind, rank: d.progress && d.progress.rank, level: d.progress && d.progress.level
-    };
+    });
   }
 
   // ── change plan (spec §5.2, bulk §5.4) ──────────────────────────────────
@@ -1134,13 +1139,13 @@
   }
   function planLabel(u) {
     if (u.plan === 'unlimited') return 'unlimited · ' + (PLAN_SOURCE[u.plan_source] || u.plan_source || '?') + (u.plan_expires_at ? ' · exp ' + fmtDate(u.plan_expires_at) : '');
-    if (u.plan === 'override') return 'override · ' + num(u.scan_credits === null || u.scan_credits === undefined ? 0 : u.scan_credits) + ' credits';
+    if (u.plan === 'override') return 'override · ' + num(creditsOf(u, 0)) + ' credits';
     if (u.plan === 'credits') return 'credits · ' + num(u.scan_credits);
-    return 'free · ' + num(u.scan_credits === null || u.scan_credits === undefined ? u.free_monthly : u.scan_credits) + ' / ' + num(u.free_monthly);
+    return 'free · ' + num(creditsOf(u, u.free_monthly)) + ' / ' + num(u.free_monthly);
   }
   // What one hunter's row becomes under the chosen target — the client twin of the server's skip rules (§3.2, §7.4 v2.1).
   function planOutcome(u, v) {
-    var credits = u.scan_credits === null || u.scan_credits === undefined ? 0 : Number(u.scan_credits);
+    var credits = Number(creditsOf(u, 0));
     if (v.target === 'unlimited') {
       var exp = expiryFor(v);
       var expLabel = exp === null ? 'never' : exp ? 'exp ' + fmtDate(exp) : 'exp ?';
@@ -1174,6 +1179,7 @@
       return '<div class="drow"><span class="nm">' + esc(hunterName(u)) + '</span><span class="em">' + esc(u.email) + '</span><span class="chips">' + planChip(u) + statusChip(u) + '</span></div>';
     }).join('') + '</div>';
   }
+  function auditSuffix(x) { return x.audit_id ? ' ' + muted('· audit ' + shortId(x.audit_id)) : ''; }
   // The three result groups a bulk route answers (§5.4): ✓ changed · – skipped · ✕ failed.
   function bulkResult(rows, r, describe) {
     var byId = {};
@@ -1251,15 +1257,14 @@
       },
       onSuccess: function (r, v) {
         if (single) {
-          var after = r.after ? { plan: r.after.plan, plan_source: r.after.plan_source, plan_expires_at: r.after.expires_at, scan_credits: r.after.scan_credits, purchased_credits: r.after.purchased_credits, free_monthly: r.after.free_monthly } : null;
-          return { message: r.skipped ? 'Plan unchanged · skipped' : 'Plan changed' + (after ? ' · ' + planLabel(after) : '') + (r.replayed ? ' (replayed)' : ''), auditId: r.audit_id, auditLookup: { target_type: 'user', target_id: rows[0].id } };
+          return { message: r.skipped ? 'Plan unchanged · skipped' : 'Plan changed' + (r.after ? ' · ' + planLabel(snapshotRow(r.after)) : '') + (r.replayed ? ' (replayed)' : ''), auditId: r.audit_id, auditLookup: { target_type: 'user', target_id: rows[0].id } };
         }
         var first = (r.applied || []).filter(function (x) { return x.audit_id; })[0];
         var skippedClient = outcomes(v).filter(function (o) { return !o.out.change; }).map(function (o) { return { user_id: o.row.id, why: o.out.why }; });
         var merged = { applied: r.applied || [], skipped: (r.skipped || []).concat(skippedClient), failed: r.failed || [] };
         return {
           message: 'Plan changed · ' + plural(merged.applied.filter(function (x) { return !x.skipped; }).length, 'hunter'), auditId: first ? first.audit_id : null, auditLookup: { action: 'user.plan_change' },
-          keepOpen: true, render: bulkResult(rows, merged, function (x) { return esc(planLabel({ plan: x.before.plan, plan_source: x.before.plan_source, plan_expires_at: x.before.expires_at, scan_credits: x.before.scan_credits, free_monthly: x.before.free_monthly })) + ' → <span class="after">' + esc(planLabel({ plan: x.after.plan, plan_source: x.after.plan_source, plan_expires_at: x.after.expires_at, scan_credits: x.after.scan_credits, free_monthly: x.after.free_monthly })) + '</span>' + (x.audit_id ? ' ' + muted('· audit ' + shortId(x.audit_id)) : ''); })
+          keepOpen: true, render: bulkResult(rows, merged, function (x) { return esc(planLabel(snapshotRow(x.before))) + ' → <span class="after">' + esc(planLabel(snapshotRow(x.after))) + '</span>' + auditSuffix(x); })
         };
       }
     };
@@ -1339,7 +1344,7 @@
         var first = (r.applied || [])[0];
         return {
           message: 'Purged ' + plural((r.applied || []).length, 'hunter'), auditId: first ? first.audit_id : null, auditLookup: { action: 'user.purge' },
-          keepOpen: true, render: bulkResult(rows, r, function (x) { return purgeTablesLine(x.tables) + (x.audit_id ? ' ' + muted('· audit ' + shortId(x.audit_id)) : ''); })
+          keepOpen: true, render: bulkResult(rows, r, function (x) { return purgeTablesLine(x.tables) + auditSuffix(x); })
         };
       }
     };
@@ -1920,6 +1925,7 @@
       return;
     }
     if (a === 'bulk') { bulkAction(el.dataset.bulk); return; }
+    if (a === 'menu-link') { closeMenus(); return; }   // the anchor's own navigation (new tab) proceeds; the row stays put
     if (a === 'row-menu') { var m = $('#menu-' + CSS.escape(el.dataset.id)); closeMenus(m); if (m) m.hidden = !m.hidden; return; }
     if (a === 'pal-plan') { openPaletteRow(el.dataset.id, true); return; }
     if (a === 'audit-toggle') { var x = $('#audit-x-' + el.dataset.idx); if (x) x.hidden = !x.hidden; return; }

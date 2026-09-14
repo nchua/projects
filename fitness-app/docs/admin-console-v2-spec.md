@@ -688,7 +688,9 @@ section), fix every Error, `/simplify`, pathspec commit, push, `deploy-watch`, o
     API → `scans_4wk_by_plan` on the same response (the tile shows screenshots · 4 wk meanwhile);
     the audit toast cannot group a batch by `request_id` because `GET /admin/audit` has no such
     filter → add `request_id`; the row plan chip cannot list override keys because
-    `AdminUserRow` has no `override_keys` (the detail header does) → optional row field.
+    `AdminUserRow` has no `override_keys` (the detail header does) → optional row field; the
+    Sessions column is not sortable because `UserSort` has no `session_count` key (§4.3 says
+    "yes") → add it.
   - Select-all takes the current page (50 rows); the 100-row cap binds across pages on the
     Cleanup view exactly as §5.4 intends. Phone: the rail box is the Hunters search field; the
     palette is desktop-only; no bulk bar, no Purge on the phone (as §4.7).
