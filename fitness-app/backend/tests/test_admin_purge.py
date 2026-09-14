@@ -10,7 +10,6 @@ from datetime import date, datetime, timedelta, timezone
 import pytest
 from sqlalchemy import func, or_, select
 
-from app.core import admin_bootstrap
 from app.core.config import settings
 from app.core.database import Base
 from app.models import (
@@ -310,27 +309,49 @@ class TestPurgeEligible:
 
 
 class TestStartupSweep:
+    """The sweep gate is read through the resolver on the sweep's session (console v2 §6.5)."""
+
     def test_disabled_flag_is_inert(self, db, monkeypatch):
         monkeypatch.setattr(settings, "PURGE_SWEEP_ENABLED", False)
         audits = db.query(AdminAuditLog).count()
-        assert purge_service.run_startup_sweep() == "disabled"
-        assert purge_service.schedule_startup_sweep(delay=0) is None
+        assert purge_service.startup_sweep(db) == "disabled"
+        assert purge_service.schedule_startup_sweep(delay=0) is None  # never scheduled on SQLite
         assert db.query(AdminAuditLog).count() == audits
 
     def test_skipped_on_sqlite(self, db, monkeypatch, create_test_user):
         monkeypatch.setattr(settings, "PURGE_SWEEP_ENABLED", True)
         old, _ = create_test_user(email=f"sweep-old-{uuid.uuid4().hex[:8]}@example.com")
         soft_delete(db, old, days_ago=40)
-        assert purge_service.run_startup_sweep() == "sqlite"
+        assert purge_service.startup_sweep(db) == "sqlite"
         assert db.query(User).filter(User.id == old.id).count() == 1
         assert db.query(AdminAuditLog).filter(AdminAuditLog.action == "maintenance.purge_sweep").count() == 0
 
-    async def test_schedules_a_task_on_the_running_loop(self, monkeypatch):
-        monkeypatch.setattr(settings, "PURGE_SWEEP_ENABLED", True)
+    def test_console_row_arms_the_gate_without_the_env_var(self, db, monkeypatch):
+        """A console ``PURGE_SWEEP_ENABLED=true`` row counts even when the env var is off."""
+        from app.services import settings_service
+
+        monkeypatch.setattr(settings, "PURGE_SWEEP_ENABLED", False)
+        settings_service.set_value(db, "PURGE_SWEEP_ENABLED", True, updated_by=None)
+        db.commit()
+        assert purge_service.sweep_enabled(db) is True
+        assert purge_service.startup_sweep(db) == "sqlite"  # past the gate, stopped by the dialect
+        settings_service.reset(db, "PURGE_SWEEP_ENABLED")
+        db.commit()
+        assert purge_service.startup_sweep(db) == "disabled"
+
+    def test_run_startup_sweep_never_raises(self, monkeypatch):
+        from app.core import database
+
+        def boom():
+            raise RuntimeError("no database")
+
+        monkeypatch.setattr(database, "SessionLocal", boom)
+        assert purge_service.run_startup_sweep() == "error"
+
+    async def test_schedules_a_task_on_a_non_sqlite_bind(self, monkeypatch):
+        """Off SQLite the task is always scheduled; the flag is read when it fires."""
+        monkeypatch.setattr(purge_service, "_is_sqlite", lambda bind: False)
+        monkeypatch.setattr(purge_service, "run_startup_sweep", lambda: "ok")
         task = purge_service.schedule_startup_sweep(delay=0)
         assert isinstance(task, asyncio.Task)
-        assert await task == "sqlite"
-
-    def test_run_startup_tasks_never_raises_with_the_flag_on(self, monkeypatch):
-        monkeypatch.setattr(settings, "PURGE_SWEEP_ENABLED", True)
-        assert admin_bootstrap.run_startup_tasks() is None  # no loop: logged, not raised
+        assert await task == "ok"

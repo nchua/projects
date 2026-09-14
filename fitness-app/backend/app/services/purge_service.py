@@ -14,7 +14,10 @@ audits ``user.purge`` in the same transaction; the route commits.
 ``purge_eligible`` lists (and, when not a dry run, purges) every account
 past ``PURGE_GRACE_DAYS``, one transaction per user. ``run_startup_sweep``
 is that call from the lifespan, behind ``PURGE_SWEEP_ENABLED`` and never on
-SQLite.
+SQLite. Both numbers come through ``settings_service`` (console row → env →
+code, console v2 §6.5), so the owner can move the grace window or arm the
+sweep without a redeploy; the sweep reads its gate inside the session it
+opens, so a console flip counts on the next boot.
 """
 from __future__ import annotations
 
@@ -22,7 +25,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import Table, delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
@@ -31,13 +34,21 @@ from sqlalchemy.sql.elements import ColumnElement
 from starlette.requests import Request
 
 from app.core.admin_auth import protect_account, verify_step_up
-from app.core.config import settings
 from app.core.database import Base
 from app.core.dependencies import conflict, unprocessable
 from app.core.utils import ensure_utc, to_naive_utc, utcnow
 from app.models.user import User
-from app.schemas.admin import PurgeEligibleRow, PurgeResponse, PurgeSweepResponse
+from app.schemas.admin import (
+    BulkPurgePreviewRow,
+    BulkPurgeRequest,
+    BulkPurgeResponse,
+    PurgeEligibleRow,
+    PurgeResponse,
+    PurgeSweepResponse,
+)
+from app.services import settings_service
 from app.services.audit_service import audit
+from app.services.bulk import Skip, per_user
 
 logger = logging.getLogger(__name__)
 
@@ -46,14 +57,24 @@ SWEEP_REASON = "startup sweep"
 _BACKGROUND_TASKS: "set[asyncio.Task[str]]" = set()
 
 
-def purge_eligible_cutoff(now: Optional[datetime] = None) -> datetime:
+def grace_days(db: Session) -> int:
+    """``PURGE_GRACE_DAYS`` in force (console row → env → code)."""
+    return int(settings_service.get(db, "PURGE_GRACE_DAYS"))
+
+
+def sweep_enabled(db: Session) -> bool:
+    """``PURGE_SWEEP_ENABLED`` in force (console row → env → code)."""
+    return bool(settings_service.get(db, "PURGE_SWEEP_ENABLED"))
+
+
+def purge_eligible_cutoff(db: Session, now: Optional[datetime] = None) -> datetime:
     """Accounts soft-deleted at or before this instant are past the grace period."""
-    return (now or utcnow()) - timedelta(days=settings.PURGE_GRACE_DAYS)
+    return (now or utcnow()) - timedelta(days=grace_days(db))
 
 
-def purge_eligible_at(deleted_at: datetime) -> datetime:
+def purge_eligible_at(db: Session, deleted_at: datetime) -> datetime:
     """When a soft-deleted account becomes purge-eligible."""
-    return deleted_at + timedelta(days=settings.PURGE_GRACE_DAYS)
+    return deleted_at + timedelta(days=grace_days(db))
 
 
 @dataclass(frozen=True)
@@ -200,10 +221,10 @@ def purge_user(
     if confirm_email.strip().lower() != user.email.strip().lower():
         raise unprocessable("confirm_email does not match the account")
     deleted_at = ensure_utc(user.deleted_at)
-    if not force and (deleted_at is None or deleted_at > purge_eligible_cutoff()):
-        eligible = purge_eligible_at(deleted_at).isoformat() if deleted_at else "unknown"
+    if not force and (deleted_at is None or deleted_at > purge_eligible_cutoff(db)):
+        eligible = purge_eligible_at(db, deleted_at).isoformat() if deleted_at else "unknown"
         raise conflict(
-            f"Inside the {settings.PURGE_GRACE_DAYS}-day grace period until {eligible}; send force=true"
+            f"Inside the {grace_days(db)}-day grace period until {eligible}; send force=true"
         )
     try:
         result = _purge_rows(db, user, actor=actor, reason=reason, force=force, request=request)
@@ -215,18 +236,30 @@ def purge_user(
     return result
 
 
-def eligible_filter(now: Optional[datetime] = None) -> Tuple[ColumnElement, ...]:
-    """The one definition of "purge-eligible": soft-deleted, past grace, not an admin."""
-    return (
-        User.is_deleted == True,
-        User.deleted_at <= to_naive_utc(purge_eligible_cutoff(now)),
-        User.is_admin == False,
-    )
+def eligible_filter_at(cutoff: datetime) -> Tuple[ColumnElement, ...]:
+    """The one SQL definition of "purge-eligible": soft-deleted at or before ``cutoff`` (naive UTC), not an admin."""
+    return (User.is_deleted == True, User.deleted_at <= cutoff, User.is_admin == False)
+
+
+def eligible_filter(db: Session, now: Optional[datetime] = None) -> Tuple[ColumnElement, ...]:
+    """:func:`eligible_filter_at` with the cutoff resolved from ``PURGE_GRACE_DAYS``."""
+    return eligible_filter_at(to_naive_utc(purge_eligible_cutoff(db, now)))
+
+
+def is_purge_eligible_at(user: User, cutoff: datetime) -> bool:
+    """Python twin of :func:`eligible_filter` for one loaded row, given the grace ``cutoff``."""
+    deleted_at = ensure_utc(user.deleted_at)
+    return bool(user.is_deleted) and not bool(user.is_admin) and deleted_at is not None and deleted_at <= cutoff
+
+
+def is_purge_eligible(db: Session, user: User, now: Optional[datetime] = None) -> bool:
+    """:func:`is_purge_eligible_at` with the cutoff resolved from ``PURGE_GRACE_DAYS``."""
+    return is_purge_eligible_at(user, purge_eligible_cutoff(db, now))
 
 
 def list_eligible(db: Session, now: datetime) -> Tuple[List[User], List[PurgeEligibleRow]]:
     """Eligible accounts, oldest first, with their response rows."""
-    users = db.query(User).filter(*eligible_filter(now)).order_by(User.deleted_at, User.id).all()
+    users = db.query(User).filter(*eligible_filter(db, now)).order_by(User.deleted_at, User.id).all()
     rows = [
         PurgeEligibleRow(
             user_id=u.id, deleted_at=u.deleted_at, days_deleted=(now - ensure_utc(u.deleted_at)).days
@@ -290,42 +323,94 @@ def purge_eligible(
     return sweep(db, actor=actor, reason=reason, request=request)
 
 
+# ── bulk purge (console v2 §5.4, §6.4) ──────────────────────────────────────
+
+def bulk_purge(
+    db: Session, *, actor: User, body: BulkPurgeRequest, request: Optional[Request] = None
+) -> BulkPurgeResponse:
+    """``POST /admin/users/purge``: every id must be purge-eligible (422 naming the first
+    that is not); a dry run lists each account's table counts; apply needs the password and
+    ``confirm_count == len(user_ids)``, then purges one committed transaction per user."""
+    cutoff = purge_eligible_cutoff(db)
+    ids = list(dict.fromkeys(body.user_ids))
+    users = {u.id: u for u in db.query(User).filter(User.id.in_(ids)).all()}
+    for user_id in ids:
+        user = users.get(user_id)
+        if user is None:
+            raise unprocessable(f"{user_id} not found")
+        if not is_purge_eligible_at(user, cutoff):
+            raise unprocessable(f"{user_id} is not purge-eligible")
+
+    if body.dry_run:
+        preview = [BulkPurgePreviewRow(user_id=uid, tables=count_rows(db, uid)) for uid in ids]
+        return BulkPurgeResponse(dry_run=True, preview=preview)
+
+    verify_step_up(db, actor, body.password)
+    if body.confirm_count != len(ids):
+        raise unprocessable(f"confirm_count must equal the number of accounts ({len(ids)})")
+
+    def step(user: User) -> PurgeResponse:
+        try:
+            result = _purge_rows(db, user, actor=actor, reason=body.reason, force=False, request=request)
+        except IntegrityError as exc:
+            raise conflict(f"another account still references this user's data ({exc.orig})")
+        if result is None:
+            raise Skip("already purged")
+        return result
+
+    applied, skipped, failed = per_user(db, ids, step)
+    return BulkPurgeResponse(dry_run=False, applied=applied, skipped=skipped, failed=failed)
+
+
 # ── startup sweep (spec §8.3) ───────────────────────────────────────────────
 
-def run_startup_sweep() -> str:
-    """The boot-time sweep body. Returns ``disabled`` / ``sqlite`` / ``ok`` / ``error``.
+def _is_sqlite(bind: Any) -> bool:
+    return bind is not None and bind.dialect.name == "sqlite"
 
-    Gated by ``PURGE_SWEEP_ENABLED`` (default false) and skipped on SQLite
-    so tests and a local run are inert. Never raises.
+
+def startup_sweep(db: Session) -> str:
+    """The boot-time sweep body on a given session: ``disabled`` / ``sqlite`` / ``ok``.
+
+    Gated by ``PURGE_SWEEP_ENABLED`` — read through the resolver, so a
+    console flip arms the next boot without a redeploy — and skipped on
+    SQLite so a local run is inert. The session is the seam tests use.
     """
-    if not settings.PURGE_SWEEP_ENABLED:
+    if not sweep_enabled(db):
         return "disabled"
+    if _is_sqlite(db.get_bind()):
+        return "sqlite"
+    result = sweep(db, actor=None, reason=SWEEP_REASON)
+    db.commit()
+    logger.info("purge sweep: %d eligible, %d purged", len(result.eligible), len(result.purged))
+    return "ok"
+
+
+def run_startup_sweep() -> str:
+    """:func:`startup_sweep` on a fresh ``SessionLocal()``; never raises (``error`` instead)."""
     from app.core import database  # resolved at call time so tests can patch SessionLocal
 
-    bind = database.SessionLocal.kw.get("bind")
-    if bind is not None and bind.dialect.name == "sqlite":
-        return "sqlite"
     try:
         db = database.SessionLocal()
         try:
-            result = sweep(db, actor=None, reason=SWEEP_REASON)
-            db.commit()
+            return startup_sweep(db)
         finally:
             db.close()
     except Exception:  # noqa: BLE001 - the sweep must never take the app down
         logger.exception("purge sweep failed")
         return "error"
-    logger.info("purge sweep: %d eligible, %d purged", len(result.eligible), len(result.purged))
-    return "ok"
 
 
 def schedule_startup_sweep(delay: float = SWEEP_DELAY_SECONDS) -> Optional["asyncio.Task[str]"]:
     """Fire-and-forget :func:`run_startup_sweep` ``delay`` seconds after boot.
 
-    Returns the task, or None when the flag is off or no event loop is
-    running (a synchronous caller outside the lifespan).
+    The flag is not checked here — the task reads it when it fires, so the
+    console can arm the sweep after boot-time env parsing. Returns the task,
+    or None on SQLite (the sweep never runs there; keeps tests and local runs
+    free of a background task) or when no event loop is running.
     """
-    if not settings.PURGE_SWEEP_ENABLED:
+    from app.core import database  # resolved at call time so tests can patch the engine
+
+    if _is_sqlite(database.engine):
         return None
     try:
         loop = asyncio.get_running_loop()

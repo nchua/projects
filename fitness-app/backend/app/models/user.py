@@ -54,6 +54,9 @@ class User(Base):
     # limiter is per-process and resets on deploy).
     admin_failed_logins = Column(Integer, default=0, nullable=False, server_default="0")
     admin_locked_until = Column(DateTime, nullable=True)
+    # Console v2 §6.6: stamped by /auth/login and /auth/refresh; the login leg
+    # of ``last_active``. NULL until the user's next login after the deploy.
+    last_login_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 

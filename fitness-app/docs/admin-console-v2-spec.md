@@ -1,6 +1,6 @@
 # ARISE Owner Console v2 — The Admin's Workbench
 
-> **Status:** v2.0 draft complete (2026-09-13), ready to build. Supersedes §10 of
+> **Status:** v2.1 — W4 (data & API) shipped 2026-09-13; W5 / W6 (console) next. Supersedes §10 of
 > `docs/arise-control-plane-spec.md` (v1.5) for the *console*; everything else in that spec —
 > identity, sessions, step-up, audit, entitlements, purge, the JWS verification — stays in force
 > and is referenced, not restated. Council record for v1:
@@ -598,3 +598,56 @@ section), fix every Error, `/simplify`, pathspec commit, push, `deploy-watch`, o
   100-row bulk cap; phone lane includes step-up downgrades; `users.last_login_at`; resolver
   reads per request, no cache; one bulk route per action; every listed setting editable;
   W4 → W5 → W6 phasing; vanilla JS stays. Mockup: `docs/mockups/admin-console-v2-mockup.html`.
+
+- **v2.1 (2026-09-13, W4 build):** §6 shipped in full — `entitlement_service.plan_for` /
+  `plans_for` (three queries per page, asserted by a query-count test) and the frozen `Plan`;
+  `admin_read_service.status_for` + the batched `last_active` / `last_active_kind` (workout ·
+  scan · login); `GET /admin/users` `status` / `plan` / `joined_days` and the sort keys `plan` /
+  `status` / `last_active` / `scans_4wk` / `level` / `created_at` / `email` over CASE twins of
+  the Python models (a test asserts SQL order == `plans_for` / `status_for` on a seeded page);
+  the detail's `plan` / `account` / `scans` blocks and `activity`; `POST /users/{id}/plan`,
+  bulk `POST /users/plan` / `/users/state` / `/users/purge`, `GET /settings`, `PATCH
+  /settings/{key}`; `SETTINGS_REGISTRY` + `settings_service` resolver with every §6.5 read site
+  moved; `users.last_login_at` stamped on login and refresh; migration `console_v2` (head).
+  Amendments forced by the code or the `/evaluate` pass, none re-opening a decision:
+  - **Change plan never revokes a row the hunter may have paid for at standard tier.**
+    `target=unlimited` on a hunter already unlimited by `purchase` or `backfill` is `skipped`
+    (`why = "already unlimited by purchase"`); extend / shorten (revoke + re-grant in one
+    transaction) applies to `admin_grant` rows only. Only `remove_unlimited` (step-up) revokes
+    them. A past `expires_at` is 422.
+  - `POST /users/{id}/plan` accepts an optional `Idempotency-Key`, replayed from the audit row
+    exactly as credits adjust (`replayed: true`; a different body is 422) so a retried top-up
+    cannot credit twice. The bulk routes take none (one request is one batch).
+  - Bulk purge answers **one shape** for both legs — `BulkPurgeResponse{dry_run, preview:
+    [{user_id, tables}], applied: [PurgeResponse], skipped, failed}` — instead of two; every id
+    is checked for eligibility on the dry run too (422 naming the first offender, unknown id
+    included). Any per-user failure is recorded and the loop continues.
+  - `status_for(user, last_active, now, thresholds)` takes a `StatusThresholds`
+    (`inactive_after_days`, `grace_days`) resolved once per page, not a settings read per row.
+    `last_active` is a **day** (`date`), the granularity the 30-day rule needs.
+  - The Plan card's `last_change` scans `user.plan_change | credits.adjust | entitlement.*`
+    (the v1 action is `credits.adjust`, not `user.credits`).
+  - `joined_days` accepts 1–3650 (the chips send 7 / 30 / 90); `q` also matches an id
+    substring; `sort=created` stays as an alias of `created_at`; the default `status` is
+    `active,inactive` so the v1 `test_sort_and_paging` now asks for every status explicitly.
+  - Settings: `PATCH` with the value already in force from the console, or a reset with no row,
+    is 409; an unknown key is 404; the `settings.update` audit `before` / `after` carry a
+    `source` beside `{key: value}`; a stored row the registry no longer accepts is logged and
+    the env / code value applies (the scanner never 500s on one bad row). `inactive_after_days`
+    is the one key with no `Settings` attribute (code default 30 in the registry).
+  - The purge sweep is scheduled unconditionally off SQLite and reads `PURGE_SWEEP_ENABLED`
+    through the resolver **when it fires**, so a console flip arms the next boot without a
+    redeploy; `purge_service.eligible_filter` / `purge_eligible_at` / `purge_eligible_cutoff`
+    and `entitlement_service.default_scan_limits` now take `db`.
+  - `Plan.scan_credits` is `null` for a hunter with no balance row (the Free chip shows the
+    grant it would seed). `plan_source` is `purchase` when the active row cites a receipt.
+  - `/auth/refresh` stamps `last_login_at` only when the stamp is over an hour old (it is read
+    at day granularity; iOS refreshes often). `/auth/login` always stamps.
+  - The Hunters list computes the plan / status / last-active twins once per user in a
+    `_derived` subquery and counts with a filters-only query; `PlanChangeRequest` is the one
+    Change-plan schema (the bulk request extends it); the bulk loop lives in
+    `app/services/bulk.py` and serves plan, state and purge alike; the startup sweep exposes
+    `startup_sweep(db)` as its test seam.
+  Postgres note: the SQL plan twin casts the JSON `value` to text (`= 'true'`) and to integer
+  (free-monthly override) via the I/O conversion cast; tests run on SQLite, so the W4 prod check
+  exercises `GET /admin/users?sort=plan` and `?plan=override` (§7.1).

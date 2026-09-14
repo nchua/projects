@@ -10,7 +10,8 @@ removing the variable and redeploying.
 
 ``run_startup_tasks`` is called from the FastAPI lifespan and never raises:
 it bootstraps the admin, then schedules the purge sweep
-(``purge_service.schedule_startup_sweep``, behind ``PURGE_SWEEP_ENABLED``).
+(``purge_service.schedule_startup_sweep``; the task reads ``PURGE_SWEEP_ENABLED``
+through the settings resolver when it fires, so a console flip counts).
 """
 from __future__ import annotations
 

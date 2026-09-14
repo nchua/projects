@@ -470,7 +470,7 @@ def fleet_usage(db: Session, *, weeks: int = 20, today: Optional[date] = None) -
         count_where(User.is_deleted == True),
         count_where(User.is_admin == True),
     ).one()
-    purge_eligible = db.query(func.count(User.id)).filter(*eligible_filter(now)).scalar()
+    purge_eligible = db.query(func.count(User.id)).filter(*eligible_filter(db, now)).scalar()
 
     # Sessions of live users grouped by (user, local day) in SQL; ISO weeks in Python.
     day = local_day_sql()

@@ -2,7 +2,7 @@
 Authentication API endpoints
 """
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -20,7 +20,7 @@ from app.core.security import (
     verify_password_with_rehash,
     verify_token,
 )
-from app.core.utils import to_iso8601_utc
+from app.core.utils import ensure_utc, to_iso8601_utc, utcnow
 from app.models.user import User, UserProfile
 from app.schemas.auth import (
     DeleteAccountRequest,
@@ -144,7 +144,8 @@ async def login(request: Request, user_data: UserLogin, db: Session = Depends(ge
 
     if needs_rehash:
         user.password_hash = hash_password(user_data.password)
-        db.commit()
+    user.last_login_at = utcnow()  # console v2 §6.6: the login leg of last_active
+    db.commit()
 
     # Create tokens (carry ``ver`` so a token_version bump revokes them)
     claims = user_token_claims(user)
@@ -216,6 +217,14 @@ async def refresh_token(token_data: TokenRefresh, db: Session = Depends(get_db))
             detail="Refresh token has been revoked",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # A refresh is the app being opened (console v2 §6.6). last_active reads this at
+    # day granularity, so skip the write when the stamp is under an hour old — iOS
+    # refreshes often and this is the hottest auth path.
+    last = ensure_utc(user.last_login_at)
+    if last is None or utcnow() - last > timedelta(hours=1):
+        user.last_login_at = utcnow()
+        db.commit()
 
     # Create new tokens
     claims = user_token_claims(user)

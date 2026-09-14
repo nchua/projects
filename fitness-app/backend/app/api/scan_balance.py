@@ -40,7 +40,7 @@ from app.schemas.scan_balance import (
     PurchaseVerifyResponse,
     ScanBalanceResponse,
 )
-from app.services import entitlement_service
+from app.services import entitlement_service, settings_service
 from app.services.email_service import send_owner_alert
 
 logger = logging.getLogger(__name__)
@@ -98,7 +98,7 @@ def _enforce_purchase_caps(db: Session, user_id: str, product: Product) -> None:
         .filter(PurchaseRecord.user_id == user_id, PurchaseRecord.created_at >= since)
         .one()
     )
-    if verifications >= settings.PURCHASE_MAX_VERIFICATIONS_PER_DAY:
+    if verifications >= int(settings_service.get(db, "PURCHASE_MAX_VERIFICATIONS_PER_DAY")):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many purchase verifications today. Please try again tomorrow.",
@@ -120,7 +120,7 @@ def _enforce_purchase_caps(db: Session, user_id: str, product: Product) -> None:
                 detail="This account already holds the unlimited scanner. Use Restore Purchases.",
             )
         return
-    if credits_today + product.credits > settings.PURCHASE_MAX_CREDITS_PER_DAY:
+    if credits_today + product.credits > int(settings_service.get(db, "PURCHASE_MAX_CREDITS_PER_DAY")):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Daily scan-credit purchase cap reached. Please try again tomorrow.",
@@ -130,8 +130,8 @@ def _enforce_purchase_caps(db: Session, user_id: str, product: Product) -> None:
 SIGNED_TRANSACTION_REJECTED = "signed_transaction could not be verified for this purchase"
 
 
-def _allowed_environments() -> Set[str]:
-    return {e.strip() for e in settings.PURCHASE_ALLOWED_ENVIRONMENTS.split(",") if e.strip()}
+def _allowed_environments(db: Session) -> Set[str]:
+    return settings_service.csv_set(db, "PURCHASE_ALLOWED_ENVIRONMENTS")
 
 
 def _reject_signed(reason: str, request: PurchaseVerifyRequest, user: User) -> HTTPException:
@@ -146,17 +146,19 @@ def _reject_signed(reason: str, request: PurchaseVerifyRequest, user: User) -> H
 
 
 def _verified_transaction(
-    request: PurchaseVerifyRequest, user: User
+    db: Session, request: PurchaseVerifyRequest, user: User
 ) -> Optional[SignedTransaction]:
     """Verify ``request.signed_transaction`` and bind it to this request (spec §6.5).
 
     Returns the payload, or None when no JWS was sent and
     ``PURCHASE_REQUIRE_JWS`` is off (phase 1: record the row unverified).
-    Every failure is a 422 whose detail never says which check failed.
+    The flag and the environment allow-list come through the resolver
+    (console row → env). Every failure is a 422 whose detail never says
+    which check failed.
     """
     jws = request.signed_transaction
     if not jws:
-        if settings.PURCHASE_REQUIRE_JWS:
+        if settings_service.get(db, "PURCHASE_REQUIRE_JWS"):
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="signed_transaction required",
@@ -171,7 +173,7 @@ def _verified_transaction(
         ("transaction mismatch", payload.transaction_id == request.transaction_id),
         ("product mismatch", payload.product_id == request.product_id),
         ("bundle mismatch", payload.bundle_id == settings.APP_STORE_BUNDLE_ID),
-        ("environment not allowed", payload.environment in _allowed_environments()),
+        ("environment not allowed", payload.environment in _allowed_environments(db)),
         ("revoked", not payload.revoked),
         (
             "appAccountToken mismatch",
@@ -219,7 +221,7 @@ async def verify_purchase(
             detail="transaction_id must be a numeric StoreKit transaction id",
         )
 
-    signed = _verified_transaction(request, current_user)
+    signed = _verified_transaction(db, request, current_user)
 
     product = entitlement_service.get_product(db, request.product_id)
     if product is None or not product.active:

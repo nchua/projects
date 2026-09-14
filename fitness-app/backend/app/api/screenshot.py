@@ -23,13 +23,13 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 from starlette.background import BackgroundTask
 
-from app.core.config import settings
 from app.core.database import SessionLocal, get_db
 from app.core.dependencies import get_current_user
 from app.core.utils import ensure_utc
 from app.models.scan_balance import ScanBalance
 from app.models.screenshot_usage import ScreenshotUsage
 from app.models.user import User
+from app.services import settings_service
 
 logger = logging.getLogger(__name__)
 
@@ -227,7 +227,7 @@ def _assert_spend_ceiling(
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     today = today_start.date()
-    ceiling = int(settings.ANTHROPIC_DAILY_CALL_CEILING)
+    ceiling = int(settings_service.get(db, "ANTHROPIC_DAILY_CALL_CEILING"))
     used = _global_usage_today(db, today_start)
     projected = used + screenshot_count
 
@@ -250,7 +250,7 @@ def _assert_spend_ceiling(
             ),
         )
 
-    warn_percent = int(settings.ANTHROPIC_DAILY_CALL_WARN_PERCENT)
+    warn_percent = int(settings_service.get(db, "ANTHROPIC_DAILY_CALL_WARN_PERCENT"))
     if background is not None and projected >= ceiling * warn_percent // 100:
         background.add_task(
             send_spend_alert_once,
@@ -280,7 +280,7 @@ def _check_screenshot_rate_limit(
     limits are exceeded. ``background`` carries the pre-cap owner warning
     (§G4.1); pass the endpoint's ``BackgroundTasks``.
     """
-    if not settings.SCREENSHOT_PROCESSING_ENABLED:
+    if not settings_service.get(db, "SCREENSHOT_PROCESSING_ENABLED"):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Screenshot scanning temporarily unavailable"

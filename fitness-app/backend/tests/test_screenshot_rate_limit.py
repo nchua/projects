@@ -90,11 +90,12 @@ class TestScreenshotRateLimit:
         assert exc_info.value.status_code == 429
         assert "wait" in exc_info.value.detail.lower()
 
-    @patch("app.api.screenshot.settings")
-    def test_rate_limit_kill_switch(self, mock_settings, db, create_test_user):
-        """SCREENSHOT_PROCESSING_ENABLED=False raises 503."""
+    def test_rate_limit_kill_switch(self, db, create_test_user, monkeypatch):
+        """SCREENSHOT_PROCESSING_ENABLED=False raises 503 (read through the settings resolver)."""
+        from app.core.config import settings
+
         user, _ = create_test_user(email="killswitch@example.com")
-        mock_settings.SCREENSHOT_PROCESSING_ENABLED = False
+        monkeypatch.setattr(settings, "SCREENSHOT_PROCESSING_ENABLED", False)
 
         with pytest.raises(HTTPException) as exc_info:
             _check_screenshot_rate_limit(db, user.id, screenshot_count=1)

@@ -17,10 +17,11 @@ from app.models.exercise import Exercise
 from app.models.notification import DeviceToken
 from app.models.progress import UserProgress
 from app.models.scan_balance import PurchaseRecord, ScanBalance
+from app.models.screenshot_usage import ScreenshotUsage
 from app.models.training_load import DailyTrainingLoad
 from app.models.whoop import WhoopConnection
 from app.models.workout import WorkoutSession
-from app.services import admin_read_service
+from app.services import admin_read_service, settings_service
 from app.services import entitlement_service as es
 from app.services.campaign_service import materialize_range
 from app.services.training_load_service import get_load_state
@@ -234,7 +235,12 @@ class TestListUsers:
         assert set(row) == {
             "id", "email", "username", "created_at", "is_deleted", "deleted_at", "is_admin",
             "level", "rank", "last_workout_date", "session_count", "scan_credits", "has_unlimited",
+            # console v2 §6.2
+            "plan", "plan_source", "plan_expires_at", "purchased_credits", "free_monthly",
+            "status", "last_active", "last_active_kind", "scans_4wk",
         }
+        assert row["plan"] == "free" and row["status"] == "active"
+        assert row["last_active"] == row["last_workout_date"] and row["last_active_kind"] == "workout"
         # username search hits too
         ids, _ = self._ids(client, headers, q=f"act{hunters['tag']}")
         assert ids == [hunters["active"].id]
@@ -276,19 +282,21 @@ class TestListUsers:
     def test_sort_and_paging(self, client, admin_headers, hunters):
         tag = hunters["tag"]
         headers, _ = admin_headers(email="owner-sort@example.com")
-        emails_asc, _ = self._ids(client, headers, q=tag, sort="email", order="asc")
-        emails_desc, _ = self._ids(client, headers, q=tag, sort="email", order="desc")
+        # v2 defaults to status=active,inactive; ask for every status to keep the deleted row.
+        every = {"q": tag, "status": "active,inactive,deleted,purge_eligible"}
+        emails_asc, _ = self._ids(client, headers, sort="email", order="asc", **every)
+        emails_desc, _ = self._ids(client, headers, sort="email", order="desc", **every)
         assert emails_asc == list(reversed(emails_desc))
         assert emails_asc[0] == hunters["active"].id  # "active-…" sorts first
 
-        credits, _ = self._ids(client, headers, q=tag, sort="credits", order="desc")
+        credits, _ = self._ids(client, headers, sort="credits", order="desc", **every)
         assert credits[:2] == [hunters["rich"].id, hunters["active"].id]  # 42, 1, then NULLs
 
-        last_active, _ = self._ids(client, headers, q=tag, sort="last_active", order="desc")
+        last_active, _ = self._ids(client, headers, sort="last_active", order="desc", **every)
         assert last_active[:2] == [hunters["active"].id, hunters["stale"].id]
 
-        page1, total = self._ids(client, headers, q=tag, sort="email", order="asc", limit=2)
-        page2, _ = self._ids(client, headers, q=tag, sort="email", order="asc", limit=2, offset=2)
+        page1, total = self._ids(client, headers, sort="email", order="asc", limit=2, **every)
+        page2, _ = self._ids(client, headers, sort="email", order="asc", limit=2, offset=2, **every)
         assert total == 4 and len(page1) == 2 and len(page2) == 2
         assert page1 + page2 == emails_asc
 
@@ -312,10 +320,151 @@ class TestListUsers:
         assert client.get("/admin/users", headers=headers, params={"active_days": 0}).status_code == 422
 
 
+@pytest.fixture
+def plan_cohort(db, create_test_user):
+    """One hunter per plan (plus the unlimited + override and expired-unlimited edges) and per status."""
+    tag = uuid.uuid4().hex[:6]
+    free_default = int(settings_service.get(db, "FREE_MONTHLY_SCANS"))
+
+    def make(name):
+        user, _ = create_test_user(email=f"{name}-{tag}@example.com")
+        return user
+
+    free, credits, override, unlimited, both, expired = (
+        make(n) for n in ("pfree", "pcredits", "poverride", "punlimited", "pboth", "pexpired")
+    )
+    db.add(ScanBalance(user_id=credits.id, scan_credits=free_default + 30, has_unlimited=False))
+    db.add(ScanBalance(user_id=override.id, scan_credits=free_default + 30, has_unlimited=False))
+    db.add(ScanBalance(user_id=expired.id, scan_credits=free_default, has_unlimited=False))
+    db.commit()
+    grant_admin(db, override.id, es.KEY_FREE_MONTHLY, 10)
+    grant_admin(db, unlimited.id, es.KEY_UNLIMITED, True)
+    grant_admin(db, both.id, es.KEY_UNLIMITED, True)
+    grant_admin(db, both.id, es.KEY_DAILY_LIMIT, 2)
+    es.grant(db, user_id=expired.id, key=es.KEY_UNLIMITED, value=True, source="admin_grant",
+             expires_at=datetime.now(timezone.utc) - timedelta(minutes=5))
+    db.commit()
+    # statuses: free = active (workout today), credits = active (scan), override = active (login),
+    # unlimited = inactive (never), both = deleted, expired = purge-eligible
+    _session(db, free.id, TODAY)
+    db.add(ScreenshotUsage(user_id=credits.id, screenshots_count=1))
+    override.last_login_at = datetime.now(timezone.utc) - timedelta(days=2)
+    both.is_deleted, both.deleted_at = True, datetime.now(timezone.utc) - timedelta(days=2)
+    expired.is_deleted, expired.deleted_at = True, datetime.now(timezone.utc) - timedelta(days=60)
+    db.commit()
+    return {
+        "tag": tag, "free": free, "credits": credits, "override": override,
+        "unlimited": unlimited, "both": both, "expired": expired,
+    }
+
+
+ALL_STATUSES = "active,inactive,deleted,purge_eligible"
+
+
+class TestListUsersV2:
+    """Console v2 §6.2: ``status`` / ``plan`` / ``joined_days``, the new sort keys, SQL == ``plans_for``."""
+
+    def _rows(self, client, headers, **params):
+        response = client.get("/admin/users", headers=headers, params=params)
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert_no_secret_keys(body)
+        return body["items"], body["total"]
+
+    def test_rows_carry_plan_and_status(self, client, admin_headers, plan_cohort):
+        headers, _ = admin_headers(email="owner-v2rows@example.com")
+        rows, total = self._rows(client, headers, q=plan_cohort["tag"], status=ALL_STATUSES)
+        assert total == 6
+        by_id = {r["id"]: r for r in rows}
+        c = plan_cohort
+        assert by_id[c["free"].id]["plan"] == "free" and by_id[c["free"].id]["status"] == "active"
+        assert by_id[c["free"].id]["last_active_kind"] == "workout"
+        assert by_id[c["credits"].id]["plan"] == "credits" and by_id[c["credits"].id]["last_active_kind"] == "scan"
+        assert by_id[c["credits"].id]["purchased_credits"] == 30
+        assert by_id[c["credits"].id]["scans_4wk"] == 1
+        assert by_id[c["override"].id]["plan"] == "override" and by_id[c["override"].id]["free_monthly"] == 10
+        assert by_id[c["override"].id]["last_active_kind"] == "login" and by_id[c["override"].id]["status"] == "active"
+        assert by_id[c["unlimited"].id]["plan"] == "unlimited" and by_id[c["unlimited"].id]["plan_source"] == "admin_grant"
+        assert by_id[c["unlimited"].id]["status"] == "inactive" and by_id[c["unlimited"].id]["last_active"] is None
+        assert by_id[c["both"].id]["plan"] == "unlimited" and by_id[c["both"].id]["status"] == "deleted"
+        assert by_id[c["expired"].id]["plan"] == "free" and by_id[c["expired"].id]["status"] == "purge_eligible"
+        assert by_id[c["expired"].id]["plan_expires_at"] is None
+
+    def test_status_and_plan_filters(self, client, admin_headers, plan_cohort):
+        headers, _ = admin_headers(email="owner-v2filters@example.com")
+        c, tag = plan_cohort, plan_cohort["tag"]
+        ids = lambda **p: {r["id"] for r in self._rows(client, headers, q=tag, **p)[0]}  # noqa: E731
+        assert ids() == {c["free"].id, c["credits"].id, c["override"].id, c["unlimited"].id}  # default: not deleted
+        assert ids(status="active") == {c["free"].id, c["credits"].id, c["override"].id}
+        assert ids(status="inactive") == {c["unlimited"].id}
+        assert ids(status="deleted") == {c["both"].id}
+        assert ids(status="purge_eligible") == {c["expired"].id}
+        assert ids(status="deleted,purge_eligible") == {c["both"].id, c["expired"].id}
+        assert ids(plan="free") == {c["free"].id}
+        assert ids(plan="unlimited", status=ALL_STATUSES) == {c["unlimited"].id, c["both"].id}
+        assert ids(plan="credits,override") == {c["credits"].id, c["override"].id}
+        # the W4 exit criterion (§7.1)
+        assert ids(status="purge_eligible", plan="free") == {c["expired"].id}
+        assert ids(joined_days=7) == ids()
+        assert client.get("/admin/users", headers=headers, params={"status": "zombie"}).status_code == 422
+        assert client.get("/admin/users", headers=headers, params={"plan": "gold"}).status_code == 422
+        assert client.get("/admin/users", headers=headers, params={"joined_days": 0}).status_code == 422
+
+    def test_v1_params_still_map(self, client, admin_headers, plan_cohort):
+        headers, _ = admin_headers(email="owner-v2legacy@example.com")
+        c, tag = plan_cohort, plan_cohort["tag"]
+        ids = lambda **p: {r["id"] for r in self._rows(client, headers, q=tag, **p)[0]}  # noqa: E731
+        assert ids(deleted="true") == {c["both"].id, c["expired"].id}
+        assert ids(deleted="false") == ids()
+        assert ids(unlimited="true") == {c["unlimited"].id}
+        assert ids(unlimited="false") == {c["free"].id, c["credits"].id, c["override"].id}
+        assert ids(status="deleted", deleted="false") == {c["both"].id}  # explicit v2 wins
+
+    def test_sql_plan_and_status_sort_match_the_python_models(self, client, db, admin_headers, plan_cohort):
+        headers, _ = admin_headers(email="owner-v2sort@example.com")
+        rows, _ = self._rows(client, headers, q=plan_cohort["tag"], status=ALL_STATUSES, sort="plan", order="asc")
+        plans = [r["plan"] for r in rows]
+        assert plans == sorted(plans, key=es.PLAN_ORDER.index)
+        assert {plans.count(p) for p in es.PLAN_ORDER} == {2, 1}  # every plan present
+        expected = es.plans_for(db, [r["id"] for r in rows])
+        assert [expected[r["id"]].plan for r in rows] == plans
+
+        rows, _ = self._rows(client, headers, q=plan_cohort["tag"], status=ALL_STATUSES, sort="status", order="asc")
+        statuses = [r["status"] for r in rows]
+        assert statuses == sorted(statuses, key=admin_read_service.STATUS_ORDER.index)
+        assert set(statuses) == set(admin_read_service.STATUS_ORDER)
+        # the SQL filter agrees with the displayed value for every bucket
+        for status in admin_read_service.STATUS_ORDER:
+            bucket, _ = self._rows(client, headers, q=plan_cohort["tag"], status=status)
+            assert {r["status"] for r in bucket} <= {status}
+        for plan in es.PLAN_ORDER:
+            bucket, _ = self._rows(client, headers, q=plan_cohort["tag"], status=ALL_STATUSES, plan=plan)
+            assert {r["plan"] for r in bucket} <= {plan}
+
+    @pytest.mark.parametrize("sort,key", [
+        ("last_active", "last_active"), ("scans_4wk", "scans_4wk"), ("level", "level"),
+        ("created_at", "created_at"), ("created", "created_at"), ("email", "email"),
+    ])
+    def test_new_sort_keys(self, client, admin_headers, plan_cohort, sort, key):
+        headers, _ = admin_headers(email=f"owner-v2sort-{sort}@example.com")
+        rows, _ = self._rows(client, headers, q=plan_cohort["tag"], status=ALL_STATUSES, sort=sort, order="desc")
+        values = [r[key] for r in rows if r[key] is not None]
+        assert values == sorted(values, reverse=True)
+        nulls = [r[key] for r in rows if r[key] is None]
+        assert rows[len(rows) - len(nulls):] == [r for r in rows if r[key] is None]  # nulls last
+
+    def test_id_substring_search(self, client, admin_headers, plan_cohort):
+        headers, _ = admin_headers(email="owner-v2id@example.com")
+        target = plan_cohort["free"]
+        rows, total = self._rows(client, headers, q=target.id[-8:])
+        assert target.id in {r["id"] for r in rows}
+
+
 class TestUserDetail:
     BLOCKS = {
         "user", "profile", "progress", "balance", "entitlements", "effective_limits", "campaign",
         "integrations", "data_health", "preview", "recent_audit", "usage",
+        "plan", "account", "scans", "activity",  # console v2 §6.3
     }
 
     def test_fresh_user_renders_every_block(self, client, admin_headers, create_test_user):
@@ -500,6 +649,80 @@ class TestUserDetail:
         response = client.get("/admin/users/nope", headers=headers)
         assert response.status_code == 404
         assert response.headers["cache-control"] == "no-store"
+
+
+class TestUserDetailV2:
+    """Console v2 §6.3: the plan / account / scans blocks and the merged activity list."""
+
+    def test_blocks_on_a_fresh_user(self, client, admin_headers, create_test_user):
+        headers, _ = admin_headers(email="owner-v2fresh@example.com")
+        fresh, _ = create_test_user(email="v2-fresh@example.com")
+        body = client.get(f"/admin/users/{fresh.id}", headers=headers).json()
+        assert body["plan"]["plan"] == "free" and body["plan"]["last_change"] is None
+        assert body["plan"]["scan_credits"] is None and body["plan"]["override_keys"] == []
+        assert body["account"]["status"] == "inactive" and body["account"]["last_active"] is None
+        assert body["account"]["last_login_at"] is None and body["account"]["purge_at"] is None
+        assert body["account"]["token_version"] == 0
+        assert body["scans"]["used_7d"] == 0 and body["scans"]["today_count"] == 0
+        assert body["scans"]["daily_limit"] == body["effective_limits"]["daily_limit"]
+        assert body["activity"] == []
+
+    def test_login_stamps_last_login_and_the_activity_list_is_newest_first(
+        self, client, db, admin_headers, create_test_user, seed_scan_balance
+    ):
+        headers, owner = admin_headers(email="owner-v2activity@example.com")
+        user, pwd = create_test_user(email="v2-active@example.com")
+        assert client.post("/auth/login", json={"email": user.email, "password": pwd}).status_code == 200
+        db.expire_all()
+        assert user.last_login_at is not None
+        _session(db, user.id, TODAY - timedelta(days=3))
+        db.add(ScreenshotUsage(user_id=user.id, screenshots_count=2,
+                               created_at=datetime.now(timezone.utc) - timedelta(days=1)))
+        seed_scan_balance(user.id, credits=1)
+        db.commit()
+        grant = client.post(f"/admin/users/{user.id}/entitlements", headers=headers,
+                            json={"key": es.KEY_DAILY_LIMIT, "value": 4, "reason": "cap for a test"})
+        assert grant.status_code == 201
+
+        body = client.get(f"/admin/users/{user.id}", headers=headers).json()
+        assert_no_secret_keys(body)
+        assert body["account"]["status"] == "active"
+        # last_login_at is a UTC instant; its day is the UTC day, not the local TODAY
+        utc_today = datetime.now(timezone.utc).date()
+        assert body["account"]["last_active"] == utc_today.isoformat() and body["account"]["last_active_kind"] == "login"
+        assert body["account"]["last_login_at"].endswith("Z")
+        assert body["plan"]["plan"] == "override" and body["plan"]["override_keys"] == [es.KEY_DAILY_LIMIT]
+        assert body["plan"]["last_change"]["action"] == "entitlement.grant"
+        assert body["plan"]["last_change"]["actor"] == owner.id and body["plan"]["last_change"]["audit_id"]
+        assert body["scans"]["used_7d"] == 1 and body["scans"]["used_4wk"] == 1 and body["scans"]["today_count"] == 0
+        assert body["scans"]["daily_limit"] == 4 and body["scans"]["scan_credits"] == 1
+
+        kinds = [row["kind"] for row in body["activity"]]
+        assert set(kinds) == {"audit", "session", "scan", "login"}
+        ats = [row["at"] for row in body["activity"]]
+        assert ats == sorted(ats, reverse=True)
+        audit_row = next(r for r in body["activity"] if r["kind"] == "audit")
+        assert audit_row["audit_id"] and audit_row["actor"] == owner.id and audit_row["summary"] == "entitlement.grant"
+        assert next(r for r in body["activity"] if r["kind"] == "scan")["summary"] == "Scan · 2 screenshots"
+
+    def test_activity_caps_at_twenty(self, client, db, admin_headers, create_test_user):
+        headers, _ = admin_headers(email="owner-v2cap@example.com")
+        user, _ = create_test_user(email="v2-cap@example.com")
+        for i in range(25):
+            db.add(ScreenshotUsage(user_id=user.id, screenshots_count=1,
+                                   created_at=datetime.now(timezone.utc) - timedelta(hours=i)))
+        db.commit()
+        body = client.get(f"/admin/users/{user.id}", headers=headers).json()
+        assert len(body["activity"]) == 20 and body["scans"]["used_7d"] == 25
+
+    def test_deleted_user_account_block(self, client, db, admin_headers, create_test_user):
+        headers, _ = admin_headers(email="owner-v2deleted@example.com")
+        user, _ = create_test_user(email="v2-deleted@example.com")
+        user.is_deleted, user.deleted_at = True, datetime.now(timezone.utc) - timedelta(days=2)
+        db.commit()
+        body = client.get(f"/admin/users/{user.id}", headers=headers).json()
+        assert body["account"]["status"] == "deleted"
+        assert body["account"]["purge_at"] == body["user"]["purge_eligible_at"]
 
 
 class TestProducts:

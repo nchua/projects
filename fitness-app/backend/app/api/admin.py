@@ -30,7 +30,7 @@ from sqlalchemy.orm import Session
 
 from app.core.admin_auth import require_admin
 from app.core.database import get_db, mark_read_only
-from app.core.dependencies import not_found
+from app.core.dependencies import not_found, unprocessable
 from app.core.rate_limit import LOGIN_RATE_LIMIT, client_ip, limiter
 from app.models.user import User
 from app.schemas.admin import (
@@ -43,6 +43,12 @@ from app.schemas.admin import (
     AdminUserListResponse,
     AdminUserStateResponse,
     AuditListResponse,
+    BulkPlanChangeRequest,
+    BulkPlanChangeResponse,
+    BulkPurgeRequest,
+    BulkPurgeResponse,
+    BulkStateRequest,
+    BulkStateResponse,
     CreditsAdjustRequest,
     CreditsAdjustResponse,
     EntitlementGrantRequest,
@@ -50,6 +56,8 @@ from app.schemas.admin import (
     FamilyBackfillRequest,
     FamilyBackfillResponse,
     FleetUsageResponse,
+    PlanChangeRequest,
+    PlanChangeResponse,
     ProductResponse,
     ProductUpsertRequest,
     PurgeRequest,
@@ -58,6 +66,8 @@ from app.schemas.admin import (
     PurgeSweepResponse,
     ReasonBody,
     SeedAchievementsResponse,
+    SettingRow,
+    SettingUpdateRequest,
     SortOrder,
     StepUpBody,
     UserSort,
@@ -70,6 +80,7 @@ from app.services import (
     admin_usage_service,
     purge_service,
 )
+from app.services.admin_read_service import PLAN_ORDER, STATUS_ORDER, parse_csv
 
 session_router = APIRouter()
 router = APIRouter(dependencies=[Depends(require_admin)])
@@ -117,9 +128,12 @@ async def me(request: Request, actor: User = Depends(require_admin)):
 
 @router.get("/users", response_model=AdminUserListResponse)
 async def list_users(
-    q: Optional[str] = Query(None, max_length=120, description="email / username substring"),
-    deleted: Optional[bool] = Query(None),
-    unlimited: Optional[bool] = Query(None),
+    q: Optional[str] = Query(None, max_length=120, description="email / username / id substring"),
+    status_csv: Optional[str] = Query(None, alias="status", max_length=80, description="csv of active,inactive,deleted,purge_eligible (default active,inactive)"),
+    plan_csv: Optional[str] = Query(None, alias="plan", max_length=80, description="csv of unlimited,override,credits,free (default all)"),
+    joined_days: Optional[int] = Query(None, ge=1, le=3650),
+    deleted: Optional[bool] = Query(None, description="v1; maps onto status"),
+    unlimited: Optional[bool] = Query(None, description="v1; maps onto plan"),
     active_days: Optional[int] = Query(None, ge=1, le=365),
     sort: UserSort = Query("last_active"),
     order: SortOrder = Query("desc"),
@@ -127,10 +141,18 @@ async def list_users(
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_read_only_db),
 ):
-    """The Hunters table (spec §9.1): filters, sort, offset paging."""
+    """The Hunters table (v1 §9.1, console v2 §6.2): filters, sort, offset paging."""
+    try:
+        statuses = parse_csv(status_csv, STATUS_ORDER, "status")
+        plans = parse_csv(plan_csv, PLAN_ORDER, "plan")
+    except ValueError as exc:
+        raise unprocessable(str(exc))
     items, total = admin_read_service.list_users(
         db,
         q=q,
+        statuses=statuses,
+        plans=plans,
+        joined_days=joined_days,
         deleted=deleted,
         unlimited=unlimited,
         active_days=active_days,
@@ -195,6 +217,12 @@ async def list_audit(
 async def list_products(db: Session = Depends(get_read_only_db)):
     """The product catalog in display order (active and inactive)."""
     return admin_read_service.list_products(db)
+
+
+@router.get("/settings", response_model=List[SettingRow])
+async def list_settings(db: Session = Depends(get_read_only_db)):
+    """Every console-editable setting with value · default · source (console v2 §4.5, §6.4)."""
+    return admin_read_service.list_settings(db)
 
 
 # ── mutations (spec §7, §8, §13) ────────────────────────────────────────────
@@ -298,6 +326,77 @@ async def import_campaign(
     db.commit()
     if body.dry_run:
         response.status_code = status.HTTP_200_OK
+    return result
+
+
+# ── console v2: change plan, bulk, settings (§6.4) ──
+
+@mutation_router.post("/users/{user_id}/plan", response_model=PlanChangeResponse)
+async def change_plan(
+    request: Request,
+    body: PlanChangeRequest,
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key", max_length=128),
+    user: User = Depends(get_target_user),
+    actor: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> PlanChangeResponse:
+    """Change plan (§3.2): grant / extend Unlimited, top up credits, or remove Unlimited (step-up).
+
+    ``Idempotency-Key`` is optional; with it a retried request replays instead of re-applying.
+    """
+    result = admin_mutation_service.change_plan(
+        db, actor=actor, user=user, body=body, idempotency_key=idempotency_key, request=request
+    )
+    db.commit()
+    return result
+
+
+@mutation_router.post("/users/plan", response_model=BulkPlanChangeResponse)
+async def bulk_change_plan(
+    request: Request,
+    body: BulkPlanChangeRequest,
+    actor: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> BulkPlanChangeResponse:
+    """Change plan for up to 100 hunters, one transaction each (§5.4); the service commits per user."""
+    return admin_mutation_service.bulk_change_plan(db, actor=actor, body=body, request=request)
+
+
+@mutation_router.post("/users/state", response_model=BulkStateResponse)
+async def bulk_set_state(
+    request: Request,
+    body: BulkStateRequest,
+    actor: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> BulkStateResponse:
+    """Soft-delete or restore up to 100 hunters (step-up), one transaction each (§5.4)."""
+    return admin_mutation_service.bulk_set_state(db, actor=actor, body=body, request=request)
+
+
+@mutation_router.post("/users/purge", response_model=BulkPurgeResponse)
+async def bulk_purge(
+    request: Request,
+    body: BulkPurgeRequest,
+    actor: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> BulkPurgeResponse:
+    """Purge selected purge-eligible hunters: dry run lists tables; apply needs password + typed count."""
+    return purge_service.bulk_purge(db, actor=actor, body=body, request=request)
+
+
+@mutation_router.patch("/settings/{key}", response_model=SettingRow)
+async def update_setting(
+    request: Request,
+    key: str,
+    body: SettingUpdateRequest,
+    actor: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> SettingRow:
+    """Set (or reset with ``null``) one console setting (§4.5, §5.5); live on the next request."""
+    result = admin_mutation_service.update_setting(
+        db, actor=actor, key=key, value=body.value, password=body.password, reason=body.reason, request=request
+    )
+    db.commit()
     return result
 
 

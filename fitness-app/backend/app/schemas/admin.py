@@ -8,7 +8,7 @@ tokens and reset codes have no field to land in.
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import EmailStr, Field, field_validator, model_validator
@@ -24,8 +24,15 @@ from app.schemas.progress import UserProgressResponse
 from app.services.campaign_templates import TEMPLATE_NAMES
 from app.services.entitlement_service import ENTITLEMENT_KEYS, validate_grant
 
-UserSort = Literal["last_active", "created", "email", "credits"]
+# ``created`` is the v1 spelling of ``created_at``; both stay (console v2 §6.2).
+UserSort = Literal[
+    "last_active", "created", "created_at", "email", "credits",
+    "plan", "status", "scans_4wk", "level",
+]
 SortOrder = Literal["asc", "desc"]
+PlanName = Literal["unlimited", "override", "credits", "free"]
+StatusName = Literal["active", "inactive", "deleted", "purge_eligible"]
+LastActiveKind = Literal["workout", "scan", "login"]
 
 
 # ── session / identity ──────────────────────────────────────────────────────
@@ -71,6 +78,16 @@ class AdminUserRow(UTCModel):
     session_count: int = 0
     scan_credits: Optional[int] = None
     has_unlimited: bool = False
+    # ── console v2 §6.2: the plan and status models, derived server-side ──
+    plan: PlanName
+    plan_source: Optional[str] = None
+    plan_expires_at: Optional[datetime] = None
+    purchased_credits: int = 0
+    free_monthly: int
+    status: StatusName
+    last_active: Optional[date] = None
+    last_active_kind: Optional[LastActiveKind] = None
+    scans_4wk: int = 0
 
 
 class AdminUserListResponse(UTCModel):
@@ -260,6 +277,67 @@ class AdminPreview(UTCModel):
     condition: AdminPreviewCondition
     progress: AdminPreviewProgress
     scan_balance: AdminPreviewBalance
+
+
+# ── console v2 detail blocks (§6.3) ─────────────────────────────────────────
+
+
+class AdminPlanSnapshot(UTCModel):
+    """``entitlement_service.Plan`` on the wire — also the audit before/after shape."""
+
+    plan: PlanName
+    plan_source: Optional[str] = None
+    expires_at: Optional[datetime] = None
+    scan_credits: Optional[int] = None
+    purchased_credits: int = 0
+    free_monthly: int
+    override_keys: List[str] = Field(default_factory=list)
+
+
+class AdminPlanChange(UTCModel):
+    """The newest plan-affecting audit row (Plan card: "last change")."""
+
+    at: datetime
+    actor: Optional[str] = None
+    action: str
+    reason: Optional[str] = None
+    audit_id: str
+
+
+class AdminPlanBlock(AdminPlanSnapshot):
+    last_change: Optional[AdminPlanChange] = None
+
+
+class AdminAccountBlock(UTCModel):
+    status: StatusName
+    purge_at: Optional[datetime] = None
+    last_active: Optional[date] = None
+    last_active_kind: Optional[LastActiveKind] = None
+    last_login_at: Optional[datetime] = None
+    token_version: int
+    admin_locked_until: Optional[datetime] = None
+
+
+class AdminScansBlock(UTCModel):
+    scan_credits: Optional[int] = None
+    purchased_credits: int = 0
+    free_monthly: int
+    free_scans_reset_at: Optional[datetime] = None
+    used_7d: int = 0
+    used_4wk: int = 0
+    today_count: int = 0
+    daily_limit: int
+    cooldown_seconds: int
+
+
+class AdminActivityRow(UTCModel):
+    """One line of the merged Activity list: audit rows, sessions, scans, the last login."""
+
+    at: datetime
+    kind: Literal["audit", "session", "scan", "login"]
+    summary: str
+    actor: Optional[str] = None
+    audit_id: Optional[str] = None
 
 
 # ── audit ───────────────────────────────────────────────────────────────────
@@ -486,6 +564,11 @@ class AdminUserDetailResponse(UTCModel):
     preview: AdminPreview
     recent_audit: List[AuditEntry]
     usage: UserUsageResponse
+    # ── console v2 §6.3 ──
+    plan: AdminPlanBlock
+    account: AdminAccountBlock
+    scans: AdminScansBlock
+    activity: List[AdminActivityRow] = Field(default_factory=list)
 
 
 # ── mutations (spec §4.5, §7, §8, §13) ───────────────────────────────────────
@@ -687,3 +770,123 @@ class AdminCampaignImportResponse(CampaignImportResponse):
     retired_campaign_id: Optional[str] = None
     planned_hunts_deleted: int = 0
     arcs_preview: Optional[List[ArcPreview]] = None
+
+
+# ── console v2 mutations (§6.4) ─────────────────────────────────────────────
+
+PlanTarget = Literal["unlimited", "topup", "remove_unlimited"]
+BULK_MAX = 100
+
+
+class PlanChangeRequest(OptionalStepUpBody):
+    """``POST /admin/users/{id}/plan``; the bulk request extends it with ``user_ids``."""
+
+    target: PlanTarget
+    expires_at: Optional[datetime] = None   # unlimited only; None = never
+    credits: Optional[int] = None           # topup only; ≥ 1
+
+    @model_validator(mode="after")
+    def _fields_match_target(self) -> "PlanChangeRequest":
+        if self.target == "topup":
+            if self.credits is None or self.credits < 1:
+                raise ValueError("topup needs credits ≥ 1")
+        elif self.credits is not None:
+            raise ValueError("credits only applies to topup")
+        if self.target != "unlimited" and self.expires_at is not None:
+            raise ValueError("expires_at only applies to unlimited")
+        if self.expires_at is not None and self.expires_at <= datetime.now(timezone.utc):
+            raise ValueError("expires_at must be in the future")
+        return self
+
+
+class PlanChangeResponse(UTCModel):
+    user_id: str
+    before: AdminPlanSnapshot
+    after: AdminPlanSnapshot
+    skipped: bool = False
+    audit_id: Optional[str] = None  # None when skipped (no audit row)
+    replayed: bool = False          # a repeated Idempotency-Key answered from the audit row
+
+
+class BulkSkipped(UTCModel):
+    user_id: str
+    why: str
+
+
+class BulkFailed(UTCModel):
+    user_id: str
+    error: str
+
+
+def _user_ids_field() -> Any:
+    return Field(min_length=1, max_length=BULK_MAX)
+
+
+class BulkPlanChangeRequest(PlanChangeRequest):
+    """``POST /admin/users/plan`` — one transaction per user."""
+
+    user_ids: List[str] = _user_ids_field()
+
+
+class BulkPlanChangeResponse(UTCModel):
+    applied: List[PlanChangeResponse] = Field(default_factory=list)
+    skipped: List[BulkSkipped] = Field(default_factory=list)
+    failed: List[BulkFailed] = Field(default_factory=list)
+
+
+class BulkStateRequest(StepUpBody):
+    """``POST /admin/users/state`` — soft-delete or restore many."""
+
+    user_ids: List[str] = _user_ids_field()
+    action: Literal["delete", "restore"]
+
+
+class BulkStateResponse(UTCModel):
+    applied: List[AdminUserStateResponse] = Field(default_factory=list)
+    skipped: List[BulkSkipped] = Field(default_factory=list)
+    failed: List[BulkFailed] = Field(default_factory=list)
+
+
+class BulkPurgeRequest(DryRunBody):
+    """``POST /admin/users/purge`` — dry run lists the tables; apply needs password + the typed count."""
+
+    user_ids: List[str] = _user_ids_field()
+    confirm_count: Optional[int] = None
+
+
+class BulkPurgePreviewRow(UTCModel):
+    user_id: str
+    tables: Dict[str, int]
+
+
+class BulkPurgeResponse(UTCModel):
+    """One shape for both legs: ``preview`` on a dry run, the three groups on apply."""
+
+    dry_run: bool
+    preview: List[BulkPurgePreviewRow] = Field(default_factory=list)
+    applied: List[PurgeResponse] = Field(default_factory=list)
+    skipped: List[BulkSkipped] = Field(default_factory=list)
+    failed: List[BulkFailed] = Field(default_factory=list)
+
+
+# ── console v2 settings (§4.5, §6.4, §6.5) ──────────────────────────────────
+
+
+class SettingRow(UTCModel):
+    key: str
+    label: str
+    group: Literal["scanner", "accounts", "switches"]
+    type: Literal["int", "seconds", "bool", "csv"]
+    value: Any
+    default: Any
+    source: Literal["console", "env", "code"]
+    tier: Literal["standard", "destructive"]
+    warning: Optional[str] = None
+    updated_at: Optional[datetime] = None
+    updated_by: Optional[str] = None
+
+
+class SettingUpdateRequest(OptionalStepUpBody):
+    """``PATCH /admin/settings/{key}``: ``value`` null (or absent) resets to the env / code value."""
+
+    value: Optional[Any] = None

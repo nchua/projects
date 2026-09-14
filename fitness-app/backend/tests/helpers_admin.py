@@ -212,6 +212,47 @@ def _purge_past_grace(ctx: MutationContext) -> Call:
     )
 
 
+def _plan(target: str, **fields: Any):
+    """Change plan cases (console v2 §6.4). ``remove_unlimited`` grants first so there is a row to revoke."""
+    def build(ctx: MutationContext) -> Call:
+        body: Dict[str, Any] = {"target": target, "reason": "test plan change", **fields}
+        if target == "remove_unlimited":
+            grant_admin(ctx.db, ctx.target.id, es.KEY_UNLIMITED, True)
+            ctx.db.commit()
+        if target == "remove_unlimited" or int(fields.get("credits") or 0) > 50:
+            body["password"] = ctx.password
+        return Call("POST", f"/admin/users/{ctx.target.id}/plan", body)
+    return build
+
+
+def _bulk_plan(ctx: MutationContext) -> Call:
+    return Call(
+        "POST", "/admin/users/plan",
+        {"user_ids": [ctx.target.id], "target": "unlimited", "reason": "test bulk plan"},
+    )
+
+
+def _bulk_state(ctx: MutationContext) -> Call:
+    return Call("POST", "/admin/users/state", _step_up(ctx, user_ids=[ctx.target.id], action="delete"))
+
+
+def _bulk_purge_apply(ctx: MutationContext) -> Call:
+    soft_delete(ctx.db, ctx.target, days_ago=40)
+    return Call(
+        "POST", "/admin/users/purge",
+        _step_up(ctx, user_ids=[ctx.target.id], dry_run=False, confirm_count=1, reason="bulk purge test"),
+    )
+
+
+def _setting(key: str, value: Any, destructive: bool):
+    def build(ctx: MutationContext) -> Call:
+        body: Dict[str, Any] = {"value": value, "reason": "test setting"}
+        if destructive:
+            body["password"] = ctx.password
+        return Call("PATCH", f"/admin/settings/{key}", body)
+    return build
+
+
 def _product_create(ctx: MutationContext) -> Call:
     return Call("POST", "/admin/products", product_body(f"com.test.{ctx.tag}"), expect=201)
 
@@ -242,6 +283,16 @@ MUTATIONS: List[MutationCase] = [
     MutationCase("purge_past_grace", "user.purge", ("POST", "/admin/users/{user_id}/purge"), True, _purge_past_grace),
     MutationCase("product_create", "product.upsert", ("POST", "/admin/products"), False, _product_create),
     MutationCase("product_deactivate", "product.upsert", ("PATCH", "/admin/products/{product_id}"), True, _product_deactivate),
+    # ── console v2 (§6.4) ──
+    MutationCase("plan_unlimited", "user.plan_change", ("POST", "/admin/users/{user_id}/plan"), False, _plan("unlimited")),
+    MutationCase("plan_topup_small", "user.plan_change", ("POST", "/admin/users/{user_id}/plan"), False, _plan("topup", credits=20)),
+    MutationCase("plan_topup_large", "user.plan_change", ("POST", "/admin/users/{user_id}/plan"), True, _plan("topup", credits=60)),
+    MutationCase("plan_remove_unlimited", "user.plan_change", ("POST", "/admin/users/{user_id}/plan"), True, _plan("remove_unlimited")),
+    MutationCase("bulk_plan", "user.plan_change", ("POST", "/admin/users/plan"), False, _bulk_plan),
+    MutationCase("bulk_state_delete", "user.soft_delete", ("POST", "/admin/users/state"), True, _bulk_state),
+    MutationCase("bulk_purge_apply", "user.purge", ("POST", "/admin/users/purge"), True, _bulk_purge_apply),
+    MutationCase("setting_standard", "settings.update", ("PATCH", "/admin/settings/{key}"), False, _setting("FREE_MONTHLY_SCANS", 5, False)),
+    MutationCase("setting_destructive", "settings.update", ("PATCH", "/admin/settings/{key}"), True, _setting("PURGE_GRACE_DAYS", 45, True)),
 ]
 
 DESTRUCTIVE = [case for case in MUTATIONS if case.destructive]

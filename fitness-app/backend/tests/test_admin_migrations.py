@@ -21,11 +21,11 @@ from tests.helpers_migrations import (
     upgrade_all,
 )
 
-CHAIN = ["admin_schema", "admin_seed_backfill", "purchase_verification"]
+CHAIN = ["admin_schema", "admin_seed_backfill", "purchase_verification", "console_v2"]
 
-NEW_TABLES = {"admin_audit_log", "products", "user_entitlements"}
+NEW_TABLES = {"admin_audit_log", "products", "user_entitlements", "app_settings"}
 NEW_COLUMNS = {
-    "users": {"is_admin", "token_version", "admin_failed_logins", "admin_locked_until"},
+    "users": {"is_admin", "token_version", "admin_failed_logins", "admin_locked_until", "last_login_at"},
     "purchase_records": {"verified", "environment", "original_transaction_id", "purchase_date"},
 }
 UNLIMITED = "com.nickchua.fitnessapp.scan_unlimited"
@@ -55,13 +55,14 @@ def test_alembic_has_exactly_one_head():
     cfg = Config(str(BACKEND / "alembic.ini"))
     cfg.set_main_option("script_location", str(BACKEND / "alembic"))
     heads = ScriptDirectory.from_config(cfg).get_heads()
-    assert heads == ["purchase_verification"]
+    assert heads == ["console_v2"]
 
 
 def test_chain_is_linear_from_quest_drop():
     assert load_migration("admin_schema").down_revision == "v3_drop_quest_tables"
     assert load_migration("admin_seed_backfill").down_revision == "admin_schema"
     assert load_migration("purchase_verification").down_revision == "admin_seed_backfill"
+    assert load_migration("console_v2").down_revision == "purchase_verification"
 
 
 def test_already_applied_schema_is_a_noop(engine):
@@ -94,13 +95,14 @@ def test_purchase_records_user_id_is_nullable_after_upgrade(engine):
 
 def test_pre_verification_rows_read_unverified_after_upgrade(engine):
     downgrade_all(engine, CHAIN)
-    upgrade_all(engine, CHAIN[:-1])
+    verification = CHAIN.index("purchase_verification")
+    upgrade_all(engine, CHAIN[:verification])
     with engine.begin() as conn:
         conn.execute(sa.text(
             "INSERT INTO purchase_records (id, product_id, transaction_id, credits_added, purchase_type, created_at) "
             "VALUES ('pr-old', 'com.nickchua.fitnessapp.scan_20', '1000000777', 20, 'consumable', :now)"
         ), {"now": datetime.now(timezone.utc)})
-    upgrade_all(engine, CHAIN[-1:])
+    upgrade_all(engine, CHAIN[verification:])
     with engine.connect() as conn:
         row = conn.execute(sa.text(
             "SELECT verified, environment, original_transaction_id, purchase_date FROM purchase_records WHERE id = 'pr-old'"
@@ -163,3 +165,23 @@ def test_seed_products_and_backfill_unlimited(engine):
     with engine.connect() as conn:
         assert conn.execute(sa.text("SELECT count(*) FROM products")).scalar() == 3
         assert conn.execute(sa.text("SELECT count(*) FROM user_entitlements")).scalar() == 2
+
+
+def test_console_v2_settings_table_and_login_column(engine):
+    """``app_settings`` (key PK, JSON value) and ``users.last_login_at`` (nullable) — console v2 §6.7."""
+    downgrade_all(engine, CHAIN)
+    upgrade_all(engine, CHAIN)
+    insp = sa.inspect(engine)
+    settings_cols = {c["name"]: c for c in insp.get_columns("app_settings")}
+    assert set(settings_cols) == {"key", "value", "updated_at", "updated_by"}
+    assert insp.get_pk_constraint("app_settings")["constrained_columns"] == ["key"]
+    assert settings_cols["value"]["nullable"] is False and settings_cols["updated_by"]["nullable"] is True
+    users_cols = {c["name"]: c for c in insp.get_columns("users")}
+    assert users_cols["last_login_at"]["nullable"] is True
+    with engine.begin() as conn:
+        conn.execute(sa.text(
+            "INSERT INTO app_settings (key, value, updated_at) VALUES ('FREE_MONTHLY_SCANS', '5', :now)"
+        ), {"now": datetime.now(timezone.utc)})
+    upgrade_all(engine, CHAIN)  # idempotent re-run keeps the row
+    with engine.connect() as conn:
+        assert conn.execute(sa.text("SELECT count(*) FROM app_settings")).scalar() == 1

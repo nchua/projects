@@ -2,23 +2,26 @@
 Entitlements, per-user scan limits, and the product catalog
 (control-plane spec §6).
 
-Resolution: newest active per-user row → global default from ``Settings``.
+Resolution: newest active per-user row → global default via
+``settings_service`` (``app_settings`` row → ``Settings`` env / code).
 ``scan_balances.has_unlimited`` stays the one boolean the scanner reads under
 its row lock; :func:`sync_unlimited_flag` is its only writer and runs inside
 the caller's transaction holding that lock.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.elements import ColumnElement
 
-from app.core.config import settings
-from app.core.utils import ensure_utc
+from app.core.utils import ensure_utc, to_naive_utc
 from app.models.entitlement import EntitlementSource, Product, ProductKind, UserEntitlement
 from app.models.scan_balance import ScanBalance
+from app.services import settings_service
 
 KEY_UNLIMITED = "scans.unlimited"
 KEY_DAILY_LIMIT = "scans.daily_limit"
@@ -73,12 +76,12 @@ class ScanLimits:
     free_monthly: int
 
 
-def default_scan_limits() -> ScanLimits:
-    """Global defaults, read from ``settings`` at call time (tests patch them)."""
+def default_scan_limits(db: Session) -> ScanLimits:
+    """Global defaults through the resolver (console row → ``settings`` at call time)."""
     return ScanLimits(
-        daily_limit=int(settings.DAILY_SCREENSHOT_LIMIT),
-        cooldown_seconds=int(settings.COOLDOWN_SECONDS),
-        free_monthly=int(settings.FREE_MONTHLY_SCANS),
+        daily_limit=int(settings_service.get(db, "DAILY_SCREENSHOT_LIMIT")),
+        cooldown_seconds=int(settings_service.get(db, "COOLDOWN_SECONDS")),
+        free_monthly=int(settings_service.get(db, "FREE_MONTHLY_SCANS")),
     )
 
 
@@ -105,6 +108,18 @@ def is_active(row: UserEntitlement, now: datetime) -> bool:
         return False
     expires = ensure_utc(row.expires_at)
     return expires is None or expires > now
+
+
+def active_clauses(now: datetime) -> Tuple[ColumnElement, ...]:
+    """SQL twin of :func:`is_active` — for the admin list's correlated subqueries.
+
+    Compares ``expires_at`` against a naive UTC ``now`` (SQLite stores naive
+    datetimes); Python-side readers keep using :func:`is_active`.
+    """
+    return (
+        UserEntitlement.revoked_at.is_(None),
+        or_(UserEntitlement.expires_at.is_(None), UserEntitlement.expires_at > to_naive_utc(now)),
+    )
 
 
 def active_entitlements(db: Session, user_id: str, keys: Iterable[str]) -> List[UserEntitlement]:
@@ -148,9 +163,9 @@ def is_entitled(db: Session, user_id: str, key: str) -> bool:
     return bool(resolve(db, user_id, key))
 
 
-def effective_limits(db: Session, user_id: str) -> ScanLimits:
-    """Per-user overrides overlaid on the global defaults (one indexed query)."""
-    base = default_scan_limits()
+def effective_limits(db: Session, user_id: str, *, base: Optional[ScanLimits] = None) -> ScanLimits:
+    """Per-user overrides overlaid on the global defaults (one indexed query; pass ``base`` to reuse them)."""
+    base = base or default_scan_limits(db)
     values: Dict[str, Any] = {}
     for row in active_entitlements(db, user_id, [KEY_DAILY_LIMIT, KEY_COOLDOWN, KEY_FREE_MONTHLY]):
         values.setdefault(row.key, row.value)
@@ -159,6 +174,115 @@ def effective_limits(db: Session, user_id: str) -> ScanLimits:
         cooldown_seconds=int(values.get(KEY_COOLDOWN, base.cooldown_seconds)),
         free_monthly=int(values.get(KEY_FREE_MONTHLY, base.free_monthly)),
     )
+
+
+# ── the plan model (console v2 spec §3, §6.1) ────────────────────────────────
+
+PLAN_UNLIMITED = "unlimited"
+PLAN_OVERRIDE = "override"
+PLAN_CREDITS = "credits"
+PLAN_FREE = "free"
+# Display / sort order of the four plans (``sort=plan`` ascending).
+PLAN_ORDER: Tuple[str, ...] = (PLAN_UNLIMITED, PLAN_OVERRIDE, PLAN_CREDITS, PLAN_FREE)
+# The keys whose active row makes a hunter "Override" (§3.1), in display order.
+OVERRIDE_KEYS: Tuple[str, ...] = (KEY_FREE_MONTHLY, KEY_DAILY_LIMIT, KEY_COOLDOWN)
+PLAN_KEYS: Tuple[str, ...] = (KEY_UNLIMITED,) + OVERRIDE_KEYS
+
+
+@dataclass(frozen=True)
+class Plan:
+    """The derived plan of one hunter — the single definition every surface uses (§3)."""
+
+    plan: str                              # unlimited | override | credits | free
+    plan_source: Optional[str]             # unlimited only: purchase | admin_grant | backfill
+    expires_at: Optional[datetime]         # unlimited only: the active row's expiry
+    scan_credits: Optional[int]            # None when no balance row exists yet
+    purchased_credits: int                 # max(0, credits - effective free_monthly)
+    free_monthly: int                      # effective (override-aware) free grant
+    override_keys: Tuple[str, ...]         # active override keys, even under Unlimited
+
+
+def plan_snapshot(plan: Plan) -> Dict[str, Any]:
+    """JSON-safe dict of a ``Plan`` for audit ``before`` / ``after`` and responses."""
+    data = asdict(plan)
+    data["override_keys"] = list(plan.override_keys)
+    return data
+
+
+def unlimited_source(row: UserEntitlement) -> str:
+    """``purchase`` when the row cites a receipt, else the row's own source (§3.1)."""
+    return EntitlementSource.PURCHASE.value if row.purchase_record_id else str(row.source)
+
+
+def _newest_active_by_key(rows: Iterable[UserEntitlement], now: datetime) -> Dict[str, UserEntitlement]:
+    """``rows`` newest-first → the newest active row per key (the §6.1 rule)."""
+    newest: Dict[str, UserEntitlement] = {}
+    for row in rows:
+        if row.key not in newest and is_active(row, now):
+            newest[row.key] = row
+    return newest
+
+
+def _plan_from(newest: Dict[str, UserEntitlement], credits: Optional[int], default_free: int) -> Plan:
+    free_row = newest.get(KEY_FREE_MONTHLY)
+    free_monthly = int(free_row.value) if free_row is not None else default_free
+    override_keys = tuple(k for k in OVERRIDE_KEYS if k in newest)
+    purchased = max(0, int(credits or 0) - free_monthly)
+    unlimited = newest.get(KEY_UNLIMITED)
+    if unlimited is not None and bool(unlimited.value):
+        plan, source, expires = PLAN_UNLIMITED, unlimited_source(unlimited), ensure_utc(unlimited.expires_at)
+    elif override_keys:
+        plan, source, expires = PLAN_OVERRIDE, None, None
+    elif purchased > 0:
+        plan, source, expires = PLAN_CREDITS, None, None
+    else:
+        plan, source, expires = PLAN_FREE, None, None
+    return Plan(
+        plan=plan,
+        plan_source=source,
+        expires_at=expires,
+        scan_credits=credits,
+        purchased_credits=purchased,
+        free_monthly=free_monthly,
+        override_keys=override_keys,
+    )
+
+
+def plans_for(db: Session, user_ids: Sequence[str], *, default_free: Optional[int] = None) -> Dict[str, Plan]:
+    """``Plan`` for every id in three queries — entitlements, balances, the
+    global free monthly (pass ``default_free`` when already resolved) — never
+    one per user (§6.1). Unknown ids get the Free plan."""
+    ids = list(dict.fromkeys(user_ids))
+    if not ids:
+        return {}
+    now = _utcnow()
+    if default_free is None:
+        default_free = int(settings_service.get(db, "FREE_MONTHLY_SCANS"))
+    rows = (
+        db.query(UserEntitlement)
+        .filter(
+            UserEntitlement.user_id.in_(ids),
+            UserEntitlement.key.in_(PLAN_KEYS),
+            UserEntitlement.revoked_at.is_(None),
+        )
+        .order_by(UserEntitlement.created_at.desc(), UserEntitlement.id.desc())
+        .all()
+    )
+    by_user: Dict[str, List[UserEntitlement]] = {}
+    for row in rows:
+        by_user.setdefault(row.user_id, []).append(row)
+    credits: Dict[str, int] = dict(
+        db.query(ScanBalance.user_id, ScanBalance.scan_credits).filter(ScanBalance.user_id.in_(ids)).all()
+    )
+    return {
+        user_id: _plan_from(_newest_active_by_key(by_user.get(user_id, []), now), credits.get(user_id), default_free)
+        for user_id in ids
+    }
+
+
+def plan_for(db: Session, user_id: str) -> Plan:
+    """The derived plan of one hunter (§3.1)."""
+    return plans_for(db, [user_id])[user_id]
 
 
 def get_or_create_balance(

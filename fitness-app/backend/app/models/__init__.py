@@ -3,6 +3,7 @@
 from app.models.achievement import AchievementDefinition, UserAchievement
 from app.models.activity import DailyActivity
 from app.models.admin import AdminAuditLog
+from app.models.app_setting import AppSetting
 from app.models.bodyweight import BodyweightEntry
 from app.models.campaign import (
     Campaign,
@@ -94,6 +95,7 @@ __all__ = [
     "NotificationPreference",
     "NotificationType",
     "AdminAuditLog",
+    "AppSetting",
     "Product",
     "ProductKind",
     "UserEntitlement",

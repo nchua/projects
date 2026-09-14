@@ -114,10 +114,10 @@ class TestGrantRevoke:
 
 
 class TestEffectiveLimits:
-    def test_defaults_come_from_settings_at_call_time(self, monkeypatch):
+    def test_defaults_come_from_settings_at_call_time(self, db, monkeypatch):
         monkeypatch.setattr(settings, "DAILY_SCREENSHOT_LIMIT", 7)
         monkeypatch.setattr(settings, "COOLDOWN_SECONDS", 3)
-        limits = es.default_scan_limits()
+        limits = es.default_scan_limits(db)  # no app_settings row: the resolver falls through
         assert (limits.daily_limit, limits.cooldown_seconds) == (7, 3)
 
     def test_daily_limit_override_enforced_in_precheck(self, db, create_test_user):

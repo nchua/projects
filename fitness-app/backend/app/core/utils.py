@@ -2,7 +2,7 @@
 Core utility functions
 """
 from datetime import date, datetime, timezone
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 
 def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
@@ -16,6 +16,11 @@ def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt
+
+
+def split_csv(value: Optional[str]) -> List[str]:
+    """``"a, b,,c"`` → ``["a", "b", "c"]`` — the one csv tokenizer (settings, list filters)."""
+    return [t.strip() for t in (value or "").split(",") if t.strip()]
 
 
 def utcnow() -> datetime:
