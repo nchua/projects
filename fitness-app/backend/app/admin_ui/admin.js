@@ -29,7 +29,7 @@
   var AUDIT_ACTIONS = [
     'session.create', 'admin.bootstrap', 'credits.adjust', 'entitlement.grant', 'entitlement.revoke',
     'campaign.import', 'user.soft_delete', 'user.restore', 'user.purge', 'product.upsert',
-    'maintenance.family_backfill', 'maintenance.purge_sweep', 'maintenance.seed_achievements'
+    'maintenance.family_backfill', 'maintenance.purge_sweep', 'maintenance.seed_achievements', 'user.plan_change', 'settings.update'
   ];
   var DESTRUCTIVE_ACTIONS = ['entitlement.revoke', 'user.soft_delete', 'user.restore', 'user.purge', 'maintenance.purge_sweep'];
   var SEARCH_DEBOUNCE = 250;
@@ -260,13 +260,10 @@
     var letter = rankLetter(rank);
     return '<div class="av ' + (extra || '') + ' r-' + letter.toLowerCase() + '">' + esc(letter) + '</div>';
   }
-  function creditsChip(hasUnlimited, credits) {
-    return hasUnlimited ? chip('∞ unlimited', 'gold') : chip((credits === null || credits === undefined ? 0 : num(credits)) + ' credits', 'cyan');
-  }
   function actionChip(action) {
     var cls = 'cyan';
     if (DESTRUCTIVE_ACTIONS.indexOf(action) >= 0) cls = 'red';
-    else if (action === 'entitlement.grant') cls = 'gold';
+    else if (action === 'entitlement.grant' || action === 'user.plan_change') cls = 'gold';
     else if (action === 'session.create' || action === 'admin.bootstrap') cls = 'dim';
     else if (/^maintenance\./.test(action) || action === 'product.upsert') cls = 'green';
     return chip(action, cls);
@@ -297,13 +294,6 @@
     if (u.status === 'deleted') return chip('Deleted' + (u.deleted_at ? ' · ' + Math.max(0, grace - daysSince(u.deleted_at)) + ' d' : ''), 'orange');
     if (u.status === 'inactive') return chip('Inactive', 'dim');
     return chip('Active', 'green');
-  }
-  function stateChips(u) {
-    var out = '';
-    if (u.is_admin) out += chip('Admin', 'gold') + ' ';
-    if (u.is_deleted) out += chip('Deleted' + (u.deleted_at ? ' · ' + ago(u.deleted_at) : ''), 'red');
-    else out += chip('Active', 'green');
-    return out;
   }
   function auditActor(a) { return esc(a.actor_user_id ? shortId(a.actor_user_id) : 'system'); }
   function auditTarget(a) {
@@ -862,9 +852,10 @@
     var hasOverride = overrides.some(function (o) { return o.row; });
     var lastActive = p.last_workout_date || null;
 
-    var chips = stateChips(u) + ' ' + (p.rank ? chip(rankLetter(p.rank) + '-rank · Lv ' + p.level, 'cyan') : '') + ' ' +
-      creditsChip(b.has_unlimited, b.exists ? b.scan_credits : 0) + ' ' +
-      (integ.whoop && integ.whoop.connected ? chip('WHOOP', 'orange') : '') + ' ' + (hasOverride ? chip('Override', 'gold') : '');
+    var pt = planTarget(d);
+    var chips = planChip(pt, !u.is_deleted) + ' ' + statusChip(pt) + ' ' + (u.is_admin ? chip('Admin', 'gold') + ' ' : '') +
+      (p.rank ? chip(rankLetter(p.rank) + '-rank · Lv ' + p.level, 'cyan') : '') + ' ' +
+      (integ.whoop && integ.whoop.connected ? chip('WHOOP', 'orange') : '') + ' ' + (hasOverride && pt.plan !== 'override' ? chip('Override', 'gold') : '');
 
     var html = backHeader('<span class="cnt">' + esc(u.id) + '</span>');
     html += '<div class="ihead">' + avatar(p.rank) + '<div class="mid"><div class="nm">' + esc(u.username || u.email) + '</div>' +
@@ -879,16 +870,14 @@
       (u.admin_locked_until ? kv('ADMIN LOCKOUT', esc(fmtDT(u.admin_locked_until)), 'bad') : '') +
       kv('TOKEN VERSION', esc(u.token_version), 'm') + '</div>';
 
-    var scansActs = u.is_deleted ? '' : '<div class="acts"><button type="button" class="btn" data-action="act" data-act="credits">− / + CREDITS</button>' +
-      (unlimitedRows.length ? '<button type="button" class="btn danger" data-action="act" data-act="revoke-unlimited" data-id="' + esc(unlimitedRows[0].id) + '">REVOKE UNLIMITED</button>' :
-        '<button type="button" class="btn gold" data-action="act" data-act="grant-unlimited">GRANT UNLIMITED</button>') + '</div>';
+    var scansActs = u.is_deleted ? '' : '<div class="acts"><button type="button" class="btn primary" data-action="act" data-act="change-plan" data-id="' + esc(u.id) + '">CHANGE PLAN</button><button type="button" class="btn" data-action="act" data-act="credits">− / + CREDITS</button></div>';
     var drift = b.has_unlimited !== (unlimitedRows.length > 0);
     var scans = '<div class="card c-scans' + (drift ? ' warn' : '') + '">' + sl('SCANS', u.is_deleted ? ro('frozen while deleted') : '') +
       kv('SCAN_CREDITS', b.exists ? esc(num(b.scan_credits)) : 'no balance row yet', b.exists ? '' : 'm') +
       kv('HAS_UNLIMITED', esc(String(!!b.has_unlimited)) + (unlimitedRows.length ? ' · ' + esc(unlimitedRows[0].source) : ''), b.has_unlimited ? 'ov' : 'm') +
       kv('FREE RESET', b.free_scans_reset_at ? esc(fmtDate(b.free_scans_reset_at)) : '—', b.free_scans_reset_at ? '' : 'm') +
       kv('USED · 4 WK', esc(num(sumWeeks(d.usage && d.usage.scans && d.usage.scans.by_week, 'scans', 4)))) +
-      (drift ? '<div class="hint warn">Drift: the cached flag disagrees with the entitlement rows. ' + (b.has_unlimited ? 'Grant unlimited to add the missing row, or a revoke from the audit trail.' : 'Revoke or re-grant to resync.') + '</div>' : '') +
+      (drift ? '<div class="hint warn">Drift: the cached flag disagrees with the entitlement rows. Change plan (Unlimited, or Remove Unlimited) resyncs it.</div>' : '') +
       scansActs + '</div>';
 
     var ent = '<div class="card c-ent">' + sl('ENTITLEMENTS', ro('override · default')) +
@@ -1099,12 +1088,165 @@
       override_keys: pl.override_keys || [], status: acc.status, last_active: acc.last_active, last_active_kind: acc.last_active_kind, rank: d.progress && d.progress.rank, level: d.progress && d.progress.level
     };
   }
-  // Change plan for one or many rows (AdminUserRow shapes) — spec §5.2 (drawer lands with the next commit).
-  function openChangePlan(rows) {
-    if (rows.length === 1) go('hunters/' + encodeURIComponent(rows[0].id));
-  }
   function bulkStateSpec(rows, action) { return { title: action === 'delete' ? 'SOFT-DELETE' : 'RESTORE', who: plural(rows.length, 'hunter'), intro: sysline('NOT YET', 'Bulk ' + action + ' lands with the next commit.', 'guard'), validate: function () { return 'Not available yet.'; } }; }
   function bulkPurgeSpec(rows) { return { title: 'PURGE', who: plural(rows.length, 'hunter'), danger: true, intro: sysline('NOT YET', 'Bulk purge lands with the next commit.', 'guard'), validate: function () { return 'Not available yet.'; } }; }
+
+  // ── change plan (spec §5.2, bulk §5.4) ──────────────────────────────────
+
+  var EXPIRY_PRESETS = [['never', 'Never'], ['30', 'In 30 days'], ['90', 'In 90 days'], ['custom', 'Custom date']];
+  var TOPUP_PRESETS = [20, 50];
+  var TARGET_META = {
+    unlimited: { title: 'Unlimited', line: 'grant scans.unlimited · expiry Never by default' },
+    topup: { title: 'Top up credits', line: 'add purchased credits · they wait underneath Unlimited' },
+    remove_unlimited: { title: 'Remove Unlimited', line: 'revoke the grant · purchased credits stay · step-up' }
+  };
+
+  // The expiry the drawer will send: null = never, an ISO instant, or undefined while a custom date is blank / invalid.
+  function expiryFor(v) {
+    if (v.expires === 'never') return null;
+    if (v.expires === 'custom') {
+      var c = v.expires_at ? parseDate(v.expires_at) : null;
+      if (!c) return undefined;
+      c.setHours(23, 59, 59, 0);
+      return c.toISOString();
+    }
+    var d = new Date();
+    d.setDate(d.getDate() + (parseInt(v.expires, 10) || 0));
+    return d.toISOString();
+  }
+  function planLabel(u) {
+    if (u.plan === 'unlimited') return 'unlimited · ' + (PLAN_SOURCE[u.plan_source] || u.plan_source || '?') + (u.plan_expires_at ? ' · exp ' + fmtDate(u.plan_expires_at) : '');
+    if (u.plan === 'override') return 'override · ' + num(u.scan_credits === null || u.scan_credits === undefined ? 0 : u.scan_credits) + ' credits';
+    if (u.plan === 'credits') return 'credits · ' + num(u.scan_credits);
+    return 'free · ' + num(u.scan_credits === null || u.scan_credits === undefined ? u.free_monthly : u.scan_credits) + ' / ' + num(u.free_monthly);
+  }
+  // What one hunter's row becomes under the chosen target — the client twin of the server's skip rules (§3.2, §7.4 v2.1).
+  function planOutcome(u, v) {
+    var credits = u.scan_credits === null || u.scan_credits === undefined ? 0 : Number(u.scan_credits);
+    if (v.target === 'unlimited') {
+      var exp = expiryFor(v);
+      var expLabel = exp === null ? 'never' : exp ? 'exp ' + fmtDate(exp) : 'exp ?';
+      if (u.plan === 'unlimited') {
+        if (u.plan_source !== 'admin_grant') return { change: false, why: 'already unlimited by ' + (PLAN_SOURCE[u.plan_source] || u.plan_source) };
+        var sameExp = (exp === null && !u.plan_expires_at) || (exp && u.plan_expires_at && fmtDate(exp) === fmtDate(u.plan_expires_at));
+        if (sameExp) return { change: false, why: 'already unlimited' };
+        var longer = exp === null || (u.plan_expires_at && parseDate(exp) > parseDate(u.plan_expires_at));
+        return { change: true, after: 'unlimited · admin · ' + expLabel, note: longer ? 'extend' : 'shorten' };
+      }
+      return { change: true, after: 'unlimited · admin · ' + expLabel };
+    }
+    if (v.target === 'topup') {
+      var n = parseInt(v.credits, 10) || 0;
+      if (u.plan === 'unlimited') return { change: true, after: planLabel(u) + ' · +' + n + ' credits underneath' };
+      if (u.plan === 'override') return { change: true, after: 'override · ' + num(credits + n) + ' credits' };
+      return { change: true, after: 'credits · ' + num(credits + n) };
+    }
+    if (u.plan !== 'unlimited') return { change: false, why: 'not unlimited' };
+    var purchased = Number(u.purchased_credits) || 0;
+    return { change: true, after: purchased > 0 ? 'credits · ' + num(credits) : 'free · ' + num(credits) + ' / ' + num(u.free_monthly), guard: u.plan_source === 'purchase', note: u.plan_source === 'purchase' ? 'purchase-sourced' : '' };
+  }
+  function hunterName(u) { return u.username || u.email || shortId(u.id); }
+  function rowsWho(rows) {
+    if (rows.length === 1) return (rows[0].username ? rows[0].username + ' · ' : '') + rows[0].email;
+    return plural(rows.length, 'hunter') + ' · ' + rows.slice(0, 3).map(hunterName).join(', ') + (rows.length > 3 ? ', +' + (rows.length - 3) : '');
+  }
+  function rowsList(rows) {
+    if (rows.length < 2) return '';
+    return '<div class="dr-rows">' + rows.map(function (u) {
+      return '<div class="drow"><span class="nm">' + esc(hunterName(u)) + '</span><span class="em">' + esc(u.email) + '</span><span class="chips">' + planChip(u) + statusChip(u) + '</span></div>';
+    }).join('') + '</div>';
+  }
+  // The three result groups a bulk route answers (§5.4): ✓ changed · – skipped · ✕ failed.
+  function bulkResult(rows, r, describe) {
+    var byId = {};
+    rows.forEach(function (u) { byId[u.id] = u; });
+    var name = function (id) { return byId[id] ? hunterName(byId[id]) : shortId(id); };
+    var group = function (title, cls, items, line) {
+      return '<div class="rgroup ' + cls + '"><div class="rt">' + esc(title) + ' · ' + items.length + '</div>' + (items.length ? items.map(function (x) { return '<div class="rrow"><span class="nm">' + esc(name(x.user_id)) + '</span><span class="d">' + line(x) + '</span></div>'; }).join('') : '<div class="rrow none">none</div>') + '</div>';
+    };
+    var applied = (r.applied || []).filter(function (x) { return !x.skipped; });
+    var skipped = (r.skipped || []).concat((r.applied || []).filter(function (x) { return x.skipped; }).map(function (x) { return { user_id: x.user_id, why: 'skipped by the server' }; }));
+    return group('✓ changed', 'ok', applied, describe) + group('– skipped', 'skip', skipped, function (x) { return esc(x.why); }) + group('✕ failed', 'fail', r.failed || [], function (x) { return esc(x.error); });
+  }
+
+  function changePlanSpec(rows) {
+    var single = rows.length === 1;
+    var anyUnlimited = rows.some(function (u) { return u.plan === 'unlimited'; });
+    var alreadyCount = function (t) {
+      if (t === 'unlimited') return rows.filter(function (u) { return u.plan === 'unlimited'; }).length;
+      if (t === 'remove_unlimited') return rows.filter(function (u) { return u.plan !== 'unlimited'; }).length;
+      return 0;
+    };
+    var outcomes = function (v) { return rows.map(function (u) { return { row: u, out: planOutcome(u, v) }; }); };
+    var changing = function (v) { return outcomes(v).filter(function (o) { return o.out.change; }); };
+    var target = function (v, key) {
+      var meta = TARGET_META[key], on = v.target === key, disabled = key === 'remove_unlimited' && !anyUnlimited;
+      var already = alreadyCount(key);
+      var cur = key === 'remove_unlimited' ? (disabled ? 'no one is unlimited' : 'step-up') : already ? already + ' already' : '';
+      return '<label class="plan' + (on ? ' on' : '') + (disabled ? ' off' : '') + '"><input type="radio" name="target" value="' + key + '" data-field="target"' + (on ? ' checked' : '') + (disabled ? ' disabled' : '') + '><span class="rad"></span>' +
+        '<span class="pt"><span class="t">' + esc(meta.title) + '</span><span class="d">' + esc(meta.line) + '</span></span><span class="cur">' + esc(cur) + '</span></label>';
+    };
+    return {
+      title: 'CHANGE PLAN', who: rowsWho(rows), rows: rows,
+      values: { target: 'unlimited', expires: 'never', expires_at: '', credits: 20 },
+      fields: function (v) {
+        var html = '<div class="plans" role="radiogroup" aria-label="Target plan">' + target(v, 'unlimited') + target(v, 'topup') + target(v, 'remove_unlimited') + '</div>';
+        if (v.target === 'unlimited') {
+          html += fieldRow('Expires', 'admin_grant row', '<div class="radios">' + EXPIRY_PRESETS.map(function (p) {
+            return '<label class="' + (v.expires === p[0] ? 'on' : '') + '"><input type="radio" name="expires" value="' + p[0] + '" data-field="expires"' + (v.expires === p[0] ? ' checked' : '') + '>' + esc(p[1]) + '</label>';
+          }).join('') + '</div>') + (v.expires === 'custom' ? '<input class="field top" type="date" data-field="expires_at" value="' + esc(v.expires_at) + '" min="' + esc(todayISO()) + '" aria-label="Expiry date">' : '');
+        } else if (v.target === 'topup') {
+          html += fieldRow('Credits', 'purchased · never removed by a plan change', '<div class="presets">' + TOPUP_PRESETS.map(function (n) { return '<button type="button"' + (Number(v.credits) === n ? ' class="on"' : '') + ' data-action="dr" data-op="preset" data-n="' + n + '">+' + n + '</button>'; }).join('') + '</div>' +
+            '<input class="field" type="number" min="1" step="1" inputmode="numeric" data-field="credits" value="' + esc(v.credits) + '" aria-label="Credits to add">');
+        } else {
+          var guarded = rows.filter(function (u) { return u.plan === 'unlimited' && u.plan_source === 'purchase'; });
+          html += guarded.length ? sysline('GUARD · PURCHASE-SOURCED', esc(guarded.map(hunterName).join(', ')) + (guarded.length === 1 ? ' holds' : ' hold') + ' Unlimited from an App Store purchase. Revoking it survives Restore Purchases — the hunter loses what they paid for until you grant again.', 'guard') : '';
+        }
+        return html;
+      },
+      onAction: function (op, el, v) { if (op === 'preset') v.credits = parseInt(el.dataset.n, 10); },
+      diff: function (v) {
+        return '<div class="pdiff">' + outcomes(v).map(function (o) {
+          var u = o.row, out = o.out;
+          return '<div class="prow2' + (out.change ? '' : ' same') + '"><span class="k">' + esc(hunterName(u)) + '</span><span class="v"><span class="before">' + esc(planLabel(u)) + '</span> → ' +
+            (out.change ? '<span class="after">' + esc(out.after) + '</span>' + (out.note ? ' ' + muted('· ' + out.note) : '') : '<span class="skip">unchanged (skipped: ' + esc(out.why) + ')</span>') + '</span></div>';
+        }).join('') + '</div>';
+      },
+      validate: function (v) {
+        if (v.target === 'unlimited' && expiryFor(v) === undefined) return 'Pick the custom expiry date.';
+        if (v.target === 'unlimited' && v.expires === 'custom' && parseDate(expiryFor(v)) <= new Date()) return 'The expiry must be in the future (the server answers 422 otherwise).';
+        if (v.target === 'topup' && (!Number.isInteger(Number(v.credits)) || Number(v.credits) < 1)) return 'Credits must be a whole number ≥ 1.';
+        if (!changing(v).length) return single ? 'Nothing would change — ' + outcomes(v)[0].out.why + '.' : 'Nothing would change for the selected hunters.';
+        return null;
+      },
+      password: function (v) { return v.target === 'remove_unlimited' || (v.target === 'topup' && Number(v.credits) > CREDITS_STEP_UP); },
+      confirmLabel: function (v) { return single ? 'CHANGE PLAN' : 'APPLY TO ' + plural(changing(v).length, 'HUNTER'); },
+      hint: 'Logged as user.plan_change with the before / after plan. Purchased credits are never touched by a plan change; Remove Unlimited and a top-up over ' + CREDITS_STEP_UP + ' need your password.',
+      submit: function (v, reason, password, dr) {
+        var body = { target: v.target };
+        if (v.target === 'unlimited') body.expires_at = expiryFor(v);
+        if (v.target === 'topup') body.credits = parseInt(v.credits, 10);
+        stepUp(body, reason, password);
+        if (single) return post(userPath(rows[0].id, '/plan'), body, { 'Idempotency-Key': dr.idem });
+        body.user_ids = changing(v).map(function (o) { return o.row.id; });
+        return post('/admin/users/plan', body);
+      },
+      onSuccess: function (r, v) {
+        if (single) {
+          var after = r.after ? { plan: r.after.plan, plan_source: r.after.plan_source, plan_expires_at: r.after.expires_at, scan_credits: r.after.scan_credits, purchased_credits: r.after.purchased_credits, free_monthly: r.after.free_monthly } : null;
+          return { message: r.skipped ? 'Plan unchanged · skipped' : 'Plan changed' + (after ? ' · ' + planLabel(after) : '') + (r.replayed ? ' (replayed)' : ''), auditId: r.audit_id, auditLookup: { target_type: 'user', target_id: rows[0].id } };
+        }
+        var first = (r.applied || []).filter(function (x) { return x.audit_id; })[0];
+        var skippedClient = outcomes(v).filter(function (o) { return !o.out.change; }).map(function (o) { return { user_id: o.row.id, why: o.out.why }; });
+        var merged = { applied: r.applied || [], skipped: (r.skipped || []).concat(skippedClient), failed: r.failed || [] };
+        return {
+          message: 'Plan changed · ' + plural(merged.applied.filter(function (x) { return !x.skipped; }).length, 'hunter'), auditId: first ? first.audit_id : null, auditLookup: { action: 'user.plan_change' },
+          keepOpen: true, render: bulkResult(rows, merged, function (x) { return esc(planLabel({ plan: x.before.plan, plan_source: x.before.plan_source, plan_expires_at: x.before.expires_at, scan_credits: x.before.scan_credits, free_monthly: x.before.free_monthly })) + ' → <span class="after">' + esc(planLabel({ plan: x.after.plan, plan_source: x.after.plan_source, plan_expires_at: x.after.expires_at, scan_credits: x.after.scan_credits, free_monthly: x.after.free_monthly })) + '</span>' + (x.audit_id ? ' ' + muted('· audit ' + shortId(x.audit_id)) : ''); })
+        };
+      }
+    };
+  }
+  function openChangePlan(rows) { if (rows.length) openDrawer(changePlanSpec(rows)); }
 
   // ── ⌘K palette (spec §4.1) ─────────────────────────────────────────────
 
@@ -1169,28 +1311,32 @@
 
   // ── drawer engine (spec §10.4) ─────────────────────────────────────────
   //
-  // A spec declares: title, who, danger/gold, intro, values, fields(v),
-  // diff(v), validate(v) → problem, minReason(v), confirmLabel(v),
-  // password (true | fn(v) → destructive tier), confirmEmail,
-  // dryRun{label, applyLabel, run, render, canApply}, submit(v, reason,
-  // password, drawer), onSuccess(result) → {message, auditId | auditLookup, after}.
-  // The engine owns the reason / typed-email / password inputs (data-meta),
-  // the gate, the error above Confirm, the toast, and the refresh.
+  // A spec declares: title, who, rows (bulk: the row list on top), danger/gold,
+  // intro, values, fields(v), diff(v), validate(v) → problem, minReason(v),
+  // confirmLabel(v), password (true | fn(v) → destructive tier), confirmEmail
+  // or typed{label, expected, type, placeholder} (a typed unlock, hidden on a
+  // dry run), dryRun{label, applyLabel, run, render, canApply}, submit(v,
+  // reason, password, drawer), onSuccess(result, v) → {message, auditId |
+  // auditLookup, after, keepOpen + render (bulk: the per-row result stays
+  // on screen behind one Done button)}. The engine owns the reason / typed /
+  // password inputs (data-meta), the gate, the error above Confirm, the
+  // toast, and the refresh — every success re-renders from a fresh fetch.
 
   function openDrawer(spec) {
+    if (spec.confirmEmail && !spec.typed) spec.typed = { label: 'Type the email to confirm', expected: spec.confirmEmail, type: 'email', placeholder: spec.confirmEmail };
     drawer = {
       spec: spec, values: spec.values || {}, reason: pendingReason || '', password: '', typedEmail: '',
-      error: null, busy: false, result: null, idem: uuid(), opener: document.activeElement
+      error: null, busy: false, result: null, done: false, idem: uuid(), opener: document.activeElement
     };
     pendingReason = '';
     drawerEl.className = 'drawer' + (spec.danger ? ' danger' : '');
     drawerEl.innerHTML = '<div class="grab"></div><button type="button" class="x" data-action="drawer-close" aria-label="Close">✕</button>' +
-      sl(spec.title, '', spec.danger ? 'danger' : '') + '<div class="who">' + esc(spec.who || '') + '</div>' +
+      sl(spec.title, '', spec.danger ? 'danger' : '') + '<div class="who">' + esc(spec.who || '') + '</div>' + (spec.rows ? rowsList(spec.rows) : '') +
       '<div class="dr-intro">' + (spec.intro || '') + '</div><div class="dr-fields"></div><div class="dr-diff diffs"></div><div class="dr-result"></div>' +
-      '<div class="flabel">Reason <b>required · written to audit</b></div><textarea class="field area" data-meta="reason" placeholder="Why — this line is the audit row" rows="2">' + esc(drawer.reason) + '</textarea>' +
-      '<div class="dr-email" hidden><div class="flabel">Type the email to confirm</div><input class="field" type="email" data-meta="typedEmail" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="' + esc(spec.confirmEmail || '') + '"><div class="hint err dr-email-hint"></div></div>' +
+      '<div class="dr-form"><div class="flabel">Reason <b>required · written to audit</b></div><textarea class="field area" data-meta="reason" placeholder="Why — this line is the audit row" rows="2">' + esc(drawer.reason) + '</textarea>' +
+      '<div class="dr-typed" hidden><div class="flabel">' + esc(spec.typed ? spec.typed.label : '') + '</div><input class="field" type="' + esc(spec.typed && spec.typed.type || 'text') + '" data-meta="typedEmail" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="' + (spec.typed && spec.typed.type === 'email' ? 'email' : 'numeric') + '" placeholder="' + esc(spec.typed ? spec.typed.placeholder || '' : '') + '"><div class="hint err dr-typed-hint"></div></div>' +
       '<div class="dr-pass" hidden><div class="flabel">Re-enter admin password <b>destructive tier</b></div><input class="field" type="password" data-meta="password" autocomplete="current-password" placeholder="••••••••"></div>' +
-      '<div class="dr-hint hint">' + (spec.hint || '') + '</div><div class="dr-error"></div>' +
+      '<div class="dr-hint hint">' + (spec.hint || '') + '</div></div><div class="dr-error"></div>' +
       '<div class="acts dr-actions"><button type="button" class="btn ghost" data-action="drawer-close">CANCEL</button><button type="button" class="btn ' + (spec.danger ? 'danger solid' : spec.gold ? 'gold solid' : 'primary') + '" data-action="drawer-confirm"></button></div>';
     drawerEl.hidden = false;
     scrimEl.hidden = false;
@@ -1236,7 +1382,7 @@
     var d = drawer, s = d.spec, v = d.values, ph = phase();
     var pw = s.password;
     var needsPass = ph !== 'dry' && (pw === true || (typeof pw === 'function' && !!pw(v)));   // dry runs never take a password
-    var emailOk = !s.confirmEmail || d.typedEmail.trim().toLowerCase() === String(s.confirmEmail).trim().toLowerCase();
+    var emailOk = !s.typed || ph === 'dry' || d.typedEmail.trim().toLowerCase() === String(s.typed.expected).trim().toLowerCase();
     var minReason = s.minReason ? s.minReason(v) : 3;
     var problem = s.validate ? s.validate(v, d) : null;
     var applyBlocked = ph === 'apply' && !!s.dryRun.canApply && !s.dryRun.canApply(d.result);
@@ -1250,19 +1396,33 @@
   function updateDrawer() {
     if (!drawer) return;
     var d = drawer, s = d.spec, g = drawerGate();
+    if (d.done) return;   // the result phase: only Done remains
     $('.dr-diff', drawerEl).innerHTML = s.diff ? s.diff(d.values, d) : '';
     $('.dr-pass', drawerEl).hidden = !g.needsPass;
-    $('.dr-email', drawerEl).hidden = !s.confirmEmail;
-    if (s.confirmEmail) {
-      var eh = $('.dr-email-hint', drawerEl);
-      eh.textContent = g.emailOk ? 'Matches — unlocked' : 'Type ' + s.confirmEmail + ' exactly to unlock';
-      eh.className = 'hint dr-email-hint ' + (g.emailOk ? 'ok' : 'err');
+    $('.dr-typed', drawerEl).hidden = !s.typed || g.ph === 'dry';
+    if (s.typed) {
+      var eh = $('.dr-typed-hint', drawerEl);
+      eh.textContent = g.emailOk ? 'Matches — unlocked' : 'Type ' + s.typed.expected + ' exactly to unlock';
+      eh.className = 'hint dr-typed-hint ' + (g.emailOk ? 'ok' : 'err');
     }
     $('.dr-hint', drawerEl).innerHTML = g.problem ? '<span class="err">' + esc(g.problem) + '</span>' : (s.hint || '') + (g.minReason > 3 ? ' <span class="warn">Reason must be at least ' + g.minReason + ' characters.</span>' : '');
     $('.dr-error', drawerEl).innerHTML = d.error ? sysline('HTTP ' + (d.error.status || 'NETWORK'), esc(d.error.message), 'err') : '';
     var btn = $('[data-action="drawer-confirm"]', drawerEl);
     btn.textContent = d.busy ? '…' : g.label;
     btn.disabled = g.blocked;
+  }
+
+  // Bulk result phase (§5.2, §5.4): fields and inputs go, the three groups stay, one Done button.
+  function showDrawerResult(html) {
+    var d = drawer;
+    d.done = true; d.busy = false;
+    $('.dr-fields', drawerEl).innerHTML = '';
+    $('.dr-diff', drawerEl).innerHTML = '';
+    $('.dr-intro', drawerEl).innerHTML = '';
+    $('.dr-form', drawerEl).hidden = true;
+    $('.dr-error', drawerEl).innerHTML = '';
+    $('.dr-result', drawerEl).innerHTML = html;
+    $('.dr-actions', drawerEl).innerHTML = '<button type="button" class="btn primary" data-action="drawer-close">DONE</button>';
   }
 
   function renderResult() {
@@ -1286,8 +1446,9 @@
         var out = s.onSuccess ? s.onSuccess(res, d.values) : {};
         return Promise.resolve(out.auditId || (out.auditLookup ? latestAuditId(out.auditLookup) : null)).then(function (auditId) {
           if (drawer !== d) return;
-          closeDrawer(true);
           toast(out.message || 'Done', auditId, out.auditLookup ? auditHref(out.auditLookup) : undefined);
+          if (out.keepOpen) { showDrawerResult(out.render || ''); state.selected = {}; renderRoute(); return; }   // bulk: the per-row result stays; the screen refreshes behind it
+          closeDrawer(true);
           if (out.after) out.after(); else onRoute();   // re-render whatever screen the drawer opened from
         });
       });
@@ -1360,33 +1521,6 @@
       onSuccess: function (r) {
         return { message: 'Credits ' + r.scan_credits_before + ' → ' + r.scan_credits_after + (r.replayed ? ' (replayed)' : ''), auditId: r.audit_id, auditLookup: auditFor(d) };
       }
-    };
-  }
-
-  function grantUnlimitedSpec(d) {
-    var credits = d.balance.exists ? d.balance.scan_credits : 0;
-    return {
-      title: 'GRANT UNLIMITED', who: who(d), gold: true,
-      diff: function () {
-        return diffRow('HAS_UNLIMITED', String(!!d.balance.has_unlimited), 'true') + diffRow('SCAN_CREDITS', credits, credits + ' (kept)', { same: true }) +
-          diffRow('ENTITLEMENT', '—', 'scans.unlimited · admin_grant');
-      },
-      confirmLabel: function () { return 'CONFIRM GRANT'; },
-      hint: 'Adds an admin_grant row for scans.unlimited and syncs the cached flag. Revoke is destructive tier (password) from the same card.',
-      submit: function (v, reason) { return post(userPath(d.user.id, '/entitlements'), stepUp({ key: 'scans.unlimited', value: true }, reason)); },
-      onSuccess: function () { return { message: 'Unlimited granted · ' + d.user.email, auditLookup: auditFor(d) }; }
-    };
-  }
-
-  function revokeUnlimitedSpec(d, row) {
-    return {
-      title: 'REVOKE UNLIMITED', who: who(d), danger: true, password: true,
-      intro: row.source === 'purchase' ? sysline('GUARD · PURCHASE-SOURCED', 'This row came from an App Store purchase (' + esc(shortId(row.purchase_record_id)) + '). Revoking it survives Restore Purchases — the hunter loses what they paid for until you grant again.', 'guard') : '',
-      diff: function () { return diffRow('HAS_UNLIMITED', 'true', 'false', { down: true }) + diffRow('ENTITLEMENT ' + shortId(row.id), row.source + ' · active', 'revoked', { down: true }); },
-      confirmLabel: function () { return 'REVOKE'; },
-      hint: 'Logged as entitlement.revoke. The row stays in history with revoked_at set.',
-      submit: function (v, reason, password) { return post(userPath(d.user.id, '/entitlements/' + encodeURIComponent(row.id) + '/revoke'), stepUp({}, reason, password)); },
-      onSuccess: function () { return { message: 'Unlimited revoked · ' + d.user.email, auditLookup: auditFor(d) }; }
     };
   }
 
@@ -1621,12 +1755,8 @@
 
   // Actions that read the open hunter's detail; the rest are fleet / catalog scoped.
   var DETAIL_SPECS = {
-    credits: creditsSpec, 'grant-unlimited': grantUnlimitedSpec, 'set-limits': setLimitsSpec, 'reset-limits': resetLimitsSpec,
-    'soft-delete': softDeleteSpec, restore: restoreSpec, purge: purgeSpec, 'import': importSpec,
-    'revoke-unlimited': function (d, el) {
-      var row = (d.entitlements || []).filter(function (e) { return e.id === el.dataset.id; })[0];
-      return row && revokeUnlimitedSpec(d, row);
-    }
+    credits: creditsSpec, 'set-limits': setLimitsSpec, 'reset-limits': resetLimitsSpec,
+    'soft-delete': softDeleteSpec, restore: restoreSpec, purge: purgeSpec, 'import': importSpec
   };
   var FLEET_SPECS = {
     backfill: backfillSpec, sweep: sweepSpec, seed: seedSpec,
