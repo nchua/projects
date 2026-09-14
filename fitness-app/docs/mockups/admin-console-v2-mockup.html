@@ -1,0 +1,481 @@
+<title>ARISE Console v2</title>
+<style>
+  :root {
+    --system-primary: #00D4FF; --system-primary-dim: #00A8CC; --success-green: #33FF88; --gold: #FFD700;
+    --warning-red: #FF3333; --orange: #FF9500;
+    --bg-void: #0A0A0F; --bg-card: #1A1A24; --bg-elevated: #12121A; --bg-input: #252530;
+    --text-primary: #FFFFFF; --text-secondary: #A0A0B0; --text-muted: #606070;
+    --glass-border: rgba(255,255,255,0.06); --arise-border: rgba(0,212,255,0.20); --primary-010: rgba(0,212,255,0.10);
+    --rank-e: #8A8A99; --rank-d: #22C55E; --rank-c: #3B82F6; --rank-b: #9B4A9B; --rank-a: #FFD700; --rank-s: #FF3333;
+    --font-header: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+    --rail-w: 220px; --drawer-w: 400px;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-void); color: var(--text-primary); font-family: var(--font-header); font-size: 13px; font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: rgba(0,212,255,.15); -webkit-appearance: none; }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--system-primary); outline-offset: 2px; }
+  .mono { font-family: var(--font-mono); }
+  .mock-note { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; color: var(--text-muted); text-transform: uppercase; padding: 10px 16px; border-bottom: 1px solid var(--glass-border); background: var(--bg-elevated); display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+  .mock-note b { color: var(--system-primary); font-weight: 600; }
+  .mock-tabs { display: flex; gap: 6px; margin-left: auto; }
+  .mock-tabs button { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--glass-border); font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-secondary); min-height: 32px; }
+  .mock-tabs button[aria-selected="true"] { color: var(--system-primary); border-color: var(--arise-border); background: var(--primary-010); }
+
+  .app { display: grid; grid-template-columns: var(--rail-w) 1fr; min-height: calc(100vh - 41px); }
+  .rail { border-right: 1px solid var(--glass-border); padding: 18px 14px; display: flex; flex-direction: column; gap: 4px; background: var(--bg-elevated); }
+  .wm { font-family: var(--font-mono); font-size: 14px; font-weight: 700; letter-spacing: 3px; color: var(--system-primary); }
+  .wm-s { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--text-muted); margin: 2px 0 14px; }
+  .search { display: flex; align-items: center; gap: 8px; background: var(--bg-input); border: 1px solid var(--glass-border); border-radius: 8px; padding: 8px 10px; color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; margin-bottom: 12px; }
+  .search kbd { margin-left: auto; font-family: var(--font-mono); font-size: 9px; border: 1px solid var(--glass-border); border-radius: 4px; padding: 1px 5px; color: var(--text-muted); }
+  .rnav button { display: flex; align-items: center; gap: 10px; padding: 0 12px; height: 38px; width: 100%; border-radius: 9px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .8px; text-transform: uppercase; color: var(--text-secondary); text-align: left; }
+  .rnav button[aria-current="page"] { color: var(--system-primary); background: var(--primary-010); }
+  .rnav .n { margin-left: auto; color: var(--text-muted); font-size: 10px; }
+  .rfoot { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--glass-border); font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); display: flex; flex-direction: column; gap: 6px; }
+  .rfoot .ok { color: var(--success-green); }
+
+  .content { padding: 20px 22px 60px; min-width: 0; }
+  .screen[hidden] { display: none; }
+  .ph { display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+  .ph h1 { margin: 0; font-family: var(--font-mono); font-size: 18px; font-weight: 700; letter-spacing: 3px; }
+  .ph .sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+  .ph .acts { margin-left: auto; display: flex; gap: 8px; }
+  .btn { padding: 0 14px; height: 36px; border-radius: 8px; border: 1px solid var(--glass-border); background: var(--bg-input); font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-primary); display: inline-flex; align-items: center; gap: 6px; }
+  .btn.primary { border-color: var(--arise-border); background: var(--primary-010); color: var(--system-primary); }
+  .btn.ghost { background: none; color: var(--text-secondary); }
+  .btn.danger { color: var(--warning-red); border-color: rgba(255,51,51,.3); background: rgba(255,51,51,.06); }
+  .btn.sm { height: 30px; padding: 0 10px; font-size: 9.5px; }
+
+  .chip { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; padding: 3px 7px; border-radius: 4px; white-space: nowrap; vertical-align: middle; }
+  .chip.green { color: var(--success-green); background: rgba(51,255,136,.08); }
+  .chip.blue { color: var(--system-primary); background: var(--primary-010); }
+  .chip.amber { color: var(--orange); background: rgba(255,149,0,.10); }
+  .chip.red { color: var(--warning-red); background: rgba(255,51,51,.10); }
+  .chip.gold { color: var(--gold); background: rgba(255,215,0,.10); }
+  .chip.dim { color: var(--text-muted); background: var(--bg-input); }
+  .chip.act { cursor: pointer; border: 1px dashed transparent; }
+  .chip.act:hover { border-color: currentColor; }
+  .chip .src { opacity: .7; font-weight: 400; }
+
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  .fgroup { display: flex; gap: 4px; align-items: center; padding: 4px; background: var(--bg-elevated); border: 1px solid var(--glass-border); border-radius: 8px; }
+  .fgroup .lbl { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; color: var(--text-muted); text-transform: uppercase; padding: 0 6px; }
+  .fchip { height: 28px; padding: 0 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; letter-spacing: .5px; color: var(--text-secondary); text-transform: uppercase; }
+  .fchip[aria-pressed="true"] { color: var(--text-primary); background: var(--bg-input); }
+  .views { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .views .lbl { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; color: var(--text-muted); text-transform: uppercase; }
+  .views .fchip { border: 1px solid var(--glass-border); }
+
+  .bulk { display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin-bottom: 10px; background: var(--primary-010); border: 1px solid var(--arise-border); border-radius: 10px; font-family: var(--font-mono); font-size: 11px; }
+  .bulk .cnt { color: var(--system-primary); font-weight: 700; }
+  .bulk .spacer { flex: 1; }
+
+  .tblwrap { overflow-x: auto; border: 1px solid var(--glass-border); border-radius: 12px; background: var(--bg-card); }
+  table { border-collapse: collapse; width: 100%; min-width: 980px; }
+  th { text-align: left; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); padding: 10px 12px; border-bottom: 1px solid var(--glass-border); font-weight: 600; white-space: nowrap; }
+  th.sort { color: var(--text-primary); }
+  th.sort::after { content: " ↓"; color: var(--system-primary); }
+  td { padding: 0 12px; height: 48px; border-bottom: 1px solid var(--glass-border); vertical-align: middle; white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  tr.sel td { background: rgba(0,212,255,.04); }
+  tbody tr:hover td { background: rgba(255,255,255,.02); }
+  td.num, th.num { text-align: right; font-family: var(--font-mono); }
+  .hunter { display: flex; align-items: center; gap: 10px; }
+  .av { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-family: var(--font-mono); font-weight: 700; font-size: 12px; background: var(--bg-input); flex: none; }
+  .hunter .nm { font-weight: 600; line-height: 1.2; }
+  .hunter .em { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); line-height: 1.2; }
+  .cred { font-family: var(--font-mono); color: var(--text-secondary); margin-left: 6px; font-size: 11px; }
+  .rel { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+  .rel.hot { color: var(--success-green); }
+  .rel.cold { color: var(--text-muted); }
+  .rowmenu { width: 30px; height: 30px; border-radius: 6px; color: var(--text-muted); font-size: 16px; line-height: 1; }
+  .rowmenu:hover { background: var(--bg-input); color: var(--text-primary); }
+  input[type="checkbox"] { accent-color: var(--system-primary); width: 15px; height: 15px; }
+  .tfoot { display: flex; align-items: center; gap: 12px; padding: 10px 12px; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); border-top: 1px solid var(--glass-border); }
+  .tfoot .pg { margin-left: auto; display: flex; gap: 6px; }
+
+  .stage { display: grid; grid-template-columns: 1fr var(--drawer-w); gap: 16px; align-items: start; }
+  .drawer { background: var(--bg-elevated); border: 1px solid var(--arise-border); border-radius: 14px; padding: 18px; position: sticky; top: 16px; }
+  .drawer h2 { margin: 0 0 2px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--system-primary); }
+  .drawer .who { font-size: 13px; color: var(--text-secondary); margin-bottom: 14px; }
+  .plans { display: grid; gap: 6px; margin-bottom: 14px; }
+  .plan { display: grid; grid-template-columns: 18px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--glass-border); background: var(--bg-card); text-align: left; min-height: 48px; }
+  .plan[aria-checked="true"] { border-color: var(--arise-border); background: var(--primary-010); }
+  .plan .rad { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--text-muted); }
+  .plan[aria-checked="true"] .rad { border-color: var(--system-primary); background: var(--system-primary); box-shadow: inset 0 0 0 3px var(--bg-card); }
+  .plan .t { font-weight: 600; }
+  .plan .d { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+  .plan .cur { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; color: var(--text-muted); text-transform: uppercase; }
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+  .field label { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); }
+  .field input, .field select, .field textarea { background: var(--bg-input); border: 1px solid var(--glass-border); border-radius: 8px; padding: 9px 10px; color: var(--text-primary); font: inherit; min-height: 38px; }
+  .field .row { display: flex; gap: 8px; }
+  .diff { font-family: var(--font-mono); font-size: 11px; background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; }
+  .diff .k { color: var(--text-muted); }
+  .diff .before { color: var(--text-muted); text-decoration: line-through; }
+  .diff .after { color: var(--success-green); }
+  .guard { font-family: var(--font-mono); font-size: 10.5px; padding: 10px 12px; border-left: 2px solid var(--orange); background: rgba(255,149,0,.05); border-radius: 0 8px 8px 0; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5; }
+  .guard b { color: var(--orange); }
+  .dacts { display: flex; gap: 8px; justify-content: flex-end; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .card { background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: 12px; padding: 14px 16px; }
+  .card h3 { margin: 0 0 10px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
+  .card h3 .r { margin-left: auto; display: flex; gap: 6px; }
+  .kv { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-top: 1px solid var(--glass-border); font-size: 12.5px; }
+  .kv:first-of-type { border-top: 0; padding-top: 0; }
+  .kv .k { color: var(--text-muted); font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .5px; text-transform: uppercase; }
+  .kv .v { text-align: right; font-family: var(--font-mono); font-size: 12px; }
+  .kv .v.m { color: var(--text-muted); }
+  .big { font-family: var(--font-mono); font-size: 26px; font-weight: 700; line-height: 1; }
+  .big small { font-size: 12px; color: var(--text-muted); font-weight: 400; margin-left: 6px; }
+  .hd { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin-bottom: 14px; background: var(--bg-elevated); border: 1px solid var(--glass-border); border-radius: 12px; flex-wrap: wrap; }
+  .hd .av { width: 44px; height: 44px; font-size: 18px; border-radius: 12px; }
+  .hd .nm { font-size: 17px; font-weight: 700; }
+  .hd .em { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+  .hd .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .hd .acts { margin-left: auto; display: flex; gap: 8px; }
+  .prow { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 8px 0; border-top: 1px solid var(--glass-border); font-family: var(--font-mono); font-size: 11px; }
+  .prow:first-of-type { border-top: 0; padding-top: 0; }
+  .prow .s { color: var(--text-muted); font-size: 10px; }
+  .prow .r { text-align: right; color: var(--success-green); font-weight: 600; }
+  details.diag { margin-top: 14px; border: 1px solid var(--glass-border); border-radius: 12px; background: var(--bg-elevated); }
+  details.diag summary { cursor: pointer; padding: 12px 16px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); list-style: none; display: flex; gap: 10px; align-items: center; min-height: 44px; }
+  details.diag summary::before { content: "▸"; color: var(--system-primary); }
+  details.diag[open] summary::before { content: "▾"; }
+  details.diag summary .meta { margin-left: auto; letter-spacing: 0; text-transform: none; }
+  details.diag .inner { padding: 0 16px 14px; color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+  .activity { margin-top: 14px; }
+  .actrow { display: grid; grid-template-columns: 110px 1fr auto; gap: 12px; padding: 8px 0; border-top: 1px solid var(--glass-border); font-size: 12px; }
+  .actrow:first-of-type { border-top: 0; }
+  .actrow .t { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); }
+  .actrow .who { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); }
+
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
+  a.tile { display: block; text-decoration: none; color: inherit; background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: 12px; padding: 14px 16px; min-height: 96px; position: relative; }
+  a.tile:hover { border-color: var(--arise-border); }
+  a.tile::after { content: "→"; position: absolute; right: 14px; top: 12px; color: var(--text-muted); font-family: var(--font-mono); }
+  a.tile .lbl { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); margin-top: 6px; }
+  a.tile .sub { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-secondary); margin-top: 3px; }
+  .c-green { color: var(--success-green); } .c-blue { color: var(--system-primary); } .c-gold { color: var(--gold); } .c-red { color: var(--warning-red); } .c-amber { color: var(--orange); } .c-dim { color: var(--text-secondary); }
+  .att { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 12px 0; border-top: 1px solid var(--glass-border); }
+  .att:first-of-type { border-top: 0; padding-top: 0; }
+  .att .t { font-size: 14px; }
+  .att .s { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); margin-top: 2px; }
+  .maint { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .srow { display: grid; grid-template-columns: 1.4fr 110px 110px 90px auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--glass-border); }
+  .srow:first-of-type { border-top: 0; padding-top: 0; }
+  .srow .k { font-weight: 600; }
+  .srow .k small { display: block; font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); font-weight: 400; margin-top: 2px; }
+  .srow .v { font-family: var(--font-mono); font-size: 13px; }
+  .srow .v.def { color: var(--text-muted); }
+  .shead { display: grid; grid-template-columns: 1.4fr 110px 110px 90px auto; gap: 12px; font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); padding-bottom: 8px; border-bottom: 1px solid var(--glass-border); margin-bottom: 4px; }
+  .sw { width: 34px; height: 20px; border-radius: 10px; background: var(--bg-input); position: relative; border: 1px solid var(--glass-border); }
+  .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--text-muted); }
+  .sw.on { background: rgba(51,255,136,.15); border-color: rgba(51,255,136,.3); }
+  .sw.on::after { left: 16px; background: var(--success-green); }
+
+  @media (max-width: 1100px) { .stage { grid-template-columns: 1fr; } .drawer { position: static; } .tiles { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 767px) { .app { grid-template-columns: 1fr; } .rail { display: none; } .grid2 { grid-template-columns: 1fr; } .content { padding: 16px 16px 60px; } .srow, .shead { grid-template-columns: 1fr auto; } .shead span:nth-child(n+3), .srow > *:nth-child(3), .srow > *:nth-child(4) { display: none; } }
+  @media (prefers-reduced-motion: no-preference) { .btn, .fchip, .plan { transition: background .12s, border-color .12s; } }
+</style>
+
+<div class="mock-note">
+  <span><b>Mockup</b> · console v2 spec §4 · example data, not prod</span>
+  <span>desktop 1280 · four screens</span>
+  <div class="mock-tabs" role="tablist" aria-label="Screens">
+    <button type="button" role="tab" data-tab="hunters" aria-selected="true">Hunters + Change plan</button>
+    <button type="button" role="tab" data-tab="detail" aria-selected="false">Hunter detail</button>
+    <button type="button" role="tab" data-tab="overview" aria-selected="false">Overview</button>
+    <button type="button" role="tab" data-tab="settings" aria-selected="false">Settings</button>
+  </div>
+</div>
+
+<div class="app">
+  <aside class="rail">
+    <div class="wm">ARISE</div>
+    <div class="wm-s">OWNER CONSOLE</div>
+    <div class="search">⌕ <span>jump to hunter…</span><kbd>⌘K</kbd></div>
+    <nav class="rnav" aria-label="Sections">
+      <button type="button" data-tab="hunters" aria-current="page">Hunters <span class="n">14</span></button>
+      <button type="button" data-tab="overview">Overview</button>
+      <button type="button" data-tab="audit">Audit</button>
+      <button type="button" data-tab="settings">Settings</button>
+      <button type="button" data-tab="catalog">Catalog <span class="n">3</span></button>
+    </nav>
+    <div class="rfoot">
+      <span>owner@example.com</span>
+      <span class="ok">session 12:41 left</span>
+      <span>build 2296316 · 09-12</span>
+    </div>
+  </aside>
+
+  <main class="content">
+
+    <!-- ── HUNTERS ── -->
+    <section class="screen" id="tab-hunters">
+      <div class="ph">
+        <h1>HUNTERS</h1>
+        <span class="sub">14 not deleted · 2 selected · sorted by last active</span>
+        <div class="acts"><button type="button" class="btn ghost">Export CSV</button><button type="button" class="btn">Columns</button></div>
+      </div>
+
+      <div class="filters">
+        <div class="fgroup"><span class="lbl">Status</span>
+          <button type="button" class="fchip" aria-pressed="true">Active</button>
+          <button type="button" class="fchip" aria-pressed="true">Inactive</button>
+          <button type="button" class="fchip" aria-pressed="false">Deleted</button>
+          <button type="button" class="fchip" aria-pressed="false">Purge-eligible</button>
+        </div>
+        <div class="fgroup"><span class="lbl">Plan</span>
+          <button type="button" class="fchip" aria-pressed="true">Free</button>
+          <button type="button" class="fchip" aria-pressed="true">Credits</button>
+          <button type="button" class="fchip" aria-pressed="true">Unlimited</button>
+          <button type="button" class="fchip" aria-pressed="true">Override</button>
+        </div>
+        <div class="fgroup"><span class="lbl">Joined</span>
+          <button type="button" class="fchip" aria-pressed="false">7 d</button>
+          <button type="button" class="fchip" aria-pressed="false">30 d</button>
+          <button type="button" class="fchip" aria-pressed="true">Any</button>
+        </div>
+        <div class="views"><span class="lbl">Views</span>
+          <button type="button" class="fchip">Paying</button>
+          <button type="button" class="fchip">Cleanup</button>
+          <button type="button" class="fchip">New this month</button>
+          <button type="button" class="fchip">+ Save</button>
+        </div>
+      </div>
+
+      <div class="bulk">
+        <span><span class="cnt">2</span> selected</span>
+        <button type="button" class="btn sm primary">Change plan…</button>
+        <button type="button" class="btn sm">Soft-delete</button>
+        <button type="button" class="btn sm ghost">Restore</button>
+        <button type="button" class="btn sm ghost" disabled title="only when every selected row is purge-eligible">Purge…</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn sm ghost">Clear</button>
+      </div>
+
+      <div class="stage">
+        <div class="tblwrap">
+          <table>
+            <thead><tr>
+              <th style="width:36px"><input type="checkbox" id="sel-all" aria-label="Select all"></th>
+              <th>Hunter</th><th>Plan</th><th>Status</th><th class="sort">Last active</th>
+              <th class="num">Scans · 4 wk</th><th class="num">Sessions</th><th>Rank</th><th>Joined</th><th></th>
+            </tr></thead>
+            <tbody>
+              <tr class="sel"><td><input type="checkbox" checked aria-label="Select row"></td>
+                <td><div class="hunter"><div class="av" style="color:var(--rank-a)">A</div><div><div class="nm">nick</div><div class="em">owner@example.com</div></div></div></td>
+                <td><span class="chip green act">∞ Unlimited <span class="src">· purchase</span></span></td>
+                <td><span class="chip green">Active</span></td>
+                <td><span class="rel hot">2 h ago</span></td>
+                <td class="num">31</td><td class="num">148</td><td class="mono">A · 27</td><td class="rel">2025-11-03</td>
+                <td><button type="button" class="rowmenu" aria-label="Row actions">⋯</button></td></tr>
+              <tr class="sel"><td><input type="checkbox" checked aria-label="Select row"></td>
+                <td><div class="hunter"><div class="av" style="color:var(--rank-c)">C</div><div><div class="nm">marcus_lifts</div><div class="em">marcus@example.com</div></div></div></td>
+                <td><span class="chip blue act">Credits <span class="src">· 42</span></span></td>
+                <td><span class="chip green">Active</span></td>
+                <td><span class="rel hot">yesterday</span></td>
+                <td class="num">12</td><td class="num">61</td><td class="mono">C · 14</td><td class="rel">2026-06-19</td>
+                <td><button type="button" class="rowmenu" aria-label="Row actions">⋯</button></td></tr>
+              <tr><td><input type="checkbox" aria-label="Select row"></td>
+                <td><div class="hunter"><div class="av" style="color:var(--rank-b)">B</div><div><div class="nm">jen.k</div><div class="em">jen@example.com</div></div></div></td>
+                <td><span class="chip green act">∞ Unlimited <span class="src">· admin · 30 d</span></span></td>
+                <td><span class="chip green">Active</span></td>
+                <td><span class="rel hot">3 d ago</span></td>
+                <td class="num">9</td><td class="num">33</td><td class="mono">B · 19</td><td class="rel">2026-07-02</td>
+                <td><button type="button" class="rowmenu" aria-label="Row actions">⋯</button></td></tr>
+              <tr><td><input type="checkbox" aria-label="Select row"></td>
+                <td><div class="hunter"><div class="av" style="color:var(--rank-d)">D</div><div><div class="nm">tommy</div><div class="em">tommy@example.com</div></div></div></td>
+                <td><span class="chip amber act">Override <span class="src">· daily 40</span></span></td>
+                <td><span class="chip green">Active</span></td>
+                <td><span class="rel">6 d ago</span></td>
+                <td class="num">27</td><td class="num">18</td><td class="mono">D · 8</td><td class="rel">2026-08-11</td>
+                <td><button type="button" class="rowmenu" aria-label="Row actions">⋯</button></td></tr>
+              <tr><td><input type="checkbox" aria-label="Select row"></td>
+                <td><div class="hunter"><div class="av" style="color:var(--rank-e)">E</div><div><div class="nm">— <span class="chip dim">no username</span></div><div class="em">sam.r@example.com</div></div></div></td>
+                <td><span class="chip dim act">Free <span class="src">· 1 / 3</span></span></td>
+                <td><span class="chip green">Active</span></td>
+                <td><span class="rel">12 d ago</span></td>
+                <td class="num">2</td><td class="num">4</td><td class="mono">E · 2</td><td class="rel">2026-08-30</td>
+                <td><button type="button" class="rowmenu" aria-label="Row actions">⋯</button></td></tr>
+              <tr><td><input type="checkbox" aria-label="Select row"></td>
+                <td><div class="hunter"><div class="av" style="color:var(--rank-e)">E</div><div><div class="nm">priya</div><div class="em">priya@example.com</div></div></div></td>
+                <td><span class="chip dim act">Free <span class="src">· 3 / 3</span></span></td>
+                <td><span class="chip dim">Inactive</span></td>
+                <td><span class="rel cold">41 d ago</span></td>
+                <td class="num">0</td><td class="num">7</td><td class="mono">E · 3</td><td class="rel">2026-07-21</td>
+                <td><button type="button" class="rowmenu" aria-label="Row actions">⋯</button></td></tr>
+              <tr><td><input type="checkbox" aria-label="Select row"></td>
+                <td><div class="hunter"><div class="av" style="color:var(--rank-e)">E</div><div><div class="nm">— <span class="chip dim">no username</span></div><div class="em">qa-bot-0417@example.com</div></div></div></td>
+                <td><span class="chip dim act">Free <span class="src">· 3 / 3</span></span></td>
+                <td><span class="chip dim">Inactive</span></td>
+                <td><span class="rel cold">never</span></td>
+                <td class="num">0</td><td class="num">0</td><td class="mono">E · 1</td><td class="rel">2026-05-04</td>
+                <td><button type="button" class="rowmenu" aria-label="Row actions">⋯</button></td></tr>
+            </tbody>
+          </table>
+          <div class="tfoot"><span>7 of 14 shown</span><span>·</span><span>#/hunters?status=active,inactive&amp;sort=last_active</span><div class="pg"><button type="button" class="btn sm ghost" disabled>← Prev</button><button type="button" class="btn sm ghost">Next →</button></div></div>
+        </div>
+
+        <aside class="drawer" aria-label="Change plan">
+          <h2>Change plan</h2>
+          <div class="who">2 hunters · nick, marcus_lifts</div>
+          <div class="plans" role="radiogroup" aria-label="Target plan">
+            <button type="button" class="plan" role="radio" aria-checked="true"><span class="rad"></span><span><div class="t">Unlimited</div><div class="d">grant scans.unlimited · optional expiry</div></span><span class="cur">1 already</span></button>
+            <button type="button" class="plan" role="radio" aria-checked="false"><span class="rad"></span><span><div class="t">Credits</div><div class="d">top up purchased credits by n</div></span><span class="cur">1 already</span></button>
+            <button type="button" class="plan" role="radio" aria-checked="false"><span class="rad"></span><span><div class="t">Remove Unlimited</div><div class="d">revoke the grant · purchased credits stay</div></span><span class="cur">step-up</span></button>
+          </div>
+          <div class="field"><label for="exp">Expires</label><div class="row"><select id="exp"><option>Never</option><option selected>In 30 days</option><option>In 90 days</option><option>Custom…</option></select></div></div>
+          <div class="diff">
+            <span class="k">nick</span><span><span class="before">unlimited · purchase</span> → unchanged (skipped: already unlimited)</span>
+            <span class="k">marcus_lifts</span><span><span class="before">credits · 42</span> → <span class="after">unlimited · admin · exp 2026-10-13</span></span>
+          </div>
+          <div class="field"><label for="reason">Reason</label><input id="reason" value="30-day trial for the launch group"></div>
+          <div class="guard"><b>Standard tier.</b> Granting needs a reason only. Removing Unlimited asks for your password here. Purchased credits are never touched by a plan change.</div>
+          <div class="dacts"><button type="button" class="btn ghost">Cancel</button><button type="button" class="btn primary">Apply to 1 hunter</button></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ── DETAIL ── -->
+    <section class="screen" id="tab-detail" hidden>
+      <div class="ph"><h1>HUNTER</h1><span class="sub">#/hunters/8f2c…431b</span></div>
+      <div class="hd">
+        <div class="av" style="color:var(--rank-c)">C</div>
+        <div>
+          <div class="nm">marcus_lifts</div>
+          <div class="em">marcus@example.com · 8f2c…9d1e · joined 2026-06-19 (86 d)</div>
+          <div class="chips"><span class="chip blue act">Credits · 42</span><span class="chip green">Active</span><span class="chip dim">WHOOP</span></div>
+        </div>
+        <div class="acts"><button type="button" class="btn primary">Change plan</button><button type="button" class="btn">⋯</button></div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h3>Plan <span class="r"><button type="button" class="btn sm primary">Change plan</button><button type="button" class="btn sm ghost">Set limits</button></span></h3>
+          <div class="big c-blue">Credits<small>42 purchased · above the free 3</small></div>
+          <div class="kv" style="margin-top:10px"><span class="k">Source</span><span class="v">2 × scan_20 · 1 × scan_50 (verified)</span></div>
+          <div class="kv"><span class="k">Overrides</span><span class="v m">none · daily 20 · cooldown 10 s · free 3</span></div>
+          <div class="kv"><span class="k">Last change</span><span class="v m">+20 credits · you · 09-08 · "apology for the scan bug"</span></div>
+        </div>
+        <div class="card">
+          <h3>Account <span class="r"><button type="button" class="btn sm ghost">Soft-delete</button></span></h3>
+          <div class="kv"><span class="k">Status</span><span class="v c-green">Active · last active yesterday (scan)</span></div>
+          <div class="kv"><span class="k">Last workout</span><span class="v">2026-09-10</span></div>
+          <div class="kv"><span class="k">Last login</span><span class="v">2026-09-12 07:14</span></div>
+          <div class="kv"><span class="k">Token version</span><span class="v m">1 · no admin lockout</span></div>
+        </div>
+        <div class="card">
+          <h3>Scans <span class="r"><button type="button" class="btn sm">− / + Credits</button></span></h3>
+          <div class="big">42<small>credits · free resets 09-28</small></div>
+          <div class="kv" style="margin-top:10px"><span class="k">Used</span><span class="v">4 this week · 12 in 4 wk</span></div>
+          <div class="kv"><span class="k">Today</span><span class="v">1 / 20 daily cap · cooldown 10 s</span></div>
+        </div>
+        <div class="card">
+          <h3>Purchases <span class="r"><span class="chip dim">read-only</span></span></h3>
+          <div class="prow"><span>scan_50 <span class="s">consumable</span></span><span class="r">+50</span><span class="s">2026-09-01 · txn 2000…0417</span><span class="s" style="text-align:right"><span class="chip green">verified · Production</span></span></div>
+          <div class="prow"><span>scan_20 <span class="s">consumable</span></span><span class="r">+20</span><span class="s">2026-07-14 · txn 2000…0088</span><span class="s" style="text-align:right"><span class="chip dim">unverified</span></span></div>
+          <div class="prow"><span>scan_20 <span class="s">consumable</span></span><span class="r">+20</span><span class="s">2026-06-20 · txn 2000…0021</span><span class="s" style="text-align:right"><span class="chip dim">unverified</span></span></div>
+        </div>
+      </div>
+
+      <details class="diag">
+        <summary>Diagnostics <span class="meta">Progress · Campaign · Integrations · Data health · Preview</span></summary>
+        <div class="inner">Level 14 · rank C · 61 sessions · 9 PRs · streak 4 · Campaign "Owner hybrid" arc 2 of 4 · WHOOP synced 3 h ago · 0 custom exercises without a family · Preview: today's hunt "Push A", load 0.82, condition 71.</div>
+      </details>
+
+      <div class="card activity">
+        <h3>Activity</h3>
+        <div class="actrow"><span class="t">09-12 07:14</span><span>Logged in</span><span class="who">hunter</span></div>
+        <div class="actrow"><span class="t">09-11 18:02</span><span>Scan · gym screenshot · 3 exercises</span><span class="who">hunter</span></div>
+        <div class="actrow"><span class="t">09-10 06:40</span><span>Session · Push A · 52 min</span><span class="who">hunter</span></div>
+        <div class="actrow"><span class="t">09-08 21:30</span><span>Credits +20 · "apology for the scan bug"</span><span class="who">you · audit 7c1a</span></div>
+        <div class="actrow"><span class="t">09-01 12:11</span><span>Purchase scan_50 · verified · Production</span><span class="who">App Store</span></div>
+      </div>
+    </section>
+
+    <!-- ── OVERVIEW ── -->
+    <section class="screen" id="tab-overview" hidden>
+      <div class="ph"><h1>OVERVIEW</h1><span class="sub">fleet · generated 10:52 · every number opens a view</span><div class="acts"><button type="button" class="btn">Refresh</button></div></div>
+      <div class="tiles">
+        <a class="tile" href="#/hunters?status=active"><div class="big c-green">9</div><div class="lbl">Active</div><div class="sub">of 14 not deleted · 2 new this week</div></a>
+        <a class="tile" href="#/hunters?status=inactive"><div class="big c-dim">5</div><div class="lbl">Inactive</div><div class="sub">no activity in 30 d</div></a>
+        <a class="tile" href="#/hunters?plan=unlimited"><div class="big c-gold">2</div><div class="lbl">Unlimited</div><div class="sub">1 purchase · 1 granted · 0 backfill</div></a>
+        <a class="tile" href="#/hunters?plan=credits"><div class="big c-blue">1</div><div class="lbl">Credits</div><div class="sub">42 purchased credits outstanding</div></a>
+        <a class="tile" href="#/hunters?status=deleted"><div class="big c-amber">114</div><div class="lbl">Deleted</div><div class="sub">purge in ≤ 30 d</div></a>
+        <a class="tile" href="#/hunters?status=purge_eligible"><div class="big c-red">190</div><div class="lbl">Purge-eligible</div><div class="sub">past the grace window</div></a>
+        <a class="tile" href="#/hunters?sort=scans_4wk&order=desc"><div class="big">81</div><div class="lbl">Scans · 4 wk</div><div class="sub">14 free · 36 paid · 31 unlimited</div></a>
+        <a class="tile" href="#/hunters?status=active&sort=last_active"><div class="big">5</div><div class="lbl">Sessions · this week</div><div class="sub">2026-W37 · 3 hunters</div></a>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <h3>Attention</h3>
+          <div class="att"><div><div class="t">190 accounts past the 30-day grace window</div><div class="s">select them in Hunters and purge, or enable the sweep in Settings</div></div><a class="btn sm" href="#/hunters?status=purge_eligible">Open</a></div>
+          <div class="att"><div><div class="t">109 exercises without a family</div><div class="s">0 custom of 565 · families drive prescriptions and gates</div></div><button type="button" class="btn sm">Backfill</button></div>
+          <div class="att"><div><div class="t">3 purchases in 30 d arrived without a signed receipt</div><div class="s">old builds · PURCHASE_REQUIRE_JWS is off</div></div><a class="btn sm" href="#/hunters?plan=credits">Open</a></div>
+        </div>
+        <div class="card">
+          <h3>Maintenance</h3>
+          <div class="maint"><button type="button" class="btn">Backfill families</button><button type="button" class="btn">Re-seed achievements</button><button type="button" class="btn danger">Purge sweep…</button></div>
+          <h3 style="margin-top:16px">Recent audit</h3>
+          <div class="actrow"><span class="t">10:41</span><span>user.plan_change · jen.k → unlimited 30 d</span><span class="who">you</span></div>
+          <div class="actrow"><span class="t">09-08</span><span>user.credits · marcus_lifts +20</span><span class="who">you</span></div>
+          <div class="actrow"><span class="t">09-07</span><span>settings.update · FREE_MONTHLY_SCANS 3 → 5</span><span class="who">you</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SETTINGS ── -->
+    <section class="screen" id="tab-settings" hidden>
+      <div class="ph"><h1>SETTINGS</h1><span class="sub">per-user override › console › env › code · every edit is audited</span></div>
+      <div class="card" style="margin-bottom:14px">
+        <h3>Scanner <span class="r"><span class="chip dim">standard · reason</span></span></h3>
+        <div class="shead"><span>Setting</span><span>Current</span><span>Default</span><span>Source</span><span></span></div>
+        <div class="srow"><div class="k">Free scans per month<small>FREE_MONTHLY_SCANS</small></div><div class="v">5</div><div class="v def">3</div><span class="chip blue">console</span><button type="button" class="btn sm">Edit</button></div>
+        <div class="srow"><div class="k">Daily scan cap<small>DAILY_SCREENSHOT_LIMIT</small></div><div class="v">20</div><div class="v def">20</div><span class="chip dim">code</span><button type="button" class="btn sm">Edit</button></div>
+        <div class="srow"><div class="k">Cooldown between scans<small>COOLDOWN_SECONDS</small></div><div class="v">10 s</div><div class="v def">10 s</div><span class="chip dim">code</span><button type="button" class="btn sm">Edit</button></div>
+        <div class="srow"><div class="k">Purchase credit cap / day<small>PURCHASE_MAX_CREDITS_PER_DAY</small></div><div class="v">100</div><div class="v def">100</div><span class="chip dim">code</span><button type="button" class="btn sm">Edit</button></div>
+        <div class="srow"><div class="k">Anthropic calls / day (fleet)<small>ANTHROPIC_DAILY_CALL_CEILING</small></div><div class="v">100</div><div class="v def">500</div><span class="chip amber">env</span><button type="button" class="btn sm">Edit</button></div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <h3>Accounts</h3>
+        <div class="shead"><span>Setting</span><span>Current</span><span>Default</span><span>Source</span><span></span></div>
+        <div class="srow"><div class="k">Inactive after<small>inactive_after_days</small></div><div class="v">30 d</div><div class="v def">30 d</div><span class="chip dim">code</span><button type="button" class="btn sm">Edit</button></div>
+        <div class="srow"><div class="k">Purge grace window<small>PURGE_GRACE_DAYS · must match /privacy</small></div><div class="v">30 d</div><div class="v def">30 d</div><span class="chip dim">code</span><button type="button" class="btn sm danger">Edit</button></div>
+      </div>
+      <div class="card">
+        <h3>Switches <span class="r"><span class="chip red">step-up</span></span></h3>
+        <div class="shead"><span>Switch</span><span>State</span><span>Default</span><span>Source</span><span></span></div>
+        <div class="srow"><div class="k">Screenshot processing<small>SCREENSHOT_PROCESSING_ENABLED</small></div><div class="v"><span class="sw on" role="img" aria-label="on"></span></div><div class="v def">on</div><span class="chip dim">code</span><button type="button" class="btn sm">Flip…</button></div>
+        <div class="srow"><div class="k">Require signed receipts<small>PURCHASE_REQUIRE_JWS · 3 unverified in 30 d</small></div><div class="v"><span class="sw" role="img" aria-label="off"></span></div><div class="v def">off</div><span class="chip dim">code</span><button type="button" class="btn sm">Flip…</button></div>
+        <div class="srow"><div class="k">Purge sweep on deploy<small>PURGE_SWEEP_ENABLED</small></div><div class="v"><span class="sw" role="img" aria-label="off"></span></div><div class="v def">off</div><span class="chip dim">code</span><button type="button" class="btn sm danger">Flip…</button></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  (function () {
+    var tabs = ['hunters', 'detail', 'overview', 'settings'];
+    function show(name) {
+      if (tabs.indexOf(name) < 0) return;
+      tabs.forEach(function (t) { document.getElementById('tab-' + t).hidden = t !== name; });
+      document.querySelectorAll('.mock-tabs [data-tab]').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.tab === name)); });
+      document.querySelectorAll('.rnav [data-tab]').forEach(function (b) {
+        var cur = b.dataset.tab === name || (name === 'detail' && b.dataset.tab === 'hunters');
+        if (cur) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+      });
+    }
+    document.addEventListener('click', function (e) {
+      var t = e.target.closest('[data-tab]');
+      if (t) { show(t.dataset.tab); return; }
+      var row = e.target.closest('tbody tr');
+      if (row && !e.target.closest('input, .chip, .rowmenu')) { show('detail'); }
+    });
+  })();
+</script>
