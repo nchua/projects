@@ -225,6 +225,26 @@ select.field { background-image: linear-gradient(45deg, transparent 50%, var(--t
 .skel.w40 { width: 40%; } .skel.w60 { width: 60%; } .skel.w80 { width: 80%; } .skel.tall { height: 26px; }
 .skel-rows .kv { border-top-color: transparent; }
 
+/* ---- overview (spec §4.2): eight tiles, each a link into a filtered Hunters view ---- */
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.tile { display: block; color: inherit; background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: 12px; padding: 14px 14px 12px; min-width: 0; position: relative; min-height: 92px; }
+a.tile:hover { border-color: var(--arise-border); background: rgba(0,212,255,.03); }
+a.tile::after { content: "→"; position: absolute; right: 12px; top: 10px; color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; }
+a.tile:hover::after { color: var(--system-primary); }
+.tile .big { font-family: var(--font-display); font-weight: 700; font-size: 26px; line-height: 1; color: var(--text-primary); }
+.tile .big.c { color: var(--system-primary); text-shadow: 0 0 10px rgba(0,212,255,.35); }
+.tile .big.g { color: var(--success-green); text-shadow: 0 0 10px rgba(51,255,136,.35); }
+.tile .big.y { color: var(--gold); text-shadow: 0 0 10px rgba(255,215,0,.3); }
+.tile .big.b { color: #7CB8FF; }
+.tile .big.o { color: var(--orange); }
+.tile .big.r { color: var(--warning-red); }
+.tile .big.d { color: var(--text-secondary); }
+.tile .lbl { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: .8px; color: var(--text-muted); text-transform: uppercase; margin-top: 8px; }
+.tile .sub { font-family: var(--font-mono); font-size: 9px; color: var(--text-secondary); margin-top: 2px; line-height: 1.4; }
+.att .a a { color: var(--text-primary); }
+.att .a a:hover { color: var(--system-primary); }
+@media (max-width: 1279px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
 /* ---- overview ---------------------------------------------------------- */
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
 .stat { background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: 12px; padding: 14px 14px 12px; min-width: 0; }

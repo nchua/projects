@@ -485,68 +485,88 @@
     });
   }
 
-  // ── overview ───────────────────────────────────────────────────────────
+  // ── overview — a launchpad (spec §4.2) ─────────────────────────────────
 
+  var TILE_SCAN = 200;   // the API's page cap: enough to split Unlimited by source / sum purchased credits on this fleet
+  function countUsers(params) {
+    return api('GET', '/admin/users' + qs(Object.assign({ limit: 1 }, params))).then(function (r) { return r.total; });
+  }
   function screenOverview() {
     loadScreen({
       skeleton: pageHeader('Overview', 'fleet · ' + esc(todayISO())) +
-        '<div class="stats">' + [1, 2, 3, 4, 5, 6].map(function () { return '<div class="stat"><span class="skel tall w60"></span><div class="l"><span class="skel w80"></span></div></div>'; }).join('') + '</div>' +
+        '<div class="tiles">' + [1, 2, 3, 4, 5, 6, 7, 8].map(function () { return '<div class="tile"><span class="skel tall w60"></span><div class="lbl"><span class="skel w80"></span></div></div>'; }).join('') + '</div>' +
         '<div class="grid2 top">' + skelCard('ATTENTION', 3) + skelCard('RECENT ACTIONS', 4) + '</div>',
-      load: function () { return Promise.all([api('GET', '/admin/usage?weeks=12'), api('GET', '/admin/audit?limit=8')]); },
-      render: function (r) { return renderOverview(r[0], r[1]); },
+      load: function () {
+        return Promise.all([
+          api('GET', '/admin/usage?weeks=12'), api('GET', '/admin/audit?limit=10'), loadThresholds(),
+          countUsers({ status: 'active' }), countUsers({ status: 'inactive' }), countUsers({ status: 'deleted' }), countUsers({ status: 'purge_eligible' }),
+          countUsers({ joined_days: 7 }),
+          api('GET', '/admin/users' + qs({ plan: 'unlimited', limit: TILE_SCAN })), api('GET', '/admin/users' + qs({ plan: 'credits', limit: TILE_SCAN }))
+        ]);
+      },
+      render: function (r) {
+        return renderOverview(r[0], r[1], { active: r[3], inactive: r[4], deleted: r[5], purge_eligible: r[6], new_week: r[7], unlimited: r[8], credits: r[9] });
+      },
       fallback: function (e) { return pageHeader('Overview') + errorBlock(e, true); }
     });
   }
 
-  function renderOverview(u, audit) {
-    var users = u.users || {}, bal = u.balances || {}, ex = u.exercises || {}, integ = u.integrations || {};
+  function tile(href, value, cls, label, sub) {
+    return '<a class="tile" href="' + esc(href) + '"><div class="big ' + (cls || '') + '">' + value + '</div><div class="lbl">' + esc(label) + '</div><div class="sub">' + sub + '</div></a>';
+  }
+
+  function renderOverview(u, audit, c) {
+    var ex = u.exercises || {}, th = state.thresholds;
     var weeks = u.sessions_by_week || [], scans = u.scans_by_week || [];
     var currentWeek = isoWeek(new Date());
     var thisWeek = weeks.filter(function (w) { return w.week === currentWeek; })[0] || { sessions: 0, active_users: 0, week: currentWeek };
-    var stat = function (v, cls, l, d) {
-      return '<div class="stat"><div class="v ' + cls + '">' + v + '</div><div class="l">' + esc(l) + '</div><div class="d">' + d + '</div></div>';
-    };
-    var html = pageHeader('Overview', 'fleet · generated ' + esc(fmtDT(u.generated_at)) + ' · ' + esc(u.weeks) + ' wk window',
+    var notDeleted = c.active + c.inactive;
+    var src = { purchase: 0, admin_grant: 0, backfill: 0 };
+    c.unlimited.items.forEach(function (row) { src[row.plan_source] = (src[row.plan_source] || 0) + 1; });
+    var purchased = c.credits.items.reduce(function (a, row) { return a + (row.purchased_credits || 0); }, 0);
+    var partial = function (r) { return r.total > r.items.length ? ' · first ' + r.items.length + ' of ' + num(r.total) : ''; };
+
+    var html = pageHeader('Overview', 'fleet · generated ' + esc(fmtDT(u.generated_at)) + ' · every tile opens the filtered Hunters view',
       '<button type="button" class="btn sm ghost" data-action="retry">REFRESH</button>');
-    html += '<div class="stats">' +
-      stat(num(users.total), 'c', 'Hunters', esc(num(users.total - users.deleted)) + ' active · ' + esc(num(users.deleted)) + ' deleted · ' + esc(num(users.admins)) + ' admin') +
-      stat(num(users.active_7d) + ' <small>/ ' + num(users.active_30d) + '</small>', 'g', 'Active 7d / 30d', 'by session date') +
-      stat(num(thisWeek.sessions), '', 'Sessions this week', esc(thisWeek.week) + ' · ' + esc(num(thisWeek.active_users)) + ' hunters') +
-      stat(num(sumWeeks(scans, 'scans', 4)), '', 'Scans · 4 wk', esc(num(sumWeeks(scans, 'screenshots', 4))) + ' screenshots') +
-      stat(num(bal.unlimited_count) + ' <small>∞</small>', 'y', 'Unlimited hunters', esc(num(bal.credits_total)) + ' credits across ' + esc(num(bal.rows)) + ' balances') +
-      stat(num(users.purge_eligible), users.purge_eligible > 0 ? 'r' : '', 'Purge-eligible', users.purge_eligible > 0 ? 'past the grace window' : 'nothing past grace') +
+    html += '<div class="tiles">' +
+      tile('#/hunters?status=active', num(c.active), 'g', 'Active', 'of ' + esc(num(notDeleted)) + ' not deleted · ' + esc(num(c.new_week)) + ' new this week') +
+      tile('#/hunters?status=inactive', num(c.inactive), 'd', 'Inactive', 'no activity in ' + esc(th.inactive) + ' d') +
+      tile('#/hunters?plan=unlimited', num(c.unlimited.total), 'y', 'Unlimited', esc(src.purchase) + ' purchase · ' + esc(src.admin_grant) + ' granted · ' + esc(src.backfill) + ' backfill' + esc(partial(c.unlimited))) +
+      tile('#/hunters?plan=credits', num(c.credits.total), 'b', 'Credits', esc(num(purchased)) + ' purchased credits outstanding' + esc(partial(c.credits))) +
+      tile('#/hunters?status=deleted', num(c.deleted), 'o', 'Deleted', 'purge in ≤ ' + esc(th.grace) + ' d') +
+      tile('#/hunters?status=purge_eligible', num(c.purge_eligible), c.purge_eligible > 0 ? 'r' : 'd', 'Purge-eligible', c.purge_eligible > 0 ? 'past the grace window' : 'nothing past grace') +
+      tile('#/hunters?sort=scans_4wk&order=desc', num(sumWeeks(scans, 'scans', 4)), 'c', 'Scans · 4 wk', esc(num(sumWeeks(scans, 'screenshots', 4))) + ' screenshots · by hunter →') +
+      tile('#/hunters?status=active&sort=last_active', num(thisWeek.sessions), 'c', 'Sessions · this week', esc(thisWeek.week) + ' · ' + esc(plural(thisWeek.active_users, 'hunter'))) +
       '</div>';
 
-    // attention list — every line deep-links (spec §10.2)
+    // attention — only rows with something to do; each is a link (spec §4.2)
     var att = '';
     var attRow = function (a, small, actions) {
       return '<div class="att"><div class="a">' + a + (small ? '<small>' + small + '</small>' : '') + '</div><div class="acts">' + actions + '</div></div>';
     };
-    att += attRow(
-      users.purge_eligible > 0 ? esc(plural(users.purge_eligible, 'account')) + ' past the 30-day grace window' : 'No account is purge-eligible',
-      'soft-deleted accounts are listed under the Deleted filter · the sweep runs only when PURGE_SWEEP_ENABLED',
-      '<a class="btn sm ghost" href="#/hunters?deleted=true">OPEN</a><button type="button" class="btn sm dk" data-action="act" data-act="sweep">DRY-RUN SWEEP</button>'
-    );
-    att += attRow(
-      ex.without_family > 0 ? esc(plural(ex.without_family, 'exercise')) + ' without a family' : 'Every exercise has a family',
-      esc(num(ex.custom)) + ' custom of ' + esc(num(ex.total)) + ' · families drive prescriptions and gates',
-      '<button type="button" class="btn sm dk" data-action="act" data-act="backfill">DRY-RUN BACKFILL</button>'
-    );
-    var drift = u.unlimited_flag_drift || [];
-    if (drift.length) {
-      drift.forEach(function (d) {
-        att += attRow('Unlimited-flag drift · ' + esc(shortId(d.user_id)),
-          'cached has_unlimited=' + esc(String(d.has_unlimited)) + ' but the entitlement says ' + esc(String(d.derived)) + ' · grant or revoke from the hunter to reconcile',
-          '<a class="btn sm ghost" href="' + hunterHref(d.user_id) + '">OPEN</a>');
-      });
-    } else {
-      att += attRow('No unlimited-flag drift', 'every cached has_unlimited matches its entitlement rows', '');
+    if (c.purge_eligible > 0) {
+      att += attRow('<a href="#/hunters?status=purge_eligible">' + esc(plural(c.purge_eligible, 'account')) + ' past the ' + esc(th.grace) + '-day grace window</a>',
+        'select them on the Cleanup view for a bulk purge, or dry-run the sweep here · the deploy-time sweep runs only when PURGE_SWEEP_ENABLED',
+        '<a class="btn sm ghost" href="#/hunters?status=purge_eligible">OPEN</a><button type="button" class="btn sm dk" data-action="act" data-act="sweep">DRY-RUN SWEEP</button>');
     }
-    att += attRow('WHOOP · ' + esc(num(integ.whoop_connections)) + ' connected · ' + esc(num(integ.active_device_tokens)) + ' push devices',
-      'achievement definitions can be re-seeded after a catalog change (idempotent, audited)',
-      '<button type="button" class="btn sm ghost dk" data-action="act" data-act="seed">SEED ACHIEVEMENTS</button>');
+    if (ex.without_family > 0) {
+      att += attRow(esc(plural(ex.without_family, 'exercise')) + ' without a family', esc(num(ex.custom)) + ' custom of ' + esc(num(ex.total)) + ' · families drive prescriptions and gates',
+        '<button type="button" class="btn sm dk" data-action="act" data-act="backfill">DRY-RUN BACKFILL</button>');
+    }
+    (u.unlimited_flag_drift || []).forEach(function (d) {
+      att += attRow('<a href="' + hunterHref(d.user_id) + '">Unlimited-flag drift · ' + esc(shortId(d.user_id)) + '</a>',
+        'cached has_unlimited=' + esc(String(d.has_unlimited)) + ' but the entitlement says ' + esc(String(d.derived)) + ' · Change plan on the hunter resyncs it',
+        '<a class="btn sm ghost" href="' + hunterHref(d.user_id) + '">OPEN</a>');
+    });
+    if (!att) att = '<div class="hint ok">Nothing needs attention — no account past grace, every exercise has a family, no unlimited-flag drift.</div>';
 
-    html += '<div class="grid2 top"><div class="card">' + sl('ATTENTION') + att + '</div>' +
+    var maint = '<div class="card top">' + sl('MAINTENANCE', ro('dry run → apply')) +
+      '<div class="acts dk"><button type="button" class="btn" data-action="act" data-act="backfill">BACKFILL EXERCISE FAMILIES</button>' +
+      '<button type="button" class="btn" data-action="act" data-act="seed">RE-SEED ACHIEVEMENTS</button>' +
+      '<button type="button" class="btn danger" data-action="act" data-act="sweep">PURGE SWEEP</button></div>' +
+      '<div class="hint">Backfill and the sweep dry-run first; applying is destructive tier. Re-seed is idempotent. Every run is an audit row.</div><div class="hint ph-only">Maintenance is desktop-only.</div></div>';
+
+    html += '<div class="grid2 top"><div class="col"><div class="card">' + sl('ATTENTION') + att + '</div>' + maint + '</div>' +
       '<div class="card">' + sl('RECENT ACTIONS', '<a class="link" href="#/audit">VIEW AUDIT</a>') +
       (audit.items && audit.items.length ? audit.items.map(auditRow).join('') : empty('No actions yet — every mutation lands here.')) +
       '</div></div>';
