@@ -762,7 +762,7 @@
     var rows = r.items.map(function (u) {
       var on = !!state.selected[u.id];
       return '<tr class="row' + (u.is_deleted ? ' deleted' : '') + (on ? ' sel' : '') + '" data-action="open-hunter" data-id="' + esc(u.id) + '" tabindex="0">' +
-        '<td class="c-sel"><input type="checkbox" data-action="sel" data-id="' + esc(u.id) + '"' + (on ? ' checked' : '') + ' aria-label="Select ' + esc(u.username || u.email) + '"></td>' +
+        '<td class="c-sel" data-action="sel-cell"><input type="checkbox" data-action="sel" data-id="' + esc(u.id) + '"' + (on ? ' checked' : '') + ' aria-label="Select ' + esc(u.username || u.email) + '"></td>' +
         '<td class="c-hunter">' + hunterCell(u) + '</td>' +
         '<td class="c-plan">' + planChip(u, !u.is_deleted) + '</td>' +
         '<td class="c-status">' + statusChip(u) + '</td>' +
@@ -773,7 +773,7 @@
         '<td class="c-joined m" title="' + esc(fmtDT(u.created_at)) + '">' + esc(fmtDate(u.created_at)) + '</td>' +
         '<td class="c-menu">' + rowMenu(u) + '</td></tr>';
     }).join('');
-    var head = '<th class="c-sel"><input type="checkbox" data-action="sel-all"' + (allOn ? ' checked' : '') + ' aria-label="Select every row on this page"></th>' +
+    var head = '<th class="c-sel" data-action="sel-cell"><input type="checkbox" data-action="sel-all"' + (allOn ? ' checked' : '') + ' aria-label="Select every row on this page"></th>' +
       th('Hunter', 'email', 'c-hunter') + th('Plan', 'plan', 'c-plan') + th('Status', 'status', 'c-status') + th('Last active', 'last_active', 'c-last') +
       th('Scans · 4 wk', 'scans_4wk', 'c-scans r') + th('Sessions', null, 'c-sessions r') + th('Rank', 'level', 'c-rank') + th('Joined', 'created_at', 'c-joined') + th('', null, 'c-menu');
     var desktop = table('dk hunters', head, rows);
@@ -1178,9 +1178,9 @@
   function bulkResult(rows, r, describe) {
     var byId = {};
     rows.forEach(function (u) { byId[u.id] = u; });
-    var name = function (id) { return byId[id] ? hunterName(byId[id]) : shortId(id); };
+    var name = function (x) { var id = x.user_id || x.id; return byId[id] ? hunterName(byId[id]) : shortId(id); };
     var group = function (title, cls, items, line) {
-      return '<div class="rgroup ' + cls + '"><div class="rt">' + esc(title) + ' · ' + items.length + '</div>' + (items.length ? items.map(function (x) { return '<div class="rrow"><span class="nm">' + esc(name(x.user_id)) + '</span><span class="d">' + line(x) + '</span></div>'; }).join('') : '<div class="rrow none">none</div>') + '</div>';
+      return '<div class="rgroup ' + cls + (items.length ? ' has' : '') + '"><div class="rt">' + esc(title) + ' · ' + items.length + '</div>' + (items.length ? items.map(function (x) { return '<div class="rrow"><span class="nm">' + esc(name(x)) + '</span><span class="d">' + line(x) + '</span></div>'; }).join('') : '<div class="rrow none">none</div>') + '</div>';
     };
     var applied = (r.applied || []).filter(function (x) { return !x.skipped; });
     var skipped = (r.skipped || []).concat((r.applied || []).filter(function (x) { return x.skipped; }).map(function (x) { return { user_id: x.user_id, why: 'skipped by the server' }; }));
@@ -1914,6 +1914,11 @@
     if (a === 'view-save') { var vf = $('#view-save'); if (vf) { vf.hidden = false; vf.name.focus(); } return; }
     if (a === 'view-del') { deleteView(el.dataset.name); return; }
     if (a === 'sel' || a === 'sel-all') return;   // checkboxes report on `change`
+    if (a === 'sel-cell') {   // the whole 44-px cell toggles the box, so a near miss never opens the row
+      var box = $('input[type="checkbox"]', el);
+      if (box && e.target !== box) { box.checked = !box.checked; box.dispatchEvent(new Event('change', { bubbles: true })); }
+      return;
+    }
     if (a === 'bulk') { bulkAction(el.dataset.bulk); return; }
     if (a === 'row-menu') { var m = $('#menu-' + CSS.escape(el.dataset.id)); closeMenus(m); if (m) m.hidden = !m.hidden; return; }
     if (a === 'pal-plan') { openPaletteRow(el.dataset.id, true); return; }
