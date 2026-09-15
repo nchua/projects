@@ -562,14 +562,15 @@
     });
     if (!att) att = '<div class="hint ok">Nothing needs attention — no account past grace, every exercise has a family, no unlimited-flag drift.</div>';
 
-    var maint = '<div class="card top">' + sl('MAINTENANCE', ro('dry run → apply')) +
+    var maint = '<div class="card top dk">' + sl('MAINTENANCE', ro('dry run → apply')) +
       '<div class="acts dk"><button type="button" class="btn" data-action="act" data-act="backfill">BACKFILL EXERCISE FAMILIES</button>' +
       '<button type="button" class="btn" data-action="act" data-act="seed">RE-SEED ACHIEVEMENTS</button>' +
       '<button type="button" class="btn danger" data-action="act" data-act="sweep">PURGE SWEEP</button></div>' +
-      '<div class="hint">Backfill and the sweep dry-run first; applying is destructive tier. Re-seed is idempotent. Every run is an audit row.</div><div class="hint ph-only">Maintenance is desktop-only.</div></div>';
+      '<div class="hint">Backfill and the sweep dry-run first; applying is destructive tier. Re-seed is idempotent. Every run is an audit row.</div></div>';
 
+    // phone lane (§4.7): the tiles and Attention only — Maintenance and Recent actions are desktop
     html += '<div class="grid2 top"><div class="col"><div class="card">' + sl('ATTENTION') + att + '</div>' + maint + '</div>' +
-      '<div class="card">' + sl('RECENT ACTIONS', '<a class="link" href="#/audit">VIEW AUDIT</a>') +
+      '<div class="card dk">' + sl('RECENT ACTIONS', '<a class="link" href="#/audit">VIEW AUDIT</a>') +
       (audit.items && audit.items.length ? audit.items.map(auditRow).join('') : empty('No actions yet — every mutation lands here.')) +
       '</div></div>';
     return html;
@@ -1043,7 +1044,7 @@
     if (q.action && actions.indexOf(q.action) < 0) actions.push(q.action);
     var mine = !!(session && q.actor_user_id && q.actor_user_id === session.userId);
     return pageHeader('Audit', (r ? esc(plural(num(r.total), 'event')) : '…') + ' · append-only') +
-      '<form class="filters" id="audit-filters">' +
+      '<form class="filters dk" id="audit-filters">' +   // phone lane (§4.7): the list only
       '<button type="button" class="fchip' + (mine ? ' active' : '') + '" data-action="audit-mine" aria-pressed="' + mine + '">Mine</button>' +
       '<select class="field" name="action" aria-label="Action">' + opt('', q.action || '', 'Action: all') + actions.sort().map(function (a) { return opt(a, q.action || ''); }).join('') + '</select>' +
       '<select class="field" name="target_type" aria-label="Target type">' + opt('', q.target_type || '', 'Target: any') + ['user', 'product', 'system'].map(function (t) { return opt(t, q.target_type || ''); }).join('') + '</select>' +

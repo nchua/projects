@@ -510,4 +510,13 @@ details.diag > .grid2 { margin: 0; padding: 0 14px 14px; }
   #toasts { right: 12px; left: 12px; top: 64px; max-width: none; }
   .toast { min-width: 0; }
   .filters .field { flex: 1; min-width: 120px; }
+  /* sheets (§5.7): every field a 44-px target; the bulk diff collapses to one line per hunter */
+  .drawer .field, .drawer .radios label, .drawer .presets button, .drawer .plan { min-height: 44px; }
+  .drawer select.field, .drawer input.field { font-size: 16px; }   /* no iOS zoom-on-focus */
+  .pdiff { max-height: 160px; }
+  .prow2 { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .prow2 .k { display: inline; }
+  .prow2 .k::after { content: ": "; }
+  .prow2 .v { display: inline; white-space: nowrap; }
+  .dr-rows { max-height: 120px; }
 }
