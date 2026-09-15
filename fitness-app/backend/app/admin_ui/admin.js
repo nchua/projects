@@ -18,7 +18,7 @@
   var renderSeq = 0;       // ignore late responses after navigation or logout
   var countdownTimer = null;
   var searchTimer = null;
-  var state = { detail: null, products: null, thresholds: { grace: 30, inactive: 30 }, selected: {}, palette: null };  // what the open drawers read
+  var state = { detail: null, products: null, settings: null, thresholds: { grace: 30, inactive: 30 }, selected: {}, palette: null };  // what the open drawers read
 
   var LIMIT_KEYS = [
     { key: 'scans.free_monthly', field: 'free_monthly', label: 'FREE MONTHLY SCANS', unit: '' },
@@ -1099,35 +1099,129 @@
       '<div class="hint">Deactivating hides a product from the paywall and refuses new purchases of it; App Store Connect is untouched. Credits changes apply to future purchases only. Ids are immutable; nothing is ever deleted.</div>';
   }
 
-  // ── settings (read-only) ───────────────────────────────────────────────
+  // ── settings — editable, audited (spec §4.5, §5.5) ─────────────────────
+
+  var SETTING_GROUPS = [['scanner', 'SCANNER', 'standard · reason'], ['accounts', 'ACCOUNTS', 'purge grace is step-up'], ['switches', 'SWITCHES', 'step-up']];
+  var SOURCE_CLS = { console: 'blue', env: 'orange', code: 'dim' };
+  var CSV_ALLOWED = { PURCHASE_ALLOWED_ENVIRONMENTS: ['Production', 'Sandbox', 'Xcode'] };   // registry allow-list (§5.5) — the API sends the value, not the list
+  var CSV_SPLIT = /\s*,\s*/;
+  function settingValue(row, v) {
+    if (v === null || v === undefined) return '—';
+    if (row.type === 'bool') return v ? 'on' : 'off';
+    if (row.type === 'seconds') return num(v) + ' s';
+    if (row.type === 'csv') return Array.isArray(v) ? (v.length ? v.join(', ') : 'none') : String(v);
+    return num(v);
+  }
+  function settingCell(row, v) {
+    return row.type === 'bool' ? '<span class="tog' + (v ? ' on' : '') + '" role="img" aria-label="' + (v ? 'on' : 'off') + '"></span>' : esc(settingValue(row, v));
+  }
 
   function screenSettings() {
     if (isPhone()) { content.innerHTML = desktopOnly('Settings'); return; }
-    var header = pageHeader('Settings', 'read-only · edit on Railway (service variables) · a redeploy applies');
+    var header = pageHeader('Settings', 'per-hunter override › console › env › code · every edit is one settings.update audit row · live on the next request');
     loadScreen({
-      skeleton: header + '<div class="card narrow">' + sl('SCAN DEFAULTS') + skelRows(3) + '</div>',
-      load: function () {
-        // the only place the API exposes the global scan defaults is a hunter detail's effective_limits
-        var uid = session && session.userId ? Promise.resolve(session.userId) : api('GET', '/admin/me').then(function (m) { return m.user_id; });
-        return uid.then(function (id) { return api('GET', userPath(id)); });
-      },
-      render: function (d) {
-        var def = (d.effective_limits && d.effective_limits.defaults) || {};
-        var ttl = session && session.expiresAt && session.issuedAt ? Math.round((session.expiresAt - session.issuedAt) / 60000) : null;
-        return header +
-          '<div class="card narrow">' + sl('SCAN DEFAULTS', ro('live · every hunter without an override')) +
-          kv('FREE_MONTHLY_SCANS', esc(def.free_monthly)) + kv('DAILY_SCREENSHOT_LIMIT', esc(def.daily_limit)) + kv('COOLDOWN_SECONDS', esc(def.cooldown_seconds) + 's') +
-          '<div class="hint">Per-hunter overrides live in Entitlements on the hunter; these are the fallbacks.</div></div>' +
-          '<div class="card narrow top">' + sl('ADMIN SESSION', ro('live')) +
-          kv('ADMIN_TOKEN_EXPIRE_MINUTES', ttl === null ? '—' : esc(ttl) + ' min') + kv('SIGNED IN AS', esc(session.email), 'm') +
-          kv('LOCKOUT', '10 bad passwords → 15 min ' + muted('· spec defaults')) + '</div>' +
-          '<div class="card narrow top">' + sl('KILL SWITCHES · PURGE', ro('not exposed by the API')) +
-          kv('PURGE_GRACE_DAYS', '30 ' + muted('· default')) + kv('PURGE_SWEEP_ENABLED', 'flip on Railway after a clean dry-run sweep from Overview', 'm') +
-          kv('SCREENSHOT_PROCESSING_ENABLED', 'Railway variable', 'm') +
-          '<div class="hint">Editable settings need an app_settings table (spec §14, v2). Until then the console shows what the API exposes and names the rest.</div></div>';
+      skeleton: header + SETTING_GROUPS.map(function (g) { return '<div class="card top">' + sl(g[1]) + skelRows(3) + '</div>'; }).join(''),
+      load: function () { return api('GET', '/admin/settings'); },
+      render: function (r) {
+        state.settings = {};
+        (r.items || []).forEach(function (row) { state.settings[row.key] = row; });
+        return header + renderSettings(r.items || [], r.env || {});
       },
       fallback: function (e) { return header + errorBlock(e, true); }
     });
+  }
+
+  function renderSettings(items, env) {
+    var html = SETTING_GROUPS.map(function (g) {
+      var rows = items.filter(function (row) { return row.group === g[0]; });   // registry order (the API's order)
+      return '<div class="card top sgroup">' + sl(g[1], ro(g[2])) +
+        '<div class="shead"><span>Setting</span><span>Current</span><span>Default</span><span>Source</span><span></span></div>' +
+        rows.map(function (row) {
+          return '<div class="srow"><div class="k">' + esc(row.label) + '<small>' + esc(row.key) + (row.warning ? ' · ' + esc(row.warning.split(' — ')[0]) : '') + '</small></div>' +
+            '<div class="v">' + settingCell(row, row.value) + '</div><div class="v def">' + esc(settingValue(row, row.default)) + '</div>' +
+            '<div>' + chip(row.source, SOURCE_CLS[row.source] || 'dim') + (row.updated_at ? '<small class="upd">' + esc(fmtDate(row.updated_at)) + '</small>' : '') + '</div>' +
+            '<div class="r"><button type="button" class="btn sm' + (row.tier === 'destructive' ? ' danger' : ' ghost') + '" data-action="act" data-act="setting-edit" data-key="' + esc(row.key) + '">' + (row.type === 'bool' ? 'FLIP…' : 'EDIT') + '</button></div></div>';
+        }).join('') + '</div>';
+    }).join('');
+    var integ = env.integrations || {}, build = env.build || {}, adm = env.admin || {};
+    var onOff = function (b, on, off) { return b ? '<span class="good">' + esc(on || 'configured') + '</span>' : muted(off || 'not configured'); };
+    html += '<div class="grid3 top">' +
+      '<div class="card">' + sl('INTEGRATIONS', ro('env-only')) +
+      kv('WHOOP APP', onOff(integ.whoop_configured)) + kv('APNS', onOff(integ.apns_configured) + ' ' + muted('· ' + (integ.apns_topic || '—') + (integ.apns_sandbox ? ' · sandbox' : ' · production'))) +
+      kv('SENDGRID', onOff(integ.sendgrid_configured)) + kv('SENTRY', onOff(integ.sentry_enabled, 'on', 'off')) + '</div>' +
+      '<div class="card">' + sl('BUILD', ro('railway')) +
+      kv('GIT SHA', build.git_sha ? copyBtn(build.git_sha, shortId(build.git_sha)) : muted('not on Railway')) + kv('BRANCH · ENV', esc(build.git_branch || '—') + ' · ' + esc(build.environment || 'local')) +
+      kv('DEPLOYED', build.started_at ? esc(fmtDT(build.started_at)) + ' ' + muted('· ' + ago(build.started_at)) : '—') + '</div>' +
+      '<div class="card">' + sl('ADMIN', ro('env-only')) +
+      kv('BOOTSTRAP EMAIL', adm.bootstrap_email ? esc(adm.bootstrap_email) : muted('unset')) + kv('TOKEN TTL', esc(num(adm.token_ttl_minutes)) + ' min') +
+      kv('LOCKOUT', esc(num(adm.lockout_threshold)) + ' bad passwords → ' + esc(num(adm.lockout_minutes)) + ' min') + kv('STEP-UP REVOKE', esc(num(adm.step_up_failures_to_revoke)) + ' failures end the session') + '</div></div>' +
+      '<div class="hint">Integrations, build and admin policy are deploy-time facts — change them on Railway, never here (§7.3).</div>';
+    return html;
+  }
+
+  // The typed value the drawer will PATCH, or undefined while the input is unusable (§5.5).
+  function settingParse(row, v) {
+    if (row.type === 'bool') return v.value === 'true';
+    if (row.type === 'csv') return String(v.value || '').split(CSV_SPLIT).map(function (t) { return t.trim(); }).filter(Boolean);
+    if (v.value === null || v.value === undefined || v.value === '') return undefined;
+    return Number(v.value);
+  }
+  function editSettingSpec(row) {
+    var destructive = row.tier === 'destructive';
+    var canReset = row.source === 'console';
+    var initial = row.type === 'bool' ? String(!!row.value) : row.type === 'csv' ? (row.value || []).join(', ') : row.value;
+    var parsed = function (v) { return v.mode === 'reset' ? row.default : settingParse(row, v); };
+    var turningOn = function (v) { return row.type === 'bool' && v.mode !== 'reset' && settingParse(row, v) === true && row.value !== true; };
+    return {
+      title: (row.type === 'bool' ? 'FLIP ' : 'EDIT ') + row.label.toUpperCase(), who: row.key + ' · ' + row.source + (row.updated_at ? ' · set ' + fmtDate(row.updated_at) + (row.updated_by ? ' by ' + shortId(row.updated_by) : '') : ''),
+      danger: destructive, password: destructive, values: { value: initial, mode: 'set' },
+      fields: function (v) {
+        var html = '';
+        if (v.mode === 'reset') {
+          html += sysline('RESET TO DEFAULT', 'Deletes the console override; the env / code value <b>' + esc(settingValue(row, row.default)) + '</b> applies on the next request.', 'guard') +
+            '<div class="acts"><button type="button" class="btn ghost sm" data-action="dr" data-op="mode" data-mode="set">← EDIT INSTEAD</button></div>';
+        } else if (row.type === 'bool') {
+          html += fieldRow(row.label, 'default ' + settingValue(row, row.default), '<div class="radios">' + [['true', 'ON'], ['false', 'OFF']].map(function (o) {
+            return '<label class="' + (v.value === o[0] ? 'on' : '') + '"><input type="radio" name="value" value="' + o[0] + '" data-field="value"' + (v.value === o[0] ? ' checked' : '') + '>' + o[1] + '</label>';
+          }).join('') + '</div>', true);
+        } else if (row.type === 'csv') {
+          html += fieldRow(row.label, 'comma list · ' + (CSV_ALLOWED[row.key] || []).join(' / '), '<input class="field" data-field="value" value="' + esc(v.value) + '" autocapitalize="none" spellcheck="false" placeholder="' + esc((CSV_ALLOWED[row.key] || []).join(', ')) + '">', true);
+        } else {
+          html += fieldRow(row.label, (row.type === 'seconds' ? 'seconds · ' : '') + 'default ' + settingValue(row, row.default), '<input class="field" type="number" min="0" step="1" inputmode="numeric" data-field="value" value="' + esc(v.value) + '">', true);
+        }
+        if (row.warning) html += sysline(turningOn(v) ? 'BEFORE YOU FLIP' : 'RIGHT NOW', esc(row.warning), turningOn(v) ? 'guard' : '');   // §5.5: the live count for PURCHASE_REQUIRE_JWS / PURGE_SWEEP_ENABLED
+        if (canReset && v.mode !== 'reset') html += '<div class="acts"><button type="button" class="btn ghost sm" data-action="dr" data-op="mode" data-mode="reset">RESET TO DEFAULT</button></div>';
+        return html;
+      },
+      onAction: function (op, el, v) { if (op === 'mode') v.mode = el.dataset.mode; },
+      diff: function (v) {
+        var next = parsed(v);
+        return diffRow(row.key, settingValue(row, row.value), next === undefined ? '—' : settingValue(row, next), { down: row.type === 'bool' && next === false }) +
+          diffRow('SOURCE', row.source, v.mode === 'reset' ? 'env / code' : 'console', { same: v.mode === 'reset' ? row.source !== 'console' : row.source === 'console' });
+      },
+      validate: function (v) {
+        if (v.mode === 'reset') return canReset ? null : 'No console override to reset — the ' + row.source + ' value already applies (the server answers 409).';
+        var next = settingParse(row, v);
+        if (next === undefined) return 'Enter a value.';
+        if ((row.type === 'int' || row.type === 'seconds') && (!Number.isInteger(next) || next < 0)) return 'Must be a whole number ≥ 0.';
+        if (row.type === 'csv') {
+          if (!next.length) return 'List at least one environment.';
+          var bad = next.filter(function (t) { return CSV_ALLOWED[row.key] && CSV_ALLOWED[row.key].indexOf(t) < 0; });
+          if (bad.length) return 'Unknown: ' + bad.join(', ') + ' — allowed ' + CSV_ALLOWED[row.key].join(', ') + '.';
+        }
+        if (deepEq(next, row.value) && row.source === 'console') return 'Already in force from the console — nothing to write (409).';
+        return null;
+      },
+      confirmLabel: function (v) { return v.mode === 'reset' ? 'RESET TO DEFAULT' : row.type === 'bool' ? 'FLIP TO ' + settingValue(row, settingParse(row, v)).toUpperCase() : 'SAVE ' + row.key; },
+      hint: 'Logged as settings.update with before / after and the source. ' + (destructive ? 'Destructive tier: your password.' : 'Standard tier: a reason.') + ' Live on the next request — no redeploy.',
+      submit: function (v, reason, password) {
+        return api('PATCH', '/admin/settings/' + encodeURIComponent(row.key), { body: stepUp({ value: v.mode === 'reset' ? null : settingParse(row, v) }, reason, password) });
+      },
+      onSuccess: function (r) {
+        thresholdsLoaded = false;   // PURGE_GRACE_DAYS / inactive_after_days feed the status chips
+        return { message: 'Setting saved · ' + r.key + ' = ' + settingValue(r, r.value) + ' · ' + r.source, auditLookup: { action: 'settings.update' } };
+      }
+    };
   }
 
   function desktopOnly(name) {
@@ -1901,7 +1995,8 @@
     'product-edit': function (el) {
       var p = (state.products || []).filter(function (x) { return x.id === el.dataset.id; })[0];
       return p && productSpec(p);
-    }
+    },
+    'setting-edit': function (el) { var row = state.settings && state.settings[el.dataset.key]; return row && editSettingSpec(row); }
   };
   function openAction(act, el) {
     if (ROW_ACTIONS[act]) { ROW_ACTIONS[act](el); return; }

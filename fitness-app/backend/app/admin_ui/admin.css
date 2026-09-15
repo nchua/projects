@@ -314,6 +314,23 @@ details.diag > .grid2 { margin: 0; padding: 0 14px 14px; }
 .pv .t { font-weight: 700; font-size: 13px; letter-spacing: .5px; }
 .pv .d { font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); margin-top: 2px; text-transform: uppercase; }
 
+/* ---- settings (console v2 §4.5): three editable groups + the env-only cards ---- */
+.sgroup { padding-bottom: 6px; }
+.shead, .srow { display: grid; grid-template-columns: minmax(0, 1fr) 150px 110px 120px 92px; gap: 12px; align-items: center; }
+.shead { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 1px; color: var(--text-muted); text-transform: uppercase; padding: 4px 0 8px; border-bottom: 1px solid var(--glass-border); }
+.srow { padding: 8px 0; border-top: 1px solid var(--glass-border); min-height: 48px; }
+.srow:nth-of-type(2) { border-top: 0; }
+.srow .k { font-weight: 600; font-size: 12.5px; min-width: 0; }
+.srow .k small { display: block; font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); font-weight: 400; margin-top: 2px; word-break: break-word; }
+.srow .v { font-family: var(--font-mono); font-size: 12px; color: var(--text-primary); }
+.srow .v.def { color: var(--text-muted); }
+.srow .upd { display: block; font-family: var(--font-mono); font-size: 8.5px; color: var(--text-muted); margin-top: 3px; }
+.srow .r { text-align: right; }
+.srow .r .btn { flex: none; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.grid3.top { margin-top: 14px; }
+@media (max-width: 1279px) { .grid3 { grid-template-columns: 1fr; } }
+
 /* ---- drawer (desktop: 420-px push panel; phone: bottom sheet) ---------- */
 .scrim { display: none; }
 .drawer { width: var(--drawer-w); flex: none; border-left: 1px solid var(--arise-border); background: var(--bg-elevated); padding: 20px 22px 30px; position: sticky; top: 0; height: 100vh; overflow-y: auto; z-index: 3; box-shadow: -20px 0 40px rgba(0,0,0,.45); }
