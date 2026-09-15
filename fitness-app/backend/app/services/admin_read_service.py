@@ -74,9 +74,11 @@ from app.services import (
     campaign_service,
     condition_service,
     entitlement_service,
+    notification_service,
     purge_service,
     settings_service,
     training_load_service,
+    whoop_service,
     xp_service,
 )
 from app.services.admin_usage_service import SCANS_4WK_DAYS, count_where
@@ -471,8 +473,9 @@ def list_products(db: Session) -> List[ProductResponse]:
     }
     out = []
     for p in rows:
-        n, verified = sold.get(p.id, (0, 0))
-        out.append(ProductResponse.model_validate(p, from_attributes=True).model_copy(update={"sold": n, "sold_verified": verified}))
+        response = ProductResponse.model_validate(p, from_attributes=True)
+        response.sold, response.sold_verified = sold.get(p.id, (0, 0))
+        out.append(response)
     return out
 
 
@@ -793,6 +796,9 @@ def setting_row(
         warning=_setting_warning(db, spec, now),
         updated_at=resolved.updated_at,
         updated_by=resolved.updated_by,
+        allowed=list(spec.allowed),
+        min=spec.min,
+        max=spec.max,
     )
 
 
@@ -818,8 +824,8 @@ def env_block() -> SettingsEnvBlock:
     env = os.environ
     return SettingsEnvBlock(
         integrations=EnvIntegrations(
-            whoop_configured=bool(settings.WHOOP_CLIENT_ID and settings.WHOOP_CLIENT_SECRET and settings.WHOOP_REDIRECT_URI),
-            apns_configured=bool(settings.APNS_KEY_ID and settings.APNS_TEAM_ID and settings.APNS_AUTH_KEY_PATH),
+            whoop_configured=whoop_service.is_configured(),
+            apns_configured=notification_service.is_configured(),
             apns_topic=settings.APNS_TOPIC,
             apns_sandbox=bool(settings.APNS_USE_SANDBOX),
             sendgrid_configured=bool(env.get("SENDGRID_API_KEY", "").strip()),

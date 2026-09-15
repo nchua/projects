@@ -38,13 +38,18 @@ def _resolve_apns_key() -> str | None:
     return os.environ.get("APNS_AUTH_KEY_PATH")
 
 
+def is_configured() -> bool:
+    """True when the APNs key id, team id and signing key are all present (the check push itself makes)."""
+    return all([os.environ.get("APNS_KEY_ID"), os.environ.get("APNS_TEAM_ID"), _resolve_apns_key()])
+
+
 def get_apns_client():
     """Lazy-initialize the APNs client. Returns None if not configured."""
     key_id = os.environ.get("APNS_KEY_ID")
     team_id = os.environ.get("APNS_TEAM_ID")
     key_path = _resolve_apns_key()
 
-    if not all([key_id, team_id, key_path]):
+    if not is_configured():
         logger.debug("APNs not configured — skipping push notification")
         return None
 

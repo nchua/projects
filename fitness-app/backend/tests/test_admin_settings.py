@@ -150,9 +150,11 @@ class TestRoutes:
         by_key = {r["key"]: r for r in rows}
         assert set(rows[0]) == {
             "key", "label", "group", "type", "value", "default", "source", "tier", "warning",
-            "updated_at", "updated_by",
+            "updated_at", "updated_by", "allowed", "min", "max",
         }
         assert by_key["PURGE_GRACE_DAYS"]["tier"] == "destructive"
+        assert by_key["PURCHASE_ALLOWED_ENVIRONMENTS"]["allowed"] == ["Production", "Sandbox", "Xcode"]  # the drawer validates from the row (v2.3)
+        assert by_key["FREE_MONTHLY_SCANS"]["allowed"] == [] and by_key["FREE_MONTHLY_SCANS"]["min"] is not None
         assert by_key["FREE_MONTHLY_SCANS"]["value"] == by_key["FREE_MONTHLY_SCANS"]["default"]
         assert by_key["FREE_MONTHLY_SCANS"]["source"] in ("env", "code")
         assert by_key["inactive_after_days"] == {

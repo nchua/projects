@@ -907,6 +907,9 @@ class SettingRow(UTCModel):
     warning: Optional[str] = None
     updated_at: Optional[datetime] = None
     updated_by: Optional[str] = None
+    allowed: List[str] = Field(default_factory=list)  # csv rows: the registry's allow-list (the drawer validates from it)
+    min: Optional[int] = None  # int / seconds rows: the registry bounds
+    max: Optional[int] = None
 
 
 class SettingUpdateRequest(OptionalStepUpBody):

@@ -77,7 +77,6 @@ tr.row:focus-visible { outline: 2px solid var(--system-primary); outline-offset:
 .card { background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: 14px; padding: 14px; position: relative; box-shadow: 0 8px 20px rgba(0,212,255,.03); min-width: 0; }
 .card.warn { border-color: rgba(255,149,0,.25); }
 .card.danger { border-color: rgba(255,51,51,.28); }
-.card.narrow { max-width: 620px; }
 .card.top { margin-top: 14px; }
 .chip { font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: .6px; padding: 3px 7px; border-radius: 4px; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; text-transform: uppercase; vertical-align: middle; }
 .chip.cyan { color: var(--system-primary); background: var(--primary-010); }
@@ -95,10 +94,10 @@ button.chip.act:hover { outline: 1px solid currentColor; }
 .kv .k { color: var(--text-muted); letter-spacing: .5px; white-space: nowrap; }
 .kv .v { color: var(--text-primary); text-align: right; word-break: break-word; min-width: 0; }
 .kv .v.m { color: var(--text-muted); }
-.kv .v.ov { color: var(--gold); }
+.kv .v.ov, .kv .v .ov { color: var(--gold); }
 .kv .v.warnv { color: var(--orange); }
-.kv .v.good { color: var(--success-green); }
-.kv .v.bad { color: var(--warning-red); }
+.kv .v.good, .kv .v .good { color: var(--success-green); }
+.kv .v.bad, .kv .v .bad { color: var(--warning-red); }
 .acts { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .btn { min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--arise-border); background: var(--primary-010); font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 1px; color: var(--system-primary); display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: 1; text-transform: uppercase; text-align: center; }
 .btn.ghost { border-color: var(--glass-border); background: var(--bg-input); color: var(--text-secondary); }
@@ -268,13 +267,9 @@ a.tile:hover::after { color: var(--system-primary); }
 .ihead .mid .chips { margin-top: 8px; justify-content: flex-start; }
 .copy { padding: 0 2px; min-height: 0; font: inherit; color: var(--text-secondary); border-bottom: 1px dotted var(--text-muted); border-radius: 0; }
 .copy:hover { color: var(--system-primary); border-bottom-color: var(--system-primary); }
-.card .big { font-family: var(--font-display); font-weight: 700; font-size: 15px; line-height: 1.3; margin: 2px 0 8px; color: var(--text-primary); word-break: break-word; }
-.card .big.g { color: var(--success-green); } .card .big.b { color: #7CB8FF; } .card .big.o { color: var(--orange); } .card .big.d { color: var(--text-secondary); }
-.kv .v .ov { color: var(--gold); }
-.kv .v .good { color: var(--success-green); }
-.kv .v .bad { color: var(--warning-red); }
+.c-plan .big { font-family: var(--font-display); font-weight: 700; font-size: 15px; line-height: 1.3; margin: 2px 0 8px; color: var(--text-primary); word-break: break-word; }
+.c-plan .big.g { color: var(--success-green); } .c-plan .big.b { color: #7CB8FF; } .c-plan .big.o { color: var(--orange); } .c-plan .big.d { color: var(--text-secondary); }
 .kv .v .chip { vertical-align: baseline; }
-.grid2.detail { grid-template-rows: auto auto; }
 .grid2.detail .col > .card { flex: 1; }
 details.diag { padding: 0; }
 details.diag > summary { list-style: none; cursor: pointer; padding: 14px 14px 12px; min-height: 44px; touch-action: manipulation; }
@@ -283,8 +278,8 @@ details.diag > summary .sl { margin: 0; }
 details.diag > summary .sl::before { content: "▸"; color: var(--text-muted); font-size: 9px; margin-right: 2px; }
 details.diag[open] > summary .sl::before { content: "▾"; }
 details.diag > .grid2 { margin: 0; padding: 0 14px 14px; }
-.actrow { display: grid; grid-template-columns: 96px auto 1fr auto; gap: 10px; align-items: center; padding: 7px 0; border-top: 1px solid var(--glass-border); font-family: var(--font-mono); font-size: 10.5px; min-height: 32px; }
-.actrow:first-of-type { border-top: 0; }
+.actrow { display: grid; grid-template-columns: 96px auto 1fr auto; gap: 10px; align-items: center; padding: 7px 0; font-family: var(--font-mono); font-size: 10.5px; min-height: 32px; }
+.actrow + .actrow { border-top: 1px solid var(--glass-border); }
 .actrow .t { color: var(--text-muted); white-space: nowrap; }
 .actrow .s { color: var(--text-primary); word-break: break-word; }
 .actrow .w { color: var(--text-muted); white-space: nowrap; text-align: right; }
@@ -318,8 +313,8 @@ details.diag > .grid2 { margin: 0; padding: 0 14px 14px; }
 .sgroup { padding-bottom: 6px; }
 .shead, .srow { display: grid; grid-template-columns: minmax(0, 1fr) 150px 110px 120px 92px; gap: 12px; align-items: center; }
 .shead { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 1px; color: var(--text-muted); text-transform: uppercase; padding: 4px 0 8px; border-bottom: 1px solid var(--glass-border); }
-.srow { padding: 8px 0; border-top: 1px solid var(--glass-border); min-height: 48px; }
-.srow:nth-of-type(2) { border-top: 0; }
+.srow { padding: 8px 0; min-height: 48px; }
+.srow + .srow { border-top: 1px solid var(--glass-border); }
 .srow .k { font-weight: 600; font-size: 12.5px; min-width: 0; }
 .srow .k small { display: block; font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); font-weight: 400; margin-top: 2px; word-break: break-word; }
 .srow .v { font-family: var(--font-mono); font-size: 12px; color: var(--text-primary); }
@@ -475,7 +470,6 @@ details.diag > .grid2 { margin: 0; padding: 0 14px 14px; }
   /* the two desktop columns dissolve; cards reorder into the phone lane (§4.7): PLAN · SCANS · ACCOUNT · PURCHASES · Diagnostics · Activity */
   .grid2.detail { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
   .grid2.detail .col { display: contents; }
-  .c-plan { order: 1; } .c-scans { order: 2; } .c-account { order: 3; } .c-purchases { order: 4; } .c-diag { order: 5; } .c-activity { order: 6; }
   details.diag > .grid2 { display: flex; flex-direction: column; gap: 10px; }
   details.diag > .grid2 .col { display: contents; }
   .actrow { grid-template-columns: 1fr auto; }

@@ -166,6 +166,7 @@ class TestConsoleV2Shell:
         assert "value: v.mode === 'reset' ? null : settingParse(row, v)" in js
         assert "password: destructive" in js and "row.tier === 'destructive'" in js
         assert "row.warning" in js and "RESET TO DEFAULT" in js
+        assert "row.allowed" in js and "csvTokens(v.value).join(',')" in js  # csv stays a string end to end; the allow-list comes from the row
         assert "auditLookup: { action: 'settings.update' }" in js
         for needle in ("r.items", "r.env", "whoop_configured", "git_sha", "token_ttl_minutes"):  # the v2.3 settings response
             assert needle in js, needle
@@ -177,11 +178,13 @@ class TestConsoleV2Shell:
         for needle in ("'request_id'", "'X-Request-ID': rid", "audit-mine", "p.sold_verified", "by_plan_source", "scans_4wk_by_plan", "purchased_credits_total", "'session_count'"):
             assert needle in js, needle
 
-    def test_css_orders_the_phone_detail_lane(self):
+    def test_phone_detail_lane_is_the_dom_order(self):
+        """§4.7: below 768 px the two columns dissolve (display: contents), so the DOM order is the lane."""
+        js = JS.read_text(encoding="utf-8")
+        assert "<div class=\"col\">' + plan + scans + '</div><div class=\"col\">' + account + purchases + '</div>' + diag + activity" in js
         css = CSS.read_text(encoding="utf-8")
         phone = css[css.index("@media (max-width: 767px)"):]
-        orders = dict(re.findall(r"\.(c-[a-z]+) \{ order: (\d+); \}", phone))
-        assert [k for k, _ in sorted(orders.items(), key=lambda kv: int(kv[1]))] == ["c-plan", "c-scans", "c-account", "c-purchases", "c-diag", "c-activity"]  # §4.7
+        assert ".grid2.detail .col { display: contents; }" in phone
         assert ".drawer .field, .drawer .radios label" in phone and "min-height: 44px" in phone  # §5.7 sheet targets
 
     @staticmethod

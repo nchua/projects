@@ -55,6 +55,7 @@ from app.schemas.admin import (
     WeekScans,
     WeekSessions,
 )
+from app.services import settings_service
 from app.services.campaign_service import monday_of
 from app.services.coach_context_service import run_miles, run_pace_sec
 from app.services.entitlement_service import KEY_UNLIMITED, PLAN_UNLIMITED, is_active, plans_for
@@ -562,16 +563,14 @@ def _plan_rollups(db: Session) -> Dict[str, Any]:
         .group_by(ScreenshotUsage.user_id)
         .all()
     }
-    plans = plans_for(db, live_ids + list(scans_by_user))
-    by_source = PlanSourceCounts()
-    purchased = 0
-    for user_id in live_ids:
-        plan = plans[user_id]
-        purchased += plan.purchased_credits
-        if plan.plan == PLAN_UNLIMITED and plan.plan_source in PlanSourceCounts.model_fields:
-            setattr(by_source, plan.plan_source, getattr(by_source, plan.plan_source) + 1)
-    by_plan = ScansByPlan()
+    plans = plans_for(db, live_ids + list(scans_by_user), default_free=int(settings_service.get(db, "FREE_MONTHLY_SCANS")))
+    live = [plans[user_id] for user_id in live_ids]
+    by_source: Counter = Counter(p.plan_source for p in live if p.plan == PLAN_UNLIMITED and p.plan_source)
+    by_plan: Counter = Counter()
     for user_id, n in scans_by_user.items():
-        name = plans[user_id].plan
-        setattr(by_plan, name, getattr(by_plan, name) + n)
-    return {"by_plan_source": by_source, "purchased_credits_total": purchased, "scans_4wk_by_plan": by_plan}
+        by_plan[plans[user_id].plan] += n
+    return {   # pydantic drops keys the models do not declare (an unknown plan_source never raises)
+        "by_plan_source": PlanSourceCounts.model_validate(dict(by_source)),
+        "purchased_credits_total": sum(p.purchased_credits for p in live),
+        "scans_4wk_by_plan": ScansByPlan.model_validate(dict(by_plan)),
+    }

@@ -738,9 +738,22 @@ section), fix every Error, `/simplify`, pathspec commit, push, `deploy-watch`, o
   - Bulk batches send `X-Request-ID` = a uuid the drawer minted (`rid`), so the toast's audit link
     and `latestAuditId` group the batch by `request_id` instead of by action; single actions keep
     the target lookup. The Audit table's Request cell links the same filter.
-  - The csv allow-list for `PURCHASE_ALLOWED_ENVIRONMENTS` (`Production, Sandbox, Xcode`) is a
-    client constant (`CSV_ALLOWED`): `SettingRow` carries the value, not the registry's `allowed`
-    tuple; the server still 422s a bad token. Exposing `allowed` on the row is a one-line v3 nicety.
+  - `SettingRow` gained `allowed` (the registry's csv allow-list) and `min` / `max` (the int /
+    seconds bounds) so the drawer validates from the row rather than from a client copy; a csv
+    value is a comma-separated **string** end to end (the registry's `coerce` shape) — the
+    `/simplify` pass caught the drawer treating it as an array.
+  - QA: `/evaluate` (independent subagent) B+, PASS WITH WARNINGS, contract mirror clean field by
+    field; its one Error — a detail's Change plan read the Hunters-table snapshot (`state.rows`)
+    instead of the fresh detail — is fixed by dropping the snapshot on every non-list route. Its
+    index warning (`admin_audit_log.request_id` is unindexed and the bulk toast now filters on it)
+    is a v3 migration, not a W6 change. `/simplify` (four reviewers): dead week helpers and CSS
+    removed, `actBtn` / `shortKey` / `applyThresholds` / `csvTokens` shared, `whoop_service` /
+    `notification_service.is_configured()` reused by the env block, `Counter`-based rollups, the
+    Overview down to eight requests (deleted / purge-eligible come from the usage rollup, `weeks=1`).
+    Skipped on purpose: server-side tile counts and a SQL twin for `by_plan_source` (v3 with the
+    index), a `state.screen` container (the router reset is the smallest correct change), the
+    duplicate Change plan button (§4.4 lists it in both the header and the PLAN card), dropping
+    `recent_audit` (§6.3 keeps it).
   - `rowMenu(u, detail)` serves both the table row and the detail header (the header omits Change
     plan — the primary button — and Open in new tab). The Hunters phone lane hides the audit
     filters and the Overview's Maintenance / Recent-actions cards (`dk`), as §4.7 lists only the
