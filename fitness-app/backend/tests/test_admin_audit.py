@@ -175,7 +175,7 @@ class TestAuditRead:
         by_request = client.get("/admin/audit", headers=headers, params={"request_id": request_id}).json()
         assert by_request["total"] == 1 and by_request["items"][0]["id"] == rows["items"][0]["id"]
         assert client.get("/admin/audit", headers=headers, params={"request_id": request_id[:-2]}).json()["total"] == 0
-        assert client.get("/admin/audit", headers=headers, params={"request_id": "x" * 129}).status_code == 422
+        assert client.get("/admin/audit", headers=headers, params={"request_id": "x" * 65}).status_code == 422
 
     def test_only_get_is_routed(self, client, admin_headers):
         headers, _ = admin_headers(email="audit-methods@example.com")

@@ -197,7 +197,7 @@ async def list_audit(
     target_id: Optional[str] = Query(None, max_length=64),
     actor_user_id: Optional[str] = Query(None, max_length=64),
     action: Optional[str] = Query(None, max_length=64),
-    request_id: Optional[str] = Query(None, max_length=128, description="exact match: every row one request wrote (a bulk batch)"),
+    request_id: Optional[str] = Query(None, max_length=64, description="exact match: every row one request wrote (a bulk batch); the middleware stores at most 64 chars"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_read_only_db),

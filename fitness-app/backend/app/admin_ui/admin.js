@@ -468,7 +468,7 @@
   }
   function renderRoute() {
     var route = parseHash();
-    if (route.name !== 'hunters' || route.id) state.selected = {};
+    if (route.name !== 'hunters' || route.id) { state.selected = {}; state.rows = null; }   // the table snapshot dies with the table: a detail's Change plan reads the fresh detail (evaluate W6 #1)
     $$('[data-nav]').forEach(function (b) { b.classList.toggle('on', b.dataset.nav === route.name); });
     if (route.name === 'hunters' && route.id) return screenHunter(route.id);
     if (route.name === 'hunters') return screenHunters(route.search);
@@ -954,7 +954,7 @@
       ((b.purchases || []).length ? b.purchases.map(function (r) {
         var e = entByReceipt[r.id];
         return '<div class="prow"><span class="n">' + esc(r.product_id.replace(/^.*\./, '')) + ' <span class="s">' + esc(r.purchase_type) + '</span></span><span class="r">' + (r.credits_added ? '+' + esc(num(r.credits_added)) : r.purchase_type === 'non_consumable' ? '∞' : '0') + '</span>' +
-          '<span class="s">' + esc(fmtDate(r.created_at)) + ' · txn ' + copyBtn(r.transaction_id, shortId(r.transaction_id)) + (e ? ' · → ' + esc(e.key.replace(/^scans\./, '')) + ' ' + (e.active ? '<span class="good">active</span>' : muted('revoked')) : '') + '</span>' +
+          '<span class="s">' + esc(fmtDate(r.created_at)) + ' · txn ' + copyBtn(r.transaction_id, shortId(r.transaction_id)) + (e ? ' · → <a href="' + auditHref({ target_type: 'user', target_id: u.id, action: 'entitlement.grant' }) + '" title="the entitlement this receipt produced">' + esc(e.key.replace(/^scans\./, '')) + '</a> ' + (e.active ? '<span class="good">active</span>' : muted('revoked')) : '') + '</span>' +
           '<span class="s right">' + (r.verified ? chip('verified · ' + (r.environment || '?'), 'green') : chip('unverified', 'dim')) + '</span></div>';
       }).join('') : empty('No purchases.')) + '</div>';
 

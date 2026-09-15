@@ -545,16 +545,16 @@ def fleet_usage(db: Session, *, weeks: int = 20, today: Optional[date] = None) -
             without_family=int(exercises[2] or 0),
         ),
         unlimited_flag_drift=unlimited_flag_drift(db),
-        **_plan_rollups(db, today),
+        **_plan_rollups(db),
     )
 
 
-def _plan_rollups(db: Session, today: date) -> Dict[str, Any]:
+def _plan_rollups(db: Session) -> Dict[str, Any]:
     """The Overview tiles' plan splits (console v2 §4.2, §7.4 v2.3), from ``plans_for`` so they agree
     with the filtered Hunters views the tiles link to: Unlimited by source, outstanding purchased
     credits across every live hunter, and the last 28 days of scans by the scanning hunter's plan."""
     live_ids = [row[0] for row in db.query(User.id).filter(User.is_deleted == False).all()]
-    since = datetime.combine(today - timedelta(days=SCANS_4WK_DAYS), time.min)
+    since = to_naive_utc(utcnow() - timedelta(days=SCANS_4WK_DAYS))   # the rolling window the Hunters scans_4wk column uses
     scans_by_user: Dict[str, int] = {
         user_id: int(n or 0)
         for user_id, n in db.query(ScreenshotUsage.user_id, func.count(ScreenshotUsage.id))
