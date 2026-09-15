@@ -1,6 +1,7 @@
 # ARISE Owner Console v2 — The Admin's Workbench
 
-> **Status:** v2.1 — W4 (data & API) shipped 2026-09-13; W5 / W6 (console) next. Supersedes §10 of
+> **Status:** v2.3 — W4 (data & API) shipped 2026-09-13, W5 (Hunters · Overview · Change plan) 2026-09-14,
+> W6 (Detail · Settings · Audit/Catalog · phone lane) 2026-09-15; what remains is the §7.3 cut list. Supersedes §10 of
 > `docs/arise-control-plane-spec.md` (v1.5) for the *console*; everything else in that spec —
 > identity, sessions, step-up, audit, entitlements, purge, the JWS verification — stays in force
 > and is referenced, not restated. Council record for v1:
@@ -694,3 +695,56 @@ section), fix every Error, `/simplify`, pathspec commit, push, `deploy-watch`, o
   - Select-all takes the current page (50 rows); the 100-row cap binds across pages on the
     Cleanup view exactly as §5.4 intends. Phone: the rail box is the Hunters search field; the
     palette is desktop-only; no bulk bar, no Purge on the phone (as §4.7).
+
+- **v2.3 (2026-09-15, W6 build):** §4.4–§4.7 and §5.5 shipped in `app/admin_ui/` plus the v2.2
+  backend follow-ups (no migration; alembic head stays `console_v2`). Hunter detail: header with
+  click-to-copy email / id, joined + age, plan (→ Change plan) · status · ADMIN · WHOOP chips,
+  Change plan + ⋯ (Adjust credits · Set limits · Soft-delete / Restore · Copy id); the four cards
+  PLAN · SCANS (left) and ACCOUNT · PURCHASES (right) read `detail.plan` / `scans` / `account` /
+  `balance.purchases` (the Danger Zone folded into ACCOUNT; Purge keeps the typed-email drawer and
+  is desktop-only); Diagnostics is one `<details>` (Progress · Campaign · Integrations · Data health
+  · Preview, v1 content) collapsed by default and remembered per browser under `DIAG_KEY`; Activity
+  renders `detail.activity` (20 rows, newest first, kind chips). Measured on the drive: the four
+  cards bottom out at 599 px on a 1440-px viewport (criterion: < 900). Settings: three registry
+  groups with current · default · source chip · Edit / Flip…; `editSettingSpec(row)` types the input
+  by `row.type`, shows `current → new` + `source → console`, step-up when `row.tier = destructive`,
+  the `row.warning` line live for `PURCHASE_REQUIRE_JWS` / `PURGE_SWEEP_ENABLED`, Reset to default as
+  a mode of the same drawer (`PATCH value: null`, offered only when `source = console`), toast
+  "Setting saved · audit …" and a re-fetch; Integrations · Build · Admin cards from the new `env`
+  block. Audit: target links hunter or catalog, action select = registry ∪ the page, Mine chip,
+  `request_id` filter; Catalog: Sold column and the deactivation line. Phone lane per §4.7 / §5.7.
+  Drove on a scratch SQLite: JWS flip → warning + `settings.update` → Reset clears it; `FREE_MONTHLY_SCANS`
+  3 → 7 and a fresh `GET /scan-balance` answered 7; bulk Unlimited for 3 → the toast's request-id
+  link lists exactly the 3 rows; Mine toggles the actor filter; phone jobs 1, 2, 3, 7 (search → row →
+  detail; plan chip → Change plan sheet; Scans → Adjust credits sheet; ACCOUNT → Restore applied).
+  Amendments forced by the build, none re-opening a decision:
+  - `GET /admin/settings` answers `SettingsResponse{items: [SettingRow], env}` instead of the bare
+    list — the read-only lines needed a home and a second route would have been one more mint per
+    screen. `env` is booleans and public names only (`whoop_configured`, `apns_configured` +
+    `apns_topic` / `apns_sandbox`, `sendgrid_configured`, `sentry_enabled`; `git_sha` / `git_branch`
+    / `environment` from the Railway vars and `started_at` = process boot, which on Railway is the
+    deploy time — Railway exposes no deploy timestamp; `bootstrap_email`, `token_ttl_minutes`,
+    `lockout_threshold` / `lockout_minutes`, `step_up_failures_to_revoke`). `assert_no_secret_keys`
+    pins the names and a test plants a marker secret and asserts it never crosses the wire.
+  - The v2.2 follow-ups as shipped: `FleetUsageResponse.by_plan_source {purchase, admin_grant,
+    backfill}`, `purchased_credits_total` (every live hunter, Unlimited included — the credits wait
+    underneath), `scans_4wk_by_plan {free, credits, unlimited, override}` (28 days, the scanning
+    hunter's plan by `plans_for`, so a deleted hunter's scans count under whatever plan its rows
+    derive); `GET /admin/audit?request_id=` (exact); `AdminUserRow.override_keys` (always sent, empty
+    list when none — the row chip lists them); `UserSort` `session_count` (COALESCE 0, the Sessions
+    header sorts); `ProductResponse.sold` / `sold_verified` from `purchase_records`. The Overview
+    tiles read the rollups instead of two 200-row pages; the Scans tile's big number is the sum of
+    the by-plan split (28 days) rather than four ISO weeks.
+  - Bulk batches send `X-Request-ID` = a uuid the drawer minted (`rid`), so the toast's audit link
+    and `latestAuditId` group the batch by `request_id` instead of by action; single actions keep
+    the target lookup. The Audit table's Request cell links the same filter.
+  - The csv allow-list for `PURCHASE_ALLOWED_ENVIRONMENTS` (`Production, Sandbox, Xcode`) is a
+    client constant (`CSV_ALLOWED`): `SettingRow` carries the value, not the registry's `allowed`
+    tuple; the server still 422s a bad token. Exposing `allowed` on the row is a one-line v3 nicety.
+  - `rowMenu(u, detail)` serves both the table row and the detail header (the header omits Change
+    plan — the primary button — and Open in new tab). The Hunters phone lane hides the audit
+    filters and the Overview's Maintenance / Recent-actions cards (`dk`), as §4.7 lists only the
+    tiles + Attention and "the list".
+  - `test_admin_ui`'s storage rule now allows `DIAG_KEY` beside `VIEWS_KEY` (token still forbidden)
+    and pins the settings drawer strings, the detail blocks, the request-id wiring and the phone
+    card order in the CSS.

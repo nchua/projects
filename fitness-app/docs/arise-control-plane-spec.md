@@ -590,11 +590,14 @@ Read routes use a read-only transaction where the dialect supports it (precedent
 
 ## 10. The console
 
-> **Console v2 (2026-09-14):** `docs/admin-console-v2-spec.md` §4 supersedes this section's
+> **Console v2 (2026-09-15):** `docs/admin-console-v2-spec.md` §4 supersedes this section's
 > screen table for **Overview** and **Hunters** (W5 shipped: Hunters is the default route, filter
-> state lives in the hash, Overview is a launchpad of linked tiles) and §5 adds Change plan and
-> bulk mode to the drawer engine described in §10.4. The shell (§10.1), the drawer engine
-> (§10.4) and — until W6 — the Hunter detail (§10.3) stay as written here.
+> state lives in the hash, Overview is a launchpad of linked tiles), the **Hunter detail** (W6
+> shipped §4.4: four operational cards, Diagnostics collapsed, Activity), **Settings** (§4.5:
+> editable, audited) and the Audit / Catalog fixes (§4.6); §5 adds Change plan, bulk mode and the
+> Edit-setting drawer to the drawer engine described in §10.4. The shell (§10.1) and the drawer
+> engine (§10.4) stay as written here; §10.3 below is the v1 card inventory the v2 Diagnostics
+> section still renders.
 
 ### 10.1 Surface
 
@@ -647,6 +650,11 @@ Hunter → per-user objects**; Catalog and Settings are fleet singletons.
 | Settings | global defaults and kill switches | **read-only in v1** with a note "edit on Railway" (editing needs an `app_settings` table — §14) | — |
 
 ### 10.3 Hunter detail
+
+> **Superseded by console v2 §4.4 (W6, 2026-09-15):** the page is now a header, four operational
+> cards (PLAN · ACCOUNT · SCANS · PURCHASES), a collapsed Diagnostics section holding the v1
+> Progress · Campaign · Integrations · Data health · Preview cards below unchanged, and Activity.
+> The Danger Zone's actions live in ACCOUNT; Purge keeps its typed-email drawer.
 
 Desktop: the identity header spans the width (rank-lettered avatar, username, email, truncated
 id; chips: Active/Deleted, rank·level, credits or ∞, WHOOP, Override, Admin), then a two-column
@@ -752,10 +760,10 @@ Schemas in `app/schemas/admin.py`. `StepUpBody{password, reason}` marks the dest
 |---|---|---|---|
 | `POST /session` (no auth; `LOGIN_RATE_LIMIT` + lockout) | `AdminSessionRequest{email, password}` | `AdminSessionResponse{admin_token, expires_at}` | `admin_session_service.mint_admin_session`; audit `session.create` |
 | `GET /me` | — | `AdminMeResponse{user_id, token_expires_at}` | `require_admin` |
-| `GET /users` | `q? (email / username / id), status? (csv; default active,inactive), plan? (csv), joined_days?, deleted?, unlimited?, active_days? (v1, mapped), sort=last_active\|plan\|status\|scans_4wk\|level\|created_at\|created\|email\|credits, order=asc\|desc, limit=50, offset=0` | `AdminUserListResponse{items: [AdminUserRow + plan, plan_source, plan_expires_at, purchased_credits, free_monthly, status, last_active, last_active_kind, scans_4wk], total}` | `admin_read_service.list_users` (console v2 §6.2) |
+| `GET /users` | `q? (email / username / id), status? (csv; default active,inactive), plan? (csv), joined_days?, deleted?, unlimited?, active_days? (v1, mapped), sort=last_active\|plan\|status\|scans_4wk\|level\|created_at\|created\|email\|credits\|session_count, order=asc\|desc, limit=50, offset=0` | `AdminUserListResponse{items: [AdminUserRow + plan, plan_source, plan_expires_at, purchased_credits, free_monthly, status, last_active, last_active_kind, scans_4wk, override_keys], total}` | `admin_read_service.list_users` (console v2 §6.2, §7.4 v2.3) |
 | `GET /users/{id}` | — | `AdminUserDetailResponse{user, profile, progress, balance{…, purchases}, entitlements, effective_limits, campaign?, integrations, data_health, preview, recent_audit, usage, plan: AdminPlanBlock, account: AdminAccountBlock, scans: AdminScansBlock, activity: [AdminActivityRow]}` | `admin_read_service.get_user_detail` (§9.1, console v2 §6.3) |
 | `GET /users/{id}/usage` | `weeks=20` | `UserUsageResponse` (§9.3) | `admin_usage_service.user_usage` |
-| `GET /usage` | `weeks=20` | `FleetUsageResponse` (§9.3) | `admin_usage_service.fleet_usage` |
+| `GET /usage` | `weeks=20` | `FleetUsageResponse` (§9.3) `+ by_plan_source{purchase, admin_grant, backfill}, purchased_credits_total, scans_4wk_by_plan{free, credits, unlimited, override}` | `admin_usage_service.fleet_usage` (console v2 §7.4 v2.3) |
 | `POST /users/{id}/credits` (header `Idempotency-Key`) | `CreditsAdjustRequest{delta ≠ 0, reason, password?}` | `CreditsAdjustResponse{scan_credits_before, scan_credits_after, audit_id, replayed}` | `admin_mutation_service.adjust_credits` (`FOR UPDATE`); audit `credits.adjust` |
 | `POST /users/{id}/entitlements` | `EntitlementGrantRequest{key, value, expires_at?, reason}` | `EntitlementResponse{id, user_id, key, value, source, granted_by, purchase_record_id?, expires_at, revoked_at, created_at}` | `entitlement_service.grant` + `sync_unlimited_flag`; audit `entitlement.grant` |
 | `POST /users/{id}/entitlements/{eid}/revoke` | `StepUpBody` | `EntitlementResponse` | `entitlement_service.revoke` + sync; audit `entitlement.revoke` |
@@ -766,14 +774,14 @@ Schemas in `app/schemas/admin.py`. `StepUpBody{password, reason}` marks the dest
 | `POST /users/{id}/delete` | `StepUpBody` | `AdminUserStateResponse{id, is_deleted, deleted_at}` | `admin_mutation_service.soft_delete_user`; audit `user.soft_delete` |
 | `POST /users/{id}/restore` | `StepUpBody` | `AdminUserStateResponse` | `admin_mutation_service.restore_user` (+ `token_version`); audit `user.restore` |
 | `POST /users/{id}/purge` | `PurgeRequest(StepUpBody){confirm_email, force=false}` | `PurgeResponse{user_id, deleted_at, tables: {str: int}, audit_id}` | `purge_service.purge_user`; audit `user.purge` |
-| `GET /audit` | `target_type?, target_id?, actor_user_id?, action?, limit=50, offset=0` | `AuditListResponse{items: [AuditEntry], total}` | `admin_read_service.list_audit` |
-| `GET /products` | — | `[ProductResponse]` | query |
+| `GET /audit` | `target_type?, target_id?, actor_user_id?, action?, request_id? (exact), limit=50, offset=0` | `AuditListResponse{items: [AuditEntry], total}` | `admin_read_service.list_audit` (console v2 §7.4 v2.3) |
+| `GET /products` | — | `[ProductResponse + sold, sold_verified]` | query + a `purchase_records` count per product (console v2 §4.6) |
 | `POST /products` / `PATCH /products/{id}` | `ProductUpsertRequest{id, kind, credits, entitlement_key?, display_name, active, sort_order, password?, reason}` | `ProductResponse` | `admin_mutation_service.upsert_product` (id immutable; deactivate = step-up); audit `product.upsert` |
 | `POST /users/{id}/plan` (optional `Idempotency-Key`) | `PlanChangeRequest(OptionalStepUpBody){target: unlimited\|topup\|remove_unlimited, expires_at?, credits?, reason}` | `PlanChangeResponse{user_id, before: Plan, after: Plan, skipped, audit_id?, replayed}` | `admin_mutation_service.change_plan` → `grant` / `revoke` / balance lock; audit `user.plan_change` (console v2 §3.2, §6.4) |
 | `POST /users/plan` | `BulkPlanChangeRequest{user_ids (1–100), …PlanChangeRequest}` | `BulkPlanChangeResponse{applied: [PlanChangeResponse], skipped: [{user_id, why}], failed: [{user_id, error}]}` | `admin_mutation_service.bulk_change_plan` — one transaction per user (console v2 §5.4) |
 | `POST /users/state` | `BulkStateRequest(StepUpBody){user_ids, action: delete\|restore, reason}` | `BulkStateResponse{applied: [AdminUserStateResponse], skipped, failed}` | `admin_mutation_service.bulk_set_state`; audit `user.soft_delete` / `user.restore` per user |
 | `POST /users/purge` | `BulkPurgeRequest(DryRunBody){user_ids, dry_run=true, password?, confirm_count?, reason}` | `BulkPurgeResponse{dry_run, preview: [{user_id, tables}], applied: [PurgeResponse], skipped, failed}` | `purge_service.bulk_purge` — every id purge-eligible or 422; apply = password + `confirm_count`; audit `user.purge` per user |
-| `GET /settings` | — | `[SettingRow{key, label, group, type, value, default, source: console\|env\|code, tier, warning?, updated_at?, updated_by?}]` | `admin_read_service.list_settings` over `SETTINGS_REGISTRY` (console v2 §4.5) |
+| `GET /settings` | — | `SettingsResponse{items: [SettingRow{key, label, group, type, value, default, source: console\|env\|code, tier, warning?, updated_at?, updated_by?}], env: {integrations, build, admin}}` — the env block is booleans and public names only | `admin_read_service.list_settings` over `SETTINGS_REGISTRY` + `env_block()` (console v2 §4.5, §7.4 v2.3) |
 | `PATCH /settings/{key}` | `SettingUpdateRequest(OptionalStepUpBody){value: Any\|null, reason}` | `SettingRow` | `admin_mutation_service.update_setting` → `settings_service.set_value` / `reset`; step-up for `PURGE_GRACE_DAYS` and every switch; audit `settings.update` |
 | `GET /ui/` (no auth, no schema) + `/ui/admin.js`, `/ui/admin.css` | — | the static console + headers (§10.1) | one `StaticFiles` mount, `html=True` |
 
