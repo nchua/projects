@@ -157,6 +157,33 @@ class TestConsoleV2Shell:
             assert needle in js, needle
         assert re.search(r"userPath\(rows\[0\]\.id, '/plan'\), body, \{ 'Idempotency-Key': dr\.idem \}", js)  # single Change plan is idempotent (§7.4 v2.1)
 
+    def test_js_carries_the_w6_contract_details(self):
+        """Console v2 §4.4–§4.7 + §5.5: the detail, the settings drawer and the phone lane read what the API ships."""
+        js = JS.read_text(encoding="utf-8")
+        # Settings (§4.5, §5.5): PATCH /admin/settings/{key}, null resets, step-up follows row.tier, the live warning line
+        assert "function editSettingSpec(row)" in js
+        assert re.search(r"api\('PATCH', '/admin/settings/' \+ encodeURIComponent\(row\.key\)", js)
+        assert "value: v.mode === 'reset' ? null : settingParse(row, v)" in js
+        assert "password: destructive" in js and "row.tier === 'destructive'" in js
+        assert "row.warning" in js and "RESET TO DEFAULT" in js
+        assert "auditLookup: { action: 'settings.update' }" in js
+        for needle in ("r.items", "r.env", "whoop_configured", "git_sha", "token_ttl_minutes"):  # the v2.3 settings response
+            assert needle in js, needle
+        # Detail (§4.4): the four cards read the detail blocks; Diagnostics is a <details> remembered under DIAG_KEY
+        for needle in ("c-plan", "c-scans", "c-account", "c-purchases", "c-diag", "c-activity", "d.plan", "d.account", "d.scans", "d.activity", "pl.last_change", "acc.purge_at", "sc.used_7d", "sc.today_count"):
+            assert needle in js, needle
+        assert 'id="diag"' in js and "var DIAG_KEY = " in js
+        # Audit / Catalog (§4.6) and the bulk request id (v2.3)
+        for needle in ("'request_id'", "'X-Request-ID': rid", "audit-mine", "p.sold_verified", "by_plan_source", "scans_4wk_by_plan", "purchased_credits_total", "'session_count'"):
+            assert needle in js, needle
+
+    def test_css_orders_the_phone_detail_lane(self):
+        css = CSS.read_text(encoding="utf-8")
+        phone = css[css.index("@media (max-width: 767px)"):]
+        orders = dict(re.findall(r"\.(c-[a-z]+) \{ order: (\d+); \}", phone))
+        assert [k for k, _ in sorted(orders.items(), key=lambda kv: int(kv[1]))] == ["c-plan", "c-scans", "c-account", "c-purchases", "c-diag", "c-activity"]  # §4.7
+        assert ".drawer .field, .drawer .radios label" in phone and "min-height: 44px" in phone  # §5.7 sheet targets
+
     @staticmethod
     def _hash_state_block() -> str:
         js = JS.read_text(encoding="utf-8")
