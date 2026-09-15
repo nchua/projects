@@ -911,7 +911,7 @@
       var def = lim.defaults ? lim.defaults[o.def.field] : undefined;
       return (o.row ? '<span class="ov">' + esc(o.def.field.replace(/_seconds$/, '')) + ' ' + esc(o.row.value) + esc(o.def.unit) + '</span>' : muted(o.def.field.replace(/_seconds$/, '') + ' ' + (def === undefined ? lim[o.def.field] : def) + o.def.unit));
     }).join(' · ');
-    var plan = '<div class="card c-plan">' + sl('PLAN', frozen ? ro('frozen while deleted') : ro(pl.plan_source === 'purchase' ? 'purchase-sourced · survives Restore Purchases' : '')) +
+    var plan = '<div class="card c-plan">' + sl('PLAN', frozen ? ro('frozen while deleted') : pl.plan_source === 'purchase' ? ro('purchase-sourced · survives Restore Purchases') : '') +
       '<div class="big ' + (pl.plan === 'unlimited' ? 'g' : pl.plan === 'override' ? 'o' : pl.plan === 'credits' ? 'b' : 'd') + '">' + esc(planLine) + '</div>' +
       kv('OVERRIDES', (hasOverride ? '' : muted('none') + ' · ') + overrideCells) +
       kv('LAST CHANGE', lc ? esc(lc.action.replace(/^user\./, '')) + ' · ' + esc(lc.actor ? shortId(lc.actor) : 'system') + ' · ' + esc(fmtDate(lc.at)) + (lc.reason ? ' · “' + esc(lc.reason) + '”' : '') + ' · <a href="' + auditHref({ target_type: 'user', target_id: u.id }) + '">audit ' + esc(shortId(lc.audit_id)) + '</a>' : 'no plan change yet', lc ? '' : 'm') +
@@ -1376,7 +1376,7 @@
         return null;
       },
       password: function (v) { return v.target === 'remove_unlimited' || (v.target === 'topup' && Number(v.credits) > CREDITS_STEP_UP); },
-      confirmLabel: function (v) { return single ? 'CHANGE PLAN' : 'APPLY TO ' + plural(changing(v).length, 'HUNTER'); },
+      confirmLabel: function (v) { return single ? 'CHANGE PLAN' : 'APPLY TO ' + plural(changing(v).length, 'hunter').toUpperCase(); },
       hint: 'Logged as user.plan_change with the before / after plan. Purchased credits are never touched by a plan change; Remove Unlimited and a top-up over ' + CREDITS_STEP_UP + ' need your password.',
       submit: function (v, reason, password, dr) {
         var body = { target: v.target };
