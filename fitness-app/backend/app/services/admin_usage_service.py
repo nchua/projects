@@ -42,7 +42,9 @@ from app.schemas.admin import (
     FleetUsers,
     FleetWeekSessions,
     LiftWeekPoint,
+    PlanSourceCounts,
     RunRow,
+    ScansByPlan,
     ScanUsage,
     SessionMeta,
     SessionSource,
@@ -55,7 +57,7 @@ from app.schemas.admin import (
 )
 from app.services.campaign_service import monday_of
 from app.services.coach_context_service import run_miles, run_pace_sec
-from app.services.entitlement_service import KEY_UNLIMITED, is_active
+from app.services.entitlement_service import KEY_UNLIMITED, PLAN_UNLIMITED, is_active, plans_for
 from app.services.purge_service import eligible_filter
 from app.services.training_load_service import (
     METERS_PER_MILE,
@@ -73,6 +75,7 @@ BIG_THREE_WEEKS = 16
 SESSION_META_WEEKS = 12
 SCANS_WEEKS = 12
 RUNS_WEEKS = 8
+SCANS_4WK_DAYS = 28  # the Hunters column, the Scans tile split and the detail's used_4wk share it
 COVERAGE_DAYS = 30
 
 
@@ -542,4 +545,33 @@ def fleet_usage(db: Session, *, weeks: int = 20, today: Optional[date] = None) -
             without_family=int(exercises[2] or 0),
         ),
         unlimited_flag_drift=unlimited_flag_drift(db),
+        **_plan_rollups(db, today),
     )
+
+
+def _plan_rollups(db: Session, today: date) -> Dict[str, Any]:
+    """The Overview tiles' plan splits (console v2 §4.2, §7.4 v2.3), from ``plans_for`` so they agree
+    with the filtered Hunters views the tiles link to: Unlimited by source, outstanding purchased
+    credits across every live hunter, and the last 28 days of scans by the scanning hunter's plan."""
+    live_ids = [row[0] for row in db.query(User.id).filter(User.is_deleted == False).all()]
+    since = datetime.combine(today - timedelta(days=SCANS_4WK_DAYS), time.min)
+    scans_by_user: Dict[str, int] = {
+        user_id: int(n or 0)
+        for user_id, n in db.query(ScreenshotUsage.user_id, func.count(ScreenshotUsage.id))
+        .filter(ScreenshotUsage.created_at >= since)
+        .group_by(ScreenshotUsage.user_id)
+        .all()
+    }
+    plans = plans_for(db, live_ids + list(scans_by_user))
+    by_source = PlanSourceCounts()
+    purchased = 0
+    for user_id in live_ids:
+        plan = plans[user_id]
+        purchased += plan.purchased_credits
+        if plan.plan == PLAN_UNLIMITED and plan.plan_source in PlanSourceCounts.model_fields:
+            setattr(by_source, plan.plan_source, getattr(by_source, plan.plan_source) + 1)
+    by_plan = ScansByPlan()
+    for user_id, n in scans_by_user.items():
+        name = plans[user_id].plan
+        setattr(by_plan, name, getattr(by_plan, name) + n)
+    return {"by_plan_source": by_source, "purchased_credits_total": purchased, "scans_4wk_by_plan": by_plan}

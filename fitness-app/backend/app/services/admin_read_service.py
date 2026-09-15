@@ -7,6 +7,7 @@ every table before and after the detail GET. Mutations live in
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -15,6 +16,7 @@ from sqlalchemy import Date, Integer, String, Subquery, and_, case, cast, func, 
 from sqlalchemy.orm import Query, Session
 from sqlalchemy.sql.elements import ColumnElement
 
+from app.core.config import settings
 from app.core.settings_registry import (
     INACTIVE_AFTER_DAYS,
     SETTINGS,
@@ -57,8 +59,13 @@ from app.schemas.admin import (
     AdminWhoopStatus,
     AuditEntry,
     EntitlementResponse,
+    EnvAdmin,
+    EnvBuild,
+    EnvIntegrations,
     ProductResponse,
     SettingRow,
+    SettingsEnvBlock,
+    SettingsResponse,
     UserSort,
     UserUsageResponse,
 )
@@ -72,7 +79,7 @@ from app.services import (
     training_load_service,
     xp_service,
 )
-from app.services.admin_usage_service import count_where
+from app.services.admin_usage_service import SCANS_4WK_DAYS, count_where
 from app.services.entitlement_service import (
     KEY_FREE_MONTHLY,
     KEY_UNLIMITED,
@@ -96,7 +103,6 @@ STATUS_PURGE_ELIGIBLE = "purge_eligible"
 STATUS_ORDER: Tuple[str, ...] = (STATUS_ACTIVE, STATUS_INACTIVE, STATUS_DELETED, STATUS_PURGE_ELIGIBLE)
 DEFAULT_STATUSES: Tuple[str, ...] = (STATUS_ACTIVE, STATUS_INACTIVE)  # "not deleted" (§4.3)
 
-SCANS_4WK_DAYS = 28
 ACTIVITY_LIMIT = 20
 # The audit actions that change a hunter's plan (the Plan card's "last change").
 PLAN_AUDIT_ACTIONS: Tuple[str, ...] = (
@@ -270,7 +276,7 @@ def _derived(*, now: datetime, default_free: int, thresholds: StatusThresholds) 
             status.label("status"),
             last_active.label("last_active"),
             kind.label("last_active_kind"),
-            sessions.c.session_count.label("session_count"),
+            func.coalesce(sessions.c.session_count, 0).label("session_count"),
             sessions.c.last_workout.label("last_workout"),
             func.coalesce(scans.c.scans_4wk, 0).label("scans_4wk"),
             ScanBalance.scan_credits.label("scan_credits"),
@@ -373,6 +379,7 @@ def list_users(
         "status": _rank(d.c.status, STATUS_ORDER),
         "scans_4wk": d.c.scans_4wk,
         "level": UserProgress.level,
+        "session_count": d.c.session_count,
     }[sort]
     primary = sort_column.desc() if order == "desc" else sort_column.asc()
     rows = query.order_by(primary.nulls_last(), User.id).offset(offset).limit(limit).all()
@@ -405,6 +412,7 @@ def list_users(
             last_active=row["last_active"],
             last_active_kind=row["last_active_kind"],
             scans_4wk=int(row["scans_4wk"] or 0),
+            override_keys=list(plan.override_keys),
         ))
     return items, int(total or 0)
 
@@ -416,6 +424,7 @@ def _audit_query(
     target_id: Optional[str] = None,
     actor_user_id: Optional[str] = None,
     action: Optional[str] = None,
+    request_id: Optional[str] = None,
 ) -> Query:
     query = db.query(AdminAuditLog)
     if target_type:
@@ -426,6 +435,8 @@ def _audit_query(
         query = query.filter(AdminAuditLog.actor_user_id == actor_user_id)
     if action:
         query = query.filter(AdminAuditLog.action == action)
+    if request_id:
+        query = query.filter(AdminAuditLog.request_id == request_id)  # exact: one batch = one request (§5.4)
     return query.order_by(AdminAuditLog.created_at.desc(), AdminAuditLog.id.desc())
 
 
@@ -436,21 +447,33 @@ def list_audit(
     target_id: Optional[str] = None,
     actor_user_id: Optional[str] = None,
     action: Optional[str] = None,
+    request_id: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
 ) -> Tuple[List[AuditEntry], int]:
     """Newest-first page of the append-only audit log (spec §5), with the total."""
     query = _audit_query(
-        db, target_type=target_type, target_id=target_id, actor_user_id=actor_user_id, action=action
+        db, target_type=target_type, target_id=target_id, actor_user_id=actor_user_id, action=action,
+        request_id=request_id,
     )
     rows = query.offset(offset).limit(limit).all()
     return [AuditEntry.model_validate(row, from_attributes=True) for row in rows], int(query.count())
 
 
 def list_products(db: Session) -> List[ProductResponse]:
-    """The catalog, active or not, in display order."""
+    """The catalog, active or not, in display order, with what each SKU has sold (§4.6)."""
     rows = db.query(Product).order_by(Product.sort_order, Product.id).all()
-    return [ProductResponse.model_validate(p, from_attributes=True) for p in rows]
+    sold: Dict[str, Tuple[int, int]] = {
+        product_id: (int(n or 0), int(verified or 0))
+        for product_id, n, verified in db.query(
+            PurchaseRecord.product_id, func.count(PurchaseRecord.id), count_where(PurchaseRecord.verified == True)
+        ).group_by(PurchaseRecord.product_id).all()
+    }
+    out = []
+    for p in rows:
+        n, verified = sold.get(p.id, (0, 0))
+        out.append(ProductResponse.model_validate(p, from_attributes=True).model_copy(update={"sold": n, "sold_verified": verified}))
+    return out
 
 
 def entitlement_response(row: UserEntitlement, now: Optional[datetime] = None) -> EntitlementResponse:
@@ -773,8 +796,46 @@ def setting_row(
     )
 
 
-def list_settings(db: Session) -> List[SettingRow]:
-    """``GET /admin/settings``: every registry key in registry order (one read of the table)."""
+def list_settings(db: Session) -> SettingsResponse:
+    """``GET /admin/settings``: every registry key in registry order (one read of the table) + the env block."""
     now = utcnow()
     rows = settings_service.override_rows(db)
-    return [setting_row(db, spec, now=now, row=rows.get(spec.key), prefetched=True) for spec in SETTINGS]
+    return SettingsResponse(
+        items=[setting_row(db, spec, now=now, row=rows.get(spec.key), prefetched=True) for spec in SETTINGS],
+        env=env_block(),
+    )
+
+
+PROCESS_STARTED_AT = utcnow()  # import time == boot time: on Railway that is the deploy time
+
+
+def env_block() -> SettingsEnvBlock:
+    """The read-only Integrations · Build · Admin lines (§4.5): presence and public names only.
+
+    Nothing here is a value the console could edit and nothing is a secret — every
+    credential collapses to a boolean; ``assert_no_secret_keys`` pins the key names.
+    """
+    env = os.environ
+    return SettingsEnvBlock(
+        integrations=EnvIntegrations(
+            whoop_configured=bool(settings.WHOOP_CLIENT_ID and settings.WHOOP_CLIENT_SECRET and settings.WHOOP_REDIRECT_URI),
+            apns_configured=bool(settings.APNS_KEY_ID and settings.APNS_TEAM_ID and settings.APNS_AUTH_KEY_PATH),
+            apns_topic=settings.APNS_TOPIC,
+            apns_sandbox=bool(settings.APNS_USE_SANDBOX),
+            sendgrid_configured=bool(env.get("SENDGRID_API_KEY", "").strip()),
+            sentry_enabled=bool(env.get("SENTRY_DSN", "").strip()),
+        ),
+        build=EnvBuild(
+            git_sha=env.get("RAILWAY_GIT_COMMIT_SHA") or None,
+            git_branch=env.get("RAILWAY_GIT_BRANCH") or None,
+            environment=env.get("RAILWAY_ENVIRONMENT_NAME") or None,
+            started_at=PROCESS_STARTED_AT,
+        ),
+        admin=EnvAdmin(
+            bootstrap_email=(settings.ADMIN_BOOTSTRAP_EMAIL or "").strip() or None,
+            token_ttl_minutes=int(settings.ADMIN_TOKEN_EXPIRE_MINUTES),
+            lockout_threshold=int(settings.ADMIN_LOCKOUT_THRESHOLD),
+            lockout_minutes=int(settings.ADMIN_LOCKOUT_MINUTES),
+            step_up_failures_to_revoke=int(settings.ADMIN_STEP_UP_FAILURES_TO_REVOKE),
+        ),
+    )

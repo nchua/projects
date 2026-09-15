@@ -237,7 +237,7 @@ class TestListUsers:
             "level", "rank", "last_workout_date", "session_count", "scan_credits", "has_unlimited",
             # console v2 §6.2
             "plan", "plan_source", "plan_expires_at", "purchased_credits", "free_monthly",
-            "status", "last_active", "last_active_kind", "scans_4wk",
+            "status", "last_active", "last_active_kind", "scans_4wk", "override_keys",
         }
         assert row["plan"] == "free" and row["status"] == "active"
         assert row["last_active"] == row["last_workout_date"] and row["last_active_kind"] == "workout"
@@ -383,6 +383,9 @@ class TestListUsersV2:
         assert by_id[c["credits"].id]["purchased_credits"] == 30
         assert by_id[c["credits"].id]["scans_4wk"] == 1
         assert by_id[c["override"].id]["plan"] == "override" and by_id[c["override"].id]["free_monthly"] == 10
+        assert by_id[c["override"].id]["override_keys"] == [es.KEY_FREE_MONTHLY]  # the row chip lists them (v2.3)
+        assert by_id[c["free"].id]["override_keys"] == []
+        assert by_id[c["both"].id]["override_keys"] == [es.KEY_DAILY_LIMIT]  # kept under Unlimited (§3.1)
         assert by_id[c["override"].id]["last_active_kind"] == "login" and by_id[c["override"].id]["status"] == "active"
         assert by_id[c["unlimited"].id]["plan"] == "unlimited" and by_id[c["unlimited"].id]["plan_source"] == "admin_grant"
         assert by_id[c["unlimited"].id]["status"] == "inactive" and by_id[c["unlimited"].id]["last_active"] is None
@@ -444,6 +447,7 @@ class TestListUsersV2:
     @pytest.mark.parametrize("sort,key", [
         ("last_active", "last_active"), ("scans_4wk", "scans_4wk"), ("level", "level"),
         ("created_at", "created_at"), ("created", "created_at"), ("email", "email"),
+        ("session_count", "session_count"),  # the Sessions header (§4.3, v2.3)
     ])
     def test_new_sort_keys(self, client, admin_headers, plan_cohort, sort, key):
         headers, _ = admin_headers(email=f"owner-v2sort-{sort}@example.com")
@@ -738,7 +742,7 @@ class TestProducts:
         assert unlimited["entitlement_key"] == es.KEY_UNLIMITED and unlimited["active"] is True
         assert set(rows[0]) == {
             "id", "kind", "credits", "entitlement_key", "display_name", "active", "sort_order",
-            "created_at", "updated_at",
+            "created_at", "updated_at", "sold", "sold_verified",
         }
 
 

@@ -5,6 +5,7 @@ import pytest
 
 from app.models.admin import AdminAuditLog
 from app.models.entitlement import Product
+from app.models.scan_balance import PurchaseRecord
 from app.services import entitlement_service as es
 from tests.helpers_admin import product_body
 
@@ -18,6 +19,24 @@ def admin(admin_headers):
     return admin_headers(email=f"products-admin-{uuid.uuid4().hex[:8]}@example.com")
 
 
+class TestProductsSold:
+    """``GET /admin/products`` carries ``sold`` / ``sold_verified`` per SKU (console v2 §4.6, v2.3)."""
+
+    def test_counts_purchase_records_per_product(self, client, db, admin, create_test_user):
+        headers, _ = admin
+        product_id = f"com.test.sold-{uuid.uuid4().hex[:8]}"
+        assert client.post("/admin/products", json=_body(product_id), headers=headers).status_code == 201
+        buyer, _ = create_test_user(email=f"buyer-{uuid.uuid4().hex[:6]}@example.com")
+        for n, verified in enumerate((False, True, True)):
+            db.add(PurchaseRecord(user_id=buyer.id, product_id=product_id, credits_added=5, purchase_type="consumable",
+                                  transaction_id=str(8_000_000_000 + n * 1_000_000 + int(uuid.uuid4().hex[:5], 16)),
+                                  verified=verified, environment="Sandbox" if verified else None))
+        db.commit()
+        rows = {p["id"]: p for p in client.get("/admin/products", headers=headers).json()}
+        assert rows[product_id]["sold"] == 3 and rows[product_id]["sold_verified"] == 2
+        assert all(p["sold"] >= p["sold_verified"] >= 0 for p in rows.values())
+
+
 class TestProductsUpsert:
     def test_create_then_list_and_audit(self, client, db, admin):
         headers, actor = admin
@@ -26,7 +45,8 @@ class TestProductsUpsert:
         assert response.status_code == 201, response.text
         body = response.json()
         assert body["id"] == product_id and body["credits"] == 5 and body["active"] is True
-        assert set(body) == {"id", "kind", "credits", "entitlement_key", "display_name", "active", "sort_order", "created_at", "updated_at"}
+        assert set(body) == {"id", "kind", "credits", "entitlement_key", "display_name", "active", "sort_order", "created_at", "updated_at", "sold", "sold_verified"}
+        assert body["sold"] == 0 and body["sold_verified"] == 0
         assert product_id in {p["id"] for p in client.get("/admin/products", headers=headers).json()}
 
         row = db.query(AdminAuditLog).filter(AdminAuditLog.action == "product.upsert",

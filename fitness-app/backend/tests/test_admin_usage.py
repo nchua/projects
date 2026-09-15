@@ -9,11 +9,12 @@ import pytest
 
 from app.core.database import mark_read_only
 from app.models.activity import DailyActivity
-from app.models.scan_balance import ScanBalance
+from app.models.scan_balance import PurchaseRecord, ScanBalance
 from app.models.screenshot_usage import ScreenshotUsage
 from app.models.user import User
 from app.services import admin_usage_service as us
 from app.services import entitlement_service as es
+from app.services import settings_service
 from app.services.campaign_service import monday_of
 from tests.helpers_admin import grant_admin
 from tests.helpers_w1 import add_lift, add_run, family_exercise, make_user
@@ -165,6 +166,46 @@ class TestFleetUsage:
         assert after.exercises.total >= before.exercises.total + 1
         assert after.generated_at.tzinfo is not None
 
+    def test_plan_rollups_agree_with_plans_for(self, db, create_test_user):
+        """The Overview tiles' splits (v2.3): Unlimited by source, purchased credits outstanding, scans by plan."""
+        before = us.fleet_usage(db, weeks=4, today=TODAY)
+        free_default = int(settings_service.get(db, "FREE_MONTHLY_SCANS"))
+        granted = make_user(create_test_user, "roll-granted")
+        bought = make_user(create_test_user, "roll-bought")
+        credits = make_user(create_test_user, "roll-credits")
+        free = make_user(create_test_user, "roll-free")
+        gone = make_user(create_test_user, "roll-gone")
+        gone.is_deleted = True
+        gone.deleted_at = datetime.now(timezone.utc)
+        db.add(ScanBalance(user_id=credits.id, scan_credits=free_default + 30, has_unlimited=False))
+        db.add(ScanBalance(user_id=bought.id, scan_credits=free_default + 5, has_unlimited=True))  # credits wait underneath
+        db.add(ScanBalance(user_id=gone.id, scan_credits=free_default + 99, has_unlimited=False))  # deleted: not outstanding
+        db.commit()
+        grant_admin(db, granted.id, es.KEY_UNLIMITED, True)
+        product = es.get_product(db, es.UNLIMITED_PRODUCT_ID)
+        record = PurchaseRecord(user_id=bought.id, product_id=product.id, credits_added=0, purchase_type="non_consumable",
+                                transaction_id=str(9_000_000_000 + int(uuid.uuid4().hex[:6], 16)), verified=True, environment="Sandbox")
+        db.add(record)
+        db.flush()
+        es.grant_from_purchase(db, user_id=bought.id, purchase_record_id=record.id, product=product)
+        db.commit()
+        now = datetime.now(timezone.utc)
+        for user, n in ((free, 2), (credits, 1), (bought, 3), (granted, 1), (gone, 4)):
+            for _ in range(n):
+                db.add(ScreenshotUsage(user_id=user.id, screenshots_count=1, created_at=now - timedelta(days=3)))
+        db.add(ScreenshotUsage(user_id=free.id, screenshots_count=1, created_at=now - timedelta(days=40)))  # outside 28 d
+        db.commit()
+
+        after = us.fleet_usage(db, weeks=4, today=TODAY)
+        assert after.by_plan_source.admin_grant == before.by_plan_source.admin_grant + 1
+        assert after.by_plan_source.purchase == before.by_plan_source.purchase + 1
+        assert after.by_plan_source.backfill == before.by_plan_source.backfill
+        assert after.purchased_credits_total == before.purchased_credits_total + 30 + 5
+        assert after.scans_4wk_by_plan.free == before.scans_4wk_by_plan.free + 2  # the 40-day-old scan is outside the window
+        assert after.scans_4wk_by_plan.credits == before.scans_4wk_by_plan.credits + 1 + 4  # a deleted hunter's scans still count under its plan
+        assert after.scans_4wk_by_plan.unlimited == before.scans_4wk_by_plan.unlimited + 4
+        assert after.scans_4wk_by_plan.override == before.scans_4wk_by_plan.override
+
     def test_drift_uses_newest_active_row_like_the_writer(self, db, create_test_user):
         user = make_user(create_test_user, "drift-newest")
         grant_admin(db, user.id, es.KEY_UNLIMITED, True)
@@ -183,7 +224,10 @@ class TestFleetUsage:
         assert set(body) == {
             "generated_at", "weeks", "users", "sessions_by_week", "scans_by_week", "balances",
             "integrations", "exercises", "unlimited_flag_drift",
+            "by_plan_source", "purchased_credits_total", "scans_4wk_by_plan",  # console v2 §7.4 v2.3
         }
+        assert set(body["by_plan_source"]) == {"purchase", "admin_grant", "backfill"}
+        assert set(body["scans_4wk_by_plan"]) == {"free", "credits", "unlimited", "override"}
         assert body["weeks"] == 20
         assert client.get("/admin/usage", headers=headers, params={"weeks": 500}).status_code == 422
 

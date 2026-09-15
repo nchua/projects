@@ -27,7 +27,7 @@ from app.services.entitlement_service import ENTITLEMENT_KEYS, validate_grant
 # ``created`` is the v1 spelling of ``created_at``; both stay (console v2 §6.2).
 UserSort = Literal[
     "last_active", "created", "created_at", "email", "credits",
-    "plan", "status", "scans_4wk", "level",
+    "plan", "status", "scans_4wk", "level", "session_count",
 ]
 SortOrder = Literal["asc", "desc"]
 PlanName = Literal["unlimited", "override", "credits", "free"]
@@ -88,6 +88,7 @@ class AdminUserRow(UTCModel):
     last_active: Optional[date] = None
     last_active_kind: Optional[LastActiveKind] = None
     scans_4wk: int = 0
+    override_keys: List[str] = Field(default_factory=list)  # the row plan chip lists them (v2 §7.4 v2.3)
 
 
 class AdminUserListResponse(UTCModel):
@@ -376,6 +377,8 @@ class ProductResponse(UTCModel):
     sort_order: int
     created_at: datetime
     updated_at: datetime
+    sold: int = 0  # purchase_records citing this product (§4.6)
+    sold_verified: int = 0  # …of which carry a verified receipt
 
 
 # ── usage (spec §9.3) ───────────────────────────────────────────────────────
@@ -534,6 +537,23 @@ class UnlimitedDriftRow(UTCModel):
     derived: bool
 
 
+class PlanSourceCounts(UTCModel):
+    """Unlimited hunters by where the grant came from (§3.1) — the Overview tile's split."""
+
+    purchase: int = 0
+    admin_grant: int = 0
+    backfill: int = 0
+
+
+class ScansByPlan(UTCModel):
+    """Scans in the last 28 days by the scanning hunter's plan (§4.2 Scans tile)."""
+
+    free: int = 0
+    credits: int = 0
+    unlimited: int = 0
+    override: int = 0
+
+
 class FleetUsageResponse(UTCModel):
     generated_at: datetime
     weeks: int
@@ -544,6 +564,9 @@ class FleetUsageResponse(UTCModel):
     integrations: FleetIntegrations
     exercises: FleetExercises
     unlimited_flag_drift: List[UnlimitedDriftRow]
+    by_plan_source: PlanSourceCounts = Field(default_factory=PlanSourceCounts)
+    purchased_credits_total: int = 0  # outstanding purchased credits across every live hunter
+    scans_4wk_by_plan: ScansByPlan = Field(default_factory=ScansByPlan)
 
 
 # ── user detail ─────────────────────────────────────────────────────────────
@@ -890,3 +913,48 @@ class SettingUpdateRequest(OptionalStepUpBody):
     """``PATCH /admin/settings/{key}``: ``value`` null (or absent) resets to the env / code value."""
 
     value: Optional[Any] = None
+
+
+class EnvIntegrations(UTCModel):
+    """Which integrations the deploy has configured — booleans and public names only, never a value."""
+
+    whoop_configured: bool
+    apns_configured: bool
+    apns_topic: str
+    apns_sandbox: bool
+    sendgrid_configured: bool
+    sentry_enabled: bool
+
+
+class EnvBuild(UTCModel):
+    """What is running: the Railway git facts and when this process started (the deploy time)."""
+
+    git_sha: Optional[str] = None
+    git_branch: Optional[str] = None
+    environment: Optional[str] = None
+    started_at: datetime
+
+
+class EnvAdmin(UTCModel):
+    """The admin-session policy — env-only on purpose (§4.5, §7.3)."""
+
+    bootstrap_email: Optional[str] = None
+    token_ttl_minutes: int
+    lockout_threshold: int
+    lockout_minutes: int
+    step_up_failures_to_revoke: int
+
+
+class SettingsEnvBlock(UTCModel):
+    """The read-only lines at the bottom of Settings (§4.5): deploy-time facts the console cannot edit."""
+
+    integrations: EnvIntegrations
+    build: EnvBuild
+    admin: EnvAdmin
+
+
+class SettingsResponse(UTCModel):
+    """``GET /admin/settings``: every editable row in registry order plus the env block."""
+
+    items: List[SettingRow]
+    env: SettingsEnvBlock

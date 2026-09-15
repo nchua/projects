@@ -67,6 +67,7 @@ from app.schemas.admin import (
     ReasonBody,
     SeedAchievementsResponse,
     SettingRow,
+    SettingsResponse,
     SettingUpdateRequest,
     SortOrder,
     StepUpBody,
@@ -196,6 +197,7 @@ async def list_audit(
     target_id: Optional[str] = Query(None, max_length=64),
     actor_user_id: Optional[str] = Query(None, max_length=64),
     action: Optional[str] = Query(None, max_length=64),
+    request_id: Optional[str] = Query(None, max_length=128, description="exact match: every row one request wrote (a bulk batch)"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_read_only_db),
@@ -207,6 +209,7 @@ async def list_audit(
         target_id=target_id,
         actor_user_id=actor_user_id,
         action=action,
+        request_id=request_id,
         limit=limit,
         offset=offset,
     )
@@ -219,9 +222,9 @@ async def list_products(db: Session = Depends(get_read_only_db)):
     return admin_read_service.list_products(db)
 
 
-@router.get("/settings", response_model=List[SettingRow])
+@router.get("/settings", response_model=SettingsResponse)
 async def list_settings(db: Session = Depends(get_read_only_db)):
-    """Every console-editable setting with value · default · source (console v2 §4.5, §6.4)."""
+    """Every console-editable setting with value · default · source, plus the read-only env block (console v2 §4.5, §6.4)."""
     return admin_read_service.list_settings(db)
 
 

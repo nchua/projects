@@ -120,7 +120,7 @@ class TestResolver:
         resolved = settings_service.resolve(db, "FREE_MONTHLY_SCANS")
         assert resolved.value == 3 and resolved.source in ("env", "code")
         headers, _ = admin_headers(email=f"settings-{uuid.uuid4().hex[:6]}@example.com")
-        rows = {r["key"]: r for r in client.get(URL, headers=headers).json()}
+        rows = {r["key"]: r for r in client.get(URL, headers=headers).json()["items"]}
         assert rows["FREE_MONTHLY_SCANS"]["value"] == 3
 
     def test_registry_only_key_has_a_code_default(self, db):
@@ -142,8 +142,10 @@ class TestRoutes:
         headers, _ = admin_headers(email=f"settings-{uuid.uuid4().hex[:6]}@example.com")
         response = client.get(URL, headers=headers)
         assert response.status_code == 200, response.text
-        rows = response.json()
-        assert_no_secret_keys(rows)
+        body = response.json()
+        assert set(body) == {"items", "env"}
+        rows = body["items"]
+        assert_no_secret_keys(body)
         assert [r["key"] for r in rows] == [s.key for s in SETTINGS]
         by_key = {r["key"]: r for r in rows}
         assert set(rows[0]) == {
@@ -160,6 +162,39 @@ class TestRoutes:
         assert by_key["PURGE_SWEEP_ENABLED"]["warning"].endswith("purged on the next deploy.")
         assert all(by_key[k]["warning"] is None for k in by_key if k not in ("PURCHASE_REQUIRE_JWS", "PURGE_SWEEP_ENABLED"))
         assert response.headers["cache-control"] == "no-store"
+
+    def test_env_block_names_integrations_build_and_admin_without_values(self, client, admin_headers, monkeypatch):
+        """§4.5's read-only lines (v2.3): booleans and public names only — a credential never crosses the wire."""
+        marker = f"sk-{uuid.uuid4().hex}"
+        monkeypatch.setattr(settings, "WHOOP_CLIENT_ID", "whoop-client")
+        monkeypatch.setattr(settings, "WHOOP_CLIENT_SECRET", marker)
+        monkeypatch.setattr(settings, "WHOOP_REDIRECT_URI", "https://example.com/whoop")
+        monkeypatch.setattr(settings, "APNS_KEY_ID", "")
+        monkeypatch.setenv("SENDGRID_API_KEY", marker)
+        monkeypatch.setenv("SENTRY_DSN", f"https://{marker}@sentry.example.com/1")
+        monkeypatch.setenv("RAILWAY_GIT_COMMIT_SHA", "abc1234def")
+        monkeypatch.setenv("RAILWAY_ENVIRONMENT_NAME", "production")
+        headers, _ = admin_headers(email=f"settings-{uuid.uuid4().hex[:6]}@example.com")
+        response = client.get(URL, headers=headers)
+        assert response.status_code == 200, response.text
+        env = response.json()["env"]
+        assert_no_secret_keys(env)
+        assert marker not in response.text and "whoop-client" not in response.text
+        assert env["integrations"] == {
+            "whoop_configured": True, "apns_configured": False, "apns_topic": settings.APNS_TOPIC,
+            "apns_sandbox": bool(settings.APNS_USE_SANDBOX), "sendgrid_configured": True, "sentry_enabled": True,
+        }
+        assert env["build"]["git_sha"] == "abc1234def" and env["build"]["environment"] == "production"
+        assert env["build"]["started_at"].endswith("Z") or "+" in env["build"]["started_at"]
+        assert env["admin"] == {
+            "bootstrap_email": (settings.ADMIN_BOOTSTRAP_EMAIL or None), "token_ttl_minutes": settings.ADMIN_TOKEN_EXPIRE_MINUTES,
+            "lockout_threshold": settings.ADMIN_LOCKOUT_THRESHOLD, "lockout_minutes": settings.ADMIN_LOCKOUT_MINUTES,
+            "step_up_failures_to_revoke": settings.ADMIN_STEP_UP_FAILURES_TO_REVOKE,
+        }
+        monkeypatch.setattr(settings, "WHOOP_CLIENT_SECRET", "")
+        monkeypatch.delenv("SENDGRID_API_KEY")
+        env = client.get(URL, headers=headers).json()["env"]
+        assert env["integrations"]["whoop_configured"] is False and env["integrations"]["sendgrid_configured"] is False
 
     def test_patch_sets_audits_and_is_live_for_a_fresh_scan_balance(self, client, db, admin_headers, auth_headers):
         """The W4 exit criterion: PATCH then a fresh user's GET /scan-balance sees the new free monthly."""
@@ -182,7 +217,7 @@ class TestRoutes:
         user_headers, _ = auth_headers(email=f"fresh-{uuid.uuid4().hex[:6]}@example.com")
         balance = client.get("/scan-balance", headers=user_headers)
         assert balance.status_code == 200 and balance.json()["scan_credits"] == new_value
-        listed = {r["key"]: r for r in client.get(URL, headers=headers).json()}
+        listed = {r["key"]: r for r in client.get(URL, headers=headers).json()["items"]}
         assert listed["FREE_MONTHLY_SCANS"]["value"] == new_value
 
     def test_reset_deletes_the_row_and_audits_after_null(self, client, db, admin_headers):
@@ -231,7 +266,7 @@ class TestRoutes:
 
     def test_warning_counts_are_live(self, client, db, admin_headers, create_test_user):
         headers, _ = admin_headers(email=f"settings-{uuid.uuid4().hex[:6]}@example.com")
-        base = {r["key"]: r["warning"] for r in client.get(URL, headers=headers).json()}
+        base = {r["key"]: r["warning"] for r in client.get(URL, headers=headers).json()["items"]}
         unsigned_before = int(base["PURCHASE_REQUIRE_JWS"].split()[0])
         eligible_before = int(base["PURGE_SWEEP_ENABLED"].split()[0])
 
@@ -250,7 +285,7 @@ class TestRoutes:
         soft_delete(db, gone, days_ago=40)
         db.commit()
 
-        now = {r["key"]: r["warning"] for r in client.get(URL, headers=headers).json()}
+        now = {r["key"]: r["warning"] for r in client.get(URL, headers=headers).json()["items"]}
         assert int(now["PURCHASE_REQUIRE_JWS"].split()[0]) == unsigned_before + 1
         assert int(now["PURGE_SWEEP_ENABLED"].split()[0]) == eligible_before + 1
 

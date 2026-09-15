@@ -159,16 +159,23 @@ class TestAuditRead:
 
     def test_session_create_row_carries_request_id_and_ip(self, client, admin_user):
         user, pwd = admin_user(email="audit-sess@example.com")
+        request_id = f"audit-req-{uuid.uuid4().hex[:10]}"
         minted = client.post("/admin/session", json={"email": user.email, "password": pwd},
-                             headers={"X-Request-ID": "audit-req-42",
+                             headers={"X-Request-ID": request_id,
                                       "X-Forwarded-For": "198.51.100.7"})
         token = minted.json()["admin_token"]
-        rows = client.get("/admin/audit", headers={"Authorization": f"Bearer {token}"},
+        headers = {"Authorization": f"Bearer {token}"}
+        rows = client.get("/admin/audit", headers=headers,
                           params={"actor_user_id": user.id, "action": "session.create"}).json()
         assert rows["total"] == 1
-        assert rows["items"][0]["request_id"] == "audit-req-42"
+        assert rows["items"][0]["request_id"] == request_id
         assert rows["items"][0]["ip"] == "198.51.100.7"
         assert rows["items"][0]["target_id"] == user.id
+        # ``request_id`` is an exact-match filter (console v2 §7.4 v2.3): the bulk toast groups a batch by it
+        by_request = client.get("/admin/audit", headers=headers, params={"request_id": request_id}).json()
+        assert by_request["total"] == 1 and by_request["items"][0]["id"] == rows["items"][0]["id"]
+        assert client.get("/admin/audit", headers=headers, params={"request_id": request_id[:-2]}).json()["total"] == 0
+        assert client.get("/admin/audit", headers=headers, params={"request_id": "x" * 129}).status_code == 422
 
     def test_only_get_is_routed(self, client, admin_headers):
         headers, _ = admin_headers(email="audit-methods@example.com")
