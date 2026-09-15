@@ -35,7 +35,7 @@
   var SEARCH_DEBOUNCE = 250;
   var PALETTE_LIMIT = 8;
   var ALL_STATUS = 'active,inactive,deleted,purge_eligible';
-  var AUDIT_KEYS = ['target_type', 'target_id', 'actor_user_id', 'action', 'offset'];
+  var AUDIT_KEYS = ['target_type', 'target_id', 'actor_user_id', 'action', 'request_id', 'offset'];
   var TEMPLATES = ['owner_hybrid'];
   var CREDITS_STEP_UP = 50;
   var PAGE = 50;
@@ -303,6 +303,7 @@
   function auditActor(a) { return esc(a.actor_user_id ? shortId(a.actor_user_id) : 'system'); }
   function auditTarget(a) {
     if (a.target_type === 'user' && a.target_id) return '<a href="' + hunterHref(a.target_id) + '">' + esc(shortId(a.target_id)) + '</a>';
+    if (a.target_type === 'product' && a.target_id) return '<a href="#/catalog" title="' + esc(a.target_id) + '">' + esc('product · ' + a.target_id.replace(/^.*\./, '')) + '</a>';   // §4.6: the target links the catalog
     return esc(a.target_type + (a.target_id ? ' · ' + shortId(a.target_id) : ''));
   }
 
@@ -1035,13 +1036,20 @@
     });
   }
 
+  // §4.6: the action select carries the registry plus whatever the page shows; Mine = actor is this session.
   function auditHeader(q, r) {
+    var actions = AUDIT_ACTIONS.slice();
+    ((r && r.items) || []).forEach(function (a) { if (actions.indexOf(a.action) < 0) actions.push(a.action); });
+    if (q.action && actions.indexOf(q.action) < 0) actions.push(q.action);
+    var mine = !!(session && q.actor_user_id && q.actor_user_id === session.userId);
     return pageHeader('Audit', (r ? esc(plural(num(r.total), 'event')) : '…') + ' · append-only') +
       '<form class="filters" id="audit-filters">' +
-      '<select class="field" name="action" aria-label="Action">' + opt('', q.action || '', 'Action: all') + AUDIT_ACTIONS.map(function (a) { return opt(a, q.action || ''); }).join('') + '</select>' +
+      '<button type="button" class="fchip' + (mine ? ' active' : '') + '" data-action="audit-mine" aria-pressed="' + mine + '">Mine</button>' +
+      '<select class="field" name="action" aria-label="Action">' + opt('', q.action || '', 'Action: all') + actions.sort().map(function (a) { return opt(a, q.action || ''); }).join('') + '</select>' +
       '<select class="field" name="target_type" aria-label="Target type">' + opt('', q.target_type || '', 'Target: any') + ['user', 'product', 'system'].map(function (t) { return opt(t, q.target_type || ''); }).join('') + '</select>' +
       '<input class="field" name="target_id" placeholder="Target id" value="' + esc(q.target_id || '') + '" autocapitalize="none" spellcheck="false">' +
       '<input class="field" name="actor_user_id" placeholder="Actor id" value="' + esc(q.actor_user_id || '') + '" autocapitalize="none" spellcheck="false">' +
+      '<input class="field dk" name="request_id" placeholder="Request id · a bulk batch" value="' + esc(q.request_id || '') + '" autocapitalize="none" spellcheck="false">' +
       '<button type="submit" class="btn sm">FILTER</button><a class="btn sm ghost" href="#/audit">CLEAR</a></form>';
   }
 
@@ -1049,7 +1057,7 @@
     if (!r.items.length) return empty('No actions match. Every mutation lands here — nothing is silent.', true);
     var rows = r.items.map(function (a, i) {
       return '<tr class="row" data-action="audit-toggle" data-idx="' + i + '" tabindex="0"><td>' + esc(fmtDT(a.created_at)) + '</td><td class="m">' + auditActor(a) + '</td><td>' + actionChip(a.action) + '</td>' +
-        '<td>' + auditTarget(a) + '</td><td class="wrap">' + (a.reason ? esc(a.reason) : muted('—')) + '</td><td class="m">' + esc(shortId(a.request_id)) + '</td></tr>' +
+        '<td>' + auditTarget(a) + '</td><td class="wrap">' + (a.reason ? esc(a.reason) : muted('—')) + '</td><td class="m">' + (a.request_id ? '<a href="' + auditHref({ request_id: a.request_id }) + '" title="every row of this request">' + esc(shortId(a.request_id)) + '</a>' : '—') + '</td></tr>' +
         '<tr class="expand" id="audit-x-' + i + '" hidden><td colspan="6">' + jsonPanels(a.before, a.after) +
         '<div class="hint">audit ' + esc(a.id) + ' · actor ' + esc(a.actor_user_id || 'system') + (a.ip ? ' · ip ' + esc(a.ip) : '') + (a.request_id ? ' · request ' + esc(a.request_id) : '') + (a.idempotency_key ? ' · idempotency ' + esc(a.idempotency_key) : '') + '</div></td></tr>';
     }).join('');
@@ -1091,11 +1099,11 @@
   function renderCatalog(items) {
     var rows = items.map(function (p) {
       return '<tr class="row" data-action="act" data-act="product-edit" data-id="' + esc(p.id) + '"><td>' + esc(p.id) + '</td><td>' + esc(p.kind) + '</td><td class="' + (p.entitlement_key ? 'y' : 'g') + '">' + (p.entitlement_key ? '∞' : '+' + esc(num(p.credits))) + '</td>' +
-        '<td class="m">' + esc(p.entitlement_key || '—') + '</td><td class="un">' + esc(p.display_name) + '</td><td><span class="tog' + (p.active ? ' on' : '') + '"></span></td><td class="m">' + esc(p.sort_order) + '</td>' +
+        '<td class="m">' + esc(p.entitlement_key || '—') + '</td><td class="un">' + esc(p.display_name) + '</td><td>' + esc(num(p.sold || 0)) + ' ' + muted('· ' + num(p.sold_verified || 0) + ' verified') + '</td><td><span class="tog' + (p.active ? ' on' : '') + '"></span></td><td class="m">' + esc(p.sort_order) + '</td>' +
         '<td class="r"><button type="button" class="btn sm ghost" data-action="act" data-act="product-edit" data-id="' + esc(p.id) + '">EDIT</button></td></tr>';
     }).join('');
     return pageHeader('Catalog', esc(items.length) + ' products · StoreKit ids', '<button type="button" class="btn sm" data-action="act" data-act="product-new">ADD SKU</button>') +
-      table('', '<th>Product id</th><th>Kind</th><th>Credits</th><th>Entitlement</th><th>Display name</th><th>Active</th><th>Sort</th><th></th>', rows) +
+      table('', '<th>Product id</th><th>Kind</th><th>Credits</th><th>Entitlement</th><th>Display name</th><th>Sold</th><th>Active</th><th>Sort</th><th></th>', rows) +
       '<div class="hint">Deactivating hides a product from the paywall and refuses new purchases of it; App Store Connect is untouched. Credits changes apply to future purchases only. Ids are immutable; nothing is ever deleted.</div>';
   }
 
@@ -1317,7 +1325,7 @@
   }
 
   function changePlanSpec(rows) {
-    var single = rows.length === 1;
+    var single = rows.length === 1, rid = uuid();
     var anyUnlimited = rows.some(function (u) { return u.plan === 'unlimited'; });
     var alreadyCount = function (t) {
       if (t === 'unlimited') return rows.filter(function (u) { return u.plan === 'unlimited'; }).length;
@@ -1376,7 +1384,7 @@
         stepUp(body, reason, password);
         if (single) return post(userPath(rows[0].id, '/plan'), body, { 'Idempotency-Key': dr.idem });
         body.user_ids = changing(v).map(function (o) { return o.row.id; });
-        return post('/admin/users/plan', body);
+        return post('/admin/users/plan', body, { 'X-Request-ID': rid });   // one batch = one request id: the toast and Audit group on it (§5.4, §4.6)
       },
       onSuccess: function (r, v) {
         if (single) {
@@ -1386,7 +1394,7 @@
         var skippedClient = outcomes(v).filter(function (o) { return !o.out.change; }).map(function (o) { return { user_id: o.row.id, why: o.out.why }; });
         var merged = { applied: r.applied || [], skipped: (r.skipped || []).concat(skippedClient), failed: r.failed || [] };
         return {
-          message: 'Plan changed · ' + plural(merged.applied.filter(function (x) { return !x.skipped; }).length, 'hunter'), auditId: first ? first.audit_id : null, auditLookup: { action: 'user.plan_change' },
+          message: 'Plan changed · ' + plural(merged.applied.filter(function (x) { return !x.skipped; }).length, 'hunter'), auditId: first ? first.audit_id : null, auditLookup: { request_id: rid },
           keepOpen: true, render: bulkResult(rows, merged, function (x) { return esc(planLabel(snapshotRow(x.before))) + ' → <span class="after">' + esc(planLabel(snapshotRow(x.after))) + '</span>' + auditSuffix(x); })
         };
       }
@@ -1397,7 +1405,7 @@
   // ── bulk soft-delete / restore / purge (spec §5.4) ──────────────────────
 
   function bulkStateSpec(rows, action) {
-    var del = action === 'delete';
+    var del = action === 'delete', rid = uuid();
     var admins = rows.filter(function (u) { return u.is_admin; });
     var skippedWhy = function (u) {
       if (u.is_admin) return 'admin account';
@@ -1420,12 +1428,12 @@
       confirmLabel: function () { return (del ? 'SOFT-DELETE ' : 'RESTORE ') + plural(changing.length, 'HUNTER'); },
       hint: del ? 'Each hunter\'s next request answers 401 and login 403; data stays until purge. One user.soft_delete audit row per hunter, one transaction each.'
         : 'Bumps token_version per hunter so old refresh tokens die; each logs in again. One user.restore audit row per hunter.',
-      submit: function (v, reason, password) { return post('/admin/users/state', stepUp({ user_ids: changing.map(function (u) { return u.id; }), action: action }, reason, password)); },
+      submit: function (v, reason, password) { return post('/admin/users/state', stepUp({ user_ids: changing.map(function (u) { return u.id; }), action: action }, reason, password), { 'X-Request-ID': rid }); },
       onSuccess: function (r) {
         var clientSkipped = rows.filter(skippedWhy).map(function (u) { return { user_id: u.id, why: skippedWhy(u) }; });
         var merged = { applied: r.applied || [], skipped: (r.skipped || []).concat(clientSkipped), failed: r.failed || [] };
         return {
-          message: (del ? 'Soft-deleted · ' : 'Restored · ') + plural(merged.applied.length, 'hunter'), auditLookup: { action: del ? 'user.soft_delete' : 'user.restore' },
+          message: (del ? 'Soft-deleted · ' : 'Restored · ') + plural(merged.applied.length, 'hunter'), auditLookup: { request_id: rid },
           keepOpen: true, render: bulkResult(rows, merged, function (x) { return 'is_deleted → ' + esc(String(x.is_deleted)) + (x.deleted_at ? ' · ' + esc(fmtDT(x.deleted_at)) : ''); })
         };
       }
@@ -1439,7 +1447,7 @@
   }
 
   function bulkPurgeSpec(rows) {
-    var ids = rows.map(function (u) { return u.id; });
+    var ids = rows.map(function (u) { return u.id; }), rid = uuid();
     var n = rows.length;
     return {
       title: 'PURGE ' + plural(n, 'HUNTER').toUpperCase(), who: rowsWho(rows), rows: rows, danger: true, password: true,
@@ -1462,11 +1470,11 @@
         canApply: function (r) { return r && r.preview && r.preview.length > 0; }
       },
       hint: 'Logged as user.purge per hunter with the per-table counts; the batch shares one request id. Apply needs your password and the typed row count.',
-      submit: function (v, reason, password) { return post('/admin/users/purge', stepUp({ user_ids: ids, dry_run: false, confirm_count: n }, reason, password)); },
+      submit: function (v, reason, password) { return post('/admin/users/purge', stepUp({ user_ids: ids, dry_run: false, confirm_count: n }, reason, password), { 'X-Request-ID': rid }); },
       onSuccess: function (r) {
         var first = (r.applied || [])[0];
         return {
-          message: 'Purged ' + plural((r.applied || []).length, 'hunter'), auditId: first ? first.audit_id : null, auditLookup: { action: 'user.purge' },
+          message: 'Purged ' + plural((r.applied || []).length, 'hunter'), auditId: first ? first.audit_id : null, auditLookup: { request_id: rid },
           keepOpen: true, render: bulkResult(rows, r, function (x) { return purgeTablesLine(x.tables) + auditSuffix(x); })
         };
       }
@@ -1959,7 +1967,8 @@
           fieldRow('Entitlement key', 'optional', '<select class="field" data-field="entitlement_key">' + opt('', v.entitlement_key, 'none') + ENTITLEMENT_KEYS.map(function (k) { return opt(k, v.entitlement_key); }).join('') + '</select>') +
           fieldRow('Display name', '', '<input class="field" data-field="display_name" value="' + esc(v.display_name) + '" maxlength="120">') +
           fieldRow('Sort order', '', '<input class="field" type="number" step="1" inputmode="numeric" data-field="sort_order" value="' + esc(v.sort_order) + '">') +
-          checkbox('active', v.active, 'Active — visible on the paywall', editing && before.active);
+          checkbox('active', v.active, 'Active — visible on the paywall', editing && before.active) +
+          (editing && before.active && !v.active ? sysline('DEACTIVATE · ' + (before.sold || 0) + ' SOLD · ' + (before.sold_verified || 0) + ' VERIFIED', 'Existing receipts keep their credits and entitlements; the paywall hides the SKU and new purchases of it are refused.', 'guard') : '');
       },
       diff: function (v) {
         if (!editing) return '';
@@ -2053,6 +2062,11 @@
     if (a === 'row-menu') { var m = $('#menu-' + CSS.escape(el.dataset.id)); closeMenus(m); if (m) m.hidden = !m.hidden; return; }
     if (a === 'pal-plan') { openPaletteRow(el.dataset.id, true); return; }
     if (a === 'audit-toggle') { var x = $('#audit-x-' + el.dataset.idx); if (x) x.hidden = !x.hidden; return; }
+    if (a === 'audit-mine') {   // §4.6: toggle actor = this session
+      var mq = pick(parseHash().params, AUDIT_KEYS);
+      if (session && mq.actor_user_id === session.userId) delete mq.actor_user_id; else if (session) mq.actor_user_id = session.userId;
+      delete mq.offset; go('audit', mq); return;
+    }
     if (a === 'copy-id') {
       var id = el.dataset.id;
       (navigator.clipboard ? navigator.clipboard.writeText(id) : Promise.reject()).then(function () { toast('Copied ' + id); }, function () { toast(id); });
