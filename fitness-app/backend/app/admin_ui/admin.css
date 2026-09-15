@@ -261,8 +261,33 @@ a.tile:hover::after { color: var(--system-primary); }
 .full { grid-column: 1 / -1; }
 .grid2.top { margin-top: 14px; }
 
-/* ---- hunter detail ----------------------------------------------------- */
-.ihead { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-radius: 16px; border: 1px solid var(--glass-border); background: linear-gradient(160deg, #141520, #050508); margin-bottom: 14px; flex-wrap: wrap; }
+/* ---- hunter detail (console v2 §4.4): header, four operational cards, Diagnostics, Activity ---- */
+.ihead { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: 16px; border: 1px solid var(--glass-border); background: linear-gradient(160deg, #141520, #050508); margin-bottom: 14px; flex-wrap: wrap; }
+.ihead .hacts { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+.ihead .hacts .rowmenu { width: 36px; height: 36px; min-height: 36px; border: 1px solid var(--glass-border); }
+.ihead .mid .chips { margin-top: 8px; justify-content: flex-start; }
+.copy { padding: 0 2px; min-height: 0; font: inherit; color: var(--text-secondary); border-bottom: 1px dotted var(--text-muted); border-radius: 0; }
+.copy:hover { color: var(--system-primary); border-bottom-color: var(--system-primary); }
+.card .big { font-family: var(--font-display); font-weight: 700; font-size: 15px; line-height: 1.3; margin: 2px 0 8px; color: var(--text-primary); word-break: break-word; }
+.card .big.g { color: var(--success-green); } .card .big.b { color: #7CB8FF; } .card .big.o { color: var(--orange); } .card .big.d { color: var(--text-secondary); }
+.kv .v .ov { color: var(--gold); }
+.kv .v .good { color: var(--success-green); }
+.kv .v .bad { color: var(--warning-red); }
+.kv .v .chip { vertical-align: baseline; }
+.grid2.detail { grid-template-rows: auto auto; }
+.grid2.detail .col > .card { flex: 1; }
+details.diag { padding: 0; }
+details.diag > summary { list-style: none; cursor: pointer; padding: 14px 14px 12px; min-height: 44px; touch-action: manipulation; }
+details.diag > summary::-webkit-details-marker { display: none; }
+details.diag > summary .sl { margin: 0; }
+details.diag > summary .sl::before { content: "▸"; color: var(--text-muted); font-size: 9px; margin-right: 2px; }
+details.diag[open] > summary .sl::before { content: "▾"; }
+details.diag > .grid2 { margin: 0; padding: 0 14px 14px; }
+.actrow { display: grid; grid-template-columns: 96px auto 1fr auto; gap: 10px; align-items: center; padding: 7px 0; border-top: 1px solid var(--glass-border); font-family: var(--font-mono); font-size: 10.5px; min-height: 32px; }
+.actrow:first-of-type { border-top: 0; }
+.actrow .t { color: var(--text-muted); white-space: nowrap; }
+.actrow .s { color: var(--text-primary); word-break: break-word; }
+.actrow .w { color: var(--text-muted); white-space: nowrap; text-align: right; }
 .av { width: 52px; height: 52px; border-radius: 50%; background: var(--bg-input); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 700; font-size: 20px; border: 1.5px solid var(--rank-e); color: var(--rank-e); flex: none; }
 .av.r-d { color: var(--rank-d); border-color: var(--rank-d); }
 .av.r-c { color: var(--rank-c); border-color: var(--rank-c); }
@@ -279,9 +304,6 @@ a.tile:hover::after { color: var(--system-primary); }
 .prow .s { color: var(--text-muted); font-size: 9px; }
 .prow .s.right { text-align: right; }
 .prow .r { text-align: right; color: var(--success-green); font-weight: 600; }
-.dz { display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: center; }
-.dz .kv { border: 0; padding: 0; }
-.dz .acts { margin-top: 0; flex-wrap: nowrap; }
 .pv { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; padding: 10px; border-radius: 10px; background: var(--bg-void); border: 1px solid var(--glass-border); }
 .pv + .pv { margin-top: 8px; }
 .pv .big { font-family: var(--font-display); font-weight: 700; font-size: 20px; color: var(--success-green); text-shadow: 0 0 10px rgba(51,255,136,.35); min-width: 56px; text-align: center; }
@@ -431,15 +453,16 @@ a.tile:hover::after { color: var(--system-primary); }
   .content { padding: 68px 12px 100px; }
   .ph h2 { font-size: 15px; }
   .ihead { padding: 12px; gap: 10px; }
-  .ihead .chips { justify-content: flex-start; width: 100%; }
-  /* the two desktop columns dissolve; cards reorder into the quick-action lane */
+  .ihead .hacts { width: 100%; margin-left: 0; }
+  .ihead .hacts .btn { flex: 1; }
+  /* the two desktop columns dissolve; cards reorder into the phone lane (§4.7): PLAN · SCANS · ACCOUNT · PURCHASES · Diagnostics · Activity */
   .grid2.detail { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
   .grid2.detail .col { display: contents; }
-  .c-scans { order: 1; } .c-ent { order: 2; } .c-danger { order: 3; } .c-identity { order: 4; } .c-progress { order: 5; }
-  .c-purchases { order: 6; } .c-campaign { order: 7; } .c-integrations { order: 8; } .c-health { order: 9; } .c-audit { order: 10; }
-  .dz { grid-template-columns: 1fr; }
-  .dz .acts { flex-wrap: wrap; }
-  .stats { grid-template-columns: 1fr 1fr; }
+  .c-plan { order: 1; } .c-scans { order: 2; } .c-account { order: 3; } .c-purchases { order: 4; } .c-diag { order: 5; } .c-activity { order: 6; }
+  details.diag > .grid2 { display: flex; flex-direction: column; gap: 10px; }
+  details.diag > .grid2 .col { display: contents; }
+  .actrow { grid-template-columns: 1fr auto; }
+  .actrow .s { grid-column: 1 / -1; }
   .json2 { grid-template-columns: 1fr; }
   /* the audit list keeps time · action · target · reason; actor and request id live in the expanded row */
   .tbl.audit th:nth-child(2), .tbl.audit td:nth-child(2), .tbl.audit th:nth-child(6), .tbl.audit td:nth-child(6) { display: none; }

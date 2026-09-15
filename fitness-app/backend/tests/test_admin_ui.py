@@ -110,11 +110,13 @@ class TestShellSource:
         js = JS.read_text(encoding="utf-8")
         for forbidden in ("sessionStorage", "document.cookie", "indexedDB", "eval(", "new Function("):
             assert forbidden not in js, forbidden
-        # localStorage exists for saved views only (console v2 §4.3): every use names VIEWS_KEY and none mentions the token
+        # localStorage exists for saved views (console v2 §4.3) and the Diagnostics open/closed bit (§4.4) only:
+        # every use names VIEWS_KEY or DIAG_KEY and none mentions the token
         storage_lines = [line for line in js.splitlines() if "localStorage" in line]
         assert storage_lines, "saved views live in localStorage"
+        assert any("VIEWS_KEY" in line for line in storage_lines) and any("DIAG_KEY" in line for line in storage_lines)
         for line in storage_lines:
-            assert "VIEWS_KEY" in line and "token" not in line, line.strip()
+            assert ("VIEWS_KEY" in line or "DIAG_KEY" in line) and "token" not in line, line.strip()
         assert not re.search(r"\.setAttribute\(\s*['\"]style['\"]", js)
         assert not re.search(r"\sstyle=\\?[\"']", js), "inline style attribute in a template"
         assert "window.location.origin" in js

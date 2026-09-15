@@ -740,14 +740,15 @@
   function hunterCell(u) {
     return '<div class="hunter">' + avatar(u.rank, 'sm') + '<div class="hid"><div class="nm">' + (u.username ? esc(u.username) : muted('no username')) + (u.is_admin ? ' ' + chip('Admin', 'gold') : '') + '</div><div class="em">' + esc(u.email) + '</div></div></div>';
   }
-  function rowMenu(u) {
+  // The ⋯ menu: a table row's (Change plan first, Open in new tab last) or the detail header's (§4.4: Adjust credits · Set limits · Soft-delete / Restore · Copy id).
+  function rowMenu(u, detail) {
     var item = function (act, label, cls) { return '<button type="button" class="mi ' + (cls || '') + '" data-action="act" data-act="' + act + '" data-id="' + esc(u.id) + '">' + esc(label) + '</button>'; };
-    var live = u.is_deleted ? '' : item('change-plan', 'Change plan') + item('row-credits', 'Adjust credits') + item('row-limits', 'Set limits');
+    var live = u.is_deleted ? '' : (detail ? '' : item('change-plan', 'Change plan')) + item('row-credits', 'Adjust credits') + item('row-limits', 'Set limits');
     return '<div class="menuwrap"><button type="button" class="rowmenu" data-action="row-menu" data-id="' + esc(u.id) + '" aria-label="Row actions" aria-haspopup="menu">⋯</button>' +
       '<div class="menu" id="menu-' + esc(u.id) + '" role="menu" hidden>' + live +
       (u.is_admin ? '' : u.is_deleted ? item('row-restore', 'Restore') : item('row-delete', 'Soft-delete', 'danger')) +
       '<button type="button" class="mi" data-action="copy-id" data-id="' + esc(u.id) + '">Copy id</button>' +
-      '<a class="mi" href="' + hunterHref(u.id) + '" target="_blank" rel="noopener" data-action="menu-link">Open in new tab</a></div></div>';
+      (detail ? '' : '<a class="mi" href="' + hunterHref(u.id) + '" target="_blank" rel="noopener" data-action="menu-link">Open in new tab</a>') + '</div></div>';
   }
 
   function renderHunters(s, r) {
@@ -847,13 +848,17 @@
     else if (key === 'purge' && rows.every(function (u) { return u.status === 'purge_eligible'; })) openDrawer(bulkPurgeSpec(rows));
   }
 
-  // ── hunter detail ──────────────────────────────────────────────────────
+  // ── hunter detail (spec §4.4): four operational cards, Diagnostics collapsed, Activity ──
+
+  var DIAG_KEY = 'arise.console.diag';   // Diagnostics open / closed, remembered per browser (§4.4)
+  function diagOpen() { try { return localStorage.getItem(DIAG_KEY) === '1'; } catch (_) { return false; } }
+  function storeDiag(open) { try { localStorage.setItem(DIAG_KEY, open ? '1' : '0'); } catch (_) { /* private mode: not remembered */ } }
 
   function screenHunter(id) {
     loadScreen({
       skeleton: backHeader('<span class="cnt">' + esc(shortId(id)) + '</span>') +
         '<div class="ihead"><div class="av"></div><div class="mid"><div class="nm"><span class="skel w40 tall"></span></div><div class="sub"><span class="skel w80"></span></div></div></div>' +
-        '<div class="grid2 detail"><div class="col">' + skelCard('IDENTITY', 5) + skelCard('SCANS', 4) + skelCard('ENTITLEMENTS', 3) + '</div><div class="col">' + skelCard('PROGRESS', 5) + skelCard('INTEGRATIONS', 4) + skelCard('DATA HEALTH', 3) + '</div></div>',
+        '<div class="grid2 detail"><div class="col">' + skelCard('PLAN', 4) + skelCard('SCANS', 4) + '</div><div class="col">' + skelCard('ACCOUNT', 5) + skelCard('PURCHASES', 2) + '</div></div>',
       load: function () { return api('GET', userPath(id)); },
       render: function (d) { state.detail = d; return renderHunter(d); },
       fallback: function (e) {
@@ -865,59 +870,117 @@
   function activeRows(d, key) {
     return (d.entitlements || []).filter(function (e) { return e.active && e.key === key; });
   }
+  function copyBtn(text, label) {
+    return '<button type="button" class="copy" data-action="copy-id" data-id="' + esc(text) + '" title="Click to copy">' + esc(label || text) + '</button>';
+  }
+  function actBtn(act, label, cls, disabled) {
+    return '<button type="button" class="btn ' + (cls || '') + '" data-action="act" data-act="' + act + '"' + (disabled ? ' disabled' : '') + '>' + esc(label) + '</button>';
+  }
+  var ACTIVITY_KIND = { audit: 'gold', session: 'cyan', scan: 'blue', login: 'dim' };
+  function activityRow(a) {
+    return '<div class="actrow"><span class="t">' + esc(fmtDT(a.at)) + '</span>' + chip(a.kind, ACTIVITY_KIND[a.kind] || 'dim') + '<span class="s">' + esc(a.summary) + '</span>' +
+      '<span class="w">' + (a.actor ? esc(shortId(a.actor)) : 'hunter') + (a.audit_id ? ' · <a href="' + auditHref({ target_type: 'user', target_id: state.detail ? state.detail.user.id : '' }) + '">audit ' + esc(shortId(a.audit_id)) + '</a>' : '') + '</span></div>';
+  }
 
   function renderHunter(d) {
-    var u = d.user, p = d.progress || {}, b = d.balance || {}, lim = d.effective_limits || { defaults: {} }, integ = d.integrations || {}, health = d.data_health || {}, prof = d.profile || {}, c = d.campaign, pv = d.preview;
-    var ents = d.entitlements || [];
+    var u = d.user, p = d.progress || {}, b = d.balance || {}, lim = d.effective_limits || { defaults: {} }, integ = d.integrations || {}, prof = d.profile || {};
+    var pl = d.plan || {}, acc = d.account || {}, sc = d.scans || {};
     var unlimitedRows = activeRows(d, 'scans.unlimited');
     var overrides = LIMIT_KEYS.map(function (k) { return { def: k, row: activeRows(d, k.key)[0] || null }; });
     var hasOverride = overrides.some(function (o) { return o.row; });
-    var lastActive = p.last_workout_date || null;
-
+    var frozen = !!u.is_deleted;
     var pt = planTarget(d);
-    var chips = planChip(pt, !u.is_deleted) + ' ' + statusChip(pt) + ' ' + (u.is_admin ? chip('Admin', 'gold') + ' ' : '') +
-      (p.rank ? chip(rankLetter(p.rank) + '-rank · Lv ' + p.level, 'cyan') : '') + ' ' +
-      (integ.whoop && integ.whoop.connected ? chip('WHOOP', 'orange') : '') + ' ' + (hasOverride && pt.plan !== 'override' ? chip('Override', 'gold') : '');
 
-    var html = backHeader('<span class="cnt">' + esc(u.id) + '</span>');
+    // ── header: identity, chips, primary actions (§4.4)
+    var chips = planChip(pt, !frozen) + ' ' + statusChip(pt) + (u.is_admin ? ' ' + chip('Admin', 'gold') : '') + (integ.whoop && integ.whoop.connected ? ' ' + chip('WHOOP', 'orange') : '');
+    var html = backHeader('<span class="cnt">' + esc(shortId(u.id)) + '</span>');
     html += '<div class="ihead">' + avatar(p.rank) + '<div class="mid"><div class="nm">' + esc(u.username || u.email) + '</div>' +
-      '<div class="sub">' + esc(u.email) + ' · created ' + esc(fmtDate(u.created_at)) + (u.is_deleted ? ' · deleted ' + esc(fmtDT(u.deleted_at)) : '') + '</div></div><div class="chips">' + chips + '</div></div>';
+      '<div class="sub">' + copyBtn(u.email) + ' · ' + copyBtn(u.id, shortId(u.id)) + ' · joined ' + esc(fmtDate(u.created_at)) + ' (' + esc(daysSince(u.created_at)) + ' d)' + (frozen ? ' · deleted ' + esc(fmtDT(u.deleted_at)) : '') + '</div>' +
+      '<div class="chips">' + chips + '</div></div>' +
+      '<div class="hacts">' + (frozen ? '' : '<button type="button" class="btn primary sm" data-action="act" data-act="change-plan" data-id="' + esc(u.id) + '">CHANGE PLAN</button>') + rowMenu(pt, true) + '</div></div>';
 
-    // ── left column
-    var identity = '<div class="card c-identity">' + sl('IDENTITY', '<button type="button" class="link" data-action="copy-id" data-id="' + esc(u.id) + '">COPY ID</button>') +
-      kv('EMAIL', esc(u.email)) + kv('USERNAME', esc(u.username || '—'), u.username ? '' : 'm') +
-      kv('CREATED', esc(fmtDate(u.created_at)) + ' · ' + esc(daysSince(u.created_at)) + 'd') +
-      kv('LAST ACTIVE', lastActive ? esc(fmtDate(lastActive)) + ' · ' + esc(ago(lastActive)) : 'never', lastActive ? '' : 'm') +
-      kv('EXPERIENCE · UNIT', esc((prof.training_experience || '—') + ' · ' + (prof.preferred_unit || '—'))) +
-      (u.admin_locked_until ? kv('ADMIN LOCKOUT', esc(fmtDT(u.admin_locked_until)), 'bad') : '') +
-      kv('TOKEN VERSION', esc(u.token_version), 'm') + '</div>';
+    // ── PLAN: plan · source · expiry, overrides, last change (§4.4)
+    var lc = pl.last_change;
+    var planLine = pl.plan === 'unlimited' ? '∞ Unlimited · ' + (PLAN_SOURCE[pl.plan_source] || pl.plan_source || '—') + ' · ' + (pl.expires_at ? 'until ' + fmtDate(pl.expires_at) : 'never expires')
+      : pl.plan === 'override' ? 'Override · ' + (pl.override_keys || []).map(function (k) { return k.replace(/^scans\./, ''); }).join(' · ')
+      : pl.plan === 'credits' ? 'Credits · ' + num(pl.scan_credits) + ' (' + num(pl.purchased_credits) + ' purchased above the free ' + num(pl.free_monthly) + ')'
+      : 'Free · ' + num(creditsOf(pl, pl.free_monthly)) + ' of ' + num(pl.free_monthly) + ' / month';
+    var overrideCells = overrides.map(function (o) {
+      var def = lim.defaults ? lim.defaults[o.def.field] : undefined;
+      return (o.row ? '<span class="ov">' + esc(o.def.field.replace(/_seconds$/, '')) + ' ' + esc(o.row.value) + esc(o.def.unit) + '</span>' : muted(o.def.field.replace(/_seconds$/, '') + ' ' + (def === undefined ? lim[o.def.field] : def) + o.def.unit));
+    }).join(' · ');
+    var plan = '<div class="card c-plan">' + sl('PLAN', frozen ? ro('frozen while deleted') : ro(pl.plan_source === 'purchase' ? 'purchase-sourced · survives Restore Purchases' : '')) +
+      '<div class="big ' + (pl.plan === 'unlimited' ? 'g' : pl.plan === 'override' ? 'o' : pl.plan === 'credits' ? 'b' : 'd') + '">' + esc(planLine) + '</div>' +
+      kv('OVERRIDES', (hasOverride ? '' : muted('none') + ' · ') + overrideCells) +
+      kv('LAST CHANGE', lc ? esc(lc.action.replace(/^user\./, '')) + ' · ' + esc(lc.actor ? shortId(lc.actor) : 'system') + ' · ' + esc(fmtDate(lc.at)) + (lc.reason ? ' · “' + esc(lc.reason) + '”' : '') + ' · <a href="' + auditHref({ target_type: 'user', target_id: u.id }) + '">audit ' + esc(shortId(lc.audit_id)) + '</a>' : 'no plan change yet', lc ? '' : 'm') +
+      (frozen ? '' : '<div class="acts"><button type="button" class="btn primary" data-action="act" data-act="change-plan" data-id="' + esc(u.id) + '">CHANGE PLAN</button>' + actBtn('set-limits', 'SET LIMITS') + actBtn('reset-limits', 'RESET TO DEFAULTS', 'ghost', !hasOverride) + '</div>') + '</div>';
 
-    var scansActs = u.is_deleted ? '' : '<div class="acts"><button type="button" class="btn primary" data-action="act" data-act="change-plan" data-id="' + esc(u.id) + '">CHANGE PLAN</button><button type="button" class="btn" data-action="act" data-act="credits">− / + CREDITS</button></div>';
+    // ── SCANS: balance, free grant + reset, usage, today vs cap (§4.4)
     var drift = b.has_unlimited !== (unlimitedRows.length > 0);
-    var scans = '<div class="card c-scans' + (drift ? ' warn' : '') + '">' + sl('SCANS', u.is_deleted ? ro('frozen while deleted') : '') +
-      kv('SCAN_CREDITS', b.exists ? esc(num(b.scan_credits)) : 'no balance row yet', b.exists ? '' : 'm') +
-      kv('HAS_UNLIMITED', esc(String(!!b.has_unlimited)) + (unlimitedRows.length ? ' · ' + esc(unlimitedRows[0].source) : ''), b.has_unlimited ? 'ov' : 'm') +
-      kv('FREE RESET', b.free_scans_reset_at ? esc(fmtDate(b.free_scans_reset_at)) : '—', b.free_scans_reset_at ? '' : 'm') +
-      kv('USED · 4 WK', esc(num(sumWeeks(d.usage && d.usage.scans && d.usage.scans.by_week, 'scans', 4)))) +
+    var scans = '<div class="card c-scans' + (drift ? ' warn' : '') + '">' + sl('SCANS', frozen ? ro('frozen while deleted') : '') +
+      kv('CREDITS', b.exists ? esc(num(sc.scan_credits)) + ' ' + muted('· ' + num(sc.purchased_credits) + ' purchased · ' + num(Math.max(0, (sc.scan_credits || 0) - (sc.purchased_credits || 0))) + ' free') : 'no balance row yet', b.exists ? '' : 'm') +
+      kv('FREE MONTHLY', esc(num(sc.free_monthly)) + (sc.free_scans_reset_at ? ' ' + muted('· resets ' + fmtDate(sc.free_scans_reset_at)) : ' ' + muted('· seeds on first scan'))) +
+      kv('USED', esc(num(sc.used_7d)) + ' · 7 d ' + muted('·') + ' ' + esc(num(sc.used_4wk)) + ' · 4 wk') +
+      kv('TODAY', esc(num(sc.today_count)) + ' / ' + esc(num(sc.daily_limit)) + ' daily cap ' + muted('· cooldown ' + num(sc.cooldown_seconds) + ' s'), sc.today_count >= sc.daily_limit && sc.daily_limit ? 'warnv' : '') +
       (drift ? '<div class="hint warn">Drift: the cached flag disagrees with the entitlement rows. Change plan (Unlimited, or Remove Unlimited) resyncs it.</div>' : '') +
-      scansActs + '</div>';
+      (frozen ? '' : '<div class="acts">' + actBtn('credits', '− / + CREDITS') + '</div>') + '</div>';
 
-    var ent = '<div class="card c-ent">' + sl('ENTITLEMENTS', ro('override · default')) +
-      overrides.map(function (o) {
-        var def = lim.defaults ? lim.defaults[o.def.field] : undefined;
-        var cur = lim[o.def.field];
-        return kv(o.def.label, (o.row ? '<span class="v ov">' + esc(o.row.value) + esc(o.def.unit) + '</span>' : muted('—')) + ' ' + muted('· ' + (def === undefined ? cur : def) + o.def.unit));
-      }).join('') +
-      '<div class="hint">' + esc(plural(ents.length, 'entitlement row')) + ' · ' + esc(ents.filter(function (e) { return e.active; }).length) + ' active</div>' +
-      (u.is_deleted ? '' : '<div class="acts"><button type="button" class="btn" data-action="act" data-act="set-limits">SET LIMITS</button><button type="button" class="btn ghost" data-action="act" data-act="reset-limits"' + (hasOverride ? '' : ' disabled') + '>RESET TO DEFAULTS</button></div>') + '</div>';
+    // ── ACCOUNT: status + purge countdown, identity, activity legs, token, lockout; Danger Zone folded in (§4.4)
+    var purge = '';
+    if (acc.purge_at) {
+      var daysLeft = Math.ceil((parseDate(acc.purge_at) - Date.now()) / 86400000);
+      purge = daysLeft > 0 ? ' · purges in ' + daysLeft + ' d (' + fmtDate(acc.purge_at) + ')' : ' · eligible since ' + fmtDate(acc.purge_at);
+    }
+    var lastActive = acc.last_active ? esc(fmtDate(acc.last_active)) + ' · ' + esc(ago(acc.last_active)) + (acc.last_active_kind ? ' ' + muted('(' + acc.last_active_kind + ')') : '') : 'never';
+    var accountActs = '';
+    if (u.is_admin) accountActs = '<div class="hint">Admin accounts cannot be deleted or purged from the console.</div>';
+    else if (!frozen) accountActs = '<div class="acts"><button type="button" class="btn danger sm" data-action="act" data-act="soft-delete">SOFT-DELETE</button></div><div class="hint">Soft-delete logs the hunter out everywhere (login → 403); Restore undoes it inside the ' + esc(state.thresholds.grace) + '-day grace window.</div>';
+    else accountActs = '<div class="acts"><button type="button" class="btn sm" data-action="act" data-act="restore">RESTORE</button><button type="button" class="btn danger sm dk" data-action="act" data-act="purge">PURGE</button></div><div class="hint ph-only">Purge is desktop-only.</div>';
+    var account = '<div class="card c-account' + (frozen ? ' danger' : '') + '">' + sl('ACCOUNT', u.is_admin ? chip('Admin', 'gold') : '') +
+      kv('STATUS', statusChip(pt) + esc(purge), acc.status === 'purge_eligible' ? 'bad' : acc.status === 'deleted' ? 'warnv' : '') +
+      kv('EMAIL · USERNAME', esc(u.email) + ' · ' + (u.username ? esc(u.username) : muted('no username'))) +
+      kv('CREATED', esc(fmtDate(u.created_at)) + ' · ' + esc(daysSince(u.created_at)) + ' d ' + muted('· ' + (prof.training_experience || '—') + ' · ' + (prof.preferred_unit || '—'))) +
+      kv('LAST ACTIVE', lastActive, acc.last_active ? '' : 'm') +
+      kv('LAST LOGIN', acc.last_login_at ? esc(fmtDT(acc.last_login_at)) : 'never', acc.last_login_at ? '' : 'm') +
+      kv('TOKEN VERSION', esc(acc.token_version) + ' ' + (acc.admin_locked_until && parseDate(acc.admin_locked_until) > new Date() ? '<span class="bad">· admin lockout until ' + esc(fmtDT(acc.admin_locked_until)) + '</span>' : muted('· no admin lockout')), 'm') +
+      accountActs + '</div>';
 
-    var purchases = '<div class="card c-purchases">' + sl('PURCHASES', ro()) +
+    // ── PURCHASES: one row per receipt with the entitlement it produced (§4.4); read-only
+    var entByReceipt = {};
+    (d.entitlements || []).forEach(function (e) { if (e.purchase_record_id) entByReceipt[e.purchase_record_id] = e; });
+    var purchases = '<div class="card c-purchases">' + sl('PURCHASES', ro((b.purchases || []).length ? plural(b.purchases.length, 'receipt') + ' · read-only' : 'read-only')) +
       ((b.purchases || []).length ? b.purchases.map(function (r) {
+        var e = entByReceipt[r.id];
         return '<div class="prow"><span class="n">' + esc(r.product_id.replace(/^.*\./, '')) + ' <span class="s">' + esc(r.purchase_type) + '</span></span><span class="r">' + (r.credits_added ? '+' + esc(num(r.credits_added)) : r.purchase_type === 'non_consumable' ? '∞' : '0') + '</span>' +
-          '<span class="s">' + esc(fmtDate(r.created_at)) + ' · txn ' + esc(shortId(r.transaction_id)) + '</span><span class="s right">' + (r.verified ? chip('verified · ' + (r.environment || '?'), 'green') : chip('unverified', 'dim')) + '</span></div>';
+          '<span class="s">' + esc(fmtDate(r.created_at)) + ' · txn ' + copyBtn(r.transaction_id, shortId(r.transaction_id)) + (e ? ' · → ' + esc(e.key.replace(/^scans\./, '')) + ' ' + (e.active ? '<span class="good">active</span>' : muted('revoked')) : '') + '</span>' +
+          '<span class="s right">' + (r.verified ? chip('verified · ' + (r.environment || '?'), 'green') : chip('unverified', 'dim')) + '</span></div>';
       }).join('') : empty('No purchases.')) + '</div>';
 
-    var campaign = '<div class="card c-campaign">' + sl('CAMPAIGN', u.is_deleted ? ro() : '') +
+    // ── Diagnostics (collapsed by default; v1 §10.3 content unchanged): Progress · Campaign · Integrations · Data health · Preview
+    var diag = '<details class="card c-diag full diag" id="diag"' + (diagOpen() ? ' open' : '') + '><summary>' + sl('DIAGNOSTICS', ro('progress · campaign · integrations · data health · preview')) + '</summary>' +
+      '<div class="grid2 top"><div class="col">' + renderProgress(p) + renderCampaign(d) + '</div><div class="col">' + renderIntegrations(integ) + renderDataHealth(d.data_health || {}) + '</div>' +
+      '<div class="card c-preview dk full">' + sl('PREVIEW', ro('status tab as the hunter sees it')) + (d.preview ? renderPreview(d.preview) : empty('No preview.')) + '</div></div></details>';
+
+    // ── Activity: the merged audit · session · scan · login list, newest first (§4.4)
+    var rows = (d.activity || []).slice().sort(function (a, b2) { return parseDate(b2.at) - parseDate(a.at); }).slice(0, ACTIVITY_ROWS);
+    var activity = '<div class="card c-activity full">' + sl('ACTIVITY', '<a class="link" href="' + auditHref({ target_type: 'user', target_id: u.id }) + '">VIEW AUDIT</a>') +
+      (rows.length ? rows.map(activityRow).join('') : empty('Nothing yet — no session, scan, login or admin action on this hunter.')) +
+      (rows.length >= ACTIVITY_ROWS ? '<div class="hint">Last ' + ACTIVITY_ROWS + ' rows; older history lives in Usage and the audit log.</div>' : '') + '</div>';
+
+    html += '<div class="grid2 detail"><div class="col">' + plan + scans + '</div><div class="col">' + account + purchases + '</div>' + diag + activity + '</div>';
+    return html;
+  }
+  var ACTIVITY_ROWS = 20;
+
+  function renderProgress(p) {
+    return '<div class="card c-progress">' + sl('PROGRESS', ro()) +
+      kv('LEVEL · RANK', esc(p.level) + ' · ' + esc(p.rank || '—')) + kv('TOTAL XP', esc(num(p.total_xp)) + ' ' + muted('· ' + num(p.xp_to_next_level) + ' to next')) +
+      kv('STREAK · LONGEST', esc(p.current_streak) + ' · ' + esc(p.longest_streak)) + kv('WORKOUTS · PRS', esc(num(p.total_workouts)) + ' · ' + esc(num(p.total_prs))) +
+      kv('LAST WORKOUT', p.last_workout_date ? esc(p.last_workout_date) : 'never', p.last_workout_date ? '' : 'm') + '</div>';
+  }
+  function renderCampaign(d) {
+    var u = d.user, c = d.campaign;
+    return '<div class="card c-campaign">' + sl('CAMPAIGN', u.is_deleted ? ro() : '') +
       (c ? kv('NAME', esc(c.name)) + kv('STATUS · SOURCE', chip(c.status, c.status === 'active' ? 'green' : 'dim') + ' · ' + esc(c.source)) +
         kv('START · END', esc(c.start_date) + ' → ' + esc(c.end_date)) +
         kv('ARC · WEEK', esc(c.current_arc_index === null || c.current_arc_index === undefined ? '—' : (c.current_arc_index + 1) + ' of ' + c.arcs) + (c.week_in_arc ? ' · wk ' + esc(c.week_in_arc) : '') + (c.deload_week ? ' · deload' : '')) +
@@ -926,57 +989,27 @@
         : empty('No campaign. Import a template or pasted phases.')) +
       (u.is_deleted ? '' : '<div class="acts dk"><button type="button" class="btn" data-action="act" data-act="import">' + (c ? 'IMPORT / REPLACE' : 'IMPORT') + '</button></div>' +
         '<div class="hint ph-only">Import is desktop-only.</div>') + '</div>';
-
-    // ── right column
-    var progress = '<div class="card c-progress">' + sl('PROGRESS', ro()) +
-      kv('LEVEL · RANK', esc(p.level) + ' · ' + esc(p.rank || '—')) + kv('TOTAL XP', esc(num(p.total_xp)) + ' ' + muted('· ' + num(p.xp_to_next_level) + ' to next')) +
-      kv('STREAK · LONGEST', esc(p.current_streak) + ' · ' + esc(p.longest_streak)) + kv('WORKOUTS · PRS', esc(num(p.total_workouts)) + ' · ' + esc(num(p.total_prs))) +
-      kv('LAST WORKOUT', p.last_workout_date ? esc(p.last_workout_date) : 'never', p.last_workout_date ? '' : 'm') + '</div>';
-
+  }
+  function renderIntegrations(integ) {
     var w = integ.whoop || {};
     var whoopStale = w.connected && w.token_expires_at && parseDate(w.token_expires_at) < new Date();
-    var integrations = '<div class="card c-integrations' + (whoopStale ? ' warn' : '') + '">' + sl('INTEGRATIONS', ro()) +
+    return '<div class="card c-integrations' + (whoopStale ? ' warn' : '') + '">' + sl('INTEGRATIONS', ro()) +
       kv('WHOOP', w.connected ? (whoopStale ? 'connected · token expired' : 'connected') : 'not connected', w.connected ? (whoopStale ? 'warnv' : 'good') : 'm') +
       kv('LAST SYNC · SCOPE', w.connected ? esc(w.last_synced_at ? fmtDT(w.last_synced_at) : 'never') + (w.scope ? ' · ' + esc(w.scope) : '') : '—', w.connected ? '' : 'm') +
       kv('PUSH DEVICES', esc(num(integ.active_device_tokens)) + ' active') +
       kv('DAILY ACTIVITY', integ.latest_daily_activity_date ? esc(integ.latest_daily_activity_date) + (integ.daily_activity_sources_30d && integ.daily_activity_sources_30d.length ? ' · ' + esc(integ.daily_activity_sources_30d.join(' ')) : '') : 'none seen yet', integ.latest_daily_activity_date ? '' : 'm') + '</div>';
-
+  }
+  function renderDataHealth(health) {
     var healthWarn = health.custom_exercises_without_family > 0 || health.sessions_missing_local_date > 0;
     var byStatus = function (m) { return Object.keys(m || {}).map(function (k) { return k + ' ' + m[k]; }).join(' · '); };
     var goals = byStatus(health.goals_by_status), gates = byStatus(health.gates_by_status);
-    var dataHealth = '<div class="card c-health' + (healthWarn ? ' warn' : '') + '">' + sl('DATA HEALTH') +
+    return '<div class="card c-health' + (healthWarn ? ' warn' : '') + '">' + sl('DATA HEALTH') +
       kv('CUSTOM EXERCISES W/O FAMILY', esc(health.custom_exercises_without_family) + ' ' + muted('of ' + health.custom_exercises), health.custom_exercises_without_family > 0 ? 'warnv' : '') +
       kv('SESSIONS W/O LOCAL_DATE', esc(health.sessions_missing_local_date) + ' ' + muted('of ' + health.sessions_total + (health.sessions_soft_deleted ? ' · ' + health.sessions_soft_deleted + ' soft-deleted' : '')), health.sessions_missing_local_date > 0 ? 'warnv' : '') +
       kv('BODYWEIGHT', esc(num(health.bodyweight_entries)) + (health.last_bodyweight_date ? ' · last ' + esc(health.last_bodyweight_date) : '')) +
       kv('GOALS · GATES', esc(goals || '—') + (gates ? ' · gates ' + esc(gates) : '')) +
       kv('ACHIEVEMENTS', esc(num(health.achievements_unlocked)) + ' unlocked') +
       '<div class="acts dk"><button type="button" class="btn" data-action="act" data-act="backfill">DRY-RUN BACKFILL</button></div><div class="hint dk">The family backfill is fleet-wide; the dry run lists every unresolved exercise before Apply.</div></div>';
-
-    var preview = '<div class="card c-preview dk">' + sl('PREVIEW', ro('status tab as the hunter sees it')) + (pv ? renderPreview(pv) : empty('No preview.')) + '</div>';
-
-    var auditCard = '<div class="card c-audit">' + sl('AUDIT · THIS HUNTER', '<a class="link" href="' + auditHref({ target_type: 'user', target_id: u.id }) + '">VIEW ALL</a>') +
-      ((d.recent_audit || []).length ? d.recent_audit.map(auditRow).join('') : empty('No admin action on this hunter yet.')) + '</div>';
-
-    // ── danger zone (full width)
-    var dz;
-    if (u.is_admin) {
-      dz = '<div class="dz">' + kv('IS_DELETED', esc(String(u.is_deleted)), 'm') + kv('ADMIN', 'admin accounts cannot be deleted or purged from the console', 'm') + '</div>';
-    } else if (!u.is_deleted) {
-      dz = '<div class="dz">' + kv('IS_DELETED', 'false', 'm') + kv('GRACE WINDOW', '30 days after soft-delete, then purge-eligible', 'm') +
-        '<div class="acts"><button type="button" class="btn danger sm" data-action="act" data-act="soft-delete">SOFT-DELETE</button></div></div>' +
-        '<div class="hint">Soft-delete logs the hunter out everywhere (login → 403). Restore and Purge replace this button once deleted.</div>';
-    } else {
-      var eligible = u.purge_eligible_at ? parseDate(u.purge_eligible_at) : null;
-      var daysLeft = eligible ? Math.ceil((eligible - Date.now()) / 86400000) : null;
-      dz = '<div class="dz">' + kv('IS_DELETED · DELETED_AT', 'true · ' + esc(fmtDT(u.deleted_at))) +
-        kv('PURGE', daysLeft === null ? '—' : daysLeft > 0 ? 'eligible in ' + esc(daysLeft) + 'd · ' + esc(fmtDate(eligible)) : 'eligible since ' + esc(fmtDate(eligible)), daysLeft !== null && daysLeft <= 0 ? 'bad' : 'warnv') +
-        '<div class="acts"><button type="button" class="btn sm" data-action="act" data-act="restore">RESTORE</button><button type="button" class="btn danger sm dk" data-action="act" data-act="purge">PURGE</button></div></div>' +
-        '<div class="hint ph-only">Purge is desktop-only.</div>';
-    }
-    var danger = '<div class="card danger full c-danger">' + sl('DANGER ZONE', '', 'danger') + dz + '</div>';
-
-    html += '<div class="grid2 detail"><div class="col">' + identity + scans + ent + purchases + campaign + '</div><div class="col">' + progress + integrations + dataHealth + preview + auditCard + '</div>' + danger + '</div>';
-    return html;
   }
 
   function renderPreview(pv) {
@@ -1942,6 +1975,8 @@
     }
     if (a === 'toast-close') { if (el.parentNode) el.parentNode.removeChild(el); }
   });
+  // Diagnostics on the hunter detail remembers open / closed per browser (§4.4).
+  document.addEventListener('toggle', function (e) { if (e.target && e.target.id === 'diag') storeDiag(e.target.open); }, true);
 
   // Discrete controls (radio / checkbox / select) report on `change`, text on
   // `input` — one run per edit whatever the browser fires.
