@@ -498,9 +498,9 @@
   }
 
   function renderOverview(u, audit) {
-    var ex = u.exercises || {}, th = state.thresholds, fleet = u.users || {}, byPlanCount = fleet.by_plan || {};
-    // the status / plan twins group the same _derived rows the Hunters filters run on, so each tile equals its list's total
-    var c = { active: fleet.active || 0, inactive: fleet.inactive || 0, deleted: (fleet.deleted || 0) - (fleet.purge_eligible || 0), purge_eligible: fleet.purge_eligible || 0, new_week: fleet.new_7d || 0, unlimited: byPlanCount.unlimited || 0, credits: byPlanCount.credits || 0 };
+    var ex = u.exercises || {}, th = state.thresholds, fleet = u.users || {}, byStatus = fleet.by_status || {}, byPlanCount = fleet.by_plan || {};
+    // by_status / by_plan group the same _derived rows the Hunters filters run on, so each tile equals its list's total
+    var c = { active: byStatus.active || 0, inactive: byStatus.inactive || 0, deleted: byStatus.deleted || 0, purge_eligible: byStatus.purge_eligible || 0, new_week: fleet.new_7d || 0, unlimited: byPlanCount.unlimited || 0, credits: byPlanCount.credits || 0 };
     var weeks = u.sessions_by_week || [];
     var currentWeek = isoWeek(new Date());
     var thisWeek = weeks.filter(function (w) { return w.week === currentWeek; })[0] || { sessions: 0, active_users: 0, week: currentWeek };

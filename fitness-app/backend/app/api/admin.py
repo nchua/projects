@@ -188,8 +188,8 @@ async def get_user_usage(
 async def get_fleet_usage(
     weeks: int = Query(20, ge=1, le=104), db: Session = Depends(get_read_only_db)
 ):
-    """Fleet rollup behind the Overview screen (spec §9.3)."""
-    return admin_usage_service.fleet_usage(db, weeks=weeks)
+    """Fleet rollup behind the Overview screen (spec §9.3) + the tile counts (console v2 §4.2)."""
+    return admin_usage_service.fleet_usage(db, weeks=weeks, counts=admin_read_service.fleet_counts(db))
 
 
 @router.get("/audit", response_model=AuditListResponse)

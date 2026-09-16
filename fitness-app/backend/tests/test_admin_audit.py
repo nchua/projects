@@ -135,7 +135,7 @@ class TestAuditRead:
         assert response.status_code == 200, response.text
         body = response.json()
         assert body["total"] == 2
-        assert body["actions"] == sorted(AUDIT_ACTIONS) or body["actions"] == list(AUDIT_ACTIONS)  # the registry rides along for the filter select (v2.4)
+        assert body["actions"] == list(AUDIT_ACTIONS)  # the registry rides along for the filter select (v2.4)
         assert [row["id"] for row in body["items"]] == [second.id, first.id]
         row = body["items"][1]
         assert row["before"] == {"scan_credits": 1} and row["after"] == {"scan_credits": 4}
@@ -186,7 +186,10 @@ class TestAuditRead:
 
         literals = set()
         for path in (Path(__file__).resolve().parents[1] / "app").rglob("*.py"):
-            literals |= set(re.findall(r'action="([a-z_.]+)"', path.read_text(encoding="utf-8")))
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if "action=" in line:   # every dotted literal on the line — a ternary carries two
+                    literals |= set(re.findall(r'"([a-z]+\.[a-z_]+)"', line))
+        assert "user.restore" in literals and "user.soft_delete" in literals  # the ternary at soft-delete / restore
         assert literals <= set(AUDIT_ACTIONS), literals - set(AUDIT_ACTIONS)
         assert {case.action for case in MUTATIONS} <= set(AUDIT_ACTIONS)
         assert list(AUDIT_ACTIONS) == sorted(set(AUDIT_ACTIONS))

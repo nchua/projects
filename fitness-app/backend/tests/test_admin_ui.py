@@ -175,7 +175,7 @@ class TestConsoleV2Shell:
             assert needle in js, needle
         assert 'id="diag"' in js and "var DIAG_KEY = " in js
         # Audit / Catalog (§4.6) and the bulk request id (v2.3)
-        for needle in ("'request_id'", "'X-Request-ID': rid", "audit-mine", "p.sold_verified", "by_plan_source", "scans_4wk_by_plan", "purchased_credits_total", "'session_count'", "fleet.by_plan", "fleet.new_7d", "r.actions"):
+        for needle in ("'request_id'", "'X-Request-ID': rid", "audit-mine", "p.sold_verified", "by_plan_source", "scans_4wk_by_plan", "purchased_credits_total", "'session_count'", "fleet.by_status", "fleet.by_plan", "fleet.new_7d", "r.actions"):
             assert needle in js, needle
         assert "AUDIT_ACTIONS" not in js and "countUsers" not in js  # v2.4: the registry and the tile counts come from the API
 

@@ -11,6 +11,8 @@ Revises: console_v2
 Create Date: 2026-09-15
 
 """
+from typing import Set
+
 import sqlalchemy as sa
 
 from alembic import op
@@ -25,7 +27,7 @@ TABLE = "admin_audit_log"
 INDEX = "ix_admin_audit_request_id"
 
 
-def _index_names() -> set:
+def _index_names() -> Set[str]:
     return {ix["name"] for ix in sa.inspect(op.get_bind()).get_indexes(TABLE)}
 
 

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from datetime import date, datetime, time, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import Date, case, func, select
 from sqlalchemy.orm import Session
@@ -49,6 +49,7 @@ from app.schemas.admin import (
     ScanUsage,
     SessionMeta,
     SessionSource,
+    StatusCounts,
     TopExercise,
     UnlimitedDriftRow,
     UserIntegrationsUsage,
@@ -67,6 +68,9 @@ from app.services.training_load_service import (
     local_day_sql,
 )
 from app.services.whoop_service import get_connection
+
+if TYPE_CHECKING:  # the read service imports this module; the type only crosses back
+    from app.services.admin_read_service import FleetCounts
 
 # The script's substring rule, kept as-is (looser than ``ExerciseFamily.is_big_three``).
 BIG_THREE_KEYWORDS = ("squat", "bench", "deadlift")
@@ -464,8 +468,12 @@ def unlimited_flag_drift(db: Session) -> List[UnlimitedDriftRow]:
     return drift
 
 
-def fleet_usage(db: Session, *, weeks: int = 20, today: Optional[date] = None) -> FleetUsageResponse:
-    """The fleet rollup behind the Overview screen (spec §9.3)."""
+def fleet_usage(db: Session, *, weeks: int = 20, counts: FleetCounts, today: Optional[date] = None) -> FleetUsageResponse:
+    """The fleet rollup behind the Overview screen (spec §9.3).
+
+    ``counts`` is ``admin_read_service.fleet_counts(db)`` — the route composes the two
+    (the read service imports this module, so this module never imports it back).
+    """
     today = today or date.today()
     now = utcnow()
 
@@ -510,8 +518,6 @@ def fleet_usage(db: Session, *, weeks: int = 20, today: Optional[date] = None) -
         count_where(Exercise.family_id.is_(None)),
     ).one()
 
-    rollups = _plan_rollups(db)
-    tiles = rollups["tiles"]
     return FleetUsageResponse(
         generated_at=now,
         weeks=weeks,
@@ -522,10 +528,9 @@ def fleet_usage(db: Session, *, weeks: int = 20, today: Optional[date] = None) -
             active_7d=sum(1 for d in last_day_by_user.values() if d >= today - timedelta(days=7)),
             active_30d=len(last_day_by_user),
             purge_eligible=int(purge_eligible or 0),
-            active=tiles.by_status.get("active", 0),
-            inactive=tiles.by_status.get("inactive", 0),
-            new_7d=tiles.new_7d,
-            by_plan=PlanCounts.model_validate(tiles.by_plan),
+            by_status=StatusCounts.model_validate(counts.by_status),
+            by_plan=PlanCounts.model_validate(counts.by_plan),
+            new_7d=counts.new_7d,
         ),
         sessions_by_week=[
             FleetWeekSessions(
@@ -552,22 +557,9 @@ def fleet_usage(db: Session, *, weeks: int = 20, today: Optional[date] = None) -
             without_family=int(exercises[2] or 0),
         ),
         unlimited_flag_drift=unlimited_flag_drift(db),
-        by_plan_source=rollups["by_plan_source"],
-        purchased_credits_total=rollups["purchased_credits_total"],
-        scans_4wk_by_plan=rollups["scans_4wk_by_plan"],
+        by_plan_source=PlanSourceCounts.model_validate(counts.by_plan_source),   # pydantic ignores keys the models do not declare
+        purchased_credits_total=counts.purchased_credits_total,
+        scans_4wk_by_plan=ScansByPlan.model_validate(counts.scans_4wk_by_plan),
     )
 
 
-def _plan_rollups(db: Session) -> Dict[str, Any]:
-    """The Overview tiles' numbers (console v2 §4.2, §7.4 v2.4) from ``admin_read_service.fleet_counts`` —
-    the SQL twins of ``plans_for`` / ``status_for``, so every tile equals the total of the Hunters
-    view it links to. (Function-local import: the read service imports this module.)"""
-    from app.services.admin_read_service import fleet_counts
-
-    c = fleet_counts(db)
-    return {
-        "by_plan_source": PlanSourceCounts.model_validate(c.by_plan_source),   # pydantic ignores keys the models do not declare
-        "purchased_credits_total": c.purchased_credits_total,
-        "scans_4wk_by_plan": ScansByPlan.model_validate(c.scans_4wk_by_plan),
-        "tiles": c,
-    }

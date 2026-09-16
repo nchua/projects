@@ -12,6 +12,7 @@ from app.models.activity import DailyActivity
 from app.models.scan_balance import PurchaseRecord, ScanBalance
 from app.models.screenshot_usage import ScreenshotUsage
 from app.models.user import User
+from app.services import admin_read_service as rs
 from app.services import admin_usage_service as us
 from app.services import entitlement_service as es
 from app.services import settings_service
@@ -121,7 +122,7 @@ class TestFleetUsage:
         from app.core.config import settings
 
         monkeypatch.setattr(settings, "PURGE_GRACE_DAYS", 30)
-        before = us.fleet_usage(db, weeks=4, today=TODAY)
+        before = us.fleet_usage(db, weeks=4, counts=rs.fleet_counts(db), today=TODAY)
 
         a = make_user(create_test_user, "fleet-a")
         b = make_user(create_test_user, "fleet-b")
@@ -144,7 +145,7 @@ class TestFleetUsage:
         grant_admin(db, a.id, es.KEY_UNLIMITED, True)  # synced → no drift
         db.commit()
 
-        after = us.fleet_usage(db, weeks=4, today=TODAY)
+        after = us.fleet_usage(db, weeks=4, counts=rs.fleet_counts(db), today=TODAY)
         assert after.users.total == before.users.total + 4
         assert after.users.deleted == before.users.deleted + 2
         assert after.users.purge_eligible == before.users.purge_eligible + 1
@@ -168,7 +169,7 @@ class TestFleetUsage:
 
     def test_plan_rollups_agree_with_plans_for(self, db, create_test_user):
         """The Overview tiles' splits (v2.3): Unlimited by source, purchased credits outstanding, scans by plan."""
-        before = us.fleet_usage(db, weeks=4, today=TODAY)
+        before = us.fleet_usage(db, weeks=4, counts=rs.fleet_counts(db), today=TODAY)
         free_default = int(settings_service.get(db, "FREE_MONTHLY_SCANS"))
         granted = make_user(create_test_user, "roll-granted")
         bought = make_user(create_test_user, "roll-bought")
@@ -187,7 +188,17 @@ class TestFleetUsage:
                                 transaction_id=str(9_000_000_000 + int(uuid.uuid4().hex[:6], 16)), verified=True, environment="Sandbox")
         db.add(record)
         db.flush()
-        es.grant_from_purchase(db, user_id=bought.id, purchase_record_id=record.id, product=product)
+        # the receipt decides the source (§3.1), not the row's own `source` — the SQL twin's CASE must agree
+        es.grant(db, user_id=bought.id, key=es.KEY_UNLIMITED, value=True, source="admin_grant", purchase_record_id=record.id)
+        # an override-aware purchased count: 15 credits above a free_monthly override of 10 = 5 purchased (not 15 - default)
+        overridden = make_user(create_test_user, "roll-override")
+        db.add(ScanBalance(user_id=overridden.id, scan_credits=15, has_unlimited=False))
+        grant_admin(db, overridden.id, es.KEY_FREE_MONTHLY, 10)
+        # the newest active row wins: an explicit false over an older true is not Unlimited
+        revoked = make_user(create_test_user, "roll-revoked")
+        grant_admin(db, revoked.id, es.KEY_UNLIMITED, True)
+        db.commit()
+        grant_admin(db, revoked.id, es.KEY_UNLIMITED, False)
         db.commit()
         now = datetime.now(timezone.utc)
         for user, n in ((free, 2), (credits, 1), (bought, 3), (granted, 1), (gone, 4)):
@@ -196,21 +207,25 @@ class TestFleetUsage:
         db.add(ScreenshotUsage(user_id=free.id, screenshots_count=1, created_at=now - timedelta(days=40)))  # outside 28 d
         db.commit()
 
-        after = us.fleet_usage(db, weeks=4, today=TODAY)
+        after = us.fleet_usage(db, weeks=4, counts=rs.fleet_counts(db), today=TODAY)
         assert after.by_plan_source.admin_grant == before.by_plan_source.admin_grant + 1
         assert after.by_plan_source.purchase == before.by_plan_source.purchase + 1
         assert after.by_plan_source.backfill == before.by_plan_source.backfill
-        assert after.purchased_credits_total == before.purchased_credits_total + 30 + 5
+        assert after.purchased_credits_total == before.purchased_credits_total + 30 + 5 + 5
         assert after.scans_4wk_by_plan.free == before.scans_4wk_by_plan.free + 2  # the 40-day-old scan is outside the window
         assert after.scans_4wk_by_plan.credits == before.scans_4wk_by_plan.credits + 1 + 4  # a deleted hunter's scans still count under its plan
         assert after.scans_4wk_by_plan.unlimited == before.scans_4wk_by_plan.unlimited + 4
         assert after.scans_4wk_by_plan.override == before.scans_4wk_by_plan.override
         # the tile counts (v2.4) are the same grouped query: live hunters only, by the §3.1 / §3.3 twins
-        assert after.users.by_plan.unlimited == before.users.by_plan.unlimited + 2
+        assert after.users.by_plan.unlimited == before.users.by_plan.unlimited + 2  # granted + bought; `revoked` is not
+        assert after.users.by_plan.override == before.users.by_plan.override + 1
         assert after.users.by_plan.credits == before.users.by_plan.credits + 1
-        assert after.users.by_plan.free == before.users.by_plan.free + 1
-        assert after.users.active + after.users.inactive == before.users.active + before.users.inactive + 4  # gone is deleted
-        assert after.users.new_7d == before.users.new_7d + 4
+        assert after.users.by_plan.free == before.users.by_plan.free + 2  # free + revoked
+        live = lambda u: u.by_status.active + u.by_status.inactive  # noqa: E731
+        assert live(after.users) == live(before.users) + 6  # gone is deleted
+        assert after.users.by_status.deleted == before.users.by_status.deleted + 1
+        assert after.users.by_status.purge_eligible == before.users.by_status.purge_eligible
+        assert after.users.new_7d == before.users.new_7d + 6
 
     def test_drift_uses_newest_active_row_like_the_writer(self, db, create_test_user):
         user = make_user(create_test_user, "drift-newest")
@@ -233,7 +248,8 @@ class TestFleetUsage:
             "by_plan_source", "purchased_credits_total", "scans_4wk_by_plan",  # console v2 §7.4 v2.3
         }
         assert set(body["by_plan_source"]) == {"purchase", "admin_grant", "backfill"}
-        assert set(body["users"]) == {"total", "deleted", "admins", "active_7d", "active_30d", "purge_eligible", "active", "inactive", "new_7d", "by_plan"}
+        assert set(body["users"]) == {"total", "deleted", "admins", "active_7d", "active_30d", "purge_eligible", "by_status", "by_plan", "new_7d"}
+        assert set(body["users"]["by_status"]) == {"active", "inactive", "deleted", "purge_eligible"}
         assert set(body["users"]["by_plan"]) == {"unlimited", "override", "credits", "free"}
         assert set(body["scans_4wk_by_plan"]) == {"free", "credits", "unlimited", "override"}
         assert body["weeks"] == 20

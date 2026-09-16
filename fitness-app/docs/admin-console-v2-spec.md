@@ -770,18 +770,28 @@ section), fix every Error, `/simplify`, pathspec commit, push, `deploy-watch`, o
     mirrored in the model's `__table_args__`. The bulk toast and the Audit Request column filter on it.
   - **Server-side tile counts.** `admin_read_service.fleet_counts(db)` runs one query grouped by
     `(status, plan, plan_source)` over `_derived` — the same subquery the Hunters filters run on, so
-    every Overview tile equals the total of the list it links to by construction. `_derived` takes
-    `plan_extras=True` to add `plan_source` (a correlated scalar on the newest active Unlimited row:
-    `purchase` when it cites a receipt, else the row's `source`) and `purchased_credits`
-    (`max(0, credits − effective_free)` as a CASE); the Hunters page never pays for the extra subquery.
-    `FleetUsers` gained `active`, `inactive`, `new_7d` and `by_plan {unlimited, override, credits, free}`;
-    `by_plan_source` / `purchased_credits_total` / `scans_4wk_by_plan` now come from the same rows (the
-    `plans_for` walk is gone; the v2.3 test that derives its expectations from the Python model still
-    passes, which is the twin's agreement test). The Overview is three requests (usage `weeks=1`, the
-    ten newest audit rows, settings for the chips); `countUsers` is deleted.
+    every status and plan tile equals the total of the list it links to by construction. `_derived`
+    takes `plan_extras=True` to add `plan_source` (`_newest_active(...)`: the newest active Unlimited
+    row, `purchase` when it cites a receipt, else the row's `source` — `unlimited_source` in SQL) and
+    `purchased_credits` (`max(0, credits − effective_free)` as a CASE); the Hunters page never pays for
+    the extra subquery. `FleetUsers` gained `by_status {active, inactive, deleted, purge_eligible}`,
+    `by_plan {unlimited, override, credits, free}` and `new_7d`; the v1 `deleted` / `purge_eligible` /
+    `active_7d` / `active_30d` counters stay for the API. `by_plan_source` / `purchased_credits_total` /
+    `scans_4wk_by_plan` come from the same rows (the `plans_for` walk is gone). The route composes the
+    two services — `fleet_usage(db, weeks=, counts=admin_read_service.fleet_counts(db))` — because the
+    read service imports the usage service (`user_usage`, `count_where`); the usage module never
+    imports back. The rollup test seeds the shapes that discriminate the twins from the Python model:
+    an `admin_grant` row citing a receipt (source = purchase), a `free_monthly` override with credits
+    above it (purchased = credits − override), and an explicit `false` over an older `true` (not
+    Unlimited). The Overview is three requests (usage `weeks=1`, the ten newest audit rows, settings
+    for the chips); `countUsers` is deleted.
   - **Audit action registry.** `audit_service.AUDIT_ACTIONS` is the one list (15 actions, sorted);
     `audit()` raises on anything else, a test greps every `action="…"` literal under `app/` and every
     `MUTATIONS` case against it, and `AuditListResponse.actions` carries it so the console's action
     select is served rather than scraped (`AUDIT_ACTIONS` left `admin.js`; `DESTRUCTIVE_ACTIONS`, a
     presentation choice, stays). Two tests that wrote synthetic actions (`test.noop`, `test.touch`) now
-    write `campaign.import`.
+    write `campaign.import`. QA on the follow-ups: `/evaluate` B+ PASS WITH WARNINGS (0 Errors; the SQL
+    twins match `unlimited_source` / `_plan_from` line for line), `/simplify` applied (route composition,
+    `by_status`, one `_newest_active` helper, `Counter` accumulators, `ScansByPlan(PlanCounts)`); kept on
+    purpose: the v1 `FleetUsageResponse` counters / `balances` / `integrations` / `scans_by_week` the
+    console no longer reads (they are the v1 §9.3 API surface).

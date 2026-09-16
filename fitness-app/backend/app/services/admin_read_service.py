@@ -8,6 +8,7 @@ every table before and after the detail GET. Mutations live in
 from __future__ import annotations
 
 import os
+from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -200,10 +201,10 @@ def _pair_max(x: ColumnElement, y: ColumnElement) -> ColumnElement:
     return case((y.is_(None), x), (x.is_(None), y), (x >= y, x), else_=y)
 
 
-def _newest_active_value(key: str, now: datetime) -> ColumnElement:
-    """Correlated scalar: the user's newest active row value for ``key``, as text."""
+def _newest_active(selected: ColumnElement, key: str, now: datetime) -> ColumnElement:
+    """Correlated scalar: ``selected`` from the user's newest active row for ``key`` (the §6.1 rule)."""
     return (
-        select(cast(UserEntitlement.value, String))
+        select(selected)
         .where(UserEntitlement.user_id == User.id, UserEntitlement.key == key, *active_clauses(now))
         .order_by(UserEntitlement.created_at.desc(), UserEntitlement.id.desc())
         .limit(1)
@@ -212,15 +213,16 @@ def _newest_active_value(key: str, now: datetime) -> ColumnElement:
     )
 
 
+def _newest_active_value(key: str, now: datetime) -> ColumnElement:
+    """The newest active row's value for ``key``, as text."""
+    return _newest_active(cast(UserEntitlement.value, String), key, now)
+
+
 def _newest_active_source(now: datetime) -> ColumnElement:
-    """Correlated scalar: where the user's newest active Unlimited row came from (§3.1 ``plan_source``)."""
-    return (
-        select(case((UserEntitlement.purchase_record_id.isnot(None), EntitlementSource.PURCHASE.value), else_=UserEntitlement.source))
-        .where(UserEntitlement.user_id == User.id, UserEntitlement.key == KEY_UNLIMITED, *active_clauses(now))
-        .order_by(UserEntitlement.created_at.desc(), UserEntitlement.id.desc())
-        .limit(1)
-        .correlate_except(UserEntitlement)
-        .scalar_subquery()
+    """Where the newest active Unlimited row came from — ``unlimited_source`` in SQL (§3.1 ``plan_source``)."""
+    return _newest_active(
+        case((UserEntitlement.purchase_record_id.isnot(None), EntitlementSource.PURCHASE.value), else_=UserEntitlement.source),
+        KEY_UNLIMITED, now,
     )
 
 
@@ -273,7 +275,7 @@ def _derived(*, now: datetime, default_free: int, thresholds: StatusThresholds, 
         (credits > effective_free, PLAN_CREDITS),
         else_=PLAN_FREE,
     )
-    extras = []
+    extras: List[ColumnElement] = []
     if plan_extras:
         extras = [
             case((unlimited, _newest_active_source(now)), else_=None).label("plan_source"),
@@ -320,7 +322,7 @@ class FleetCounts:
     """The Overview's numbers, grouped in SQL over ``_derived`` so every tile equals the
     total of the Hunters view it links to (console v2 §4.2, §7.4 v2.4)."""
 
-    by_status: Dict[str, int]          # every user
+    by_status: Dict[str, int]          # every user (the four status tiles)
     by_plan: Dict[str, int]            # live (not deleted) users
     by_plan_source: Dict[str, int]     # live Unlimited users by §3.1 source
     purchased_credits_total: int       # live users, Unlimited included (the credits wait underneath)
@@ -343,20 +345,20 @@ def fleet_counts(db: Session, *, now: Optional[datetime] = None) -> FleetCounts:
         .group_by(d.c.status, d.c.plan, d.c.plan_source)
         .all()
     )
-    by_status: Dict[str, int] = {}
-    by_plan: Dict[str, int] = {}
-    by_source: Dict[str, int] = {}
-    scans: Dict[str, int] = {}
+    by_status: Counter = Counter()
+    by_plan: Counter = Counter()
+    by_source: Counter = Counter()
+    scans: Counter = Counter()
     purchased = 0
     for status, plan, source, n, credits, scan_count in rows:
         n = int(n or 0)
-        by_status[status] = by_status.get(status, 0) + n
-        scans[plan] = scans.get(plan, 0) + int(scan_count or 0)
-        if status in (STATUS_ACTIVE, STATUS_INACTIVE):
-            by_plan[plan] = by_plan.get(plan, 0) + n
+        by_status[status] += n
+        scans[plan] += int(scan_count or 0)
+        if status in DEFAULT_STATUSES:   # live: the rows a `?plan=…` tile link lists
+            by_plan[plan] += n
             purchased += int(credits or 0)
             if plan == PLAN_UNLIMITED and source:
-                by_source[source] = by_source.get(source, 0) + n
+                by_source[source] += n
     new_7d = (
         db.query(func.count(User.id))
         .filter(User.is_deleted == False, User.created_at >= to_naive_utc(now - timedelta(days=7)))

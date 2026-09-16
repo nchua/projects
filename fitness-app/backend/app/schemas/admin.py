@@ -362,7 +362,7 @@ class AuditEntry(UTCModel):
 class AuditListResponse(UTCModel):
     items: List[AuditEntry]
     total: int
-    actions: List[str] = Field(default_factory=list)  # the registry (audit_service.AUDIT_ACTIONS) — the filter select reads it
+    actions: List[str]  # the registry (audit_service.AUDIT_ACTIONS) — the filter select reads it
 
 
 # ── products ────────────────────────────────────────────────────────────────
@@ -507,6 +507,15 @@ class PlanCounts(UTCModel):
     free: int = 0
 
 
+class StatusCounts(UTCModel):
+    """Every hunter by status (§3.3) — the four status tiles, from the same grouped query as the plans."""
+
+    active: int = 0
+    inactive: int = 0
+    deleted: int = 0
+    purge_eligible: int = 0
+
+
 class FleetUsers(UTCModel):
     total: int
     deleted: int
@@ -514,10 +523,12 @@ class FleetUsers(UTCModel):
     active_7d: int
     active_30d: int
     purge_eligible: int
-    active: int = 0  # status counts by the §3.3 twin: the tiles equal their filtered lists (v2.4)
-    inactive: int = 0
-    new_7d: int = 0  # joined in the last 7 days, not deleted (the Hunters joined_days=7 chip)
+    # v2.4: the tile counts, grouped in SQL over the Hunters list's own status / plan twins, so every
+    # tile equals the total of the view it links to. ``deleted`` / ``purge_eligible`` / ``active_7d`` /
+    # ``active_30d`` above are the v1 §9.3 counters (workout-only activity) and stay for the API.
+    by_status: StatusCounts = Field(default_factory=StatusCounts)
     by_plan: PlanCounts = Field(default_factory=PlanCounts)
+    new_7d: int = 0  # joined in the last 7 days, not deleted (the Hunters joined_days=7 chip)
 
 
 class FleetWeekSessions(UTCModel):
@@ -559,13 +570,8 @@ class PlanSourceCounts(UTCModel):
     backfill: int = 0
 
 
-class ScansByPlan(UTCModel):
-    """Scans in the last 28 days by the scanning hunter's plan (§4.2 Scans tile)."""
-
-    free: int = 0
-    credits: int = 0
-    unlimited: int = 0
-    override: int = 0
+class ScansByPlan(PlanCounts):
+    """Scans in the last 28 days by the scanning hunter's plan (§4.2 Scans tile) — the same four keys."""
 
 
 class FleetUsageResponse(UTCModel):
