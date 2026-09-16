@@ -110,7 +110,7 @@ def test_alembic_has_exactly_one_head():
     cfg.set_main_option("script_location", str(BACKEND / "alembic"))
     heads = ScriptDirectory.from_config(cfg).get_heads()
     # The control-plane migrations chain after the v3 quest-table drop.
-    assert heads == ["console_v2"]
+    assert heads == ["audit_request_id"]
 
 
 def test_chain_is_linear_from_workout_local_date():

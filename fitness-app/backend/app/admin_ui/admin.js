@@ -26,11 +26,6 @@
     { key: 'scans.cooldown_seconds', field: 'cooldown_seconds', label: 'SCAN COOLDOWN', unit: 's' }
   ];
   var ENTITLEMENT_KEYS = ['scans.unlimited'].concat(LIMIT_KEYS.map(function (k) { return k.key; }));
-  var AUDIT_ACTIONS = [
-    'session.create', 'admin.bootstrap', 'credits.adjust', 'entitlement.grant', 'entitlement.revoke',
-    'campaign.import', 'user.soft_delete', 'user.restore', 'user.purge', 'product.upsert',
-    'maintenance.family_backfill', 'maintenance.purge_sweep', 'maintenance.seed_achievements', 'user.plan_change', 'settings.update'
-  ];
   var DESTRUCTIVE_ACTIONS = ['entitlement.revoke', 'user.soft_delete', 'user.restore', 'user.purge', 'maintenance.purge_sweep'];
   var SEARCH_DEBOUNCE = 250;
   var PALETTE_LIMIT = 8;
@@ -485,24 +480,15 @@
 
   // ── overview — a launchpad (spec §4.2) ─────────────────────────────────
 
-  function countUsers(params) {
-    return api('GET', '/admin/users' + qs(Object.assign({ limit: 1 }, params))).then(function (r) { return r.total; });
-  }
   function screenOverview() {
     loadScreen({
       skeleton: pageHeader('Overview', 'fleet · ' + esc(todayISO())) +
         '<div class="tiles">' + [1, 2, 3, 4, 5, 6, 7, 8].map(function () { return '<div class="tile"><span class="skel tall w60"></span><div class="lbl"><span class="skel w80"></span></div></div>'; }).join('') + '</div>' +
         '<div class="grid2 top">' + skelCard('ATTENTION', 3) + skelCard('RECENT ACTIONS', 4) + '</div>',
-      load: function () {
-        return Promise.all([
-          api('GET', '/admin/usage?weeks=1'), api('GET', '/admin/audit?limit=10'), loadThresholds(),   // one week: the Sessions tile reads only the current ISO week
-          countUsers({ status: 'active' }), countUsers({ status: 'inactive' }), countUsers({ joined_days: 7 }), countUsers({ plan: 'unlimited' }), countUsers({ plan: 'credits' })
-        ]);
+      load: function () {   // three requests: the usage rollup carries every tile count (v2.4), one week for the Sessions tile
+        return Promise.all([api('GET', '/admin/usage?weeks=1'), api('GET', '/admin/audit?limit=10'), loadThresholds()]);
       },
-      render: function (r) {
-        var fleet = r[0].users || {};   // deleted / purge-eligible come with the usage rollup (the same eligible_filter rule as the list)
-        return renderOverview(r[0], r[1], { active: r[3], inactive: r[4], deleted: (fleet.deleted || 0) - (fleet.purge_eligible || 0), purge_eligible: fleet.purge_eligible || 0, new_week: r[5], unlimited: r[6], credits: r[7] });
-      },
+      render: function (r) { return renderOverview(r[0], r[1]); },
       fallback: function (e) { return pageHeader('Overview') + errorBlock(e, true); }
     });
   }
@@ -511,8 +497,10 @@
     return '<a class="tile" href="' + esc(href) + '"><div class="big ' + (cls || '') + '">' + value + '</div><div class="lbl">' + esc(label) + '</div><div class="sub">' + sub + '</div></a>';
   }
 
-  function renderOverview(u, audit, c) {
-    var ex = u.exercises || {}, th = state.thresholds;
+  function renderOverview(u, audit) {
+    var ex = u.exercises || {}, th = state.thresholds, fleet = u.users || {}, byPlanCount = fleet.by_plan || {};
+    // the status / plan twins group the same _derived rows the Hunters filters run on, so each tile equals its list's total
+    var c = { active: fleet.active || 0, inactive: fleet.inactive || 0, deleted: (fleet.deleted || 0) - (fleet.purge_eligible || 0), purge_eligible: fleet.purge_eligible || 0, new_week: fleet.new_7d || 0, unlimited: byPlanCount.unlimited || 0, credits: byPlanCount.credits || 0 };
     var weeks = u.sessions_by_week || [];
     var currentWeek = isoWeek(new Date());
     var thisWeek = weeks.filter(function (w) { return w.week === currentWeek; })[0] || { sessions: 0, active_users: 0, week: currentWeek };
@@ -1031,10 +1019,9 @@
     });
   }
 
-  // §4.6: the action select carries the registry plus whatever the page shows; Mine = actor is this session.
+  // §4.6: the action select is the server's registry (AuditListResponse.actions); Mine = actor is this session.
   function auditHeader(q, r) {
-    var actions = AUDIT_ACTIONS.slice();
-    ((r && r.items) || []).forEach(function (a) { if (actions.indexOf(a.action) < 0) actions.push(a.action); });
+    var actions = ((r && r.actions) || []).slice();
     if (q.action && actions.indexOf(q.action) < 0) actions.push(q.action);
     var mine = !!(session && q.actor_user_id && q.actor_user_id === session.userId);
     return pageHeader('Audit', (r ? esc(plural(num(r.total), 'event')) : '…') + ' · append-only') +

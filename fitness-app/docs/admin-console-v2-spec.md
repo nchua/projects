@@ -1,7 +1,8 @@
 # ARISE Owner Console v2 — The Admin's Workbench
 
-> **Status:** v2.3 — W4 (data & API) shipped 2026-09-13, W5 (Hunters · Overview · Change plan) 2026-09-14,
-> W6 (Detail · Settings · Audit/Catalog · phone lane) 2026-09-15; what remains is the §7.3 cut list. Supersedes §10 of
+> **Status:** v2.4 — W4 (data & API) shipped 2026-09-13, W5 (Hunters · Overview · Change plan) 2026-09-14,
+> W6 (Detail · Settings · Audit/Catalog · phone lane) 2026-09-15, W6 follow-ups (request-id index, server-side
+> tile counts, the audit action registry) the same day; what remains is the §7.3 cut list. Supersedes §10 of
 > `docs/arise-control-plane-spec.md` (v1.5) for the *console*; everything else in that spec —
 > identity, sessions, step-up, audit, entitlements, purge, the JWS verification — stays in force
 > and is referenced, not restated. Council record for v1:
@@ -761,3 +762,26 @@ section), fix every Error, `/simplify`, pathspec commit, push, `deploy-watch`, o
   - `test_admin_ui`'s storage rule now allows `DIAG_KEY` beside `VIEWS_KEY` (token still forbidden)
     and pins the settings drawer strings, the detail blocks, the request-id wiring and the phone
     card order in the CSS.
+
+- **v2.4 (2026-09-15, W6 follow-ups):** the three items the W6 QA pass deferred, none re-opening a
+  decision.
+  - **Migration `audit_request_id`** (head; chained from `console_v2`): one composite index
+    `ix_admin_audit_request_id (request_id, created_at)` on `admin_audit_log`, inspector-guarded,
+    mirrored in the model's `__table_args__`. The bulk toast and the Audit Request column filter on it.
+  - **Server-side tile counts.** `admin_read_service.fleet_counts(db)` runs one query grouped by
+    `(status, plan, plan_source)` over `_derived` — the same subquery the Hunters filters run on, so
+    every Overview tile equals the total of the list it links to by construction. `_derived` takes
+    `plan_extras=True` to add `plan_source` (a correlated scalar on the newest active Unlimited row:
+    `purchase` when it cites a receipt, else the row's `source`) and `purchased_credits`
+    (`max(0, credits − effective_free)` as a CASE); the Hunters page never pays for the extra subquery.
+    `FleetUsers` gained `active`, `inactive`, `new_7d` and `by_plan {unlimited, override, credits, free}`;
+    `by_plan_source` / `purchased_credits_total` / `scans_4wk_by_plan` now come from the same rows (the
+    `plans_for` walk is gone; the v2.3 test that derives its expectations from the Python model still
+    passes, which is the twin's agreement test). The Overview is three requests (usage `weeks=1`, the
+    ten newest audit rows, settings for the chips); `countUsers` is deleted.
+  - **Audit action registry.** `audit_service.AUDIT_ACTIONS` is the one list (15 actions, sorted);
+    `audit()` raises on anything else, a test greps every `action="…"` literal under `app/` and every
+    `MUTATIONS` case against it, and `AuditListResponse.actions` carries it so the console's action
+    select is served rather than scraped (`AUDIT_ACTIONS` left `admin.js`; `DESTRUCTIVE_ACTIONS`, a
+    presentation choice, stays). Two tests that wrote synthetic actions (`test.noop`, `test.touch`) now
+    write `campaign.import`.

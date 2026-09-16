@@ -535,7 +535,7 @@ class TestUserDetail:
         grant_admin(db, user.id, es.KEY_DAILY_LIMIT, 3)
         db.commit()
         from app.services.audit_service import audit
-        audit(db, actor=owner, action="test.touch", target_type="user", target_id=user.id,
+        audit(db, actor=owner, action="campaign.import", target_type="user", target_id=user.id,
               after={"note": 1}, reason="seed")
         db.commit()
 
@@ -569,7 +569,7 @@ class TestUserDetail:
         assert body["data_health"]["sessions_total"] == 1
         assert body["data_health"]["custom_exercises"] == 1
         assert body["data_health"]["custom_exercises_without_family"] == 1
-        assert [row["action"] for row in body["recent_audit"]] == ["test.touch"]
+        assert [row["action"] for row in body["recent_audit"]] == ["campaign.import"]
         assert body["recent_audit"][0]["actor_user_id"] == owner.id
         assert body["usage"]["kinds"] == {"other": 1}
 

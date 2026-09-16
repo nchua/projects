@@ -82,6 +82,7 @@ from app.services import (
     purge_service,
 )
 from app.services.admin_read_service import PLAN_ORDER, STATUS_ORDER, parse_csv
+from app.services.audit_service import AUDIT_ACTIONS
 
 session_router = APIRouter()
 router = APIRouter(dependencies=[Depends(require_admin)])
@@ -213,7 +214,7 @@ async def list_audit(
         limit=limit,
         offset=offset,
     )
-    return AuditListResponse(items=items, total=total)
+    return AuditListResponse(items=items, total=total, actions=list(AUDIT_ACTIONS))
 
 
 @router.get("/products", response_model=List[ProductResponse])

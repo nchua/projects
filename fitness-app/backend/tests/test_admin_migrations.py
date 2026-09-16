@@ -21,7 +21,7 @@ from tests.helpers_migrations import (
     upgrade_all,
 )
 
-CHAIN = ["admin_schema", "admin_seed_backfill", "purchase_verification", "console_v2"]
+CHAIN = ["admin_schema", "admin_seed_backfill", "purchase_verification", "console_v2", "audit_request_id"]
 
 NEW_TABLES = {"admin_audit_log", "products", "user_entitlements", "app_settings"}
 NEW_COLUMNS = {
@@ -55,7 +55,7 @@ def test_alembic_has_exactly_one_head():
     cfg = Config(str(BACKEND / "alembic.ini"))
     cfg.set_main_option("script_location", str(BACKEND / "alembic"))
     heads = ScriptDirectory.from_config(cfg).get_heads()
-    assert heads == ["console_v2"]
+    assert heads == ["audit_request_id"]
 
 
 def test_chain_is_linear_from_quest_drop():
@@ -63,6 +63,7 @@ def test_chain_is_linear_from_quest_drop():
     assert load_migration("admin_seed_backfill").down_revision == "admin_schema"
     assert load_migration("purchase_verification").down_revision == "admin_seed_backfill"
     assert load_migration("console_v2").down_revision == "purchase_verification"
+    assert load_migration("audit_request_id").down_revision == "console_v2"
 
 
 def test_already_applied_schema_is_a_noop(engine):
@@ -114,7 +115,7 @@ def test_indexes_created(engine):
     downgrade_all(engine, CHAIN)
     upgrade_all(engine, CHAIN)
     audit_ix = {ix["name"] for ix in sa.inspect(engine).get_indexes("admin_audit_log")}
-    assert {"ix_admin_audit_log_action", "ix_admin_audit_target", "ix_admin_audit_actor", "uq_admin_audit_idempotency"} <= audit_ix
+    assert {"ix_admin_audit_log_action", "ix_admin_audit_target", "ix_admin_audit_actor", "uq_admin_audit_idempotency", "ix_admin_audit_request_id"} <= audit_ix
     ent_ix = {ix["name"] for ix in sa.inspect(engine).get_indexes("user_entitlements")}
     assert {"ix_user_entitlements_user_id", "ix_user_entitlements_purchase_record_id", "ix_user_entitlements_user_key"} <= ent_ix
 

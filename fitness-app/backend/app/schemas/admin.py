@@ -362,6 +362,7 @@ class AuditEntry(UTCModel):
 class AuditListResponse(UTCModel):
     items: List[AuditEntry]
     total: int
+    actions: List[str] = Field(default_factory=list)  # the registry (audit_service.AUDIT_ACTIONS) — the filter select reads it
 
 
 # ── products ────────────────────────────────────────────────────────────────
@@ -497,6 +498,15 @@ class UserUsageResponse(UTCModel):
     runs: List[RunRow]
 
 
+class PlanCounts(UTCModel):
+    """Live hunters by plan (§3.1) — the Overview's Unlimited / Credits tiles equal the filtered list totals."""
+
+    unlimited: int = 0
+    override: int = 0
+    credits: int = 0
+    free: int = 0
+
+
 class FleetUsers(UTCModel):
     total: int
     deleted: int
@@ -504,6 +514,10 @@ class FleetUsers(UTCModel):
     active_7d: int
     active_30d: int
     purge_eligible: int
+    active: int = 0  # status counts by the §3.3 twin: the tiles equal their filtered lists (v2.4)
+    inactive: int = 0
+    new_7d: int = 0  # joined in the last 7 days, not deleted (the Hunters joined_days=7 chip)
+    by_plan: PlanCounts = Field(default_factory=PlanCounts)
 
 
 class FleetWeekSessions(UTCModel):

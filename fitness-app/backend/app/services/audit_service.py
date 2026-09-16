@@ -12,7 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, Optional, Tuple
 
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
@@ -69,6 +69,27 @@ def body_hash(payload: Dict[str, Any]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+# Every action the log can hold — the console's Audit filter reads this list from
+# ``GET /admin/audit`` (console v2 §4.6, §7.4 v2.4); ``audit()`` refuses anything else.
+AUDIT_ACTIONS: Tuple[str, ...] = (
+    "admin.bootstrap",
+    "campaign.import",
+    "credits.adjust",
+    "entitlement.grant",
+    "entitlement.revoke",
+    "maintenance.family_backfill",
+    "maintenance.purge_sweep",
+    "maintenance.seed_achievements",
+    "product.upsert",
+    "session.create",
+    "settings.update",
+    "user.plan_change",
+    "user.purge",
+    "user.restore",
+    "user.soft_delete",
+)
+
+
 def audit(
     db: Session,
     *,
@@ -84,6 +105,8 @@ def audit(
     body_sha256: Optional[str] = None,
 ) -> AdminAuditLog:
     """Add one audit row to the current transaction (flush, no commit)."""
+    if action not in AUDIT_ACTIONS:
+        raise ValueError(f"unregistered audit action {action!r} — add it to AUDIT_ACTIONS")
     request_id = get_request_id()
     row = AdminAuditLog(
         actor_user_id=actor.id if actor is not None else None,

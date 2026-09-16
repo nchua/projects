@@ -42,6 +42,7 @@ from app.schemas.admin import (
     FleetUsers,
     FleetWeekSessions,
     LiftWeekPoint,
+    PlanCounts,
     PlanSourceCounts,
     RunRow,
     ScansByPlan,
@@ -55,10 +56,9 @@ from app.schemas.admin import (
     WeekScans,
     WeekSessions,
 )
-from app.services import settings_service
 from app.services.campaign_service import monday_of
 from app.services.coach_context_service import run_miles, run_pace_sec
-from app.services.entitlement_service import KEY_UNLIMITED, PLAN_UNLIMITED, is_active, plans_for
+from app.services.entitlement_service import KEY_UNLIMITED, is_active
 from app.services.purge_service import eligible_filter
 from app.services.training_load_service import (
     METERS_PER_MILE,
@@ -510,6 +510,8 @@ def fleet_usage(db: Session, *, weeks: int = 20, today: Optional[date] = None) -
         count_where(Exercise.family_id.is_(None)),
     ).one()
 
+    rollups = _plan_rollups(db)
+    tiles = rollups["tiles"]
     return FleetUsageResponse(
         generated_at=now,
         weeks=weeks,
@@ -520,6 +522,10 @@ def fleet_usage(db: Session, *, weeks: int = 20, today: Optional[date] = None) -
             active_7d=sum(1 for d in last_day_by_user.values() if d >= today - timedelta(days=7)),
             active_30d=len(last_day_by_user),
             purge_eligible=int(purge_eligible or 0),
+            active=tiles.by_status.get("active", 0),
+            inactive=tiles.by_status.get("inactive", 0),
+            new_7d=tiles.new_7d,
+            by_plan=PlanCounts.model_validate(tiles.by_plan),
         ),
         sessions_by_week=[
             FleetWeekSessions(
@@ -546,31 +552,22 @@ def fleet_usage(db: Session, *, weeks: int = 20, today: Optional[date] = None) -
             without_family=int(exercises[2] or 0),
         ),
         unlimited_flag_drift=unlimited_flag_drift(db),
-        **_plan_rollups(db),
+        by_plan_source=rollups["by_plan_source"],
+        purchased_credits_total=rollups["purchased_credits_total"],
+        scans_4wk_by_plan=rollups["scans_4wk_by_plan"],
     )
 
 
 def _plan_rollups(db: Session) -> Dict[str, Any]:
-    """The Overview tiles' plan splits (console v2 §4.2, §7.4 v2.3), from ``plans_for`` so they agree
-    with the filtered Hunters views the tiles link to: Unlimited by source, outstanding purchased
-    credits across every live hunter, and the last 28 days of scans by the scanning hunter's plan."""
-    live_ids = [row[0] for row in db.query(User.id).filter(User.is_deleted == False).all()]
-    since = to_naive_utc(utcnow() - timedelta(days=SCANS_4WK_DAYS))   # the rolling window the Hunters scans_4wk column uses
-    scans_by_user: Dict[str, int] = {
-        user_id: int(n or 0)
-        for user_id, n in db.query(ScreenshotUsage.user_id, func.count(ScreenshotUsage.id))
-        .filter(ScreenshotUsage.created_at >= since)
-        .group_by(ScreenshotUsage.user_id)
-        .all()
-    }
-    plans = plans_for(db, live_ids + list(scans_by_user), default_free=int(settings_service.get(db, "FREE_MONTHLY_SCANS")))
-    live = [plans[user_id] for user_id in live_ids]
-    by_source: Counter = Counter(p.plan_source for p in live if p.plan == PLAN_UNLIMITED and p.plan_source)
-    by_plan: Counter = Counter()
-    for user_id, n in scans_by_user.items():
-        by_plan[plans[user_id].plan] += n
-    return {   # pydantic drops keys the models do not declare (an unknown plan_source never raises)
-        "by_plan_source": PlanSourceCounts.model_validate(dict(by_source)),
-        "purchased_credits_total": sum(p.purchased_credits for p in live),
-        "scans_4wk_by_plan": ScansByPlan.model_validate(dict(by_plan)),
+    """The Overview tiles' numbers (console v2 §4.2, §7.4 v2.4) from ``admin_read_service.fleet_counts`` —
+    the SQL twins of ``plans_for`` / ``status_for``, so every tile equals the total of the Hunters
+    view it links to. (Function-local import: the read service imports this module.)"""
+    from app.services.admin_read_service import fleet_counts
+
+    c = fleet_counts(db)
+    return {
+        "by_plan_source": PlanSourceCounts.model_validate(c.by_plan_source),   # pydantic ignores keys the models do not declare
+        "purchased_credits_total": c.purchased_credits_total,
+        "scans_4wk_by_plan": ScansByPlan.model_validate(c.scans_4wk_by_plan),
+        "tiles": c,
     }

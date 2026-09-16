@@ -48,6 +48,7 @@ class AdminAuditLog(Base):
     __table_args__ = (
         Index("ix_admin_audit_target", "target_type", "target_id", "created_at"),
         Index("ix_admin_audit_actor", "actor_user_id", "created_at"),
+        Index("ix_admin_audit_request_id", "request_id", "created_at"),  # a bulk batch = one request (console v2 §7.4 v2.4)
         Index(
             "uq_admin_audit_idempotency",
             "actor_user_id",

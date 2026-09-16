@@ -26,7 +26,7 @@ from app.core.utils import ensure_utc, split_csv, to_naive_utc, utcnow
 from app.models.admin import AdminAuditLog
 from app.models.app_setting import AppSetting
 from app.models.campaign import Campaign
-from app.models.entitlement import Product, UserEntitlement
+from app.models.entitlement import EntitlementSource, Product, UserEntitlement
 from app.models.exercise import Exercise
 from app.models.pr import PR
 from app.models.progress import UserProgress
@@ -212,6 +212,18 @@ def _newest_active_value(key: str, now: datetime) -> ColumnElement:
     )
 
 
+def _newest_active_source(now: datetime) -> ColumnElement:
+    """Correlated scalar: where the user's newest active Unlimited row came from (§3.1 ``plan_source``)."""
+    return (
+        select(case((UserEntitlement.purchase_record_id.isnot(None), EntitlementSource.PURCHASE.value), else_=UserEntitlement.source))
+        .where(UserEntitlement.user_id == User.id, UserEntitlement.key == KEY_UNLIMITED, *active_clauses(now))
+        .order_by(UserEntitlement.created_at.desc(), UserEntitlement.id.desc())
+        .limit(1)
+        .correlate_except(UserEntitlement)
+        .scalar_subquery()
+    )
+
+
 def _has_active_override(now: datetime) -> ColumnElement:
     return (
         select(UserEntitlement.id)
@@ -225,10 +237,13 @@ def _rank(expr: ColumnElement, order: Sequence[str]) -> ColumnElement:
     return case(*((expr == name, i) for i, name in enumerate(order)), else_=len(order))
 
 
-def _derived(*, now: datetime, default_free: int, thresholds: StatusThresholds) -> Subquery:
+def _derived(*, now: datetime, default_free: int, thresholds: StatusThresholds, plan_extras: bool = False) -> Subquery:
     """One row per user with the SQL twins of ``plans_for`` / ``status_for`` and the
     activity rollups (§6.2) — computed once here so filters, sorts and the count
-    reference plain columns instead of re-evaluating the correlated subqueries."""
+    reference plain columns instead of re-evaluating the correlated subqueries.
+
+    ``plan_extras`` adds ``plan_source`` and ``purchased_credits`` (the fleet rollups
+    need them; the Hunters page does not pay for the extra correlated subquery)."""
     sessions = (
         select(
             WorkoutSession.user_id.label("user_id"),
@@ -251,12 +266,19 @@ def _derived(*, now: datetime, default_free: int, thresholds: StatusThresholds) 
 
     unlimited = _newest_active_value(KEY_UNLIMITED, now) == "true"
     effective_free = func.coalesce(cast(_newest_active_value(KEY_FREE_MONTHLY, now), Integer), default_free)
+    credits = func.coalesce(ScanBalance.scan_credits, 0)
     plan = case(
         (unlimited, PLAN_UNLIMITED),
         (_has_active_override(now), PLAN_OVERRIDE),
-        (func.coalesce(ScanBalance.scan_credits, 0) > effective_free, PLAN_CREDITS),
+        (credits > effective_free, PLAN_CREDITS),
         else_=PLAN_FREE,
     )
+    extras = []
+    if plan_extras:
+        extras = [
+            case((unlimited, _newest_active_source(now)), else_=None).label("plan_source"),
+            case((credits > effective_free, credits - effective_free), else_=0).label("purchased_credits"),  # max(0, credits - free)
+        ]
     last_login = func.date(User.last_login_at, type_=Date)
     last_active = _pair_max(_pair_max(sessions.c.last_workout, scans.c.last_scan), last_login)
     kind = case(
@@ -283,12 +305,66 @@ def _derived(*, now: datetime, default_free: int, thresholds: StatusThresholds) 
             func.coalesce(scans.c.scans_4wk, 0).label("scans_4wk"),
             ScanBalance.scan_credits.label("scan_credits"),
             ScanBalance.has_unlimited.label("has_unlimited"),
+            *extras,
         )
         .select_from(User)
         .outerjoin(sessions, sessions.c.user_id == User.id)
         .outerjoin(scans, scans.c.user_id == User.id)
         .outerjoin(ScanBalance, ScanBalance.user_id == User.id)
         .subquery()
+    )
+
+
+@dataclass(frozen=True)
+class FleetCounts:
+    """The Overview's numbers, grouped in SQL over ``_derived`` so every tile equals the
+    total of the Hunters view it links to (console v2 §4.2, §7.4 v2.4)."""
+
+    by_status: Dict[str, int]          # every user
+    by_plan: Dict[str, int]            # live (not deleted) users
+    by_plan_source: Dict[str, int]     # live Unlimited users by §3.1 source
+    purchased_credits_total: int       # live users, Unlimited included (the credits wait underneath)
+    scans_4wk_by_plan: Dict[str, int]  # every user's last 28 days of scans, by the scanning hunter's plan
+    new_7d: int                        # joined in the last 7 days, not deleted
+
+
+def fleet_counts(db: Session, *, now: Optional[datetime] = None) -> FleetCounts:
+    """One grouped query over the plan / status twins (+ one count for ``new_7d``)."""
+    now = now or utcnow()
+    d = _derived(
+        now=now, default_free=int(settings_service.get(db, "FREE_MONTHLY_SCANS")),
+        thresholds=status_thresholds(db), plan_extras=True,
+    )
+    rows = (
+        db.query(
+            d.c.status, d.c.plan, d.c.plan_source,
+            func.count(d.c.user_id), func.sum(d.c.purchased_credits), func.sum(d.c.scans_4wk),
+        )
+        .group_by(d.c.status, d.c.plan, d.c.plan_source)
+        .all()
+    )
+    by_status: Dict[str, int] = {}
+    by_plan: Dict[str, int] = {}
+    by_source: Dict[str, int] = {}
+    scans: Dict[str, int] = {}
+    purchased = 0
+    for status, plan, source, n, credits, scan_count in rows:
+        n = int(n or 0)
+        by_status[status] = by_status.get(status, 0) + n
+        scans[plan] = scans.get(plan, 0) + int(scan_count or 0)
+        if status in (STATUS_ACTIVE, STATUS_INACTIVE):
+            by_plan[plan] = by_plan.get(plan, 0) + n
+            purchased += int(credits or 0)
+            if plan == PLAN_UNLIMITED and source:
+                by_source[source] = by_source.get(source, 0) + n
+    new_7d = (
+        db.query(func.count(User.id))
+        .filter(User.is_deleted == False, User.created_at >= to_naive_utc(now - timedelta(days=7)))
+        .scalar()
+    )
+    return FleetCounts(
+        by_status=by_status, by_plan=by_plan, by_plan_source=by_source,
+        purchased_credits_total=purchased, scans_4wk_by_plan=scans, new_7d=int(new_7d or 0),
     )
 
 

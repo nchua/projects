@@ -205,6 +205,12 @@ class TestFleetUsage:
         assert after.scans_4wk_by_plan.credits == before.scans_4wk_by_plan.credits + 1 + 4  # a deleted hunter's scans still count under its plan
         assert after.scans_4wk_by_plan.unlimited == before.scans_4wk_by_plan.unlimited + 4
         assert after.scans_4wk_by_plan.override == before.scans_4wk_by_plan.override
+        # the tile counts (v2.4) are the same grouped query: live hunters only, by the §3.1 / §3.3 twins
+        assert after.users.by_plan.unlimited == before.users.by_plan.unlimited + 2
+        assert after.users.by_plan.credits == before.users.by_plan.credits + 1
+        assert after.users.by_plan.free == before.users.by_plan.free + 1
+        assert after.users.active + after.users.inactive == before.users.active + before.users.inactive + 4  # gone is deleted
+        assert after.users.new_7d == before.users.new_7d + 4
 
     def test_drift_uses_newest_active_row_like_the_writer(self, db, create_test_user):
         user = make_user(create_test_user, "drift-newest")
@@ -227,6 +233,8 @@ class TestFleetUsage:
             "by_plan_source", "purchased_credits_total", "scans_4wk_by_plan",  # console v2 §7.4 v2.3
         }
         assert set(body["by_plan_source"]) == {"purchase", "admin_grant", "backfill"}
+        assert set(body["users"]) == {"total", "deleted", "admins", "active_7d", "active_30d", "purge_eligible", "active", "inactive", "new_7d", "by_plan"}
+        assert set(body["users"]["by_plan"]) == {"unlimited", "override", "credits", "free"}
         assert set(body["scans_4wk_by_plan"]) == {"free", "credits", "unlimited", "override"}
         assert body["weeks"] == 20
         assert client.get("/admin/usage", headers=headers, params={"weeks": 500}).status_code == 422

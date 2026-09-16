@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from app.models.admin import AdminAuditLog
 from app.models.scan_balance import ScanBalance
 from app.services import admin_mutation_service
-from app.services.audit_service import audit, body_hash, scrub, snapshot
+from app.services.audit_service import AUDIT_ACTIONS, audit, body_hash, scrub, snapshot
 from tests.helpers_admin import MUTATIONS, MutationContext, assert_no_secret_keys, drive
 
 
@@ -28,10 +28,11 @@ class _Obj:
 class TestAudit:
     def test_flush_not_commit_rolls_back_with_caller(self, db, admin_user):
         user, _ = admin_user(email="audit-rb@example.com")
-        audit(db, actor=user, action="test.noop", target_type="user", target_id=user.id)
-        assert db.query(AdminAuditLog).filter(AdminAuditLog.action == "test.noop").count() == 1
+        audit(db, actor=user, action="campaign.import", target_type="user", target_id=user.id)
+        own = db.query(AdminAuditLog).filter(AdminAuditLog.actor_user_id == user.id)
+        assert own.count() == 1
         db.rollback()
-        assert db.query(AdminAuditLog).filter(AdminAuditLog.action == "test.noop").count() == 0
+        assert own.count() == 0
 
     def test_row_fields_persist_after_commit(self, db, admin_user):
         user, _ = admin_user(email="audit-row@example.com")
@@ -134,6 +135,7 @@ class TestAuditRead:
         assert response.status_code == 200, response.text
         body = response.json()
         assert body["total"] == 2
+        assert body["actions"] == sorted(AUDIT_ACTIONS) or body["actions"] == list(AUDIT_ACTIONS)  # the registry rides along for the filter select (v2.4)
         assert [row["id"] for row in body["items"]] == [second.id, first.id]
         row = body["items"][1]
         assert row["before"] == {"scan_credits": 1} and row["after"] == {"scan_credits": 4}
@@ -176,6 +178,21 @@ class TestAuditRead:
         assert by_request["total"] == 1 and by_request["items"][0]["id"] == rows["items"][0]["id"]
         assert client.get("/admin/audit", headers=headers, params={"request_id": request_id[:-2]}).json()["total"] == 0
         assert client.get("/admin/audit", headers=headers, params={"request_id": "x" * 65}).status_code == 422
+
+    def test_registry_covers_every_action_the_app_writes(self, db, admin_user):
+        """``AUDIT_ACTIONS`` is the one list: every ``action=\"…\"`` literal under app/ and every MUTATIONS case is in it, and ``audit()`` refuses the rest."""
+        import re
+        from pathlib import Path
+
+        literals = set()
+        for path in (Path(__file__).resolve().parents[1] / "app").rglob("*.py"):
+            literals |= set(re.findall(r'action="([a-z_.]+)"', path.read_text(encoding="utf-8")))
+        assert literals <= set(AUDIT_ACTIONS), literals - set(AUDIT_ACTIONS)
+        assert {case.action for case in MUTATIONS} <= set(AUDIT_ACTIONS)
+        assert list(AUDIT_ACTIONS) == sorted(set(AUDIT_ACTIONS))
+        user, _ = admin_user(email="audit-registry@example.com")
+        with pytest.raises(ValueError, match="unregistered audit action"):
+            audit(db, actor=user, action="user.teleport", target_type="user", target_id=user.id)
 
     def test_only_get_is_routed(self, client, admin_headers):
         headers, _ = admin_headers(email="audit-methods@example.com")
