@@ -290,9 +290,10 @@
       <path d="M39 32 L28.5 24.5" stroke="#c9a457" stroke-width="3"/>
       <path d="M7.6 28.9 L11.6 34.3" stroke="#ecd08a" stroke-width="2.2"/>
       <path d="M40.4 28.9 L36.4 34.3" stroke="#ecd08a" stroke-width="2.2"/>
-      <rect x="17.6" y="18.6" width="12.8" height="8" rx="3.6" fill="#101014" stroke="#ecd08a" stroke-width="2"/>
-      <path d="M21.8 19 V26.3 M26.2 19 V26.3" stroke="#c9a457" stroke-width="1.2"/>
-      <path d="M19.4 18.4 C19.9 16.1 22.6 15.6 24 17.2 M28.6 18.4 C28.1 16.1 25.4 15.6 24 17.2" stroke="#ecd08a" stroke-width="1.6"/>
+      <rect x="17.4" y="18.8" width="13.2" height="8.4" rx="3.8" fill="#101014" stroke="#ecd08a" stroke-width="2"/>
+      <path d="M21.8 19.2 V26.8 M26.2 19.2 V26.8" stroke="#c9a457" stroke-width="1.2"/>
+      <path d="M24 16.2 V13.4" stroke="#ecd08a" stroke-width="1.8"/>
+      <circle cx="24" cy="12" r="1.4" fill="#ecd08a" stroke="none"/>
     </g>
   </symbol>
 

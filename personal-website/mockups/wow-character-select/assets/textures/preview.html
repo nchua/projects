@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Texture &amp; Zone Art Preview — wow-character-select</title>
+<style>
+:root {
+  --gold: #c9a457;
+  --gold-soft: #e3cf96;
+  --text: #e8e4d8;
+  --muted: #9aa3b8;
+  --ink: #2b2214;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 36px 28px 72px;
+  background: #0b0d10; color: var(--text);
+  font-family: Georgia, 'Times New Roman', serif;
+}
+h1 {
+  margin: 0 0 6px; font-size: 26px; letter-spacing: 3px; font-weight: 700;
+  color: var(--gold-soft); text-transform: uppercase;
+}
+.sub { margin: 0 0 38px; font-size: 13.5px; font-style: italic; color: var(--muted); }
+h2 {
+  margin: 46px 0 18px; font-size: 15px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--gold); border-bottom: 1px solid rgba(201, 164, 87, 0.3); padding-bottom: 8px;
+}
+.tex-row {
+  display: flex; flex-wrap: wrap; gap: 26px; align-items: flex-start; margin-bottom: 40px;
+}
+.tex-card { display: flex; flex-direction: column; gap: 10px; }
+.tex-card .cap { font-size: 12px; letter-spacing: 2px; color: var(--muted); }
+.tex-card .cap code { color: var(--gold-soft); font-size: 12px; }
+.tile {
+  width: 400px; height: 400px; display: block;
+  border: 1px solid #2a2a30; border-radius: 4px;
+}
+.panel-demo {
+  position: relative; width: 400px; min-height: 180px;
+  border-radius: 6px; overflow: hidden;
+  border: 1px solid #3a2c14;
+  box-shadow: 0 0 0 1px rgba(201, 164, 87, 0.28) inset, 0 10px 26px rgba(0, 0, 0, 0.6);
+}
+.panel-demo > svg.bgfill { position: absolute; inset: 0; width: 100%; height: 100%; }
+.panel-demo .content { position: relative; padding: 18px 20px; }
+.panel-demo .content .hd {
+  font-size: 13px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; margin: 0 0 8px;
+}
+.panel-demo .content p { margin: 0; font-size: 13.5px; line-height: 1.55; }
+.on-parchment { border-color: #8a6d35; }
+.on-parchment .hd { color: #5a4218; }
+.on-parchment p { color: var(--ink); }
+.on-dark .hd { color: var(--gold-soft); }
+.on-dark p { color: #c3cadb; }
+.zones { display: flex; flex-wrap: wrap; gap: 30px; }
+.zone-card { display: flex; flex-direction: column; gap: 10px; }
+.zone-card img {
+  width: 640px; max-width: 100%; height: auto; display: block;
+  border: 1px solid #3a2c14; border-radius: 6px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+}
+.zone-card .cap { font-size: 13px; letter-spacing: 3px; color: var(--gold-soft); text-transform: uppercase; }
+.zone-card .cap small { display: block; letter-spacing: 0.5px; text-transform: none; color: var(--muted); font-size: 12px; margin-top: 3px; }
+@media (max-width: 460px) {
+  .tile, .panel-demo { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<!-- inlined texture sprite -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="0" height="0" aria-hidden="true">
+  <!--
+    Procedural texture sprite for the wow-character-select mockup.
+    Original art. Each symbol is a 400x400 tile built from feTurbulence stacks
+    (all numOctaves kept at 4 or below; stitchTiles="stitch" so tiles repeat cleanly).
+    Usage: inline this file, then <svg><use href="#tex-parchment"/></svg>.
+  -->
+  <defs>
+
+    <!-- ============ shared gradients ============ -->
+    <linearGradient id="g-parch-base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#efe3c2"/>
+      <stop offset="1" stop-color="#e2d1a6"/>
+    </linearGradient>
+    <radialGradient id="g-parch-edge" cx="0.5" cy="0.5" r="0.72">
+      <stop offset="0" stop-color="#5a4218" stop-opacity="0"/>
+      <stop offset="0.62" stop-color="#5a4218" stop-opacity="0"/>
+      <stop offset="0.88" stop-color="#5a4218" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#43300f" stop-opacity="0.38"/>
+    </radialGradient>
+    <linearGradient id="g-leather-base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#211a12"/>
+      <stop offset="0.5" stop-color="#17120c"/>
+      <stop offset="1" stop-color="#120d08"/>
+    </linearGradient>
+    <radialGradient id="g-leather-vig" cx="0.5" cy="0.5" r="0.74">
+      <stop offset="0" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="0.6" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.5"/>
+    </radialGradient>
+    <linearGradient id="g-stone-base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a2c33"/>
+      <stop offset="0.45" stop-color="#23252b"/>
+      <stop offset="1" stop-color="#191b20"/>
+    </linearGradient>
+    <linearGradient id="g-night-base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0d2b24"/>
+      <stop offset="0.55" stop-color="#092018"/>
+      <stop offset="1" stop-color="#06120e"/>
+    </linearGradient>
+    <linearGradient id="g-ember-base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#161009"/>
+      <stop offset="0.6" stop-color="#100b07"/>
+      <stop offset="1" stop-color="#0a0605"/>
+    </linearGradient>
+    <radialGradient id="g-ember-dot" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffdd8a" stop-opacity="0.95"/>
+      <stop offset="0.4" stop-color="#ff8c2a" stop-opacity="0.7"/>
+      <stop offset="1" stop-color="#ff5a00" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="g-ember-warm" cx="0.5" cy="0.62" r="0.7">
+      <stop offset="0" stop-color="#66300e" stop-opacity="0.28"/>
+      <stop offset="0.55" stop-color="#3d1c08" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- ============ filters ============ -->
+
+    <!-- Parchment: fractal mottling multiplied over the base, plus faint horizontal fibers -->
+    <filter id="f-parchment" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="4" seed="11" stitchTiles="stitch" result="noise"/>
+      <feColorMatrix in="noise" type="matrix"
+        values="0 0 0 0 0.80  0 0 0 0 0.70  0 0 0 0 0.48  0 0 0 0.85 0" result="mottle"/>
+      <feBlend in="mottle" in2="SourceGraphic" mode="multiply" result="mottled"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.005 0.32" numOctaves="2" seed="4" stitchTiles="stitch" result="fnoise"/>
+      <feColorMatrix in="fnoise" type="matrix"
+        values="0 0 0 0 0.62  0 0 0 0 0.52  0 0 0 0 0.32  0 0 0 0.26 0" result="fibers"/>
+      <feBlend in="fibers" in2="mottled" mode="multiply"/>
+    </filter>
+
+    <!-- Leather: warm fine grain lifted with screen, broad wrinkle shadow multiplied under -->
+    <filter id="f-leather" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.14" numOctaves="3" seed="8" stitchTiles="stitch" result="grain"/>
+      <feColorMatrix in="grain" type="matrix"
+        values="0 0 0 0 0.42  0 0 0 0 0.30  0 0 0 0 0.17  0 0 0 0.20 0" result="grainT"/>
+      <feBlend in="grainT" in2="SourceGraphic" mode="screen" result="lit"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.014" numOctaves="3" seed="21" stitchTiles="stitch" result="wrinkle"/>
+      <feColorMatrix in="wrinkle" type="matrix"
+        values="0 0 0 0 0.55  0 0 0 0 0.48  0 0 0 0 0.40  0 0 0 0.9 0.1" result="wrinkleT"/>
+      <feBlend in="wrinkleT" in2="lit" mode="multiply"/>
+    </filter>
+
+    <!-- Stone: cool speckle highlights over the base, veiny turbulence darks multiplied in -->
+    <filter id="f-stone" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="4" seed="5" stitchTiles="stitch" result="speck"/>
+      <feColorMatrix in="speck" type="matrix"
+        values="0 0 0 0 0.55  0 0 0 0 0.58  0 0 0 0 0.66  0 0 0 0.22 0" result="speckT"/>
+      <feBlend in="speckT" in2="SourceGraphic" mode="screen" result="lit"/>
+      <feTurbulence type="turbulence" baseFrequency="0.018" numOctaves="3" seed="14" stitchTiles="stitch" result="vein"/>
+      <feColorMatrix in="vein" type="matrix"
+        values="0 0 0 0 0.42  0 0 0 0 0.44  0 0 0 0 0.50  0 0 0 0.9 0.1" result="veinT"/>
+      <feBlend in="veinT" in2="lit" mode="multiply"/>
+    </filter>
+
+    <!-- Night sky: low-frequency teal haze screened over the base, thresholded speck stars on top -->
+    <filter id="f-nightsky" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.006" numOctaves="3" seed="9" stitchTiles="stitch" result="haze"/>
+      <feColorMatrix in="haze" type="matrix"
+        values="0 0 0 0 0.16  0 0 0 0 0.48  0 0 0 0 0.40  0 0 0 0.30 0" result="hazeT"/>
+      <feBlend in="hazeT" in2="SourceGraphic" mode="screen" result="hazed"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.55" numOctaves="2" seed="30" stitchTiles="stitch" result="starnoise"/>
+      <feColorMatrix in="starnoise" type="matrix"
+        values="0 0 0 0 0.86  0 0 0 0 0.92  0 0 0 0 1  0 0 0 16 -11.5" result="stars"/>
+      <feComposite in="stars" in2="hazed" operator="over"/>
+    </filter>
+
+    <!-- Embers: rough warm ground grain, plus thresholded orange specks with a blurred glow pass -->
+    <filter id="f-embers" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="4" seed="17" stitchTiles="stitch" result="gn"/>
+      <feColorMatrix in="gn" type="matrix"
+        values="0 0 0 0 0.24  0 0 0 0 0.14  0 0 0 0 0.07  0 0 0 0.30 0" result="gt"/>
+      <feBlend in="gt" in2="SourceGraphic" mode="screen" result="ground"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.22" numOctaves="2" seed="42" stitchTiles="stitch" result="en"/>
+      <feColorMatrix in="en" type="matrix"
+        values="0 0 0 0 1  0 0 0 0 0.55  0 0 0 0 0.10  0 0 0 14 -10" result="specks"/>
+      <feGaussianBlur in="specks" stdDeviation="2.4" result="glowsoft"/>
+      <feColorMatrix in="glowsoft" type="matrix"
+        values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1.8 0" result="glow"/>
+      <feMerge>
+        <feMergeNode in="ground"/>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="specks"/>
+      </feMerge>
+    </filter>
+
+    <!-- ============ tiles ============ -->
+
+    <!-- Aged parchment for quest-log panels -->
+    <symbol id="tex-parchment" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice">
+      <rect width="400" height="400" fill="url(#g-parch-base)"/>
+      <rect width="400" height="400" fill="url(#g-parch-base)" filter="url(#f-parchment)"/>
+      <rect width="400" height="400" fill="url(#g-parch-edge)"/>
+    </symbol>
+
+    <!-- Dark tooled leather for UI panel fills -->
+    <symbol id="tex-leather" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice">
+      <rect width="400" height="400" fill="url(#g-leather-base)"/>
+      <rect width="400" height="400" fill="url(#g-leather-base)" filter="url(#f-leather)"/>
+      <rect x="12" y="12" width="376" height="376" rx="6" fill="none" stroke="#6b5624" stroke-opacity="0.30" stroke-width="1.5"/>
+      <rect x="19" y="19" width="362" height="362" rx="4" fill="none" stroke="#43350f" stroke-opacity="0.34" stroke-width="1"/>
+      <rect width="400" height="400" fill="url(#g-leather-vig)"/>
+    </symbol>
+
+    <!-- Dark carved stone for header bars -->
+    <symbol id="tex-stone" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice">
+      <rect width="400" height="400" fill="url(#g-stone-base)"/>
+      <rect width="400" height="400" fill="url(#g-stone-base)" filter="url(#f-stone)"/>
+      <rect x="0" y="0" width="400" height="2" fill="#8a93a8" fill-opacity="0.14"/>
+      <rect x="0" y="2" width="400" height="1.5" fill="#000000" fill-opacity="0.25"/>
+      <rect x="0" y="60" width="400" height="1.5" fill="#000000" fill-opacity="0.40"/>
+      <rect x="0" y="61.5" width="400" height="1.5" fill="#8a93a8" fill-opacity="0.10"/>
+      <rect x="0" y="338" width="400" height="1.5" fill="#000000" fill-opacity="0.40"/>
+      <rect x="0" y="339.5" width="400" height="1.5" fill="#8a93a8" fill-opacity="0.10"/>
+      <rect x="0" y="396.5" width="400" height="1.5" fill="#000000" fill-opacity="0.35"/>
+      <rect x="0" y="398" width="400" height="2" fill="#000000" fill-opacity="0.5"/>
+    </symbol>
+
+    <!-- Deep green-teal night haze with faint stars for backdrops -->
+    <symbol id="tex-nightsky" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice">
+      <rect width="400" height="400" fill="url(#g-night-base)"/>
+      <rect width="400" height="400" fill="url(#g-night-base)" filter="url(#f-nightsky)"/>
+      <g fill="#dbe3f2">
+        <circle cx="62" cy="58" r="1.2" opacity="0.55"/>
+        <circle cx="188" cy="34" r="0.9" opacity="0.4"/>
+        <circle cx="291" cy="88" r="1.3" opacity="0.5"/>
+        <circle cx="352" cy="41" r="0.8" opacity="0.35"/>
+        <circle cx="119" cy="142" r="1" opacity="0.4"/>
+        <circle cx="243" cy="171" r="0.8" opacity="0.3"/>
+        <circle cx="330" cy="214" r="1.1" opacity="0.38"/>
+        <circle cx="47" cy="255" r="0.9" opacity="0.3"/>
+        <circle cx="160" cy="303" r="0.8" opacity="0.24"/>
+        <circle cx="282" cy="332" r="0.9" opacity="0.22"/>
+      </g>
+      <circle cx="62" cy="58" r="4" fill="#dbe3f2" opacity="0.10"/>
+      <circle cx="291" cy="88" r="4.5" fill="#dbe3f2" opacity="0.09"/>
+    </symbol>
+
+    <!-- Dark ground with scattered glowing ember specks -->
+    <symbol id="tex-embers" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice">
+      <rect width="400" height="400" fill="url(#g-ember-base)"/>
+      <rect width="400" height="400" fill="url(#g-ember-base)" filter="url(#f-embers)"/>
+      <rect width="400" height="400" fill="url(#g-ember-warm)"/>
+      <g>
+        <rect x="66" y="98" width="16" height="16" fill="url(#g-ember-dot)" transform="rotate(18 74 106)"/>
+        <rect x="212" y="64" width="10" height="10" fill="url(#g-ember-dot)"/>
+        <rect x="318" y="140" width="14" height="14" fill="url(#g-ember-dot)" transform="rotate(-12 325 147)"/>
+        <rect x="132" y="212" width="20" height="20" fill="url(#g-ember-dot)"/>
+        <rect x="276" y="258" width="12" height="12" fill="url(#g-ember-dot)" transform="rotate(30 282 264)"/>
+        <rect x="52" y="312" width="14" height="14" fill="url(#g-ember-dot)"/>
+        <rect x="356" y="330" width="10" height="10" fill="url(#g-ember-dot)"/>
+        <rect x="186" y="342" width="16" height="16" fill="url(#g-ember-dot)" transform="rotate(-20 194 350)"/>
+      </g>
+    </symbol>
+
+  </defs>
+</svg>
+
+
+<h1>Texture &amp; Zone Art Preview</h1>
+<p class="sub">Procedural feTurbulence texture tiles and painterly-lite zone backdrops for the wow-character-select mockup. All art original.</p>
+
+<h2>Texture tiles — 400 &times; 400</h2>
+<div class="tex-row">
+  <div class="tex-card">
+    <svg class="tile" viewBox="0 0 400 400"><use href="#tex-parchment"></use></svg>
+    <span class="cap"><code>#tex-parchment</code> — aged parchment</span>
+  </div>
+  <div class="tex-card">
+    <svg class="tile" viewBox="0 0 400 400"><use href="#tex-leather"></use></svg>
+    <span class="cap"><code>#tex-leather</code> — dark tooled leather</span>
+  </div>
+  <div class="tex-card">
+    <svg class="tile" viewBox="0 0 400 400"><use href="#tex-stone"></use></svg>
+    <span class="cap"><code>#tex-stone</code> — dark carved stone</span>
+  </div>
+  <div class="tex-card">
+    <svg class="tile" viewBox="0 0 400 400"><use href="#tex-nightsky"></use></svg>
+    <span class="cap"><code>#tex-nightsky</code> — green-teal night haze</span>
+  </div>
+  <div class="tex-card">
+    <svg class="tile" viewBox="0 0 400 400"><use href="#tex-embers"></use></svg>
+    <span class="cap"><code>#tex-embers</code> — dark ground with embers</span>
+  </div>
+</div>
+
+<h2>As panel fills</h2>
+<div class="tex-row">
+  <div class="panel-demo on-parchment">
+    <svg class="bgfill" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#tex-parchment"></use></svg>
+    <div class="content">
+      <p class="hd">Quest Log</p>
+      <p>Slay the pipeline dragon before quarter&rsquo;s end. Reward: 1,250 XP and the Ledger of Truth. The parchment mottling should sit quietly behind ink-dark text.</p>
+    </div>
+  </div>
+  <div class="panel-demo on-dark">
+    <svg class="bgfill" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#tex-leather"></use></svg>
+    <div class="content">
+      <p class="hd">Character Sheet</p>
+      <p>Dark tooled leather for UI panel fills &mdash; grain and vignette should stay subtle beneath gold headings and slate body text.</p>
+    </div>
+  </div>
+  <div class="panel-demo on-dark">
+    <svg class="bgfill" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#tex-stone"></use></svg>
+    <div class="content">
+      <p class="hd">Achievements</p>
+      <p>Carved stone for header bars. The chisel lines top and bottom read as bevels when the tile is stretched wide and short.</p>
+    </div>
+  </div>
+  <div class="panel-demo on-dark">
+    <svg class="bgfill" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#tex-nightsky"></use></svg>
+    <div class="content">
+      <p class="hd">World Map</p>
+      <p>Deep green-teal night haze with faint stars &mdash; a quiet backdrop wash for full-bleed sections behind the scene art.</p>
+    </div>
+  </div>
+  <div class="panel-demo on-dark">
+    <svg class="bgfill" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#tex-embers"></use></svg>
+    <div class="content">
+      <p class="hd">Campfire Footer</p>
+      <p>Dark ground with scattered glowing ember specks, for footers and the strip beneath the campfire scene.</p>
+    </div>
+  </div>
+</div>
+
+<h2>Zone loading screens — 1600 &times; 900</h2>
+<div class="zones">
+  <div class="zone-card">
+    <img src="../zones/revenue-operations.svg" width="640" height="360" alt="Revenue Operations zone backdrop: gold citadel skyline at dusk with chart-like light beams">
+    <span class="cap">Revenue Operations<small>Gleaming fintech citadel at dusk &mdash; gold on navy, rising chart-like beams, beacon at the trendline&rsquo;s peak.</small></span>
+  </div>
+  <div class="zone-card">
+    <img src="../zones/nicks-records.svg" width="640" height="360" alt="Nick's Records zone backdrop: candle-lit study with floating pages and record player silhouette">
+    <span class="cap">Nick&rsquo;s Records<small>Candle-lit study &mdash; warm amber on deep brown, bookshelf walls, floating pages, record player under a moonlit arch.</small></span>
+  </div>
+  <div class="zone-card">
+    <img src="../zones/the-forge.svg" width="640" height="360" alt="The Forge zone backdrop: night workshop with glowing forge, anvil, tools, and sparks">
+    <span class="cap">The Forge<small>Night workshop &mdash; ember orange on charcoal, glowing hearth, rim-lit anvil with hot iron, sparks rising.</small></span>
+  </div>
+  <div class="zone-card">
+    <img src="../zones/hyde-park.svg" width="640" height="360" alt="Hyde Park zone backdrop: collegiate gothic towers behind a tennis court fence at autumn dusk">
+    <span class="cap">Hyde Park<small>Collegiate gothic towers at autumn dusk &mdash; maroon and slate, chain-link fence silhouette, racquet at rest.</small></span>
+  </div>
+</div>
+
+</body>
+</html>

@@ -2,10 +2,10 @@
   <!-- THE FORGE - original zone loading-screen art -->
   <defs>
     <linearGradient id="tf-room" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#0a090b"/>
-      <stop offset="0.55" stop-color="#131010"/>
-      <stop offset="0.85" stop-color="#1d1512"/>
-      <stop offset="1" stop-color="#120d0b"/>
+      <stop offset="0" stop-color="#0c0b0e"/>
+      <stop offset="0.55" stop-color="#181414"/>
+      <stop offset="0.85" stop-color="#251b16"/>
+      <stop offset="1" stop-color="#16100d"/>
     </linearGradient>
     <radialGradient id="tf-heat" cx="0.5" cy="0.5" r="0.5">
       <stop offset="0" stop-color="#ffd166" stop-opacity="0.9"/>
@@ -179,11 +179,14 @@
     <path d="M560 560 h176" stroke="#ffd166" stroke-width="2" opacity="0.5"/>
   </g>
 
-  <!-- raised hammer silhouette above the anvil -->
-  <g transform="rotate(-34 900 380)">
-    <rect x="892" y="380" width="16" height="190" rx="7" fill="#0a0908"/>
-    <rect x="852" y="344" width="96" height="44" rx="8" fill="#0a0908"/>
-    <path d="M852 344 h96" stroke="#ff8c2a" stroke-width="2.4" opacity="0.6"/>
+  <!-- smith's hammer leaning against the anvil stump -->
+  <g>
+    <line x1="806" y1="646" x2="864" y2="786" stroke="#0a0908" stroke-width="15" stroke-linecap="round"/>
+    <g transform="rotate(22 866 792)">
+      <rect x="822" y="772" width="88" height="40" rx="8" fill="#0a0908"/>
+      <path d="M822 772 h88" stroke="#ff8c2a" stroke-width="2.4" opacity="0.55"/>
+    </g>
+    <path d="M806 646 L818 676" stroke="#e05a1c" stroke-width="2.2" opacity="0.5"/>
   </g>
 
   <!-- sparks arcing off the anvil -->
