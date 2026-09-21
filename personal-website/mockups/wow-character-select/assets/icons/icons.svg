@@ -1,0 +1,392 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!--
+    Icon sprite for the nickchua.me character-select mockup.
+    All art is original. Palette: golds #ecd08a / #c9a457 / #8a6d35 on darks #101014 / #0e1526.
+    Every symbol is 48x48 except #favicon-n (32x32). Inline <use href="#id"> after inlining this file.
+  -->
+  <defs>
+    <!-- shared gradients -->
+    <linearGradient id="g-gold-rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6e3ae"/>
+      <stop offset="0.22" stop-color="#ecd08a"/>
+      <stop offset="0.58" stop-color="#c9a457"/>
+      <stop offset="1" stop-color="#8a6d35"/>
+    </linearGradient>
+    <linearGradient id="g-gold-flat" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ecd08a"/>
+      <stop offset="1" stop-color="#c9a457"/>
+    </linearGradient>
+    <radialGradient id="g-disc" cx="0.38" cy="0.3" r="0.75">
+      <stop offset="0" stop-color="#232c45"/>
+      <stop offset="0.5" stop-color="#131a2e"/>
+      <stop offset="1" stop-color="#0d0d12"/>
+    </radialGradient>
+    <radialGradient id="g-disc-flat" cx="0.4" cy="0.32" r="0.8">
+      <stop offset="0" stop-color="#1b1b22"/>
+      <stop offset="1" stop-color="#0c0c10"/>
+    </radialGradient>
+    <filter id="f-glow" x="-45%" y="-45%" width="190%" height="190%">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+
+    <!-- shared shapes -->
+    <path id="p-shield" d="M24 4.5 C29.2 7 34.6 8.4 40.5 8.9 V22.6 C40.5 33 33.6 40.2 24 43.6 C14.4 40.2 7.5 33 7.5 22.6 V8.9 C13.4 8.4 18.8 7 24 4.5 Z"/>
+    <clipPath id="clip-shield"><use href="#p-shield"/></clipPath>
+
+    <!-- ornate circular class frame -->
+    <g id="fr-class">
+      <circle cx="24" cy="24" r="22.6" fill="#08080c"/>
+      <circle cx="24" cy="24" r="21.3" fill="none" stroke="url(#g-gold-rim)" stroke-width="2.6"/>
+      <circle cx="24" cy="24" r="19.6" fill="none" stroke="#5d4a24" stroke-width="0.8"/>
+      <circle cx="24" cy="24" r="19.1" fill="url(#g-disc)"/>
+      <path d="M24 0.6 L26.4 3.9 L24 7.2 L21.6 3.9 Z" fill="url(#g-gold-flat)" stroke="#6e5628" stroke-width="0.6"/>
+      <path d="M47.4 24 L44.1 26.4 L40.8 24 L44.1 21.6 Z" fill="url(#g-gold-flat)" stroke="#6e5628" stroke-width="0.6"/>
+      <path d="M24 47.4 L21.6 44.1 L24 40.8 L26.4 44.1 Z" fill="url(#g-gold-flat)" stroke="#6e5628" stroke-width="0.6"/>
+      <path d="M0.6 24 L3.9 21.6 L7.2 24 L3.9 26.4 Z" fill="url(#g-gold-flat)" stroke="#6e5628" stroke-width="0.6"/>
+    </g>
+
+    <!-- plain roundel for reputation marks -->
+    <g id="fr-rep">
+      <circle cx="24" cy="24" r="21.6" fill="#101014" stroke="#8a6d35" stroke-width="1.4"/>
+      <circle cx="24" cy="24" r="19.4" fill="none" stroke="#3a2c14" stroke-width="0.8"/>
+    </g>
+
+    <!-- gem facet geometry: A(24,7) B(41,20) C(24,43) D(7,20) girdle E(16,20) F(32,20) -->
+    <path id="p-gem-glow" d="M24 7 L41 20 L24 43 L7 20 Z"/>
+    <path id="p-gem-tl" d="M24 7 L7 20 L16 20 Z"/>
+    <path id="p-gem-tc" d="M24 7 L16 20 L32 20 Z"/>
+    <path id="p-gem-tr" d="M24 7 L32 20 L41 20 Z"/>
+    <path id="p-gem-bl" d="M7 20 L16 20 L24 43 Z"/>
+    <path id="p-gem-bc" d="M16 20 L32 20 L24 43 Z"/>
+    <path id="p-gem-br" d="M32 20 L41 20 L24 43 Z"/>
+    <path id="p-gem-outline" d="M24 7 L41 20 L24 43 L7 20 Z"/>
+    <path id="p-gem-spark" d="M19.5 9.8 L20.3 11.7 L22.2 12.5 L20.3 13.3 L19.5 15.2 L18.7 13.3 L16.8 12.5 L18.7 11.7 Z"/>
+  </defs>
+
+  <!-- ============================================================ -->
+  <!-- CLASS ICONS - ornate gold circular frames, engraved line art -->
+  <!-- ============================================================ -->
+
+  <!-- Revenue Operator: crossed sword and shield -->
+  <symbol id="class-operator" viewBox="0 0 48 48">
+    <use href="#fr-class"/>
+    <g stroke-linecap="round" stroke-linejoin="round">
+      <line x1="17" y1="31" x2="32.6" y2="15.4" stroke="#ecd08a" stroke-width="2.4"/>
+      <path d="M32.6 15.4 L35 13 L34.2 16.6 Z" fill="#ecd08a"/>
+      <line x1="14.2" y1="28.2" x2="19.8" y2="33.8" stroke="#c9a457" stroke-width="2.4"/>
+      <line x1="17" y1="31" x2="13.6" y2="34.4" stroke="#ecd08a" stroke-width="2"/>
+      <circle cx="12.4" cy="35.6" r="1.8" fill="#c9a457"/>
+      <path d="M27 21.6 C29.6 22.8 32.3 23.5 35.2 23.7 V30.4 C35.2 35.3 31.8 38.9 27 40.6 C22.2 38.9 18.8 35.3 18.8 30.4 V23.7 C21.7 23.5 24.4 22.8 27 21.6 Z" fill="#101014" stroke="#ecd08a" stroke-width="1.7"/>
+      <path d="M27 25 V37.4 M21.8 30.4 H32.2" stroke="#8a6d35" stroke-width="1.1"/>
+      <circle cx="27" cy="30.4" r="1.7" fill="#c9a457"/>
+    </g>
+  </symbol>
+
+  <!-- Scribe / Chronicler: quill and scroll -->
+  <symbol id="class-scribe" viewBox="0 0 48 48">
+    <use href="#fr-class"/>
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="16.5" cy="32.5" r="2.6" fill="#101014" stroke="#ecd08a" stroke-width="1.4"/>
+      <circle cx="33.5" cy="32.5" r="2.6" fill="#101014" stroke="#ecd08a" stroke-width="1.4"/>
+      <path d="M16.5 29.9 H33.5 M16.5 35.1 H33.5" stroke="#ecd08a" stroke-width="1.6"/>
+      <path d="M21.5 32.5 H29" stroke="#8a6d35" stroke-width="1.1"/>
+      <path d="M33.2 11.6 C27.4 10.2 21.8 14.6 19.3 21.2 L23.5 21.6 C28 20.5 31.8 16.8 33.2 11.6 Z" fill="#101014" stroke="#ecd08a" stroke-width="1.6"/>
+      <path d="M33.2 11.6 L19.9 27.1" stroke="#ecd08a" stroke-width="1.5"/>
+      <path d="M19.9 27.1 L17.9 29.5 L18.8 26.3" fill="#c9a457" stroke="#c9a457" stroke-width="1.1"/>
+      <path d="M28.7 13.8 L26 16.6 M30.6 15.9 L28 18.6" stroke="#8a6d35" stroke-width="0.9"/>
+    </g>
+  </symbol>
+
+  <!-- Engineer / Artificer: hammer and anvil -->
+  <symbol id="class-engineer" viewBox="0 0 48 48">
+    <use href="#fr-class"/>
+    <g stroke-linecap="round" stroke-linejoin="round">
+      <g transform="rotate(-35 24 13.5)">
+        <rect x="17" y="10" width="14" height="7.2" rx="1.4" fill="#101014" stroke="#ecd08a" stroke-width="1.6"/>
+        <rect x="22.7" y="17.2" width="2.6" height="9.6" rx="1.2" fill="#101014" stroke="#c9a457" stroke-width="1.3"/>
+      </g>
+      <path d="M32.2 15.6 L34.6 13.8 M33.4 17.9 L36.4 17.2 M30.6 13.9 L31.6 11.1" stroke="#ecd08a" stroke-width="1.2" fill="none"/>
+      <path d="M9.8 25.2 C12.4 24 15.4 23.4 18.2 23.6 V22.4 C18.2 21.8 18.7 21.4 19.3 21.4 H35 C36.3 21.4 37 22.3 37 23.6 V26 C37 27.3 36.3 28.2 35 28.2 H23 C21 28.2 19.4 27.8 18.2 27.2 C15 29 12 28.2 9.8 25.2 Z" fill="#101014" stroke="#ecd08a" stroke-width="1.6"/>
+      <path d="M25.4 28.2 L24.4 31.2 H30 L29 28.2 Z" fill="#101014" stroke="#c9a457" stroke-width="1.4"/>
+      <path d="M20.9 31.2 H33.5 L34.7 34.4 H19.7 Z" fill="#101014" stroke="#ecd08a" stroke-width="1.6"/>
+    </g>
+  </symbol>
+
+  <!-- Economist / Scholar-Athlete: tennis racket and laurel -->
+  <symbol id="class-athlete" viewBox="0 0 48 48">
+    <use href="#fr-class"/>
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 11.2 V22.6 M27 11.2 V22.6 M24 8.4 V25 M17.6 14.2 H30.4 M17.4 19.4 H30.6" stroke="#8a6d35" stroke-width="0.9"/>
+      <ellipse cx="24" cy="16.6" rx="7" ry="8.5" stroke="#ecd08a" stroke-width="1.8"/>
+      <path d="M21.6 24.6 L24 27.4 L26.4 24.6" stroke="#ecd08a" stroke-width="1.6"/>
+      <line x1="24" y1="27.4" x2="24" y2="35.4" stroke="#c9a457" stroke-width="2.4"/>
+      <path d="M23 39.2 C17.6 38.3 13.3 34.4 12.1 28.8" stroke="#c9a457" stroke-width="1.5"/>
+      <path d="M25 39.2 C30.4 38.3 34.7 34.4 35.9 28.8" stroke="#c9a457" stroke-width="1.5"/>
+      <g fill="#c9a457">
+        <ellipse cx="13.4" cy="31.7" rx="2.2" ry="1" transform="rotate(60 13.4 31.7)"/>
+        <ellipse cx="15.8" cy="35" rx="2.2" ry="1" transform="rotate(42 15.8 35)"/>
+        <ellipse cx="19.3" cy="37.5" rx="2.2" ry="1" transform="rotate(22 19.3 37.5)"/>
+        <ellipse cx="34.6" cy="31.7" rx="2.2" ry="1" transform="rotate(-60 34.6 31.7)"/>
+        <ellipse cx="32.2" cy="35" rx="2.2" ry="1" transform="rotate(-42 32.2 35)"/>
+        <ellipse cx="28.7" cy="37.5" rx="2.2" ry="1" transform="rotate(-22 28.7 37.5)"/>
+      </g>
+      <circle cx="24" cy="39.4" r="1.2" fill="#ecd08a"/>
+    </g>
+  </symbol>
+
+  <!-- ============================================================ -->
+  <!-- CREST / GUILD ICONS - shield shaped, two-tone with gold trim -->
+  <!-- ============================================================ -->
+
+  <!-- "B" fintech crest (Brex chapter) -->
+  <symbol id="crest-brex" viewBox="0 0 48 48">
+    <g clip-path="url(#clip-shield)">
+      <rect x="6" y="3" width="36" height="20" fill="#1b2a4d"/>
+      <rect x="6" y="23" width="36" height="22" fill="#0e1526"/>
+      <line x1="7.5" y1="23" x2="40.5" y2="23" stroke="#8a6d35" stroke-width="1.1"/>
+    </g>
+    <g fill="none" stroke="#ecd08a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 15.5 V32.7"/>
+      <path d="M20 15.5 H24.8 A4.2 4.2 0 0 1 24.8 23.9 H20"/>
+      <path d="M20 23.9 H26 A4.4 4.4 0 0 1 26 32.7 H20"/>
+    </g>
+    <use href="#p-shield" fill="none" stroke="url(#g-gold-rim)" stroke-width="2.4"/>
+  </symbol>
+
+  <!-- "R" record / vinyl crest (Chronicler's records) -->
+  <symbol id="crest-records" viewBox="0 0 48 48">
+    <g clip-path="url(#clip-shield)">
+      <rect x="6" y="3" width="18" height="42" fill="#171226"/>
+      <rect x="24" y="3" width="18" height="42" fill="#0e0b16"/>
+    </g>
+    <circle cx="24" cy="24.5" r="10.2" fill="#0a0a0e" stroke="#8a6d35" stroke-width="1.1"/>
+    <circle cx="24" cy="24.5" r="7.6" fill="none" stroke="#4a4a56" stroke-width="0.8"/>
+    <circle cx="24" cy="24.5" r="5.4" fill="none" stroke="#3a3a44" stroke-width="0.8"/>
+    <g fill="none" stroke="#ecd08a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21.2 19.5 V29.7"/>
+      <path d="M21.2 19.5 H24.6 A3.2 3.2 0 0 1 24.6 25.9 H21.2"/>
+      <path d="M23.6 25.9 L27.4 29.7"/>
+    </g>
+    <use href="#p-shield" fill="none" stroke="url(#g-gold-rim)" stroke-width="2.4"/>
+  </symbol>
+
+  <!-- forge-flame crest (Artificer's guild) -->
+  <symbol id="crest-forge" viewBox="0 0 48 48">
+    <g clip-path="url(#clip-shield)">
+      <rect x="6" y="3" width="36" height="24" fill="#101014"/>
+      <rect x="6" y="27" width="36" height="18" fill="#1c130a"/>
+      <line x1="7.5" y1="27" x2="40.5" y2="27" stroke="#8a6d35" stroke-width="1" opacity="0.7"/>
+    </g>
+    <path d="M24 11.5 C19.2 17 16.8 21.6 16.8 26.2 C16.8 31.7 20 35.3 24 36 C28 35.3 31.2 31.7 31.2 26.2 C31.2 23 30 20.3 28 17.6 C28.5 20.7 27.5 22.4 25.9 23 C26.7 19.3 26.1 14.9 24 11.5 Z" fill="url(#g-gold-flat)" stroke="#8a6d35" stroke-width="0.9"/>
+    <path d="M24 23.6 C21.9 26.2 20.9 28.2 20.9 30.1 C20.9 32.6 22.3 34.2 24 34.6 C25.7 34.2 27.1 32.6 27.1 30.1 C27.1 28.2 26.1 26.2 24 23.6 Z" fill="#101014"/>
+    <use href="#p-shield" fill="none" stroke="url(#g-gold-rim)" stroke-width="2.4"/>
+  </symbol>
+
+  <!-- "U" collegiate crest (UChicago chapter) -->
+  <symbol id="crest-uchicago" viewBox="0 0 48 48">
+    <g clip-path="url(#clip-shield)">
+      <rect x="6" y="3" width="36" height="12.5" fill="#1e2a4a"/>
+      <rect x="6" y="15.5" width="36" height="30" fill="#0e1526"/>
+      <line x1="7.5" y1="15.5" x2="40.5" y2="15.5" stroke="#8a6d35" stroke-width="1.1"/>
+      <circle cx="16.5" cy="11.6" r="1.4" fill="#c9a457"/>
+      <circle cx="24" cy="12.2" r="1.4" fill="#c9a457"/>
+      <circle cx="31.5" cy="11.6" r="1.4" fill="#c9a457"/>
+    </g>
+    <g fill="none" stroke="#ecd08a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 20 V28.4 A6 6 0 0 0 30 28.4 V20"/>
+      <path d="M15.8 20 H20.2 M27.8 20 H32.2" stroke-width="1.8"/>
+    </g>
+    <use href="#p-shield" fill="none" stroke="url(#g-gold-rim)" stroke-width="2.4"/>
+  </symbol>
+
+  <!-- ============================================================ -->
+  <!-- ACHIEVEMENT                                                  -->
+  <!-- ============================================================ -->
+
+  <symbol id="achievement-trophy" viewBox="0 0 48 48">
+    <polygon points="24.0,1.5 27.8,10.0 35.2,4.5 34.3,13.7 43.5,12.8 38.0,20.2 46.5,24.0 38.0,27.8 43.5,35.2 34.3,34.3 35.2,43.5 27.8,38.0 24.0,46.5 20.2,38.0 12.8,43.5 13.7,34.3 4.5,35.2 10.0,27.8 1.5,24.0 10.0,20.2 4.5,12.7 13.7,13.7 12.7,4.5 20.2,10.0" fill="url(#g-gold-rim)" stroke="#6e5628" stroke-width="0.8" stroke-linejoin="round"/>
+    <circle cx="24" cy="24" r="14.6" fill="url(#g-disc)" stroke="#c9a457" stroke-width="1.2"/>
+    <path d="M18.4 16.8 H29.6 V21.6 C29.6 25.5 27.3 28 24 28 C20.7 28 18.4 25.5 18.4 21.6 Z" fill="url(#g-gold-flat)" stroke="#8a6d35" stroke-width="0.7"/>
+    <path d="M18.4 18.2 C15.4 18.2 15 23 18.9 23.9 M29.6 18.2 C32.6 18.2 33 23 29.1 23.9" fill="none" stroke="#ecd08a" stroke-width="1.4" stroke-linecap="round"/>
+    <path d="M22.8 28 L22.2 30.2 H25.8 L25.2 28 Z" fill="#c9a457"/>
+    <rect x="20.2" y="30.2" width="7.6" height="1.9" rx="0.6" fill="#c9a457"/>
+    <rect x="18.6" y="32.1" width="10.8" height="1.9" rx="0.6" fill="#8a6d35"/>
+    <path d="M24 19.2 L25.8 22 L24 24.8 L22.2 22 Z" fill="#101014" opacity="0.85"/>
+  </symbol>
+
+  <!-- ============================================================ -->
+  <!-- ITEM-RARITY GEMS - faceted diamonds with glow                -->
+  <!-- ============================================================ -->
+
+  <symbol id="gem-poor" viewBox="0 0 48 48">
+    <use href="#p-gem-glow" fill="#b9b9b9" opacity="0.5" filter="url(#f-glow)"/>
+    <use href="#p-gem-tl" fill="#cfcfcf"/>
+    <use href="#p-gem-tc" fill="#e4e4e4"/>
+    <use href="#p-gem-tr" fill="#9d9d9d"/>
+    <use href="#p-gem-bl" fill="#6b6b6b"/>
+    <use href="#p-gem-bc" fill="#8a8a8a"/>
+    <use href="#p-gem-br" fill="#565656"/>
+    <use href="#p-gem-outline" fill="none" stroke="#4a4a4a" stroke-width="1" stroke-linejoin="round"/>
+    <use href="#p-gem-spark" fill="#ffffff" opacity="0.9"/>
+  </symbol>
+
+  <symbol id="gem-uncommon" viewBox="0 0 48 48">
+    <use href="#p-gem-glow" fill="#6fbf5f" opacity="0.65" filter="url(#f-glow)"/>
+    <use href="#p-gem-tl" fill="#9fdb90"/>
+    <use href="#p-gem-tc" fill="#c4ecb8"/>
+    <use href="#p-gem-tr" fill="#6fbf5f"/>
+    <use href="#p-gem-bl" fill="#4c8f41"/>
+    <use href="#p-gem-bc" fill="#5fae50"/>
+    <use href="#p-gem-br" fill="#35682e"/>
+    <use href="#p-gem-outline" fill="none" stroke="#2a5424" stroke-width="1" stroke-linejoin="round"/>
+    <use href="#p-gem-spark" fill="#ffffff" opacity="0.9"/>
+  </symbol>
+
+  <symbol id="gem-rare" viewBox="0 0 48 48">
+    <use href="#p-gem-glow" fill="#4a9eff" opacity="0.65" filter="url(#f-glow)"/>
+    <use href="#p-gem-tl" fill="#82bcff"/>
+    <use href="#p-gem-tc" fill="#b3d6ff"/>
+    <use href="#p-gem-tr" fill="#4a9eff"/>
+    <use href="#p-gem-bl" fill="#2f6fc2"/>
+    <use href="#p-gem-bc" fill="#3c88e0"/>
+    <use href="#p-gem-br" fill="#1f4d8a"/>
+    <use href="#p-gem-outline" fill="none" stroke="#1a4275" stroke-width="1" stroke-linejoin="round"/>
+    <use href="#p-gem-spark" fill="#ffffff" opacity="0.9"/>
+  </symbol>
+
+  <symbol id="gem-epic" viewBox="0 0 48 48">
+    <use href="#p-gem-glow" fill="#a335ee" opacity="0.65" filter="url(#f-glow)"/>
+    <use href="#p-gem-tl" fill="#c06ff5"/>
+    <use href="#p-gem-tc" fill="#dcaefa"/>
+    <use href="#p-gem-tr" fill="#a335ee"/>
+    <use href="#p-gem-bl" fill="#7a1fb8"/>
+    <use href="#p-gem-bc" fill="#8f28d6"/>
+    <use href="#p-gem-br" fill="#571586"/>
+    <use href="#p-gem-outline" fill="none" stroke="#49116f" stroke-width="1" stroke-linejoin="round"/>
+    <use href="#p-gem-spark" fill="#ffffff" opacity="0.9"/>
+  </symbol>
+
+  <symbol id="gem-legendary" viewBox="0 0 48 48">
+    <use href="#p-gem-glow" fill="#ff9a2e" opacity="0.7" filter="url(#f-glow)"/>
+    <use href="#p-gem-tl" fill="#ffa64d"/>
+    <use href="#p-gem-tc" fill="#ffcf99"/>
+    <use href="#p-gem-tr" fill="#ff8000"/>
+    <use href="#p-gem-bl" fill="#c25f00"/>
+    <use href="#p-gem-bc" fill="#e07200"/>
+    <use href="#p-gem-br" fill="#8f4600"/>
+    <use href="#p-gem-outline" fill="none" stroke="#7a3c00" stroke-width="1" stroke-linejoin="round"/>
+    <use href="#p-gem-spark" fill="#ffffff" opacity="0.9"/>
+  </symbol>
+
+  <!-- ============================================================ -->
+  <!-- REPUTATION FACTION MARKS                                     -->
+  <!-- ============================================================ -->
+
+  <!-- clasped hands -->
+  <symbol id="rep-handshake" viewBox="0 0 48 48">
+    <use href="#fr-rep"/>
+    <g fill="none" stroke="#ecd08a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="7.2" y="21.8" width="4.8" height="8" rx="1"/>
+      <rect x="36" y="18.2" width="4.8" height="8" rx="1"/>
+      <path d="M12 25.4 L17.8 24.7"/>
+      <path d="M36 22.4 L30.2 23.3"/>
+      <g transform="rotate(-8 24 24)">
+        <rect x="17.8" y="20.6" width="12.4" height="7.6" rx="3.4"/>
+        <path d="M21.7 20.9 V28 M25.5 20.9 V28" stroke="#c9a457" stroke-width="1.1"/>
+      </g>
+    </g>
+  </symbol>
+
+  <!-- hanging banner with diamond emblem -->
+  <symbol id="rep-banner" viewBox="0 0 48 48">
+    <use href="#fr-rep"/>
+    <g stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12.5" y1="13.5" x2="35.5" y2="13.5" stroke="#c9a457" stroke-width="2"/>
+      <circle cx="11.5" cy="13.5" r="1.7" fill="#ecd08a"/>
+      <circle cx="36.5" cy="13.5" r="1.7" fill="#ecd08a"/>
+      <path d="M16.2 13.5 H31.8 V31.6 L24 27 L16.2 31.6 Z" fill="#0e1526" stroke="#ecd08a" stroke-width="1.8"/>
+      <path d="M24 17.2 L27 20.6 L24 24 L21 20.6 Z" fill="#c9a457"/>
+    </g>
+  </symbol>
+
+  <!-- crossed pennant standards -->
+  <symbol id="rep-crossed-banners" viewBox="0 0 48 48">
+    <use href="#fr-rep"/>
+    <g stroke-linecap="round" stroke-linejoin="round">
+      <line x1="14.5" y1="36" x2="31" y2="12" stroke="#c9a457" stroke-width="2"/>
+      <line x1="33.5" y1="36" x2="17" y2="12" stroke="#c9a457" stroke-width="2"/>
+      <path d="M31 12 L40 15.2 L32.4 18.6 Z" fill="#0e1526" stroke="#ecd08a" stroke-width="1.5"/>
+      <path d="M17 12 L8 15.2 L15.6 18.6 Z" fill="#0e1526" stroke="#ecd08a" stroke-width="1.5"/>
+      <circle cx="24" cy="22.2" r="2.4" fill="#ecd08a" stroke="#8a6d35" stroke-width="0.8"/>
+    </g>
+  </symbol>
+
+  <!-- ============================================================ -->
+  <!-- UTILITY ICONS - engraved gold strokes                        -->
+  <!-- ============================================================ -->
+
+  <symbol id="ui-magnifier" viewBox="0 0 48 48">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="21" cy="21" r="10.5" stroke="#ecd08a" stroke-width="2.4"/>
+      <line x1="28.8" y1="28.8" x2="38.5" y2="38.5" stroke="#c9a457" stroke-width="3.2"/>
+      <path d="M14.8 19.4 A7 7 0 0 1 18.6 14.4" stroke="#8a6d35" stroke-width="1.4"/>
+    </g>
+  </symbol>
+
+  <symbol id="ui-trash" viewBox="0 0 48 48">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 14.5 H38" stroke="#ecd08a" stroke-width="2.4"/>
+      <path d="M19.5 14.5 V11.6 C19.5 10.7 20.2 10 21.1 10 H26.9 C27.8 10 28.5 10.7 28.5 11.6 V14.5" stroke="#ecd08a" stroke-width="2.2"/>
+      <path d="M13.2 14.5 L14.9 36.9 C15 38 15.8 38.8 16.9 38.8 H31.1 C32.2 38.8 33 38 33.1 36.9 L34.8 14.5" stroke="#ecd08a" stroke-width="2.4"/>
+      <path d="M20 20 V33 M24 20 V33 M28 20 V33" stroke="#8a6d35" stroke-width="1.6"/>
+    </g>
+  </symbol>
+
+  <symbol id="ui-undo" viewBox="0 0 48 48">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11.5 12.5 V21 H20" stroke="#c9a457" stroke-width="2.4"/>
+      <path d="M12.1 21 C13.8 14.6 19.7 10.4 26.3 11 C33.9 11.7 39.5 18.4 38.8 26 C38.1 33.6 31.4 39.2 23.8 38.5 C18.9 38.1 14.8 35.2 12.7 31.2" stroke="#ecd08a" stroke-width="2.6"/>
+    </g>
+  </symbol>
+
+  <symbol id="ui-plus" viewBox="0 0 48 48">
+    <g stroke-linecap="round">
+      <path d="M24 11.5 V36.5 M11.5 24 H36.5" fill="none" stroke="#ecd08a" stroke-width="3.2"/>
+      <path d="M24 20.6 L27.4 24 L24 27.4 L20.6 24 Z" fill="#8a6d35"/>
+    </g>
+  </symbol>
+
+  <symbol id="ui-envelope" viewBox="0 0 48 48">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="9" y="13.5" width="30" height="21" rx="2.2" stroke="#ecd08a" stroke-width="2.4"/>
+      <path d="M10.2 15.4 L24 26 L37.8 15.4" stroke="#ecd08a" stroke-width="2.2"/>
+      <path d="M10.4 33 L19.4 24.8 M37.6 33 L28.6 24.8" stroke="#8a6d35" stroke-width="1.4"/>
+    </g>
+  </symbol>
+
+  <symbol id="ui-book" viewBox="0 0 48 48">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M24 15 C19.5 12 13.5 11.4 8.5 13 V32.6 C13.5 31 19.5 31.6 24 34.6 C28.5 31.6 34.5 31 39.5 32.6 V13 C34.5 11.4 28.5 12 24 15 Z" stroke="#ecd08a" stroke-width="2.2"/>
+      <path d="M24 15 V34.6" stroke="#c9a457" stroke-width="1.8"/>
+      <path d="M12.4 17.5 C15.4 16.9 18.4 17.2 20.6 18.4 M12.4 22 C15.4 21.4 18.4 21.7 20.6 22.9 M27.4 18.4 C29.6 17.2 32.6 16.9 35.6 17.5 M27.4 22.9 C29.6 21.7 32.6 21.4 35.6 22" stroke="#8a6d35" stroke-width="1.3"/>
+    </g>
+  </symbol>
+
+  <symbol id="ui-bell" viewBox="0 0 48 48">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M24 10.5 C18 10.5 14.8 15 14.8 21 C14.8 27.5 12.8 30 10.8 31.8 H37.2 C35.2 30 33.2 27.5 33.2 21 C33.2 15 30 10.5 24 10.5 Z" stroke="#ecd08a" stroke-width="2.3"/>
+      <path d="M24 10.5 V7.6" stroke="#c9a457" stroke-width="2.2"/>
+      <circle cx="24" cy="6.6" r="1.5" fill="#c9a457" stroke="none"/>
+      <path d="M20.4 35.6 C21.2 37.6 26.8 37.6 27.6 35.6" stroke="#ecd08a" stroke-width="2.2"/>
+    </g>
+  </symbol>
+
+  <!-- ============================================================ -->
+  <!-- FAVICON - 32x32 "N" monogram crest                           -->
+  <!-- ============================================================ -->
+
+  <symbol id="favicon-n" viewBox="0 0 32 32">
+    <path d="M16 1.8 C19.4 3.6 22.9 4.6 26.6 5 V15 C26.6 21.9 22.3 26.5 16 29.4 C9.7 26.5 5.4 21.9 5.4 15 V5 C9.1 4.6 12.6 3.6 16 1.8 Z" fill="url(#g-disc)" stroke="url(#g-gold-rim)" stroke-width="1.8"/>
+    <path d="M11.4 21.2 V10.8 L20.6 21.2 V10.8" fill="none" stroke="#ecd08a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+</svg>

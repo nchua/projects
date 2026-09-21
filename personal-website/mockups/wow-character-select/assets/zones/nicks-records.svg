@@ -1,0 +1,227 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" role="img" aria-label="Zone backdrop: a candle-lit study with tall bookshelves, floating pages, and a record player silhouette, warm amber on deep brown">
+  <!-- NICK'S RECORDS - original zone loading-screen art -->
+  <defs>
+    <linearGradient id="nr-room" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#150c05"/>
+      <stop offset="0.5" stop-color="#241407"/>
+      <stop offset="0.82" stop-color="#38200c"/>
+      <stop offset="1" stop-color="#1c1006"/>
+    </linearGradient>
+    <radialGradient id="nr-glow" cx="0.5" cy="0.64" r="0.62">
+      <stop offset="0" stop-color="#ffb051" stop-opacity="0.55"/>
+      <stop offset="0.4" stop-color="#e08a34" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#e08a34" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="nr-candleglow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffe9a0" stop-opacity="0.85"/>
+      <stop offset="0.35" stop-color="#ffb051" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="#ffb051" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="nr-shelf" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0d0703"/>
+      <stop offset="1" stop-color="#1c0f05"/>
+    </linearGradient>
+    <linearGradient id="nr-shelfR" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#0d0703"/>
+      <stop offset="1" stop-color="#1c0f05"/>
+    </linearGradient>
+    <linearGradient id="nr-page" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f2e2b8"/>
+      <stop offset="1" stop-color="#d9c088"/>
+    </linearGradient>
+    <radialGradient id="nr-moon" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#b9c8d8" stop-opacity="0.5"/>
+      <stop offset="0.5" stop-color="#8fa4bd" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#8fa4bd" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="nr-vig" cx="0.5" cy="0.5" r="0.74">
+      <stop offset="0" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="0.6" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.6"/>
+    </radialGradient>
+    <linearGradient id="nr-band" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a0502" stop-opacity="0"/>
+      <stop offset="0.55" stop-color="#0a0502" stop-opacity="0.8"/>
+      <stop offset="1" stop-color="#060301" stop-opacity="0.95"/>
+    </linearGradient>
+    <filter id="nr-soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="16"/></filter>
+    <filter id="nr-soft2" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
+    <filter id="nr-grain" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="13" stitchTiles="stitch"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.55  0 0 0 0 0.45  0 0 0 0 0.35  0 0 0 0.6 0"/>
+    </filter>
+  </defs>
+
+  <!-- room -->
+  <rect width="1600" height="900" fill="url(#nr-room)"/>
+  <rect width="1600" height="900" fill="url(#nr-glow)"/>
+
+  <!-- arched window with cool moonlight, upper right of center -->
+  <g>
+    <path d="M1050 330 L1050 150 Q1122 84 1194 150 L1194 330 Z" fill="#101b26" opacity="0.9"/>
+    <circle cx="1140" cy="176" r="30" fill="#c7d4e2" opacity="0.65"/>
+    <circle cx="1140" cy="176" r="80" fill="url(#nr-moon)"/>
+    <line x1="1122" y1="102" x2="1122" y2="330" stroke="#0a0603" stroke-width="7"/>
+    <line x1="1050" y1="216" x2="1194" y2="216" stroke="#0a0603" stroke-width="7"/>
+    <line x1="1050" y1="274" x2="1194" y2="274" stroke="#0a0603" stroke-width="6"/>
+    <path d="M1040 340 L1040 146 Q1122 70 1204 146 L1204 340 Z" fill="none" stroke="#0a0603" stroke-width="14"/>
+  </g>
+
+  <!-- left bookshelf wall -->
+  <g>
+    <rect x="0" y="0" width="360" height="900" fill="url(#nr-shelf)"/>
+    <g fill="#0a0603">
+      <rect x="20" y="110" width="320" height="14"/>
+      <rect x="20" y="270" width="320" height="14"/>
+      <rect x="20" y="430" width="320" height="14"/>
+      <rect x="20" y="590" width="320" height="14"/>
+      <rect x="20" y="750" width="320" height="14"/>
+    </g>
+    <!-- book spines, warmer near the glow -->
+    <g opacity="0.85">
+      <rect x="36" y="146" width="20" height="124" fill="#3a2410"/><rect x="60" y="158" width="16" height="112" fill="#4c1f14"/>
+      <rect x="80" y="150" width="24" height="120" fill="#2c1c0c"/><rect x="108" y="164" width="14" height="106" fill="#54350f"/>
+      <rect x="126" y="152" width="20" height="118" fill="#41230d"/><rect x="150" y="168" width="18" height="102" fill="#33261a"/>
+      <rect x="172" y="148" width="22" height="122" fill="#4c2c10"/><rect x="198" y="160" width="15" height="110" fill="#59391b"/>
+      <rect x="217" y="154" width="21" height="116" fill="#301a0a"/><rect x="242" y="166" width="17" height="104" fill="#472912"/>
+      <rect x="263" y="150" width="23" height="120" fill="#3c2d15"/><rect x="290" y="162" width="15" height="108" fill="#552f12"/>
+      <rect x="36" y="308" width="18" height="122" fill="#472912"/><rect x="58" y="320" width="22" height="110" fill="#331d0d"/>
+      <rect x="84" y="312" width="16" height="118" fill="#5c3a16"/><rect x="104" y="326" width="20" height="104" fill="#41230d"/>
+      <rect x="128" y="310" width="24" height="120" fill="#2c1c0c"/><rect x="156" y="322" width="14" height="108" fill="#54350f"/>
+      <rect x="174" y="314" width="20" height="116" fill="#4c1f14"/><rect x="198" y="328" width="18" height="102" fill="#3a2410"/>
+      <rect x="220" y="312" width="22" height="118" fill="#59391b"/><rect x="246" y="324" width="15" height="106" fill="#301a0a"/>
+      <rect x="265" y="316" width="21" height="114" fill="#472912"/><rect x="290" y="330" width="17" height="100" fill="#3c2d15"/>
+      <rect x="36" y="470" width="22" height="120" fill="#33261a"/><rect x="62" y="484" width="16" height="106" fill="#4c2c10"/>
+      <rect x="82" y="474" width="20" height="116" fill="#59391b"/><rect x="106" y="488" width="18" height="102" fill="#2c1c0c"/>
+      <rect x="128" y="472" width="24" height="118" fill="#54350f"/><rect x="156" y="486" width="14" height="104" fill="#41230d"/>
+      <rect x="174" y="476" width="20" height="114" fill="#331d0d"/><rect x="198" y="490" width="18" height="100" fill="#5c3a16"/>
+      <rect x="220" y="474" width="22" height="116" fill="#3a2410"/><rect x="246" y="486" width="15" height="104" fill="#472912"/>
+      <rect x="265" y="478" width="21" height="112" fill="#4c1f14"/><rect x="290" y="492" width="17" height="98" fill="#301a0a"/>
+      <rect x="36" y="630" width="20" height="120" fill="#54350f"/><rect x="60" y="644" width="18" height="106" fill="#301a0a"/>
+      <rect x="82" y="634" width="22" height="116" fill="#41230d"/><rect x="108" y="648" width="16" height="102" fill="#4c2c10"/>
+      <rect x="128" y="632" width="20" height="118" fill="#33261a"/><rect x="152" y="646" width="18" height="104" fill="#59391b"/>
+      <rect x="174" y="636" width="24" height="114" fill="#2c1c0c"/><rect x="202" y="650" width="14" height="100" fill="#472912"/>
+      <rect x="220" y="634" width="20" height="116" fill="#5c3a16"/><rect x="244" y="648" width="18" height="102" fill="#3a2410"/>
+      <rect x="266" y="638" width="22" height="112" fill="#331d0d"/><rect x="292" y="652" width="15" height="98" fill="#54350f"/>
+    </g>
+  </g>
+
+  <!-- right bookshelf wall -->
+  <g>
+    <rect x="1300" y="0" width="300" height="900" fill="url(#nr-shelfR)"/>
+    <g fill="#0a0603">
+      <rect x="1320" y="150" width="280" height="14"/>
+      <rect x="1320" y="320" width="280" height="14"/>
+      <rect x="1320" y="490" width="280" height="14"/>
+      <rect x="1320" y="660" width="280" height="14"/>
+    </g>
+    <g opacity="0.8">
+      <rect x="1336" y="186" width="20" height="134" fill="#3a2410"/><rect x="1360" y="200" width="16" height="120" fill="#4c1f14"/>
+      <rect x="1380" y="190" width="24" height="130" fill="#2c1c0c"/><rect x="1408" y="204" width="14" height="116" fill="#54350f"/>
+      <rect x="1426" y="192" width="20" height="128" fill="#41230d"/><rect x="1450" y="206" width="18" height="114" fill="#33261a"/>
+      <rect x="1472" y="188" width="22" height="132" fill="#4c2c10"/><rect x="1498" y="202" width="15" height="118" fill="#59391b"/>
+      <rect x="1517" y="194" width="21" height="126" fill="#301a0a"/><rect x="1542" y="206" width="17" height="114" fill="#472912"/>
+      <rect x="1336" y="356" width="18" height="132" fill="#472912"/><rect x="1358" y="370" width="22" height="118" fill="#331d0d"/>
+      <rect x="1384" y="360" width="16" height="128" fill="#5c3a16"/><rect x="1404" y="374" width="20" height="114" fill="#41230d"/>
+      <rect x="1428" y="358" width="24" height="130" fill="#2c1c0c"/><rect x="1456" y="372" width="14" height="116" fill="#54350f"/>
+      <rect x="1474" y="362" width="20" height="126" fill="#4c1f14"/><rect x="1498" y="376" width="18" height="112" fill="#3a2410"/>
+      <rect x="1520" y="360" width="22" height="128" fill="#59391b"/><rect x="1546" y="374" width="15" height="114" fill="#301a0a"/>
+      <rect x="1336" y="526" width="22" height="130" fill="#33261a"/><rect x="1362" y="540" width="16" height="116" fill="#4c2c10"/>
+      <rect x="1382" y="530" width="20" height="126" fill="#59391b"/><rect x="1406" y="544" width="18" height="112" fill="#2c1c0c"/>
+      <rect x="1428" y="528" width="24" height="128" fill="#54350f"/><rect x="1456" y="542" width="14" height="114" fill="#41230d"/>
+      <rect x="1474" y="532" width="20" height="124" fill="#331d0d"/><rect x="1498" y="546" width="18" height="110" fill="#5c3a16"/>
+      <rect x="1520" y="530" width="22" height="126" fill="#3a2410"/><rect x="1546" y="544" width="15" height="112" fill="#472912"/>
+    </g>
+  </g>
+
+  <!-- floating pages drifting up toward the window -->
+  <g fill="url(#nr-page)">
+    <path d="M640 320 q26 -10 44 4 q-4 30 -12 44 q-26 8 -42 -6 q2 -28 10 -42 Z" opacity="0.85" transform="rotate(-14 660 342)"/>
+    <path d="M780 220 q22 -8 38 4 q-4 24 -10 36 q-22 8 -36 -4 q2 -24 8 -36 Z" opacity="0.7" transform="rotate(10 798 240)"/>
+    <path d="M900 300 q24 -10 42 2 q-2 28 -10 42 q-24 8 -40 -4 q0 -26 8 -40 Z" opacity="0.8" transform="rotate(-24 920 322)"/>
+    <path d="M980 170 q18 -8 32 2 q-2 22 -8 32 q-18 6 -30 -4 q0 -20 6 -30 Z" opacity="0.55" transform="rotate(18 996 186)"/>
+    <path d="M560 460 q28 -10 46 4 q-4 30 -12 46 q-28 8 -44 -6 q2 -30 10 -44 Z" opacity="0.9" transform="rotate(8 582 484)"/>
+    <path d="M700 420 q20 -8 34 2 q-2 24 -8 34 q-20 8 -32 -2 q0 -22 6 -34 Z" opacity="0.65" transform="rotate(-30 716 438)"/>
+    <path d="M860 480 q24 -8 40 2 q-2 26 -10 40 q-24 8 -38 -4 q0 -24 8 -38 Z" opacity="0.75" transform="rotate(20 878 500)"/>
+    <path d="M1030 420 q16 -6 28 2 q-2 18 -6 28 q-16 6 -26 -2 q0 -18 4 -28 Z" opacity="0.5" transform="rotate(-12 1044 434)"/>
+  </g>
+  <!-- faint ink lines on the two largest pages -->
+  <g stroke="#7a5a2c" stroke-width="1.4" opacity="0.5" fill="none">
+    <path d="M566 476 l32 4 M564 488 l34 4 M562 500 l30 4" transform="rotate(8 582 484)"/>
+    <path d="M646 334 l30 4 M644 346 l32 4 M642 358 l28 4" transform="rotate(-14 660 342)"/>
+  </g>
+
+  <!-- desk with record player, candles, and books -->
+  <g>
+    <ellipse cx="800" cy="700" rx="560" ry="120" fill="url(#nr-candleglow)" opacity="0.7"/>
+    <rect x="400" y="640" width="800" height="34" rx="6" fill="#241204"/>
+    <rect x="410" y="674" width="780" height="14" fill="#170b03"/>
+    <rect x="440" y="688" width="34" height="180" fill="#1c0e04"/>
+    <rect x="1126" y="688" width="34" height="180" fill="#1c0e04"/>
+
+    <!-- record player silhouette (focal) -->
+    <g>
+      <rect x="670" y="560" width="280" height="80" rx="8" fill="#120902"/>
+      <rect x="678" y="552" width="264" height="12" rx="4" fill="#1e1005"/>
+      <circle cx="770" cy="586" r="52" fill="#0a0501"/>
+      <circle cx="770" cy="586" r="46" fill="#170c03"/>
+      <circle cx="770" cy="586" r="34" fill="none" stroke="#3a230d" stroke-width="1.6" opacity="0.8"/>
+      <circle cx="770" cy="586" r="24" fill="none" stroke="#3a230d" stroke-width="1.4" opacity="0.6"/>
+      <circle cx="770" cy="586" r="8" fill="#c98e3a" opacity="0.85"/>
+      <circle cx="770" cy="586" r="3" fill="#0a0501"/>
+      <circle cx="906" cy="566" r="9" fill="#241204"/>
+      <line x1="906" y1="566" x2="838" y2="602" stroke="#2e1a08" stroke-width="6" stroke-linecap="round"/>
+      <line x1="838" y1="602" x2="826" y2="596" stroke="#2e1a08" stroke-width="9" stroke-linecap="round"/>
+      <rect x="884" y="596" width="44" height="10" rx="4" fill="#1e1005"/>
+      <!-- warm rim light on the platter edge -->
+      <path d="M726 570 a52 52 0 0 1 88 -6" fill="none" stroke="#ffb051" stroke-width="2.4" opacity="0.65"/>
+      <path d="M678 556 h150" stroke="#e08a34" stroke-width="1.6" opacity="0.4"/>
+      <!-- faint sound rings drifting -->
+      <g fill="none" stroke="#ffd9a0" opacity="0.3">
+        <circle cx="770" cy="530" r="14" stroke-width="1.6"/>
+        <circle cx="770" cy="530" r="26" stroke-width="1.1"/>
+        <circle cx="770" cy="530" r="40" stroke-width="0.8"/>
+      </g>
+    </g>
+
+    <!-- stack of books on the desk, right side -->
+    <g>
+      <rect x="1000" y="622" width="120" height="18" rx="3" fill="#3a2410"/>
+      <rect x="1012" y="606" width="100" height="16" rx="3" fill="#4c1f14"/>
+      <rect x="1006" y="590" width="108" height="16" rx="3" fill="#2c1c0c"/>
+      <line x1="1008" y1="631" x2="1112" y2="631" stroke="#59391b" stroke-width="2" opacity="0.6"/>
+    </g>
+
+    <!-- candles -->
+    <g>
+      <rect x="540" y="586" width="18" height="54" rx="4" fill="#d9c088"/>
+      <path d="M549 566 C543 578 545 584 549 588 C553 584 556 577 549 566 Z" fill="#ffd166"/>
+      <path d="M549 572 C546 579 547 583 549 586 C551 583 552 578 549 572 Z" fill="#fff3c4"/>
+      <circle cx="549" cy="576" r="34" fill="url(#nr-candleglow)"/>
+      <rect x="580" y="606" width="14" height="34" rx="3" fill="#cbb37e"/>
+      <path d="M587 590 C583 598 584 603 587 606 C590 603 591 597 587 590 Z" fill="#ffd166"/>
+      <circle cx="587" cy="598" r="24" fill="url(#nr-candleglow)"/>
+      <ellipse cx="549" cy="640" rx="26" ry="5" fill="#0f0702"/>
+    </g>
+    <g>
+      <rect x="962" y="600" width="16" height="40" rx="4" fill="#d9c088"/>
+      <path d="M970 582 C965 592 966 597 970 601 C974 597 975 591 970 582 Z" fill="#ffd166"/>
+      <circle cx="970" cy="590" r="28" fill="url(#nr-candleglow)"/>
+    </g>
+  </g>
+
+  <!-- drifting dust motes in candlelight -->
+  <g fill="#ffe9a0">
+    <circle cx="620" cy="500" r="1.6" opacity="0.5"/><circle cx="688" cy="452" r="1.2" opacity="0.4"/>
+    <circle cx="840" cy="430" r="1.5" opacity="0.45"/><circle cx="922" cy="530" r="1.2" opacity="0.35"/>
+    <circle cx="756" cy="380" r="1.3" opacity="0.35"/><circle cx="1002" cy="470" r="1.1" opacity="0.3"/>
+  </g>
+
+  <!-- soft warm bloom over the scene center -->
+  <ellipse cx="780" cy="560" rx="480" ry="260" fill="#ffb051" opacity="0.08" filter="url(#nr-soft)"/>
+
+  <!-- grain, vignette, progress-bar band -->
+  <rect width="1600" height="900" filter="url(#nr-grain)" opacity="0.06"/>
+  <rect width="1600" height="900" fill="url(#nr-vig)"/>
+  <rect x="0" y="760" width="1600" height="140" fill="url(#nr-band)"/>
+</svg>

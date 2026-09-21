@@ -1,0 +1,329 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!--
+    ui-kit.svg - ornamental UI sprite for the character-select mockup.
+    Original artwork. Self-contained: gradients + inline filters only, no images, no scripts, no external refs.
+    Palette: golds #ecd08a / #c9a457 / #8a6d35 - reds #a5231a / #7c130d / #4c0a06 - darks #101014 / #0b0e14 - trim shadow #3a2c14.
+    Usage: inline this file into the page, then reference symbols with <use href="#symbol-id"/>.
+  -->
+  <defs>
+    <!-- ============ gradients ============ -->
+    <linearGradient id="g-gold-v" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ecd08a"/>
+      <stop offset="0.45" stop-color="#c9a457"/>
+      <stop offset="1" stop-color="#8a6d35"/>
+    </linearGradient>
+    <linearGradient id="g-gold-h" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ecd08a"/>
+      <stop offset="0.45" stop-color="#c9a457"/>
+      <stop offset="1" stop-color="#8a6d35"/>
+    </linearGradient>
+    <linearGradient id="g-gold-sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff3cf"/>
+      <stop offset="0.16" stop-color="#ecd08a"/>
+      <stop offset="0.55" stop-color="#c9a457"/>
+      <stop offset="0.85" stop-color="#8a6d35"/>
+      <stop offset="1" stop-color="#6f5528"/>
+    </linearGradient>
+    <linearGradient id="g-red-bevel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a5231a"/>
+      <stop offset="0.45" stop-color="#7c130d"/>
+      <stop offset="1" stop-color="#4c0a06"/>
+    </linearGradient>
+    <linearGradient id="g-red-deep" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7c130d"/>
+      <stop offset="1" stop-color="#4c0a06"/>
+    </linearGradient>
+    <linearGradient id="g-panel-dark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#101014"/>
+      <stop offset="1" stop-color="#0b0e14"/>
+    </linearGradient>
+    <linearGradient id="g-recess" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#08080b"/>
+      <stop offset="0.35" stop-color="#0b0e14"/>
+      <stop offset="1" stop-color="#101014"/>
+    </linearGradient>
+    <linearGradient id="g-hi-top" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe9c0" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#ffe9c0" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="g-shade-bottom" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.45"/>
+    </linearGradient>
+    <linearGradient id="g-rule-l" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8a6d35" stop-opacity="0"/>
+      <stop offset="0.6" stop-color="#c9a457" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#ecd08a"/>
+    </linearGradient>
+    <linearGradient id="g-rule-r" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ecd08a"/>
+      <stop offset="0.4" stop-color="#c9a457" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#8a6d35" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="g-header-tint" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c9a457" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#c9a457" stop-opacity="0.07"/>
+    </linearGradient>
+    <radialGradient id="r-top-glow" cx="0.5" cy="0" r="1">
+      <stop offset="0" stop-color="#c9a457" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#c9a457" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="r-btn-core" cx="0.5" cy="0.42" r="0.75">
+      <stop offset="0" stop-color="#a5231a" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#a5231a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="r-gold-core" cx="0.5" cy="0.35" r="0.8">
+      <stop offset="0" stop-color="#fff3cf" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#fff3cf" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- ============ filters ============ -->
+    <filter id="f-drop" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="3" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+    <filter id="f-gold-glow" x="-20%" y="-40%" width="140%" height="180%">
+      <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#c9a457" flood-opacity="0.55"/>
+    </filter>
+    <filter id="f-soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="1.4"/>
+    </filter>
+
+    <!-- ============ reusable ornaments ============ -->
+    <g id="d-rivet">
+      <circle r="3.4" fill="url(#g-gold-v)" stroke="#3a2c14" stroke-width="1"/>
+      <circle cx="-0.9" cy="-0.9" r="1.1" fill="#fff3cf" opacity="0.85"/>
+    </g>
+    <g id="d-diamond-sm">
+      <path d="M0 -3.6 L3.6 0 L0 3.6 L-3.6 0 Z" fill="#8a6d35" stroke="#ecd08a" stroke-width="0.6"/>
+    </g>
+    <g id="d-curl">
+      <path d="M3 26 C3 12 12 3 26 3" fill="none" stroke="url(#g-gold-v)" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M6.5 21.5 C7.5 12 13.5 6.5 22 6.5 C27.5 6.5 28 12.5 23.5 12.5 C20 12.5 20.4 8 23 8.2" fill="none" stroke="#ecd08a" stroke-width="1.1" opacity="0.8" stroke-linecap="round"/>
+      <circle cx="26" cy="3" r="2" fill="url(#g-gold-v)" stroke="#3a2c14" stroke-width="0.7"/>
+      <circle cx="3" cy="26" r="2" fill="url(#g-gold-v)" stroke="#3a2c14" stroke-width="0.7"/>
+    </g>
+  </defs>
+
+  <!-- ================================================================
+       ui-corner : 64x64 ornate filigree corner for 9-slice frames.
+       Drawn as the TOP-LEFT corner; flip with scale(-1,1) / (1,-1) / (-1,-1).
+       Band thickness 14px matches ui-edge height.
+       ================================================================ -->
+  <symbol id="ui-corner" viewBox="0 0 64 64">
+    <!-- band fills with open ends so the strip meets ui-edge seamlessly -->
+    <rect x="0" y="0" width="64" height="14" fill="url(#g-gold-v)"/>
+    <rect x="0" y="0" width="14" height="64" fill="url(#g-gold-h)"/>
+    <!-- trim rails (no end caps) -->
+    <rect x="0" y="0" width="64" height="1.5" fill="#3a2c14"/>
+    <rect x="0" y="0" width="1.5" height="64" fill="#3a2c14"/>
+    <rect x="14" y="12.5" width="50" height="1.5" fill="#3a2c14"/>
+    <rect x="12.5" y="14" width="1.5" height="50" fill="#3a2c14"/>
+    <line x1="15" y1="2.6" x2="64" y2="2.6" stroke="#fff3cf" stroke-width="1" opacity="0.55"/>
+    <line x1="2.6" y1="15" x2="2.6" y2="64" stroke="#fff3cf" stroke-width="1" opacity="0.55"/>
+    <line x1="15" y1="11.4" x2="64" y2="11.4" stroke="#8a6d35" stroke-width="1" opacity="0.9"/>
+    <line x1="11.4" y1="15" x2="11.4" y2="64" stroke="#8a6d35" stroke-width="1" opacity="0.9"/>
+    <!-- corner boss -->
+    <rect x="1.5" y="1.5" width="12" height="12" fill="url(#g-gold-v)" stroke="#3a2c14" stroke-width="1.5"/>
+    <path d="M7.5 3.2 L11.8 7.5 L7.5 11.8 L3.2 7.5 Z" fill="#8a6d35" stroke="#ecd08a" stroke-width="0.8"/>
+    <circle cx="7.5" cy="7.5" r="1.4" fill="#ecd08a"/>
+    <!-- band diamonds -->
+    <use href="#d-diamond-sm" x="42" y="7.4"/>
+    <use href="#d-diamond-sm" x="7.4" y="42"/>
+    <!-- filigree curl sweeping into the panel -->
+    <path d="M14.5 14.5 C36 16.5 46 26.5 48 48 C48.8 55.8 42 59.2 38.4 54.8 C35.4 51 39 46 43 47.8" fill="none" stroke="url(#g-gold-v)" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M14.5 14.5 C16.5 26 22 31.5 31 33.4" fill="none" stroke="#ecd08a" stroke-width="1.1" opacity="0.75" stroke-linecap="round"/>
+    <circle cx="31" cy="33.4" r="1.7" fill="#ecd08a" opacity="0.9"/>
+    <circle cx="24.5" cy="20.5" r="1.5" fill="#ecd08a" opacity="0.7"/>
+    <circle cx="20.5" cy="24.5" r="1.5" fill="#ecd08a" opacity="0.7"/>
+  </symbol>
+
+  <!-- ================================================================
+       ui-edge : 128x14 repeatable edge strip for 9-slice frames.
+       Drawn as a TOP edge (highlight on top). Tiles seamlessly every 128px
+       (diamond period 32px). Rotate/flip for the other three sides.
+       ================================================================ -->
+  <symbol id="ui-edge" viewBox="0 0 128 14">
+    <!-- fill band + trim rails only (no end strokes), so tiles join seamlessly -->
+    <rect x="0" y="0" width="128" height="14" fill="url(#g-gold-v)"/>
+    <rect x="0" y="0" width="128" height="1.5" fill="#3a2c14"/>
+    <rect x="0" y="12.5" width="128" height="1.5" fill="#3a2c14"/>
+    <line x1="0" y1="2.6" x2="128" y2="2.6" stroke="#fff3cf" stroke-width="1" opacity="0.55"/>
+    <line x1="0" y1="11.4" x2="128" y2="11.4" stroke="#8a6d35" stroke-width="1" opacity="0.9"/>
+    <use href="#d-diamond-sm" x="16" y="7"/>
+    <use href="#d-diamond-sm" x="48" y="7"/>
+    <use href="#d-diamond-sm" x="80" y="7"/>
+    <use href="#d-diamond-sm" x="112" y="7"/>
+  </symbol>
+
+  <!-- ================================================================
+       ui-panel-frame : 340x480 complete panel with layered gold double
+       border, corner flourishes and dark inner fill.
+       ================================================================ -->
+  <symbol id="ui-panel-frame" viewBox="0 0 340 480">
+    <rect x="2" y="2" width="336" height="476" rx="12" fill="url(#g-panel-dark)" stroke="#3a2c14" stroke-width="3"/>
+    <rect x="5.75" y="5.75" width="328.5" height="468.5" rx="9.5" fill="none" stroke="url(#g-gold-v)" stroke-width="2.5"/>
+    <rect x="10.5" y="10.5" width="319" height="459" rx="6.5" fill="none" stroke="#8a6d35" stroke-width="1"/>
+    <rect x="13.5" y="13.5" width="313" height="453" rx="5" fill="none" stroke="#ecd08a" stroke-width="0.75" opacity="0.3"/>
+    <rect x="14" y="14" width="312" height="110" rx="5" fill="url(#r-top-glow)"/>
+    <rect x="14" y="380" width="312" height="86" rx="5" fill="url(#g-shade-bottom)" opacity="0.5"/>
+    <!-- corner flourishes -->
+    <use href="#d-curl" transform="translate(12 12)"/>
+    <use href="#d-curl" transform="translate(328 12) scale(-1 1)"/>
+    <use href="#d-curl" transform="translate(12 468) scale(1 -1)"/>
+    <use href="#d-curl" transform="translate(328 468) scale(-1 -1)"/>
+    <!-- edge rivets -->
+    <use href="#d-rivet" x="170" y="8"/>
+    <use href="#d-rivet" x="170" y="472"/>
+    <use href="#d-rivet" x="8" y="240"/>
+    <use href="#d-rivet" x="332" y="240"/>
+  </symbol>
+
+  <!-- ================================================================
+       ui-btn-red : 280x56 red beveled button face with gold trim ring,
+       inner highlight and bottom shade. Face left clear for label text.
+       ================================================================ -->
+  <symbol id="ui-btn-red" viewBox="0 0 280 56">
+    <g filter="url(#f-drop)">
+      <rect x="0.5" y="0.5" width="279" height="55" rx="9.5" fill="none" stroke="url(#g-gold-v)" stroke-width="1"/>
+      <rect x="2" y="2" width="276" height="52" rx="8" fill="none" stroke="#3a2c14" stroke-width="2"/>
+      <rect x="3.75" y="3.75" width="272.5" height="48.5" rx="7" fill="url(#g-red-bevel)" stroke="#101014" stroke-width="1.5"/>
+    </g>
+    <rect x="5" y="5" width="270" height="46" rx="6.5" fill="url(#r-btn-core)"/>
+    <rect x="6" y="5.5" width="268" height="19" rx="6" fill="url(#g-hi-top)"/>
+    <rect x="6" y="33" width="268" height="17.5" rx="6" fill="url(#g-shade-bottom)"/>
+    <path d="M12 6.4 H268" stroke="#ecd08a" stroke-width="1" opacity="0.4" fill="none"/>
+    <path d="M12 49.6 H268" stroke="#000000" stroke-width="1" opacity="0.5" fill="none"/>
+  </symbol>
+
+  <!-- ================================================================
+       ui-btn-icon : 48x48 square icon-button variant of ui-btn-red.
+       ================================================================ -->
+  <symbol id="ui-btn-icon" viewBox="0 0 48 48">
+    <g filter="url(#f-drop)">
+      <rect x="0.5" y="0.5" width="47" height="47" rx="8.5" fill="none" stroke="url(#g-gold-v)" stroke-width="1"/>
+      <rect x="2" y="2" width="44" height="44" rx="7" fill="none" stroke="#3a2c14" stroke-width="2"/>
+      <rect x="3.75" y="3.75" width="40.5" height="40.5" rx="6" fill="url(#g-red-bevel)" stroke="#101014" stroke-width="1.5"/>
+    </g>
+    <rect x="5" y="5" width="38" height="38" rx="5.5" fill="url(#r-btn-core)"/>
+    <rect x="6" y="5.5" width="36" height="15" rx="5" fill="url(#g-hi-top)"/>
+    <rect x="6" y="28" width="36" height="14.5" rx="5" fill="url(#g-shade-bottom)"/>
+    <path d="M11 6.4 H37" stroke="#ecd08a" stroke-width="1" opacity="0.4" fill="none"/>
+  </symbol>
+
+  <!-- ================================================================
+       ui-btn-gold : 340x60 gold "Enter World"-tier button face with
+       soft gold aura, sheen bevel and end filigree. Dark label text on top.
+       ================================================================ -->
+  <symbol id="ui-btn-gold" viewBox="0 0 340 60">
+    <g filter="url(#f-gold-glow)">
+      <rect x="0.5" y="0.5" width="339" height="59" rx="10.5" fill="none" stroke="#ecd08a" stroke-width="1" opacity="0.9"/>
+      <rect x="2" y="2" width="336" height="56" rx="9" fill="none" stroke="#3a2c14" stroke-width="2"/>
+      <rect x="3.75" y="3.75" width="332.5" height="52.5" rx="8" fill="url(#g-gold-sheen)" stroke="#3a2c14" stroke-width="1.5"/>
+    </g>
+    <rect x="5" y="5" width="330" height="50" rx="7.5" fill="url(#r-gold-core)"/>
+    <rect x="6" y="5.5" width="328" height="20" rx="7" fill="url(#g-hi-top)"/>
+    <rect x="6" y="37" width="328" height="17.5" rx="7" fill="url(#g-shade-bottom)" opacity="0.6"/>
+    <path d="M14 6.6 H326" stroke="#fff3cf" stroke-width="1" opacity="0.6" fill="none"/>
+    <path d="M14 53.4 H326" stroke="#3a2c14" stroke-width="1" opacity="0.7" fill="none"/>
+    <!-- end filigree -->
+    <path d="M14 30 H34 M306 30 H326" stroke="#8a6d35" stroke-width="1" opacity="0.8"/>
+    <path d="M24 30 m-4.6 0 L24 25.4 L28.6 30 L24 34.6 Z" fill="#7c130d" stroke="#3a2c14" stroke-width="0.8"/>
+    <circle cx="24" cy="30" r="1.3" fill="#ecd08a"/>
+    <path d="M316 30 m-4.6 0 L316 25.4 L320.6 30 L316 34.6 Z" fill="#7c130d" stroke="#3a2c14" stroke-width="0.8"/>
+    <circle cx="316" cy="30" r="1.3" fill="#ecd08a"/>
+  </symbol>
+
+  <!-- ================================================================
+       ui-divider-diamond : 320x24 horizontal rule, tapered gold lines
+       meeting a faceted center diamond with flanking studs.
+       ================================================================ -->
+  <symbol id="ui-divider-diamond" viewBox="0 0 320 24">
+    <rect x="6" y="11" width="132" height="2" fill="url(#g-rule-l)"/>
+    <rect x="182" y="11" width="132" height="2" fill="url(#g-rule-r)"/>
+    <rect x="6" y="13.4" width="132" height="1" fill="#3a2c14" opacity="0.7"/>
+    <rect x="182" y="13.4" width="132" height="1" fill="#3a2c14" opacity="0.7"/>
+    <path d="M160 3.5 L168.5 12 L160 20.5 L151.5 12 Z" fill="url(#g-gold-v)" stroke="#3a2c14" stroke-width="1.2"/>
+    <path d="M160 7 L165 12 L160 17 L155 12 Z" fill="#7c130d" stroke="#ecd08a" stroke-width="0.7"/>
+    <circle cx="160" cy="12" r="1.5" fill="#ecd08a"/>
+    <use href="#d-diamond-sm" x="143" y="12"/>
+    <use href="#d-diamond-sm" x="177" y="12"/>
+  </symbol>
+
+  <!-- ================================================================
+       ui-divider-scroll : 320x28 horizontal rule variant with mirrored
+       scrollwork curls around a small center stud.
+       ================================================================ -->
+  <symbol id="ui-divider-scroll" viewBox="0 0 320 28">
+    <rect x="6" y="13" width="112" height="2" fill="url(#g-rule-l)"/>
+    <rect x="202" y="13" width="112" height="2" fill="url(#g-rule-r)"/>
+    <path d="M120 14 C132 14 138 8 146 8 C152 8 152.5 14.5 147.5 14.5 C144 14.5 144.4 10.4 147 10.6" fill="none" stroke="url(#g-gold-h)" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M200 14 C188 14 182 20 174 20 C168 20 167.5 13.5 172.5 13.5 C176 13.5 175.6 17.6 173 17.4" fill="none" stroke="url(#g-gold-h)" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M124 17.5 C130 17.5 133 20.5 138 20.5" fill="none" stroke="#8a6d35" stroke-width="1.1" opacity="0.85" stroke-linecap="round"/>
+    <path d="M196 10.5 C190 10.5 187 7.5 182 7.5" fill="none" stroke="#8a6d35" stroke-width="1.1" opacity="0.85" stroke-linecap="round"/>
+    <path d="M160 8.4 L165.6 14 L160 19.6 L154.4 14 Z" fill="url(#g-gold-v)" stroke="#3a2c14" stroke-width="1"/>
+    <circle cx="160" cy="14" r="1.4" fill="#fff3cf" opacity="0.9"/>
+  </symbol>
+
+  <!-- ================================================================
+       ui-nameplate : 420x64 ribbon banner with pointed ends and gold
+       double trim, for floating character names.
+       ================================================================ -->
+  <symbol id="ui-nameplate" viewBox="0 0 420 64">
+    <g filter="url(#f-drop)">
+      <path d="M12 32 L48 9 H372 L408 32 L372 55 H48 Z" fill="url(#g-panel-dark)" stroke="#3a2c14" stroke-width="3" stroke-linejoin="round"/>
+    </g>
+    <path d="M19 32 L50 12.5 H370 L401 32 L370 51.5 H50 Z" fill="none" stroke="url(#g-gold-v)" stroke-width="2"/>
+    <path d="M26 32 L52.5 15.5 H367.5 L394 32 L367.5 48.5 H52.5 Z" fill="none" stroke="#8a6d35" stroke-width="1" opacity="0.9"/>
+    <!-- ribbon fold shading at the points -->
+    <path d="M48 9 L27 32 L48 55 L56 32 Z" fill="#000000" opacity="0.28"/>
+    <path d="M372 9 L393 32 L372 55 L364 32 Z" fill="#000000" opacity="0.28"/>
+    <!-- top sheen -->
+    <path d="M52 13.5 H368" stroke="#ecd08a" stroke-width="1" opacity="0.35" fill="none"/>
+    <rect x="56" y="13" width="308" height="14" fill="url(#g-hi-top)" opacity="0.35"/>
+    <!-- tip finials -->
+    <path d="M12 32 L19 25 L26 32 L19 39 Z" fill="url(#g-gold-v)" stroke="#3a2c14" stroke-width="1"/>
+    <path d="M394 32 L401 25 L408 32 L401 39 Z" fill="url(#g-gold-v)" stroke="#3a2c14" stroke-width="1"/>
+    <circle cx="19" cy="32" r="1.4" fill="#7c130d"/>
+    <circle cx="401" cy="32" r="1.4" fill="#7c130d"/>
+    <!-- band studs -->
+    <use href="#d-rivet" x="60" y="32"/>
+    <use href="#d-rivet" x="360" y="32"/>
+  </symbol>
+
+  <!-- ================================================================
+       ui-search-recess : 316x36 sunken input-well frame with etched
+       magnifier at left. Place a transparent <input> on top.
+       ================================================================ -->
+  <symbol id="ui-search-recess" viewBox="0 0 316 36">
+    <rect x="1" y="1" width="314" height="34" rx="7" fill="none" stroke="#8a6d35" stroke-width="1" opacity="0.55"/>
+    <rect x="2.5" y="2.5" width="311" height="31" rx="6" fill="url(#g-recess)" stroke="#3a2c14" stroke-width="1.5"/>
+    <!-- recess shadow (top/left dark, bottom light) -->
+    <path d="M9 5.5 H307" stroke="#000000" stroke-width="2" opacity="0.55" fill="none" filter="url(#f-soft)"/>
+    <path d="M5.5 9 V27" stroke="#000000" stroke-width="2" opacity="0.4" fill="none" filter="url(#f-soft)"/>
+    <path d="M9 32.6 H307" stroke="#c9a457" stroke-width="1" opacity="0.28" fill="none"/>
+    <!-- etched magnifier -->
+    <g stroke="#8a6d35" stroke-width="1.8" fill="none" opacity="0.85">
+      <circle cx="18" cy="16.5" r="5.2"/>
+      <path d="M22 20.5 L27 25.5"/>
+    </g>
+    <use href="#d-diamond-sm" x="303" y="18"/>
+  </symbol>
+
+  <!-- ================================================================
+       ui-section-header : 316x30 collapsible section header bar with
+       gold tint fill, trim border, left diamond and minus toggle.
+       ================================================================ -->
+  <symbol id="ui-section-header" viewBox="0 0 316 30">
+    <rect x="1.25" y="1.25" width="313.5" height="27.5" rx="5.5" fill="url(#g-header-tint)" stroke="#8a6d35" stroke-width="1.5"/>
+    <rect x="3.5" y="3.5" width="309" height="23" rx="4" fill="none" stroke="#ecd08a" stroke-width="0.75" opacity="0.3"/>
+    <path d="M8 2.4 H308" stroke="#ecd08a" stroke-width="1" opacity="0.3" fill="none"/>
+    <use href="#d-diamond-sm" x="15" y="15"/>
+    <!-- minus toggle -->
+    <rect x="291.5" y="7.5" width="15" height="15" rx="3" fill="#101014" stroke="#8a6d35" stroke-width="1"/>
+    <path d="M295 15 H303" stroke="#ecd08a" stroke-width="1.6" stroke-linecap="round"/>
+    <!-- corner studs -->
+    <circle cx="7" cy="7" r="1.3" fill="#c9a457" opacity="0.8"/>
+    <circle cx="7" cy="23" r="1.3" fill="#c9a457" opacity="0.8"/>
+    <circle cx="283" cy="15" r="1.3" fill="#c9a457" opacity="0.5"/>
+  </symbol>
+</svg>

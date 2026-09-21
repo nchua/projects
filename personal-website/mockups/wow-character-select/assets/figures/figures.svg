@@ -1,0 +1,345 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <!--
+    Campfire figure sprite (original art) - higher-fidelity alternates for the
+    four silhouettes in mockups/wow-character-select/index.html.
+
+    Each symbol uses viewBox "-120 -280 240 300": feet at local y=0, heads
+    around y=-200..-246, so a symbol drops into the existing scene slots
+    (translate(480,790), translate(648,756) scale(.9), translate(952,756)
+    scale(.93), translate(1120,790)) at scale 1.
+
+    Fire in the scene sits at x=800, therefore:
+      fig-knight, fig-chronicler  -> warm rim light on their RIGHT (+x) side
+      fig-artificer, fig-athlete  -> warm rim light on their LEFT (-x) side
+
+    Rim palette: #f4a24b / #ffd166 at 40-70% opacity.
+    Body masses: #10131f family. One accent per figure:
+      knight #7d2230, chronicler #6fe3d2, artificer #ff9d3f, athlete #a3323c.
+  -->
+
+  <!-- ============ KNIGHT : Revenue Strategist ============ -->
+  <!-- Weight on right leg, right gauntlet resting on a planted sword,
+       left hand at the belt, cape trailing away from the fire. -->
+  <symbol id="fig-knight" viewBox="-120 -280 240 300">
+    <!-- ground contact -->
+    <ellipse cx="2" cy="-3" rx="56" ry="9" fill="#000000" opacity="0.32"/>
+    <ellipse cx="2" cy="-3" rx="34" ry="6" fill="#000000" opacity="0.25"/>
+    <!-- cape, trailing away from the fire -->
+    <path d="M-12 -188 C-54 -166 -70 -94 -64 -8 L-28 -6 C-44 -76 -40 -146 -4 -184 Z" fill="#141021"/>
+    <path d="M-50 -140 C-56 -100 -57 -58 -52 -14" stroke="#0c0a16" stroke-width="5" fill="none" opacity="0.8"/>
+    <path d="M-36 -120 C-40 -88 -41 -52 -38 -12" stroke="#0c0a16" stroke-width="4" fill="none" opacity="0.6"/>
+    <path d="M-64 -8 L-58 -36 C-51 -24 -44 -15 -37 -8 Z" fill="#7d2230" opacity="0.9"/>
+    <path d="M-64 -8 L-60 -26 C-56 -19 -52 -13 -48 -8 Z" fill="#a3323c" opacity="0.55"/>
+    <!-- legs: left relaxed, right bearing weight -->
+    <path d="M-24 -104 L-8 -102 L-14 -50 L-30 -52 Z" fill="#12151f"/>
+    <path d="M-30 -52 L-15 -50 L-21 -8 L-33 -8 Z" fill="#10131f"/>
+    <path d="M6 -102 L22 -104 L24 -52 L10 -50 Z" fill="#13161f"/>
+    <path d="M11 -52 L25 -52 L24 -8 L12 -8 Z" fill="#10131f"/>
+    <rect x="-42" y="-9" width="27" height="10" rx="4" fill="#0d1019"/>
+    <rect x="8" y="-9" width="29" height="10" rx="4" fill="#0d1019"/>
+    <circle cx="-22" cy="-51" r="7" fill="#1a2033"/>
+    <circle cx="18" cy="-52" r="7" fill="#1a2033"/>
+    <path d="M25 -50 L24 -10" stroke="#f4a24b" stroke-width="1.6" fill="none" opacity="0.5"/>
+    <line x1="24" y1="-4" x2="36" y2="-4" stroke="#f4a24b" stroke-width="1.2" opacity="0.4"/>
+    <!-- faulds / tassets -->
+    <path d="M-27 -108 L27 -108 L22 -76 L-22 -76 Z" fill="#151a2b"/>
+    <path d="M-25 -98 L25 -98" stroke="#0d1019" stroke-width="2"/>
+    <path d="M-23 -87 L23 -87" stroke="#0d1019" stroke-width="2"/>
+    <path d="M26 -106 L22 -78" stroke="#f4a24b" stroke-width="1.4" fill="none" opacity="0.45"/>
+    <!-- breastplate -->
+    <path d="M-28 -180 C-31 -152 -29 -126 -23 -106 L23 -106 C29 -126 31 -152 28 -180 Z" fill="#171c2e"/>
+    <path d="M-25 -136 C-9 -128 9 -128 25 -136" stroke="#0e1220" stroke-width="2.2" fill="none"/>
+    <path d="M-23 -122 C-8 -116 8 -116 23 -122" stroke="#0e1220" stroke-width="1.8" fill="none" opacity="0.8"/>
+    <circle cx="0" cy="-148" r="4.5" fill="#ffd166" opacity="0.85"/>
+    <path d="M27 -178 C30 -152 28 -126 22 -108" stroke="#f4a24b" stroke-width="2" fill="none" opacity="0.6"/>
+    <!-- belt and pouches -->
+    <rect x="-25" y="-112" width="50" height="8" rx="3" fill="#241a10"/>
+    <rect x="-5" y="-111" width="10" height="6" rx="1" fill="#6b5624"/>
+    <rect x="-22" y="-104" width="11" height="13" rx="3" fill="#1c150d"/>
+    <path d="M-22 -99 L-11 -99" stroke="#0f0a06" stroke-width="1.5"/>
+    <rect x="12" y="-104" width="10" height="11" rx="3" fill="#1c150d"/>
+    <!-- gorget and pauldrons (layered plates) -->
+    <rect x="-13" y="-194" width="26" height="12" rx="4" fill="#1a2033"/>
+    <ellipse cx="-34" cy="-174" rx="15" ry="11" fill="#1a2033"/>
+    <path d="M-45 -168 L-23 -168 L-26 -158 L-42 -158 Z" fill="#151a2b"/>
+    <path d="M-43 -158 L-27 -158 L-30 -149 L-40 -149 Z" fill="#12151f"/>
+    <ellipse cx="34" cy="-174" rx="15" ry="11" fill="#1e2438"/>
+    <path d="M23 -168 L45 -168 L42 -158 L26 -158 Z" fill="#171c2e"/>
+    <path d="M27 -158 L43 -158 L40 -149 L30 -149 Z" fill="#151a2b"/>
+    <path d="M22 -182 C32 -188 44 -184 48 -173" stroke="#ffd166" stroke-width="1.8" fill="none" opacity="0.6"/>
+    <!-- left arm, hand at belt -->
+    <path d="M-36 -166 C-42 -150 -42 -136 -38 -122" stroke="#12151f" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <path d="M-38 -122 C-34 -112 -28 -106 -22 -104" stroke="#10131f" stroke-width="10" stroke-linecap="round" fill="none"/>
+    <circle cx="-21" cy="-103" r="6" fill="#12151f"/>
+    <!-- right arm, down to the sword -->
+    <path d="M36 -166 C43 -150 45 -132 45 -118" stroke="#12151f" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <path d="M45 -118 C45 -112 45 -108 44.5 -106" stroke="#10131f" stroke-width="10" stroke-linecap="round" fill="none"/>
+    <!-- planted sword -->
+    <circle cx="44.5" cy="-101" r="4" fill="#6b5624"/>
+    <rect x="42" y="-99" width="5.5" height="11" fill="#241708"/>
+    <rect x="31" y="-89" width="27" height="5.5" rx="2.5" fill="#6b5624"/>
+    <polygon points="41.5,-83 48,-83 47,-16 44.7,-5 42.5,-16" fill="#39404f" stroke="#98a0b5" stroke-width="0.7"/>
+    <line x1="44.8" y1="-80" x2="44.8" y2="-18" stroke="#242a36" stroke-width="1"/>
+    <line x1="47.3" y1="-78" x2="46.4" y2="-22" stroke="#ffd166" stroke-width="1" opacity="0.5"/>
+    <circle cx="44.5" cy="-104" r="6.5" fill="#1a2033"/>
+    <path d="M50 -108 C51 -105 51 -102 49 -99" stroke="#f4a24b" stroke-width="1.2" fill="none" opacity="0.6"/>
+    <!-- helmet with crimson plume -->
+    <path d="M0 -240 C-14 -247 -28 -243 -38 -232 C-26 -235 -12 -234 -2 -230 Z" fill="#5e1a25"/>
+    <path d="M2 -246 C-12 -254 -32 -250 -46 -235 C-31 -240 -15 -239 -3 -233 Z" fill="#7d2230"/>
+    <path d="M-3 -234 L2 -248 L7 -234 Z" fill="#1a2033"/>
+    <path d="M-15 -212 C-15 -233 15 -233 15 -212 L14 -197 C8 -190 -8 -190 -14 -197 Z" fill="#171c2e"/>
+    <line x1="-9" y1="-215" x2="10" y2="-215" stroke="#f4a24b" stroke-width="2.4" opacity="0.85"/>
+    <line x1="-6" y1="-207" x2="7" y2="-207" stroke="#f4a24b" stroke-width="1.2" opacity="0.35"/>
+    <path d="M14 -212 C15 -223 11 -229 4 -232" stroke="#ffd166" stroke-width="1.6" fill="none" opacity="0.65"/>
+    <path d="M-11 -196 C-4 -192 6 -192 12 -196" stroke="#0e1220" stroke-width="1.5" fill="none" opacity="0.7"/>
+  </symbol>
+
+  <!-- ============ CHRONICLER : robed scribe ============ -->
+  <!-- Hooded robe, tall quill-staff in the raised right hand (fire side),
+       floating open book and teal runes on the left. -->
+  <symbol id="fig-chronicler" viewBox="-120 -280 240 300">
+    <!-- ground contact -->
+    <ellipse cx="0" cy="-3" rx="50" ry="8" fill="#000000" opacity="0.3"/>
+    <ellipse cx="0" cy="-3" rx="30" ry="5" fill="#000000" opacity="0.22"/>
+    <!-- robe mass -->
+    <path d="M0 -214 C-30 -206 -44 -162 -48 -98 C-52 -52 -50 -20 -46 -3 L46 -3 C50 -20 52 -52 48 -98 C44 -162 30 -206 0 -214 Z" fill="#141026"/>
+    <!-- uneven under-hem -->
+    <path d="M-46 -3 L-38 -15 L-30 -3 L-21 -13 L-11 -3 L0 -14 L10 -3 L20 -12 L30 -3 L38 -14 L46 -3 Z" fill="#0c0a1c"/>
+    <!-- long fold shadows -->
+    <path d="M-20 -182 C-26 -122 -28 -60 -26 -8" stroke="#0c0a1c" stroke-width="6" fill="none" opacity="0.8"/>
+    <path d="M8 -172 C12 -112 14 -54 12 -8" stroke="#0c0a1c" stroke-width="5" fill="none" opacity="0.7"/>
+    <path d="M-4 -160 C-6 -110 -6 -60 -5 -12" stroke="#0c0a1c" stroke-width="3.5" fill="none" opacity="0.55"/>
+    <!-- fire-side robe rim -->
+    <path d="M34 -178 C44 -132 48 -70 46 -8" stroke="#f4a24b" stroke-width="2" fill="none" opacity="0.5"/>
+    <!-- boot tip -->
+    <ellipse cx="16" cy="-3" rx="10" ry="5" fill="#0a0816"/>
+    <!-- shoulder mantle with faint trim -->
+    <path d="M-26 -198 C-10 -206 10 -206 26 -198 L30 -172 C10 -182 -10 -182 -30 -172 Z" fill="#1a1530"/>
+    <path d="M-29 -173 C-10 -183 10 -183 29 -173" stroke="#6fe3d2" stroke-width="1.2" fill="none" opacity="0.35"/>
+    <!-- hood and shadowed face -->
+    <path d="M-4 -235 C-14 -242 -21 -238 -23 -229 C-16 -232 -9 -230 -3 -227 Z" fill="#181330"/>
+    <circle cx="0" cy="-213" r="22" fill="#181330"/>
+    <circle cx="5" cy="-210" r="13" fill="#0a0818"/>
+    <path d="M10 -219 C15 -215 16 -207 12 -201" stroke="#6fe3d2" stroke-width="1.5" fill="none" opacity="0.45"/>
+    <path d="M14 -229 C22 -223 24 -213 20 -203" stroke="#ffd166" stroke-width="1.5" fill="none" opacity="0.55"/>
+    <!-- rope belt, tassels, ink bottle -->
+    <line x1="-32" y1="-104" x2="32" y2="-107" stroke="#6b5624" stroke-width="3.5" opacity="0.85"/>
+    <circle cx="6" cy="-104" r="3" fill="#6b5624"/>
+    <line x1="6" y1="-102" x2="4" y2="-84" stroke="#6b5624" stroke-width="2" opacity="0.75"/>
+    <line x1="9" y1="-102" x2="11" y2="-88" stroke="#6b5624" stroke-width="2" opacity="0.75"/>
+    <circle cx="4" cy="-82" r="2" fill="#6b5624" opacity="0.85"/>
+    <circle cx="-6" cy="-96" r="5" fill="#100d20" stroke="#6fe3d2" stroke-width="0.7" opacity="0.85"/>
+    <!-- satchel and strap -->
+    <path d="M20 -190 L-33 -103" stroke="#221a35" stroke-width="5" opacity="0.9"/>
+    <rect x="-45" y="-104" width="20" height="16" rx="3" fill="#221a35"/>
+    <path d="M-45 -97 L-25 -97" stroke="#120e22" stroke-width="1.6"/>
+    <circle cx="-35" cy="-95" r="1.6" fill="#6b5624"/>
+    <!-- scroll tube on belt -->
+    <g transform="rotate(8 28 -92)">
+      <rect x="24" y="-102" width="7" height="21" rx="3" fill="#241708"/>
+      <line x1="24" y1="-97" x2="31" y2="-97" stroke="#6b5624" stroke-width="1.2" opacity="0.8"/>
+      <line x1="24" y1="-86" x2="31" y2="-86" stroke="#6b5624" stroke-width="1.2" opacity="0.8"/>
+    </g>
+    <!-- right arm raised, hanging sleeve, hand on quill-staff -->
+    <path d="M14 -158 C22 -144 28 -134 34 -124 L20 -112 C16 -128 13 -142 10 -156 Z" fill="#100d20"/>
+    <path d="M18 -160 C30 -152 38 -140 42 -127" stroke="#141026" stroke-width="13" stroke-linecap="round" fill="none"/>
+    <circle cx="43" cy="-124" r="5" fill="#0f0c1e"/>
+    <!-- tall quill staff with glowing feather -->
+    <line x1="46" y1="-250" x2="40" y2="-24" stroke="#221a10" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="56" cy="-256" r="14" fill="#6fe3d2" opacity="0.18"/>
+    <circle cx="56" cy="-256" r="6" fill="#6fe3d2" opacity="0.3"/>
+    <path d="M46 -250 C60 -272 72 -268 66 -246 C60 -230 50 -236 46 -250 Z" fill="#6fe3d2" opacity="0.9"/>
+    <path d="M52 -258 C57 -260 61 -258 63 -252" stroke="#b6f5ea" stroke-width="0.9" fill="none" opacity="0.8"/>
+    <path d="M50 -250 C55 -252 59 -250 61 -245" stroke="#b6f5ea" stroke-width="0.9" fill="none" opacity="0.7"/>
+    <!-- left arm reaching to the floating book -->
+    <path d="M-18 -158 C-28 -150 -36 -143 -42 -135" stroke="#141026" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <circle cx="-43" cy="-133" r="4.5" fill="#0f0c1e"/>
+    <!-- floating open book -->
+    <g transform="rotate(-12 -62 -150)">
+      <ellipse cx="-61" cy="-146" rx="20" ry="6" fill="#6fe3d2" opacity="0.14"/>
+      <rect x="-78" y="-163" width="34" height="24" rx="2" fill="#241b3a" stroke="#6fe3d2" stroke-width="0.9" opacity="0.95"/>
+      <line x1="-61" y1="-163" x2="-61" y2="-139" stroke="#6fe3d2" stroke-width="0.9" opacity="0.7"/>
+      <line x1="-74" y1="-156" x2="-64" y2="-156" stroke="#9c92c9" stroke-width="0.8" opacity="0.6"/>
+      <line x1="-74" y1="-151" x2="-64" y2="-151" stroke="#9c92c9" stroke-width="0.8" opacity="0.6"/>
+      <line x1="-58" y1="-156" x2="-48" y2="-156" stroke="#9c92c9" stroke-width="0.8" opacity="0.6"/>
+      <line x1="-58" y1="-149" x2="-48" y2="-149" stroke="#9c92c9" stroke-width="0.8" opacity="0.6"/>
+    </g>
+    <!-- floating teal runes -->
+    <circle cx="-48" cy="-192" r="7" fill="#6fe3d2" opacity="0.12"/>
+    <circle cx="-48" cy="-192" r="3.5" fill="none" stroke="#6fe3d2" stroke-width="1" opacity="0.8"/>
+    <line x1="-48" y1="-195" x2="-48" y2="-189" stroke="#6fe3d2" stroke-width="1" opacity="0.8"/>
+    <circle cx="-78" cy="-120" r="6" fill="#6fe3d2" opacity="0.12"/>
+    <path d="M-81 -117 L-78 -124 L-75 -117 Z" fill="none" stroke="#6fe3d2" stroke-width="1" opacity="0.75"/>
+    <circle cx="-33" cy="-228" r="6" fill="#6fe3d2" opacity="0.12"/>
+    <path d="M-36 -231 L-30 -225 M-36 -225 L-30 -231" stroke="#6fe3d2" stroke-width="1" opacity="0.75"/>
+    <circle cx="-63" cy="-176" r="1.5" fill="#6fe3d2" opacity="0.6"/>
+  </symbol>
+
+  <!-- ============ ARTIFICER : smith with hammer ============ -->
+  <!-- Stocky build, hammer shouldered on the right, tongs hanging from the
+       left fist over the fire side, ember goggles pushed onto the brow. -->
+  <symbol id="fig-artificer" viewBox="-120 -280 240 300">
+    <!-- ground contact -->
+    <ellipse cx="0" cy="-3" rx="54" ry="9" fill="#000000" opacity="0.32"/>
+    <ellipse cx="0" cy="-3" rx="32" ry="6" fill="#000000" opacity="0.24"/>
+    <ellipse cx="-28" cy="-3" rx="16" ry="4" fill="#ff9d3f" opacity="0.12"/>
+    <!-- legs: left planted, right stepped out -->
+    <path d="M-24 -98 L-8 -98 L-10 -50 L-26 -50 Z" fill="#15110c"/>
+    <path d="M-26 -50 L-11 -50 L-12 -8 L-26 -8 Z" fill="#120e09"/>
+    <path d="M8 -98 L24 -96 L28 -50 L14 -48 Z" fill="#15110c"/>
+    <path d="M15 -48 L29 -50 L34 -8 L22 -8 Z" fill="#120e09"/>
+    <rect x="-33" y="-9" width="26" height="10" rx="4" fill="#0d0a06"/>
+    <rect x="18" y="-9" width="28" height="10" rx="4" fill="#0d0a06"/>
+    <rect x="-28" y="-24" width="18" height="7" rx="2" fill="#1e160c"/>
+    <rect x="20" y="-24" width="18" height="7" rx="2" fill="#1e160c"/>
+    <path d="M-27 -48 L-27 -10" stroke="#f4a24b" stroke-width="1.5" fill="none" opacity="0.5"/>
+    <!-- broad torso -->
+    <path d="M-36 -160 L36 -160 L30 -96 L-30 -96 Z" fill="#191410"/>
+    <path d="M-36 -158 C-38 -136 -34 -112 -30 -98" stroke="#f4a24b" stroke-width="2" fill="none" opacity="0.6"/>
+    <!-- leather apron with straps, scorch, pocket -->
+    <path d="M-20 -152 L20 -152 L16 -40 L-16 -40 Z" fill="#261c12"/>
+    <line x1="-13" y1="-150" x2="-10" y2="-164" stroke="#2f2416" stroke-width="5"/>
+    <line x1="13" y1="-150" x2="10" y2="-164" stroke="#2f2416" stroke-width="5"/>
+    <path d="M-18 -128 L18 -128" stroke="#17100a" stroke-width="1.8" opacity="0.85"/>
+    <path d="M-17 -112 L17 -112" stroke="#17100a" stroke-width="1.5" opacity="0.7"/>
+    <ellipse cx="5" cy="-88" rx="7" ry="10" fill="#0f0b07" opacity="0.8"/>
+    <rect x="-12" y="-72" width="24" height="14" rx="2" fill="#1e150c"/>
+    <line x1="0" y1="-72" x2="0" y2="-58" stroke="#120c07" stroke-width="1.5"/>
+    <rect x="-13" y="-44" width="11" height="8" rx="2" fill="#261c12"/>
+    <rect x="3" y="-44" width="11" height="8" rx="2" fill="#261c12"/>
+    <path d="M-19 -150 C-21 -118 -20 -80 -17 -44" stroke="#f4a24b" stroke-width="1.3" fill="none" opacity="0.4"/>
+    <!-- tool belt -->
+    <rect x="-30" y="-101" width="60" height="9" rx="3" fill="#17110a"/>
+    <rect x="-5" y="-100" width="10" height="7" rx="1" fill="#6b5624"/>
+    <g transform="rotate(12 25 -88)">
+      <rect x="22" y="-96" width="5" height="17" rx="1.5" fill="#3a3f4a"/>
+      <circle cx="24.5" cy="-95" r="3" fill="none" stroke="#3a3f4a" stroke-width="2"/>
+    </g>
+    <rect x="-27" y="-93" width="9" height="12" rx="2" fill="#1c150d"/>
+    <!-- right arm shouldering the hammer -->
+    <ellipse cx="38" cy="-150" rx="12" ry="14" fill="#1a140d"/>
+    <path d="M40 -152 C48 -160 53 -170 57 -179" stroke="#191410" stroke-width="13" stroke-linecap="round" fill="none"/>
+    <line x1="58" y1="-182" x2="86" y2="-220" stroke="#2a1f12" stroke-width="8" stroke-linecap="round"/>
+    <line x1="61" y1="-190" x2="67" y2="-185" stroke="#17100a" stroke-width="2"/>
+    <line x1="65" y1="-195" x2="71" y2="-190" stroke="#17100a" stroke-width="2"/>
+    <line x1="69" y1="-200" x2="75" y2="-195" stroke="#17100a" stroke-width="2"/>
+    <circle cx="58" cy="-183" r="7" fill="#1c140b"/>
+    <!-- hammer head, aligned to the handle -->
+    <g transform="rotate(36 86 -224)">
+      <rect x="64" y="-237" width="44" height="26" rx="4" fill="#30343e"/>
+      <rect x="100" y="-235" width="8" height="22" rx="2" fill="#454b58"/>
+      <line x1="68" y1="-228" x2="98" y2="-228" stroke="#1b1e26" stroke-width="1.6"/>
+      <line x1="68" y1="-219" x2="98" y2="-219" stroke="#1b1e26" stroke-width="1.4" opacity="0.8"/>
+      <circle cx="73" cy="-224" r="1.8" fill="#565c6a"/>
+      <circle cx="93" cy="-224" r="1.8" fill="#565c6a"/>
+      <line x1="66" y1="-212" x2="106" y2="-212" stroke="#ff9d3f" stroke-width="1.6" opacity="0.5"/>
+    </g>
+    <!-- left arm (fire side): rolled sleeve, forge glove, tongs -->
+    <ellipse cx="-38" cy="-150" rx="12" ry="14" fill="#1e160c"/>
+    <path d="M-40 -144 C-44 -128 -46 -112 -44 -98" stroke="#191410" stroke-width="13" stroke-linecap="round" fill="none"/>
+    <path d="M-44 -98 C-44 -88 -42 -80 -40 -74" stroke="#241a0e" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <g transform="rotate(-8 -43 -82)">
+      <rect x="-52" y="-86" width="18" height="8" rx="3" fill="#2a1f12"/>
+    </g>
+    <circle cx="-40" cy="-72" r="7.5" fill="#1c140b"/>
+    <path d="M-48 -78 C-50 -74 -50 -69 -47 -66" stroke="#f4a24b" stroke-width="1.5" fill="none" opacity="0.6"/>
+    <line x1="-40" y1="-68" x2="-35" y2="-30" stroke="#2c2f38" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="-41" y1="-68" x2="-47" y2="-32" stroke="#2c2f38" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="-41" cy="-56" r="2.5" fill="#454b58"/>
+    <line x1="-35" y1="-30" x2="-38" y2="-25" stroke="#2c2f38" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-47" y1="-32" x2="-44" y2="-26" stroke="#2c2f38" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- drifting forge sparks -->
+    <circle cx="-52" cy="-64" r="1.8" fill="#ff9d3f" opacity="0.9"/>
+    <circle cx="-58" cy="-52" r="1.4" fill="#ffd166" opacity="0.8"/>
+    <circle cx="-48" cy="-42" r="1.2" fill="#ff9d3f" opacity="0.7"/>
+    <circle cx="-62" cy="-72" r="1" fill="#ffd166" opacity="0.6"/>
+    <!-- head: beard, cap, ember goggles -->
+    <circle cx="2" cy="-178" r="17" fill="#191410"/>
+    <path d="M-11 -172 C-12 -157 15 -157 14 -172 C8 -161 -4 -161 -11 -172 Z" fill="#120d08"/>
+    <path d="M-15 -184 C-14 -199 19 -199 19 -184 C10 -192 -6 -192 -15 -184 Z" fill="#241a0e"/>
+    <path d="M-14 -186 C-18 -184 -20 -180 -19 -175" stroke="#241a0e" stroke-width="3" fill="none"/>
+    <circle cx="-4" cy="-182" r="6" fill="#0c0a07" stroke="#ff9d3f" stroke-width="1.8" opacity="0.95"/>
+    <circle cx="10" cy="-182" r="6" fill="#0c0a07" stroke="#ff9d3f" stroke-width="1.8" opacity="0.95"/>
+    <line x1="1" y1="-183" x2="5" y2="-183" stroke="#ff9d3f" stroke-width="1.4" opacity="0.7"/>
+    <path d="M-8 -185 C-7 -186 -5 -187 -3 -186" stroke="#ffd166" stroke-width="1" fill="none" opacity="0.8"/>
+    <path d="M-14 -188 C-17 -180 -16 -170 -12 -164" stroke="#ffd166" stroke-width="1.5" fill="none" opacity="0.6"/>
+  </symbol>
+
+  <!-- ============ ATHLETE : tennis scholar-athlete ============ -->
+  <!-- Racket shouldered toward the fire, ball in the right hand, varsity
+       jacket with maroon collar/stripes, duffel with books at the right foot. -->
+  <symbol id="fig-athlete" viewBox="-120 -280 240 300">
+    <!-- ground contact -->
+    <ellipse cx="6" cy="-3" rx="56" ry="9" fill="#000000" opacity="0.3"/>
+    <ellipse cx="-6" cy="-3" rx="28" ry="5" fill="#000000" opacity="0.22"/>
+    <!-- duffel bag with strapped books -->
+    <ellipse cx="46" cy="-11" rx="25" ry="11.5" fill="#1c150d"/>
+    <path d="M26 -15 Q46 -31 66 -14" stroke="#2a1f12" stroke-width="4" fill="none"/>
+    <path d="M28 -16 Q46 -29 64 -15" stroke="#d8c493" stroke-width="0.8" fill="none" opacity="0.4"/>
+    <path d="M36 -20 C38 -30 52 -30 54 -20" stroke="#2a1f12" stroke-width="3" fill="none"/>
+    <circle cx="58" cy="-11" r="4.5" fill="#a3323c" opacity="0.85"/>
+    <line x1="24" y1="-9" x2="66" y2="-8" stroke="#0f0b07" stroke-width="1.4" opacity="0.7"/>
+    <rect x="30" y="-31" width="18" height="6" rx="1" fill="#3b2f4d"/>
+    <rect x="32" y="-36" width="15" height="5" rx="1" fill="#6b5624"/>
+    <line x1="39" y1="-36" x2="39" y2="-25" stroke="#17100a" stroke-width="1.5"/>
+    <path d="M23 -20 C25 -14 28 -9 33 -6" stroke="#f4a24b" stroke-width="1.3" fill="none" opacity="0.45"/>
+    <!-- legs: right bearing weight, left relaxed -->
+    <path d="M-22 -98 L-8 -98 L-12 -50 L-26 -50 Z" fill="#14171f"/>
+    <path d="M-26 -50 L-13 -50 L-18 -8 L-29 -8 Z" fill="#10131f"/>
+    <path d="M8 -98 L22 -98 L20 -50 L10 -50 Z" fill="#14171f"/>
+    <path d="M10 -50 L20 -50 L20 -8 L10 -8 Z" fill="#10131f"/>
+    <path d="M-24 -94 L-28 -10" stroke="#a3323c" stroke-width="1.5" fill="none" opacity="0.6"/>
+    <!-- sneakers with pale soles -->
+    <rect x="-39" y="-8" width="26" height="9" rx="4" fill="#10131f"/>
+    <line x1="-39" y1="-1" x2="-13" y2="-1" stroke="#d8c493" stroke-width="1.6" opacity="0.55"/>
+    <ellipse cx="-37" cy="-4" rx="4" ry="3" fill="#191d29"/>
+    <rect x="5" y="-8" width="27" height="9" rx="4" fill="#10131f"/>
+    <line x1="5" y1="-1" x2="32" y2="-1" stroke="#d8c493" stroke-width="1.6" opacity="0.55"/>
+    <path d="M-28 -48 L-31 -10" stroke="#f4a24b" stroke-width="1.4" fill="none" opacity="0.45"/>
+    <!-- varsity jacket -->
+    <path d="M-26 -166 L26 -166 L22 -98 L-22 -98 Z" fill="#161a24"/>
+    <line x1="0" y1="-164" x2="0" y2="-104" stroke="#0d1019" stroke-width="2"/>
+    <rect x="-22" y="-104" width="44" height="6" rx="2" fill="#10131f"/>
+    <line x1="-22" y1="-101" x2="22" y2="-101" stroke="#a3323c" stroke-width="2" opacity="0.9"/>
+    <path d="M-12 -166 L0 -156 L12 -166 L8 -173 L-8 -173 Z" fill="#a3323c" opacity="0.9"/>
+    <rect x="-17" y="-153" width="10" height="12" rx="1" fill="#a3323c" opacity="0.9"/>
+    <path d="M-15 -144 L-12 -151 L-9 -144" stroke="#e8e2d0" stroke-width="1.1" fill="none" opacity="0.85"/>
+    <path d="M-26 -164 C-28 -144 -26 -118 -22 -100" stroke="#f4a24b" stroke-width="2" fill="none" opacity="0.55"/>
+    <!-- left arm raised with racket (fire side) -->
+    <path d="M-24 -156 C-32 -164 -40 -176 -46 -188" stroke="#161a24" stroke-width="11" stroke-linecap="round" fill="none"/>
+    <line x1="-29" y1="-165" x2="-23" y2="-160" stroke="#a3323c" stroke-width="2" opacity="0.85"/>
+    <line x1="-32" y1="-169" x2="-26" y2="-164" stroke="#a3323c" stroke-width="2" opacity="0.85"/>
+    <circle cx="-47" cy="-190" r="5.5" fill="#12151f"/>
+    <!-- racket: wrapped grip, frame, strings -->
+    <line x1="-46" y1="-188" x2="-58" y2="-208" stroke="#2a1f12" stroke-width="5" stroke-linecap="round"/>
+    <line x1="-49" y1="-192" x2="-46" y2="-194" stroke="#17100a" stroke-width="1.5"/>
+    <line x1="-51" y1="-196" x2="-48" y2="-198" stroke="#17100a" stroke-width="1.5"/>
+    <line x1="-53" y1="-200" x2="-50" y2="-202" stroke="#17100a" stroke-width="1.5"/>
+    <g transform="rotate(-30 -70 -226)">
+      <ellipse cx="-70" cy="-226" rx="19" ry="25" fill="rgba(20,23,31,0.3)" stroke="#2a1f12" stroke-width="4.5"/>
+      <ellipse cx="-70" cy="-226" rx="15.5" ry="21.5" fill="none" stroke="#3d2c18" stroke-width="1.4" opacity="0.8"/>
+      <line x1="-70" y1="-246" x2="-70" y2="-206" stroke="#d8c493" stroke-width="0.9" opacity="0.6"/>
+      <line x1="-77" y1="-243" x2="-77" y2="-210" stroke="#d8c493" stroke-width="0.9" opacity="0.55"/>
+      <line x1="-63" y1="-243" x2="-63" y2="-210" stroke="#d8c493" stroke-width="0.9" opacity="0.55"/>
+      <line x1="-85" y1="-233" x2="-55" y2="-233" stroke="#d8c493" stroke-width="0.9" opacity="0.55"/>
+      <line x1="-86" y1="-226" x2="-54" y2="-226" stroke="#d8c493" stroke-width="0.9" opacity="0.55"/>
+      <line x1="-85" y1="-219" x2="-55" y2="-219" stroke="#d8c493" stroke-width="0.9" opacity="0.55"/>
+      <path d="M-87 -232 C-89 -224 -88 -216 -84 -210" stroke="#f4a24b" stroke-width="1.2" fill="none" opacity="0.5"/>
+    </g>
+    <path d="M-64 -206 L-59 -210 M-76 -208 L-58 -207" stroke="#2a1f12" stroke-width="2.5" opacity="0.9"/>
+    <!-- right arm down with tennis ball -->
+    <path d="M24 -156 C30 -142 32 -124 32 -110" stroke="#14171f" stroke-width="11" stroke-linecap="round" fill="none"/>
+    <line x1="28" y1="-164" x2="22" y2="-160" stroke="#a3323c" stroke-width="2" opacity="0.7"/>
+    <circle cx="32" cy="-108" r="5.5" fill="#10131f"/>
+    <circle cx="33" cy="-99" r="5" fill="#b9c95a" opacity="0.9"/>
+    <path d="M29 -101 C32 -99 34 -99 37 -101" stroke="#e6eda0" stroke-width="0.8" fill="none" opacity="0.8"/>
+    <!-- head with maroon headband -->
+    <circle cx="0" cy="-184" r="15.5" fill="#14171f"/>
+    <path d="M-13 -192 C-8 -201 8 -201 13 -191 C6 -197 -6 -197 -13 -192 Z" fill="#0e1119"/>
+    <rect x="-16" y="-193" width="32" height="6" rx="3" fill="#a3323c"/>
+    <path d="M15 -190 C22 -188 26 -184 28 -178" stroke="#a3323c" stroke-width="3" fill="none" opacity="0.9"/>
+    <path d="M15 -188 C20 -185 23 -181 24 -176" stroke="#7d2230" stroke-width="2.5" fill="none" opacity="0.85"/>
+    <path d="M-13 -192 C-16 -184 -15 -175 -11 -170" stroke="#ffd166" stroke-width="1.5" fill="none" opacity="0.6"/>
+    <path d="M-9 -172 C-4 -169 4 -169 9 -172" stroke="#0d1019" stroke-width="1.4" fill="none" opacity="0.7"/>
+  </symbol>
+</svg>
