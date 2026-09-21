@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nick Chua — Character Select (Mockup)</title>
+<meta name="description" content="Mockup: nickchua.me reimagined as an MMO character-select screen. Not live; for design review only.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep: #070b16;
+  --bg-mid: #101830;
+  --bg-high: #1b2545;
+  --gold: #c9a457;
+  --gold-bright: #ecd08a;
+  --gold-dim: rgba(138, 109, 53, 0.5);
+  --gold-border: rgba(201, 164, 87, 0.5);
+  --text: #cfd6e4;
+  --text-muted: #9aa3b8;
+  --text-faint: #626b80;
+  --panel: linear-gradient(180deg, rgba(19, 26, 44, 0.94), rgba(11, 16, 29, 0.94));
+  --parchment: linear-gradient(180deg, #efe3c2, #e2d1a6);
+  --parchment-border: #8a6d35;
+  --ink: #2b2214;
+  --display: 'Cinzel', Georgia, serif;
+  --body: Georgia, 'Times New Roman', serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  background: radial-gradient(1100px 700px at 50% 30%, var(--bg-high) 0%, var(--bg-mid) 48%, var(--bg-deep) 100%) fixed var(--bg-deep);
+  color: var(--text);
+  font-family: var(--body);
+}
+a { color: #e0c885; text-decoration: none; }
+a:hover { color: #f6e3a8; }
+button { font-family: inherit; }
+
+.screen { display: none; min-height: 100vh; }
+.screen.active { display: block; }
+
+/* ---------- shared bits ---------- */
+.chip {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 8px 14px; border: 1px solid var(--gold-dim); border-radius: 4px;
+  background: rgba(9, 13, 24, 0.7);
+  font-family: var(--display); font-size: 11px; letter-spacing: 2px; color: #c9b58a;
+}
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; background: #6fbf5f; box-shadow: 0 0 8px rgba(111,191,95,0.8); }
+.ghost-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 11px 18px; border: 1px solid rgba(201, 164, 87, 0.4); border-radius: 4px;
+  background: rgba(9, 13, 24, 0.6); cursor: pointer;
+  font-family: var(--display); font-size: 12px; letter-spacing: 2px; color: #c9b58a;
+}
+.ghost-btn:hover { border-color: var(--gold); color: #f6e3a8; }
+.gold-rule { height: 1px; background: linear-gradient(90deg, var(--gold-border), rgba(201,164,87,0)); }
+
+/* ---------- select screen layout ---------- */
+.select-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-rows: auto 1fr auto;
+  gap: 0 32px;
+  min-height: 100vh;
+  padding: 24px 40px 32px;
+  max-width: 1560px; margin: 0 auto;
+}
+.top-bar { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; }
+
+.stage { display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 16px; min-width: 0; }
+.stage h1 {
+  margin: 12px 0 0; font-family: var(--display); font-weight: 700;
+  font-size: clamp(30px, 4.5vw, 52px); letter-spacing: 0.12em; text-align: center;
+  color: var(--gold-bright);
+  text-shadow: 0 0 28px rgba(230,200,120,0.35), 0 2px 4px rgba(0,0,0,0.85);
+}
+.stage .realm { font-family: var(--display); font-size: 13px; letter-spacing: 4px; color: var(--text-muted); }
+.stage .class-line { font-size: 14px; font-style: italic; color: #b7a06a; }
+.emblem { width: min(300px, 60vw); height: auto; margin-top: 4px; }
+
+.desc-panel {
+  width: min(560px, 100%);
+  margin-top: 10px; padding: 20px 24px;
+  background: var(--panel); border: 1px solid var(--gold-border); border-radius: 4px;
+  box-shadow: 0 10px 34px rgba(0,0,0,0.55);
+  display: flex; flex-direction: column; gap: 11px;
+}
+.desc-panel .label { font-family: var(--display); font-size: 11px; letter-spacing: 3px; color: #8a93a8; }
+.desc-panel .title { font-family: var(--display); font-size: 19px; font-weight: 600; color: #e6cd8f; }
+.desc-panel p { margin: 0; font-size: 14px; line-height: 1.65; color: #c3cadb; }
+.desc-panel dl { margin: 0; display: flex; flex-direction: column; gap: 7px; }
+.desc-panel dl div { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.desc-panel dt { color: #8a93a8; }
+.desc-panel dd { margin: 0; color: #d8c493; text-align: right; }
+
+.roster { display: flex; flex-direction: column; gap: 12px; padding-top: 8px; }
+.roster-head { display: flex; align-items: center; gap: 12px; }
+.roster-head .line { flex: 1; height: 1px; background: linear-gradient(90deg, rgba(201,164,87,0), rgba(201,164,87,0.6)); }
+.roster-head .line.rev { background: linear-gradient(90deg, rgba(201,164,87,0.6), rgba(201,164,87,0)); }
+.roster-head span:not(.line) { font-family: var(--display); font-size: 13px; letter-spacing: 3px; color: #c9b58a; white-space: nowrap; }
+.roster-list { display: flex; flex-direction: column; gap: 10px; }
+.char-card {
+  display: flex; flex-direction: column; gap: 3px; align-items: flex-start;
+  width: 100%; text-align: left; padding: 13px 16px; cursor: pointer; border-radius: 4px;
+  background: rgba(10, 14, 26, 0.55); border: 1px solid rgba(138, 109, 53, 0.35);
+  color: var(--text); transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+.char-card:hover { border-color: rgba(201, 164, 87, 0.7); }
+.char-card[aria-pressed="true"] {
+  background: linear-gradient(180deg, rgba(201,164,87,0.18), rgba(201,164,87,0.07));
+  border-color: var(--gold);
+  box-shadow: 0 0 18px rgba(201,164,87,0.25), inset 0 0 12px rgba(201,164,87,0.08);
+}
+.char-card .name { font-family: var(--display); font-size: 16px; font-weight: 600; letter-spacing: 1.5px; color: #e3cf96; }
+.char-card .cls { font-size: 12.5px; color: var(--text-muted); }
+.char-card .guild { font-size: 12px; color: #79839a; }
+.create-btn {
+  display: flex; align-items: center; justify-content: center; min-height: 46px;
+  border: 1px solid rgba(201, 164, 87, 0.55); border-radius: 4px;
+  background: rgba(201, 164, 87, 0.08);
+  font-family: var(--display); font-size: 13px; letter-spacing: 2.5px; color: #d8c493;
+}
+.roster .hint { text-align: center; font-size: 11px; color: var(--text-faint); }
+
+.bottom-bar {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding-top: 22px;
+}
+.enter-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: min(344px, 100%); min-height: 58px; cursor: pointer;
+  background: linear-gradient(180deg, #ecd08a 0%, #c9a457 48%, #9a7733 100%);
+  border: 1px solid #6f5624; border-radius: 6px;
+  box-shadow: 0 0 26px rgba(201,164,87,0.35), inset 0 1px 0 rgba(255,255,255,0.45);
+  font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: 4px;
+  color: #241a06; text-shadow: 0 1px 0 rgba(255,255,255,0.35);
+}
+.enter-btn:hover { filter: brightness(1.07); }
+.menu-links { display: flex; gap: 10px; }
+
+/* ---------- loading overlay ---------- */
+.loading {
+  position: fixed; inset: 0; z-index: 50; display: none;
+  flex-direction: column; align-items: center; justify-content: center; gap: 26px;
+  background: radial-gradient(900px 600px at 50% 40%, #141d38 0%, #0b1122 55%, #05080f 100%);
+  padding: 24px;
+}
+.loading.active { display: flex; }
+.loading .zone { font-family: var(--display); font-weight: 700; font-size: clamp(22px, 4vw, 40px); letter-spacing: 5px; color: var(--gold-bright); text-align: center; text-shadow: 0 0 24px rgba(230,200,120,0.35); }
+.loading .tip { max-width: 520px; text-align: center; font-size: 13.5px; font-style: italic; color: var(--text-muted); }
+.load-track { width: min(480px, 80vw); height: 14px; border: 1px solid var(--gold-border); border-radius: 8px; background: rgba(9,13,24,0.8); overflow: hidden; }
+.load-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #9a7733, #ecd08a); transition: width 0.15s linear; }
+
+/* ---------- detail screen ---------- */
+.detail-wrap { max-width: 1320px; margin: 0 auto; padding: 24px 40px 48px; }
+.detail-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid rgba(201,164,87,0.25); }
+.detail-top .zone-title { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.detail-top .zone-title .zt { font-family: var(--display); font-weight: 700; font-size: clamp(20px, 3vw, 32px); letter-spacing: 5px; color: var(--gold-bright); text-align: center; text-shadow: 0 0 22px rgba(230,200,120,0.3), 0 2px 4px rgba(0,0,0,0.8); }
+.detail-top .zone-title .zs { font-size: 13px; font-style: italic; color: var(--text-muted); text-align: center; }
+.detail-cols { display: grid; grid-template-columns: 420px minmax(0, 1fr) 372px; gap: 26px; padding-top: 26px; }
+
+.quest-log { background: var(--parchment); border: 2px solid var(--parchment-border); border-radius: 6px; box-shadow: 0 12px 34px rgba(0,0,0,0.55); color: var(--ink); align-self: start; }
+.quest-log header { padding: 14px 20px; border-bottom: 1px solid rgba(90,66,24,0.35); font-family: var(--display); font-size: 15px; font-weight: 700; letter-spacing: 3px; color: #5a4218; }
+.quest-log .ql-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; }
+.quest-log h3 { margin: 0; font-family: var(--display); font-size: 17px; color: #7a3b0a; }
+.quest-log .flavor { margin: 0; font-size: 13.5px; font-style: italic; line-height: 1.6; color: #4c3d22; }
+.quest-log .ql-label { font-size: 12px; letter-spacing: 2px; font-weight: 700; color: #5a4218; }
+.quest-log ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 9px; }
+.quest-log li { display: flex; gap: 9px; align-items: baseline; font-size: 13.5px; }
+.quest-log li .box { color: #7a6a3f; }
+.quest-log li.done { color: #556136; }
+.quest-log .ql-rule { height: 1px; background: rgba(90,66,24,0.3); }
+.quest-log .note { margin: 0; font-size: 12px; color: #6b5c38; }
+
+.dark-panel { padding: 20px 24px; background: var(--panel); border: 1px solid var(--gold-border); border-radius: 4px; box-shadow: 0 12px 34px rgba(0,0,0,0.55); display: flex; flex-direction: column; gap: 13px; align-self: start; }
+.dark-panel .label { font-family: var(--display); font-size: 12px; letter-spacing: 3px; color: #8a93a8; }
+.sheet-id { display: flex; align-items: center; gap: 16px; }
+.sheet-id .who { display: flex; flex-direction: column; gap: 3px; }
+.sheet-id .who .nm { font-family: var(--display); font-size: 20px; font-weight: 600; color: #e6cd8f; }
+.sheet-id .who .lv { font-size: 13px; color: var(--text-muted); }
+.kv { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px; }
+.kv .k { color: #8a93a8; }
+.rar-epic { color: #a335ee; } .rar-leg { color: #ff8000; } .rar-rare { color: #4a9eff; } .rar-unc { color: #6fbf5f; }
+.dark-panel .footnote { margin: 0; font-size: 12px; color: var(--text-faint); }
+
+.side-col { display: flex; flex-direction: column; gap: 16px; align-self: start; }
+.achv { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border: 1px solid rgba(201,164,87,0.55); border-radius: 6px; background: rgba(201,164,87,0.08); }
+.achv .a-txt { display: flex; flex-direction: column; gap: 2px; }
+.achv .a-txt b { font-size: 13px; color: #e6cd8f; }
+.achv .a-txt span { font-size: 11.5px; color: var(--text-muted); }
+.rep-row { display: flex; flex-direction: column; gap: 5px; }
+.rep-row .rep-head { display: flex; justify-content: space-between; font-size: 12.5px; }
+.rep-row .rep-head .fac { color: #c3cadb; } .rep-row .rep-head .rank { color: #d8c493; }
+.rep-track { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.rep-fill { height: 100%; background: linear-gradient(90deg, #9a7733, #e3cf96); }
+
+/* ---------- mobile ---------- */
+@media (max-width: 900px) {
+  .select-wrap {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto;
+    padding: 14px 16px calc(96px + env(safe-area-inset-bottom));
+    gap: 0;
+  }
+  .stage { padding-top: 4px; }
+  .stage h1 { margin-top: 8px; }
+  .emblem { width: min(220px, 52vw); }
+  .desc-panel { width: 100%; padding: 14px 16px; }
+  .desc-panel p { font-size: 12.5px; }
+
+  .roster { padding-top: 14px; }
+  .roster-list {
+    flex-direction: row; overflow-x: auto; gap: 10px;
+    margin: 0 -16px; padding: 4px 16px 8px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+  .char-card { flex: 0 0 auto; width: 200px; scroll-snap-align: start; padding: 12px 14px; }
+  .char-card .name { font-size: 13px; white-space: nowrap; }
+  .char-card .cls, .char-card .guild { white-space: nowrap; font-size: 11px; }
+  .create-btn { flex: 0 0 auto; width: 150px; min-height: auto; flex-direction: column; gap: 4px; font-size: 10px; border-style: dashed; scroll-snap-align: start; }
+  .roster .hint { display: none; }
+
+  .bottom-bar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+    flex-direction: column; gap: 8px;
+    padding: 12px 16px calc(10px + env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, rgba(7,11,22,0), rgba(7,11,22,0.92) 30%, #070b16);
+  }
+  .bottom-bar .ghost-btn.classic { display: none; }
+  .enter-btn { width: 100%; min-height: 54px; font-size: 16px; letter-spacing: 3px; }
+  .menu-links { gap: 20px; }
+  .menu-links .ghost-btn { border: none; background: none; padding: 4px 2px; font-size: 10px; color: #8a93a8; }
+
+  .detail-wrap { padding: 16px 16px 40px; }
+  .detail-top { flex-wrap: wrap; justify-content: flex-start; }
+  .detail-top .zone-title { align-items: flex-start; width: 100%; order: 3; padding-top: 12px; }
+  .detail-top .zone-title .zt, .detail-top .zone-title .zs { text-align: left; }
+  .detail-cols { grid-template-columns: 1fr; gap: 16px; padding-top: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .char-card, .load-fill { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============ CHARACTER SELECT ============ -->
+<div id="select-screen" class="screen active">
+  <div class="select-wrap">
+    <div class="top-bar">
+      <span class="chip"><span class="dot"></span>REALM · NICKCHUA.ME <span style="font-family:Georgia,serif; letter-spacing:0; font-size:11px; color:#7d8598;">Online</span></span>
+      <a class="ghost-btn classic" href="../../site/index.html">VIEW CLASSIC SITE</a>
+    </div>
+
+    <section class="stage" aria-live="polite">
+      <h1 id="sel-name">NICK CHUA</h1>
+      <div class="realm">‹ &nbsp;<span id="sel-zone">San Francisco Bay Area</span>&nbsp; ›</div>
+      <div class="class-line" id="sel-cls">Level 60 · Revenue Operator</div>
+      <svg class="emblem" viewBox="0 0 340 400" aria-hidden="true">
+        <defs>
+          <radialGradient id="glow" cx="50%" cy="42%" r="55%">
+            <stop offset="0%" stop-color="#c9a457" stop-opacity="0.28"/><stop offset="100%" stop-color="#c9a457" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="goldtxt" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#f2dc9d"/><stop offset="100%" stop-color="#b58a3c"/>
+          </linearGradient>
+        </defs>
+        <rect width="340" height="400" fill="url(#glow)"/>
+        <circle cx="170" cy="170" r="118" fill="rgba(10,15,28,0.6)" stroke="#c9a457" stroke-width="2.5"/>
+        <circle cx="170" cy="170" r="106" fill="none" stroke="rgba(201,164,87,0.45)" stroke-width="1"/>
+        <path d="M170 44 L178 52 L170 60 L162 52 Z" fill="#c9a457"/>
+        <path d="M170 280 L178 288 L170 296 L162 288 Z" fill="#c9a457"/>
+        <path d="M52 162 L60 170 L52 178 L44 170 Z" fill="#c9a457"/>
+        <path d="M288 162 L296 170 L288 178 L280 170 Z" fill="#c9a457"/>
+        <path d="M115 108 L225 108 L225 186 Q225 234 170 258 Q115 234 115 186 Z" fill="#0e1526" stroke="#c9a457" stroke-width="2"/>
+        <text x="170" y="202" text-anchor="middle" font-family="Cinzel, Georgia, serif" font-weight="700" font-size="86" fill="url(#goldtxt)">N</text>
+        <ellipse cx="170" cy="348" rx="140" ry="26" fill="rgba(201,164,87,0.09)" stroke="rgba(201,164,87,0.4)" stroke-width="1.5"/>
+      </svg>
+      <div class="desc-panel">
+        <span class="label">CHAPTER DESCRIPTION</span>
+        <span class="title" id="sel-title">The Revenue Strategist</span>
+        <p id="sel-desc"></p>
+        <div class="gold-rule"></div>
+        <dl id="sel-stats"></dl>
+      </div>
+    </section>
+
+    <aside class="roster" aria-label="Career roster">
+      <div class="roster-head"><span class="line"></span><span>CAREER ROSTER</span><span class="line rev"></span></div>
+      <div class="roster-list" id="roster-list"></div>
+      <a class="create-btn" href="mailto:nick@nickchua.me"><span>CREATE NEW CHARACTER</span></a>
+      <span class="hint">Recruiters: this button works.</span>
+    </aside>
+
+    <div class="bottom-bar">
+      <a class="ghost-btn classic" href="../../site/index.html" style="visibility:hidden;" aria-hidden="true">SPACER</a>
+      <button class="enter-btn" id="enter-btn" type="button">ENTER WORLD</button>
+      <nav class="menu-links">
+        <a class="ghost-btn" href="../../site/index.html#stacks">WRITING</a>
+        <a class="ghost-btn" href="../../site/index.html#club">NEWSLETTER</a>
+      </nav>
+    </div>
+  </div>
+</div>
+
+<!-- ============ LOADING SCREEN ============ -->
+<div id="loading" class="loading" role="status" aria-label="Loading">
+  <div class="zone" id="load-zone">REVENUE OPERATIONS</div>
+  <p class="tip" id="load-tip">Tip: you can inspect any chapter from the roster — each one has its own quest log.</p>
+  <div class="load-track"><div class="load-fill" id="load-fill"></div></div>
+</div>
+
+<!-- ============ CHAPTER DETAIL ============ -->
+<div id="detail-screen" class="screen">
+  <div class="detail-wrap">
+    <div class="detail-top">
+      <button class="ghost-btn" id="back-btn" type="button">‹ CHARACTER SELECT</button>
+      <div class="zone-title">
+        <span class="zt" id="det-zone">REVENUE OPERATIONS</span>
+        <span class="zs" id="det-sub">Brex · San Francisco Bay Area — current chapter</span>
+      </div>
+      <span class="chip"><span class="dot"></span>NICKCHUA.ME</span>
+    </div>
+
+    <div class="detail-cols">
+      <section class="quest-log" aria-label="Quest log">
+        <header>QUEST LOG</header>
+        <div class="ql-body">
+          <h3 id="q-title"></h3>
+          <p class="flavor" id="q-flavor"></p>
+          <span class="ql-label">OBJECTIVES</span>
+          <ul id="q-objectives"></ul>
+          <div class="ql-rule"></div>
+          <span class="ql-label">COMPLETED</span>
+          <ul id="q-done"></ul>
+          <p class="note">Quest text is placeholder — each chapter's log gets written from real work before launch.</p>
+        </div>
+      </section>
+
+      <section class="dark-panel" aria-label="Character sheet">
+        <span class="label">CHARACTER SHEET</span>
+        <div class="sheet-id">
+          <svg viewBox="0 0 64 64" aria-hidden="true" style="width:58px;height:58px;flex-shrink:0;">
+            <circle cx="32" cy="32" r="29" fill="rgba(10,15,28,0.7)" stroke="#c9a457" stroke-width="2"/>
+            <text x="32" y="42" text-anchor="middle" font-family="Cinzel, Georgia, serif" font-weight="700" font-size="28" fill="#e3cf96">N</text>
+          </svg>
+          <div class="who"><span class="nm" id="det-name"></span><span class="lv" id="det-lv"></span></div>
+        </div>
+        <div class="gold-rule"></div>
+        <span class="label">EQUIPPED</span>
+        <div class="kv"><span class="k">Main hand</span><span class="rar-epic">SQL — Epic</span></div>
+        <div class="kv"><span class="k">Off hand</span><span class="rar-leg">The Spreadsheet of Truth — Legendary</span></div>
+        <div class="kv"><span class="k">Trinket</span><span class="rar-rare">Salesforce — Rare</span></div>
+        <div class="kv"><span class="k">Head</span><span class="rar-unc">Noise-cancelling headphones — Uncommon</span></div>
+        <div class="gold-rule"></div>
+        <span class="label">PROFESSIONS</span>
+        <div class="kv"><span style="color:#c3cadb;">Writing</span><span style="color:#d8c493;">20 essays · 58 newsletter issues</span></div>
+        <div class="kv"><span style="color:#c3cadb;">Tennis</span><span style="color:#d8c493;">UChicago varsity alum</span></div>
+        <div class="kv"><span style="color:#c3cadb;">Cooking (eating)</span><span style="color:#d8c493;">Ramen connoisseur</span></div>
+        <p class="footnote">Gear list is a joke slot — real skills/tools go here, rarity color = fluency.</p>
+      </section>
+
+      <div class="side-col">
+        <section class="dark-panel" aria-label="Achievements">
+          <span class="label">ACHIEVEMENTS</span>
+          <div class="achv">
+            <svg viewBox="0 0 24 24" aria-hidden="true" style="width:22px;height:22px;flex-shrink:0;"><path d="M7 3 h10 v3 h3 v3 a5 5 0 0 1 -5 5 h-0.5 a4.5 4.5 0 0 1 -4 3 v2 h3 v2 H7 v-2 h3 v-2 a4.5 4.5 0 0 1 -1.5 -3 H8 a5 5 0 0 1 -5 -5 V6 h3 Z" fill="none" stroke="#e3cf96" stroke-width="1.6" stroke-linejoin="round"/></svg>
+            <div class="a-txt"><b>[Notable win for this chapter]</b><span>Achievement earned · 25 pts</span></div>
+          </div>
+          <div class="achv">
+            <svg viewBox="0 0 24 24" aria-hidden="true" style="width:22px;height:22px;flex-shrink:0;"><path d="M7 3 h10 v3 h3 v3 a5 5 0 0 1 -5 5 h-0.5 a4.5 4.5 0 0 1 -4 3 v2 h3 v2 H7 v-2 h3 v-2 a4.5 4.5 0 0 1 -1.5 -3 H8 a5 5 0 0 1 -5 -5 V6 h3 Z" fill="none" stroke="#e3cf96" stroke-width="1.6" stroke-linejoin="round"/></svg>
+            <div class="a-txt"><b>58 Issues Pressed</b><span>Newsletter, weekly-ish since 2019 · 50 pts</span></div>
+          </div>
+        </section>
+        <section class="dark-panel" aria-label="Reputation">
+          <span class="label">REPUTATION</span>
+          <div class="rep-row"><div class="rep-head"><span class="fac">Sales</span><span class="rank">Exalted</span></div><div class="rep-track"><div class="rep-fill" style="width:95%;"></div></div></div>
+          <div class="rep-row"><div class="rep-head"><span class="fac">Finance</span><span class="rank">Revered</span></div><div class="rep-track"><div class="rep-fill" style="width:78%;"></div></div></div>
+          <div class="rep-row"><div class="rep-head"><span class="fac">Engineering</span><span class="rank">Honored</span></div><div class="rep-track"><div class="rep-fill" style="width:62%;"></div></div></div>
+          <p class="footnote">Cross-functional standing, the RevOps way.</p>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CHARS = [
+  {
+    id: 'brex', name: 'NICK CHUA', title: 'The Revenue Strategist',
+    cls: 'Level 60 · Revenue Operator', guild: 'Brex — Revenue Operations',
+    zone: 'San Francisco Bay Area', detZone: 'REVENUE OPERATIONS',
+    detSub: 'Brex · San Francisco Bay Area — current chapter',
+    desc: 'The current main. Questing in revenue operations at Brex: pipeline analytics, territory design, and the systems that keep a fintech go-to-market engine honest. The occasional heroic spreadsheet run.',
+    stats: [['Guild', 'Brex'], ['Specialization', 'Revenue Operations'], ['Faction', 'Go-to-Market'], ['Status', 'Active — current main']],
+    quest: {
+      title: 'Scale the Go-to-Market Engine',
+      flavor: 'The guild grows faster than its ledgers. Someone must make the pipeline numbers mean something, and keep them meaning it every quarter.',
+      objectives: ['Pipeline reporting the sales org actually trusts', 'Territory and capacity design for the coming year', '[Swap in 2–3 real current projects here]'],
+      done: ['[Shipped win #1 — e.g. annual planning cycle]', '[Shipped win #2 — e.g. new pipeline model]']
+    }
+  },
+  {
+    id: 'records', name: 'THE CHRONICLER', title: 'Writer of Nick’s Records',
+    cls: 'Level 45 · Scribe', guild: 'Nick’s Records — Est. 2019',
+    zone: 'The Open Internet', detZone: 'NICK’S RECORDS',
+    detSub: 'Writing on tech, games & capital — est. 2019',
+    desc: 'Twenty essays and 58 newsletter issues on tech, esports, and the occasional company I think the market has wrong. Yes, I will defend the Star Wars prequels.',
+    stats: [['Guild', 'Nick’s Records'], ['Specialization', 'Tech, games & capital'], ['Notable loot', '58 issues pressed']],
+    quest: {
+      title: 'Chronicle the Industry',
+      flavor: 'Every market has a story the consensus is telling wrong. Find it, write it, press it into an issue.',
+      objectives: ['Publish the next essay', 'Keep the weekly newsletter streak alive'],
+      done: ['Four-part esports position paper', 'The Bear Case for Peloton', 'Ramen Review — Japan']
+    }
+  },
+  {
+    id: 'builder', name: 'THE ARTIFICER', title: 'Side-Project Builder',
+    cls: 'Level 38 · Engineer', guild: 'Solo guild — The Forge',
+    zone: 'Nights & Weekends', detZone: 'THE FORGE',
+    detSub: 'Side projects · nights & weekends',
+    desc: 'Currently forging Arise, a Solo Leveling-inspired fitness tracker (SwiftUI front, FastAPI back). Previous crafts include a ramen ranking system and a four-part esports position paper.',
+    stats: [['Current build', 'Arise fitness tracker'], ['Materials', 'Swift · Python'], ['Crafting since', '2019']],
+    quest: {
+      title: 'Forge the Arise Tracker',
+      flavor: 'A hunter grows stronger only by logging the hunt. Build the system that makes the grind visible.',
+      objectives: ['Ship the iOS app', 'Keep the Railway backend humming', 'This very website redesign'],
+      done: ['Screenshot processing with Claude Vision', 'XP, ranks and strength goals']
+    }
+  },
+  {
+    id: 'uchicago', name: 'THE SCHOLAR-ATHLETE', title: 'Varsity Tennis, UChicago',
+    cls: 'Level 30 · Economist', guild: 'University of Chicago',
+    zone: 'Hyde Park, Chicago', detZone: 'HYDE PARK',
+    detSub: 'University of Chicago — the leveling years',
+    desc: 'Four years in the Hyde Park training grounds: economics by day, varsity tennis by afternoon, and the first drafts of a writing habit by night.',
+    stats: [['Guild', 'UChicago Maroons'], ['Specialization', 'Economics + tennis'], ['Era', 'The leveling years']],
+    quest: {
+      title: 'Survive the Core',
+      flavor: 'They say the Core builds character. They are not wrong, exactly.',
+      objectives: [],
+      done: ['Economics degree earned', 'Varsity tennis, four seasons', 'Started writing in public']
+    }
+  }
+];
+
+let selId = 'brex';
+const $ = (id) => document.getElementById(id);
+
+function renderRoster() {
+  const list = $('roster-list');
+  list.innerHTML = '';
+  CHARS.forEach((c) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'char-card';
+    btn.setAttribute('aria-pressed', String(c.id === selId));
+    btn.innerHTML = '<span class="name"></span><span class="cls"></span><span class="guild"></span>';
+    btn.querySelector('.name').textContent = c.name;
+    btn.querySelector('.cls').textContent = c.cls;
+    btn.querySelector('.guild').textContent = c.guild;
+    btn.addEventListener('click', () => { selId = c.id; renderRoster(); renderStage(); });
+    list.appendChild(btn);
+  });
+}
+
+function renderStage() {
+  const c = CHARS.find((x) => x.id === selId);
+  $('sel-name').textContent = c.name;
+  $('sel-zone').textContent = c.zone;
+  $('sel-cls').textContent = c.cls;
+  $('sel-title').textContent = c.title;
+  $('sel-desc').textContent = c.desc;
+  const dl = $('sel-stats');
+  dl.innerHTML = '';
+  c.stats.forEach(([k, v]) => {
+    const row = document.createElement('div');
+    const dt = document.createElement('dt'); dt.textContent = k;
+    const dd = document.createElement('dd'); dd.textContent = v;
+    row.appendChild(dt); row.appendChild(dd); dl.appendChild(row);
+  });
+}
+
+function renderDetail() {
+  const c = CHARS.find((x) => x.id === selId);
+  $('det-zone').textContent = c.detZone;
+  $('det-sub').textContent = c.detSub;
+  $('det-name').textContent = c.name === 'NICK CHUA' ? 'Nick Chua' : c.name;
+  $('det-lv').textContent = c.cls + ' · ' + c.guild;
+  $('q-title').textContent = c.quest.title;
+  $('q-flavor').textContent = c.quest.flavor;
+  const obj = $('q-objectives'); obj.innerHTML = '';
+  c.quest.objectives.forEach((o) => {
+    const li = document.createElement('li');
+    const box = document.createElement('span'); box.className = 'box'; box.textContent = '▢';
+    const txt = document.createElement('span'); txt.textContent = o;
+    li.appendChild(box); li.appendChild(txt); obj.appendChild(li);
+  });
+  if (!c.quest.objectives.length) {
+    const li = document.createElement('li'); li.textContent = 'Chapter complete — no active objectives.'; obj.appendChild(li);
+  }
+  const done = $('q-done'); done.innerHTML = '';
+  c.quest.done.forEach((o) => {
+    const li = document.createElement('li'); li.className = 'done';
+    const chk = document.createElement('span'); chk.textContent = '✓';
+    const txt = document.createElement('span'); txt.textContent = o;
+    li.appendChild(chk); li.appendChild(txt); done.appendChild(li);
+  });
+}
+
+function enterWorld() {
+  const c = CHARS.find((x) => x.id === selId);
+  renderDetail();
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced) { swapTo('detail-screen'); return; }
+  $('load-zone').textContent = c.detZone;
+  $('loading').classList.add('active');
+  const fill = $('load-fill');
+  fill.style.width = '0%';
+  let p = 0;
+  const timer = setInterval(() => {
+    p = Math.min(100, p + 8 + Math.random() * 14);
+    fill.style.width = p + '%';
+    if (p >= 100) {
+      clearInterval(timer);
+      setTimeout(() => { $('loading').classList.remove('active'); swapTo('detail-screen'); }, 220);
+    }
+  }, 90);
+}
+
+function swapTo(id) {
+  document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
+  $(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+$('enter-btn').addEventListener('click', enterWorld);
+$('back-btn').addEventListener('click', () => swapTo('select-screen'));
+renderRoster();
+renderStage();
+</script>
+</body>
+</html>
