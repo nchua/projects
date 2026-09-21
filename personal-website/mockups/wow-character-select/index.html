@@ -4,36 +4,30 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nick Chua — Character Select (Mockup)</title>
-<meta name="description" content="Mockup: nickchua.me reimagined as an MMO character-select screen. Not live; for design review only.">
+<meta name="description" content="Mockup: nickchua.me reimagined as an MMO warband character-select screen. Not live; for design review only.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg-deep: #070b16;
-  --bg-mid: #101830;
-  --bg-high: #1b2545;
   --gold: #c9a457;
-  --gold-bright: #ecd08a;
-  --gold-dim: rgba(138, 109, 53, 0.5);
+  --gold-bright: #ffd100;
+  --gold-soft: #e3cf96;
   --gold-border: rgba(201, 164, 87, 0.5);
-  --text: #cfd6e4;
+  --text: #e8e4d8;
   --text-muted: #9aa3b8;
-  --text-faint: #626b80;
-  --panel: linear-gradient(180deg, rgba(19, 26, 44, 0.94), rgba(11, 16, 29, 0.94));
+  --text-faint: #6d7484;
+  --panel-dark: rgba(9, 9, 12, 0.88);
   --parchment: linear-gradient(180deg, #efe3c2, #e2d1a6);
   --parchment-border: #8a6d35;
   --ink: #2b2214;
+  --night-panel: linear-gradient(180deg, rgba(19, 26, 44, 0.94), rgba(11, 16, 29, 0.94));
   --display: 'Cinzel', Georgia, serif;
   --body: Georgia, 'Times New Roman', serif;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
-body {
-  background: radial-gradient(1100px 700px at 50% 30%, var(--bg-high) 0%, var(--bg-mid) 48%, var(--bg-deep) 100%) fixed var(--bg-deep);
-  color: var(--text);
-  font-family: var(--body);
-}
+body { background: #08130f; color: var(--text); font-family: var(--body); }
 a { color: #e0c885; text-decoration: none; }
 a:hover { color: #f6e3a8; }
 button { font-family: inherit; }
@@ -41,14 +35,184 @@ button { font-family: inherit; }
 .screen { display: none; min-height: 100vh; }
 .screen.active { display: block; }
 
-/* ---------- shared bits ---------- */
-.chip {
-  display: inline-flex; align-items: center; gap: 9px;
-  padding: 8px 14px; border: 1px solid var(--gold-dim); border-radius: 4px;
-  background: rgba(9, 13, 24, 0.7);
-  font-family: var(--display); font-size: 11px; letter-spacing: 2px; color: #c9b58a;
+/* ---------- WoW-style red button ---------- */
+.wow-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 13px 30px; cursor: pointer; border-radius: 6px;
+  background: linear-gradient(180deg, #a5231a 0%, #7c130d 45%, #4c0a06 100%);
+  border: 1px solid #1c130a;
+  box-shadow: 0 0 0 2px #3a2c14, 0 0 0 3px rgba(138, 109, 53, 0.9), 0 4px 16px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 210, 140, 0.35);
+  font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: 2.5px;
+  color: #ffd9a0; text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.8);
 }
-.chip .dot { width: 8px; height: 8px; border-radius: 50%; background: #6fbf5f; box-shadow: 0 0 8px rgba(111,191,95,0.8); }
+.wow-btn:hover { filter: brightness(1.18); color: #ffe8c4; }
+.wow-btn.big { min-width: 280px; min-height: 54px; font-size: 18px; letter-spacing: 3px; }
+
+/* ---------- select screen ---------- */
+.select-screen { position: relative; min-height: 100vh; overflow: hidden; }
+
+/* the world scene fills the screen */
+.scene {
+  position: fixed; inset: 0; z-index: 0;
+}
+.scene svg { width: 100%; height: 100%; display: block; }
+
+/* figure hotspots + floating nameplates */
+.figure-btn {
+  position: absolute; z-index: 5;
+  display: flex; flex-direction: column; align-items: center;
+  background: none; border: none; cursor: pointer; padding: 0;
+}
+.figure-btn:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 4px; border-radius: 8px; }
+.figure-btn .plate { display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none; }
+.figure-btn .plate .nm {
+  font-family: var(--display); font-weight: 600; font-size: clamp(11px, 1.15vw, 17px); letter-spacing: 1px;
+  color: #f7f3e3; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 12px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+}
+.figure-btn .plate .lv {
+  font-size: clamp(9px, 0.85vw, 13px); color: #e6e0cc; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
+  white-space: nowrap;
+}
+.figure-btn .plate .rule { width: 0; height: 2px; background: linear-gradient(90deg, rgba(255, 209, 0, 0), #ffd100, rgba(255, 209, 0, 0)); transition: width 0.25s; }
+.figure-btn.selected .plate .nm { color: var(--gold-bright); }
+.figure-btn.selected .plate .rule { width: 120px; }
+
+/* selection glow inside the svg */
+.fig-glow { opacity: 0; transition: opacity 0.25s; }
+.scene.sel-brex #glow-brex, .scene.sel-records #glow-records,
+.scene.sel-builder #glow-builder, .scene.sel-uchicago #glow-uchicago { opacity: 1; }
+
+/* top nav */
+.top-nav {
+  position: relative; z-index: 10;
+  display: flex; align-items: center; justify-content: center; gap: 0;
+  padding: 14px 24px 10px;
+  background: linear-gradient(180deg, rgba(5, 8, 6, 0.9), rgba(5, 8, 6, 0));
+}
+.top-nav .nav-item {
+  font-family: var(--display); font-size: 13px; letter-spacing: 2.5px; color: #e8c664;
+  padding: 8px 26px; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+.top-nav .nav-item:hover { color: #ffe8a8; }
+.top-nav .sep { width: 1px; height: 18px; background: linear-gradient(180deg, rgba(201, 164, 87, 0), rgba(201, 164, 87, 0.8), rgba(201, 164, 87, 0)); }
+.crest-link {
+  position: absolute; right: 22px; top: 10px;
+  width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 35% 30%, #2a3352, #10182e 70%);
+  border: 2px solid var(--gold);
+  box-shadow: 0 0 14px rgba(201, 164, 87, 0.4);
+  font-family: var(--display); font-weight: 700; font-size: 20px; color: var(--gold-soft);
+}
+.crest-link span.badge {
+  position: absolute; right: -4px; bottom: -2px; width: 18px; height: 18px; border-radius: 50%;
+  background: #7c130d; border: 1px solid var(--gold);
+  font-family: Georgia, serif; font-size: 10px; color: #ffd9a0;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* warband-style character list panel */
+.char-panel {
+  position: absolute; z-index: 10; right: 26px; top: 76px; bottom: 96px;
+  width: 340px; display: flex; flex-direction: column;
+  background: var(--panel-dark);
+  border: 1px solid #3a2c14; border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(201, 164, 87, 0.28) inset, 0 14px 40px rgba(0, 0, 0, 0.65);
+  padding: 12px;
+  gap: 10px;
+}
+.search-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #101014; border: 1px solid #2a2a30; border-radius: 6px; }
+.search-row svg { flex-shrink: 0; opacity: 0.6; }
+.search-row input {
+  flex: 1; min-width: 0; background: none; border: none; outline: none;
+  color: var(--text); font-family: var(--body); font-size: 13px;
+}
+.search-row input::placeholder { color: #5d6370; }
+.fav-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 12px; border: 1px solid rgba(201, 164, 87, 0.4); border-radius: 5px;
+  background: rgba(201, 164, 87, 0.1);
+  font-family: var(--display); font-size: 11px; letter-spacing: 2px; color: #e3cf96;
+}
+.fav-header .min { width: 16px; height: 16px; border: 1px solid rgba(201, 164, 87, 0.5); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #e3cf96; }
+.char-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; scrollbar-width: thin; scrollbar-color: #3a2c14 transparent; }
+.char-entry {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 10px 12px; cursor: pointer; border-radius: 6px;
+  background: #101014; border: 1px solid #2a2a30; color: var(--text);
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+.char-entry:hover { border-color: rgba(201, 164, 87, 0.55); }
+.char-entry.selected {
+  background: linear-gradient(180deg, rgba(217, 182, 74, 0.2), rgba(217, 182, 74, 0.06));
+  border-color: #d9b64a;
+  box-shadow: 0 0 16px rgba(217, 182, 74, 0.3), inset 0 0 10px rgba(217, 182, 74, 0.08);
+}
+.char-entry .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.char-entry .nm { font-family: var(--display); font-size: 15px; font-weight: 600; letter-spacing: 0.5px; color: #f0ead6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.char-entry.selected .nm { color: var(--gold-bright); }
+.char-entry .cls { font-size: 12.5px; color: #cfd6e4; }
+.char-entry .cls b { font-weight: 400; }
+.char-entry .realm { font-size: 11.5px; color: #79839a; }
+.char-entry .crest {
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(201, 164, 87, 0.45); background: rgba(201, 164, 87, 0.07);
+  font-family: var(--display); font-weight: 700; font-size: 15px; color: rgba(227, 207, 150, 0.75);
+}
+.char-entry.ghost { opacity: 0.45; border-style: dashed; cursor: pointer; }
+.panel-actions { display: flex; gap: 8px; align-items: stretch; }
+.panel-actions .wow-btn { flex: 1; padding: 11px 10px; font-size: 12.5px; letter-spacing: 1.5px; }
+.icon-btn {
+  width: 44px; display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; background: linear-gradient(180deg, #6e1610 0%, #4c0a06 100%);
+  border: 1px solid #1c130a; box-shadow: 0 0 0 2px #3a2c14; opacity: 0.55;
+}
+.panel-caption {
+  position: absolute; z-index: 10; right: 30px; bottom: 62px;
+  font-family: var(--display); font-size: 12px; letter-spacing: 2px; color: #e8c664;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+/* description tooltip, bottom-left above Back */
+.desc-card {
+  position: absolute; z-index: 10; left: 28px; bottom: 108px; width: 390px;
+  padding: 16px 18px; border-radius: 6px;
+  background: var(--panel-dark);
+  border: 1px solid #3a2c14;
+  box-shadow: 0 0 0 1px rgba(201, 164, 87, 0.28) inset, 0 10px 30px rgba(0, 0, 0, 0.6);
+  display: flex; flex-direction: column; gap: 7px;
+}
+.desc-card .ttl { font-family: var(--display); font-size: 15px; font-weight: 600; color: #e6cd8f; }
+.desc-card p { margin: 0; font-size: 13px; line-height: 1.55; color: #c3cadb; }
+.desc-card .meta { font-size: 11.5px; color: #79839a; }
+
+/* bottom bar */
+.bottom-ui { position: absolute; z-index: 10; left: 0; right: 0; bottom: 0; padding: 0 28px 26px; display: flex; align-items: flex-end; justify-content: space-between; pointer-events: none; }
+.bottom-ui > * { pointer-events: auto; }
+.enter-stack { position: absolute; left: 50%; transform: translateX(-50%); bottom: 26px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.enter-stack .sel-name {
+  font-family: var(--display); font-weight: 700; font-size: 24px; letter-spacing: 2px;
+  color: var(--gold-bright); text-shadow: 0 2px 5px rgba(0, 0, 0, 0.95), 0 0 18px rgba(0, 0, 0, 0.7);
+}
+
+/* ---------- loading overlay ---------- */
+.loading {
+  position: fixed; inset: 0; z-index: 50; display: none;
+  flex-direction: column; align-items: center; justify-content: center; gap: 26px;
+  background: radial-gradient(900px 600px at 50% 40%, #14251f 0%, #0b1512 55%, #050a08 100%);
+  padding: 24px;
+}
+.loading.active { display: flex; }
+.loading .zone { font-family: var(--display); font-weight: 700; font-size: clamp(22px, 4vw, 40px); letter-spacing: 5px; color: #ecd08a; text-align: center; text-shadow: 0 0 24px rgba(230, 200, 120, 0.35); }
+.loading .tip { max-width: 520px; text-align: center; font-size: 13.5px; font-style: italic; color: var(--text-muted); }
+.load-track { width: min(480px, 80vw); height: 14px; border: 1px solid var(--gold-border); border-radius: 8px; background: rgba(9, 13, 24, 0.8); overflow: hidden; }
+.load-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #9a7733, #ecd08a); transition: width 0.15s linear; }
+
+/* ---------- detail screen (unchanged from v1) ---------- */
+#detail-screen { background: radial-gradient(1100px 700px at 50% 20%, #1a2340 0%, #101830 48%, #070b16 100%) fixed #070b16; }
+.detail-wrap { max-width: 1320px; margin: 0 auto; padding: 24px 40px 48px; }
 .ghost-btn {
   display: inline-flex; align-items: center; justify-content: center;
   padding: 11px 18px; border: 1px solid rgba(201, 164, 87, 0.4); border-radius: 4px;
@@ -56,115 +220,21 @@ button { font-family: inherit; }
   font-family: var(--display); font-size: 12px; letter-spacing: 2px; color: #c9b58a;
 }
 .ghost-btn:hover { border-color: var(--gold); color: #f6e3a8; }
-.gold-rule { height: 1px; background: linear-gradient(90deg, var(--gold-border), rgba(201,164,87,0)); }
-
-/* ---------- select screen layout ---------- */
-.select-wrap {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
-  grid-template-rows: auto 1fr auto;
-  gap: 0 32px;
-  min-height: 100vh;
-  padding: 24px 40px 32px;
-  max-width: 1560px; margin: 0 auto;
+.chip {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 8px 14px; border: 1px solid rgba(138, 109, 53, 0.5); border-radius: 4px;
+  background: rgba(9, 13, 24, 0.7);
+  font-family: var(--display); font-size: 11px; letter-spacing: 2px; color: #c9b58a;
 }
-.top-bar { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; }
-
-.stage { display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 16px; min-width: 0; }
-.stage h1 {
-  margin: 12px 0 0; font-family: var(--display); font-weight: 700;
-  font-size: clamp(30px, 4.5vw, 52px); letter-spacing: 0.12em; text-align: center;
-  color: var(--gold-bright);
-  text-shadow: 0 0 28px rgba(230,200,120,0.35), 0 2px 4px rgba(0,0,0,0.85);
-}
-.stage .realm { font-family: var(--display); font-size: 13px; letter-spacing: 4px; color: var(--text-muted); }
-.stage .class-line { font-size: 14px; font-style: italic; color: #b7a06a; }
-.emblem { width: min(300px, 60vw); height: auto; margin-top: 4px; }
-
-.desc-panel {
-  width: min(560px, 100%);
-  margin-top: 10px; padding: 20px 24px;
-  background: var(--panel); border: 1px solid var(--gold-border); border-radius: 4px;
-  box-shadow: 0 10px 34px rgba(0,0,0,0.55);
-  display: flex; flex-direction: column; gap: 11px;
-}
-.desc-panel .label { font-family: var(--display); font-size: 11px; letter-spacing: 3px; color: #8a93a8; }
-.desc-panel .title { font-family: var(--display); font-size: 19px; font-weight: 600; color: #e6cd8f; }
-.desc-panel p { margin: 0; font-size: 14px; line-height: 1.65; color: #c3cadb; }
-.desc-panel dl { margin: 0; display: flex; flex-direction: column; gap: 7px; }
-.desc-panel dl div { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
-.desc-panel dt { color: #8a93a8; }
-.desc-panel dd { margin: 0; color: #d8c493; text-align: right; }
-
-.roster { display: flex; flex-direction: column; gap: 12px; padding-top: 8px; }
-.roster-head { display: flex; align-items: center; gap: 12px; }
-.roster-head .line { flex: 1; height: 1px; background: linear-gradient(90deg, rgba(201,164,87,0), rgba(201,164,87,0.6)); }
-.roster-head .line.rev { background: linear-gradient(90deg, rgba(201,164,87,0.6), rgba(201,164,87,0)); }
-.roster-head span:not(.line) { font-family: var(--display); font-size: 13px; letter-spacing: 3px; color: #c9b58a; white-space: nowrap; }
-.roster-list { display: flex; flex-direction: column; gap: 10px; }
-.char-card {
-  display: flex; flex-direction: column; gap: 3px; align-items: flex-start;
-  width: 100%; text-align: left; padding: 13px 16px; cursor: pointer; border-radius: 4px;
-  background: rgba(10, 14, 26, 0.55); border: 1px solid rgba(138, 109, 53, 0.35);
-  color: var(--text); transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
-}
-.char-card:hover { border-color: rgba(201, 164, 87, 0.7); }
-.char-card[aria-pressed="true"] {
-  background: linear-gradient(180deg, rgba(201,164,87,0.18), rgba(201,164,87,0.07));
-  border-color: var(--gold);
-  box-shadow: 0 0 18px rgba(201,164,87,0.25), inset 0 0 12px rgba(201,164,87,0.08);
-}
-.char-card .name { font-family: var(--display); font-size: 16px; font-weight: 600; letter-spacing: 1.5px; color: #e3cf96; }
-.char-card .cls { font-size: 12.5px; color: var(--text-muted); }
-.char-card .guild { font-size: 12px; color: #79839a; }
-.create-btn {
-  display: flex; align-items: center; justify-content: center; min-height: 46px;
-  border: 1px solid rgba(201, 164, 87, 0.55); border-radius: 4px;
-  background: rgba(201, 164, 87, 0.08);
-  font-family: var(--display); font-size: 13px; letter-spacing: 2.5px; color: #d8c493;
-}
-.roster .hint { text-align: center; font-size: 11px; color: var(--text-faint); }
-
-.bottom-bar {
-  grid-column: 1 / -1;
-  display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  padding-top: 22px;
-}
-.enter-btn {
-  display: flex; align-items: center; justify-content: center;
-  width: min(344px, 100%); min-height: 58px; cursor: pointer;
-  background: linear-gradient(180deg, #ecd08a 0%, #c9a457 48%, #9a7733 100%);
-  border: 1px solid #6f5624; border-radius: 6px;
-  box-shadow: 0 0 26px rgba(201,164,87,0.35), inset 0 1px 0 rgba(255,255,255,0.45);
-  font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: 4px;
-  color: #241a06; text-shadow: 0 1px 0 rgba(255,255,255,0.35);
-}
-.enter-btn:hover { filter: brightness(1.07); }
-.menu-links { display: flex; gap: 10px; }
-
-/* ---------- loading overlay ---------- */
-.loading {
-  position: fixed; inset: 0; z-index: 50; display: none;
-  flex-direction: column; align-items: center; justify-content: center; gap: 26px;
-  background: radial-gradient(900px 600px at 50% 40%, #141d38 0%, #0b1122 55%, #05080f 100%);
-  padding: 24px;
-}
-.loading.active { display: flex; }
-.loading .zone { font-family: var(--display); font-weight: 700; font-size: clamp(22px, 4vw, 40px); letter-spacing: 5px; color: var(--gold-bright); text-align: center; text-shadow: 0 0 24px rgba(230,200,120,0.35); }
-.loading .tip { max-width: 520px; text-align: center; font-size: 13.5px; font-style: italic; color: var(--text-muted); }
-.load-track { width: min(480px, 80vw); height: 14px; border: 1px solid var(--gold-border); border-radius: 8px; background: rgba(9,13,24,0.8); overflow: hidden; }
-.load-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #9a7733, #ecd08a); transition: width 0.15s linear; }
-
-/* ---------- detail screen ---------- */
-.detail-wrap { max-width: 1320px; margin: 0 auto; padding: 24px 40px 48px; }
-.detail-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid rgba(201,164,87,0.25); }
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; background: #6fbf5f; box-shadow: 0 0 8px rgba(111, 191, 95, 0.8); }
+.gold-rule { height: 1px; background: linear-gradient(90deg, rgba(201, 164, 87, 0.5), rgba(201, 164, 87, 0)); }
+.detail-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid rgba(201, 164, 87, 0.25); }
 .detail-top .zone-title { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
-.detail-top .zone-title .zt { font-family: var(--display); font-weight: 700; font-size: clamp(20px, 3vw, 32px); letter-spacing: 5px; color: var(--gold-bright); text-align: center; text-shadow: 0 0 22px rgba(230,200,120,0.3), 0 2px 4px rgba(0,0,0,0.8); }
+.detail-top .zone-title .zt { font-family: var(--display); font-weight: 700; font-size: clamp(20px, 3vw, 32px); letter-spacing: 5px; color: #ecd08a; text-align: center; text-shadow: 0 0 22px rgba(230, 200, 120, 0.3), 0 2px 4px rgba(0, 0, 0, 0.8); }
 .detail-top .zone-title .zs { font-size: 13px; font-style: italic; color: var(--text-muted); text-align: center; }
 .detail-cols { display: grid; grid-template-columns: 420px minmax(0, 1fr) 372px; gap: 26px; padding-top: 26px; }
-
-.quest-log { background: var(--parchment); border: 2px solid var(--parchment-border); border-radius: 6px; box-shadow: 0 12px 34px rgba(0,0,0,0.55); color: var(--ink); align-self: start; }
-.quest-log header { padding: 14px 20px; border-bottom: 1px solid rgba(90,66,24,0.35); font-family: var(--display); font-size: 15px; font-weight: 700; letter-spacing: 3px; color: #5a4218; }
+.quest-log { background: var(--parchment); border: 2px solid var(--parchment-border); border-radius: 6px; box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55); color: var(--ink); align-self: start; }
+.quest-log header { padding: 14px 20px; border-bottom: 1px solid rgba(90, 66, 24, 0.35); font-family: var(--display); font-size: 15px; font-weight: 700; letter-spacing: 3px; color: #5a4218; }
 .quest-log .ql-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; }
 .quest-log h3 { margin: 0; font-family: var(--display); font-size: 17px; color: #7a3b0a; }
 .quest-log .flavor { margin: 0; font-size: 13.5px; font-style: italic; line-height: 1.6; color: #4c3d22; }
@@ -173,10 +243,9 @@ button { font-family: inherit; }
 .quest-log li { display: flex; gap: 9px; align-items: baseline; font-size: 13.5px; }
 .quest-log li .box { color: #7a6a3f; }
 .quest-log li.done { color: #556136; }
-.quest-log .ql-rule { height: 1px; background: rgba(90,66,24,0.3); }
+.quest-log .ql-rule { height: 1px; background: rgba(90, 66, 24, 0.3); }
 .quest-log .note { margin: 0; font-size: 12px; color: #6b5c38; }
-
-.dark-panel { padding: 20px 24px; background: var(--panel); border: 1px solid var(--gold-border); border-radius: 4px; box-shadow: 0 12px 34px rgba(0,0,0,0.55); display: flex; flex-direction: column; gap: 13px; align-self: start; }
+.dark-panel { padding: 20px 24px; background: var(--night-panel); border: 1px solid var(--gold-border); border-radius: 4px; box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55); display: flex; flex-direction: column; gap: 13px; align-self: start; }
 .dark-panel .label { font-family: var(--display); font-size: 12px; letter-spacing: 3px; color: #8a93a8; }
 .sheet-id { display: flex; align-items: center; gap: 16px; }
 .sheet-id .who { display: flex; flex-direction: column; gap: 3px; }
@@ -186,55 +255,58 @@ button { font-family: inherit; }
 .kv .k { color: #8a93a8; }
 .rar-epic { color: #a335ee; } .rar-leg { color: #ff8000; } .rar-rare { color: #4a9eff; } .rar-unc { color: #6fbf5f; }
 .dark-panel .footnote { margin: 0; font-size: 12px; color: var(--text-faint); }
-
 .side-col { display: flex; flex-direction: column; gap: 16px; align-self: start; }
-.achv { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border: 1px solid rgba(201,164,87,0.55); border-radius: 6px; background: rgba(201,164,87,0.08); }
+.achv { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border: 1px solid rgba(201, 164, 87, 0.55); border-radius: 6px; background: rgba(201, 164, 87, 0.08); }
 .achv .a-txt { display: flex; flex-direction: column; gap: 2px; }
 .achv .a-txt b { font-size: 13px; color: #e6cd8f; }
 .achv .a-txt span { font-size: 11.5px; color: var(--text-muted); }
 .rep-row { display: flex; flex-direction: column; gap: 5px; }
 .rep-row .rep-head { display: flex; justify-content: space-between; font-size: 12.5px; }
 .rep-row .rep-head .fac { color: #c3cadb; } .rep-row .rep-head .rank { color: #d8c493; }
-.rep-track { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.rep-track { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
 .rep-fill { height: 100%; background: linear-gradient(90deg, #9a7733, #e3cf96); }
+
+/* ---------- fire animation ---------- */
+.flame { transform-box: fill-box; transform-origin: 50% 100%; animation: flick 1.5s ease-in-out infinite; }
+.flame.f2 { animation-duration: 1.1s; animation-delay: 0.2s; }
+.flame.f3 { animation-duration: 0.9s; animation-delay: 0.4s; }
+@keyframes flick {
+  0%, 100% { transform: scaleY(1) scaleX(1); }
+  50% { transform: scaleY(1.14) scaleX(0.96); }
+}
+.spark { transform-box: fill-box; animation: rise 2.6s linear infinite; }
+.spark.s2 { animation-delay: 0.9s; } .spark.s3 { animation-delay: 1.7s; }
+@keyframes rise {
+  0% { transform: translateY(0); opacity: 0; }
+  15% { opacity: 0.8; }
+  100% { transform: translateY(-90px); opacity: 0; }
+}
 
 /* ---------- mobile ---------- */
 @media (max-width: 900px) {
-  .select-wrap {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto auto;
-    padding: 14px 16px calc(96px + env(safe-area-inset-bottom));
-    gap: 0;
-  }
-  .stage { padding-top: 4px; }
-  .stage h1 { margin-top: 8px; }
-  .emblem { width: min(220px, 52vw); }
-  .desc-panel { width: 100%; padding: 14px 16px; }
-  .desc-panel p { font-size: 12.5px; }
+  .select-screen { display: flex; flex-direction: column; min-height: 100vh; overflow: visible; }
+  .scene { position: relative; inset: auto; width: 100%; aspect-ratio: 16 / 10; flex-shrink: 0; }
+  .top-nav { position: absolute; top: 0; left: 0; right: 0; padding: 10px 8px 8px; z-index: 12; }
+  .top-nav .nav-item { font-size: 10px; padding: 8px 10px; letter-spacing: 1.5px; }
+  .crest-link { width: 38px; height: 38px; font-size: 16px; right: 10px; top: 8px; }
+  .figure-btn .plate .nm { font-size: 10px; }
+  .figure-btn .plate .lv { font-size: 8px; }
+  .figure-btn.selected .plate .rule { width: 64px; }
 
-  .roster { padding-top: 14px; }
-  .roster-list {
-    flex-direction: row; overflow-x: auto; gap: 10px;
-    margin: 0 -16px; padding: 4px 16px 8px;
-    scroll-snap-type: x proximity;
-    -webkit-overflow-scrolling: touch;
-  }
-  .char-card { flex: 0 0 auto; width: 200px; scroll-snap-align: start; padding: 12px 14px; }
-  .char-card .name { font-size: 13px; white-space: nowrap; }
-  .char-card .cls, .char-card .guild { white-space: nowrap; font-size: 11px; }
-  .create-btn { flex: 0 0 auto; width: 150px; min-height: auto; flex-direction: column; gap: 4px; font-size: 10px; border-style: dashed; scroll-snap-align: start; }
-  .roster .hint { display: none; }
+  .char-panel { position: relative; inset: auto; width: auto; margin: 10px 12px 0; padding: 10px; max-height: none; flex: 1; }
+  .char-list { max-height: 264px; }
+  .search-row { display: none; }
+  .panel-caption { display: none; }
 
-  .bottom-bar {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
-    flex-direction: column; gap: 8px;
-    padding: 12px 16px calc(10px + env(safe-area-inset-bottom));
-    background: linear-gradient(180deg, rgba(7,11,22,0), rgba(7,11,22,0.92) 30%, #070b16);
-  }
-  .bottom-bar .ghost-btn.classic { display: none; }
-  .enter-btn { width: 100%; min-height: 54px; font-size: 16px; letter-spacing: 3px; }
-  .menu-links { gap: 20px; }
-  .menu-links .ghost-btn { border: none; background: none; padding: 4px 2px; font-size: 10px; color: #8a93a8; }
+  .desc-card { position: relative; inset: auto; width: auto; margin: 10px 12px 0; }
+
+  .bottom-ui { position: sticky; bottom: 0; margin-top: 14px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, rgba(8, 19, 15, 0), rgba(8, 19, 15, 0.94) 35%, #08130f); display: block; }
+  .enter-stack { position: static; transform: none; width: 100%; gap: 8px; }
+  .enter-stack .sel-name { font-size: 17px; }
+  .wow-btn.big { width: 100%; min-height: 52px; font-size: 16px; }
+  .bottom-ui .wow-btn.back { display: none; }
+  .mobile-back { display: block !important; text-align: center; padding: 10px 0 2px; font-family: var(--display); font-size: 10.5px; letter-spacing: 2px; color: #8a93a8; }
 
   .detail-wrap { padding: 16px 16px 40px; }
   .detail-top { flex-wrap: wrap; justify-content: flex-start; }
@@ -242,69 +314,241 @@ button { font-family: inherit; }
   .detail-top .zone-title .zt, .detail-top .zone-title .zs { text-align: left; }
   .detail-cols { grid-template-columns: 1fr; gap: 16px; padding-top: 18px; }
 }
+.mobile-back { display: none; }
 @media (prefers-reduced-motion: reduce) {
-  .char-card, .load-fill { transition: none; }
+  .flame, .spark { animation: none; }
+  .char-entry, .figure-btn .plate .rule { transition: none; }
 }
 </style>
 </head>
 <body>
 
 <!-- ============ CHARACTER SELECT ============ -->
-<div id="select-screen" class="screen active">
-  <div class="select-wrap">
-    <div class="top-bar">
-      <span class="chip"><span class="dot"></span>REALM · NICKCHUA.ME <span style="font-family:Georgia,serif; letter-spacing:0; font-size:11px; color:#7d8598;">Online</span></span>
-      <a class="ghost-btn classic" href="../../site/index.html">VIEW CLASSIC SITE</a>
+<div id="select-screen" class="screen select-screen active">
+
+  <div class="scene sel-brex" id="scene">
+    <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#081418"/>
+          <stop offset="45%" stop-color="#0e2822"/>
+          <stop offset="100%" stop-color="#143528"/>
+        </linearGradient>
+        <linearGradient id="aurora" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#3adf9b" stop-opacity="0"/>
+          <stop offset="45%" stop-color="#3adf9b" stop-opacity="0.16"/>
+          <stop offset="75%" stop-color="#7d8bff" stop-opacity="0.1"/>
+          <stop offset="100%" stop-color="#7d8bff" stop-opacity="0"/>
+        </linearGradient>
+        <radialGradient id="fireglow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ff9d3f" stop-opacity="0.4"/>
+          <stop offset="55%" stop-color="#ff9d3f" stop-opacity="0.14"/>
+          <stop offset="100%" stop-color="#ff9d3f" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="selglow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ffd166" stop-opacity="0.5"/>
+          <stop offset="100%" stop-color="#ffd166" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#25341f"/>
+          <stop offset="100%" stop-color="#141d12"/>
+        </linearGradient>
+        <filter id="soft" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="16"/></filter>
+      </defs>
+
+      <rect width="1600" height="900" fill="url(#sky)"/>
+      <polygon points="700,0 1600,0 1600,340 900,180" fill="url(#aurora)" filter="url(#soft)"/>
+      <circle cx="120" cy="90" r="1.4" fill="#dbe3f2" opacity="0.5"/><circle cx="340" cy="60" r="1" fill="#dbe3f2" opacity="0.35"/>
+      <circle cx="560" cy="110" r="1.2" fill="#dbe3f2" opacity="0.4"/><circle cx="1180" cy="70" r="1.1" fill="#dbe3f2" opacity="0.4"/>
+      <circle cx="1420" cy="120" r="1.3" fill="#dbe3f2" opacity="0.45"/><circle cx="900" cy="50" r="0.9" fill="#dbe3f2" opacity="0.3"/>
+
+      <path d="M0 660 L70 430 L140 660 L200 470 L270 660 L340 400 L420 660 L500 450 L570 660 L650 410 L730 660 L820 460 L900 660 L980 420 L1060 660 L1140 470 L1220 660 L1300 410 L1390 660 L1460 450 L1530 660 L1600 500 L1600 700 L0 700 Z" fill="#0f2c24" opacity="0.85"/>
+      <path d="M0 700 L90 520 L180 700 L260 560 L350 700 L450 500 L560 700 L660 545 L760 700 L870 510 L980 700 L1080 555 L1180 700 L1290 505 L1400 700 L1490 560 L1600 700 L1600 760 L0 760 Z" fill="#0a1f19"/>
+      <ellipse cx="800" cy="640" rx="700" ry="70" fill="#7fd8c0" opacity="0.06" filter="url(#soft)"/>
+
+      <path d="M40 760 Q30 400 70 240 Q86 200 104 240 Q150 420 130 760 Z" fill="#0b1712"/>
+      <path d="M1450 780 Q1430 340 1490 160 Q1512 110 1536 165 Q1590 360 1580 780 Z" fill="#0b1712"/>
+      <path d="M1470 400 Q1400 360 1360 380" stroke="#0b1712" stroke-width="16" fill="none" stroke-linecap="round"/>
+
+      <rect x="0" y="700" width="1600" height="200" fill="url(#ground)"/>
+      <ellipse cx="800" cy="800" rx="560" ry="120" fill="#43301e"/>
+      <ellipse cx="800" cy="795" rx="380" ry="85" fill="#5c4126" opacity="0.85"/>
+
+      <!-- tent -->
+      <polygon points="180,720 320,520 445,720" fill="#b7a184"/>
+      <polygon points="320,520 445,720 380,720 305,560" fill="#8a7355" opacity="0.9"/>
+      <polygon points="290,720 320,545 352,720" fill="#4a3b28"/>
+      <line x1="320" y1="520" x2="300" y2="480" stroke="#3a2f22" stroke-width="7" stroke-linecap="round"/>
+      <line x1="320" y1="520" x2="345" y2="482" stroke="#3a2f22" stroke-width="7" stroke-linecap="round"/>
+      <line x1="164" y1="726" x2="470" y2="726" stroke="#2c2417" stroke-width="9" stroke-linecap="round" opacity="0.7"/>
+      <path d="M120 700 L150 560 L160 700 Z" fill="#2f3a46"/>
+      <line x1="155" y1="562" x2="155" y2="700" stroke="#98a0b5" stroke-width="4"/>
+      <rect x="138" y="596" width="36" height="8" rx="3" fill="#6b5624"/>
+
+      <ellipse cx="800" cy="805" rx="300" ry="90" fill="url(#fireglow)"/>
+
+      <!-- selection glows (toggled) -->
+      <ellipse id="glow-brex" class="fig-glow" cx="480" cy="792" rx="92" ry="20" fill="url(#selglow)"/>
+      <ellipse id="glow-records" class="fig-glow" cx="648" cy="758" rx="80" ry="17" fill="url(#selglow)"/>
+      <ellipse id="glow-builder" class="fig-glow" cx="952" cy="758" rx="84" ry="17" fill="url(#selglow)"/>
+      <ellipse id="glow-uchicago" class="fig-glow" cx="1120" cy="792" rx="88" ry="20" fill="url(#selglow)"/>
+
+      <!-- ===== FIGURE: Revenue Strategist (knight) ===== -->
+      <g transform="translate(480,790)">
+        <path d="M-18 -192 C-62 -152 -74 -60 -56 -4 L-26 -4 C-40 -70 -36 -142 -8 -186 Z" fill="#181022"/>
+        <path d="M-24 -4 L-26 -96 L-6 -96 L-9 -4 Z" fill="#12151f"/>
+        <path d="M9 -4 L6 -96 L26 -96 L24 -4 Z" fill="#12151f"/>
+        <rect x="-30" y="-6" width="26" height="9" rx="4" fill="#101320"/>
+        <rect x="6" y="-6" width="26" height="9" rx="4" fill="#101320"/>
+        <path d="M-32 -96 L-36 -168 L36 -168 L32 -96 Z" fill="#151a2b"/>
+        <circle cx="-40" cy="-162" r="15" fill="#1a2033"/>
+        <circle cx="40" cy="-162" r="15" fill="#1a2033"/>
+        <line x1="-38" y1="-152" x2="-11" y2="-104" stroke="#12151f" stroke-width="13" stroke-linecap="round"/>
+        <line x1="38" y1="-152" x2="11" y2="-104" stroke="#12151f" stroke-width="13" stroke-linecap="round"/>
+        <rect x="-15" y="-202" width="30" height="36" rx="9" fill="#171c2e"/>
+        <path d="M0 -202 L6 -228 L-10 -220 Z" fill="#7d2230"/>
+        <line x1="-9" y1="-186" x2="9" y2="-186" stroke="#f4a24b" stroke-width="2.5" opacity="0.85"/>
+        <circle cx="0" cy="-140" r="4.5" fill="#ffd166" opacity="0.9"/>
+        <circle cx="-7" cy="-100" r="7" fill="#12151f"/>
+        <circle cx="7" cy="-100" r="7" fill="#12151f"/>
+        <rect x="-17" y="-108" width="34" height="7" rx="3" fill="#6b5624"/>
+        <polygon points="-3.5,-101 3.5,-101 2.5,-18 0,-8 -2.5,-18" fill="#39404f" stroke="#98a0b5" stroke-width="0.7"/>
+      </g>
+
+      <!-- ===== FIGURE: Chronicler (robed scribe) ===== -->
+      <g transform="translate(648,756) scale(0.9)">
+        <path d="M0 -202 C-36 -190 -50 -92 -46 -2 L46 -2 C50 -92 36 -190 0 -202 Z" fill="#141026"/>
+        <circle cx="0" cy="-198" r="21" fill="#181330"/>
+        <circle cx="4" cy="-195" r="13" fill="#0a0818"/>
+        <line x1="-31" y1="-98" x2="31" y2="-101" stroke="#6b5624" stroke-width="3.5" opacity="0.8"/>
+        <line x1="15" y1="-152" x2="39" y2="-120" stroke="#141026" stroke-width="12" stroke-linecap="round"/>
+        <line x1="45" y1="-232" x2="37" y2="-28" stroke="#221a10" stroke-width="6" stroke-linecap="round"/>
+        <path d="M45 -232 C60 -256 70 -253 63 -229 C58 -215 49 -220 45 -232 Z" fill="#6fe3d2" opacity="0.9"/>
+        <circle cx="54" cy="-240" r="13" fill="#6fe3d2" opacity="0.22"/>
+        <g transform="rotate(-14 -58 -138)">
+          <rect x="-72" y="-150" width="30" height="22" rx="2" fill="#241b3a" stroke="#6fe3d2" stroke-width="0.9" opacity="0.95"/>
+          <line x1="-57" y1="-150" x2="-57" y2="-128" stroke="#6fe3d2" stroke-width="0.8" opacity="0.7"/>
+        </g>
+      </g>
+
+      <!-- ===== FIGURE: Artificer (smith with hammer) ===== -->
+      <g transform="translate(952,756) scale(0.93)">
+        <path d="M-22 -4 L-25 -88 L-4 -88 L-7 -4 Z" fill="#15110c"/>
+        <path d="M7 -4 L4 -88 L25 -88 L22 -4 Z" fill="#15110c"/>
+        <rect x="-30" y="-6" width="26" height="9" rx="4" fill="#100d08"/>
+        <rect x="5" y="-6" width="26" height="9" rx="4" fill="#100d08"/>
+        <path d="M-38 -88 L-42 -162 L42 -162 L38 -88 Z" fill="#191410"/>
+        <path d="M-21 -156 L21 -156 L16 -42 L-16 -42 Z" fill="#261c12"/>
+        <rect x="-56" y="-152" width="21" height="47" rx="9" fill="#1e160c"/>
+        <circle cx="0" cy="-180" r="18" fill="#191410"/>
+        <circle cx="-6" cy="-184" r="5.5" fill="#0c0a07" stroke="#ff9d3f" stroke-width="1.6" opacity="0.95"/>
+        <circle cx="8" cy="-184" r="5.5" fill="#0c0a07" stroke="#ff9d3f" stroke-width="1.6" opacity="0.95"/>
+        <line x1="-11" y1="-186" x2="3" y2="-186" stroke="#ff9d3f" stroke-width="1.4" opacity="0.7"/>
+        <line x1="26" y1="-150" x2="48" y2="-178" stroke="#191410" stroke-width="12" stroke-linecap="round"/>
+        <line x1="20" y1="-148" x2="70" y2="-212" stroke="#2a1f12" stroke-width="8" stroke-linecap="round"/>
+        <rect x="52" y="-242" width="44" height="24" rx="4" fill="#3a3f4a" stroke="#8a93a8" stroke-width="0.8"/>
+        <rect x="-14" y="-44" width="12" height="10" rx="2" fill="#261c12"/>
+        <rect x="4" y="-44" width="12" height="10" rx="2" fill="#261c12"/>
+      </g>
+
+      <!-- ===== FIGURE: Scholar-Athlete (tennis) ===== -->
+      <g transform="translate(1120,790)">
+        <path d="M-19 -4 L-21 -98 L-5 -98 L-7 -4 Z" fill="#14171f"/>
+        <path d="M7 -4 L5 -98 L21 -98 L19 -4 Z" fill="#14171f"/>
+        <rect x="-26" y="-6" width="24" height="9" rx="4" fill="#101320"/>
+        <rect x="4" y="-6" width="24" height="9" rx="4" fill="#101320"/>
+        <path d="M-24 -98 L-28 -168 L28 -168 L24 -98 Z" fill="#161a24"/>
+        <path d="M-10 -164 C-12 -140 -13 -122 -11 -112" stroke="#a3323c" stroke-width="2.5" fill="none" opacity="0.85"/>
+        <path d="M10 -164 C12 -140 13 -122 11 -112" stroke="#a3323c" stroke-width="2.5" fill="none" opacity="0.85"/>
+        <circle cx="0" cy="-184" r="16" fill="#14171f"/>
+        <rect x="-16" y="-192" width="32" height="6" rx="3" fill="#a3323c"/>
+        <line x1="-26" y1="-154" x2="-42" y2="-182" stroke="#14171f" stroke-width="11" stroke-linecap="round"/>
+        <line x1="-20" y1="-152" x2="-54" y2="-210" stroke="#2a1f12" stroke-width="6" stroke-linecap="round"/>
+        <g transform="rotate(-30 -64 -226)">
+          <ellipse cx="-64" cy="-226" rx="19" ry="26" fill="rgba(20,23,31,0.35)" stroke="#2a1f12" stroke-width="4.5"/>
+          <line x1="-64" y1="-248" x2="-64" y2="-204" stroke="#d8c493" stroke-width="0.9" opacity="0.6"/>
+          <line x1="-79" y1="-232" x2="-49" y2="-232" stroke="#d8c493" stroke-width="0.9" opacity="0.6"/>
+          <line x1="-78" y1="-219" x2="-50" y2="-219" stroke="#d8c493" stroke-width="0.9" opacity="0.6"/>
+        </g>
+        <line x1="26" y1="-152" x2="34" y2="-108" stroke="#14171f" stroke-width="11" stroke-linecap="round"/>
+        <ellipse cx="38" cy="-10" rx="24" ry="11" fill="#1c150d"/>
+        <path d="M20 -14 Q38 -30 56 -14" stroke="#2a1f12" stroke-width="4" fill="none"/>
+      </g>
+
+      <!-- campfire -->
+      <g>
+        <ellipse cx="800" cy="806" rx="64" ry="15" fill="#2a2018"/>
+        <circle cx="742" cy="804" r="9" fill="#55504a"/><circle cx="762" cy="812" r="8" fill="#49443e"/>
+        <circle cx="800" cy="817" r="9" fill="#55504a"/><circle cx="838" cy="812" r="8" fill="#49443e"/>
+        <circle cx="858" cy="804" r="9" fill="#55504a"/>
+        <rect x="762" y="788" width="76" height="13" rx="6" fill="#4a3018" transform="rotate(-14 800 795)"/>
+        <rect x="764" y="790" width="74" height="13" rx="6" fill="#3c2712" transform="rotate(16 800 796)"/>
+        <path class="flame" d="M800 802 C778 776 782 748 800 722 C818 748 822 776 800 802 Z" fill="#d9541e" opacity="0.92"/>
+        <path class="flame f2" d="M800 800 C786 780 788 760 800 740 C812 760 814 780 800 800 Z" fill="#f08c1e"/>
+        <path class="flame f3" d="M800 798 C792 786 793 772 800 758 C807 772 808 786 800 798 Z" fill="#ffd166"/>
+        <circle class="spark" cx="792" cy="740" r="2" fill="#ffd166"/>
+        <circle class="spark s2" cx="806" cy="734" r="1.6" fill="#ffb066"/>
+        <circle class="spark s3" cx="799" cy="744" r="1.4" fill="#ffd166"/>
+      </g>
+
+      <circle cx="330" cy="770" r="3" fill="#e8e2d0" opacity="0.7"/><circle cx="352" cy="758" r="2.5" fill="#e8e2d0" opacity="0.6"/>
+      <circle cx="1246" cy="762" r="3" fill="#9db2e8" opacity="0.6"/><circle cx="1268" cy="774" r="2.5" fill="#9db2e8" opacity="0.5"/>
+      <rect x="0" y="0" width="1600" height="900" fill="none"/>
+    </svg>
+
+    <!-- clickable figures with floating nameplates -->
+    <button class="figure-btn" type="button" data-id="brex" style="left: 24.5%; top: 44%; width: 11%; height: 40%;" aria-label="Select chapter: Nick Chua, Revenue Operator at Brex">
+      <span class="plate"><span class="nm">Nick Chua</span><span class="lv">Level 60</span><span class="rule"></span></span>
+    </button>
+    <button class="figure-btn" type="button" data-id="records" style="left: 35.7%; top: 47%; width: 9.2%; height: 36%;" aria-label="Select chapter: The Chronicler, writer of Nick's Records">
+      <span class="plate"><span class="nm">The Chronicler</span><span class="lv">Level 45</span><span class="rule"></span></span>
+    </button>
+    <button class="figure-btn" type="button" data-id="builder" style="left: 54.9%; top: 47%; width: 9.4%; height: 36%;" aria-label="Select chapter: The Artificer, side-project builder">
+      <span class="plate"><span class="nm">The Artificer</span><span class="lv">Level 38</span><span class="rule"></span></span>
+    </button>
+    <button class="figure-btn" type="button" data-id="uchicago" style="left: 64.6%; top: 44%; width: 10.8%; height: 40%;" aria-label="Select chapter: The Scholar-Athlete, varsity tennis at UChicago">
+      <span class="plate"><span class="nm">The Scholar-Athlete</span><span class="lv">Level 30</span><span class="rule"></span></span>
+    </button>
+  </div>
+
+  <nav class="top-nav">
+    <a class="nav-item" href="../../site/index.html#stacks">WRITING</a>
+    <span class="sep"></span>
+    <a class="nav-item" href="../../site/index.html#crates">PROJECTS</a>
+    <span class="sep"></span>
+    <a class="nav-item" href="../../site/index.html#club">NEWSLETTER</a>
+  </nav>
+  <a class="crest-link" href="../../site/index.html" aria-label="View classic site">N<span class="badge">✦</span></a>
+
+  <aside class="char-panel" aria-label="Career character list">
+    <div class="search-row">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9aa3b8" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+      <input type="search" placeholder="Search" aria-label="Search chapters">
     </div>
-
-    <section class="stage" aria-live="polite">
-      <h1 id="sel-name">NICK CHUA</h1>
-      <div class="realm">‹ &nbsp;<span id="sel-zone">San Francisco Bay Area</span>&nbsp; ›</div>
-      <div class="class-line" id="sel-cls">Level 60 · Revenue Operator</div>
-      <svg class="emblem" viewBox="0 0 340 400" aria-hidden="true">
-        <defs>
-          <radialGradient id="glow" cx="50%" cy="42%" r="55%">
-            <stop offset="0%" stop-color="#c9a457" stop-opacity="0.28"/><stop offset="100%" stop-color="#c9a457" stop-opacity="0"/>
-          </radialGradient>
-          <linearGradient id="goldtxt" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#f2dc9d"/><stop offset="100%" stop-color="#b58a3c"/>
-          </linearGradient>
-        </defs>
-        <rect width="340" height="400" fill="url(#glow)"/>
-        <circle cx="170" cy="170" r="118" fill="rgba(10,15,28,0.6)" stroke="#c9a457" stroke-width="2.5"/>
-        <circle cx="170" cy="170" r="106" fill="none" stroke="rgba(201,164,87,0.45)" stroke-width="1"/>
-        <path d="M170 44 L178 52 L170 60 L162 52 Z" fill="#c9a457"/>
-        <path d="M170 280 L178 288 L170 296 L162 288 Z" fill="#c9a457"/>
-        <path d="M52 162 L60 170 L52 178 L44 170 Z" fill="#c9a457"/>
-        <path d="M288 162 L296 170 L288 178 L280 170 Z" fill="#c9a457"/>
-        <path d="M115 108 L225 108 L225 186 Q225 234 170 258 Q115 234 115 186 Z" fill="#0e1526" stroke="#c9a457" stroke-width="2"/>
-        <text x="170" y="202" text-anchor="middle" font-family="Cinzel, Georgia, serif" font-weight="700" font-size="86" fill="url(#goldtxt)">N</text>
-        <ellipse cx="170" cy="348" rx="140" ry="26" fill="rgba(201,164,87,0.09)" stroke="rgba(201,164,87,0.4)" stroke-width="1.5"/>
-      </svg>
-      <div class="desc-panel">
-        <span class="label">CHAPTER DESCRIPTION</span>
-        <span class="title" id="sel-title">The Revenue Strategist</span>
-        <p id="sel-desc"></p>
-        <div class="gold-rule"></div>
-        <dl id="sel-stats"></dl>
-      </div>
-    </section>
-
-    <aside class="roster" aria-label="Career roster">
-      <div class="roster-head"><span class="line"></span><span>CAREER ROSTER</span><span class="line rev"></span></div>
-      <div class="roster-list" id="roster-list"></div>
-      <a class="create-btn" href="mailto:nick@nickchua.me"><span>CREATE NEW CHARACTER</span></a>
-      <span class="hint">Recruiters: this button works.</span>
-    </aside>
-
-    <div class="bottom-bar">
-      <a class="ghost-btn classic" href="../../site/index.html" style="visibility:hidden;" aria-hidden="true">SPACER</a>
-      <button class="enter-btn" id="enter-btn" type="button">ENTER WORLD</button>
-      <nav class="menu-links">
-        <a class="ghost-btn" href="../../site/index.html#stacks">WRITING</a>
-        <a class="ghost-btn" href="../../site/index.html#club">NEWSLETTER</a>
-      </nav>
+    <div class="fav-header"><span>FAVORITES</span><span class="min" aria-hidden="true">−</span></div>
+    <div class="char-list" id="char-list"></div>
+    <div class="panel-actions">
+      <a class="wow-btn" href="mailto:nick@nickchua.me">CREATE CHARACTER</a>
+      <span class="icon-btn" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffd9a0" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></span>
+      <span class="icon-btn" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffd9a0" stroke-width="2"><path d="M4 10a8 8 0 1 1 2 6"/><path d="M4 4v6h6"/></svg></span>
     </div>
+  </aside>
+  <span class="panel-caption">CAREER CHARACTER LIST&nbsp;&nbsp;−</span>
+
+  <div class="desc-card" aria-live="polite">
+    <span class="ttl" id="desc-title"></span>
+    <p id="desc-body"></p>
+    <span class="meta" id="desc-meta"></span>
+  </div>
+
+  <div class="bottom-ui">
+    <a class="wow-btn back" href="../../site/index.html">◄&nbsp; BACK</a>
+    <div class="enter-stack">
+      <span class="sel-name" id="enter-name">Nick Chua</span>
+      <button class="wow-btn big" id="enter-btn" type="button">ENTER WORLD</button>
+      <span class="mobile-back"><a href="../../site/index.html">◄ BACK TO CLASSIC SITE</a></span>
+    </div>
+    <span aria-hidden="true"></span>
   </div>
 </div>
 
@@ -392,12 +636,11 @@ button { font-family: inherit; }
 <script>
 const CHARS = [
   {
-    id: 'brex', name: 'NICK CHUA', title: 'The Revenue Strategist',
-    cls: 'Level 60 · Revenue Operator', guild: 'Brex — Revenue Operations',
-    zone: 'San Francisco Bay Area', detZone: 'REVENUE OPERATIONS',
-    detSub: 'Brex · San Francisco Bay Area — current chapter',
-    desc: 'The current main. Questing in revenue operations at Brex: pipeline analytics, territory design, and the systems that keep a fintech go-to-market engine honest. The occasional heroic spreadsheet run.',
-    stats: [['Guild', 'Brex'], ['Specialization', 'Revenue Operations'], ['Faction', 'Go-to-Market'], ['Status', 'Active — current main']],
+    id: 'brex', name: 'Nick Chua', level: 60, className: 'Revenue Operator', classColor: '#e6cc80',
+    realm: 'Bay Area', crest: 'B', title: 'The Revenue Strategist',
+    detZone: 'REVENUE OPERATIONS', detSub: 'Brex · San Francisco Bay Area — current chapter',
+    desc: 'The current main. Questing in revenue operations at Brex: pipeline analytics, territory design, and the systems that keep a fintech go-to-market engine honest.',
+    meta: 'Guild: Brex · Faction: Go-to-Market · Status: Active',
     quest: {
       title: 'Scale the Go-to-Market Engine',
       flavor: 'The guild grows faster than its ledgers. Someone must make the pipeline numbers mean something, and keep them meaning it every quarter.',
@@ -406,12 +649,11 @@ const CHARS = [
     }
   },
   {
-    id: 'records', name: 'THE CHRONICLER', title: 'Writer of Nick’s Records',
-    cls: 'Level 45 · Scribe', guild: 'Nick’s Records — Est. 2019',
-    zone: 'The Open Internet', detZone: 'NICK’S RECORDS',
-    detSub: 'Writing on tech, games & capital — est. 2019',
+    id: 'records', name: 'The Chronicler', level: 45, className: 'Scribe', classColor: '#69ccf0',
+    realm: 'The Open Internet', crest: 'R', title: 'Writer of Nick’s Records',
+    detZone: 'NICK’S RECORDS', detSub: 'Writing on tech, games & capital — est. 2019',
     desc: 'Twenty essays and 58 newsletter issues on tech, esports, and the occasional company I think the market has wrong. Yes, I will defend the Star Wars prequels.',
-    stats: [['Guild', 'Nick’s Records'], ['Specialization', 'Tech, games & capital'], ['Notable loot', '58 issues pressed']],
+    meta: 'Guild: Nick’s Records · Est. 2019 · 58 issues pressed',
     quest: {
       title: 'Chronicle the Industry',
       flavor: 'Every market has a story the consensus is telling wrong. Find it, write it, press it into an issue.',
@@ -420,12 +662,11 @@ const CHARS = [
     }
   },
   {
-    id: 'builder', name: 'THE ARTIFICER', title: 'Side-Project Builder',
-    cls: 'Level 38 · Engineer', guild: 'Solo guild — The Forge',
-    zone: 'Nights & Weekends', detZone: 'THE FORGE',
-    detSub: 'Side projects · nights & weekends',
-    desc: 'Currently forging Arise, a Solo Leveling-inspired fitness tracker (SwiftUI front, FastAPI back). Previous crafts include a ramen ranking system and a four-part esports position paper.',
-    stats: [['Current build', 'Arise fitness tracker'], ['Materials', 'Swift · Python'], ['Crafting since', '2019']],
+    id: 'builder', name: 'The Artificer', level: 38, className: 'Engineer', classColor: '#ff7c0a',
+    realm: 'Nights & Weekends', crest: 'A', title: 'Side-Project Builder',
+    detZone: 'THE FORGE', detSub: 'Side projects · nights & weekends',
+    desc: 'Currently forging Arise, a Solo Leveling-inspired fitness tracker (SwiftUI front, FastAPI back). Previous crafts include a ramen ranking system and an esports position paper.',
+    meta: 'Current build: Arise fitness tracker · Swift + Python',
     quest: {
       title: 'Forge the Arise Tracker',
       flavor: 'A hunter grows stronger only by logging the hunt. Build the system that makes the grind visible.',
@@ -434,12 +675,11 @@ const CHARS = [
     }
   },
   {
-    id: 'uchicago', name: 'THE SCHOLAR-ATHLETE', title: 'Varsity Tennis, UChicago',
-    cls: 'Level 30 · Economist', guild: 'University of Chicago',
-    zone: 'Hyde Park, Chicago', detZone: 'HYDE PARK',
-    detSub: 'University of Chicago — the leveling years',
+    id: 'uchicago', name: 'The Scholar-Athlete', level: 30, className: 'Economist', classColor: '#abd473',
+    realm: 'Hyde Park', crest: 'U', title: 'Varsity Tennis, UChicago',
+    detZone: 'HYDE PARK', detSub: 'University of Chicago — the leveling years',
     desc: 'Four years in the Hyde Park training grounds: economics by day, varsity tennis by afternoon, and the first drafts of a writing habit by night.',
-    stats: [['Guild', 'UChicago Maroons'], ['Specialization', 'Economics + tennis'], ['Era', 'The leveling years']],
+    meta: 'Guild: UChicago Maroons · Era: the leveling years',
     quest: {
       title: 'Survive the Core',
       flavor: 'They say the Core builds character. They are not wrong, exactly.',
@@ -452,46 +692,48 @@ const CHARS = [
 let selId = 'brex';
 const $ = (id) => document.getElementById(id);
 
-function renderRoster() {
-  const list = $('roster-list');
+function renderList() {
+  const list = $('char-list');
   list.innerHTML = '';
   CHARS.forEach((c) => {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'char-card';
-    btn.setAttribute('aria-pressed', String(c.id === selId));
-    btn.innerHTML = '<span class="name"></span><span class="cls"></span><span class="guild"></span>';
-    btn.querySelector('.name').textContent = c.name;
-    btn.querySelector('.cls').textContent = c.cls;
-    btn.querySelector('.guild').textContent = c.guild;
-    btn.addEventListener('click', () => { selId = c.id; renderRoster(); renderStage(); });
+    btn.className = 'char-entry' + (c.id === selId ? ' selected' : '');
+    btn.innerHTML = '<span class="txt"><span class="nm"></span><span class="cls">Level ' + c.level +
+      ' <b style="color:' + c.classColor + '"></b></span><span class="realm"></span></span><span class="crest"></span>';
+    btn.querySelector('.nm').textContent = c.name;
+    btn.querySelector('.cls b').textContent = c.className;
+    btn.querySelector('.realm').textContent = c.realm;
+    btn.querySelector('.crest').textContent = c.crest;
+    btn.addEventListener('click', () => select(c.id));
     list.appendChild(btn);
   });
+  const ghost = document.createElement('a');
+  ghost.className = 'char-entry ghost';
+  ghost.href = 'mailto:nick@nickchua.me';
+  ghost.innerHTML = '<span class="txt"><span class="nm">[Earlier Chapter]</span><span class="cls">Level ?? — pre-Brex roles</span><span class="realm">Add your history here</span></span><span class="crest">+</span>';
+  list.appendChild(ghost);
 }
 
-function renderStage() {
-  const c = CHARS.find((x) => x.id === selId);
-  $('sel-name').textContent = c.name;
-  $('sel-zone').textContent = c.zone;
-  $('sel-cls').textContent = c.cls;
-  $('sel-title').textContent = c.title;
-  $('sel-desc').textContent = c.desc;
-  const dl = $('sel-stats');
-  dl.innerHTML = '';
-  c.stats.forEach(([k, v]) => {
-    const row = document.createElement('div');
-    const dt = document.createElement('dt'); dt.textContent = k;
-    const dd = document.createElement('dd'); dd.textContent = v;
-    row.appendChild(dt); row.appendChild(dd); dl.appendChild(row);
-  });
+function select(id) {
+  selId = id;
+  const c = CHARS.find((x) => x.id === id);
+  const scene = $('scene');
+  scene.className = 'scene sel-' + id;
+  document.querySelectorAll('.figure-btn').forEach((b) => b.classList.toggle('selected', b.dataset.id === id));
+  document.querySelectorAll('.char-entry:not(.ghost)').forEach((b, i) => b.classList.toggle('selected', CHARS[i].id === id));
+  $('enter-name').textContent = c.name;
+  $('desc-title').textContent = c.title;
+  $('desc-body').textContent = c.desc;
+  $('desc-meta').textContent = c.meta;
 }
 
 function renderDetail() {
   const c = CHARS.find((x) => x.id === selId);
   $('det-zone').textContent = c.detZone;
   $('det-sub').textContent = c.detSub;
-  $('det-name').textContent = c.name === 'NICK CHUA' ? 'Nick Chua' : c.name;
-  $('det-lv').textContent = c.cls + ' · ' + c.guild;
+  $('det-name').textContent = c.name;
+  $('det-lv').textContent = 'Level ' + c.level + ' ' + c.className + ' · ' + c.realm;
   $('q-title').textContent = c.quest.title;
   $('q-flavor').textContent = c.quest.flavor;
   const obj = $('q-objectives'); obj.innerHTML = '';
@@ -539,10 +781,11 @@ function swapTo(id) {
   window.scrollTo(0, 0);
 }
 
+document.querySelectorAll('.figure-btn').forEach((b) => b.addEventListener('click', () => select(b.dataset.id)));
 $('enter-btn').addEventListener('click', enterWorld);
 $('back-btn').addEventListener('click', () => swapTo('select-screen'));
-renderRoster();
-renderStage();
+renderList();
+select('brex');
 </script>
 </body>
 </html>

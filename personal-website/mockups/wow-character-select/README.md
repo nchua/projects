@@ -5,12 +5,21 @@ Mockup only, not wired into the live site. Open `index.html` in a browser
 
 ## Concept
 
-The homepage becomes a character-select screen:
+The homepage becomes a warband-style character-select screen (v2 — modeled
+on the modern camp-scene layout, not the classic pedestal one):
 
-- **Career roster (right rail)** — each career chapter is a "character":
-  Brex RevOps (current main), Nick's Records (writing), side projects,
-  UChicago. Selecting one updates the center stage: name plate, realm line,
-  and a chapter description panel.
+- **The scene** — an illustrated night camp (SVG, original art): four
+  figures standing around a campfire with floating nameplates, each one a
+  career chapter: knight = Brex RevOps (current main), robed chronicler =
+  Nick's Records, artificer with hammer = side projects, athlete with
+  tennis racket = UChicago. Click a figure or its list entry to select;
+  the selected figure gets a gold ground-glow and gold nameplate.
+- **Character list panel (right)** — warband-style: search field,
+  Favorites header, entries with level + class (class-colored) + realm,
+  crest icons, a ghosted "[Earlier Chapter]" slot, and a red Create
+  Character button (contact CTA).
+- **Description card (bottom-left)** — tooltip-style chapter highlight
+  above the red Back button (Back → classic site).
 - **Enter World** — plays a short loading-screen transition, then lands on
   the chapter detail: quest log (current/completed work), character sheet
   (skills as gear with rarity colors), reputation bars (cross-functional
@@ -25,9 +34,10 @@ The homepage becomes a character-select screen:
 The real game's screen is PC-only, so mobile is re-composed rather than
 shrunk (breakpoint at 900px):
 
-- Stage (name plate + emblem + description) stacks on top.
-- Roster becomes a horizontal snap-scroll card rail, gacha-game style.
-- Enter World is a fixed bottom bar with safe-area padding.
+- The camp scene becomes a 16:10 hero band up top; figures stay tappable.
+- The character list panel moves below the scene as a vertical list.
+- Enter World (with selected name above it) is a sticky bottom bar with
+  safe-area padding; Back collapses to a small text link.
 - Detail view collapses to a single scrolling column.
 
 ## Placeholder content (fix before anything ships)
