@@ -282,8 +282,36 @@ button { font-family: inherit; }
   100% { transform: translateY(-90px); opacity: 0; }
 }
 
+/* ---------- asset-kit integration ---------- */
+.corner { position: absolute; width: 40px; height: 40px; pointer-events: none; z-index: 2; }
+.corner.tl { top: -7px; left: -7px; }
+.corner.tr { top: -7px; right: -7px; transform: scaleX(-1); }
+.corner.bl { bottom: -7px; left: -7px; transform: scaleY(-1); }
+.corner.br { bottom: -7px; right: -7px; transform: scale(-1, -1); }
+.panel-tex, .parch-tex { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.panel-tex { border-radius: 8px; opacity: 0.45; }
+.parch-tex { border-radius: 4px; opacity: 0.5; mix-blend-mode: multiply; }
+.char-panel > :not(.panel-tex):not(.corner) { position: relative; z-index: 1; }
+.quest-log { position: relative; }
+.quest-log > :not(.parch-tex) { position: relative; z-index: 1; }
+.desc-card > :not(.corner) { position: relative; z-index: 1; }
+.crest svg { display: block; }
+.gem { width: 14px; height: 14px; vertical-align: -2px; margin-right: 5px; }
+.ttl-row { display: flex; align-items: center; gap: 9px; }
+.ttl-row .cls-icon { width: 26px; height: 26px; flex-shrink: 0; }
+.sel-name-wrap { position: relative; display: flex; align-items: center; justify-content: center; min-width: 380px; height: 58px; }
+.sel-name-wrap .ribbon { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sel-name-wrap .sel-name { position: relative; font-size: 20px; }
+.fig-toggle { position: absolute; left: 22px; top: 14px; z-index: 11; cursor: pointer; border: 1px solid rgba(138, 109, 53, 0.5); background: rgba(9, 13, 24, 0.7); }
+.fig-toggle:hover { border-color: var(--gold); color: #f6e3a8; }
+#load-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.9; }
+.load-shade { position: absolute; inset: 0; background: radial-gradient(900px 600px at 50% 45%, rgba(5, 8, 6, 0.15), rgba(5, 8, 6, 0.78)); }
+.loading > .zone, .loading > .tip, .loading > .load-track { position: relative; z-index: 1; }
+
 /* ---------- mobile ---------- */
 @media (max-width: 900px) {
+  .sel-name-wrap { min-width: 0; width: 100%; }
+  .fig-toggle { top: 52px; left: 10px; font-size: 9px; padding: 6px 10px; }
   .select-screen { display: flex; flex-direction: column; min-height: 100vh; overflow: visible; }
   .scene { position: relative; inset: auto; width: 100%; aspect-ratio: 16 / 10; flex-shrink: 0; }
   .top-nav { position: absolute; top: 0; left: 0; right: 0; padding: 10px 8px 8px; z-index: 12; }
@@ -322,6 +350,1272 @@ button { font-family: inherit; }
 </style>
 </head>
 <body>
+
+<!-- inlined asset sprites (sources: assets/ui, assets/icons, assets/figures, assets/textures) -->
+<div style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!--
+    ui-kit.svg - ornamental UI sprite for the character-select mockup.
+    Original artwork. Self-contained: gradients + inline filters only, no images, no scripts, no external refs.
+    Palette: golds #ecd08a / #c9a457 / #8a6d35 - reds #a5231a / #7c130d / #4c0a06 - darks #101014 / #0b0e14 - trim shadow #3a2c14.
+    Usage: inline this file into the page, then reference symbols with <use href="#symbol-id"/>.
+  -->
+  <defs>
+    <!-- ============ gradients ============ -->
+    <linearGradient id="g-gold-v" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ecd08a"/>
+      <stop offset="0.45" stop-color="#c9a457"/>
+      <stop offset="1" stop-color="#8a6d35"/>
+    </linearGradient>
+    <linearGradient id="g-gold-h" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ecd08a"/>
+      <stop offset="0.45" stop-color="#c9a457"/>
+      <stop offset="1" stop-color="#8a6d35"/>
+    </linearGradient>
+    <linearGradient id="g-gold-sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff3cf"/>
+      <stop offset="0.16" stop-color="#ecd08a"/>
+      <stop offset="0.55" stop-color="#c9a457"/>
+      <stop offset="0.85" stop-color="#8a6d35"/>
+      <stop offset="1" stop-color="#6f5528"/>
+    </linearGradient>
+    <linearGradient id="g-red-bevel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a5231a"/>
+      <stop offset="0.45" stop-color="#7c130d"/>
+      <stop offset="1" stop-color="#4c0a06"/>
+    </linearGradient>
+    <linearGradient id="g-red-deep" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7c130d"/>
+      <stop offset="1" stop-color="#4c0a06"/>
+    </linearGradient>
+    <linearGradient id="g-panel-dark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#101014"/>
+      <stop offset="1" stop-color="#0b0e14"/>
+    </linearGradient>
+    <linearGradient id="g-recess" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#08080b"/>
+      <stop offset="0.35" stop-color="#0b0e14"/>
+      <stop offset="1" stop-color="#101014"/>
+    </linearGradient>
+    <linearGradient id="g-hi-top" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe9c0" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#ffe9c0" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="g-shade-bottom" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.45"/>
+    </linearGradient>
+    <linearGradient id="g-rule-l" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8a6d35" stop-opacity="0"/>
+      <stop offset="0.6" stop-color="#c9a457" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#ecd08a"/>
+    </linearGradient>
+    <linearGradient id="g-rule-r" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ecd08a"/>
+      <stop offset="0.4" stop-color="#c9a457" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#8a6d35" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="g-header-tint" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c9a457" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#c9a457" stop-opacity="0.07"/>
+    </linearGradient>
+    <radialGradient id="r-top-glow" cx="0.5" cy="0" r="1">
+      <stop offset="0" stop-color="#c9a457" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#c9a457" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="r-btn-core" cx="0.5" cy="0.42" r="0.75">
+      <stop offset="0" stop-color="#a5231a" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#a5231a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="r-gold-core" cx="0.5" cy="0.35" r="0.8">
+      <stop offset="0" stop-color="#fff3cf" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#fff3cf" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- ============ filters ============ -->
+    <filter id="f-drop" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="3" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+    <filter id="f-gold-glow" x="-20%" y="-40%" width="140%" height="180%">
+      <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#c9a457" flood-opacity="0.55"/>
+    </filter>
+    <filter id="f-soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="1.4"/>
+    </filter>
+
+    <!-- ============ reusable ornaments ============ -->
+    <g id="d-rivet">
+      <circle r="3.4" fill="url(#g-gold-v)" stroke="#3a2c14" stroke-width="1"/>
+      <circle cx="-0.9" cy="-0.9" r="1.1" fill="#fff3cf" opacity="0.85"/>
+    </g>
+    <g id="d-diamond-sm">
+      <path d="M0 -3.6 L3.6 0 L0 3.6 L-3.6 0 Z" fill="#8a6d35" stroke="#ecd08a" stroke-width="0.6"/>
+    </g>
+    <g id="d-curl">
+      <path d="M3 26 C3 12 12 3 26 3" fill="none" stroke="url(#g-gold-v)" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M6.5 21.5 C7.5 12 13.5 6.5 22 6.5 C27.5 6.5 28 12.5 23.5 12.5 C20 12.5 20.4 8 23 8.2" fill="none" stroke="#ecd08a" stroke-width="1.1" opacity="0.8" stroke-linecap="round"/>
+      <circle cx="26" cy="3" r="2" fill="url(#g-gold-v)" stroke="#3a2c14" stroke-width="0.7"/>
+      <circle cx="3" cy="26" r="2" fill="url(#g-gold-v)" stroke="#3a2c14" stroke-width="0.7"/>
+    </g>
+  </defs>
+
+  <!-- ================================================================
+       ui-corner : 64x64 ornate filigree corner for 9-slice frames.
+       Drawn as the TOP-LEFT corner; flip with scale(-1,1) / (1,-1) / (-1,-1).
+       Band thickness 14px matches ui-edge height.
+       ================================================================ -->
+  <symbol id="ui-corner" viewBox="0 0 64 64">
+    <!-- band fills with open ends so the strip meets ui-edge seamlessly -->
+    <rect x="0" y="0" width="64" height="14" fill="url(#g-gold-v)"/>
+    <rect x="0" y="0" width="14" height="64" fill="url(#g-gold-h)"/>
+    <!-- trim rails (no end caps) -->
+    <rect x="0" y="0" width="64" height="1.5" fill="#3a2c14"/>
+    <rect x="0" y="0" width="1.5" height="64" fill="#3a2c14"/>
+    <rect x="14" y="12.5" width="50" height="1.5" fill="#3a2c14"/>
+    <rect x="12.5" y="14" width="1.5" height="50" fill="#3a2c14"/>
+    <line x1="15" y1="2.6" x2="64" y2="2.6" stroke="#fff3cf" stroke-width="1" opacity="0.55"/>
+    <line x1="2.6" y1="15" x2="2.6" y2="64" stroke="#fff3cf" stroke-width="1" opacity="0.55"/>
+    <line x1="15" y1="11.4" x2="64" y2="11.4" stroke="#8a6d35" stroke-width="1" opacity="0.9"/>
+    <line x1="11.4" y1="15" x2="11.4" y2="64" stroke="#8a6d35" stroke-width="1" opacity="0.9"/>
+    <!-- corner boss -->
+    <rect x="1.5" y="1.5" width="12" height="12" fill="url(#g-gold-v)" stroke="#3a2c14" stroke-width="1.5"/>
+    <path d="M7.5 3.2 L11.8 7.5 L7.5 11.8 L3.2 7.5 Z" fill="#8a6d35" stroke="#ecd08a" stroke-width="0.8"/>
+    <circle cx="7.5" cy="7.5" r="1.4" fill="#ecd08a"/>
+    <!-- band diamonds -->
+    <use href="#d-diamond-sm" x="42" y="7.4"/>
+    <use href="#d-diamond-sm" x="7.4" y="42"/>
+    <!-- filigree curl sweeping into the panel -->
+    <path d="M14.5 14.5 C36 16.5 46 26.5 48 48 C48.8 55.8 42 59.2 38.4 54.8 C35.4 51 39 46 43 47.8" fill="none" stroke="url(#g-gold-v)" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M14.5 14.5 C16.5 26 22 31.5 31 33.4" fill="none" stroke="#ecd08a" stroke-width="1.1" opacity="0.75" stroke-linecap="round"/>
+    <circle cx="31" cy="33.4" r="1.7" fill="#ecd08a" opacity="0.9"/>
+    <circle cx="24.5" cy="20.5" r="1.5" fill="#ecd08a" opacity="0.7"/>
+    <circle cx="20.5" cy="24.5" r="1.5" fill="#ecd08a" opacity="0.7"/>
+  </symbol>
+
+  <!-- ================================================================
+       ui-edge : 128x14 repeatable edge strip for 9-slice frames.
+       Drawn as a TOP edge (highlight on top). Tiles seamlessly every 128px
+       (diamond period 32px). Rotate/flip for the other three sides.
+       ================================================================ -->
+  <symbol id="ui-edge" viewBox="0 0 128 14">
+    <!-- fill band + trim rails only (no end strokes), so tiles join seamlessly -->
+    <rect x="0" y="0" width="128" height="14" fill="url(#g-gold-v)"/>
+    <rect x="0" y="0" width="128" height="1.5" fill="#3a2c14"/>
+    <rect x="0" y="12.5" width="128" height="1.5" fill="#3a2c14"/>
+    <line x1="0" y1="2.6" x2="128" y2="2.6" stroke="#fff3cf" stroke-width="1" opacity="0.55"/>
+    <line x1="0" y1="11.4" x2="128" y2="11.4" stroke="#8a6d35" stroke-width="1" opacity="0.9"/>
+    <use href="#d-diamond-sm" x="16" y="7"/>
+    <use href="#d-diamond-sm" x="48" y="7"/>
+    <use href="#d-diamond-sm" x="80" y="7"/>
+    <use href="#d-diamond-sm" x="112" y="7"/>
+  </symbol>
+
+  <!-- ================================================================
+       ui-panel-frame : 340x480 complete panel with layered gold double
+       border, corner flourishes and dark inner fill.
+       ================================================================ -->
+  <symbol id="ui-panel-frame" viewBox="0 0 340 480">
+    <rect x="2" y="2" width="336" height="476" rx="12" fill="url(#g-panel-dark)" stroke="#3a2c14" stroke-width="3"/>
+    <rect x="5.75" y="5.75" width="328.5" height="468.5" rx="9.5" fill="none" stroke="url(#g-gold-v)" stroke-width="2.5"/>
+    <rect x="10.5" y="10.5" width="319" height="459" rx="6.5" fill="none" stroke="#8a6d35" stroke-width="1"/>
+    <rect x="13.5" y="13.5" width="313" height="453" rx="5" fill="none" stroke="#ecd08a" stroke-width="0.75" opacity="0.3"/>
+    <rect x="14" y="14" width="312" height="110" rx="5" fill="url(#r-top-glow)"/>
+    <rect x="14" y="380" width="312" height="86" rx="5" fill="url(#g-shade-bottom)" opacity="0.5"/>
+    <!-- corner flourishes -->
+    <use href="#d-curl" transform="translate(12 12)"/>
+    <use href="#d-curl" transform="translate(328 12) scale(-1 1)"/>
+    <use href="#d-curl" transform="translate(12 468) scale(1 -1)"/>
+    <use href="#d-curl" transform="translate(328 468) scale(-1 -1)"/>
+    <!-- edge rivets -->
+    <use href="#d-rivet" x="170" y="8"/>
+    <use href="#d-rivet" x="170" y="472"/>
+    <use href="#d-rivet" x="8" y="240"/>
+    <use href="#d-rivet" x="332" y="240"/>
+  </symbol>
+
+  <!-- ================================================================
+       ui-btn-red : 280x56 red beveled button face with gold trim ring,
+       inner highlight and bottom shade. Face left clear for label text.
+       ================================================================ -->
+  <symbol id="ui-btn-red" viewBox="0 0 280 56">
+    <g filter="url(#f-drop)">
+      <rect x="0.5" y="0.5" width="279" height="55" rx="9.5" fill="none" stroke="url(#g-gold-v)" stroke-width="1"/>
+      <rect x="2" y="2" width="276" height="52" rx="8" fill="none" stroke="#3a2c14" stroke-width="2"/>
+      <rect x="3.75" y="3.75" width="272.5" height="48.5" rx="7" fill="url(#g-red-bevel)" stroke="#101014" stroke-width="1.5"/>
+    </g>
+    <rect x="5" y="5" width="270" height="46" rx="6.5" fill="url(#r-btn-core)"/>
+    <rect x="6" y="5.5" width="268" height="19" rx="6" fill="url(#g-hi-top)"/>
+    <rect x="6" y="33" width="268" height="17.5" rx="6" fill="url(#g-shade-bottom)"/>
+    <path d="M12 6.4 H268" stroke="#ecd08a" stroke-width="1" opacity="0.4" fill="none"/>
+    <path d="M12 49.6 H268" stroke="#000000" stroke-width="1" opacity="0.5" fill="none"/>
+  </symbol>
+
+  <!-- ================================================================
+       ui-btn-icon : 48x48 square icon-button variant of ui-btn-red.
+       ================================================================ -->
+  <symbol id="ui-btn-icon" viewBox="0 0 48 48">
+    <g filter="url(#f-drop)">
+      <rect x="0.5" y="0.5" width="47" height="47" rx="8.5" fill="none" stroke="url(#g-gold-v)" stroke-width="1"/>
+      <rect x="2" y="2" width="44" height="44" rx="7" fill="none" stroke="#3a2c14" stroke-width="2"/>
+      <rect x="3.75" y="3.75" width="40.5" height="40.5" rx="6" fill="url(#g-red-bevel)" stroke="#101014" stroke-width="1.5"/>
+    </g>
+    <rect x="5" y="5" width="38" height="38" rx="5.5" fill="url(#r-btn-core)"/>
+    <rect x="6" y="5.5" width="36" height="15" rx="5" fill="url(#g-hi-top)"/>
+    <rect x="6" y="28" width="36" height="14.5" rx="5" fill="url(#g-shade-bottom)"/>
+    <path d="M11 6.4 H37" stroke="#ecd08a" stroke-width="1" opacity="0.4" fill="none"/>
+  </symbol>
+
+  <!-- ================================================================
+       ui-btn-gold : 340x60 gold "Enter World"-tier button face with
+       soft gold aura, sheen bevel and end filigree. Dark label text on top.
+       ================================================================ -->
+  <symbol id="ui-btn-gold" viewBox="0 0 340 60">
+    <g filter="url(#f-gold-glow)">
+      <rect x="0.5" y="0.5" width="339" height="59" rx="10.5" fill="none" stroke="#ecd08a" stroke-width="1" opacity="0.9"/>
+      <rect x="2" y="2" width="336" height="56" rx="9" fill="none" stroke="#3a2c14" stroke-width="2"/>
+      <rect x="3.75" y="3.75" width="332.5" height="52.5" rx="8" fill="url(#g-gold-sheen)" stroke="#3a2c14" stroke-width="1.5"/>
+    </g>
+    <rect x="5" y="5" width="330" height="50" rx="7.5" fill="url(#r-gold-core)"/>
+    <rect x="6" y="5.5" width="328" height="20" rx="7" fill="url(#g-hi-top)"/>
+    <rect x="6" y="37" width="328" height="17.5" rx="7" fill="url(#g-shade-bottom)" opacity="0.6"/>
+    <path d="M14 6.6 H326" stroke="#fff3cf" stroke-width="1" opacity="0.6" fill="none"/>
+    <path d="M14 53.4 H326" stroke="#3a2c14" stroke-width="1" opacity="0.7" fill="none"/>
+    <!-- end filigree -->
+    <path d="M14 30 H34 M306 30 H326" stroke="#8a6d35" stroke-width="1" opacity="0.8"/>
+    <path d="M24 30 m-4.6 0 L24 25.4 L28.6 30 L24 34.6 Z" fill="#7c130d" stroke="#3a2c14" stroke-width="0.8"/>
+    <circle cx="24" cy="30" r="1.3" fill="#ecd08a"/>
+    <path d="M316 30 m-4.6 0 L316 25.4 L320.6 30 L316 34.6 Z" fill="#7c130d" stroke="#3a2c14" stroke-width="0.8"/>
+    <circle cx="316" cy="30" r="1.3" fill="#ecd08a"/>
+  </symbol>
+
+  <!-- ================================================================
+       ui-divider-diamond : 320x24 horizontal rule, tapered gold lines
+       meeting a faceted center diamond with flanking studs.
+       ================================================================ -->
+  <symbol id="ui-divider-diamond" viewBox="0 0 320 24">
+    <rect x="6" y="11" width="132" height="2" fill="url(#g-rule-l)"/>
+    <rect x="182" y="11" width="132" height="2" fill="url(#g-rule-r)"/>
+    <rect x="6" y="13.4" width="132" height="1" fill="#3a2c14" opacity="0.7"/>
+    <rect x="182" y="13.4" width="132" height="1" fill="#3a2c14" opacity="0.7"/>
+    <path d="M160 3.5 L168.5 12 L160 20.5 L151.5 12 Z" fill="url(#g-gold-v)" stroke="#3a2c14" stroke-width="1.2"/>
+    <path d="M160 7 L165 12 L160 17 L155 12 Z" fill="#7c130d" stroke="#ecd08a" stroke-width="0.7"/>
+    <circle cx="160" cy="12" r="1.5" fill="#ecd08a"/>
+    <use href="#d-diamond-sm" x="143" y="12"/>
+    <use href="#d-diamond-sm" x="177" y="12"/>
+  </symbol>
+
+  <!-- ================================================================
+       ui-divider-scroll : 320x28 horizontal rule variant with mirrored
+       scrollwork curls around a small center stud.
+       ================================================================ -->
+  <symbol id="ui-divider-scroll" viewBox="0 0 320 28">
+    <rect x="6" y="13" width="112" height="2" fill="url(#g-rule-l)"/>
+    <rect x="202" y="13" width="112" height="2" fill="url(#g-rule-r)"/>
+    <path d="M120 14 C132 14 138 8 146 8 C152 8 152.5 14.5 147.5 14.5 C144 14.5 144.4 10.4 147 10.6" fill="none" stroke="url(#g-gold-h)" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M200 14 C188 14 182 20 174 20 C168 20 167.5 13.5 172.5 13.5 C176 13.5 175.6 17.6 173 17.4" fill="none" stroke="url(#g-gold-h)" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M124 17.5 C130 17.5 133 20.5 138 20.5" fill="none" stroke="#8a6d35" stroke-width="1.1" opacity="0.85" stroke-linecap="round"/>
+    <path d="M196 10.5 C190 10.5 187 7.5 182 7.5" fill="none" stroke="#8a6d35" stroke-width="1.1" opacity="0.85" stroke-linecap="round"/>
+    <path d="M160 8.4 L165.6 14 L160 19.6 L154.4 14 Z" fill="url(#g-gold-v)" stroke="#3a2c14" stroke-width="1"/>
+    <circle cx="160" cy="14" r="1.4" fill="#fff3cf" opacity="0.9"/>
+  </symbol>
+
+  <!-- ================================================================
+       ui-nameplate : 420x64 ribbon banner with pointed ends and gold
+       double trim, for floating character names.
+       ================================================================ -->
+  <symbol id="ui-nameplate" viewBox="0 0 420 64">
+    <g filter="url(#f-drop)">
+      <path d="M12 32 L48 9 H372 L408 32 L372 55 H48 Z" fill="url(#g-panel-dark)" stroke="#3a2c14" stroke-width="3" stroke-linejoin="round"/>
+    </g>
+    <path d="M19 32 L50 12.5 H370 L401 32 L370 51.5 H50 Z" fill="none" stroke="url(#g-gold-v)" stroke-width="2"/>
+    <path d="M26 32 L52.5 15.5 H367.5 L394 32 L367.5 48.5 H52.5 Z" fill="none" stroke="#8a6d35" stroke-width="1" opacity="0.9"/>
+    <!-- ribbon fold shading at the points -->
+    <path d="M48 9 L27 32 L48 55 L56 32 Z" fill="#000000" opacity="0.28"/>
+    <path d="M372 9 L393 32 L372 55 L364 32 Z" fill="#000000" opacity="0.28"/>
+    <!-- top sheen -->
+    <path d="M52 13.5 H368" stroke="#ecd08a" stroke-width="1" opacity="0.35" fill="none"/>
+    <rect x="56" y="13" width="308" height="14" fill="url(#g-hi-top)" opacity="0.35"/>
+    <!-- tip finials -->
+    <path d="M12 32 L19 25 L26 32 L19 39 Z" fill="url(#g-gold-v)" stroke="#3a2c14" stroke-width="1"/>
+    <path d="M394 32 L401 25 L408 32 L401 39 Z" fill="url(#g-gold-v)" stroke="#3a2c14" stroke-width="1"/>
+    <circle cx="19" cy="32" r="1.4" fill="#7c130d"/>
+    <circle cx="401" cy="32" r="1.4" fill="#7c130d"/>
+    <!-- band studs -->
+    <use href="#d-rivet" x="60" y="32"/>
+    <use href="#d-rivet" x="360" y="32"/>
+  </symbol>
+
+  <!-- ================================================================
+       ui-search-recess : 316x36 sunken input-well frame with etched
+       magnifier at left. Place a transparent <input> on top.
+       ================================================================ -->
+  <symbol id="ui-search-recess" viewBox="0 0 316 36">
+    <rect x="1" y="1" width="314" height="34" rx="7" fill="none" stroke="#8a6d35" stroke-width="1" opacity="0.55"/>
+    <rect x="2.5" y="2.5" width="311" height="31" rx="6" fill="url(#g-recess)" stroke="#3a2c14" stroke-width="1.5"/>
+    <!-- recess shadow (top/left dark, bottom light) -->
+    <path d="M9 5.5 H307" stroke="#000000" stroke-width="2" opacity="0.55" fill="none" filter="url(#f-soft)"/>
+    <path d="M5.5 9 V27" stroke="#000000" stroke-width="2" opacity="0.4" fill="none" filter="url(#f-soft)"/>
+    <path d="M9 32.6 H307" stroke="#c9a457" stroke-width="1" opacity="0.28" fill="none"/>
+    <!-- etched magnifier -->
+    <g stroke="#8a6d35" stroke-width="1.8" fill="none" opacity="0.85">
+      <circle cx="18" cy="16.5" r="5.2"/>
+      <path d="M22 20.5 L27 25.5"/>
+    </g>
+    <use href="#d-diamond-sm" x="303" y="18"/>
+  </symbol>
+
+  <!-- ================================================================
+       ui-section-header : 316x30 collapsible section header bar with
+       gold tint fill, trim border, left diamond and minus toggle.
+       ================================================================ -->
+  <symbol id="ui-section-header" viewBox="0 0 316 30">
+    <rect x="1.25" y="1.25" width="313.5" height="27.5" rx="5.5" fill="url(#g-header-tint)" stroke="#8a6d35" stroke-width="1.5"/>
+    <rect x="3.5" y="3.5" width="309" height="23" rx="4" fill="none" stroke="#ecd08a" stroke-width="0.75" opacity="0.3"/>
+    <path d="M8 2.4 H308" stroke="#ecd08a" stroke-width="1" opacity="0.3" fill="none"/>
+    <use href="#d-diamond-sm" x="15" y="15"/>
+    <!-- minus toggle -->
+    <rect x="291.5" y="7.5" width="15" height="15" rx="3" fill="#101014" stroke="#8a6d35" stroke-width="1"/>
+    <path d="M295 15 H303" stroke="#ecd08a" stroke-width="1.6" stroke-linecap="round"/>
+    <!-- corner studs -->
+    <circle cx="7" cy="7" r="1.3" fill="#c9a457" opacity="0.8"/>
+    <circle cx="7" cy="23" r="1.3" fill="#c9a457" opacity="0.8"/>
+    <circle cx="283" cy="15" r="1.3" fill="#c9a457" opacity="0.5"/>
+  </symbol>
+</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!--
+    Icon sprite for the nickchua.me character-select mockup.
+    All art is original. Palette: golds #ecd08a / #c9a457 / #8a6d35 on darks #101014 / #0e1526.
+    Every symbol is 48x48 except #favicon-n (32x32). Inline <use href="#id"> after inlining this file.
+  -->
+  <defs>
+    <!-- shared gradients -->
+    <linearGradient id="g-gold-rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6e3ae"/>
+      <stop offset="0.22" stop-color="#ecd08a"/>
+      <stop offset="0.58" stop-color="#c9a457"/>
+      <stop offset="1" stop-color="#8a6d35"/>
+    </linearGradient>
+    <linearGradient id="g-gold-flat" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ecd08a"/>
+      <stop offset="1" stop-color="#c9a457"/>
+    </linearGradient>
+    <radialGradient id="g-disc" cx="0.38" cy="0.3" r="0.75">
+      <stop offset="0" stop-color="#232c45"/>
+      <stop offset="0.5" stop-color="#131a2e"/>
+      <stop offset="1" stop-color="#0d0d12"/>
+    </radialGradient>
+    <radialGradient id="g-disc-flat" cx="0.4" cy="0.32" r="0.8">
+      <stop offset="0" stop-color="#1b1b22"/>
+      <stop offset="1" stop-color="#0c0c10"/>
+    </radialGradient>
+    <filter id="f-glow" x="-45%" y="-45%" width="190%" height="190%">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+
+    <!-- shared shapes -->
+    <path id="p-shield" d="M24 4.5 C29.2 7 34.6 8.4 40.5 8.9 V22.6 C40.5 33 33.6 40.2 24 43.6 C14.4 40.2 7.5 33 7.5 22.6 V8.9 C13.4 8.4 18.8 7 24 4.5 Z"/>
+    <clipPath id="clip-shield"><use href="#p-shield"/></clipPath>
+
+    <!-- ornate circular class frame -->
+    <g id="fr-class">
+      <circle cx="24" cy="24" r="22.6" fill="#08080c"/>
+      <circle cx="24" cy="24" r="21.3" fill="none" stroke="url(#g-gold-rim)" stroke-width="2.6"/>
+      <circle cx="24" cy="24" r="19.6" fill="none" stroke="#5d4a24" stroke-width="0.8"/>
+      <circle cx="24" cy="24" r="19.1" fill="url(#g-disc)"/>
+      <path d="M24 0.6 L26.4 3.9 L24 7.2 L21.6 3.9 Z" fill="url(#g-gold-flat)" stroke="#6e5628" stroke-width="0.6"/>
+      <path d="M47.4 24 L44.1 26.4 L40.8 24 L44.1 21.6 Z" fill="url(#g-gold-flat)" stroke="#6e5628" stroke-width="0.6"/>
+      <path d="M24 47.4 L21.6 44.1 L24 40.8 L26.4 44.1 Z" fill="url(#g-gold-flat)" stroke="#6e5628" stroke-width="0.6"/>
+      <path d="M0.6 24 L3.9 21.6 L7.2 24 L3.9 26.4 Z" fill="url(#g-gold-flat)" stroke="#6e5628" stroke-width="0.6"/>
+    </g>
+
+    <!-- plain roundel for reputation marks -->
+    <g id="fr-rep">
+      <circle cx="24" cy="24" r="21.6" fill="#101014" stroke="#8a6d35" stroke-width="1.4"/>
+      <circle cx="24" cy="24" r="19.4" fill="none" stroke="#3a2c14" stroke-width="0.8"/>
+    </g>
+
+    <!-- gem facet geometry: A(24,7) B(41,20) C(24,43) D(7,20) girdle E(16,20) F(32,20) -->
+    <path id="p-gem-glow" d="M24 7 L41 20 L24 43 L7 20 Z"/>
+    <path id="p-gem-tl" d="M24 7 L7 20 L16 20 Z"/>
+    <path id="p-gem-tc" d="M24 7 L16 20 L32 20 Z"/>
+    <path id="p-gem-tr" d="M24 7 L32 20 L41 20 Z"/>
+    <path id="p-gem-bl" d="M7 20 L16 20 L24 43 Z"/>
+    <path id="p-gem-bc" d="M16 20 L32 20 L24 43 Z"/>
+    <path id="p-gem-br" d="M32 20 L41 20 L24 43 Z"/>
+    <path id="p-gem-outline" d="M24 7 L41 20 L24 43 L7 20 Z"/>
+    <path id="p-gem-spark" d="M19.5 9.8 L20.3 11.7 L22.2 12.5 L20.3 13.3 L19.5 15.2 L18.7 13.3 L16.8 12.5 L18.7 11.7 Z"/>
+  </defs>
+
+  <!-- ============================================================ -->
+  <!-- CLASS ICONS - ornate gold circular frames, engraved line art -->
+  <!-- ============================================================ -->
+
+  <!-- Revenue Operator: crossed sword and shield -->
+  <symbol id="class-operator" viewBox="0 0 48 48">
+    <use href="#fr-class"/>
+    <g stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15.9 29.9 L31.3 14.7 L34.4 13.6 L33.3 16.7 L18.1 32.1 Z" fill="url(#g-gold-flat)" stroke="#8a6d35" stroke-width="0.7"/>
+      <line x1="17.9" y1="30.1" x2="31.6" y2="16.4" stroke="#8a6d35" stroke-width="0.8"/>
+      <line x1="14.2" y1="28.2" x2="19.8" y2="33.8" stroke="#c9a457" stroke-width="2.6"/>
+      <line x1="17" y1="31" x2="13.6" y2="34.4" stroke="#ecd08a" stroke-width="2"/>
+      <circle cx="12.4" cy="35.6" r="1.8" fill="#c9a457"/>
+      <path d="M27 21.6 C29.6 22.8 32.3 23.5 35.2 23.7 V30.4 C35.2 35.3 31.8 38.9 27 40.6 C22.2 38.9 18.8 35.3 18.8 30.4 V23.7 C21.7 23.5 24.4 22.8 27 21.6 Z" fill="#101014" stroke="#ecd08a" stroke-width="1.7"/>
+      <path d="M27 25 V37.4 M21.8 30.4 H32.2" stroke="#8a6d35" stroke-width="1.1"/>
+      <circle cx="27" cy="30.4" r="1.7" fill="#c9a457"/>
+    </g>
+  </symbol>
+
+  <!-- Scribe / Chronicler: quill and scroll -->
+  <symbol id="class-scribe" viewBox="0 0 48 48">
+    <use href="#fr-class"/>
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="16.5" cy="32.5" r="2.6" fill="#101014" stroke="#ecd08a" stroke-width="1.4"/>
+      <circle cx="33.5" cy="32.5" r="2.6" fill="#101014" stroke="#ecd08a" stroke-width="1.4"/>
+      <path d="M16.5 29.9 H33.5 M16.5 35.1 H33.5" stroke="#ecd08a" stroke-width="1.6"/>
+      <path d="M21.5 32.5 H29" stroke="#8a6d35" stroke-width="1.1"/>
+      <path d="M33.2 11.6 C27.4 10.2 21.8 14.6 19.3 21.2 L23.5 21.6 C28 20.5 31.8 16.8 33.2 11.6 Z" fill="#101014" stroke="#ecd08a" stroke-width="1.6"/>
+      <path d="M33.2 11.6 L19.9 27.1" stroke="#ecd08a" stroke-width="1.5"/>
+      <path d="M19.9 27.1 L17.9 29.5 L18.8 26.3" fill="#c9a457" stroke="#c9a457" stroke-width="1.1"/>
+      <path d="M28.7 13.8 L26 16.6 M30.6 15.9 L28 18.6" stroke="#8a6d35" stroke-width="0.9"/>
+    </g>
+  </symbol>
+
+  <!-- Engineer / Artificer: hammer and anvil -->
+  <symbol id="class-engineer" viewBox="0 0 48 48">
+    <use href="#fr-class"/>
+    <g stroke-linecap="round" stroke-linejoin="round">
+      <g transform="rotate(-35 24 13.5)">
+        <rect x="17" y="10" width="14" height="7.2" rx="1.4" fill="#101014" stroke="#ecd08a" stroke-width="1.6"/>
+        <rect x="22.7" y="17.2" width="2.6" height="9.6" rx="1.2" fill="#101014" stroke="#c9a457" stroke-width="1.3"/>
+      </g>
+      <path d="M32.2 15.6 L34.6 13.8 M33.4 17.9 L36.4 17.2 M30.6 13.9 L31.6 11.1" stroke="#ecd08a" stroke-width="1.2" fill="none"/>
+      <path d="M9.8 25.2 C12.4 24 15.4 23.4 18.2 23.6 V22.4 C18.2 21.8 18.7 21.4 19.3 21.4 H35 C36.3 21.4 37 22.3 37 23.6 V26 C37 27.3 36.3 28.2 35 28.2 H23 C21 28.2 19.4 27.8 18.2 27.2 C15 29 12 28.2 9.8 25.2 Z" fill="#101014" stroke="#ecd08a" stroke-width="1.6"/>
+      <path d="M25.4 28.2 L24.4 31.2 H30 L29 28.2 Z" fill="#101014" stroke="#c9a457" stroke-width="1.4"/>
+      <path d="M20.9 31.2 H33.5 L34.7 34.4 H19.7 Z" fill="#101014" stroke="#ecd08a" stroke-width="1.6"/>
+    </g>
+  </symbol>
+
+  <!-- Economist / Scholar-Athlete: tennis racket and laurel -->
+  <symbol id="class-athlete" viewBox="0 0 48 48">
+    <use href="#fr-class"/>
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 11.2 V22.6 M27 11.2 V22.6 M24 8.4 V25 M17.6 14.2 H30.4 M17.4 19.4 H30.6" stroke="#8a6d35" stroke-width="0.9"/>
+      <ellipse cx="24" cy="16.6" rx="7" ry="8.5" stroke="#ecd08a" stroke-width="1.8"/>
+      <path d="M21.6 24.6 L24 27.4 L26.4 24.6" stroke="#ecd08a" stroke-width="1.6"/>
+      <line x1="24" y1="27.4" x2="24" y2="35.4" stroke="#c9a457" stroke-width="2.4"/>
+      <path d="M23 39.2 C17.6 38.3 13.3 34.4 12.1 28.8" stroke="#c9a457" stroke-width="1.5"/>
+      <path d="M25 39.2 C30.4 38.3 34.7 34.4 35.9 28.8" stroke="#c9a457" stroke-width="1.5"/>
+      <g fill="#c9a457">
+        <ellipse cx="13.4" cy="31.7" rx="2.2" ry="1" transform="rotate(60 13.4 31.7)"/>
+        <ellipse cx="15.8" cy="35" rx="2.2" ry="1" transform="rotate(42 15.8 35)"/>
+        <ellipse cx="19.3" cy="37.5" rx="2.2" ry="1" transform="rotate(22 19.3 37.5)"/>
+        <ellipse cx="34.6" cy="31.7" rx="2.2" ry="1" transform="rotate(-60 34.6 31.7)"/>
+        <ellipse cx="32.2" cy="35" rx="2.2" ry="1" transform="rotate(-42 32.2 35)"/>
+        <ellipse cx="28.7" cy="37.5" rx="2.2" ry="1" transform="rotate(-22 28.7 37.5)"/>
+      </g>
+      <circle cx="24" cy="39.4" r="1.2" fill="#ecd08a"/>
+    </g>
+  </symbol>
+
+  <!-- ============================================================ -->
+  <!-- CREST / GUILD ICONS - shield shaped, two-tone with gold trim -->
+  <!-- ============================================================ -->
+
+  <!-- "B" fintech crest (Brex chapter) -->
+  <symbol id="crest-brex" viewBox="0 0 48 48">
+    <g clip-path="url(#clip-shield)">
+      <rect x="6" y="3" width="36" height="20" fill="#1b2a4d"/>
+      <rect x="6" y="23" width="36" height="22" fill="#0e1526"/>
+      <line x1="7.5" y1="23" x2="40.5" y2="23" stroke="#8a6d35" stroke-width="1.1"/>
+    </g>
+    <g fill="none" stroke="#ecd08a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 15.5 V32.7"/>
+      <path d="M20 15.5 H24.8 A4.2 4.2 0 0 1 24.8 23.9 H20"/>
+      <path d="M20 23.9 H26 A4.4 4.4 0 0 1 26 32.7 H20"/>
+    </g>
+    <use href="#p-shield" fill="none" stroke="url(#g-gold-rim)" stroke-width="2.4"/>
+  </symbol>
+
+  <!-- "R" record / vinyl crest (Chronicler's records) -->
+  <symbol id="crest-records" viewBox="0 0 48 48">
+    <g clip-path="url(#clip-shield)">
+      <rect x="6" y="3" width="18" height="42" fill="#171226"/>
+      <rect x="24" y="3" width="18" height="42" fill="#0e0b16"/>
+    </g>
+    <circle cx="24" cy="24.5" r="10.2" fill="#0a0a0e" stroke="#8a6d35" stroke-width="1.1"/>
+    <circle cx="24" cy="24.5" r="7.6" fill="none" stroke="#4a4a56" stroke-width="0.8"/>
+    <circle cx="24" cy="24.5" r="5.4" fill="none" stroke="#3a3a44" stroke-width="0.8"/>
+    <g fill="none" stroke="#ecd08a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21.2 19.5 V29.7"/>
+      <path d="M21.2 19.5 H24.6 A3.2 3.2 0 0 1 24.6 25.9 H21.2"/>
+      <path d="M23.6 25.9 L27.4 29.7"/>
+    </g>
+    <use href="#p-shield" fill="none" stroke="url(#g-gold-rim)" stroke-width="2.4"/>
+  </symbol>
+
+  <!-- forge-flame crest (Artificer's guild) -->
+  <symbol id="crest-forge" viewBox="0 0 48 48">
+    <g clip-path="url(#clip-shield)">
+      <rect x="6" y="3" width="36" height="24" fill="#101014"/>
+      <rect x="6" y="27" width="36" height="18" fill="#1c130a"/>
+      <line x1="7.5" y1="27" x2="40.5" y2="27" stroke="#8a6d35" stroke-width="1" opacity="0.7"/>
+    </g>
+    <path d="M24 11.5 C19.2 17 16.8 21.6 16.8 26.2 C16.8 31.7 20 35.3 24 36 C28 35.3 31.2 31.7 31.2 26.2 C31.2 23 30 20.3 28 17.6 C28.5 20.7 27.5 22.4 25.9 23 C26.7 19.3 26.1 14.9 24 11.5 Z" fill="url(#g-gold-flat)" stroke="#8a6d35" stroke-width="0.9"/>
+    <path d="M24 23.6 C21.9 26.2 20.9 28.2 20.9 30.1 C20.9 32.6 22.3 34.2 24 34.6 C25.7 34.2 27.1 32.6 27.1 30.1 C27.1 28.2 26.1 26.2 24 23.6 Z" fill="#101014"/>
+    <use href="#p-shield" fill="none" stroke="url(#g-gold-rim)" stroke-width="2.4"/>
+  </symbol>
+
+  <!-- "U" collegiate crest (UChicago chapter) -->
+  <symbol id="crest-uchicago" viewBox="0 0 48 48">
+    <g clip-path="url(#clip-shield)">
+      <rect x="6" y="3" width="36" height="12.5" fill="#1e2a4a"/>
+      <rect x="6" y="15.5" width="36" height="30" fill="#0e1526"/>
+      <line x1="7.5" y1="15.5" x2="40.5" y2="15.5" stroke="#8a6d35" stroke-width="1.1"/>
+      <circle cx="16.5" cy="11.6" r="1.4" fill="#c9a457"/>
+      <circle cx="24" cy="12.2" r="1.4" fill="#c9a457"/>
+      <circle cx="31.5" cy="11.6" r="1.4" fill="#c9a457"/>
+    </g>
+    <g fill="none" stroke="#ecd08a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 20 V28.4 A6 6 0 0 0 30 28.4 V20"/>
+      <path d="M15.8 20 H20.2 M27.8 20 H32.2" stroke-width="1.8"/>
+    </g>
+    <use href="#p-shield" fill="none" stroke="url(#g-gold-rim)" stroke-width="2.4"/>
+  </symbol>
+
+  <!-- ============================================================ -->
+  <!-- ACHIEVEMENT                                                  -->
+  <!-- ============================================================ -->
+
+  <symbol id="achievement-trophy" viewBox="0 0 48 48">
+    <polygon points="24.0,1.5 27.8,10.0 35.2,4.5 34.3,13.7 43.5,12.8 38.0,20.2 46.5,24.0 38.0,27.8 43.5,35.2 34.3,34.3 35.2,43.5 27.8,38.0 24.0,46.5 20.2,38.0 12.8,43.5 13.7,34.3 4.5,35.2 10.0,27.8 1.5,24.0 10.0,20.2 4.5,12.7 13.7,13.7 12.7,4.5 20.2,10.0" fill="url(#g-gold-rim)" stroke="#6e5628" stroke-width="0.8" stroke-linejoin="round"/>
+    <circle cx="24" cy="24" r="14.6" fill="url(#g-disc)" stroke="#c9a457" stroke-width="1.2"/>
+    <path d="M18.4 16.8 H29.6 V21.6 C29.6 25.5 27.3 28 24 28 C20.7 28 18.4 25.5 18.4 21.6 Z" fill="url(#g-gold-flat)" stroke="#8a6d35" stroke-width="0.7"/>
+    <path d="M18.4 18.2 C15.4 18.2 15 23 18.9 23.9 M29.6 18.2 C32.6 18.2 33 23 29.1 23.9" fill="none" stroke="#ecd08a" stroke-width="1.4" stroke-linecap="round"/>
+    <path d="M22.8 28 L22.2 30.2 H25.8 L25.2 28 Z" fill="#c9a457"/>
+    <rect x="20.2" y="30.2" width="7.6" height="1.9" rx="0.6" fill="#c9a457"/>
+    <rect x="18.6" y="32.1" width="10.8" height="1.9" rx="0.6" fill="#8a6d35"/>
+    <path d="M24 19.2 L25.8 22 L24 24.8 L22.2 22 Z" fill="#101014" opacity="0.85"/>
+  </symbol>
+
+  <!-- ============================================================ -->
+  <!-- ITEM-RARITY GEMS - faceted diamonds with glow                -->
+  <!-- ============================================================ -->
+
+  <symbol id="gem-poor" viewBox="0 0 48 48">
+    <use href="#p-gem-glow" fill="#b9b9b9" opacity="0.5" filter="url(#f-glow)"/>
+    <use href="#p-gem-tl" fill="#cfcfcf"/>
+    <use href="#p-gem-tc" fill="#e4e4e4"/>
+    <use href="#p-gem-tr" fill="#9d9d9d"/>
+    <use href="#p-gem-bl" fill="#6b6b6b"/>
+    <use href="#p-gem-bc" fill="#8a8a8a"/>
+    <use href="#p-gem-br" fill="#565656"/>
+    <use href="#p-gem-outline" fill="none" stroke="#4a4a4a" stroke-width="1" stroke-linejoin="round"/>
+    <use href="#p-gem-spark" fill="#ffffff" opacity="0.9"/>
+  </symbol>
+
+  <symbol id="gem-uncommon" viewBox="0 0 48 48">
+    <use href="#p-gem-glow" fill="#6fbf5f" opacity="0.65" filter="url(#f-glow)"/>
+    <use href="#p-gem-tl" fill="#9fdb90"/>
+    <use href="#p-gem-tc" fill="#c4ecb8"/>
+    <use href="#p-gem-tr" fill="#6fbf5f"/>
+    <use href="#p-gem-bl" fill="#4c8f41"/>
+    <use href="#p-gem-bc" fill="#5fae50"/>
+    <use href="#p-gem-br" fill="#35682e"/>
+    <use href="#p-gem-outline" fill="none" stroke="#2a5424" stroke-width="1" stroke-linejoin="round"/>
+    <use href="#p-gem-spark" fill="#ffffff" opacity="0.9"/>
+  </symbol>
+
+  <symbol id="gem-rare" viewBox="0 0 48 48">
+    <use href="#p-gem-glow" fill="#4a9eff" opacity="0.65" filter="url(#f-glow)"/>
+    <use href="#p-gem-tl" fill="#82bcff"/>
+    <use href="#p-gem-tc" fill="#b3d6ff"/>
+    <use href="#p-gem-tr" fill="#4a9eff"/>
+    <use href="#p-gem-bl" fill="#2f6fc2"/>
+    <use href="#p-gem-bc" fill="#3c88e0"/>
+    <use href="#p-gem-br" fill="#1f4d8a"/>
+    <use href="#p-gem-outline" fill="none" stroke="#1a4275" stroke-width="1" stroke-linejoin="round"/>
+    <use href="#p-gem-spark" fill="#ffffff" opacity="0.9"/>
+  </symbol>
+
+  <symbol id="gem-epic" viewBox="0 0 48 48">
+    <use href="#p-gem-glow" fill="#a335ee" opacity="0.65" filter="url(#f-glow)"/>
+    <use href="#p-gem-tl" fill="#c06ff5"/>
+    <use href="#p-gem-tc" fill="#dcaefa"/>
+    <use href="#p-gem-tr" fill="#a335ee"/>
+    <use href="#p-gem-bl" fill="#7a1fb8"/>
+    <use href="#p-gem-bc" fill="#8f28d6"/>
+    <use href="#p-gem-br" fill="#571586"/>
+    <use href="#p-gem-outline" fill="none" stroke="#49116f" stroke-width="1" stroke-linejoin="round"/>
+    <use href="#p-gem-spark" fill="#ffffff" opacity="0.9"/>
+  </symbol>
+
+  <symbol id="gem-legendary" viewBox="0 0 48 48">
+    <use href="#p-gem-glow" fill="#ff9a2e" opacity="0.7" filter="url(#f-glow)"/>
+    <use href="#p-gem-tl" fill="#ffa64d"/>
+    <use href="#p-gem-tc" fill="#ffcf99"/>
+    <use href="#p-gem-tr" fill="#ff8000"/>
+    <use href="#p-gem-bl" fill="#c25f00"/>
+    <use href="#p-gem-bc" fill="#e07200"/>
+    <use href="#p-gem-br" fill="#8f4600"/>
+    <use href="#p-gem-outline" fill="none" stroke="#7a3c00" stroke-width="1" stroke-linejoin="round"/>
+    <use href="#p-gem-spark" fill="#ffffff" opacity="0.9"/>
+  </symbol>
+
+  <!-- ============================================================ -->
+  <!-- REPUTATION FACTION MARKS                                     -->
+  <!-- ============================================================ -->
+
+  <!-- clasped hands -->
+  <symbol id="rep-handshake" viewBox="0 0 48 48">
+    <use href="#fr-rep"/>
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 32 L19.5 24.5" stroke="#c9a457" stroke-width="3"/>
+      <path d="M39 32 L28.5 24.5" stroke="#c9a457" stroke-width="3"/>
+      <path d="M7.6 28.9 L11.6 34.3" stroke="#ecd08a" stroke-width="2.2"/>
+      <path d="M40.4 28.9 L36.4 34.3" stroke="#ecd08a" stroke-width="2.2"/>
+      <rect x="17.4" y="18.8" width="13.2" height="8.4" rx="3.8" fill="#101014" stroke="#ecd08a" stroke-width="2"/>
+      <path d="M21.8 19.2 V26.8 M26.2 19.2 V26.8" stroke="#c9a457" stroke-width="1.2"/>
+      <path d="M24 16.2 V13.4" stroke="#ecd08a" stroke-width="1.8"/>
+      <circle cx="24" cy="12" r="1.4" fill="#ecd08a" stroke="none"/>
+    </g>
+  </symbol>
+
+  <!-- hanging banner with diamond emblem -->
+  <symbol id="rep-banner" viewBox="0 0 48 48">
+    <use href="#fr-rep"/>
+    <g stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12.5" y1="13.5" x2="35.5" y2="13.5" stroke="#c9a457" stroke-width="2"/>
+      <circle cx="11.5" cy="13.5" r="1.7" fill="#ecd08a"/>
+      <circle cx="36.5" cy="13.5" r="1.7" fill="#ecd08a"/>
+      <path d="M16.2 13.5 H31.8 V31.6 L24 27 L16.2 31.6 Z" fill="#0e1526" stroke="#ecd08a" stroke-width="1.8"/>
+      <path d="M24 17.2 L27 20.6 L24 24 L21 20.6 Z" fill="#c9a457"/>
+    </g>
+  </symbol>
+
+  <!-- crossed pennant standards -->
+  <symbol id="rep-crossed-banners" viewBox="0 0 48 48">
+    <use href="#fr-rep"/>
+    <g stroke-linecap="round" stroke-linejoin="round">
+      <line x1="14.5" y1="36" x2="31" y2="12" stroke="#c9a457" stroke-width="2"/>
+      <line x1="33.5" y1="36" x2="17" y2="12" stroke="#c9a457" stroke-width="2"/>
+      <path d="M31 12 L40 15.2 L32.4 18.6 Z" fill="#0e1526" stroke="#ecd08a" stroke-width="1.5"/>
+      <path d="M17 12 L8 15.2 L15.6 18.6 Z" fill="#0e1526" stroke="#ecd08a" stroke-width="1.5"/>
+      <circle cx="24" cy="22.2" r="2.4" fill="#ecd08a" stroke="#8a6d35" stroke-width="0.8"/>
+    </g>
+  </symbol>
+
+  <!-- ============================================================ -->
+  <!-- UTILITY ICONS - engraved gold strokes                        -->
+  <!-- ============================================================ -->
+
+  <symbol id="ui-magnifier" viewBox="0 0 48 48">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="21" cy="21" r="10.5" stroke="#ecd08a" stroke-width="2.4"/>
+      <line x1="28.8" y1="28.8" x2="38.5" y2="38.5" stroke="#c9a457" stroke-width="3.2"/>
+      <path d="M14.8 19.4 A7 7 0 0 1 18.6 14.4" stroke="#8a6d35" stroke-width="1.4"/>
+    </g>
+  </symbol>
+
+  <symbol id="ui-trash" viewBox="0 0 48 48">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 14.5 H38" stroke="#ecd08a" stroke-width="2.4"/>
+      <path d="M19.5 14.5 V11.6 C19.5 10.7 20.2 10 21.1 10 H26.9 C27.8 10 28.5 10.7 28.5 11.6 V14.5" stroke="#ecd08a" stroke-width="2.2"/>
+      <path d="M13.2 14.5 L14.9 36.9 C15 38 15.8 38.8 16.9 38.8 H31.1 C32.2 38.8 33 38 33.1 36.9 L34.8 14.5" stroke="#ecd08a" stroke-width="2.4"/>
+      <path d="M20 20 V33 M24 20 V33 M28 20 V33" stroke="#8a6d35" stroke-width="1.6"/>
+    </g>
+  </symbol>
+
+  <symbol id="ui-undo" viewBox="0 0 48 48">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11.5 12.5 V21 H20" stroke="#c9a457" stroke-width="2.4"/>
+      <path d="M12.1 21 C13.8 14.6 19.7 10.4 26.3 11 C33.9 11.7 39.5 18.4 38.8 26 C38.1 33.6 31.4 39.2 23.8 38.5 C18.9 38.1 14.8 35.2 12.7 31.2" stroke="#ecd08a" stroke-width="2.6"/>
+    </g>
+  </symbol>
+
+  <symbol id="ui-plus" viewBox="0 0 48 48">
+    <g stroke-linecap="round">
+      <path d="M24 11.5 V36.5 M11.5 24 H36.5" fill="none" stroke="#ecd08a" stroke-width="3.2"/>
+      <path d="M24 20.6 L27.4 24 L24 27.4 L20.6 24 Z" fill="#8a6d35"/>
+    </g>
+  </symbol>
+
+  <symbol id="ui-envelope" viewBox="0 0 48 48">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="9" y="13.5" width="30" height="21" rx="2.2" stroke="#ecd08a" stroke-width="2.4"/>
+      <path d="M10.2 15.4 L24 26 L37.8 15.4" stroke="#ecd08a" stroke-width="2.2"/>
+      <path d="M10.4 33 L19.4 24.8 M37.6 33 L28.6 24.8" stroke="#8a6d35" stroke-width="1.4"/>
+    </g>
+  </symbol>
+
+  <symbol id="ui-book" viewBox="0 0 48 48">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M24 15 C19.5 12 13.5 11.4 8.5 13 V32.6 C13.5 31 19.5 31.6 24 34.6 C28.5 31.6 34.5 31 39.5 32.6 V13 C34.5 11.4 28.5 12 24 15 Z" stroke="#ecd08a" stroke-width="2.2"/>
+      <path d="M24 15 V34.6" stroke="#c9a457" stroke-width="1.8"/>
+      <path d="M12.4 17.5 C15.4 16.9 18.4 17.2 20.6 18.4 M12.4 22 C15.4 21.4 18.4 21.7 20.6 22.9 M27.4 18.4 C29.6 17.2 32.6 16.9 35.6 17.5 M27.4 22.9 C29.6 21.7 32.6 21.4 35.6 22" stroke="#8a6d35" stroke-width="1.3"/>
+    </g>
+  </symbol>
+
+  <symbol id="ui-bell" viewBox="0 0 48 48">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M24 10.5 C18 10.5 14.8 15 14.8 21 C14.8 27.5 12.8 30 10.8 31.8 H37.2 C35.2 30 33.2 27.5 33.2 21 C33.2 15 30 10.5 24 10.5 Z" stroke="#ecd08a" stroke-width="2.3"/>
+      <path d="M24 10.5 V7.6" stroke="#c9a457" stroke-width="2.2"/>
+      <circle cx="24" cy="6.6" r="1.5" fill="#c9a457" stroke="none"/>
+      <path d="M20.4 35.6 C21.2 37.6 26.8 37.6 27.6 35.6" stroke="#ecd08a" stroke-width="2.2"/>
+    </g>
+  </symbol>
+
+  <!-- ============================================================ -->
+  <!-- FAVICON - 32x32 "N" monogram crest                           -->
+  <!-- ============================================================ -->
+
+  <symbol id="favicon-n" viewBox="0 0 32 32">
+    <path d="M16 1.8 C19.4 3.6 22.9 4.6 26.6 5 V15 C26.6 21.9 22.3 26.5 16 29.4 C9.7 26.5 5.4 21.9 5.4 15 V5 C9.1 4.6 12.6 3.6 16 1.8 Z" fill="url(#g-disc)" stroke="url(#g-gold-rim)" stroke-width="1.8"/>
+    <path d="M11.4 21.2 V10.8 L20.6 21.2 V10.8" fill="none" stroke="#ecd08a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+</svg>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <!--
+    Campfire figure sprite (original art) - higher-fidelity alternates for the
+    four silhouettes in mockups/wow-character-select/index.html.
+
+    Each symbol uses viewBox "-120 -280 240 300": feet at local y=0, heads
+    around y=-200..-246, so a symbol drops into the existing scene slots
+    (translate(480,790), translate(648,756) scale(.9), translate(952,756)
+    scale(.93), translate(1120,790)) at scale 1.
+
+    Fire in the scene sits at x=800, therefore:
+      fig-knight, fig-chronicler  -> warm rim light on their RIGHT (+x) side
+      fig-artificer, fig-athlete  -> warm rim light on their LEFT (-x) side
+
+    Rim palette: #f4a24b / #ffd166 at 40-70% opacity.
+    Body masses: #10131f family. One accent per figure:
+      knight #7d2230, chronicler #6fe3d2, artificer #ff9d3f, athlete #a3323c.
+  -->
+
+  <!-- ============ KNIGHT : Revenue Strategist ============ -->
+  <!-- Weight on right leg, right gauntlet resting on a planted sword,
+       left hand at the belt, cape trailing away from the fire. -->
+  <symbol id="fig-knight" viewBox="-120 -280 240 300">
+    <!-- ground contact -->
+    <ellipse cx="2" cy="-3" rx="56" ry="9" fill="#000000" opacity="0.32"/>
+    <ellipse cx="2" cy="-3" rx="34" ry="6" fill="#000000" opacity="0.25"/>
+    <!-- cape, trailing away from the fire -->
+    <path d="M-12 -188 C-54 -166 -70 -94 -64 -8 L-28 -6 C-44 -76 -40 -146 -4 -184 Z" fill="#141021"/>
+    <path d="M-50 -140 C-56 -100 -57 -58 -52 -14" stroke="#0c0a16" stroke-width="5" fill="none" opacity="0.8"/>
+    <path d="M-36 -120 C-40 -88 -41 -52 -38 -12" stroke="#0c0a16" stroke-width="4" fill="none" opacity="0.6"/>
+    <path d="M-64 -8 L-58 -36 C-51 -24 -44 -15 -37 -8 Z" fill="#7d2230" opacity="0.9"/>
+    <path d="M-64 -8 L-60 -26 C-56 -19 -52 -13 -48 -8 Z" fill="#a3323c" opacity="0.55"/>
+    <!-- legs: left relaxed, right bearing weight -->
+    <path d="M-24 -104 L-8 -102 L-14 -50 L-30 -52 Z" fill="#12151f"/>
+    <path d="M-30 -52 L-15 -50 L-21 -8 L-33 -8 Z" fill="#10131f"/>
+    <path d="M6 -102 L22 -104 L24 -52 L10 -50 Z" fill="#13161f"/>
+    <path d="M11 -52 L25 -52 L24 -8 L12 -8 Z" fill="#10131f"/>
+    <rect x="-42" y="-9" width="27" height="10" rx="4" fill="#0d1019"/>
+    <rect x="8" y="-9" width="29" height="10" rx="4" fill="#0d1019"/>
+    <circle cx="-22" cy="-51" r="7" fill="#1a2033"/>
+    <circle cx="18" cy="-52" r="7" fill="#1a2033"/>
+    <path d="M25 -50 L24 -10" stroke="#f4a24b" stroke-width="1.6" fill="none" opacity="0.5"/>
+    <line x1="24" y1="-4" x2="36" y2="-4" stroke="#f4a24b" stroke-width="1.2" opacity="0.4"/>
+    <!-- faulds / tassets -->
+    <path d="M-27 -108 L27 -108 L22 -76 L-22 -76 Z" fill="#151a2b"/>
+    <path d="M-25 -98 L25 -98" stroke="#0d1019" stroke-width="2"/>
+    <path d="M-23 -87 L23 -87" stroke="#0d1019" stroke-width="2"/>
+    <path d="M26 -106 L22 -78" stroke="#f4a24b" stroke-width="1.4" fill="none" opacity="0.45"/>
+    <!-- breastplate -->
+    <path d="M-28 -180 C-31 -152 -29 -126 -23 -106 L23 -106 C29 -126 31 -152 28 -180 Z" fill="#171c2e"/>
+    <path d="M-25 -136 C-9 -128 9 -128 25 -136" stroke="#0e1220" stroke-width="2.2" fill="none"/>
+    <path d="M-23 -122 C-8 -116 8 -116 23 -122" stroke="#0e1220" stroke-width="1.8" fill="none" opacity="0.8"/>
+    <circle cx="0" cy="-148" r="4.5" fill="#ffd166" opacity="0.85"/>
+    <path d="M27 -178 C30 -152 28 -126 22 -108" stroke="#f4a24b" stroke-width="2" fill="none" opacity="0.6"/>
+    <!-- belt and pouches -->
+    <rect x="-25" y="-112" width="50" height="8" rx="3" fill="#241a10"/>
+    <rect x="-5" y="-111" width="10" height="6" rx="1" fill="#6b5624"/>
+    <rect x="-22" y="-104" width="11" height="13" rx="3" fill="#1c150d"/>
+    <path d="M-22 -99 L-11 -99" stroke="#0f0a06" stroke-width="1.5"/>
+    <rect x="12" y="-104" width="10" height="11" rx="3" fill="#1c150d"/>
+    <!-- gorget and pauldrons (layered plates) -->
+    <rect x="-13" y="-194" width="26" height="12" rx="4" fill="#1a2033"/>
+    <ellipse cx="-34" cy="-174" rx="15" ry="11" fill="#1a2033"/>
+    <path d="M-45 -168 L-23 -168 L-26 -158 L-42 -158 Z" fill="#151a2b"/>
+    <path d="M-43 -158 L-27 -158 L-30 -149 L-40 -149 Z" fill="#12151f"/>
+    <ellipse cx="34" cy="-174" rx="15" ry="11" fill="#1e2438"/>
+    <path d="M23 -168 L45 -168 L42 -158 L26 -158 Z" fill="#171c2e"/>
+    <path d="M27 -158 L43 -158 L40 -149 L30 -149 Z" fill="#151a2b"/>
+    <path d="M22 -182 C32 -188 44 -184 48 -173" stroke="#ffd166" stroke-width="1.8" fill="none" opacity="0.6"/>
+    <!-- left arm, hand at belt -->
+    <path d="M-36 -166 C-42 -150 -42 -136 -38 -122" stroke="#12151f" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <path d="M-38 -122 C-34 -112 -28 -106 -22 -104" stroke="#10131f" stroke-width="10" stroke-linecap="round" fill="none"/>
+    <circle cx="-21" cy="-103" r="6" fill="#12151f"/>
+    <!-- right arm, down to the sword -->
+    <path d="M36 -166 C43 -150 45 -132 45 -118" stroke="#12151f" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <path d="M45 -118 C45 -112 45 -108 44.5 -106" stroke="#10131f" stroke-width="10" stroke-linecap="round" fill="none"/>
+    <!-- planted sword -->
+    <circle cx="44.5" cy="-101" r="4" fill="#6b5624"/>
+    <rect x="42" y="-99" width="5.5" height="11" fill="#241708"/>
+    <rect x="31" y="-89" width="27" height="5.5" rx="2.5" fill="#6b5624"/>
+    <polygon points="41.5,-83 48,-83 47,-16 44.7,-5 42.5,-16" fill="#39404f" stroke="#98a0b5" stroke-width="0.7"/>
+    <line x1="44.8" y1="-80" x2="44.8" y2="-18" stroke="#242a36" stroke-width="1"/>
+    <line x1="47.3" y1="-78" x2="46.4" y2="-22" stroke="#ffd166" stroke-width="1" opacity="0.5"/>
+    <circle cx="44.5" cy="-104" r="6.5" fill="#1a2033"/>
+    <path d="M50 -108 C51 -105 51 -102 49 -99" stroke="#f4a24b" stroke-width="1.2" fill="none" opacity="0.6"/>
+    <!-- helmet with crimson plume -->
+    <path d="M0 -240 C-14 -247 -28 -243 -38 -232 C-26 -235 -12 -234 -2 -230 Z" fill="#5e1a25"/>
+    <path d="M2 -246 C-12 -254 -32 -250 -46 -235 C-31 -240 -15 -239 -3 -233 Z" fill="#7d2230"/>
+    <path d="M-3 -234 L2 -248 L7 -234 Z" fill="#1a2033"/>
+    <path d="M-15 -212 C-15 -233 15 -233 15 -212 L14 -197 C8 -190 -8 -190 -14 -197 Z" fill="#171c2e"/>
+    <line x1="-9" y1="-215" x2="10" y2="-215" stroke="#f4a24b" stroke-width="2.4" opacity="0.85"/>
+    <line x1="-6" y1="-207" x2="7" y2="-207" stroke="#f4a24b" stroke-width="1.2" opacity="0.35"/>
+    <path d="M14 -212 C15 -223 11 -229 4 -232" stroke="#ffd166" stroke-width="1.6" fill="none" opacity="0.65"/>
+    <path d="M-11 -196 C-4 -192 6 -192 12 -196" stroke="#0e1220" stroke-width="1.5" fill="none" opacity="0.7"/>
+  </symbol>
+
+  <!-- ============ CHRONICLER : robed scribe ============ -->
+  <!-- Hooded robe, tall quill-staff in the raised right hand (fire side),
+       floating open book and teal runes on the left. -->
+  <symbol id="fig-chronicler" viewBox="-120 -280 240 300">
+    <!-- ground contact -->
+    <ellipse cx="0" cy="-3" rx="50" ry="8" fill="#000000" opacity="0.3"/>
+    <ellipse cx="0" cy="-3" rx="30" ry="5" fill="#000000" opacity="0.22"/>
+    <!-- robe mass -->
+    <path d="M0 -214 C-30 -206 -44 -162 -48 -98 C-52 -52 -50 -20 -46 -3 L46 -3 C50 -20 52 -52 48 -98 C44 -162 30 -206 0 -214 Z" fill="#141026"/>
+    <!-- uneven under-hem -->
+    <path d="M-46 -3 L-38 -15 L-30 -3 L-21 -13 L-11 -3 L0 -14 L10 -3 L20 -12 L30 -3 L38 -14 L46 -3 Z" fill="#0c0a1c"/>
+    <!-- long fold shadows -->
+    <path d="M-20 -182 C-26 -122 -28 -60 -26 -8" stroke="#0c0a1c" stroke-width="6" fill="none" opacity="0.8"/>
+    <path d="M8 -172 C12 -112 14 -54 12 -8" stroke="#0c0a1c" stroke-width="5" fill="none" opacity="0.7"/>
+    <path d="M-4 -160 C-6 -110 -6 -60 -5 -12" stroke="#0c0a1c" stroke-width="3.5" fill="none" opacity="0.55"/>
+    <!-- fire-side robe rim -->
+    <path d="M34 -178 C44 -132 48 -70 46 -8" stroke="#f4a24b" stroke-width="2" fill="none" opacity="0.5"/>
+    <!-- boot tip -->
+    <ellipse cx="16" cy="-3" rx="10" ry="5" fill="#0a0816"/>
+    <!-- shoulder mantle with faint trim -->
+    <path d="M-26 -198 C-10 -206 10 -206 26 -198 L30 -172 C10 -182 -10 -182 -30 -172 Z" fill="#1a1530"/>
+    <path d="M-29 -173 C-10 -183 10 -183 29 -173" stroke="#6fe3d2" stroke-width="1.2" fill="none" opacity="0.35"/>
+    <!-- hood and shadowed face -->
+    <path d="M-4 -235 C-14 -242 -21 -238 -23 -229 C-16 -232 -9 -230 -3 -227 Z" fill="#181330"/>
+    <circle cx="0" cy="-213" r="22" fill="#181330"/>
+    <circle cx="5" cy="-210" r="13" fill="#0a0818"/>
+    <path d="M10 -219 C15 -215 16 -207 12 -201" stroke="#6fe3d2" stroke-width="1.5" fill="none" opacity="0.45"/>
+    <path d="M14 -229 C22 -223 24 -213 20 -203" stroke="#ffd166" stroke-width="1.5" fill="none" opacity="0.55"/>
+    <!-- rope belt, tassels, ink bottle -->
+    <line x1="-32" y1="-104" x2="32" y2="-107" stroke="#6b5624" stroke-width="3.5" opacity="0.85"/>
+    <circle cx="6" cy="-104" r="3" fill="#6b5624"/>
+    <line x1="6" y1="-102" x2="4" y2="-84" stroke="#6b5624" stroke-width="2" opacity="0.75"/>
+    <line x1="9" y1="-102" x2="11" y2="-88" stroke="#6b5624" stroke-width="2" opacity="0.75"/>
+    <circle cx="4" cy="-82" r="2" fill="#6b5624" opacity="0.85"/>
+    <circle cx="-6" cy="-96" r="5" fill="#100d20" stroke="#6fe3d2" stroke-width="0.7" opacity="0.85"/>
+    <!-- satchel and strap -->
+    <path d="M20 -190 L-33 -103" stroke="#221a35" stroke-width="5" opacity="0.9"/>
+    <rect x="-45" y="-104" width="20" height="16" rx="3" fill="#221a35"/>
+    <path d="M-45 -97 L-25 -97" stroke="#120e22" stroke-width="1.6"/>
+    <circle cx="-35" cy="-95" r="1.6" fill="#6b5624"/>
+    <!-- scroll tube on belt -->
+    <g transform="rotate(8 28 -92)">
+      <rect x="24" y="-102" width="7" height="21" rx="3" fill="#241708"/>
+      <line x1="24" y1="-97" x2="31" y2="-97" stroke="#6b5624" stroke-width="1.2" opacity="0.8"/>
+      <line x1="24" y1="-86" x2="31" y2="-86" stroke="#6b5624" stroke-width="1.2" opacity="0.8"/>
+    </g>
+    <!-- right arm raised, hanging sleeve, hand on quill-staff -->
+    <path d="M14 -158 C22 -144 28 -134 34 -124 L20 -112 C16 -128 13 -142 10 -156 Z" fill="#100d20"/>
+    <path d="M18 -160 C30 -152 38 -140 42 -127" stroke="#141026" stroke-width="13" stroke-linecap="round" fill="none"/>
+    <circle cx="43" cy="-124" r="5" fill="#0f0c1e"/>
+    <!-- tall quill staff with glowing feather -->
+    <line x1="46" y1="-250" x2="40" y2="-24" stroke="#221a10" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="56" cy="-256" r="14" fill="#6fe3d2" opacity="0.18"/>
+    <circle cx="56" cy="-256" r="6" fill="#6fe3d2" opacity="0.3"/>
+    <path d="M46 -250 C60 -272 72 -268 66 -246 C60 -230 50 -236 46 -250 Z" fill="#6fe3d2" opacity="0.9"/>
+    <path d="M52 -258 C57 -260 61 -258 63 -252" stroke="#b6f5ea" stroke-width="0.9" fill="none" opacity="0.8"/>
+    <path d="M50 -250 C55 -252 59 -250 61 -245" stroke="#b6f5ea" stroke-width="0.9" fill="none" opacity="0.7"/>
+    <!-- left arm reaching to the floating book -->
+    <path d="M-18 -158 C-28 -150 -36 -143 -42 -135" stroke="#141026" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <circle cx="-43" cy="-133" r="4.5" fill="#0f0c1e"/>
+    <!-- floating open book -->
+    <g transform="rotate(-12 -62 -150)">
+      <ellipse cx="-61" cy="-146" rx="20" ry="6" fill="#6fe3d2" opacity="0.14"/>
+      <rect x="-78" y="-163" width="34" height="24" rx="2" fill="#241b3a" stroke="#6fe3d2" stroke-width="0.9" opacity="0.95"/>
+      <line x1="-61" y1="-163" x2="-61" y2="-139" stroke="#6fe3d2" stroke-width="0.9" opacity="0.7"/>
+      <line x1="-74" y1="-156" x2="-64" y2="-156" stroke="#9c92c9" stroke-width="0.8" opacity="0.6"/>
+      <line x1="-74" y1="-151" x2="-64" y2="-151" stroke="#9c92c9" stroke-width="0.8" opacity="0.6"/>
+      <line x1="-58" y1="-156" x2="-48" y2="-156" stroke="#9c92c9" stroke-width="0.8" opacity="0.6"/>
+      <line x1="-58" y1="-149" x2="-48" y2="-149" stroke="#9c92c9" stroke-width="0.8" opacity="0.6"/>
+    </g>
+    <!-- floating teal runes -->
+    <circle cx="-48" cy="-192" r="7" fill="#6fe3d2" opacity="0.12"/>
+    <circle cx="-48" cy="-192" r="3.5" fill="none" stroke="#6fe3d2" stroke-width="1" opacity="0.8"/>
+    <line x1="-48" y1="-195" x2="-48" y2="-189" stroke="#6fe3d2" stroke-width="1" opacity="0.8"/>
+    <circle cx="-78" cy="-120" r="6" fill="#6fe3d2" opacity="0.12"/>
+    <path d="M-81 -117 L-78 -124 L-75 -117 Z" fill="none" stroke="#6fe3d2" stroke-width="1" opacity="0.75"/>
+    <circle cx="-33" cy="-228" r="6" fill="#6fe3d2" opacity="0.12"/>
+    <path d="M-36 -231 L-30 -225 M-36 -225 L-30 -231" stroke="#6fe3d2" stroke-width="1" opacity="0.75"/>
+    <circle cx="-63" cy="-176" r="1.5" fill="#6fe3d2" opacity="0.6"/>
+  </symbol>
+
+  <!-- ============ ARTIFICER : smith with hammer ============ -->
+  <!-- Stocky build, hammer shouldered on the right, tongs hanging from the
+       left fist over the fire side, ember goggles pushed onto the brow. -->
+  <symbol id="fig-artificer" viewBox="-120 -280 240 300">
+    <!-- ground contact -->
+    <ellipse cx="0" cy="-3" rx="54" ry="9" fill="#000000" opacity="0.32"/>
+    <ellipse cx="0" cy="-3" rx="32" ry="6" fill="#000000" opacity="0.24"/>
+    <ellipse cx="-28" cy="-3" rx="16" ry="4" fill="#ff9d3f" opacity="0.12"/>
+    <!-- legs: left planted, right stepped out -->
+    <path d="M-24 -98 L-8 -98 L-10 -50 L-26 -50 Z" fill="#15110c"/>
+    <path d="M-26 -50 L-11 -50 L-12 -8 L-26 -8 Z" fill="#120e09"/>
+    <path d="M8 -98 L24 -96 L28 -50 L14 -48 Z" fill="#15110c"/>
+    <path d="M15 -48 L29 -50 L34 -8 L22 -8 Z" fill="#120e09"/>
+    <rect x="-33" y="-9" width="26" height="10" rx="4" fill="#0d0a06"/>
+    <rect x="18" y="-9" width="28" height="10" rx="4" fill="#0d0a06"/>
+    <rect x="-28" y="-24" width="18" height="7" rx="2" fill="#1e160c"/>
+    <rect x="20" y="-24" width="18" height="7" rx="2" fill="#1e160c"/>
+    <path d="M-27 -48 L-27 -10" stroke="#f4a24b" stroke-width="1.5" fill="none" opacity="0.5"/>
+    <!-- broad torso -->
+    <path d="M-36 -160 L36 -160 L30 -96 L-30 -96 Z" fill="#191410"/>
+    <path d="M-36 -158 C-38 -136 -34 -112 -30 -98" stroke="#f4a24b" stroke-width="2" fill="none" opacity="0.6"/>
+    <!-- leather apron with straps, scorch, pocket -->
+    <path d="M-20 -152 L20 -152 L16 -40 L-16 -40 Z" fill="#261c12"/>
+    <line x1="-13" y1="-150" x2="-10" y2="-164" stroke="#2f2416" stroke-width="5"/>
+    <line x1="13" y1="-150" x2="10" y2="-164" stroke="#2f2416" stroke-width="5"/>
+    <path d="M-18 -128 L18 -128" stroke="#17100a" stroke-width="1.8" opacity="0.85"/>
+    <path d="M-17 -112 L17 -112" stroke="#17100a" stroke-width="1.5" opacity="0.7"/>
+    <ellipse cx="5" cy="-88" rx="7" ry="10" fill="#0f0b07" opacity="0.8"/>
+    <rect x="-12" y="-72" width="24" height="14" rx="2" fill="#1e150c"/>
+    <line x1="0" y1="-72" x2="0" y2="-58" stroke="#120c07" stroke-width="1.5"/>
+    <rect x="-13" y="-44" width="11" height="8" rx="2" fill="#261c12"/>
+    <rect x="3" y="-44" width="11" height="8" rx="2" fill="#261c12"/>
+    <path d="M-19 -150 C-21 -118 -20 -80 -17 -44" stroke="#f4a24b" stroke-width="1.3" fill="none" opacity="0.4"/>
+    <!-- tool belt -->
+    <rect x="-30" y="-101" width="60" height="9" rx="3" fill="#17110a"/>
+    <rect x="-5" y="-100" width="10" height="7" rx="1" fill="#6b5624"/>
+    <g transform="rotate(12 25 -88)">
+      <rect x="22" y="-96" width="5" height="17" rx="1.5" fill="#3a3f4a"/>
+      <circle cx="24.5" cy="-95" r="3" fill="none" stroke="#3a3f4a" stroke-width="2"/>
+    </g>
+    <rect x="-27" y="-93" width="9" height="12" rx="2" fill="#1c150d"/>
+    <!-- right arm shouldering the hammer -->
+    <ellipse cx="38" cy="-150" rx="12" ry="14" fill="#1a140d"/>
+    <path d="M40 -152 C48 -160 53 -170 57 -179" stroke="#191410" stroke-width="13" stroke-linecap="round" fill="none"/>
+    <line x1="58" y1="-182" x2="86" y2="-220" stroke="#2a1f12" stroke-width="8" stroke-linecap="round"/>
+    <line x1="61" y1="-190" x2="67" y2="-185" stroke="#17100a" stroke-width="2"/>
+    <line x1="65" y1="-195" x2="71" y2="-190" stroke="#17100a" stroke-width="2"/>
+    <line x1="69" y1="-200" x2="75" y2="-195" stroke="#17100a" stroke-width="2"/>
+    <circle cx="58" cy="-183" r="7" fill="#1c140b"/>
+    <!-- hammer head, aligned to the handle -->
+    <g transform="rotate(36 86 -224)">
+      <rect x="64" y="-237" width="44" height="26" rx="4" fill="#30343e"/>
+      <rect x="100" y="-235" width="8" height="22" rx="2" fill="#454b58"/>
+      <line x1="68" y1="-228" x2="98" y2="-228" stroke="#1b1e26" stroke-width="1.6"/>
+      <line x1="68" y1="-219" x2="98" y2="-219" stroke="#1b1e26" stroke-width="1.4" opacity="0.8"/>
+      <circle cx="73" cy="-224" r="1.8" fill="#565c6a"/>
+      <circle cx="93" cy="-224" r="1.8" fill="#565c6a"/>
+      <line x1="66" y1="-212" x2="106" y2="-212" stroke="#ff9d3f" stroke-width="1.6" opacity="0.5"/>
+    </g>
+    <!-- left arm (fire side): rolled sleeve, forge glove, tongs -->
+    <ellipse cx="-38" cy="-150" rx="12" ry="14" fill="#1e160c"/>
+    <path d="M-40 -144 C-44 -128 -46 -112 -44 -98" stroke="#191410" stroke-width="13" stroke-linecap="round" fill="none"/>
+    <path d="M-44 -98 C-44 -88 -42 -80 -40 -74" stroke="#241a0e" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <g transform="rotate(-8 -43 -82)">
+      <rect x="-52" y="-86" width="18" height="8" rx="3" fill="#2a1f12"/>
+    </g>
+    <circle cx="-40" cy="-72" r="7.5" fill="#1c140b"/>
+    <path d="M-48 -78 C-50 -74 -50 -69 -47 -66" stroke="#f4a24b" stroke-width="1.5" fill="none" opacity="0.6"/>
+    <line x1="-40" y1="-68" x2="-35" y2="-30" stroke="#2c2f38" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="-41" y1="-68" x2="-47" y2="-32" stroke="#2c2f38" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="-41" cy="-56" r="2.5" fill="#454b58"/>
+    <line x1="-35" y1="-30" x2="-38" y2="-25" stroke="#2c2f38" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-47" y1="-32" x2="-44" y2="-26" stroke="#2c2f38" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- drifting forge sparks -->
+    <circle cx="-52" cy="-64" r="1.8" fill="#ff9d3f" opacity="0.9"/>
+    <circle cx="-58" cy="-52" r="1.4" fill="#ffd166" opacity="0.8"/>
+    <circle cx="-48" cy="-42" r="1.2" fill="#ff9d3f" opacity="0.7"/>
+    <circle cx="-62" cy="-72" r="1" fill="#ffd166" opacity="0.6"/>
+    <!-- head: beard, cap, ember goggles -->
+    <circle cx="2" cy="-178" r="17" fill="#191410"/>
+    <path d="M-11 -172 C-12 -157 15 -157 14 -172 C8 -161 -4 -161 -11 -172 Z" fill="#120d08"/>
+    <path d="M-15 -184 C-14 -199 19 -199 19 -184 C10 -192 -6 -192 -15 -184 Z" fill="#241a0e"/>
+    <path d="M-14 -186 C-18 -184 -20 -180 -19 -175" stroke="#241a0e" stroke-width="3" fill="none"/>
+    <circle cx="-4" cy="-182" r="6" fill="#0c0a07" stroke="#ff9d3f" stroke-width="1.8" opacity="0.95"/>
+    <circle cx="10" cy="-182" r="6" fill="#0c0a07" stroke="#ff9d3f" stroke-width="1.8" opacity="0.95"/>
+    <line x1="1" y1="-183" x2="5" y2="-183" stroke="#ff9d3f" stroke-width="1.4" opacity="0.7"/>
+    <path d="M-8 -185 C-7 -186 -5 -187 -3 -186" stroke="#ffd166" stroke-width="1" fill="none" opacity="0.8"/>
+    <path d="M-14 -188 C-17 -180 -16 -170 -12 -164" stroke="#ffd166" stroke-width="1.5" fill="none" opacity="0.6"/>
+  </symbol>
+
+  <!-- ============ ATHLETE : tennis scholar-athlete ============ -->
+  <!-- Racket shouldered toward the fire, ball in the right hand, varsity
+       jacket with maroon collar/stripes, duffel with books at the right foot. -->
+  <symbol id="fig-athlete" viewBox="-120 -280 240 300">
+    <!-- ground contact -->
+    <ellipse cx="6" cy="-3" rx="56" ry="9" fill="#000000" opacity="0.3"/>
+    <ellipse cx="-6" cy="-3" rx="28" ry="5" fill="#000000" opacity="0.22"/>
+    <!-- duffel bag with strapped books -->
+    <ellipse cx="46" cy="-11" rx="25" ry="11.5" fill="#1c150d"/>
+    <path d="M26 -15 Q46 -31 66 -14" stroke="#2a1f12" stroke-width="4" fill="none"/>
+    <path d="M28 -16 Q46 -29 64 -15" stroke="#d8c493" stroke-width="0.8" fill="none" opacity="0.4"/>
+    <path d="M36 -20 C38 -30 52 -30 54 -20" stroke="#2a1f12" stroke-width="3" fill="none"/>
+    <circle cx="58" cy="-11" r="4.5" fill="#a3323c" opacity="0.85"/>
+    <line x1="24" y1="-9" x2="66" y2="-8" stroke="#0f0b07" stroke-width="1.4" opacity="0.7"/>
+    <rect x="30" y="-31" width="18" height="6" rx="1" fill="#3b2f4d"/>
+    <rect x="32" y="-36" width="15" height="5" rx="1" fill="#6b5624"/>
+    <line x1="39" y1="-36" x2="39" y2="-25" stroke="#17100a" stroke-width="1.5"/>
+    <path d="M23 -20 C25 -14 28 -9 33 -6" stroke="#f4a24b" stroke-width="1.3" fill="none" opacity="0.45"/>
+    <!-- legs: right bearing weight, left relaxed -->
+    <path d="M-22 -98 L-8 -98 L-12 -50 L-26 -50 Z" fill="#14171f"/>
+    <path d="M-26 -50 L-13 -50 L-18 -8 L-29 -8 Z" fill="#10131f"/>
+    <path d="M8 -98 L22 -98 L20 -50 L10 -50 Z" fill="#14171f"/>
+    <path d="M10 -50 L20 -50 L20 -8 L10 -8 Z" fill="#10131f"/>
+    <path d="M-24 -94 L-28 -10" stroke="#a3323c" stroke-width="1.5" fill="none" opacity="0.6"/>
+    <!-- sneakers with pale soles -->
+    <rect x="-39" y="-8" width="26" height="9" rx="4" fill="#10131f"/>
+    <line x1="-39" y1="-1" x2="-13" y2="-1" stroke="#d8c493" stroke-width="1.6" opacity="0.55"/>
+    <ellipse cx="-37" cy="-4" rx="4" ry="3" fill="#191d29"/>
+    <rect x="5" y="-8" width="27" height="9" rx="4" fill="#10131f"/>
+    <line x1="5" y1="-1" x2="32" y2="-1" stroke="#d8c493" stroke-width="1.6" opacity="0.55"/>
+    <path d="M-28 -48 L-31 -10" stroke="#f4a24b" stroke-width="1.4" fill="none" opacity="0.45"/>
+    <!-- varsity jacket -->
+    <path d="M-26 -166 L26 -166 L22 -98 L-22 -98 Z" fill="#161a24"/>
+    <line x1="0" y1="-164" x2="0" y2="-104" stroke="#0d1019" stroke-width="2"/>
+    <rect x="-22" y="-104" width="44" height="6" rx="2" fill="#10131f"/>
+    <line x1="-22" y1="-101" x2="22" y2="-101" stroke="#a3323c" stroke-width="2" opacity="0.9"/>
+    <path d="M-12 -166 L0 -156 L12 -166 L8 -173 L-8 -173 Z" fill="#a3323c" opacity="0.9"/>
+    <rect x="-17" y="-153" width="10" height="12" rx="1" fill="#a3323c" opacity="0.9"/>
+    <path d="M-15 -144 L-12 -151 L-9 -144" stroke="#e8e2d0" stroke-width="1.1" fill="none" opacity="0.85"/>
+    <path d="M-26 -164 C-28 -144 -26 -118 -22 -100" stroke="#f4a24b" stroke-width="2" fill="none" opacity="0.55"/>
+    <!-- left arm raised with racket (fire side) -->
+    <path d="M-24 -156 C-32 -164 -40 -176 -46 -188" stroke="#161a24" stroke-width="11" stroke-linecap="round" fill="none"/>
+    <line x1="-29" y1="-165" x2="-23" y2="-160" stroke="#a3323c" stroke-width="2" opacity="0.85"/>
+    <line x1="-32" y1="-169" x2="-26" y2="-164" stroke="#a3323c" stroke-width="2" opacity="0.85"/>
+    <circle cx="-47" cy="-190" r="5.5" fill="#12151f"/>
+    <!-- racket: wrapped grip, frame, strings -->
+    <line x1="-46" y1="-188" x2="-58" y2="-208" stroke="#2a1f12" stroke-width="5" stroke-linecap="round"/>
+    <line x1="-49" y1="-192" x2="-46" y2="-194" stroke="#17100a" stroke-width="1.5"/>
+    <line x1="-51" y1="-196" x2="-48" y2="-198" stroke="#17100a" stroke-width="1.5"/>
+    <line x1="-53" y1="-200" x2="-50" y2="-202" stroke="#17100a" stroke-width="1.5"/>
+    <g transform="rotate(-30 -70 -226)">
+      <ellipse cx="-70" cy="-226" rx="19" ry="25" fill="rgba(20,23,31,0.3)" stroke="#2a1f12" stroke-width="4.5"/>
+      <ellipse cx="-70" cy="-226" rx="15.5" ry="21.5" fill="none" stroke="#3d2c18" stroke-width="1.4" opacity="0.8"/>
+      <line x1="-70" y1="-246" x2="-70" y2="-206" stroke="#d8c493" stroke-width="0.9" opacity="0.6"/>
+      <line x1="-77" y1="-243" x2="-77" y2="-210" stroke="#d8c493" stroke-width="0.9" opacity="0.55"/>
+      <line x1="-63" y1="-243" x2="-63" y2="-210" stroke="#d8c493" stroke-width="0.9" opacity="0.55"/>
+      <line x1="-85" y1="-233" x2="-55" y2="-233" stroke="#d8c493" stroke-width="0.9" opacity="0.55"/>
+      <line x1="-86" y1="-226" x2="-54" y2="-226" stroke="#d8c493" stroke-width="0.9" opacity="0.55"/>
+      <line x1="-85" y1="-219" x2="-55" y2="-219" stroke="#d8c493" stroke-width="0.9" opacity="0.55"/>
+      <path d="M-87 -232 C-89 -224 -88 -216 -84 -210" stroke="#f4a24b" stroke-width="1.2" fill="none" opacity="0.5"/>
+    </g>
+    <path d="M-64 -206 L-59 -210 M-76 -208 L-58 -207" stroke="#2a1f12" stroke-width="2.5" opacity="0.9"/>
+    <!-- right arm down with tennis ball -->
+    <path d="M24 -156 C30 -142 32 -124 32 -110" stroke="#14171f" stroke-width="11" stroke-linecap="round" fill="none"/>
+    <line x1="28" y1="-164" x2="22" y2="-160" stroke="#a3323c" stroke-width="2" opacity="0.7"/>
+    <circle cx="32" cy="-108" r="5.5" fill="#10131f"/>
+    <circle cx="33" cy="-99" r="5" fill="#b9c95a" opacity="0.9"/>
+    <path d="M29 -101 C32 -99 34 -99 37 -101" stroke="#e6eda0" stroke-width="0.8" fill="none" opacity="0.8"/>
+    <!-- head with maroon headband -->
+    <circle cx="0" cy="-184" r="15.5" fill="#14171f"/>
+    <path d="M-13 -192 C-8 -201 8 -201 13 -191 C6 -197 -6 -197 -13 -192 Z" fill="#0e1119"/>
+    <rect x="-16" y="-193" width="32" height="6" rx="3" fill="#a3323c"/>
+    <path d="M15 -190 C22 -188 26 -184 28 -178" stroke="#a3323c" stroke-width="3" fill="none" opacity="0.9"/>
+    <path d="M15 -188 C20 -185 23 -181 24 -176" stroke="#7d2230" stroke-width="2.5" fill="none" opacity="0.85"/>
+    <path d="M-13 -192 C-16 -184 -15 -175 -11 -170" stroke="#ffd166" stroke-width="1.5" fill="none" opacity="0.6"/>
+    <path d="M-9 -172 C-4 -169 4 -169 9 -172" stroke="#0d1019" stroke-width="1.4" fill="none" opacity="0.7"/>
+  </symbol>
+</svg>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="0" height="0" aria-hidden="true">
+  <!--
+    Procedural texture sprite for the wow-character-select mockup.
+    Original art. Each symbol is a 400x400 tile built from feTurbulence stacks
+    (all numOctaves kept at 4 or below; stitchTiles="stitch" so tiles repeat cleanly).
+    Usage: inline this file, then <svg><use href="#tex-parchment"/></svg>.
+  -->
+  <defs>
+
+    <!-- ============ shared gradients ============ -->
+    <linearGradient id="g-parch-base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#efe3c2"/>
+      <stop offset="1" stop-color="#e2d1a6"/>
+    </linearGradient>
+    <radialGradient id="g-parch-edge" cx="0.5" cy="0.5" r="0.72">
+      <stop offset="0" stop-color="#5a4218" stop-opacity="0"/>
+      <stop offset="0.62" stop-color="#5a4218" stop-opacity="0"/>
+      <stop offset="0.88" stop-color="#5a4218" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#43300f" stop-opacity="0.38"/>
+    </radialGradient>
+    <linearGradient id="g-leather-base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#211a12"/>
+      <stop offset="0.5" stop-color="#17120c"/>
+      <stop offset="1" stop-color="#120d08"/>
+    </linearGradient>
+    <radialGradient id="g-leather-vig" cx="0.5" cy="0.5" r="0.74">
+      <stop offset="0" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="0.6" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.5"/>
+    </radialGradient>
+    <linearGradient id="g-stone-base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a2c33"/>
+      <stop offset="0.45" stop-color="#23252b"/>
+      <stop offset="1" stop-color="#191b20"/>
+    </linearGradient>
+    <linearGradient id="g-night-base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0d2b24"/>
+      <stop offset="0.55" stop-color="#092018"/>
+      <stop offset="1" stop-color="#06120e"/>
+    </linearGradient>
+    <linearGradient id="g-ember-base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#161009"/>
+      <stop offset="0.6" stop-color="#100b07"/>
+      <stop offset="1" stop-color="#0a0605"/>
+    </linearGradient>
+    <radialGradient id="g-ember-dot" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffdd8a" stop-opacity="0.95"/>
+      <stop offset="0.4" stop-color="#ff8c2a" stop-opacity="0.7"/>
+      <stop offset="1" stop-color="#ff5a00" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="g-ember-warm" cx="0.5" cy="0.62" r="0.7">
+      <stop offset="0" stop-color="#66300e" stop-opacity="0.28"/>
+      <stop offset="0.55" stop-color="#3d1c08" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- ============ filters ============ -->
+
+    <!-- Parchment: fractal mottling multiplied over the base, plus faint horizontal fibers -->
+    <filter id="f-parchment" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="4" seed="11" stitchTiles="stitch" result="noise"/>
+      <feColorMatrix in="noise" type="matrix"
+        values="0 0 0 0 0.80  0 0 0 0 0.70  0 0 0 0 0.48  0 0 0 0.85 0" result="mottle"/>
+      <feBlend in="mottle" in2="SourceGraphic" mode="multiply" result="mottled"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.005 0.32" numOctaves="2" seed="4" stitchTiles="stitch" result="fnoise"/>
+      <feColorMatrix in="fnoise" type="matrix"
+        values="0 0 0 0 0.62  0 0 0 0 0.52  0 0 0 0 0.32  0 0 0 0.26 0" result="fibers"/>
+      <feBlend in="fibers" in2="mottled" mode="multiply"/>
+    </filter>
+
+    <!-- Leather: warm fine grain lifted with screen, broad wrinkle shadow multiplied under -->
+    <filter id="f-leather" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.14" numOctaves="3" seed="8" stitchTiles="stitch" result="grain"/>
+      <feColorMatrix in="grain" type="matrix"
+        values="0 0 0 0 0.42  0 0 0 0 0.30  0 0 0 0 0.17  0 0 0 0.20 0" result="grainT"/>
+      <feBlend in="grainT" in2="SourceGraphic" mode="screen" result="lit"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.014" numOctaves="3" seed="21" stitchTiles="stitch" result="wrinkle"/>
+      <feColorMatrix in="wrinkle" type="matrix"
+        values="0 0 0 0 0.55  0 0 0 0 0.48  0 0 0 0 0.40  0 0 0 0.9 0.1" result="wrinkleT"/>
+      <feBlend in="wrinkleT" in2="lit" mode="multiply"/>
+    </filter>
+
+    <!-- Stone: cool speckle highlights over the base, veiny turbulence darks multiplied in -->
+    <filter id="f-stone" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="4" seed="5" stitchTiles="stitch" result="speck"/>
+      <feColorMatrix in="speck" type="matrix"
+        values="0 0 0 0 0.55  0 0 0 0 0.58  0 0 0 0 0.66  0 0 0 0.22 0" result="speckT"/>
+      <feBlend in="speckT" in2="SourceGraphic" mode="screen" result="lit"/>
+      <feTurbulence type="turbulence" baseFrequency="0.018" numOctaves="3" seed="14" stitchTiles="stitch" result="vein"/>
+      <feColorMatrix in="vein" type="matrix"
+        values="0 0 0 0 0.42  0 0 0 0 0.44  0 0 0 0 0.50  0 0 0 0.9 0.1" result="veinT"/>
+      <feBlend in="veinT" in2="lit" mode="multiply"/>
+    </filter>
+
+    <!-- Night sky: low-frequency teal haze screened over the base, thresholded speck stars on top -->
+    <filter id="f-nightsky" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.006" numOctaves="3" seed="9" stitchTiles="stitch" result="haze"/>
+      <feColorMatrix in="haze" type="matrix"
+        values="0 0 0 0 0.16  0 0 0 0 0.48  0 0 0 0 0.40  0 0 0 0.30 0" result="hazeT"/>
+      <feBlend in="hazeT" in2="SourceGraphic" mode="screen" result="hazed"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.55" numOctaves="2" seed="30" stitchTiles="stitch" result="starnoise"/>
+      <feColorMatrix in="starnoise" type="matrix"
+        values="0 0 0 0 0.86  0 0 0 0 0.92  0 0 0 0 1  0 0 0 16 -11.5" result="stars"/>
+      <feComposite in="stars" in2="hazed" operator="over"/>
+    </filter>
+
+    <!-- Embers: rough warm ground grain, plus thresholded orange specks with a blurred glow pass -->
+    <filter id="f-embers" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="4" seed="17" stitchTiles="stitch" result="gn"/>
+      <feColorMatrix in="gn" type="matrix"
+        values="0 0 0 0 0.24  0 0 0 0 0.14  0 0 0 0 0.07  0 0 0 0.30 0" result="gt"/>
+      <feBlend in="gt" in2="SourceGraphic" mode="screen" result="ground"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.22" numOctaves="2" seed="42" stitchTiles="stitch" result="en"/>
+      <feColorMatrix in="en" type="matrix"
+        values="0 0 0 0 1  0 0 0 0 0.55  0 0 0 0 0.10  0 0 0 14 -10" result="specks"/>
+      <feGaussianBlur in="specks" stdDeviation="2.4" result="glowsoft"/>
+      <feColorMatrix in="glowsoft" type="matrix"
+        values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1.8 0" result="glow"/>
+      <feMerge>
+        <feMergeNode in="ground"/>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="specks"/>
+      </feMerge>
+    </filter>
+
+    <!-- ============ tiles ============ -->
+
+    <!-- Aged parchment for quest-log panels -->
+    <symbol id="tex-parchment" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice">
+      <rect width="400" height="400" fill="url(#g-parch-base)"/>
+      <rect width="400" height="400" fill="url(#g-parch-base)" filter="url(#f-parchment)"/>
+      <rect width="400" height="400" fill="url(#g-parch-edge)"/>
+    </symbol>
+
+    <!-- Dark tooled leather for UI panel fills -->
+    <symbol id="tex-leather" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice">
+      <rect width="400" height="400" fill="url(#g-leather-base)"/>
+      <rect width="400" height="400" fill="url(#g-leather-base)" filter="url(#f-leather)"/>
+      <rect x="12" y="12" width="376" height="376" rx="6" fill="none" stroke="#6b5624" stroke-opacity="0.30" stroke-width="1.5"/>
+      <rect x="19" y="19" width="362" height="362" rx="4" fill="none" stroke="#43350f" stroke-opacity="0.34" stroke-width="1"/>
+      <rect width="400" height="400" fill="url(#g-leather-vig)"/>
+    </symbol>
+
+    <!-- Dark carved stone for header bars -->
+    <symbol id="tex-stone" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice">
+      <rect width="400" height="400" fill="url(#g-stone-base)"/>
+      <rect width="400" height="400" fill="url(#g-stone-base)" filter="url(#f-stone)"/>
+      <rect x="0" y="0" width="400" height="2" fill="#8a93a8" fill-opacity="0.14"/>
+      <rect x="0" y="2" width="400" height="1.5" fill="#000000" fill-opacity="0.25"/>
+      <rect x="0" y="60" width="400" height="1.5" fill="#000000" fill-opacity="0.40"/>
+      <rect x="0" y="61.5" width="400" height="1.5" fill="#8a93a8" fill-opacity="0.10"/>
+      <rect x="0" y="338" width="400" height="1.5" fill="#000000" fill-opacity="0.40"/>
+      <rect x="0" y="339.5" width="400" height="1.5" fill="#8a93a8" fill-opacity="0.10"/>
+      <rect x="0" y="396.5" width="400" height="1.5" fill="#000000" fill-opacity="0.35"/>
+      <rect x="0" y="398" width="400" height="2" fill="#000000" fill-opacity="0.5"/>
+    </symbol>
+
+    <!-- Deep green-teal night haze with faint stars for backdrops -->
+    <symbol id="tex-nightsky" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice">
+      <rect width="400" height="400" fill="url(#g-night-base)"/>
+      <rect width="400" height="400" fill="url(#g-night-base)" filter="url(#f-nightsky)"/>
+      <g fill="#dbe3f2">
+        <circle cx="62" cy="58" r="1.2" opacity="0.55"/>
+        <circle cx="188" cy="34" r="0.9" opacity="0.4"/>
+        <circle cx="291" cy="88" r="1.3" opacity="0.5"/>
+        <circle cx="352" cy="41" r="0.8" opacity="0.35"/>
+        <circle cx="119" cy="142" r="1" opacity="0.4"/>
+        <circle cx="243" cy="171" r="0.8" opacity="0.3"/>
+        <circle cx="330" cy="214" r="1.1" opacity="0.38"/>
+        <circle cx="47" cy="255" r="0.9" opacity="0.3"/>
+        <circle cx="160" cy="303" r="0.8" opacity="0.24"/>
+        <circle cx="282" cy="332" r="0.9" opacity="0.22"/>
+      </g>
+      <circle cx="62" cy="58" r="4" fill="#dbe3f2" opacity="0.10"/>
+      <circle cx="291" cy="88" r="4.5" fill="#dbe3f2" opacity="0.09"/>
+    </symbol>
+
+    <!-- Dark ground with scattered glowing ember specks -->
+    <symbol id="tex-embers" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice">
+      <rect width="400" height="400" fill="url(#g-ember-base)"/>
+      <rect width="400" height="400" fill="url(#g-ember-base)" filter="url(#f-embers)"/>
+      <rect width="400" height="400" fill="url(#g-ember-warm)"/>
+      <g>
+        <rect x="66" y="98" width="16" height="16" fill="url(#g-ember-dot)" transform="rotate(18 74 106)"/>
+        <rect x="212" y="64" width="10" height="10" fill="url(#g-ember-dot)"/>
+        <rect x="318" y="140" width="14" height="14" fill="url(#g-ember-dot)" transform="rotate(-12 325 147)"/>
+        <rect x="132" y="212" width="20" height="20" fill="url(#g-ember-dot)"/>
+        <rect x="276" y="258" width="12" height="12" fill="url(#g-ember-dot)" transform="rotate(30 282 264)"/>
+        <rect x="52" y="312" width="14" height="14" fill="url(#g-ember-dot)"/>
+        <rect x="356" y="330" width="10" height="10" fill="url(#g-ember-dot)"/>
+        <rect x="186" y="342" width="16" height="16" fill="url(#g-ember-dot)" transform="rotate(-20 194 350)"/>
+      </g>
+    </symbol>
+
+  </defs>
+</svg>
+</div>
 
 <!-- ============ CHARACTER SELECT ============ -->
 <div id="select-screen" class="screen select-screen active">
@@ -461,6 +1755,8 @@ button { font-family: inherit; }
       <ellipse id="glow-builder" class="fig-glow" cx="952" cy="758" rx="84" ry="17" fill="url(#selglow)"/>
       <ellipse id="glow-uchicago" class="fig-glow" cx="1120" cy="792" rx="88" ry="20" fill="url(#selglow)"/>
 
+      <!-- figures: classic (hand-drawn originals) vs deluxe (assets/figures sprite) -->
+      <g id="figs-classic" style="display:none;">
       <!-- ===== FIGURE: Revenue Strategist (knight) ===== -->
       <g transform="translate(480,790)">
         <path d="M-18 -192 C-62 -152 -74 -60 -56 -4 L-26 -4 C-40 -70 -36 -142 -8 -186 Z" fill="#181022"/>
@@ -542,6 +1838,13 @@ button { font-family: inherit; }
         <ellipse cx="38" cy="-10" rx="24" ry="11" fill="#1c150d"/>
         <path d="M20 -14 Q38 -30 56 -14" stroke="#2a1f12" stroke-width="4" fill="none"/>
       </g>
+      </g>
+      <g id="figs-deluxe">
+        <use href="#fig-knight" x="360" y="510" width="240" height="300"/>
+        <use href="#fig-chronicler" x="540" y="504" width="216" height="270"/>
+        <use href="#fig-artificer" x="840.4" y="495.6" width="223.2" height="279"/>
+        <use href="#fig-athlete" x="1000" y="510" width="240" height="300"/>
+      </g>
 
       <!-- campfire -->
       <g>
@@ -615,24 +1918,34 @@ button { font-family: inherit; }
     <a class="nav-item" href="../../site/index.html#club">NEWSLETTER</a>
   </nav>
   <a class="crest-link" href="../../site/index.html" aria-label="View classic site">N<span class="badge">✦</span></a>
+  <button class="chip fig-toggle" id="fig-toggle" type="button">FIGURES: DELUXE</button>
 
   <aside class="char-panel" aria-label="Career character list">
+    <svg class="panel-tex" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#tex-leather"/></svg>
+    <svg class="corner tl" viewBox="0 0 64 64" aria-hidden="true"><use href="#ui-corner"/></svg>
+    <svg class="corner tr" viewBox="0 0 64 64" aria-hidden="true"><use href="#ui-corner"/></svg>
+    <svg class="corner bl" viewBox="0 0 64 64" aria-hidden="true"><use href="#ui-corner"/></svg>
+    <svg class="corner br" viewBox="0 0 64 64" aria-hidden="true"><use href="#ui-corner"/></svg>
     <div class="search-row">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9aa3b8" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+      <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true"><use href="#ui-magnifier"/></svg>
       <input type="search" placeholder="Search" aria-label="Search chapters">
     </div>
     <div class="fav-header"><span>FAVORITES</span><span class="min" aria-hidden="true">−</span></div>
     <div class="char-list" id="char-list"></div>
     <div class="panel-actions">
       <a class="wow-btn" href="mailto:nick@nickchua.me">CREATE CHARACTER</a>
-      <span class="icon-btn" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffd9a0" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></span>
-      <span class="icon-btn" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffd9a0" stroke-width="2"><path d="M4 10a8 8 0 1 1 2 6"/><path d="M4 4v6h6"/></svg></span>
+      <span class="icon-btn" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 48 48"><use href="#ui-trash"/></svg></span>
+      <span class="icon-btn" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 48 48"><use href="#ui-undo"/></svg></span>
     </div>
   </aside>
   <span class="panel-caption">CAREER CHARACTER LIST&nbsp;&nbsp;−</span>
 
   <div class="desc-card" aria-live="polite">
-    <span class="ttl" id="desc-title"></span>
+    <svg class="corner tl" viewBox="0 0 64 64" aria-hidden="true"><use href="#ui-corner"/></svg>
+    <svg class="corner tr" viewBox="0 0 64 64" aria-hidden="true"><use href="#ui-corner"/></svg>
+    <svg class="corner bl" viewBox="0 0 64 64" aria-hidden="true"><use href="#ui-corner"/></svg>
+    <svg class="corner br" viewBox="0 0 64 64" aria-hidden="true"><use href="#ui-corner"/></svg>
+    <span class="ttl-row"><svg class="cls-icon" viewBox="0 0 48 48" aria-hidden="true"><use id="desc-class-use" href="#class-operator"/></svg><span class="ttl" id="desc-title"></span></span>
     <p id="desc-body"></p>
     <span class="meta" id="desc-meta"></span>
   </div>
@@ -640,7 +1953,10 @@ button { font-family: inherit; }
   <div class="bottom-ui">
     <a class="wow-btn back" href="../../site/index.html">◄&nbsp; BACK</a>
     <div class="enter-stack">
-      <span class="sel-name" id="enter-name">Nick Chua</span>
+      <span class="sel-name-wrap">
+        <svg class="ribbon" viewBox="0 0 420 64" preserveAspectRatio="none" aria-hidden="true"><use href="#ui-nameplate"/></svg>
+        <span class="sel-name" id="enter-name">Nick Chua</span>
+      </span>
       <button class="wow-btn big" id="enter-btn" type="button">ENTER WORLD</button>
       <span class="mobile-back"><a href="../../site/index.html">◄ BACK TO CLASSIC SITE</a></span>
     </div>
@@ -650,6 +1966,8 @@ button { font-family: inherit; }
 
 <!-- ============ LOADING SCREEN ============ -->
 <div id="loading" class="loading" role="status" aria-label="Loading">
+  <img id="load-art" alt="" src="assets/zones/revenue-operations.svg">
+  <div class="load-shade" aria-hidden="true"></div>
   <div class="zone" id="load-zone">REVENUE OPERATIONS</div>
   <p class="tip" id="load-tip">Tip: you can inspect any chapter from the roster — each one has its own quest log.</p>
   <div class="load-track"><div class="load-fill" id="load-fill"></div></div>
@@ -685,18 +2003,15 @@ button { font-family: inherit; }
       <section class="dark-panel" aria-label="Character sheet">
         <span class="label">CHARACTER SHEET</span>
         <div class="sheet-id">
-          <svg viewBox="0 0 64 64" aria-hidden="true" style="width:58px;height:58px;flex-shrink:0;">
-            <circle cx="32" cy="32" r="29" fill="rgba(10,15,28,0.7)" stroke="#c9a457" stroke-width="2"/>
-            <text x="32" y="42" text-anchor="middle" font-family="Cinzel, Georgia, serif" font-weight="700" font-size="28" fill="#e3cf96">N</text>
-          </svg>
+          <svg viewBox="0 0 48 48" aria-hidden="true" style="width:58px;height:58px;flex-shrink:0;"><use id="det-class-use" href="#class-operator"/></svg>
           <div class="who"><span class="nm" id="det-name"></span><span class="lv" id="det-lv"></span></div>
         </div>
         <div class="gold-rule"></div>
         <span class="label">EQUIPPED</span>
-        <div class="kv"><span class="k">Main hand</span><span class="rar-epic">SQL — Epic</span></div>
-        <div class="kv"><span class="k">Off hand</span><span class="rar-leg">The Spreadsheet of Truth — Legendary</span></div>
-        <div class="kv"><span class="k">Trinket</span><span class="rar-rare">Salesforce — Rare</span></div>
-        <div class="kv"><span class="k">Head</span><span class="rar-unc">Noise-cancelling headphones — Uncommon</span></div>
+        <div class="kv"><span class="k">Main hand</span><span class="rar-epic"><svg class="gem" viewBox="0 0 48 48" aria-hidden="true"><use href="#gem-epic"/></svg>SQL — Epic</span></div>
+        <div class="kv"><span class="k">Off hand</span><span class="rar-leg"><svg class="gem" viewBox="0 0 48 48" aria-hidden="true"><use href="#gem-legendary"/></svg>The Spreadsheet of Truth — Legendary</span></div>
+        <div class="kv"><span class="k">Trinket</span><span class="rar-rare"><svg class="gem" viewBox="0 0 48 48" aria-hidden="true"><use href="#gem-rare"/></svg>Salesforce — Rare</span></div>
+        <div class="kv"><span class="k">Head</span><span class="rar-unc"><svg class="gem" viewBox="0 0 48 48" aria-hidden="true"><use href="#gem-uncommon"/></svg>Noise-cancelling headphones — Uncommon</span></div>
         <div class="gold-rule"></div>
         <span class="label">PROFESSIONS</span>
         <div class="kv"><span style="color:#c3cadb;">Writing</span><span style="color:#d8c493;">20 essays · 58 newsletter issues</span></div>
@@ -709,11 +2024,11 @@ button { font-family: inherit; }
         <section class="dark-panel" aria-label="Achievements">
           <span class="label">ACHIEVEMENTS</span>
           <div class="achv">
-            <svg viewBox="0 0 24 24" aria-hidden="true" style="width:22px;height:22px;flex-shrink:0;"><path d="M7 3 h10 v3 h3 v3 a5 5 0 0 1 -5 5 h-0.5 a4.5 4.5 0 0 1 -4 3 v2 h3 v2 H7 v-2 h3 v-2 a4.5 4.5 0 0 1 -1.5 -3 H8 a5 5 0 0 1 -5 -5 V6 h3 Z" fill="none" stroke="#e3cf96" stroke-width="1.6" stroke-linejoin="round"/></svg>
+            <svg viewBox="0 0 48 48" aria-hidden="true" style="width:24px;height:24px;flex-shrink:0;"><use href="#achievement-trophy"/></svg>
             <div class="a-txt"><b>[Notable win for this chapter]</b><span>Achievement earned · 25 pts</span></div>
           </div>
           <div class="achv">
-            <svg viewBox="0 0 24 24" aria-hidden="true" style="width:22px;height:22px;flex-shrink:0;"><path d="M7 3 h10 v3 h3 v3 a5 5 0 0 1 -5 5 h-0.5 a4.5 4.5 0 0 1 -4 3 v2 h3 v2 H7 v-2 h3 v-2 a4.5 4.5 0 0 1 -1.5 -3 H8 a5 5 0 0 1 -5 -5 V6 h3 Z" fill="none" stroke="#e3cf96" stroke-width="1.6" stroke-linejoin="round"/></svg>
+            <svg viewBox="0 0 48 48" aria-hidden="true" style="width:24px;height:24px;flex-shrink:0;"><use href="#achievement-trophy"/></svg>
             <div class="a-txt"><b>58 Issues Pressed</b><span>Newsletter, weekly-ish since 2019 · 50 pts</span></div>
           </div>
         </section>
@@ -733,7 +2048,7 @@ button { font-family: inherit; }
 const CHARS = [
   {
     id: 'brex', name: 'Nick Chua', level: 60, className: 'Revenue Operator', classColor: '#e6cc80',
-    realm: 'Bay Area', crest: 'B', title: 'The Revenue Strategist',
+    realm: 'Bay Area', crest: 'B', crestIcon: 'crest-brex', classIcon: 'class-operator', zoneArt: 'assets/zones/revenue-operations.svg', title: 'The Revenue Strategist',
     detZone: 'REVENUE OPERATIONS', detSub: 'Brex · San Francisco Bay Area — current chapter',
     desc: 'The current main. Questing in revenue operations at Brex: pipeline analytics, territory design, and the systems that keep a fintech go-to-market engine honest.',
     meta: 'Guild: Brex · Faction: Go-to-Market · Status: Active',
@@ -746,7 +2061,7 @@ const CHARS = [
   },
   {
     id: 'records', name: 'The Chronicler', level: 45, className: 'Scribe', classColor: '#69ccf0',
-    realm: 'The Open Internet', crest: 'R', title: 'Writer of Nick’s Records',
+    realm: 'The Open Internet', crest: 'R', crestIcon: 'crest-records', classIcon: 'class-scribe', zoneArt: 'assets/zones/nicks-records.svg', title: 'Writer of Nick’s Records',
     detZone: 'NICK’S RECORDS', detSub: 'Writing on tech, games & capital — est. 2019',
     desc: 'Twenty essays and 58 newsletter issues on tech, esports, and the occasional company I think the market has wrong. Yes, I will defend the Star Wars prequels.',
     meta: 'Guild: Nick’s Records · Est. 2019 · 58 issues pressed',
@@ -759,7 +2074,7 @@ const CHARS = [
   },
   {
     id: 'builder', name: 'The Artificer', level: 38, className: 'Engineer', classColor: '#ff7c0a',
-    realm: 'Nights & Weekends', crest: 'A', title: 'Side-Project Builder',
+    realm: 'Nights & Weekends', crest: 'A', crestIcon: 'crest-forge', classIcon: 'class-engineer', zoneArt: 'assets/zones/the-forge.svg', title: 'Side-Project Builder',
     detZone: 'THE FORGE', detSub: 'Side projects · nights & weekends',
     desc: 'Currently forging Arise, a Solo Leveling-inspired fitness tracker (SwiftUI front, FastAPI back). Previous crafts include a ramen ranking system and an esports position paper.',
     meta: 'Current build: Arise fitness tracker · Swift + Python',
@@ -772,7 +2087,7 @@ const CHARS = [
   },
   {
     id: 'uchicago', name: 'The Scholar-Athlete', level: 30, className: 'Economist', classColor: '#abd473',
-    realm: 'Hyde Park', crest: 'U', title: 'Varsity Tennis, UChicago',
+    realm: 'Hyde Park', crest: 'U', crestIcon: 'crest-uchicago', classIcon: 'class-athlete', zoneArt: 'assets/zones/hyde-park.svg', title: 'Varsity Tennis, UChicago',
     detZone: 'HYDE PARK', detSub: 'University of Chicago — the leveling years',
     desc: 'Four years in the Hyde Park training grounds: economics by day, varsity tennis by afternoon, and the first drafts of a writing habit by night.',
     meta: 'Guild: UChicago Maroons · Era: the leveling years',
@@ -796,18 +2111,18 @@ function renderList() {
     btn.type = 'button';
     btn.className = 'char-entry' + (c.id === selId ? ' selected' : '');
     btn.innerHTML = '<span class="txt"><span class="nm"></span><span class="cls">Level ' + c.level +
-      ' <b style="color:' + c.classColor + '"></b></span><span class="realm"></span></span><span class="crest"></span>';
+      ' <b style="color:' + c.classColor + '"></b></span><span class="realm"></span></span><span class="crest">' +
+      '<svg width="26" height="26" viewBox="0 0 48 48" aria-hidden="true"><use href="#' + c.crestIcon + '"/></svg></span>';
     btn.querySelector('.nm').textContent = c.name;
     btn.querySelector('.cls b').textContent = c.className;
     btn.querySelector('.realm').textContent = c.realm;
-    btn.querySelector('.crest').textContent = c.crest;
     btn.addEventListener('click', () => select(c.id));
     list.appendChild(btn);
   });
   const ghost = document.createElement('a');
   ghost.className = 'char-entry ghost';
   ghost.href = 'mailto:nick@nickchua.me';
-  ghost.innerHTML = '<span class="txt"><span class="nm">[Earlier Chapter]</span><span class="cls">Level ?? — pre-Brex roles</span><span class="realm">Add your history here</span></span><span class="crest">+</span>';
+  ghost.innerHTML = '<span class="txt"><span class="nm">[Earlier Chapter]</span><span class="cls">Level ?? — pre-Brex roles</span><span class="realm">Add your history here</span></span><span class="crest"><svg width="22" height="22" viewBox="0 0 48 48" aria-hidden="true"><use href="#ui-plus"/></svg></span>';
   list.appendChild(ghost);
 }
 
@@ -820,6 +2135,7 @@ function select(id) {
   document.querySelectorAll('.char-entry:not(.ghost)').forEach((b, i) => b.classList.toggle('selected', CHARS[i].id === id));
   $('enter-name').textContent = c.name;
   $('desc-title').textContent = c.title;
+  document.getElementById('desc-class-use').setAttribute('href', '#' + c.classIcon);
   $('desc-body').textContent = c.desc;
   $('desc-meta').textContent = c.meta;
 }
@@ -827,6 +2143,7 @@ function select(id) {
 function renderDetail() {
   const c = CHARS.find((x) => x.id === selId);
   $('det-zone').textContent = c.detZone;
+  document.getElementById('det-class-use').setAttribute('href', '#' + c.classIcon);
   $('det-sub').textContent = c.detSub;
   $('det-name').textContent = c.name;
   $('det-lv').textContent = 'Level ' + c.level + ' ' + c.className + ' · ' + c.realm;
@@ -854,6 +2171,7 @@ function renderDetail() {
 function enterWorld() {
   const c = CHARS.find((x) => x.id === selId);
   renderDetail();
+  $('load-art').src = c.zoneArt;
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduced) { swapTo('detail-screen'); return; }
   $('load-zone').textContent = c.detZone;
@@ -878,6 +2196,13 @@ function swapTo(id) {
 }
 
 document.querySelectorAll('.figure-btn').forEach((b) => b.addEventListener('click', () => select(b.dataset.id)));
+let deluxeFigs = true;
+$('fig-toggle').addEventListener('click', () => {
+  deluxeFigs = !deluxeFigs;
+  document.getElementById('figs-deluxe').style.display = deluxeFigs ? '' : 'none';
+  document.getElementById('figs-classic').style.display = deluxeFigs ? 'none' : '';
+  $('fig-toggle').textContent = deluxeFigs ? 'FIGURES: DELUXE' : 'FIGURES: CLASSIC';
+});
 $('enter-btn').addEventListener('click', enterWorld);
 $('back-btn').addEventListener('click', () => swapTo('select-screen'));
 renderList();

@@ -49,5 +49,27 @@ shrunk (breakpoint at 900px):
 - `VIEW CLASSIC SITE` / `WRITING` / `NEWSLETTER` point at
   `../../site/index.html` for now.
 
+## Asset library (`assets/`)
+
+Built by four parallel agent workstreams; each folder has a standalone
+`preview.html` contact sheet. All sprites are inlined into `index.html`
+at build time (the `<!-- SPRITES -->` mount near the top of `<body>`):
+
+- `ui/ui-kit.svg` — 11 ornamental symbols: 9-slice gold frame corner/edge,
+  panel frame, red/gold beveled buttons, dividers, nameplate ribbon,
+  search recess, section header.
+- `icons/icons.svg` — 25 symbols: class icons, guild crests, achievement
+  trophy, rarity gems, reputation marks, utility icons, favicon crest.
+- `figures/figures.svg` — four higher-fidelity campfire figures
+  (`fig-knight`, `fig-chronicler`, `fig-artificer`, `fig-athlete`);
+  the select screen has a FIGURES: DELUXE/CLASSIC toggle (top-left) to
+  compare against the original hand-drawn silhouettes.
+- `textures/textures.svg` — feTurbulence tiles: parchment (quest log),
+  leather (list panel), stone, night sky, embers.
+- `zones/*.svg` — four 1600x900 loading-screen backdrops, one per
+  chapter, shown behind the Enter World progress bar.
+
 There is also a matching design-canvas version of these four screens as a
-Claude artifact (see the session that created this folder).
+Claude artifact (see the session that created this folder). The canvas
+artboards predate the asset integration; `index.html` is the
+source of truth for the hi-fi pass.
