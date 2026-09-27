@@ -500,6 +500,28 @@ extension Array {
     }
 }
 
+// MARK: - Binding Extensions
+
+extension Binding {
+    /// Binding to the array element with `item`'s id, for ForEach rows.
+    ///
+    /// An index-based `$array[i]` traps with "Index out of range" when the
+    /// array shrinks while the row is still mounted — SwiftUI re-reads the
+    /// binding before the ForEach drops the row (e.g. the Log flow resetting
+    /// the hunt under the XP cover). This looks the element up by id, falls
+    /// back to the row's snapshot once it's gone, and drops writes to it.
+    func element<Item: Identifiable>(matching item: Item) -> Binding<Item>
+    where Value == [Item] {
+        Binding<Item>(
+            get: { wrappedValue.first { $0.id == item.id } ?? item },
+            set: { newValue in
+                guard let index = wrappedValue.firstIndex(where: { $0.id == item.id }) else { return }
+                wrappedValue[index] = newValue
+            }
+        )
+    }
+}
+
 // MARK: - Animation Extensions
 
 extension Animation {
