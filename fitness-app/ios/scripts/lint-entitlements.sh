@@ -69,6 +69,15 @@ done
 # production push silently fails.
 # ---------------------------------------------------------------------------
 
+# PlistBuddy is macOS-only and CI runs this on ubuntu-latest; plistlib ships
+# with every python3.
+plist_value() {  # <file> <key> → top-level value, "" when absent/unreadable
+    python3 -c 'import plistlib, sys; print(plistlib.load(open(sys.argv[1], "rb")).get(sys.argv[2], ""))' "$1" "$2" 2>/dev/null || echo ""
+}
+plist_keys() {  # <file> → sorted top-level keys, aps-environment excluded
+    python3 -c 'import plistlib, sys; print("\n".join(sorted(k for k in plistlib.load(open(sys.argv[1], "rb")) if k != "aps-environment")))' "$1"
+}
+
 DEBUG_ENT="$PROJECT_ROOT/ios/FitnessApp/FitnessApp.entitlements"
 RELEASE_ENT="$PROJECT_ROOT/ios/FitnessApp/FitnessAppRelease.entitlements"
 
@@ -81,8 +90,8 @@ if [ ! -f "$RELEASE_ENT" ]; then
     ISSUES=$((ISSUES + 1))
 else
     # aps-environment must be development in Debug, production in Release.
-    debug_aps=$(/usr/libexec/PlistBuddy -c "Print :aps-environment" "$DEBUG_ENT" 2>/dev/null || echo "")
-    release_aps=$(/usr/libexec/PlistBuddy -c "Print :aps-environment" "$RELEASE_ENT" 2>/dev/null || echo "")
+    debug_aps=$(plist_value "$DEBUG_ENT" aps-environment)
+    release_aps=$(plist_value "$RELEASE_ENT" aps-environment)
 
     if [ "$debug_aps" != "development" ]; then
         echo -e "${RED}ERROR${NC}: Debug aps-environment is '$debug_aps', expected 'development'"
@@ -101,8 +110,8 @@ else
 
     # Every other key must match exactly, so a capability added to one file
     # cannot go missing from the other.
-    debug_keys=$(/usr/libexec/PlistBuddy -c "Print" "$DEBUG_ENT" | grep -oE "^ +[a-zA-Z0-9._-]+ = " | sed 's/[ =]//g' | grep -v "^aps-environment$" | sort)
-    release_keys=$(/usr/libexec/PlistBuddy -c "Print" "$RELEASE_ENT" | grep -oE "^ +[a-zA-Z0-9._-]+ = " | sed 's/[ =]//g' | grep -v "^aps-environment$" | sort)
+    debug_keys=$(plist_keys "$DEBUG_ENT")
+    release_keys=$(plist_keys "$RELEASE_ENT")
 
     if [ "$debug_keys" != "$release_keys" ]; then
         echo -e "${RED}ERROR${NC}: Debug and Release entitlements have drifted"

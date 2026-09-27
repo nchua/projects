@@ -4,7 +4,6 @@ import SwiftUI
 struct SupersetCard: View {
     let groupId: UUID
     let exercises: [LoggedExercise]
-    let indices: [Int]
     @Binding var allExercises: [LoggedExercise]
     let onAddRound: (UUID) -> Void
     let onCopyRound: (UUID) -> Void
@@ -53,7 +52,6 @@ struct SupersetCard: View {
                 SupersetRound(
                     roundNumber: roundIndex + 1,
                     exercises: exercises,
-                    indices: indices,
                     roundIndex: roundIndex,
                     allExercises: $allExercises,
                     isCompleted: isRoundCompleted(roundIndex)
@@ -188,7 +186,6 @@ struct SupersetHeader: View {
 struct SupersetRound: View {
     let roundNumber: Int
     let exercises: [LoggedExercise]
-    let indices: [Int]
     let roundIndex: Int
     @Binding var allExercises: [LoggedExercise]
     let isCompleted: Bool
@@ -224,12 +221,13 @@ struct SupersetRound: View {
             .background(Color.voidDark.opacity(0.5))
 
             // Exercise inputs for this round
-            ForEach(Array(zip(exercises, indices)), id: \.0.id) { exercise, exerciseIndex in
+            ForEach(exercises) { exercise in
                 if roundIndex < exercise.sets.count {
                     SupersetExerciseInput(
                         exerciseName: exercise.exerciseName,
                         exerciseColor: Color.exerciseColor(for: exercise.exerciseName),
-                        set: $allExercises[exerciseIndex].sets[roundIndex]
+                        set: $allExercises.element(matching: exercise).sets
+                            .element(matching: exercise.sets[roundIndex])
                     )
 
                     if exercise.id != exercises.last?.id {

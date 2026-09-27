@@ -70,11 +70,12 @@ struct ScreenshotPreviewView: View {
             // fullScreenCover is over-kill for edit — a sheet is fine, and we use
             // `item:` binding so `.id()` isolation per exercise is automatic.
             .sheet(item: editingExerciseBinding) { editing in
-                // Safety: re-resolve index on every open in case list mutated.
-                if let idx = viewModel.editableIndex(for: editing.id) {
+                // Bind by id: "Delete exercise" removes the entry while this
+                // sheet is still mounted, and an index binding would trap.
+                if let current = viewModel.editableExercises.first(where: { $0.id == editing.id }) {
                     ScreenshotExerciseEditView(
                         exercises: exerciseCatalog,
-                        exercise: $viewModel.editableExercises[idx],
+                        exercise: $viewModel.editableExercises.element(matching: current),
                         onDeleteExercise: {
                             viewModel.removeEditableExercise(id: editing.id)
                             editingExerciseId = nil

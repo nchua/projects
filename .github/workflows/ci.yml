@@ -150,14 +150,22 @@ jobs:
             DEVELOPMENT_TEAM="" \
             build 2>&1 | tail -300
 
+  # Grep-level checks for iOS crash patterns that have shipped before. They
+  # take seconds on Linux (no simulator), so they cost no macOS minutes.
   entitlements-lint:
-    name: iOS — entitlements lint
+    name: iOS — lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Lint entitlements
         run: bash fitness-app/ios/scripts/lint-entitlements.sh
+
+      - name: Lint SwiftUI index bindings
+        run: bash fitness-app/ios/scripts/lint-swiftui-bindings.sh
+
+      - name: Lint fullScreenCover state
+        run: bash fitness-app/ios/scripts/lint-fullscreen-cover.sh
 
   secret-scan:
     name: Secret scan — gitleaks
