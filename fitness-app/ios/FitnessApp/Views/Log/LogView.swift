@@ -342,6 +342,14 @@ struct LogView: View {
                 }
             }
         }
+        // A save that fell back to the offline queue has already reset the
+        // hunt — return to idle rather than leave an empty active session.
+        .onChange(of: viewModel.queuedForLater) { _, queued in
+            guard queued else { return }
+            withAnimation(.smoothSpring) {
+                isSessionActive = false
+            }
+        }
         .alert("Workout queued",
                isPresented: Binding(
                 get: { viewModel.queuedForLater },
@@ -797,9 +805,9 @@ struct ActiveQuestView: View {
                     } else {
                         ForEach(viewModel.exercisesGroupedForDisplay) { item in
                             switch item {
-                            case .single(_, let index):
+                            case .single(let exercise, let index):
                                 ObjectiveCard(
-                                    exercise: $viewModel.selectedExercises[index],
+                                    exercise: $viewModel.selectedExercises.element(matching: exercise),
                                     onAddSet: { viewModel.addSet(to: index) },
                                     onCopySet: { viewModel.copyLastSet(for: index) },
                                     onRemoveSet: { setIndex in
@@ -810,11 +818,10 @@ struct ActiveQuestView: View {
                                 .padding(.horizontal)
                                 .fadeIn(delay: 0.2 + Double(index) * 0.05)
 
-                            case .superset(let groupId, let exercises, let indices):
+                            case .superset(let groupId, let exercises):
                                 SupersetCard(
                                     groupId: groupId,
                                     exercises: exercises,
-                                    indices: indices,
                                     allExercises: $viewModel.selectedExercises,
                                     onAddRound: { id in
                                         viewModel.addRoundToSuperset(groupId: id)
@@ -1312,11 +1319,11 @@ struct ObjectiveCard: View {
             .background(Color.voidDark)
 
             // Sets
-            ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, _ in
+            ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, set in
                 AriseSetRow(
-                    set: $exercise.sets[index],
+                    set: $exercise.sets.element(matching: set),
                     exerciseColor: exerciseColor,
-                    isCompleted: (exercise.sets[index].isBodyweight || exercise.sets[index].weight > 0) && exercise.sets[index].reps > 0,
+                    isCompleted: (set.isBodyweight || set.weight > 0) && set.reps > 0,
                     onRemove: { onRemoveSet(index) }
                 )
 

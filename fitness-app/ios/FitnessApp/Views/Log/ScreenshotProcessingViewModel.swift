@@ -172,11 +172,6 @@ class ScreenshotProcessingViewModel: ObservableObject {
         editableExercises = extracted.map { EditableExtractedExercise(from: $0) }
     }
 
-    /// Index of an editable exercise by its stable `UUID` — for sheet re-entry.
-    func editableIndex(for id: UUID) -> Int? {
-        editableExercises.firstIndex { $0.id == id }
-    }
-
     /// Remove an edited exercise. The user can re-add via re-scanning if needed.
     func removeEditableExercise(id: UUID) {
         editableExercises.removeAll { $0.id == id }

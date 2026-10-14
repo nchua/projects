@@ -157,13 +157,9 @@ class LogViewModel: ObservableObject {
                 processedGroupIds.insert(groupId)
 
                 // Find all exercises in this superset
-                let supersetExercises = selectedExercises.enumerated().filter {
-                    $0.element.supersetGroupId == groupId
-                }
-                let indices = supersetExercises.map { $0.offset }
-                let exercises = supersetExercises.map { $0.element }
+                let exercises = selectedExercises.filter { $0.supersetGroupId == groupId }
 
-                result.append(.superset(groupId: groupId, exercises: exercises, indices: indices))
+                result.append(.superset(groupId: groupId, exercises: exercises))
             } else {
                 // Regular single exercise
                 result.append(.single(exercise: exercise, index: index))
@@ -172,16 +168,23 @@ class LogViewModel: ObservableObject {
         return result
     }
 
+    // Row actions carry the index from the last render; guard it so a tap
+    // racing a reset can't trap.
+
     func removeExercise(at index: Int) {
+        guard selectedExercises.indices.contains(index) else { return }
         selectedExercises.remove(at: index)
     }
 
     func addSet(to exerciseIndex: Int) {
+        guard selectedExercises.indices.contains(exerciseIndex) else { return }
         let nextSetNumber = selectedExercises[exerciseIndex].sets.count + 1
         selectedExercises[exerciseIndex].sets.append(LoggedSet(setNumber: nextSetNumber))
     }
 
     func removeSet(from exerciseIndex: Int, at setIndex: Int) {
+        guard selectedExercises.indices.contains(exerciseIndex),
+              selectedExercises[exerciseIndex].sets.indices.contains(setIndex) else { return }
         selectedExercises[exerciseIndex].sets.remove(at: setIndex)
         // Renumber sets
         for i in 0..<selectedExercises[exerciseIndex].sets.count {
@@ -190,7 +193,8 @@ class LogViewModel: ObservableObject {
     }
 
     func copyLastSet(for exerciseIndex: Int) {
-        guard let lastSet = selectedExercises[exerciseIndex].sets.last else { return }
+        guard selectedExercises.indices.contains(exerciseIndex),
+              let lastSet = selectedExercises[exerciseIndex].sets.last else { return }
         selectedExercises[exerciseIndex].sets.append(lastSet.copyForNextSet())
     }
 
@@ -358,13 +362,13 @@ struct LoggedSet: Identifiable {
 /// Represents an item in the exercise list - either a single exercise or a superset group
 enum ExerciseDisplayItem: Identifiable {
     case single(exercise: LoggedExercise, index: Int)
-    case superset(groupId: UUID, exercises: [LoggedExercise], indices: [Int])
+    case superset(groupId: UUID, exercises: [LoggedExercise])
 
     var id: String {
         switch self {
         case .single(let exercise, _):
             return exercise.id.uuidString
-        case .superset(let groupId, _, _):
+        case .superset(let groupId, _):
             return groupId.uuidString
         }
     }

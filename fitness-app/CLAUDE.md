@@ -73,8 +73,10 @@ xcodebuild -project ios/FitnessApp.xcodeproj -scheme FitnessApp \
 xcodebuild -project ios/FitnessApp.xcodeproj -scheme FitnessApp \
   -destination 'generic/platform=iOS Simulator' build 2>&1 | grep "error:"
 
-# 4. Lint entitlements
+# 4. Lints (also run in CI's "iOS — lint" job)
 bash ios/scripts/lint-entitlements.sh
+bash ios/scripts/lint-swiftui-bindings.sh
+bash ios/scripts/lint-fullscreen-cover.sh
 ```
 
 After committing iOS changes, remind the user to rebuild in Xcode (Cmd+R).
@@ -92,6 +94,10 @@ StoreKit 2 IAPs only need `InAppPurchase` — not the Apple Pay entitlement.
 - Prevents black screens from stale `@State`
 - Always include else branch that cleans up all state
 - Guard double dismissal with `isDismissed` flag
+
+### ForEach rows: bind by id, never `$array[index]`
+- An index binding traps with "Index out of range" when the array shrinks under a mounted row (2026-09-27: every hunt submit crashed)
+- Use `$items.element(matching: item)` (Utils/Extensions.swift); `lint-swiftui-bindings.sh` enforces it
 
 ### .onChange: Guard against infinite loops
 - Track processed response IDs to detect re-entry
