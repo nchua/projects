@@ -79,6 +79,7 @@ struct LogView: View {
 
                     IdleQuestView(
                         onStartQuest: {
+                            viewModel.beginHunt()
                             withAnimation(.smoothSpring) {
                                 isSessionActive = true
                             }
@@ -297,8 +298,15 @@ struct LogView: View {
                 viewModel: screenshotViewModel,
                 isPresented: $showScreenshotPreview
             ) { exercises in
-                // Populate the log view model with extracted exercises
-                viewModel.selectedExercises = exercises
+                // Populate the log view model with extracted exercises. A hunt
+                // already in progress (a restored draft) keeps its rows and the
+                // scan adds to it, rather than replacing it.
+                viewModel.beginHunt()
+                if viewModel.hasHuntInProgress {
+                    viewModel.selectedExercises += exercises
+                } else {
+                    viewModel.selectedExercises = exercises
+                }
                 // Start the session with pre-populated exercises
                 withAnimation(.smoothSpring) {
                     isSessionActive = true
@@ -315,6 +323,12 @@ struct LogView: View {
             await viewModel.loadExercises()
         }
         .onAppear {
+            // A hunt restored from the crash-recovery draft opens straight
+            // into the active session, exactly where it was.
+            if viewModel.hasHuntInProgress && !isSessionActive {
+                isSessionActive = true
+            }
+
             // When launched from calendar selection, default screenshot session date
             // to the selected day instead of "today".
             if let initialWorkoutDate {
@@ -333,13 +347,16 @@ struct LogView: View {
                 viewModel.refreshPendingCount()
             }
         }
-        // Drain the pending-workout queue when the app returns to the foreground.
+        // Drain the pending-workout queue when the app returns to the foreground;
+        // land the hunt draft on the way out, ahead of the debounce.
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 Task {
                     await viewModel.retryPendingWorkouts(silent: true)
                     await storeKitManager.fetchBalance()
                 }
+            } else {
+                viewModel.flushDraft()
             }
         }
         // A save that fell back to the offline queue has already reset the
@@ -654,7 +671,10 @@ struct ActiveQuestView: View {
                     .fadeIn(delay: 0)
 
                 // Quest Timer Card
-                QuestTimerCard(totalCompletedSets: viewModel.totalCompletedSets)
+                QuestTimerCard(
+                    totalCompletedSets: viewModel.totalCompletedSets,
+                    startTime: viewModel.huntTimerStart
+                )
                     .padding(.horizontal)
                     .fadeIn(delay: 0.1)
 
@@ -981,7 +1001,13 @@ struct QuestTimerCard: View {
     var totalCompletedSets: Int
 
     // Track actual start time - timer continues even when app is backgrounded
-    @State private var workoutStartTime: Date = Date()
+    // (and, through the hunt draft, across a relaunch).
+    @State private var workoutStartTime: Date
+
+    init(totalCompletedSets: Int, startTime: Date = Date()) {
+        self.totalCompletedSets = totalCompletedSets
+        _workoutStartTime = State(initialValue: startTime)
+    }
     @State private var pausedDuration: TimeInterval = 0  // Total time spent paused
     @State private var pauseStartTime: Date?  // When current pause began (nil if running)
     @State private var isRunning = true

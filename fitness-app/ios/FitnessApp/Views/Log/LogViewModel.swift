@@ -4,11 +4,12 @@ import SwiftUI
 @MainActor
 class LogViewModel: ObservableObject {
     @Published var exercises: [ExerciseResponse] = []
-    @Published var selectedExercises: [LoggedExercise] = []
-    @Published var workoutDate = Date()
-    @Published var workoutName = ""
-    @Published var workoutNotes = ""
-    @Published var sessionRPE: Int?
+    // Every edit to the hunt lands in the crash-recovery draft (debounced).
+    @Published var selectedExercises: [LoggedExercise] = [] { didSet { scheduleDraftSave() } }
+    @Published var workoutDate = Date() { didSet { scheduleDraftSave() } }
+    @Published var workoutName = "" { didSet { scheduleDraftSave() } }
+    @Published var workoutNotes = "" { didSet { scheduleDraftSave() } }
+    @Published var sessionRPE: Int? { didSet { scheduleDraftSave() } }
     @Published var isLoading = false
     @Published var isSaving = false
     @Published var error: String?
@@ -33,6 +34,35 @@ class LogViewModel: ObservableObject {
     /// new stale entry has entered the queue and the acknowledgement should
     /// reset.
     private var lastKnownStaleCount: Int = 0
+
+    // MARK: - Hunt draft (crash recovery)
+
+    /// On-disk copy of the hunt in progress, so a crash, force quit or memory
+    /// kill mid-session costs nothing. Written half a second after the last
+    /// edit, flushed when the app leaves the foreground, cleared the moment
+    /// the hunt is saved, queued offline or abandoned.
+    private let draftStore: HuntDraftStore
+    private var draftSaveTask: Task<Void, Never>?
+    /// Set once the hunt is on the server. The exercises stay on screen until
+    /// the XP cover is dismissed, and no edit in that window may write a draft
+    /// that would re-submit the workout after a crash.
+    private var huntCommitted = false
+    /// When the current hunt started — the timer's origin, kept in the draft
+    /// so the elapsed time survives a relaunch.
+    @Published var huntStartedAt: Date? { didSet { scheduleDraftSave() } }
+
+    init(draftStore: HuntDraftStore? = nil) {
+        self.draftStore = draftStore ?? HuntDraftStore.shared
+        // Restoring rewrites at most the same draft, so it's safe to do here.
+        if let draft = self.draftStore.load() {
+            selectedExercises = draft.exercises
+            workoutDate = draft.date
+            workoutName = draft.name
+            workoutNotes = draft.notes
+            sessionRPE = draft.sessionRPE
+            huntStartedAt = draft.startedAt
+        }
+    }
 
     var filteredExercises: [ExerciseResponse] {
         var result = exercises
@@ -241,6 +271,11 @@ class LogViewModel: ObservableObject {
 
         do {
             let response = try await APIClient.shared.createWorkoutWithXP(workout)
+            // On the server now — drop the draft before the XP cover shows so
+            // a crash mid-celebration can't bring the hunt back and re-submit it.
+            huntCommitted = true
+            draftSaveTask?.cancel()
+            draftStore.clear()
             xpRewardResponse = response
             workoutSaved = true
             // Successful network call — also attempt to drain any previously-queued workouts.
@@ -313,11 +348,76 @@ class LogViewModel: ObservableObject {
     }
 
     func resetWorkout() {
+        huntCommitted = false
         selectedExercises = []
         workoutDate = Date()
         workoutName = ""
         workoutNotes = ""
         sessionRPE = nil
+        huntStartedAt = nil
+        draftSaveTask?.cancel()
+        draftStore.clear()
+    }
+
+    // MARK: - Hunt draft helpers
+
+    /// Whether there's anything in the hunt worth bringing back after a relaunch.
+    var hasHuntInProgress: Bool {
+        !selectedExercises.isEmpty
+            || !workoutName.trimmingCharacters(in: .whitespaces).isEmpty
+            || !workoutNotes.isEmpty
+            || sessionRPE != nil
+    }
+
+    /// Marks the hunt as started. Called when the session opens; a restored
+    /// hunt already carries its original start.
+    func beginHunt() {
+        if huntStartedAt == nil { huntStartedAt = Date() }
+    }
+
+    /// Timer origin for the active session. A draft restored long after it
+    /// started (an abandoned app, a next-day relaunch) restarts the clock
+    /// rather than showing a day-long hunt.
+    var huntTimerStart: Date {
+        if let startedAt = huntStartedAt, Date().timeIntervalSince(startedAt) < 6 * 60 * 60 {
+            return startedAt
+        }
+        return Date()
+    }
+
+    /// Debounced write: edits arrive per keystroke, the file lands half a
+    /// second after the last one.
+    private func scheduleDraftSave() {
+        draftSaveTask?.cancel()
+        draftSaveTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            guard !Task.isCancelled else { return }
+            self?.persistDraft()
+        }
+    }
+
+    /// Write the draft now. Called when the app leaves the foreground so a
+    /// kill right after the last edit still has it.
+    func flushDraft() {
+        draftSaveTask?.cancel()
+        draftSaveTask = nil
+        persistDraft()
+    }
+
+    private func persistDraft() {
+        guard !huntCommitted, hasHuntInProgress else {
+            draftStore.clear()
+            return
+        }
+        draftStore.save(HuntDraft(
+            date: workoutDate,
+            name: workoutName,
+            notes: workoutNotes,
+            sessionRPE: sessionRPE,
+            exercises: selectedExercises,
+            startedAt: huntStartedAt,
+            updatedAt: Date()
+        ))
     }
 }
 
@@ -356,6 +456,20 @@ struct LoggedSet: Identifiable {
             rpe: rpe,
             isBodyweight: isBodyweight
         )
+    }
+}
+
+// Persisted by HuntDraftStore so a crash mid-hunt loses nothing. `id` is view
+// identity only and is minted fresh on restore; the superset group id is kept.
+extension LoggedExercise: Codable {
+    enum CodingKeys: String, CodingKey {
+        case exerciseId, exerciseName, primaryMuscle, sets, supersetGroupId
+    }
+}
+
+extension LoggedSet: Codable {
+    enum CodingKeys: String, CodingKey {
+        case setNumber, weightText, repsText, rpe, isBodyweight
     }
 }
 

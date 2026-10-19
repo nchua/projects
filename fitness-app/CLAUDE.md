@@ -181,3 +181,12 @@ Prompted on dismissal of the post-save celebration in `LogView` (the XP reward
 view's `onDismiss`), via `NotificationManager.requestAuthorizationIfNeeded()` —
 a no-op once the user has decided either way. Rationale (spec §11): the ask
 lands right after the user's best moment, with `gate_opened` pushes as the payoff.
+
+### In-progress hunt survives a crash (2026-10-19)
+`LogViewModel` persists the active hunt to `Application Support/hunt_draft.json`
+through `HuntDraftStore` (Services): written half a second after each edit via
+`didSet` on the editable fields, flushed when the app leaves the foreground, and
+restored in `init` — `LogView.onAppear` then reopens the active session. The draft
+is cleared the moment the save succeeds (before the XP cover, so a crash during
+the celebration can't re-submit), on the offline-queue fallback, and on Abandon.
+Rationale: every mid-hunt crash used to cost the whole workout.

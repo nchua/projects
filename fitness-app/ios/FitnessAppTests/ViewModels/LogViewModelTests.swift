@@ -163,4 +163,87 @@ final class LogViewModelTests: XCTestCase {
         viewModel.removeSuperset(groupId: group)
         XCTAssertEqual(viewModel.selectedExercises.map(\.exerciseId), ["squat"])
     }
+
+    // MARK: - Hunt draft (crash recovery)
+
+    private func makeDraftStore() throws -> HuntDraftStore {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("LogViewModelTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return HuntDraftStore(directory: dir)
+    }
+
+    func testFlushDraftWritesTheHuntAndANewViewModelRestoresIt() throws {
+        let store = try makeDraftStore()
+        let group = UUID()
+        let viewModel = LogViewModel(draftStore: store)
+        XCTAssertFalse(viewModel.hasHuntInProgress)
+
+        viewModel.beginHunt()
+        viewModel.selectedExercises = [
+            loggedExercise("curl", name: "Curl", setCount: 2, group: group),
+            loggedExercise("row", name: "Row", setCount: 2, group: group),
+        ]
+        viewModel.selectedExercises[0].sets[1].weightText = "40"
+        viewModel.workoutName = "Arms"
+        viewModel.sessionRPE = 7
+        viewModel.flushDraft()
+        XCTAssertTrue(store.hasDraft)
+
+        // Relaunch: a fresh view model over the same store picks the hunt up.
+        let restored = LogViewModel(draftStore: store)
+        XCTAssertTrue(restored.hasHuntInProgress)
+        XCTAssertEqual(restored.workoutName, "Arms")
+        XCTAssertEqual(restored.sessionRPE, 7)
+        XCTAssertEqual(restored.selectedExercises.map(\.exerciseId), ["curl", "row"])
+        XCTAssertEqual(restored.selectedExercises[0].sets[1].weightText, "40")
+        XCTAssertEqual(restored.selectedExercises[0].supersetGroupId, group)
+        XCTAssertNotNil(restored.huntStartedAt)
+        XCTAssertEqual(restored.exercisesGroupedForDisplay.count, 1, "The superset is still one group")
+    }
+
+    func testEditsLandInTheDraftAfterTheDebounce() async throws {
+        let store = try makeDraftStore()
+        let viewModel = LogViewModel(draftStore: store)
+
+        viewModel.selectedExercises = [loggedExercise("squat", name: "Squat")]
+        XCTAssertFalse(store.hasDraft, "Writes are debounced, not per keystroke")
+
+        try await Task.sleep(nanoseconds: 1_000_000_000)
+        XCTAssertTrue(store.hasDraft)
+    }
+
+    func testResetWorkoutClearsTheDraft() throws {
+        let store = try makeDraftStore()
+        let viewModel = LogViewModel(draftStore: store)
+        viewModel.beginHunt()
+        viewModel.selectedExercises = [loggedExercise("squat", name: "Squat")]
+        viewModel.flushDraft()
+        XCTAssertTrue(store.hasDraft)
+
+        viewModel.resetWorkout()
+        XCTAssertFalse(store.hasDraft)
+        XCTAssertNil(viewModel.huntStartedAt)
+        XCTAssertFalse(viewModel.hasHuntInProgress)
+    }
+
+    func testEmptyHuntNeverLeavesADraft() throws {
+        let store = try makeDraftStore()
+        let viewModel = LogViewModel(draftStore: store)
+        viewModel.beginHunt()
+        viewModel.flushDraft()
+        XCTAssertFalse(store.hasDraft)
+    }
+
+    func testStaleStartRestartsTheTimerButARecentOneResumes() throws {
+        let store = try makeDraftStore()
+        let viewModel = LogViewModel(draftStore: store)
+
+        let recent = Date().addingTimeInterval(-45 * 60)
+        viewModel.huntStartedAt = recent
+        XCTAssertEqual(viewModel.huntTimerStart.timeIntervalSince1970, recent.timeIntervalSince1970, accuracy: 1)
+
+        viewModel.huntStartedAt = Date().addingTimeInterval(-26 * 60 * 60)
+        XCTAssertEqual(viewModel.huntTimerStart.timeIntervalSinceNow, 0, accuracy: 5)
+    }
 }
