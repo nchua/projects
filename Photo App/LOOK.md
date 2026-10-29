@@ -1,0 +1,196 @@
+# The Look — distilled from Chromagraph
+
+What Chromagraph does to a photo, measured against the stock iPhone camera, plus a recipe (v1) that reproduces it, with a scorecard to check it. This is the target our own look starts from. The goal is to land in the same family, not to copy Yedlin's private transform.
+
+## Intent: a film negative → print chain, not a generic "cinematic" filter
+
+Rian Johnson's launch thread (2026-10-28): the app "shoots RAW, bypasses the iPhone's look processing and instead uses **the same image processing we use on our movies**." It was built by Steve Yedlin with color-science developer Eric Cameron. It's iPhone-only because "hardware consistency across Apple devices is part of what allows us to do this with confidence", and it's stills-only because video would only be possible on recent Pro iPhones. The user-facing tools are color, exposure, grain and halation.
+
+Yedlin's public position (his "Display Prep" demo and "On Color Science" essays): the film look is a mathematical transform you can apply to digital capture. So the target is **film negative + print-stock emulation applied to scene-linear RAW**. Every trait measured below has a print-film explanation:
+
+| Measured | Film-print explanation |
+|---|---|
+| Soft toe, shoulder below white | Print-stock density S-curve |
+| Cream highlights (b\* ≈ +11 in all three scenes) | Warm print highlights |
+| Blue → teal sky | Print film's cyan dye renders blues toward cyan |
+| Bright saturated colors toned down | Dye-gamut limits |
+| Monochrome mid-weighted grain | Film grain |
+| **Red** edge glow | Halation: light reflects off the film base back into the red-sensitive layer, which sits deepest in the film |
+
+Implications for our build: model the chain (negative → print → display) and use this doc's measurements as targets, never Chromagraph's private math. Plan on per-device sensor color calibration, or at least the DNG's own color matrices; "iPhone only" suggests they calibrate per sensor. Reference material: Kodak's published 2383 print-film datasheet and Yedlin's essays.
+
+## Reference pair
+
+| | Chromagraph | Stock Camera |
+|---|---|---|
+| File | `refs/chromagraph_street.heic` | `refs/stock_street.heic` |
+| Software | Chromagraph 1.3 | iOS 27.0.1 |
+| Camera | iPhone 17 Pro main (24 mm eq.), f/1.78, ISO 80 | same, shot 21 s later |
+| Shutter | 1/2445 s | 1/2299 s |
+| Output | **2160×2880 (6.2 MP), sRGB, 8-bit HEIC** | 4284×5712 (24 MP), Display P3 |
+
+A second matched pair: `refs/stock_office.heic` / `refs/chromagraph_office.heic` (side by side: `refs/office_stock-chromagraph.jpg`). iPhone 17 Pro, office interior with mixed daylight and indoor light, **identical exposure** (ISO 200, 1/83 s), taken 6 s apart.
+
+An unpaired Chromagraph shot: `refs/chromagraph_livingroom.heic`. iPhone 14 Pro, ISO 80, 1/121 s, backlit living room with a sunlit window blind, also exported at **2880×2160 sRGB**. The output size is fixed regardless of device.
+
+So Chromagraph exports at **6 MP in sRGB**, not 24 MP P3. Downsampling hides sensor noise and makes the added grain read as texture, not as noise. The exposure is the same as stock, which means the whole difference comes from processing.
+
+`refs/` is local-only (git-ignored): the photos are personal. Ask Nick for them.
+
+## The look in one sentence
+
+**A soft-shouldered film print, exposed for the highlights:** the window and the sky hold, and the shadows are allowed to fall. Blacks sit on a soft toe and never crush, highlights roll off below pure white into cream, the sky is teal rather than blue, greens lean yellow-olive, neutrals run warm, nothing is sharpened, monochrome grain sits on top, the corners darken, and bright edges get a faint red halation.
+
+## What holds across all three scenes
+
+These numbers hold across all three scenes, so they're the core of the look. Anything that varies by scene follows white balance or exposure instead.
+
+| | Street | Living room | Office | Stock (street / office) |
+|---|---|---|---|---|
+| p1 L\* (black floor) | 7.1 | 4.0 | 5.7 | 1.1 / 3.9 |
+| p99 L\* (paper white) | 88.5 | 91.0 | 88.8 | 95.6 / 91.7 |
+| Clipped | 0% | 0% | 0% | 1.1% / 0.5% |
+| **Highlight b\* (L\* 85+)** | **+10.9** | **+10.9** | **+10.6** | +1.1 / +0.5 |
+| **Upper-mid a\* (L\* 60–85)** | **−4.6** | **−3.3** | **−4.7** | −0.7 / −1.1 |
+| **p90 chroma (ceiling)** | **22.5** | **16.8** | **22.0** | 25.2 / **37.4** |
+| Median L\* vs stock | −1.4 | — | **−11.1** | |
+
+1. **Cream highlights (b\* ≈ +11), every time.** This is the most stable number we have, so build it into the curve.
+2. **A slight green in the upper mids (a\* ≈ −4), every time.** This corrects an earlier note that called the green street-specific. The *shadow* cast is what varies by scene.
+3. **Saturation tops out around chroma 22.** Saturated colors are compressed hard (the office wood frames: chroma 41.6 → 34.9, and the frame's p90 drops from 37.4 to 22). Near-neutral surfaces actually *gain* a little color from the cast (the white wall: 3.0 → 7.2). The result: everything shares one warm-olive palette, and nothing pops out digitally.
+4. **No brightness normalization.** In the office, at identical exposure, Chromagraph is **11 L\* darker** than stock (white wall 63 → 49, ceiling 67 → 56, floor 77 → 62). In the bright street scene the two match. So stock brightens dim scenes and Chromagraph renders the exposure as it is: indoors looks like indoors. Our pipeline should map exposure to brightness the same way for every scene, with no per-scene auto-brightening.
+5. **Hue is preserved on saturated objects.** Wood stays at hue 68.6° in both. The look changes chroma and tone, not object hue. The exception is the bright-sky blue → teal shift, and that looks luminance-dependent: the dark blue chairs and cabinets in the office stayed at hue ~260–266°, in a small sample. Print film does the same.
+6. **Neutrals drift toward yellow-olive.** The white wall's hue goes 67° → 94° and the ceiling's 77° → 86°.
+
+## Measured traits from the street pair (CIELAB, both images sRGB at 2160×2880)
+
+### 1. Tone: compressed at both ends, mids untouched
+
+| L* percentile | p1 | p5 | p25 | p50 | p75 | p95 | p99 | clipped | crushed |
+|---|---|---|---|---|---|---|---|---|---|
+| Stock | 1.1 | 6.3 | 17.4 | 40.5 | 67.1 | 87.9 | 95.6 | 1.13% | 2.39% |
+| **Chromagraph** | **7.1** | 10.2 | 19.0 | 39.1 | 60.9 | 80.2 | **88.5** | **0%** | **0%** |
+
+- **Black floor near L\* 7.** Shadows look like the print's darkest density, not like digital zero. Yet p25 hardly moves, so shadows stay *dense*. Only the very bottom is lifted.
+- **White ceiling near L\* 90.** The brightest whites (the white truck, the sky) sit about 7 L\* below display white and roll off smoothly. Nothing clips.
+- **No local tone mapping.** The stock camera brightens shaded areas locally (the HDR look). Chromagraph keeps one global curve, so shade stays shade and the light has a direction. This is a big part of why it reads as "cinematic".
+- **Exposure protects the highlights; shadows are left to fall** (living room). With a sunlit blind in frame, the room sits at median L\* 32. The window holds (p99 L\* 91, 0% clipped, lamp globes in front of the blind keep their shape), and the sofa and corners drop into murky shadow. A stock iPhone would have lifted the room.
+- **The black floor is a soft toe, not a fixed lift.** The living room's p1 is L\* 4, against L\* 7 on the street, so deep scenes go lower. The toe flattens out around L\* 3–4 and almost nothing crushes (0.24%).
+- **Paper white ≈ L\* 91 in both shots.** It's consistent across scenes, so it's a property of the curve.
+
+### 2. Color cast: neutral shadows, warm-yellow highlights, slight green throughout
+
+Measured on near-neutral pixels (chroma < 12):
+
+| L* band | Stock a* / b* | **Chromagraph a* / b*** |
+|---|---|---|
+| 5–30 (shadows) | −0.4 / +3.4 | **−2.4 / +0.0** |
+| 30–60 (mids) | +0.1 / +5.1 | **−1.5 / +7.0** |
+| 60–85 (upper mids) | −0.7 / +5.4 | **−4.6 / +6.2** |
+| 85–100 (highlights) | −1.9 / +1.1 | **−0.2 / +10.9** |
+
+The warmth grows with brightness: shadows come out neutral, highlights cream/yellow. That's the classic print-film split. The stock camera does the opposite and pulls its highlights back to neutral.
+
+The living room (no stock pair) confirms which parts are baked in:
+
+| L* band | Street a* / b* | Living room a* / b* |
+|---|---|---|
+| 5–30 | −2.4 / +0.0 | +1.2 / +5.2 |
+| 30–60 | −1.5 / +7.0 | +0.2 / +7.2 |
+| 60–85 | −4.6 / +6.2 | −3.3 / +8.6 |
+| 85–100 | −0.2 / **+10.9** | +0.3 / **+10.9** |
+
+- **The cream highlight (b\* ≈ +11) is identical across both scenes**, so it's part of the look's curve. It doesn't come from the white balance.
+- Shadow color **varies by scene**, so it follows white balance. (An earlier version also called the upper-mid green scene-specific, but the office pair shows it in all three scenes. See "What holds across all three scenes".)
+- **Mixed light isn't neutralized.** The daylit window frame stays cool grey-cyan against the warm interior. White balance is set gently, not corrected per region, and that mismatch adds to the mood.
+
+### 3. Hue and chroma: restrained, with two signature shifts
+
+| Family | Stock hue / chroma | **Chromagraph hue / chroma** |
+|---|---|---|
+| Sky | 266° / 27.0 (blue) | **225° / 18.6 (teal-cyan, −31% chroma)** |
+| Foliage | 111° / 27.3 | 112° / 24.5, and much of it pushed into the yellow-ochre band (that band: 8.9% → 16.6% of the frame) |
+| Brick | 44° / 27.3 | 41° / 23.6, darker and denser |
+| Overall p90 chroma | 25.2 | **22.5** |
+
+- **Blue → teal** is the strongest single fingerprint. The sky also goes paler and loses saturation toward the horizon.
+- **Greens → yellow-olive/ochre.** Autumn leaves glow and the green leaves look more muted.
+- High-chroma colors are tamed (p90 −11%), but the mids keep their color, so the image doesn't look washed out.
+
+### 4. Texture: no sharpening, fine grain, halation
+
+- **High-frequency energy is 5.4 vs 14.1** (8-bit high-pass std), **2.6× less than stock, even with grain added.** No sharpening halos, no HDR micro-contrast crunch. Edges are soft, like a lens rather than an edge filter.
+- **Grain:** added grain, not sensor noise: it's plainly visible at ISO 80. Measured on flat patches in the living room (8-bit std after detrending):
+
+  | Patch | L* | luma grain | chroma grain |
+  |---|---|---|---|
+  | Ceiling | 53 | 5.7 | 0.5 |
+  | Left wall | 29 | 4.7 | 0.8 |
+  | Dark corner | 23 | 4.2 | 0.6 |
+  | Under sofa | 14 | 3.1 | 0.7 |
+  | Blind (highlight) | 84 | 3.1 | 1.3 |
+
+  So the grain is **monochrome** (luma 4–10× chroma), **peaks in the midtones** and tapers into both the shadows and the highlights. At 6 MP it clumps over about 2–3 px rather than varying per pixel. Chroma noise is essentially gone, which fits a multi-frame merge that cleans the color before grain goes on. The app exposes this as Amplitude (1.25 in their screenshot), Grain Size (1.00) and "Force Pixel Size Grain".
+- **Halation:** a red-brown fringe where bright surfaces meet dark ones (the truck roof edge, the van windshield frame). It's **subtle**: in the living room, even the lamp globes in front of the sunlit blind show only a faint warm bleed, not a glowing halo. Keep it restrained.
+- **Vignette (likely):** both shots have darker, rounded corners. It's strongest in the living room's top-left and bottom corners and in the street's top-left. It could be deliberately added or lens shading left uncorrected from RAW; either way it belongs in the look. (The room's own lighting falls off too, so this is a visual call, not a measured one.)
+
+## v1 recipe
+
+`prototype/look.py` applies the recipe to an already-processed sRGB image. That makes it a **proxy for checking the description**, not the real pipeline. Every parameter is a named constant at the top of the file.
+
+| Stage | v1 setting | Why |
+|---|---|---|
+| Unsharpen | Gaussian σ 0.75 px | Removes the phone's sharpening |
+| Tone | Monotone curve through the street pair's percentiles: L\* 0 → 4, 40.5 → 39.1, 95.6 → 88.5, 100 → 91 | Soft toe, dense mids, paper-white shoulder |
+| Hue | Bright blues (L\* > 40–65) −50° → teal; greens −12° → yellow-olive; everything else held | Object hue is preserved (the office wood) |
+| Chroma | Bright blues ×0.5; soft ceiling: passes below 13, rolls off toward 23 | p90 ≈ 22 in every scene |
+| Neutral axis | Low-chroma pixels pulled toward a\*(L) = 0 / −0.7 / **−5.8** / −0.2 and b\*(L) = 1.5 / 7.8 / 8.5 / **12.2** at L\* 15 / 45 / 72 / 92, harder in the highlights | Cross-scene cream highlights and upper-mid green |
+| Vignette | 18% linear light loss at the corners, starting at half radius | Rounded dark corners |
+| Halation | threshold 0.80, radius 6 px, tint (0.15, 0.05, 0) | Faint red-brown bleed |
+| Grain | Monochrome, σ 1.0 px clumps, amplitude 0.018 at the midtone peak, ~55% at the extremes | Matches the living-room grain profile |
+
+### Scorecard (`prototype/score.py`, look applied to stock vs. the Chromagraph twin)
+
+| Metric | Street look / target | Office look / target |
+|---|---|---|
+| Black floor (p1 L\*) | 6.8 / 7.1 ✓ | 8.4 / 5.7 ✗ † |
+| Median L\* | 38.6 / 39.1 ✓ | 50.6 / 44.7 ✗ † |
+| Paper white (p99 L\*) | 86.8 / 88.5 ✓ | 81.7 / 88.8 ✗ † |
+| Clipped | 0% / 0% ✓ | 0% / 0% ✓ |
+| Highlight b\* | +10.9 / +10.9 ✓ | +10.1 / +10.6 ✓ |
+| Upper-mid a\* | −4.4 / −4.6 ✓ | −3.8 / −4.7 ✓ |
+| Mid b\* | +6.3 / +7.0 ✓ | +6.0 / +6.7 ✓ |
+| p90 chroma | 22.1 / 22.5 ✓ | 23.9 / 22.0 ✓ |
+| Sky / blue hue | 225° / 225° ✓ | 274° / 266° ✓ (dark blues, correctly unshifted) |
+| Sky / blue chroma | 17.5 / 18.6 ✓ | 17.9 / 16.3 ✓ |
+| Flat-area grain | 5.4 / 5.2 ✓ | 3.3 / 3.4 ✓ |
+| High-pass energy | 5.4 / 5.4 ✓ | 2.5 / 3.9 ✗ † |
+
+**20 of 24 within tolerance.** All four misses (†) are proxy limits, not gaps in the description:
+- **Office tone.** Stock brightened this dim scene locally (median +11 L\* at identical exposure). A single curve applied to a stock JPEG can't map both scenes: the street needs 95.6 → 88.5 at the top, the office 91.7 → 88.8. From RAW, exposure maps to brightness the same way in every scene, and this disappears.
+- **Office texture.** Stock barely sharpens at ISO 200 (high-pass 4.6 vs 14.0 on the street), so a fixed unsharpen over-softens it. RAW has no phone sharpening to remove.
+- **Highlight headroom** (not scored). Stock clips 0.5–1.1% of the frame. Chromagraph's RAW plus bracketed merge keeps that detail; no curve can recover it.
+
+### What carries over to the RAW pipeline
+
+The **targets** carry over: every number in "What holds across all three scenes" and the scorecard's target column. The color stages (hue, chroma ceiling, neutral axis), grain, halation and vignette carry over as starting points. The **tone anchors don't**: they're a stock-JPEG → look transfer, so they also undo Apple's curve. From RAW, the tone stage becomes a scene-linear → print curve, built as a negative → print model per the Intent section, that hits a black floor of ~4–7, paper white of ~89–91, and no per-scene brightening.
+
+## Reproduce
+
+```bash
+cd "Photo App/prototype"
+# HEIC → sRGB PNG at 2160×2880. Stock is Display P3 and stored rotated; sips drops the orientation tag.
+to_srgb() { sips -s format png --matchTo "/System/Library/ColorSync/Profiles/sRGB Profile.icc" "$1" --out "$2" >/dev/null
+  python3 -c "import sys; from PIL import Image; s=Image.open(sys.argv[1]); s=s.rotate(-90,expand=True) if s.width>s.height else s; s.resize((2160,2880),Image.LANCZOS).save(sys.argv[1])" "$2"; }
+to_srgb ../refs/stock_street.heic /tmp/stock_street.png;  to_srgb ../refs/chromagraph_street.heic /tmp/cg_street.png
+to_srgb ../refs/stock_office.heic /tmp/stock_office.png;  to_srgb ../refs/chromagraph_office.heic /tmp/cg_office.png
+python3 score.py /tmp/stock_street.png /tmp/cg_street.png /tmp/stock_office.png /tmp/cg_office.png --out /tmp/look_out
+python3 measure.py /tmp/cg_street.png        # raw stats for any single image
+python3 look.py in.png out.png              # apply the look to anything
+```
+
+## Caveats / what we still need
+
+- **Two pairs (street, office) plus one unpaired interior**, at ISO 80–200. No skin tones, night, tungsten or high ISO yet. A stock shot of the same living room would tell us how much the room was darkened and how far the white balance moved. More Chromagraph/stock pairs would firm all of this up.
+- Framing differs slightly between the two shots, so the hue-family *shares* are partly affected by what's in frame. The tone, cast and per-family hue/chroma numbers are robust to that.
+- **Next step:** iPhone RAW (DNG) files, so the recipe can run on scene-linear data the way the real app would. The best input is a DNG shot alongside a Chromagraph frame of the same scene: score.py can then score the RAW pipeline directly against the target.
