@@ -69,7 +69,7 @@ These numbers hold across all three scenes, so they're the core of the look. Any
 | L* percentile | p1 | p5 | p25 | p50 | p75 | p95 | p99 | clipped | crushed |
 |---|---|---|---|---|---|---|---|---|---|
 | Stock | 1.1 | 6.3 | 17.4 | 40.5 | 67.1 | 87.9 | 95.6 | 1.13% | 2.39% |
-| **Chromagraph** | **7.1** | 10.2 | 19.0 | 39.1 | 60.9 | 80.2 | **88.5** | **0%** | **0%** |
+| **Chromagraph** | **7.1** | 10.2 | 19.0 | 39.1 | 60.9 | 80.2 | **88.5** | **0%** | **0.01%** |
 
 - **Black floor near L\* 7.** Shadows look like the print's darkest density, not like digital zero. Yet p25 hardly moves, so shadows stay *dense*. Only the very bottom is lifted.
 - **White ceiling near L\* 90.** The brightest whites (the white truck, the sky) sit about 7 L\* below display white and roll off smoothly. Nothing clips.
@@ -119,7 +119,7 @@ The living room (no stock pair) confirms which parts are baked in:
 
 ### 4. Texture: no sharpening, fine grain, halation
 
-- **High-frequency energy is 5.4 vs 14.1** (8-bit high-pass std), **2.6× less than stock, even with grain added.** No sharpening halos, no HDR micro-contrast crunch. Edges are soft, like a lens rather than an edge filter.
+- **High-frequency energy is 5.4 vs 14.0** (8-bit high-pass std), **2.6× less than stock, even with grain added.** No sharpening halos, no HDR micro-contrast crunch. Edges are soft, like a lens rather than an edge filter.
 - **Grain:** added grain, not sensor noise: it's plainly visible at ISO 80. Measured on flat patches in the living room (8-bit std after detrending):
 
   | Patch | L* | luma grain | chroma grain |
@@ -141,27 +141,29 @@ The living room (no stock pair) confirms which parts are baked in:
 | Stage | v1 setting | Why |
 |---|---|---|
 | Unsharpen | Gaussian σ 0.75 px | Removes the phone's sharpening |
-| Tone | Monotone curve through the street pair's percentiles: L\* 0 → 4, 40.5 → 39.1, 95.6 → 88.5, 100 → 91 | Soft toe, dense mids, paper-white shoulder |
+| Tone | Monotone curve through the street pair's percentiles: L\* 0 → 4, 40.5 → 39.1, 87.9 → 80.8, 95.6 → 90.0, 100 → 92. The top three anchors sit 0.6–1.5 L\* above the measured 80.2 / 88.5 / 91 to make up for what the vignette and grain take off p99. | Soft toe, dense mids, paper-white shoulder |
 | Hue | Bright blues (L\* > 40–65) −50° → teal; greens −12° → yellow-olive; everything else held | Object hue is preserved (the office wood) |
 | Chroma | Bright blues ×0.5; soft ceiling: passes below 13, rolls off toward 23 | p90 ≈ 22 in every scene |
-| Neutral axis | Low-chroma pixels pulled toward a\*(L) = 0 / −0.7 / **−5.8** / −0.2 and b\*(L) = 1.5 / 7.8 / 8.5 / **12.2** at L\* 15 / 45 / 72 / 92, harder in the highlights | Cross-scene cream highlights and upper-mid green |
-| Vignette | 18% linear light loss at the corners, starting at half radius | Rounded dark corners |
+| Neutral axis | Low-chroma pixels pulled toward a\*(L) = 0 / −0.7 / **−5.8** / −0.2 and b\*(L) = 1.5 / 7.8 / 8.5 / **12.2** at L\* 15 / 45 / 72 / 92, harder in the highlights. These are set past the three-scene means (a\* −4.2, b\* 10.8) because the pull is partial. Saturated colors also get 30% of this axis as a small tint. | Cross-scene cream highlights and upper-mid green |
+| Vignette | Up to 18% linear light loss (~17% at the exact corner), starting at half radius | Rounded dark corners |
 | Halation | threshold 0.80, radius 6 px, tint (0.15, 0.05, 0) | Faint red-brown bleed |
-| Grain | Monochrome, σ 1.0 px clumps, amplitude 0.018 at the midtone peak, ~55% at the extremes | Matches the living-room grain profile |
+| Grain | Monochrome, σ 1.0 px clumps, amplitude 0.018 at the midtone peak, ~55% near L\* 14 / 84, 35% at pure black / white | Matches the living-room grain profile |
 
 ### Scorecard (`prototype/score.py`, look applied to stock vs. the Chromagraph twin)
 
+Tolerances (look − target): tone ±2 L\* (median ±3), clipped ±0.1 pp, cast ±2 b\* / ±1.5 a\*, p90 chroma ±2, sky hue ±10°, sky chroma ±3, grain ±0.6, high-pass ±1.0. A metric the target has but the look lost counts as a miss. score.py exits 1 on any miss.
+
 | Metric | Street look / target | Office look / target |
 |---|---|---|
-| Black floor (p1 L\*) | 6.8 / 7.1 ✓ | 8.4 / 5.7 ✗ † |
-| Median L\* | 38.6 / 39.1 ✓ | 50.6 / 44.7 ✗ † |
-| Paper white (p99 L\*) | 86.8 / 88.5 ✓ | 81.7 / 88.8 ✗ † |
+| Black floor (p1 L\*) | 6.9 / 7.1 ✓ | 8.4 / 5.7 ✗ † |
+| Median L\* | 38.7 / 39.1 ✓ | 50.6 / 44.7 ✗ † |
+| Paper white (p99 L\*) | 88.0 / 88.5 ✓ | 82.5 / 88.8 ✗ † |
 | Clipped | 0% / 0% ✓ | 0% / 0% ✓ |
-| Highlight b\* | +10.9 / +10.9 ✓ | +10.1 / +10.6 ✓ |
+| Highlight b\* | +11.0 / +10.9 ✓ | +10.2 / +10.6 ✓ |
 | Upper-mid a\* | −4.4 / −4.6 ✓ | −3.8 / −4.7 ✓ |
 | Mid b\* | +6.3 / +7.0 ✓ | +6.0 / +6.7 ✓ |
 | p90 chroma | 22.1 / 22.5 ✓ | 23.9 / 22.0 ✓ |
-| Sky / blue hue | 225° / 225° ✓ | 274° / 266° ✓ (dark blues, correctly unshifted) |
+| Sky / blue hue | 225° / 225° ✓ | 274° / 266° ✓ (dark blues: stock 260°, so the look drifts +14° where Chromagraph drifts +7°. The drift comes from the saturated-color tint, and the right hue is open until there's more blue data.) |
 | Sky / blue chroma | 17.5 / 18.6 ✓ | 17.9 / 16.3 ✓ |
 | Flat-area grain | 5.4 / 5.2 ✓ | 3.3 / 3.4 ✓ |
 | High-pass energy | 5.4 / 5.4 ✓ | 2.5 / 3.9 ✗ † |
@@ -177,20 +179,28 @@ The **targets** carry over: every number in "What holds across all three scenes"
 
 ## Reproduce
 
+Requires Python ≥ 3.10 with numpy and Pillow, plus macOS `sips`. Run from the repo root.
+
 ```bash
 cd "Photo App/prototype"
-# HEIC → sRGB PNG at 2160×2880. Stock is Display P3 and stored rotated; sips drops the orientation tag.
+# HEIC → sRGB PNG at 2160×2880. Stock HEICs are Display P3 and stored landscape with an orientation tag,
+# which sips drops, so pass "rot" for those. Chromagraph exports are already upright sRGB.
 to_srgb() { sips -s format png --matchTo "/System/Library/ColorSync/Profiles/sRGB Profile.icc" "$1" --out "$2" >/dev/null
-  python3 -c "import sys; from PIL import Image; s=Image.open(sys.argv[1]); s=s.rotate(-90,expand=True) if s.width>s.height else s; s.resize((2160,2880),Image.LANCZOS).save(sys.argv[1])" "$2"; }
-to_srgb ../refs/stock_street.heic /tmp/stock_street.png;  to_srgb ../refs/chromagraph_street.heic /tmp/cg_street.png
-to_srgb ../refs/stock_office.heic /tmp/stock_office.png;  to_srgb ../refs/chromagraph_office.heic /tmp/cg_office.png
+  python3 -c "import sys; from PIL import Image; s=Image.open(sys.argv[1]); s=s.rotate(-90,expand=True) if sys.argv[2:]==['rot'] else s; s.resize((2160,2880),Image.LANCZOS).save(sys.argv[1])" "$2" ${3:-}; }
+to_srgb ../refs/stock_street.heic /tmp/stock_street.png rot;  to_srgb ../refs/chromagraph_street.heic /tmp/cg_street.png
+to_srgb ../refs/stock_office.heic /tmp/stock_office.png rot;  to_srgb ../refs/chromagraph_office.heic /tmp/cg_office.png
 python3 score.py /tmp/stock_street.png /tmp/cg_street.png /tmp/stock_office.png /tmp/cg_office.png --out /tmp/look_out
-python3 measure.py /tmp/cg_street.png        # raw stats for any single image
-python3 look.py in.png out.png              # apply the look to anything
+python3 measure.py /tmp/cg_street.png        # stats for any single image (any size ≥ ~70 px)
+python3 look.py /tmp/stock_street.png /tmp/look_street.png   # apply the look to any sRGB image
 ```
+
+The resize to 2160×2880 is for the portrait pairs. Measure the landscape living-room shot (2880×2160) as-is: convert it with `sips` and skip the Python step.
 
 ## Caveats / what we still need
 
 - **Two pairs (street, office) plus one unpaired interior**, at ISO 80–200. No skin tones, night, tungsten or high ISO yet. A stock shot of the same living room would tell us how much the room was darkened and how far the white balance moved. More Chromagraph/stock pairs would firm all of this up.
+- **Two compensations in look.py to revisit when the RAW pipeline is built** (from the 2026-10-29 QA pass):
+  1. The shoulder anchors are bumped to offset the vignette. That holds for the street but depends on where the bright pixels sit. Fix: fit the anchors on the centre disc (r < 0.5, where the vignette gain is 1), or apply the vignette in linear light before the tone stage.
+  2. The neutral-axis targets are set past the measured means to offset a partial pull. Fix: use the measured means and tune the pull weight instead. That would also be the place to revisit the 30% saturated-color tint behind the +14° dark-blue drift.
 - Framing differs slightly between the two shots, so the hue-family *shares* are partly affected by what's in frame. The tone, cast and per-family hue/chroma numbers are robust to that.
 - **Next step:** iPhone RAW (DNG) files, so the recipe can run on scene-linear data the way the real app would. The best input is a DNG shot alongside a Chromagraph frame of the same scene: score.py can then score the RAW pipeline directly against the target.

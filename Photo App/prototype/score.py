@@ -1,17 +1,17 @@
 """Scorecard: apply look.py to each stock image and compare against its Chromagraph twin.
 
-Usage: python score.py STOCK.png TARGET.png [STOCK2.png TARGET2.png ...] [--out DIR]
 Pairs must be sRGB, same size and orientation. With --out, writes stock | look | target triptychs.
+Exits 1 if any metric is outside tolerance.
 """
 
+import argparse
 import sys
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
-
 from look import apply_look
-from measure import load, stats
+from measure import stats
+from PIL import Image
 
 METRICS: list[tuple[str, str, float]] = [
     # (key, label, tolerance for "ok")
@@ -30,36 +30,50 @@ METRICS: list[tuple[str, str, float]] = [
 ]
 
 
+def to_float(img: Image.Image) -> np.ndarray:
+    """PIL RGB image -> float sRGB array in [0, 1]."""
+    return np.asarray(img).astype(np.float64) / 255.0
+
+
 def score_pair(stock_path: str, target_path: str, out_dir: Path | None) -> int:
     """Print one pair's scorecard; return the number of metrics outside tolerance."""
     stock_img = Image.open(stock_path).convert("RGB")
+    target_img = Image.open(target_path).convert("RGB")
     look_img = apply_look(stock_img)
-    target = load(target_path)
-    s_stock, s_look, s_target = stats(np.asarray(stock_img) / 255.0), stats(np.asarray(look_img) / 255.0), stats(target)
+    s_stock, s_look, s_target = (stats(to_float(im)) for im in (stock_img, look_img, target_img))
     print(f"\n=== {Path(stock_path).name} -> {Path(target_path).name}")
     print(f"{'metric':22s} {'stock':>7s} {'look':>7s} {'target':>7s} {'delta':>7s}")
     misses = 0
     for key, label, tol in METRICS:
-        if key not in s_target or key not in s_look:
-            continue
-        delta = s_look[key] - s_target[key]
-        flag = "ok" if abs(delta) <= tol else "MISS"
-        misses += flag == "MISS"
-        print(f"{label:22s} {s_stock.get(key, float('nan')):7.1f} {s_look[key]:7.1f} {s_target[key]:7.1f} {delta:+7.1f}  {flag}")
+        if key not in s_target:
+            continue  # the target scene has no such population (e.g. no sky): not applicable
+        look = s_look.get(key)
+        if look is None:  # the look wiped out a population the target has
+            look_cell, delta_cell, flag = f"{'-':>7s}", f"{'-':>7s}", "MISS (absent in look)"
+        else:
+            delta = look - s_target[key]
+            look_cell, delta_cell = f"{look:7.1f}", f"{delta:+7.2f}"
+            flag = f"{'ok' if abs(delta) <= tol else 'MISS'} (tol {tol})"
+        misses += "MISS" in flag
+        print(f"{label:22s} {s_stock.get(key, float('nan')):7.1f} {look_cell} {s_target[key]:7.1f} {delta_cell}  {flag}")
     if out_dir:
         w, h = 540, 720
         canvas = Image.new("RGB", (w * 3 + 20, h), "white")
-        for i, im in enumerate([stock_img, look_img, Image.open(target_path).convert("RGB")]):
+        for i, im in enumerate([stock_img, look_img, target_img]):
             canvas.paste(im.resize((w, h)), (i * (w + 10), 0))
         canvas.save(out_dir / f"{Path(stock_path).stem}_triptych.jpg", quality=90)
     return misses
 
 
 if __name__ == "__main__":
-    args = sys.argv[1:]
-    out = Path(args.pop(args.index("--out") + 1)) if "--out" in args else None
-    if out:
-        args.remove("--out")
-        out.mkdir(parents=True, exist_ok=True)
-    total = sum(score_pair(args[i], args[i + 1], out) for i in range(0, len(args), 2))
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("pairs", nargs="+", metavar="STOCK TARGET", help="stock / Chromagraph image pairs")
+    parser.add_argument("--out", type=Path, help="directory for triptychs")
+    args = parser.parse_args()
+    if len(args.pairs) % 2:
+        parser.error("images must come in STOCK TARGET pairs")
+    if args.out:
+        args.out.mkdir(parents=True, exist_ok=True)
+    total = sum(score_pair(args.pairs[i], args.pairs[i + 1], args.out) for i in range(0, len(args.pairs), 2))
     print(f"\n{total} metric(s) outside tolerance")
+    sys.exit(1 if total else 0)

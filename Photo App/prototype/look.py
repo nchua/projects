@@ -9,15 +9,16 @@ Usage: python look.py in.png out.png
 """
 
 import sys
+from collections.abc import Sequence
 
 import numpy as np
+from colorspace import LUMA, lab_to_lch, lab_to_rgb, linear_to_srgb, rgb_to_lab, srgb_to_linear
 from PIL import Image, ImageFilter
 
-from colorspace import lab_to_rgb, linear_to_srgb, rgb_to_lab, srgb_to_linear
-
-# Tone: stock L* -> look L*, read off the street pair's percentiles (black toe ~4, paper white ~91)
+# Tone: stock L* -> look L*, read off the street pair's percentiles (black toe ~4). The top three
+# anchors sit ~0.6-1.5 L* above the measured 80.2 / 88.5 / 91 to offset what vignette + grain take off p99
 TONE_ANCHORS = [(0, 4.0), (1.1, 7.1), (6.3, 10.2), (17.4, 19.0), (40.5, 39.1),
-                (67.1, 60.9), (87.9, 80.2), (95.6, 88.5), (100, 91.0)]
+                (67.1, 60.9), (87.9, 80.8), (95.6, 90.0), (100, 92.0)]
 
 # Color: object hue is held, except bright blues -> teal and greens -> yellow-olive
 BLUE_HUE_SHIFT = -50.0
@@ -26,7 +27,9 @@ GREEN_HUE_SHIFT = -12.0
 CHROMA_KNEE = 13.0      # chroma passes through below this...
 CHROMA_CEILING = 23.0   # ...and rolls off toward this (Chromagraph's p90 chroma is ~22 in every scene)
 
-# Neutral axis the look pulls low-chroma pixels toward: L* -> (a*, b*), averaged over the three scenes
+# Neutral axis the look pulls low-chroma pixels toward: L* -> (a*, b*). Set past the three-scene means
+# (b* 10.8 @ 92, a* -4.2 @ 72) because the pull is partial, so measured neutrals land on the means
+# Saturated colors also get 30% of this axis as a small tint (see color())
 NEUTRAL_ANCHORS_L = [0, 15, 45, 72, 92, 100]
 NEUTRAL_A = [0.0, 0.0, -0.7, -5.8, -0.2, 0.0]   # green lives in the upper mids
 NEUTRAL_B = [0.0, 1.5, 7.8, 8.5, 12.2, 12.5]    # cream highlights, b* ~ +11 everywhere
@@ -38,7 +41,7 @@ HALATION_RADIUS = 6
 HALATION_TINT = np.array([0.15, 0.05, 0.0])     # restrained: a faint red-brown bleed
 GRAIN_AMPLITUDE = 0.018                          # sRGB units at the midtone peak
 GRAIN_CLUMP = 1.0                                # blur sigma, px at 6 MP -> 2-3 px clumps
-VIGNETTE = 0.18                                  # corner light loss (linear)
+VIGNETTE = 0.18                                  # max light loss (linear); ~17% at the exact corner
 
 
 def smoothstep(x: np.ndarray, e0: float, e1: float) -> np.ndarray:
@@ -47,9 +50,13 @@ def smoothstep(x: np.ndarray, e0: float, e1: float) -> np.ndarray:
     return t * t * (3 - 2 * t)
 
 
-def pchip(x: np.ndarray, xs: list[float], ys: list[float]) -> np.ndarray:
-    """Monotone cubic (Fritsch-Carlson) interpolation through (xs, ys), so curves never overshoot."""
+def pchip(x: np.ndarray, xs: Sequence[float], ys: Sequence[float]) -> np.ndarray:
+    """Monotone cubic (Fritsch-Carlson) interpolation through (xs, ys), so curves never overshoot.
+
+    xs must be strictly increasing with at least two points; x is clamped to [xs[0], xs[-1]].
+    """
     xs_a, ys_a = np.asarray(xs, float), np.asarray(ys, float)
+    x = np.clip(x, xs_a[0], xs_a[-1])
     h = np.diff(xs_a)
     d = np.diff(ys_a) / h
     m = np.zeros_like(xs_a)
@@ -60,19 +67,19 @@ def pchip(x: np.ndarray, xs: list[float], ys: list[float]) -> np.ndarray:
             m[i] = (w1 + w2) / (w1 / d[i - 1] + w2 / d[i])
     i = np.clip(np.searchsorted(xs_a, x) - 1, 0, len(h) - 1)
     t = (x - xs_a[i]) / h[i]
-    return (ys_a[i] * (2 * t**3 - 3 * t**2 + 1) + h[i] * m[i] * (t**3 - 2 * t**2 + t)
-            + ys_a[i + 1] * (-2 * t**3 + 3 * t**2) + h[i] * m[i + 1] * (t**3 - t**2))
+    t2, t3 = t * t, t * t * t
+    return (ys_a[i] * (2 * t3 - 3 * t2 + 1) + h[i] * m[i] * (t3 - 2 * t2 + t)
+            + ys_a[i + 1] * (-2 * t3 + 3 * t2) + h[i] * m[i + 1] * (t3 - t2))
 
 
 def tone(L: np.ndarray) -> np.ndarray:
     """Soft toe that never crushes, dense mids, a shoulder that rolls off to paper white."""
-    return pchip(np.clip(L, 0, 100), *zip(*TONE_ANCHORS))
+    return pchip(L, *zip(*TONE_ANCHORS))
 
 
 def color(L: np.ndarray, a: np.ndarray, b: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Hue shifts, a soft chroma ceiling, then pull near-neutrals onto the look's warm-olive axis."""
-    C = np.hypot(a, b)
-    h = np.degrees(np.arctan2(b, a)) % 360
+    C, h = lab_to_lch(a, b)
     bright_blue = smoothstep(h, 190, 215) * (1 - smoothstep(h, 285, 310)) * smoothstep(L, 40, 65)
     green = smoothstep(h, 90, 100) * (1 - smoothstep(h, 150, 170))
     h = h + BLUE_HUE_SHIFT * bright_blue + GREEN_HUE_SHIFT * green
@@ -93,7 +100,7 @@ def color(L: np.ndarray, a: np.ndarray, b: np.ndarray) -> tuple[np.ndarray, np.n
 def vignette(rgb: np.ndarray) -> np.ndarray:
     """Rounded corner falloff, applied in linear light."""
     H, W = rgb.shape[:2]
-    y, x = np.mgrid[0:H, 0:W]
+    y, x = np.ogrid[0:H, 0:W]
     r = np.hypot((x - W / 2) / (W / 2), (y - H / 2) / (H / 2)) / np.sqrt(2)
     gain = 1 - VIGNETTE * smoothstep(r, 0.5, 1.05) ** 1.5
     return linear_to_srgb(srgb_to_linear(rgb) * gain[..., None])
@@ -101,7 +108,7 @@ def vignette(rgb: np.ndarray) -> np.ndarray:
 
 def halation(rgb: np.ndarray) -> np.ndarray:
     """Bright areas bleed a faint red-orange glow into their surroundings."""
-    lum = rgb @ np.array([0.2126, 0.7152, 0.0722])
+    lum = rgb @ LUMA
     mask = np.clip((lum - HALATION_THRESHOLD) / 0.15, 0, 1)
     glow = Image.fromarray((mask * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(HALATION_RADIUS))
     glow = np.asarray(glow).astype(np.float64)[..., None] / 255
@@ -109,8 +116,8 @@ def halation(rgb: np.ndarray) -> np.ndarray:
 
 
 def grain(rgb: np.ndarray, seed: int = 0) -> np.ndarray:
-    """Monochrome grain in 2-3 px clumps, peaking in the midtones (~55% strength at the extremes)."""
-    lum = rgb @ np.array([0.2126, 0.7152, 0.0722])
+    """Monochrome grain in 2-3 px clumps, peaking in the midtones (~55% near L* 14 / 84, 35% at pure black / white)."""
+    lum = rgb @ LUMA
     noise = np.random.default_rng(seed).standard_normal(lum.shape) * 40 + 128   # 8-bit so PIL can blur it
     img = Image.fromarray(noise.clip(0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(GRAIN_CLUMP))
     noise = np.asarray(img).astype(np.float64) - 128
