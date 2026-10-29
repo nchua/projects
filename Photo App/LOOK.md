@@ -1,8 +1,43 @@
 # The Look — distilled from Chromagraph
 
-What Chromagraph does to a photo, measured against the stock iPhone camera, plus a recipe (v1) that reproduces it, with a scorecard to check it. This is the target our own look starts from. The goal is to land in the same family, not to copy Yedlin's private transform.
+What Chromagraph is trying to do, what it measurably does to a photo compared with the stock iPhone camera, and a recipe (v1) with a scorecard to check it. This is the target our own look starts from. The goal is to land in the same family, not to copy Yedlin's private transform.
 
-## Intent: a film negative → print chain, not a generic "cinematic" filter
+## The soul: photograph the light, not a corrected scene
+
+The color numbers further down (cream highlights, olive upper mids, teal skies) are symptoms. They describe what Chromagraph does to *daylight*. The night alley shows the same app producing an entirely different palette, and that's the point: underneath both there's one idea.
+
+> **Commit to one physical rendering, the way a cinematographer's film camera does, and let the light in front of the lens decide how the picture feels.**
+
+The stock iPhone treats every photo as a problem to solve. It lifts the shadows, holds back the sky, neutralizes the white balance, sharpens the edges and brightens the dim room, so that every part of every scene is legible. The result is accurate, and every scene ends up looking alike: evenly lit, neutral, flat. Chromagraph makes the opposite trade. A dim room stays dim, a tungsten alley turns orange, a backlit street keeps its sky and loses its shadows. Nothing is rescued.
+
+That's a cinematographer's job: deciding where the light is, what's allowed to go dark and what color the night is. Rian Johnson didn't ask for a filter that looks like a movie. He asked for "the same image processing we use on our movies". That's a pipeline: the same thing happens to every frame, so where you stand, what you expose for and when you shoot are what make the picture. The app's only controls (color, exposure, grain, halation) are the controls a cinematographer has over a film stock.
+
+### Five principles
+
+| # | Principle | Evidence | What it rules out |
+|---|---|---|---|
+| 1 | **One fixed rendering. No scene gets its own treatment.** | One curve for every scene: no per-scene brightening (office −11 L\* at identical exposure, Hong Kong −29, night −13), no local tone mapping (shade stays shade). White balance apparently isn't neutralized either: tungsten at night comes out far warmer than stock. "Hardware consistency … with confidence": a fixed transform needs a known sensor, the way a film stock is a known emulsion. | Auto-HDR, scene detection, sky/skin masks, per-region white balance, "smart" brightening |
+| 2 | **The light's color is the palette.** | Object color is restrained: daylight saturation tops out near chroma 22, and the office wood drops from 42 to 35. The *light's* color is kept and even deepened: cream daylight highlights, tungsten-lit walls going from chroma 24 → 62 and yellow → orange (82° → 46°), skies to teal (225°), the alley's back windows from blue to cyan (239° → 188°). Each picture gets a single color key set by its light, like a graded film, and nothing pops out digitally against it. | A fixed color scheme applied regardless of light (a stock "teal and orange" grade, a green/cream tint); saturation boosts on objects |
+| 3 | **Expose for the light, and let darkness be dark.** | Highlights are protected (p99 L\* 87–91; Hong Kong's sky held just under paper white). Shadows fall to near-black in hard sun, and at night half the frame sits below L\* 10. Those shadows carry the light's warmth (red-brown, hue 32°) instead of being neutralized. Darkness is part of the composition: it's where the picture hides things. | Shadow lifting, night mode, brightening driven by noise reduction |
+| 4 | **Highlights glow instead of clipping.** | A soft shoulder rolls highlights off into cream, and bright points bloom red. In daylight the halation is faint, because bright edges sit against mid tones. Against a night sky the same effect becomes the main event: the ring around each bulb gains 11.6× more red than blue (stock: 1.9×). One physical effect whose visibility depends on context. | A halation amount tuned per scene; hard white digital highlights |
+| 5 | **Texture, not detail.** | 6 MP out of a 24 MP sensor, no sharpening (2.6× less high-frequency energy than stock), monochrome grain weighted to the mid tones. The image is meant to be looked at, not zoomed into. | Sharpening, 24 MP output, chroma noise, a uniform grain overlay |
+
+### What this means for our build
+
+- **Build the physics, not the palette.** Model a negative → print chain on scene-linear RAW (toe and shoulder, dye gamut, halation driven by actual light levels, grain that follows density) at a fixed white balance. Then tune it until daylight lands on the fingerprints below. If the model is right, the night look falls out with no extra rules. That's the test of whether we've captured the soul or just copied a color scheme.
+- **White balance like film stock, not auto.** Our leading hypothesis is a fixed, near-daylight balance, which all six scenes fit. The product question is whether to offer a deliberate tungsten choice, the way a cinematographer picks a stock or a filter.
+- **Highlight-priority exposure** by default, with the user's exposure control as the creative dial.
+- **Accept on behaviors, not only on numbers:**
+
+  | Scene | What must happen |
+  |---|---|
+  | Night under warm lamps | Stays orange; blacks go black with a warm tint; bulbs bloom red |
+  | Dim interior | As dim as the exposure says, not brightened |
+  | Backlit or hazy sky | Sky held just under paper white; the foreground falls |
+  | Mixed light | The window stays cool against a warm room |
+  | Bright sun | Teal sky, cream highlights, deep shade near black |
+
+## The mechanism: a film negative → print chain, not a generic "cinematic" filter
 
 Rian Johnson's launch thread (2026-10-28): the app "shoots RAW, bypasses the iPhone's look processing and instead uses **the same image processing we use on our movies**." It was built by Steve Yedlin with color-science developer Eric Cameron. It's iPhone-only because "hardware consistency across Apple devices is part of what allows us to do this with confidence", and it's stills-only because video would only be possible on recent Pro iPhones. The user-facing tools are color, exposure, grain and halation.
 
@@ -38,17 +73,17 @@ So Chromagraph exports at **6 MP in sRGB**, not 24 MP P3. Downsampling hides sen
 **Two more pairs from X (added 2026-10-29),** posted by Chromagraph users: Toronto (Yonge–Dundas, sunny afternoon) and Hong Kong (Mid-Levels from a high floor, hazy sun with lens flare). They're saved as `refs/x_*.jpg`. Both are downscaled to 2048 px tall and recompressed, so **grain and fine texture can't be measured; tone and color can**. The stock files are Display P3; the Chromagraph files are sRGB at 3:4, matching the app's export.
 - **Toronto** wasn't shot at the same moment: the big billboard changed, so frame-wide chroma and tone aren't comparable. The sky and the neutral casts are.
 - **Hong Kong** looks near-simultaneous (same clouds, same flare), with slightly different framing.
-- A third set, a night alley under fairy lights, is held out. See Caveats.
+- **Night alley** (`refs/x_stock_alley_night.jpg` / `refs/x_chromagraph_alley_night.jpg`): fairy lights and warm lamps, a few cool windows at the back, same moment, slightly different crop. See "Night" below.
 
 `refs/` is local-only (git-ignored): the photos are personal. Ask Nick for them.
 
 ## The look in one sentence
 
-**A soft-shouldered film print, exposed for the highlights:** the window and the sky hold, and the shadows are allowed to fall. Blacks roll into a soft toe with no hard digital clip, though deep shade does reach near-black, highlights roll off below pure white into cream, the sky is teal rather than blue, greens lean yellow-olive, neutrals run warm, nothing is sharpened, monochrome grain sits on top, the corners darken, and bright edges get a faint red halation.
+**A film print that records the light it was given:** exposed for the highlights, with shadows allowed to fall to near-black, highlights that glow and roll off instead of clipping, and the color of the light kept (cream daylight, orange tungsten, teal sky) while object colors stay restrained. Nothing is sharpened, monochrome grain sits on top, the corners darken, and bright points bloom red: faintly by day, strongly at night.
 
-## What holds across all five scenes
+## Daylight fingerprints (five scenes)
 
-These numbers hold across all five scenes, so they're the core of the look. Anything that varies by scene follows white balance or exposure instead.
+These numbers hold across the five daylight and mixed-daylight scenes. They're what principles 1–5 do to daylight, so they're the **calibration targets** for the model, not the look itself. The night scene below shows the same model producing very different numbers.
 
 | | Street | Living room | Office | Toronto (X) | Hong Kong (X) | Stock (street / office / Toronto / HK) |
 |---|---|---|---|---|---|---|
@@ -71,6 +106,29 @@ These numbers hold across all five scenes, so they're the core of the look. Anyt
 5. **Hue is preserved on saturated objects.** Wood stays at hue 68.6° in both. The look changes chroma and tone, not object hue. The exception is the bright-sky blue → teal shift, and that looks luminance-dependent: the dark blue chairs and cabinets in the office stayed at hue ~260–266°, in a small sample. Print film does the same. **The sky lands at ~225° wherever it starts** (street 266° → 225°, Toronto 272° → 226°), so it behaves as a target hue, not a fixed rotation. That fits a print-dye gamut more than a hue-shift knob. Toronto's deep-blue sky at L\* ~54 moves all the way, so the shift starts in the mid tones, not only in bright blues. A *pale, hazy* sky goes cream instead (Hong Kong): it has too little chroma to read as blue, so the cream highlight axis takes it.
 6. **Neutrals drift toward yellow-olive.** The white wall's hue goes 67° → 94° and the ceiling's 77° → 86°.
 7. **The black floor is a soft toe, not a fixed lift, and deep shade gets close to black.** p1 ranges from L\* 1.2 to 7.1. In both hard-sun X shots, ~4–5% of the frame sits below L\* 3, against 0.01% on the street and 0.24% in the living room. Recompression doesn't move blacks by that much. So the toe is soft, but deep shade reaches the print's maximum density at about L\* 1–2. An earlier version said blacks never crush; that came from the street scene alone.
+
+## Night (the alley): the same model under tungsten
+
+Stock vs Chromagraph, same moment:
+
+| | Stock | **Chromagraph** |
+|---|---|---|
+| Median L\* | 21.6 | **8.8** (−13) |
+| Below L\* 10 | 18% | **52%** |
+| Shadow tint (L\* < 10) | neutral (a\* +1.7, b\* +0.4) | **red-brown (a\* +8.2, b\* +5.1, hue 32°)** |
+| Lamp-lit walls, L\* 20–60 | hue 82°, chroma 24 | **hue 46°, chroma 62** |
+| Lamp-lit walls, L\* 60–90 | hue 88°, chroma 23 | **hue 79°, chroma 65** |
+| Cool back windows | hue 239° (blue) | **hue 188° (cyan)** |
+| Glow ring around bulbs, red vs blue lift | 1.9× | **11.6×** |
+| p90 chroma / clipped | 30.8 / 0.74% | **68.0 / 0.82%** (the bulbs) |
+
+- **The stock camera neutralizes the tungsten; Chromagraph keeps it.** That's what daylight-balanced film does under 2700–3000 K light. The hue also depends on density: darker lamp-lit surfaces go orange-red, and brighter ones yellow-orange. That's dye-layer behavior, not a tint.
+- **The chroma ceiling is about objects, not light.** In daylight nothing tops chroma ~22. Here the light itself is saturated, so the image is too.
+- **The darkness takes the light's color** instead of going neutral grey.
+- **The cool windows go cyan,** the same pull as the daylight skies, which makes the warm/cool contrast of mixed light the image's whole palette.
+- **Halation becomes the main feature** once bright points sit against black. Same effect as by day, different context.
+
+Every part of this shot is what the model predicts. That's why it's treated as evidence, not as an outlier. It's one shot posted on X, so it's still worth confirming with a known pair.
 
 ## Measured traits from the street pair (CIELAB, both images sRGB at 2160×2880)
 
@@ -141,7 +199,7 @@ The living room (no stock pair) confirms which parts are baked in:
   | Blind (highlight) | 84 | 3.1 | 1.3 |
 
   So the grain is **monochrome** (luma 4–10× chroma), **peaks in the midtones** and tapers into both the shadows and the highlights. At 6 MP it clumps over about 2–3 px rather than varying per pixel. Chroma noise is essentially gone, which fits a multi-frame merge that cleans the color before grain goes on. The app exposes this as Amplitude (1.25 in their screenshot), Grain Size (1.00) and "Force Pixel Size Grain".
-- **Halation:** a red-brown fringe where bright surfaces meet dark ones (the truck roof edge, the van windshield frame). It's **subtle**: in the living room, even the lamp globes in front of the sunlit blind show only a faint warm bleed, not a glowing halo. Keep it restrained.
+- **Halation:** a red-brown fringe where bright surfaces meet dark ones (the truck roof edge, the van windshield frame). It's **subtle in daylight**: in the living room, even the lamp globes in front of the sunlit blind show only a faint warm bleed, not a glowing halo. At night, against black, the same effect becomes a strong red bloom (see Night). So drive it from actual light levels; don't fix its strength.
 - **Vignette (likely):** both shots have darker, rounded corners. It's strongest in the living room's top-left and bottom corners and in the street's top-left. It could be deliberately added or lens shading left uncorrected from RAW; either way it belongs in the look. (The room's own lighting falls off too, so this is a visual call, not a measured one.)
 
 ## v1 recipe
@@ -200,7 +258,7 @@ Tolerances (look − target): tone ±2 L\* (median ±3), clipped ±0.1 pp, cast 
 
 ### What carries over to the RAW pipeline
 
-The **targets** carry over: every number in "What holds across all three scenes" and the scorecard's target column. The color stages (hue, chroma ceiling, neutral axis), grain, halation and vignette carry over as starting points. The **tone anchors don't**: they're a stock-JPEG → look transfer, so they also undo Apple's curve. From RAW, the tone stage becomes a scene-linear → print curve, built as a negative → print model per the Intent section, that has a toe reaching L\* ~1–2 in deep shade (p1 1–7 depending on the scene), paper white of ~87–91, exposure placed for the highlights, and no per-scene brightening.
+The **targets** carry over: every number in "What holds across all three scenes" and the scorecard's target column. The color stages (hue, chroma ceiling, neutral axis), grain, halation and vignette carry over as starting points. The **tone anchors don't**: they're a stock-JPEG → look transfer, so they also undo Apple's curve. From RAW, the tone stage becomes a scene-linear → print curve, built as a negative → print model per the Intent section, that has a toe reaching L\* ~1–2 in deep shade (p1 1–7 depending on the scene), paper white of ~87–91, exposure placed for the highlights, a fixed white balance and no per-scene brightening. Check it against the behavior table under "The soul" as well as against these numbers.
 
 ## Reproduce
 
@@ -230,11 +288,7 @@ The resize to 2160×2880 is for the portrait pairs. Measure the landscape living
 - **Two compensations in look.py to revisit when the RAW pipeline is built** (from the 2026-10-29 QA pass):
   1. The shoulder anchors are bumped to offset the vignette. That holds for the street but depends on where the bright pixels sit. Fix: fit the anchors on the centre disc (r < 0.5, where the vignette gain is 1), or apply the vignette in linear light before the tone stage.
   2. The neutral-axis targets are set past the measured means to offset a partial pull. Fix: use the measured means and tune the pull weight instead. That would also be the place to revisit the 30% saturated-color tint. It causes the +15° dark-blue drift and lands skies 6–8° short of the measured 225° (street 217°, Toronto 220°).
-- **Held out: the night alley** (`refs/x_stock_alley_night.jpg` / `refs/x_unverified_alley_night.jpg`). It was sent as a Chromagraph comparison, but it contradicts every other sample:
-  - 22% of the frame below L\* 3, with blacks crushed to red-brown (darkest 5% ≈ RGB 9 / 2 / 0).
-  - p90 chroma 68, against ~14–24 everywhere else.
-  - 0.8% clipped, against 0% in all five scenes.
-
-  There are two readings. One: it is Chromagraph with white balance locked near daylight under warm lamps and exposure pulled down. That would be a real finding, because it would mean the app doesn't auto-balance white. Two: the image was edited, or it's a film scan. Its halation (an orange glow around every bulb) fits the look either way. Until the source is confirmed, it isn't used as a target.
+- **Fixed white balance is a hypothesis from one night shot** (plus five daylight scenes that fit it). A Chromagraph/stock pair under known indoor tungsten would confirm it. So would one at sunset.
+- **The v1 proxy can't express principles 1–3.** It starts from stock JPEGs, which have already been white-balanced, brightened and locally tone-mapped, so it can't un-neutralize a tungsten scene or re-darken a room. Only the night table's directions are usable from it. This is the main argument for building from RAW next.
 - Framing differs slightly between the two shots, so the hue-family *shares* are partly affected by what's in frame. The tone, cast and per-family hue/chroma numbers are robust to that.
 - **Next step:** iPhone RAW (DNG) files, so the recipe can run on scene-linear data the way the real app would. The best input is a DNG shot alongside a Chromagraph frame of the same scene: score.py can then score the RAW pipeline directly against the target.
