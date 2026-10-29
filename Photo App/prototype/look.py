@@ -20,8 +20,8 @@ from PIL import Image, ImageFilter
 TONE_ANCHORS = [(0, 4.0), (1.1, 7.1), (6.3, 10.2), (17.4, 19.0), (40.5, 39.1),
                 (67.1, 60.9), (87.9, 80.8), (95.6, 90.0), (100, 92.0)]
 
-# Color: object hue is held, except bright blues -> teal and greens -> yellow-olive
-BLUE_HUE_SHIFT = -50.0
+# Color: object hue is held, except mid-to-bright blues -> teal and greens -> yellow-olive
+BLUE_HUE_TARGET = 225.0   # skies land here from any start (street 266 -> 225, Toronto 272 -> 226)
 BLUE_DESAT = 0.5
 GREEN_HUE_SHIFT = -12.0
 CHROMA_KNEE = 13.0      # chroma passes through below this...
@@ -73,16 +73,16 @@ def pchip(x: np.ndarray, xs: Sequence[float], ys: Sequence[float]) -> np.ndarray
 
 
 def tone(L: np.ndarray) -> np.ndarray:
-    """Soft toe that never crushes, dense mids, a shoulder that rolls off to paper white."""
+    """Soft toe (floor L* 4 in this proxy), dense mids, a shoulder that rolls off to paper white."""
     return pchip(L, *zip(*TONE_ANCHORS))
 
 
 def color(L: np.ndarray, a: np.ndarray, b: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Hue shifts, a soft chroma ceiling, then pull near-neutrals onto the look's warm-olive axis."""
     C, h = lab_to_lch(a, b)
-    bright_blue = smoothstep(h, 190, 215) * (1 - smoothstep(h, 285, 310)) * smoothstep(L, 40, 65)
+    bright_blue = smoothstep(h, 190, 215) * (1 - smoothstep(h, 285, 310)) * smoothstep(L, 25, 45)
     green = smoothstep(h, 90, 100) * (1 - smoothstep(h, 150, 170))
-    h = h + BLUE_HUE_SHIFT * bright_blue + GREEN_HUE_SHIFT * green
+    h = h + (BLUE_HUE_TARGET - h) * bright_blue + GREEN_HUE_SHIFT * green
     C = C * (1 - BLUE_DESAT * bright_blue)
     span = CHROMA_CEILING - CHROMA_KNEE
     C = np.where(C < CHROMA_KNEE, C, CHROMA_KNEE + span * np.tanh((C - CHROMA_KNEE) / span))
