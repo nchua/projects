@@ -16,16 +16,16 @@ That's a cinematographer's job: deciding where the light is, what's allowed to g
 
 | # | Principle | Evidence | What it rules out |
 |---|---|---|---|
-| 1 | **One fixed rendering. No scene gets its own treatment.** | One curve for every scene: no per-scene brightening (office −11 L\* at identical exposure, Hong Kong −29, night −13), no local tone mapping (shade stays shade). White balance apparently isn't neutralized either: tungsten at night comes out far warmer than stock. "Hardware consistency … with confidence": a fixed transform needs a known sensor, the way a film stock is a known emulsion. | Auto-HDR, scene detection, sky/skin masks, per-region white balance, "smart" brightening |
-| 2 | **The light's color is the palette.** | Object color is restrained: daylight saturation tops out near chroma 22, and the office wood drops from 42 to 35. The *light's* color is kept and even deepened: cream daylight highlights, tungsten-lit walls going from chroma 24 → 62 and yellow → orange (82° → 46°), skies to teal (225°), the alley's back windows from blue to cyan (239° → 188°). Each picture gets a single color key set by its light, like a graded film, and nothing pops out digitally against it. | A fixed color scheme applied regardless of light (a stock "teal and orange" grade, a green/cream tint); saturation boosts on objects |
-| 3 | **Expose for the light, and let darkness be dark.** | Highlights are protected (p99 L\* 87–91; Hong Kong's sky held just under paper white). Shadows fall to near-black in hard sun, and at night half the frame sits below L\* 10. Those shadows carry the light's warmth (red-brown, hue 32°) instead of being neutralized. Darkness is part of the composition: it's where the picture hides things. | Shadow lifting, night mode, brightening driven by noise reduction |
+| 1 | **One fixed rendering. No scene gets its own treatment.** | One curve for every scene: no per-scene brightening (office −11 L\* at identical exposure, Hong Kong −29, night −13), no local tone mapping (shade stays shade: in a window-lit room, Chromagraph keeps **4.5 stops** between the lit back wall and the shaded side wall, while stock squeezes it to 1.75 and lifts the shaded wall from L\* 11 to 42). White balance apparently isn't neutralized either: tungsten at night comes out far warmer than stock. "Hardware consistency … with confidence": a fixed transform needs a known sensor, the way a film stock is a known emulsion. | Auto-HDR, scene detection, sky/skin masks, per-region white balance, "smart" brightening |
+| 2 | **The light's color is the palette.** | Object color is restrained: daylight saturation tops out near chroma 22, and the office wood drops from 42 to 35. The *light's* color is kept and even deepened: cream daylight highlights, tungsten-lit walls going from chroma 24 → 62 and yellow → orange (82° → 46°), skies to teal (225°), the alley's back windows from blue to cyan (239° → 188°). The warmth follows the light: in that window-lit room, the sunlit wall and window go cream (b\* +2.7 → +14, +0.6 → +12), while the shaded wall and carpet stay neutral (b\* ≈ 0). A clear sky runs from grey-cyan at the top to cream at the horizon. Each picture gets a single color key set by its light, like a graded film, and nothing pops out digitally against it. | A fixed color scheme applied regardless of light (a stock "teal and orange" grade, a green/cream tint); saturation boosts on objects |
+| 3 | **Expose for the light, and let darkness be dark.** | Highlights are protected (p99 L\* 87–91; Hong Kong's sky held just under paper white). Shadows fall to near-black in hard sun, and at night half the frame sits below L\* 10. Those shadows carry the light's warmth (red-brown, hue 32°) instead of being neutralized. Looking out a window, the room and its frame go dark while the view holds (the lake: stock clips 7.9% of the frame, Chromagraph 0%). Darkness is part of the composition: it's where the picture hides things. | Shadow lifting, night mode, brightening driven by noise reduction |
 | 4 | **Highlights glow instead of clipping.** | A soft shoulder rolls highlights off into cream, and bright points bloom red. In daylight the halation is faint, because bright edges sit against mid tones. Against a night sky the same effect becomes the main event: the ring around each bulb gains 11.6× more red than blue (stock: 1.9×). One physical effect whose visibility depends on context. | A halation amount tuned per scene; hard white digital highlights |
 | 5 | **Texture, not detail.** | 6 MP out of a 24 MP sensor, no sharpening (2.6× less high-frequency energy than stock), monochrome grain weighted to the mid tones. The image is meant to be looked at, not zoomed into. | Sharpening, 24 MP output, chroma noise, a uniform grain overlay |
 
 ### What this means for our build
 
 - **Build the physics, not the palette.** Model a negative → print chain on scene-linear RAW (toe and shoulder, dye gamut, halation driven by actual light levels, grain that follows density) at a fixed white balance. Then tune it until daylight lands on the fingerprints below. If the model is right, the night look falls out with no extra rules. That's the test of whether we've captured the soul or just copied a color scheme.
-- **White balance like film stock, not auto.** Our leading hypothesis is a fixed, near-daylight balance, which all six scenes fit. The product question is whether to offer a deliberate tungsten choice, the way a cinematographer picks a stock or a filter.
+- **White balance like film stock, not auto.** Our leading hypothesis is a fixed, near-daylight balance, which all eight scenes fit. The product question is whether to offer a deliberate tungsten choice, the way a cinematographer picks a stock or a filter.
 - **Highlight-priority exposure** by default, with the user's exposure control as the creative dial.
 - **Accept on behaviors, not only on numbers:**
 
@@ -33,6 +33,8 @@ That's a cinematographer's job: deciding where the light is, what's allowed to g
   |---|---|
   | Night under warm lamps | Stays orange; blacks go black with a warm tint; bulbs bloom red |
   | Dim interior | As dim as the exposure says, not brightened |
+  | Window-lit room | Light falls off across the room (4+ stops from the lit wall to the shade); the lit side warms, the shade stays neutral |
+  | Looking out a window | The view holds under paper white; the room and frame go dark |
   | Backlit or hazy sky | Sky held just under paper white; the foreground falls |
   | Mixed light | The window stays cool against a warm room |
   | Bright sun | Teal sky, cream highlights, deep shade near black |
@@ -46,7 +48,7 @@ Yedlin's public position (his "Display Prep" demo and "On Color Science" essays)
 | Measured | Film-print explanation |
 |---|---|
 | Soft toe, shoulder below white | Print-stock density S-curve |
-| Cream highlights (b\* +10 to +11 in all five scenes) | Warm print highlights |
+| Cream highlights (b\* +10 to +11.5 in all six daylight scenes) | Warm print highlights |
 | Blue → teal sky | Print film's cyan dye renders blues toward cyan |
 | Bright saturated colors toned down | Dye-gamut limits |
 | Monochrome mid-weighted grain | Film grain |
@@ -73,6 +75,8 @@ So Chromagraph exports at **6 MP in sRGB**, not 24 MP P3. Downsampling hides sen
 **Two more pairs from X (added 2026-10-29),** posted by Chromagraph users: Toronto (Yonge–Dundas, sunny afternoon) and Hong Kong (Mid-Levels from a high floor, hazy sun with lens flare). They're saved as `refs/x_*.jpg`. Both are downscaled to 2048 px tall and recompressed, so **grain and fine texture can't be measured; tone and color can**. The stock files are Display P3; the Chromagraph files are sRGB at 3:4, matching the app's export.
 - **Toronto** wasn't shot at the same moment: the big billboard changed, so frame-wide chroma and tone aren't comparable. The sky and the neutral casts are.
 - **Hong Kong** looks near-simultaneous (same clouds, same flare), with slightly different framing.
+- **Lake through a window** (`refs/x_stock_lake.jpg` / `refs/x_chromagraph_lake_edited.jpg`): bright autumn sun outside, a dark window frame inside. The Chromagraph file was posted captioned "edited", and it's Display P3 where the app exports sRGB, so it was re-saved and possibly adjusted after capture. Its fingerprints land inside the range of the other scenes, so any edit was light; still, treat it as the weakest of the daylight samples.
+- **Window-lit room** (`refs/x_screenshot_interior_pair.jpg`): a screenshot of two iMessage thumbnails ("straight from the camera in the app" vs "normal iPhone camera"), taken moments apart (the TV frame changed) with slightly different framing. It's too small and processed for global stats, so only matched surfaces (lit wall, shaded wall, window, carpet) are used.
 - **Night alley** (`refs/x_stock_alley_night.jpg` / `refs/x_chromagraph_alley_night.jpg`): fairy lights and warm lamps, a few cool windows at the back, same moment, slightly different crop. See "Night" below.
 
 `refs/` is local-only (git-ignored): the photos are personal. Ask Nick for them.
@@ -81,26 +85,27 @@ So Chromagraph exports at **6 MP in sRGB**, not 24 MP P3. Downsampling hides sen
 
 **A film print that records the light it was given:** exposed for the highlights, with shadows allowed to fall to near-black, highlights that glow and roll off instead of clipping, and the color of the light kept (cream daylight, orange tungsten, teal sky) while object colors stay restrained. Nothing is sharpened, monochrome grain sits on top, the corners darken, and bright points bloom red: faintly by day, strongly at night.
 
-## Daylight fingerprints (five scenes)
+## Daylight fingerprints (six scenes)
 
-These numbers hold across the five daylight and mixed-daylight scenes. They're what principles 1–5 do to daylight, so they're the **calibration targets** for the model, not the look itself. The night scene below shows the same model producing very different numbers.
+These numbers hold across the six daylight and mixed-daylight scenes. They're what principles 1–5 do to daylight, so they're the **calibration targets** for the model, not the look itself. The night scene below shows the same model producing very different numbers.
 
-| | Street | Living room | Office | Toronto (X) | Hong Kong (X) | Stock (street / office / Toronto / HK) |
-|---|---|---|---|---|---|---|
-| p1 L\* (black floor) | 7.1 | 4.0 | 5.7 | **1.2** | **1.6** | 1.1 / 3.9 / 1.1 / 5.1 |
-| Below L\* 3 | 0.01% | 0.24% | — | **4.3%** | **4.8%** | 2.4% / — / 3.5% / 0.3% |
-| p99 L\* (paper white) | 88.5 | 91.0 | 88.8 | 87.0 | 89.7 | 95.6 / 91.7 / 95.2 / 94.6 |
-| Clipped | 0% | 0% | 0% | 0% | 0% | 1.1% / 0.5% / 1.6% / 0.5% |
-| **Highlight b\* (L\* 85+)** | **+10.9** | **+10.9** | **+10.6** | **+10.2** | **+10.0** | +1.1 / +0.5 / +4.9 / +0.8 |
-| **Upper-mid a\* (L\* 60–85)** | **−4.6** | **−3.3** | **−4.7** | **−3.1** | **−4.6** | −0.7 / −1.1 / −2.6 / −1.1 |
-| **p90 chroma (ceiling)** | **22.5** | **16.8** | **22.0** | 23.7 ‡ | 13.7 | 25.2 / **37.4** / 45.0 / 20.6 |
-| **Sky hue** | **225°** | — | — | **226°** | sky went cream | 266° / — / 272° / 260° |
-| Median L\* vs stock | −1.4 | — | **−11.1** | −7.7 ‡ | **−28.8** | |
+| | Street | Living room | Office | Toronto (X) | Hong Kong (X) | Lake (X) | Stock (street / office / Toronto / HK / lake) |
+|---|---|---|---|---|---|---|---|
+| p1 L\* (black floor) | 7.1 | 4.0 | 5.7 | **1.2** | **1.6** | **0.5** | 1.1 / 3.9 / 1.1 / 5.1 / 0.8 |
+| Below L\* 3 | 0.01% | 0.24% | — | **4.3%** | **4.8%** | 11.9% § | 2.4% / — / 3.5% / 0.3% / 10.1% |
+| p99 L\* (paper white) | 88.5 | 91.0 | 88.8 | 87.0 | 89.7 | 86.1 | 95.6 / 91.7 / 95.2 / 94.6 / 98.4 |
+| Clipped | 0% | 0% | 0% | 0% | 0% | 0% | 1.1% / 0.5% / 1.6% / 0.5% / **7.9%** |
+| **Highlight b\* (L\* 85+)** | **+10.9** | **+10.9** | **+10.6** | **+10.2** | **+10.0** | **+11.5** | +1.1 / +0.5 / +4.9 / +0.8 / −3.5 |
+| **Upper-mid a\* (L\* 60–85)** | **−4.6** | **−3.3** | **−4.7** | **−3.1** | **−4.6** | **−5.2** | −0.7 / −1.1 / −2.6 / −1.1 / 0.0 |
+| **p90 chroma (ceiling)** | **22.5** | **16.8** | **22.0** | 23.7 ‡ | 13.7 | **20.8** | 25.2 / **37.4** / 45.0 / 20.6 / 34.7 |
+| **Sky hue** | **225°** | — | — | **226°** | sky went cream | grey-cyan → cream | 266° / — / 272° / 260° / 278° |
+| Median L\* vs stock | −1.4 | — | **−11.1** | −7.7 ‡ | **−28.8** | **−23.8** | |
 
 ‡ Toronto's two shots were taken at different moments (a different billboard is up), so these two cells are indicative only.
+§ The lake is framed by a dark window frame in both shots, so its near-black share is mostly the scene.
 
-1. **Cream highlights (b\* +10.0 to +10.9), in all five scenes.** This is the most stable number we have, so build it into the curve.
-2. **A slight green in the upper mids (a\* −3.1 to −4.7), in all five scenes.** This corrects an earlier note that called the green street-specific. The *shadow* cast is what varies by scene.
+1. **Cream highlights (b\* +10.0 to +11.5), in all six daylight scenes.** This is the most stable number we have, so build it into the curve.
+2. **A slight green in the upper mids (a\* −3.1 to −5.2), in all six daylight scenes.** This corrects an earlier note that called the green street-specific. The *shadow* cast is what varies by scene.
 3. **Saturation tops out around chroma 22.** Saturated colors are compressed hard (the office wood frames: chroma 41.6 → 34.9, and the frame's p90 drops from 37.4 to 22). Near-neutral surfaces actually *gain* a little color from the cast (the white wall: 3.0 → 7.2). The result: everything shares one warm-olive palette, and nothing pops out digitally.
 4. **No brightness normalization.** In the office, at identical exposure, Chromagraph is **11 L\* darker** than stock (white wall 63 → 49, ceiling 67 → 56, floor 77 → 62). In the bright street scene the two match. So stock brightens dim scenes and Chromagraph renders the exposure as it is: indoors looks like indoors. **Hong Kong goes furthest:** with a hazy, backlit sky in frame, Chromagraph puts the sky just under paper white (p95 L\* 87.7) and lets the city fall to median L\* 22, where stock sits at 51. Exposure is set by the brightest large area, not the average. The living room points the same way. (The app has an exposure control, so a shooter pulling it down can't be ruled out for a single shot.) Our pipeline should map exposure to brightness the same way for every scene, with no per-scene auto-brightening.
 5. **Hue is preserved on saturated objects.** Wood stays at hue 68.6° in both. The look changes chroma and tone, not object hue. The exception is the bright-sky blue → teal shift, and that looks luminance-dependent: the dark blue chairs and cabinets in the office stayed at hue ~260–266°, in a small sample. Print film does the same. **The sky lands at ~225° wherever it starts** (street 266° → 225°, Toronto 272° → 226°), so it behaves as a target hue, not a fixed rotation. That fits a print-dye gamut more than a hue-shift knob. Toronto's deep-blue sky at L\* ~54 moves all the way, so the shift starts in the mid tones, not only in bright blues. A *pale, hazy* sky goes cream instead (Hong Kong): it has too little chroma to read as blue, so the cream highlight axis takes it.
