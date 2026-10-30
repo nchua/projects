@@ -187,7 +187,7 @@ Memory is **peak physical footprint** (what jetsam uses), not resident size.
 | Encode + write (render + comparison) | ≤ 0.4 s | ≤ 0.4 s |
 | Peak footprint | ≤ 600 MB | ≤ 1.5 GB (measure in M4; raise strip count until met) |
 
-Measured on the Mac (12 MP): a full-frame RGBAf render of the Lanczos'd graph peaks at ~810 MB (Core Image allocates big intermediates even when only 6 MP is requested); 8 strips peak at ~520 MB, values identical. Naively scaled, a full-frame 48 MP render would be ~2.5–3 GB, hence strips are mandatory. The film model holds ~6 planar 6 MP Float32 buffers (~150 MB). Batches run one at a time; caches cleared between items. If the 48 MP decode budget is missed, `scaleFactor` (decode-time downscale) is allowed only if test C still passes.
+Measured on the Mac (12 MP): a full-frame RGBAf render of the Lanczos'd graph peaks at ~810 MB (Core Image allocates big intermediates even when only 6 MP is requested); 8 strips 683 MB, 16 strips 576 MB, values identical (whole pipeline; §11). On the phone with 16 strips: 590 MB (12 MP), 946 MB (48 MP). Naively scaled, a full-frame 48 MP render would be ~2.5–3 GB, hence strips are mandatory. The film model holds ~6 planar 6 MP Float32 buffers (~150 MB). Batches run one at a time; caches cleared between items. If the 48 MP decode budget is missed, `scaleFactor` (decode-time downscale) is allowed only if test C still passes.
 
 ## 8. Risks
 
@@ -273,3 +273,14 @@ M4 remaining: install on the phone, pick IMG_2725/IMG_2732 there, AirDrop back, 
 | Capture time | The saved render first landed 1 s early (GPS stamp 23:58:00 vs shutter 23:58:01.384). Now from DateTimeOriginal + subsec + offset (§5.3); Photos.sqlite shows the render at 23:58:01.384, the original's exact time, and the same location. Unit tests cover offset / GPS-inferred / device-zone cases. |
 
 Still needs the phone: signing + install, on-device parity (`compare.py` vs `out.png`), edited-ProRAW behaviour, real timings and peak footprint for 12 and 48 MP.
+
+**M4 on device — done (2026-10-30, iPhone 17 Pro Max, Debug build with FilmCore `-O`):**
+
+| Item | Result |
+|---|---|
+| Signing + install | Blocked first by an unaccepted Program License Agreement ("PLA Update available"); after accepting, `-allowProvisioningUpdates` created the profile, `devicectl device install` + launch fine. Cert still expires 2026-12-31 (R9). |
+| Parity (renders saved, AirDropped back, `compare.py` vs `out.png`, the `app.jpg` gate) | **PASS both.** IMG_2725: ΔL\* p1/p50/p99 −0.05 / +0.03 / +0.02, mean Δa\*/Δb\* +0.18 / −0.15, grain fine/medium +7.5 % / +1.1 %. IMG_2732: −0.06 / +0.02 / −0.11, +0.18 / −0.26, −0.5 % / −1.3 %. Neutral mask too small on both (n/a). Against the Mac's `swift/app.jpg`, mean L\*/a\*/b\* agree to < 0.001: the phone's decode and film model match the Mac's; per-pixel differences are the grain realisation only. |
+| Timings + peak footprint (§7), each item in a fresh launch | 12 MP (IMG_2725): decode 0.36 s, film 0.19 s, encode 0.08 s, **peak 590 MB** (budget 600: passes, 1.7 % headroom). 48 MP (IMG_2732): decode **2.33 s** (budget 2.5), film 0.17 s, encode 0.08 s, peak 946 MB (budget 1.5 GB). All within budget; 12 MP memory and 48 MP decode are the tight ones. The peak is the process lifetime peak, so a later item in the same launch reports the earlier item's peak if higher. |
+| Picker | Hands over the DNG for ProRAW on device (both renders came from the picked DNGs). The grain seed hashes the picker's file name, which probably differs from the Mac test's `IMG_2725.DNG` (not checked), so the phone's grain pattern differs from `swift/app.jpg`'s; it is deterministic per photo on the device. |
+| Edited ProRAW | An edited ProRAW (exposure tweak in Photos) shows "Not ProRAW (or edited in Photos) — skipped" — the picker's `.current` representation is the edit, not the DNG. Behaviour as designed in §5.3; no change. |
+| Save metadata | Renders carry `Software: Print 0.1`, Make/Model; Photos exports them with the originals' capture time. Location matches the original in Photos (add-only access). |
