@@ -72,26 +72,41 @@ public enum Encoder {
         (source[kCGImagePropertyExifDictionary as String] as? [String: Any])?[kCGImagePropertyExifDateTimeOriginal as String] as? String
     }
 
-    /// Capture time: the GPS UTC stamp if present, else DateTimeOriginal in OffsetTimeOriginal (or `timeZone`).
+    /// Shutter time: DateTimeOriginal + SubsecTimeOriginal in OffsetTimeOriginal. Without an offset, the zone is
+    /// inferred from the GPS UTC stamp (rounded to 15 min: the GPS fix is whole seconds and can lag the shutter),
+    /// else `timeZone`. Using the GPS stamp itself put renders a second off their originals in Photos.
     public static func captureDate(_ source: [String: Any], timeZone: TimeZone = .current) -> Date? {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        if let gps = source[kCGImagePropertyGPSDictionary as String] as? [String: Any],
-           let day = gps[kCGImagePropertyGPSDateStamp as String] as? String,
-           let time = gps[kCGImagePropertyGPSTimeStamp as String] as? String {
-            f.timeZone = TimeZone(identifier: "UTC")
-            f.dateFormat = time.contains(".") ? "yyyy:MM:dd HH:mm:ss.SS" : "yyyy:MM:dd HH:mm:ss"
-            if let date = f.date(from: "\(day) \(time)") { return date }
+        let exif = source[kCGImagePropertyExifDictionary as String] as? [String: Any] ?? [:]
+        let gps = source[kCGImagePropertyGPSDictionary as String] as? [String: Any] ?? [:]
+        let utc = TimeZone(identifier: "UTC")!
+        func parse(_ text: String, _ format: String, _ zone: TimeZone) -> Date? {
+            let f = DateFormatter()
+            f.locale = Locale(identifier: "en_US_POSIX")
+            f.timeZone = zone
+            f.dateFormat = format
+            return f.date(from: text)
         }
-        guard let local = dateTimeOriginal(source) else { return nil }
-        let exif = source[kCGImagePropertyExifDictionary as String] as? [String: Any]
-        if let offset = exif?[kCGImagePropertyExifOffsetTimeOriginal as String] as? String {
-            f.dateFormat = "yyyy:MM:dd HH:mm:ssxxx"
-            if let date = f.date(from: local + offset) { return date }
+        let gpsDate: Date? = {
+            guard let day = gps[kCGImagePropertyGPSDateStamp as String] as? String,
+                  let time = gps[kCGImagePropertyGPSTimeStamp as String] as? String else { return nil }
+            return parse("\(day) \(time.prefix(8))", "yyyy:MM:dd HH:mm:ss", utc)
+        }()
+        guard let local = dateTimeOriginal(source), let wall = parse(local, "yyyy:MM:dd HH:mm:ss", utc) else { return gpsDate }
+        let subsec = (exif[kCGImagePropertyExifSubsecTimeOriginal as String] as? String)   // EXIF may pad with spaces
+            .flatMap { Double("0." + $0.trimmingCharacters(in: .whitespaces)) } ?? 0
+
+        let offset: Int   // seconds east of UTC
+        if let text = exif[kCGImagePropertyExifOffsetTimeOriginal as String] as? String,
+           let zoned = parse(local + text, "yyyy:MM:dd HH:mm:ssxxx", utc) {
+            offset = Int(wall.timeIntervalSince(zoned))
+        } else if let gpsDate, case let inferred = Int((wall.timeIntervalSince(gpsDate) / 900).rounded()) * 900,
+                  (-12 * 3600)...(14 * 3600) ~= inferred {   // a stale fix outside real zones falls through
+            offset = inferred
+        } else {
+            // `wall` is the local time read as UTC; evaluate the zone at the real instant (matters near DST changes)
+            offset = timeZone.secondsFromGMT(for: wall.addingTimeInterval(-Double(timeZone.secondsFromGMT(for: wall))))
         }
-        f.timeZone = timeZone
-        f.dateFormat = "yyyy:MM:dd HH:mm:ss"
-        return f.date(from: local)
+        return wall.addingTimeInterval(subsec - Double(offset))
     }
 
     public static func location(_ source: [String: Any]) -> CLLocation? {

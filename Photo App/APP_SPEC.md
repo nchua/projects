@@ -91,7 +91,7 @@ Buffers: planar Float32, row-major H × W, linear sRGB primaries, D65. Notation 
    - `sharpnessAmount = 0`, `contrastAmount = 0`, `detailAmount = 0`, `luminanceNoiseReductionAmount = 0`, `colorNoiseReductionAmount = 0`, `moireReductionAmount = 0`, `exposure = 0`, `isDraftModeEnabled = false`, `scaleFactor = 1`. `baselineExposure` untouched.
    - Orientation: the filter's default (applies the file's). Where an `is…Supported` flag exists and is false, log it and record it in §11; boost/EDR/gamut/neutral have no such flag.
 3. **Resize** to long side `OUT_LONG_SIDE` with `CILanczosScaleTransform` in the linear working space; target `(round(w·s), round(h·s))` with s = 2880 / max(w, h). **v0 asserts both output dimensions are divisible by 4** (4:3, 3:2, 16:9, 1:1 at 2880 all are) so the halation downsample is an exact 4×4 mean (§5.2 step 4).
-4. **Render in horizontal strips** (8 strips, or more for 48 MP) with one shared `CIContext(options: [.workingColorSpace: extendedLinearSRGB, .workingFormat: CIFormat.RGBAf, .cacheIntermediates: false])` into one RGBAf bitmap (`extendedLinearSRGB`), then de-interleave to planar R, G, B. A single full-frame render of a 12 MP file peaks at ~810 MB footprint; 8 strips peak at ~520 MB with identical values. Negative values are kept (Python keeps them until the crosstalk clamp).
+4. **Render in horizontal strips** (16 strips per 12 MP of source, so 64 for 48 MP — measured on the Mac, see §11) with one shared `CIContext(options: [.workingColorSpace: extendedLinearSRGB, .workingFormat: CIFormat.RGBAf, .cacheIntermediates: false])` into one RGBAf bitmap (`extendedLinearSRGB`), then de-interleave to planar R, G, B. A single full-frame render of a 12 MP file peaks at ~810 MB footprint; 8 strips peak at ~520 MB with identical values. Negative values are kept (Python keeps them until the crosstalk clamp).
 5. **Comparison image:** `filter.previewImage` (embedded Apple JPEG, 4032×3024, **not** rotated: apply the file orientation), scaled to 2880 and encoded as JPEG now — the DNG is deleted after the item.
 6. Also return the source metadata (`CGImageSourceCopyPropertiesAtIndex`) for Encode. After the item: drop the filter, `ctx.clearCaches()`.
 
@@ -112,8 +112,8 @@ Inputs: planar linear RGB (H×W), `FilmParams`, LUT, and a seed or an injected n
 ### 5.3 Encode (`Encode.swift`)
 
 - 8-bit RGB `CGImage` tagged sRGB, upright (Orientation 1). `CGImageDestination` JPEG quality 0.95. No gain map / HDR in v0.
-- Copy from the source when present: `DateTimeOriginal`, `SubsecTimeOriginal`, `OffsetTimeOriginal` (absent in IMG_2725), the GPS dictionary including `DateStamp`/`TimeStamp`, Make/Model, lens model, ISO, exposure time, f-number, focal length. Set `Software = "Print <version>"`. Drop thumbnails, MakerNote, orientation and pixel-dimension tags.
-- **Also set `creationDate` and `location` on the `PHAssetCreationRequest`** (don't rely on Photos reading EXIF). Capture time = GPS UTC stamp if present, else DateTimeOriginal (+ OffsetTimeOriginal if present, else the device time zone). M4 confirms both setters work with add-only permission.
+- Copy from the source when present: `DateTimeOriginal`, `SubsecTimeOriginal`, `OffsetTimeOriginal` (present in IMG_2725 and IMG_2732: −07:00), the GPS dictionary including `DateStamp`/`TimeStamp`, Make/Model, lens model, ISO, exposure time, f-number, focal length. Set `Software = "Print <version>"`. Drop thumbnails, MakerNote, orientation and pixel-dimension tags.
+- **Also set `creationDate` and `location` on the `PHAssetCreationRequest`** (don't rely on Photos reading EXIF). Capture time = DateTimeOriginal + SubsecTimeOriginal in OffsetTimeOriginal; with no offset, the zone inferred from the GPS UTC stamp (rounded to 15 min), else the device time zone. Not the GPS stamp itself: it is whole seconds and can lag the shutter (IMG_2725: GPS 23:58:00 vs shutter 23:58:01.384). Verified in the simulator: the saved render lands at exactly the original's time and location with add-only access.
 
 ## 6. Milestones (in order; each ends green before the next)
 
@@ -159,7 +159,7 @@ DNGs from env `PRINT_DNG_DIR` (default `~/Downloads`): IMG_2725 plus the three s
 - Viewer: full-screen render; press-and-hold swaps in the comparison JPEG (labelled "Apple (SDR preview)").
 - Save: request `.addOnly` on first save; `PHAssetCreationRequest.forAsset()`, `addResource(with: .photo, fileURL:)`, set `creationDate`/`location` (§5.3); per-item result; denied → one message with a Settings link.
 - Per-item errors never abort the batch: unreadable, not ProRAW, decode failure, insufficient memory, save failure. (A jetsam kill can't be caught; §7's budget prevents it.)
-- Simulator check: `xcrun simctl addmedia booted ~/Downloads/IMG_2725.DNG` to get a ProRAW into the simulator's library; the simulator is a UI check only, **never** a parity source.
+- Simulator check: `xcrun simctl addmedia booted ~/Downloads/IMG_2725.DNG` to get a ProRAW into the simulator's library and `xcrun simctl privacy booted grant photos-add com.nickchua.print`, then `xcodebuild test -scheme Print -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max'` runs `PrintUITests` (picker → render → viewer → save). The simulator is a UI check only, **never** a parity source.
 - System look, dark background, placeholder icon.
 
 ### M4 — On device
@@ -260,4 +260,16 @@ Verified correct by review: all §5.1 properties exist and are settable; orienta
 
 Post-review fixes (independent /evaluate, B+, 0 errors / 7 warnings): unknown `compare.py` metric names now fail; non-finite decodes and truncated TIFF IFDs fail the item instead of trapping; list thumbnails are 240 px ImageIO thumbnails; save errors shown in the row; Cancel also reaches batches queued behind it; 8-bit quantisation rounds half to even like numpy.
 
-M4 remaining: install on the phone, pick IMG_2725/IMG_2732 there, AirDrop back, `compare.py` vs `out.png`; confirm the picker hands over the DNG, edited-ProRAW behaviour, `creationDate`/`location` with add-only access, timings and peak footprint (Debug rows show them) against §7. 48 MP uses 32 strips (8 per 12 MP) — first guess, measure.
+M4 remaining: install on the phone, pick IMG_2725/IMG_2732 there, AirDrop back, `compare.py` vs `out.png`; confirm the picker hands over the DNG, edited-ProRAW behaviour, `creationDate`/`location` with add-only access, timings and peak footprint (Debug rows show them) against §7. Strips: 16 per 12 MP (64 for 48 MP) after the Mac proxy below; the phone's footprint decides.
+
+**Phone-free follow-up (2026-10-30):**
+
+| Item | Result |
+|---|---|
+| Device compile | `xcodebuild -destination generic/platform=iOS CODE_SIGNING_ALLOWED=NO` builds clean (covers the device-only `os_proc_available_memory` path). Signing/provisioning still waits for the phone. |
+| Strip count (Mac proxy for §7) | Peak footprint, decode → film → JPEG. 12 MP: 1 strip 789 MB, 8 → 683 MB (**over the 600 MB budget**), 12 → 583, 16 → 576, 24 → 562. 48 MP: 1 → 1457, 8 → 1651, 16 → 1169, 32 → 1158, 64 → 1115 MB (floor ≈ 1.1 GB: Core Image's full-res raw decode). Timing unchanged by strips (12 MP decode 0.5 s, 48 MP 1.9 s, film 0.2 s, encode 0.05 s). Now 16 strips per 12 MP. The phone's numbers (M4) decide. |
+| Debug builds | FilmCore unoptimised ran the film model in **91 s** (vs 0.2 s), so Debug runs — Xcode → Run included — looked hung. `Package.swift` now builds FilmCore with `-O` in Debug too (0.23 s). |
+| M3 picker flow | New `PrintUITests` target drives the real PHPicker in the simulator: IMG_2725 + a stock JPEG → DNG renders (12 MP, highlight, decode 1.0 s / film 0.24 s / encode 0.10 s in the simulator), JPEG shows "Not ProRAW (or edited in Photos) — skipped", viewer offers the Apple comparison, Save succeeds with add-only access. Picker elements show in the accessibility dump but queries can't resolve them, so picks are coordinate taps pinned to the iPhone 17 Pro Max simulator (guarded by a dump check). `.current` + `UTType.rawImage` does hand over the DNG. |
+| Capture time | The saved render first landed 1 s early (GPS stamp 23:58:00 vs shutter 23:58:01.384). Now from DateTimeOriginal + subsec + offset (§5.3); Photos.sqlite shows the render at 23:58:01.384, the original's exact time, and the same location. Unit tests cover offset / GPS-inferred / device-zone cases. |
+
+Still needs the phone: signing + install, on-device parity (`compare.py` vs `out.png`), edited-ProRAW behaviour, real timings and peak footprint for 12 and 48 MP.

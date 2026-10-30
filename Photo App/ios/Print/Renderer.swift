@@ -33,7 +33,7 @@ actor Renderer {
     static let software = "Print \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0")"
     /// §7 peak-footprint budgets, used as the free-memory pre-check.
     static let budget12MP: UInt64 = 600 << 20, budget48MP: UInt64 = 1536 << 20
-    static let stripsPer12MP = 8
+    static let stripsPer12MP = 16   // Mac proxy: 8 strips peaked at 683 MB on 12 MP (budget 600), 16 at 576
 
     let model: FilmModel
     let decoder: Decoder
@@ -47,7 +47,7 @@ actor Renderer {
         let pixels = Decoder.nativePixelCount(dng) ?? 12_000_000
         let large = pixels > 20_000_000
         try Self.checkMemory(needed: large ? Self.budget48MP : Self.budget12MP)
-        // Strip count scales with the source size so each strip's intermediates stay ~12 MP / 8
+        // Strip count scales with the source size: 16 per 12 MP (64 for 48 MP)
         let strips = Self.stripsPer12MP * max(1, Int((Double(pixels) / 12_200_000).rounded(.up)))
 
         return try autoreleasepool {

@@ -32,3 +32,21 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UIUserInterfaceStyle: Dark
         INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: Print saves the photos you develop to your library.
+  PrintUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [PrintUITests]
+    dependencies:
+      - target: Print
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nickchua.print.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Print
+schemes:
+  Print:
+    build:
+      targets:
+        Print: all
+    test:
+      targets: [PrintUITests]

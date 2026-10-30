@@ -83,3 +83,50 @@ final class EncodeTests: XCTestCase {
         }
     }
 }
+
+final class CaptureDateTests: XCTestCase {
+    func props(offset: String? = nil, gps: (String, String)? = nil) -> [String: Any] {
+        var exif: [String: Any] = [kCGImagePropertyExifDateTimeOriginal as String: "2026:10:29 16:58:01",
+                                   kCGImagePropertyExifSubsecTimeOriginal as String: "384"]
+        if let offset { exif[kCGImagePropertyExifOffsetTimeOriginal as String] = offset }
+        var out: [String: Any] = [kCGImagePropertyExifDictionary as String: exif]
+        if let gps {
+            out[kCGImagePropertyGPSDictionary as String] = [kCGImagePropertyGPSDateStamp as String: gps.0,
+                                                            kCGImagePropertyGPSTimeStamp as String: gps.1]
+        }
+        return out
+    }
+
+    /// 2026-10-29 23:58:01.384 UTC, IMG_2725's shutter time.
+    let shutter = Date(timeIntervalSince1970: 1_793_318_281.384)
+
+    func testOffsetWins() {
+        XCTAssertEqual(Encoder.captureDate(props(offset: "-07:00", gps: ("2026:10:29", "23:58:00")))!.timeIntervalSince1970,
+                       shutter.timeIntervalSince1970, accuracy: 1e-3)
+    }
+
+    func testOffsetBeatsDisagreeingGPS() {
+        // GPS says UTC−5; the explicit offset (+05:30, east, half-hour) must win
+        let date = Encoder.captureDate(props(offset: "+05:30", gps: ("2026:10:29", "21:58:00")))!
+        XCTAssertEqual(date.timeIntervalSince1970, shutter.timeIntervalSince1970 - 12.5 * 3600, accuracy: 1e-3)
+    }
+
+    func testPaddedSubsec() {
+        var p = props(offset: "-07:00")
+        var exif = p[kCGImagePropertyExifDictionary as String] as! [String: Any]
+        exif[kCGImagePropertyExifSubsecTimeOriginal as String] = "384 "
+        p[kCGImagePropertyExifDictionary as String] = exif
+        XCTAssertEqual(Encoder.captureDate(p)!.timeIntervalSince1970, shutter.timeIntervalSince1970, accuracy: 1e-3)
+    }
+
+    func testOffsetInferredFromGPS() {
+        XCTAssertEqual(Encoder.captureDate(props(gps: ("2026:10:29", "23:57:59.50")))!.timeIntervalSince1970,
+                       shutter.timeIntervalSince1970, accuracy: 1e-3)
+    }
+
+    func testDeviceZoneLast() {
+        let zone = TimeZone(secondsFromGMT: -7 * 3600)!
+        XCTAssertEqual(Encoder.captureDate(props(), timeZone: zone)!.timeIntervalSince1970,
+                       shutter.timeIntervalSince1970, accuracy: 1e-3)
+    }
+}

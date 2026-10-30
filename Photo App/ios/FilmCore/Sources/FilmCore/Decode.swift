@@ -74,7 +74,7 @@ public final class Decoder: @unchecked Sendable {
     }
 
     /// Gates on ProRAW itself (§5.1.1), so callers don't need to.
-    public func decode(_ url: URL, strips: Int = 8) throws -> DecodedPhoto {
+    public func decode(_ url: URL, strips: Int = 16) throws -> DecodedPhoto {
         guard Self.isProRAW(url) else { throw DecodeError.notProRAW }
         guard let filter = CIRAWFilter(imageURL: url) else { throw DecodeError.unreadable }
         defer { context.clearCaches() }
