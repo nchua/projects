@@ -277,7 +277,7 @@ The first version built to the principles instead of matched to colors. It rende
 | Vignette, halation | In light, before the film. Halation comes from light more than 3 stops over mid grey, blurred and returned mostly into red, so it scales with how bright the source really is | 4 |
 | Grain | Monochrome noise of 0.20 stops in the *negative*, nearly per-pixel (σ 0.4 px). The print curve's slope shapes it, so it peaks in the mids with no weighting rule | 5 |
 | Print | One curve (stops → L\*: grey at 42, toe near L\* 1, paper white ~92) applied to each channel separately. Its neutral axis is the measured Chromagraph grey scale. Per-channel curves make color shift with density the way film does | 2, 4 |
-| Output | 6 MP, box-filtered in linear light, never sharpened | 5 |
+| Output | 6 MP, Lanczos-resized in linear light, never sharpened. (A box filter at the non-integer 12 → 6 MP ratio softened fine detail, which the old coarse grain had been hiding.) A 48 MP ProRAW gives a crisper 6 MP than a 12 MP one | 5 |
 
 **Calibration, without per-scene rules:**
 - **Grain:** the midtone peak comes from the print curve's slope alone, which is a check that the physical model is right. Size and strength are fit to Chromagraph's flat walls by scale. At L\* 32 / 47, Chromagraph measures fine 4.5 / 5.1 and medium 1.0 / 1.1. 0.20 stops at σ 0.4 px gives fine ~4.6 / 5.0 and medium ~0.9 / 1.0. The first setting (0.23 stops at σ 0.9 px) matched the overall amount but put twice the energy into 2–4 px clumps (medium 2.2 vs 1.0), so it read as much grainier at phone size.

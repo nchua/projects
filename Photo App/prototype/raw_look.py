@@ -89,8 +89,9 @@ def orient(img: np.ndarray, orientation: int) -> np.ndarray:
 
 
 def resize(img: np.ndarray, size: tuple[int, int]) -> np.ndarray:
-    """Area-style resize of a float H×W×C array in linear light (no sharpening)."""
-    return np.stack([np.asarray(Image.fromarray(img[..., c]).resize(size, Image.BOX)) for c in range(img.shape[2])], -1)
+    """Lanczos resize of a float H×W×C array in linear light. No sharpening is added, but a box filter
+    at a non-integer ratio (12 MP -> 6 MP) visibly softens fine detail, and Lanczos doesn't."""
+    return np.stack([np.asarray(Image.fromarray(img[..., c]).resize(size, Image.LANCZOS)) for c in range(img.shape[2])], -1)
 
 
 def blur(x: np.ndarray, sigma: float) -> np.ndarray:
