@@ -1,9 +1,9 @@
 # Print — iPhone app spec (v0)
 
-**Status:** reviewed, ready to execute · 2026-10-29 · rev 2 (after adversarial review, §11) · working name "Print" (placeholder; renaming is a one-line change in `project.yml`)
+**Status:** reviewed, ready to execute · 2026-10-29 · rev 3 (rev 2 = adversarial review; rev 3 = metering cap, §11) · working name "Print" (placeholder; renaming is a one-line change in `project.yml`)
 **Goal:** run the v2 film model (`prototype/raw_look.py`, documented in `LOOK.md` → "v2") on the phone, on ProRAW photos already in the library, with output that matches the Python reference. No server, no network, no Claude/API at runtime.
 
-**Before the execution session, the user shoots (ProRAW, 48 MP):** (1) daylight with blue sky, (2) indoor under warm lamps / tungsten, (3) a portrait. AirDrop the DNGs to `~/Downloads`. They are needed for M2's validation (§6) and never enter git.
+**Before the execution session, the user shoots (ProRAW, 48 MP):** (1) daylight with blue sky, (2) indoor under warm lamps / tungsten — **done: `~/Downloads/IMG_2732.DNG`** (hallway under warm ceiling lights; the average-capped metering was added because of it), (3) a portrait. AirDrop the DNGs to `~/Downloads`. They are needed for M2's validation (§6) and never enter git.
 
 ---
 
@@ -99,7 +99,7 @@ Buffers: planar Float32, row-major H × W, linear sRGB primaries, D65. Notation 
 
 Inputs: planar linear RGB (H×W), `FilmParams`, LUT, and a seed or an injected noise field (tests).
 
-1. **Meter.** `lum = Σ lumaᵢ · cᵢ`. `p = percentile(lum, HIGHLIGHT_PERCENTILE)` with numpy's default *linear* method: with N pixels, rank `q = (N − 1) · P/100`; select order statistics ⌊q⌋ and ⌊q⌋+1 (quickselect on a copy, both needed) and interpolate with t = q − ⌊q⌋. No histogram approximation. `k = MID_GREY · 2^HIGHLIGHT_STOPS / max(p, 1e-6)`; multiply all channels by k.
+1. **Meter.** `lum = Σ lumaᵢ · cᵢ`. `p = percentile(lum, HIGHLIGHT_PERCENTILE)` with numpy's default *linear* method: with N pixels, rank `q = (N − 1) · P/100`; select order statistics ⌊q⌋ and ⌊q⌋+1 (quickselect on a copy, both needed) and interpolate with t = q − ⌊q⌋. No histogram approximation. `k_highlight = MID_GREY · 2^HIGHLIGHT_STOPS / max(p, 1e-6)`. `k_average = MID_GREY · 2^AVERAGE_STOPS / exp(mean(ln(max(lum, 1e-6))))` (accumulate the mean in Double: 6 M terms). `k = min(k_highlight, k_average)`; multiply all channels by k. `meta.json` records both k values and which one won.
 2. **Crosstalk.** `rgb ← CROSSTALK · rgb` (the final 3×3 from the JSON), then clamp each channel to `≥ CLAMP_FLOOR` (1e-7).
 3. **Vignette.** For **integer** pixel indices x, y (as `np.ogrid`; not pixel centres): `r = hypot((x − W/2)/(W/2), (y − H/2)/(H/2)) / √2`; `gain = 2^(−VIGNETTE_STOPS · smoothstep(r, VIGNETTE_START, VIGNETTE_END)^VIGNETTE_POWER)`. Gain map precomputed per size.
 4. **Halation.** `lum` of the vignetted rgb; `excess = max(lum − MID_GREY · 2^HALATION_STOPS, 0)`; `glow = wide_blur(excess, HALATION_SIGMA · max(H, W))`; `rgb += HALATION_STRENGTH · glow · HALATION_TINT`.
@@ -244,3 +244,5 @@ Adversarial review, 2026-10-29: two independent reviewers, one on Apple-platform
 | Milestones can't all finish if parity fails or the phone is absent | §10 order; M3 independent of M2; XCTExpectFailure rule |
 
 Verified correct by review: all §5.1 properties exist and are settable; orientation applied by default; `scaleFactor` semantics; unclamped EDR-0 output; RGBAf honoured; `CIContext` Sendable; `swift test` can run CIRAWFilter; PHPicker needs no permission; grain normalisation (Σk² = 0.84824) and lag-1 autocorrelation; PIL BILINEAR formula; blur radii; np.interp clamping; float32 LUT is lossless enough; M0 bit-identical refactor is achievable.
+
+**Rev 3 (2026-10-29, after the tungsten DNG):** highlight-only metering overexposed an evenly lit hallway by ~2.4 stops (p99.5 only 2.6 stops over the median). `raw_look.py` now caps exposure at a log-average-at-mid-grey exposure (`AVERAGE_STOPS = 0`); §5.2 step 1 updated. IMG_2725 renders byte-identically (its highlight meter is 1.4 stops under the cap), so existing references stand. Parity tests must cover both branches: IMG_2725 (highlight wins) and IMG_2732 (average wins).

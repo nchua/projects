@@ -272,7 +272,7 @@ The first version built to the principles instead of matched to colors. It rende
 | Stage | v2 | Principle |
 |---|---|---|
 | White balance | Fixed D65 from the DNG's own daylight color matrix. Apple's auto white balance (stored in AnalogBalance) and its brightening (BaselineExposure, +3.5 EV on the first test) are ignored | 1 |
-| Exposure | The 99.5th-percentile highlight goes 5 stops above mid grey, on the print's shoulder | 3 |
+| Exposure | The 99.5th-percentile highlight goes 5 stops above mid grey, on the print's shoulder, but exposure is capped where the scene's log-average luminance sits at mid grey. Highlight metering only ever pulls exposure down (see the tungsten hallway below) | 3 |
 | Dye crosstalk | Blue leaks 12% into green (teal skies), then a 15% saturation boost; rows sum to 1, so neutrals are untouched | 2 |
 | Vignette, halation | In light, before the film. Halation comes from light more than 3 stops over mid grey, blurred and returned mostly into red, so it scales with how bright the source really is | 4 |
 | Grain | Monochrome noise of 0.20 stops in the *negative*, nearly per-pixel (σ 0.4 px). The print curve's slope shapes it, so it peaks in the mids with no weighting rule | 5 |
@@ -296,7 +296,9 @@ The first version built to the principles instead of matched to colors. It rende
 | High-pass energy | 7.4 | **5.2** | 4.5–5.4 |
 | Grain on a flat floor at L\* 32, fine / medium | — | **5.0 / 1.1** | 4.5 / 1.0 (Chromagraph wall, L\* 32) |
 
-**Not validated yet:** there's no Chromagraph twin of a RAW file, so the scores are against the fingerprint ranges and the behavior table only. Night, tungsten, mixed light, halation against black and real skin from RAW are all untested. The skin and sky fits used display-referred stock colors as stand-ins for scene light. Running v2 on an already-processed HEIC isn't meaningful: it renders the portrait far too bright (cheek at L\* 75), because Apple has already compressed the scene's range.
+**Second DNG: tungsten hallway** (48 MP, warm ceiling lights, AnalogBalance 1.37 / 1 / 3.68). Highlight metering alone failed here: the brightest 0.5 % sat only 2.6 stops above the median (vs 7.1 in the window room), so pinning it to paper white overexposed the whole frame by ~2.4 stops (median L\* 63.6 vs Apple 54.4, black floor lifted to L\* 11). Overexposed tungsten then rode the per-channel shoulder into flat yellow (hue 81°, chroma 65). With the log-average cap: median 41.5 (Apple −13, the same darkening Chromagraph applied to the night alley), black floor 3.2, walls amber at hue ~72°, chroma ~50; the window room renders byte-identically because its highlight meter already sat 1.4 stops under the cap. Still open: Chromagraph's lamp-lit alley walls landed at hue 46° (more orange-red) — that was sodium/tungsten street light, so it isn't a like-for-like target, and the blue towel goes grey-violet, which is physically what a fixed daylight balance does to blue under warm light.
+
+**Not validated yet:** there's no Chromagraph twin of a RAW file, so the scores are against the fingerprint ranges and the behavior table only. Night, mixed light, halation against black and real skin from RAW are all untested. The skin and sky fits used display-referred stock colors as stand-ins for scene light. Running v2 on an already-processed HEIC isn't meaningful: it renders the portrait far too bright (cheek at L\* 75), because Apple has already compressed the scene's range.
 
 ## Reproduce
 

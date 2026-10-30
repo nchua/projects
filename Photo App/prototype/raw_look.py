@@ -1,8 +1,8 @@
 """The look, v2: a fixed negative -> print rendering of an iPhone ProRAW DNG (see LOOK.md, "The soul").
 
 Nothing here adapts to the scene except exposure, which is metered for the highlights the way a
-cinematographer would spot-meter the brightest thing that matters. Everything else is one fixed
-rendering applied to scene-linear light:
+cinematographer would spot-meter the brightest thing that matters, but never set brighter than a
+normal average exposure. Everything else is one fixed rendering applied to scene-linear light:
 
   DNG camera RGB -> XYZ at a fixed daylight white (Apple's auto white balance is ignored)
   -> linear sRGB -> dye crosstalk -> vignette + halation (in light, before the film)
@@ -34,6 +34,11 @@ _XYZ_TO_SRGB = np.linalg.inv(np.array([[0.4124, 0.3576, 0.1805], [0.2126, 0.7152
 # mid grey (0.18). That's on the print's shoulder, so it holds just under paper white.
 HIGHLIGHT_PERCENTILE = 99.5
 HIGHLIGHT_STOPS = 5.0
+# ...but highlight metering only ever pulls exposure down. In an evenly lit scene the brightest areas
+# are only ~2.5 stops over the average (a tungsten hallway), and pinning them to paper white would
+# overexpose everything by ~2.5 stops. So exposure is capped where the scene's log-average luminance
+# lands this many stops from mid grey ("normal" exposure)
+AVERAGE_STOPS = 0.0
 
 # Print curve: stops from mid grey -> L*. Dmax toe near L* 1, dense mids (grey at 42), paper white ~92
 TONE_STOPS = [-12.0, -7.0, -5.0, -3.5, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 12.0]
@@ -132,9 +137,11 @@ def render(rgb: np.ndarray, seed: int = 0) -> np.ndarray:
     rgb = resize(rgb, (round(w * scale), round(h * scale)))
     h, w = rgb.shape[:2]
 
-    # Exposure, metered for the highlights
+    # Exposure, metered for the highlights, never brighter than normal
     lum = rgb @ np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
-    rgb = rgb * (0.18 * 2**HIGHLIGHT_STOPS / max(np.percentile(lum, HIGHLIGHT_PERCENTILE), 1e-6))
+    k_highlight = 0.18 * 2**HIGHLIGHT_STOPS / max(np.percentile(lum, HIGHLIGHT_PERCENTILE), 1e-6)
+    k_average = 0.18 * 2**AVERAGE_STOPS / np.exp(np.mean(np.log(np.maximum(lum, 1e-6))))
+    rgb = rgb * min(k_highlight, k_average)
     rgb = np.clip(rgb @ CROSSTALK.T, 1e-7, None)
 
     # Lens and film, in light
