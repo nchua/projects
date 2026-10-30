@@ -19,6 +19,7 @@ import sys
 
 import numpy as np
 import rawpy
+from colorspace import LUMA as LUMA_64
 from colorspace import lab_to_rgb
 from look import pchip, smoothstep
 from numpy.lib.stride_tricks import sliding_window_view
@@ -68,6 +69,16 @@ GRAIN_STOPS = 0.20           # grain std in the negative; the print curve's slop
 GRAIN_SIGMA = 0.4            # clump size in output px: near per-pixel, like Chromagraph's fine grain
 OUT_LONG_SIDE = 2880         # 6 MP, like Chromagraph
 
+# Structural constants of the model (named so the app can load them from film_params.json, see APP_SPEC.md §2)
+LUMA = LUMA_64.astype(np.float32)   # Rec.709 luminance weights, float32 like the image
+MID_GREY = 0.18
+METER_FLOOR = 1e-6           # floor on luminance before the percentile and log-average
+CLAMP_FLOOR = 1e-7           # floor on light after crosstalk, so log2 stays finite
+VIGNETTE_START, VIGNETTE_END, VIGNETTE_POWER = 0.45, 1.0, 1.5   # radius (corner = 1) where falloff starts / ends
+HALATION_DOWNSAMPLE = 4      # wide_blur works at 1/4 size
+BLUR_TRUNCATION = 3          # Gaussian kernels are cut at this many sigma
+LUT_SIZE = 4096              # print LUT samples over TONE_STOPS[0]..TONE_STOPS[-1]
+
 
 def read_dng(path: str) -> tuple[np.ndarray, int]:
     """Linear camera RGB in [0, 1] (unrotated) and the EXIF orientation."""
@@ -101,7 +112,7 @@ def resize(img: np.ndarray, size: tuple[int, int]) -> np.ndarray:
 
 def blur(x: np.ndarray, sigma: float) -> np.ndarray:
     """Separable Gaussian blur of a 2-D float array."""
-    r = max(1, int(3 * sigma))
+    r = max(1, int(BLUR_TRUNCATION * sigma))
     k = np.exp(-0.5 * (np.arange(-r, r + 1) / sigma) ** 2)
     k /= k.sum()
     for axis in (0, 1):
@@ -111,10 +122,11 @@ def blur(x: np.ndarray, sigma: float) -> np.ndarray:
 
 
 def wide_blur(x: np.ndarray, sigma: float) -> np.ndarray:
-    """Gaussian blur for large sigma: blur at 1/4 size, then scale back up."""
+    """Gaussian blur for large sigma: blur at 1/HALATION_DOWNSAMPLE size, then scale back up."""
     h, w = x.shape
-    small = np.asarray(Image.fromarray(x.astype(np.float32)).resize((w // 4, h // 4), Image.BOX))
-    return np.asarray(Image.fromarray(blur(small, sigma / 4).astype(np.float32)).resize((w, h), Image.BILINEAR))
+    d = HALATION_DOWNSAMPLE
+    small = np.asarray(Image.fromarray(x.astype(np.float32)).resize((w // d, h // d), Image.BOX))
+    return np.asarray(Image.fromarray(blur(small, sigma / d).astype(np.float32)).resize((w, h), Image.BILINEAR))
 
 
 def print_lut() -> tuple[np.ndarray, np.ndarray]:
@@ -122,7 +134,7 @@ def print_lut() -> tuple[np.ndarray, np.ndarray]:
 
     For a neutral (all channels at the same stops) the result lands exactly on the print's grey scale.
     """
-    stops = np.linspace(TONE_STOPS[0], TONE_STOPS[-1], 4096)
+    stops = np.linspace(TONE_STOPS[0], TONE_STOPS[-1], LUT_SIZE)
     L = pchip(stops, TONE_STOPS, TONE_L)
     lab = np.stack([L, pchip(L, AXIS_L, AXIS_A), pchip(L, AXIS_L, AXIS_B)], -1)
     srgb = lab_to_rgb(lab[None])[0]
@@ -130,33 +142,53 @@ def print_lut() -> tuple[np.ndarray, np.ndarray]:
     return stops, lin
 
 
-def render(rgb: np.ndarray, seed: int = 0) -> np.ndarray:
-    """Scene-linear sRGB (H×W×3, upright) -> display sRGB in [0, 1] at 6 MP."""
+def prepare(rgb: np.ndarray) -> np.ndarray:
+    """Scene-linear sRGB (H×W×3, upright) -> the same at 6 MP (Lanczos, negatives kept)."""
     h, w = rgb.shape[:2]
     scale = OUT_LONG_SIDE / max(h, w)
-    rgb = resize(rgb, (round(w * scale), round(h * scale)))
+    return resize(rgb, (round(w * scale), round(h * scale)))
+
+
+def meter(rgb: np.ndarray) -> tuple[float, float]:
+    """(k_highlight, k_average): exposure metered for the highlights, and the cap at a normal exposure."""
+    lum = rgb @ LUMA
+    k_highlight = MID_GREY * 2**HIGHLIGHT_STOPS / max(np.percentile(lum, HIGHLIGHT_PERCENTILE), METER_FLOOR)
+    k_average = MID_GREY * 2**AVERAGE_STOPS / np.exp(np.mean(np.log(np.maximum(lum, METER_FLOOR))))
+    return k_highlight, k_average
+
+
+def grain_field(h: int, w: int, seed: int = 0) -> np.ndarray:
+    """Monochrome grain: white noise blurred to the grain size (film() scales it to unit std)."""
+    return blur(np.random.default_rng(seed).standard_normal((h, w)), GRAIN_SIGMA)
+
+
+def film(rgb: np.ndarray, noise: np.ndarray | None, stages: dict | None = None) -> np.ndarray:
+    """6 MP scene-linear sRGB -> display sRGB in [0, 1]. noise=None renders without grain.
+
+    If given, `stages` is filled with the intermediate results the app's parity tests compare against.
+    """
     h, w = rgb.shape[:2]
 
     # Exposure, metered for the highlights, never brighter than normal
-    lum = rgb @ np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
-    k_highlight = 0.18 * 2**HIGHLIGHT_STOPS / max(np.percentile(lum, HIGHLIGHT_PERCENTILE), 1e-6)
-    k_average = 0.18 * 2**AVERAGE_STOPS / np.exp(np.mean(np.log(np.maximum(lum, 1e-6))))
+    k_highlight, k_average = meter(rgb)
     rgb = rgb * min(k_highlight, k_average)
-    rgb = np.clip(rgb @ CROSSTALK.T, 1e-7, None)
+    rgb = np.clip(rgb @ CROSSTALK.T, CLAMP_FLOOR, None)
 
     # Lens and film, in light
     y, x = np.ogrid[0:h, 0:w]
     r = np.hypot((x - w / 2) / (w / 2), (y - h / 2) / (h / 2)) / np.sqrt(2)
-    rgb = rgb * (2 ** (-VIGNETTE_STOPS * smoothstep(r, 0.45, 1.0) ** 1.5))[..., None]
-    lum = rgb @ np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
-    excess = np.clip(lum - 0.18 * 2**HALATION_STOPS, 0, None)
+    rgb = rgb * (2 ** (-VIGNETTE_STOPS * smoothstep(r, VIGNETTE_START, VIGNETTE_END) ** VIGNETTE_POWER))[..., None]
+    lum = rgb @ LUMA
+    excess = np.clip(lum - MID_GREY * 2**HALATION_STOPS, 0, None)
     glow = wide_blur(excess, HALATION_SIGMA * max(h, w))
     rgb = rgb + (HALATION_STRENGTH * glow)[..., None] * HALATION_TINT
 
     # Negative: exposure in stops, plus monochrome grain
-    stops = np.log2(rgb / 0.18)
-    noise = blur(np.random.default_rng(seed).standard_normal((h, w)), GRAIN_SIGMA)
-    stops = stops + (GRAIN_STOPS * noise / noise.std())[..., None]
+    stops = np.log2(rgb / MID_GREY)
+    if stages is not None:
+        stages.update(k_highlight=float(k_highlight), k_average=float(k_average), glow=glow, stops_pregrain=stops)
+    if noise is not None:
+        stops = stops + (GRAIN_STOPS * noise / noise.std())[..., None]
 
     # Print
     lut_x, lut_rgb = print_lut()
@@ -164,11 +196,22 @@ def render(rgb: np.ndarray, seed: int = 0) -> np.ndarray:
     return np.where(lin <= 0.0031308, lin * 12.92, 1.055 * np.clip(lin, 0, 1) ** (1 / 2.4) - 0.055)
 
 
+def render(rgb: np.ndarray, seed: int = 0) -> np.ndarray:
+    """Scene-linear sRGB (H×W×3, upright) -> display sRGB in [0, 1] at 6 MP."""
+    rgb = prepare(rgb)
+    return film(rgb, grain_field(*rgb.shape[:2], seed))
+
+
+def to_8bit(img: np.ndarray) -> np.ndarray:
+    """Display sRGB float -> 8-bit levels (numpy rounds half to even; the app does too)."""
+    return (np.clip(img, 0, 1) * 255).round().astype(np.uint8)
+
+
 def develop(path: str, seed: int = 0) -> Image.Image:
     """DNG path -> the rendered 6 MP image."""
     rgb, orientation = read_dng(path)
     out = render(orient(rgb, orientation).copy(), seed)
-    return Image.fromarray((np.clip(out, 0, 1) * 255).round().astype(np.uint8))
+    return Image.fromarray(to_8bit(out))
 
 
 if __name__ == "__main__":

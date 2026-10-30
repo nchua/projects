@@ -267,6 +267,8 @@ The **targets** carry over: every number in "What holds across all three scenes"
 
 ## v2: the film model on RAW (`prototype/raw_look.py`)
 
+On the phone: the iPhone app "Print" (`ios/`, spec `APP_SPEC.md`) runs this exact model, with its constants exported from `raw_look.py` by `export_film.py`.
+
 The first version built to the principles instead of matched to colors. It renders an iPhone ProRAW DNG with one fixed chain. The only thing that adapts to the scene is exposure, which is metered for the highlights:
 
 | Stage | v2 | Principle |

@@ -1,3 +1,8 @@
 # Reference photos are personal; kept local only (see LOOK.md)
 refs/
 .venv/
+fixtures/
+.build/
+.swiftpm/
+xcuserdata/
+ios/build/
