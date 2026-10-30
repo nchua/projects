@@ -203,7 +203,7 @@ The living room (no stock pair) confirms which parts are baked in:
   | Under sofa | 14 | 3.1 | 0.7 |
   | Blind (highlight) | 84 | 3.1 | 1.3 |
 
-  So the grain is **monochrome** (luma 4–10× chroma), **peaks in the midtones** and tapers into both the shadows and the highlights. At 6 MP it clumps over about 2–3 px rather than varying per pixel. Chroma noise is essentially gone, which fits a multi-frame merge that cleans the color before grain goes on. The app exposes this as Amplitude (1.25 in their screenshot), Grain Size (1.00) and "Force Pixel Size Grain".
+  So the grain is **monochrome** (luma 4–10× chroma), **peaks in the midtones** and tapers into both the shadows and the highlights. At 6 MP it is **fine, close to per-pixel**. Split by scale on flat walls (std of luma at < 1.5 px vs 1.5–4 px): 4.5–5.1 fine against only ~1.0 medium. (An earlier version said it clumps over 2–3 px; the scale split showed that was wrong, and v2's first grain came out visibly blotchy because of it.) Chroma noise is essentially gone, which fits a multi-frame merge that cleans the color before grain goes on. The app exposes this as Amplitude (1.25 in their screenshot), Grain Size (1.00) and "Force Pixel Size Grain".
 - **Halation:** a red-brown fringe where bright surfaces meet dark ones (the truck roof edge, the van windshield frame). It's **subtle in daylight**: in the living room, even the lamp globes in front of the sunlit blind show only a faint warm bleed, not a glowing halo. At night, against black, the same effect becomes a strong red bloom (see Night). So drive it from actual light levels; don't fix its strength.
 - **Vignette (likely):** both shots have darker, rounded corners. It's strongest in the living room's top-left and bottom corners and in the street's top-left. It could be deliberately added or lens shading left uncorrected from RAW; either way it belongs in the look. (The room's own lighting falls off too, so this is a visual call, not a measured one.)
 
@@ -275,12 +275,12 @@ The first version built to the principles instead of matched to colors. It rende
 | Exposure | The 99.5th-percentile highlight goes 5 stops above mid grey, on the print's shoulder | 3 |
 | Dye crosstalk | Blue leaks 12% into green (teal skies), then a 15% saturation boost; rows sum to 1, so neutrals are untouched | 2 |
 | Vignette, halation | In light, before the film. Halation comes from light more than 3 stops over mid grey, blurred and returned mostly into red, so it scales with how bright the source really is | 4 |
-| Grain | Monochrome noise of 0.23 stops in the *negative*. The print curve's slope shapes it, so it peaks in the mids with no weighting rule | 5 |
+| Grain | Monochrome noise of 0.20 stops in the *negative*, nearly per-pixel (σ 0.4 px). The print curve's slope shapes it, so it peaks in the mids with no weighting rule | 5 |
 | Print | One curve (stops → L\*: grey at 42, toe near L\* 1, paper white ~92) applied to each channel separately. Its neutral axis is the measured Chromagraph grey scale. Per-channel curves make color shift with density the way film does | 2, 4 |
 | Output | 6 MP, box-filtered in linear light, never sharpened | 5 |
 
 **Calibration, without per-scene rules:**
-- **Grain:** flat grey patches rendered through the print curve with 0.23 stops of negative grain give luma grain of 3.6 / 4.2 / 5.5 / 3.3 at L\* 18 / 24 / 52 / 84. The living room measured 3.1–4.2 / 4.7 / 5.7 / 3.1. The midtone peak comes from the curve's slope alone, which is a check that the physical model is right.
+- **Grain:** the midtone peak comes from the print curve's slope alone, which is a check that the physical model is right. Size and strength are fit to Chromagraph's flat walls by scale. At L\* 32 / 47, Chromagraph measures fine 4.5 / 5.1 and medium 1.0 / 1.1. 0.20 stops at σ 0.4 px gives fine ~4.6 / 5.0 and medium ~0.9 / 1.0. The first setting (0.23 stops at σ 0.9 px) matched the overall amount but put twice the energy into 2–4 px clumps (medium 2.2 vs 1.0), so it read as much grainier at phone size.
 - **Color:** a small grid search over the dye crosstalk, the saturation and the mid warmth. Its targets were the street and Toronto stock skies, which Chromagraph renders at 225° and 226°, plus a skin color that should stay warm. Result: skies at 222° / 225°, skin at hue 51–56° with chroma ~22. The first version had used the full measured mid warmth (b\* +4.5) and some desaturation, which turned skin yellow-grey (hue 61°, chroma 18) and skies grey-cyan (200°, chroma 7). Mid warmth varied with white balance across scenes (b\* −1 to +7), so v2 keeps it light (+3). Only the cream paper white and the upper-mid green held everywhere.
 
 **First DNG** (iPhone 17 Pro Max, ProRAW, ISO 64: a dim room looking out a window at daylight), compared with Apple's own rendering of the same file:
@@ -294,7 +294,7 @@ The first version built to the principles instead of matched to colors. It rende
 | Upper-mid a\* | +0.9 | **−2.7** | −3.1 to −5.2 (slightly weak) |
 | p90 chroma | 26.5 | **25.2** | 14–24 (slightly high) |
 | High-pass energy | 7.4 | **5.2** | 4.5–5.4 |
-| Flat-area grain | 1.6 | **2.9** | 2.5–5.2 |
+| Grain on a flat floor at L\* 32, fine / medium | — | **5.0 / 1.1** | 4.5 / 1.0 (Chromagraph wall, L\* 32) |
 
 **Not validated yet:** there's no Chromagraph twin of a RAW file, so the scores are against the fingerprint ranges and the behavior table only. Night, tungsten, mixed light, halation against black and real skin from RAW are all untested. The skin and sky fits used display-referred stock colors as stand-ins for scene light. Running v2 on an already-processed HEIC isn't meaningful: it renders the portrait far too bright (cheek at L\* 75), because Apple has already compressed the scene's range.
 

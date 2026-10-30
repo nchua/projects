@@ -59,8 +59,8 @@ HALATION_STOPS = 3.0         # light more than this many stops over mid grey sca
 HALATION_SIGMA = 0.006       # glow radius, as a fraction of the image's long side
 HALATION_STRENGTH = 0.12     # share of the excess light that returns, almost all of it into red
 HALATION_TINT = np.array([1.0, 0.22, 0.0])
-GRAIN_STOPS = 0.23           # grain std in the negative; the print curve's slope shapes it (mid-weighted)
-GRAIN_SIGMA = 0.9            # clump size in output px
+GRAIN_STOPS = 0.20           # grain std in the negative; the print curve's slope shapes it (mid-weighted)
+GRAIN_SIGMA = 0.4            # clump size in output px: near per-pixel, like Chromagraph's fine grain
 OUT_LONG_SIDE = 2880         # 6 MP, like Chromagraph
 
 
