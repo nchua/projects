@@ -265,6 +265,39 @@ Tolerances (look − target): tone ±2 L\* (median ±3), clipped ±0.1 pp, cast 
 
 The **targets** carry over: every number in "What holds across all three scenes" and the scorecard's target column. The color stages (hue, chroma ceiling, neutral axis), grain, halation and vignette carry over as starting points. The **tone anchors don't**: they're a stock-JPEG → look transfer, so they also undo Apple's curve. From RAW, the tone stage becomes a scene-linear → print curve, built as a negative → print model per the Intent section, that has a toe reaching L\* ~1–2 in deep shade (p1 1–7 depending on the scene), paper white of ~87–91, exposure placed for the highlights, a fixed white balance and no per-scene brightening. Check it against the behavior table under "The soul" as well as against these numbers.
 
+## v2: the film model on RAW (`prototype/raw_look.py`)
+
+The first version built to the principles instead of matched to colors. It renders an iPhone ProRAW DNG with one fixed chain. The only thing that adapts to the scene is exposure, which is metered for the highlights:
+
+| Stage | v2 | Principle |
+|---|---|---|
+| White balance | Fixed D65 from the DNG's own daylight color matrix. Apple's auto white balance (stored in AnalogBalance) and its brightening (BaselineExposure, +3.5 EV on the first test) are ignored | 1 |
+| Exposure | The 99.5th-percentile highlight goes 5 stops above mid grey, on the print's shoulder | 3 |
+| Dye crosstalk | Blue leaks 12% into green (teal skies), then a 15% saturation boost; rows sum to 1, so neutrals are untouched | 2 |
+| Vignette, halation | In light, before the film. Halation comes from light more than 3 stops over mid grey, blurred and returned mostly into red, so it scales with how bright the source really is | 4 |
+| Grain | Monochrome noise of 0.23 stops in the *negative*. The print curve's slope shapes it, so it peaks in the mids with no weighting rule | 5 |
+| Print | One curve (stops → L\*: grey at 42, toe near L\* 1, paper white ~92) applied to each channel separately. Its neutral axis is the measured Chromagraph grey scale. Per-channel curves make color shift with density the way film does | 2, 4 |
+| Output | 6 MP, box-filtered in linear light, never sharpened | 5 |
+
+**Calibration, without per-scene rules:**
+- **Grain:** flat grey patches rendered through the print curve with 0.23 stops of negative grain give luma grain of 3.6 / 4.2 / 5.5 / 3.3 at L\* 18 / 24 / 52 / 84. The living room measured 3.1–4.2 / 4.7 / 5.7 / 3.1. The midtone peak comes from the curve's slope alone, which is a check that the physical model is right.
+- **Color:** a small grid search over the dye crosstalk, the saturation and the mid warmth. Its targets were the street and Toronto stock skies, which Chromagraph renders at 225° and 226°, plus a skin color that should stay warm. Result: skies at 222° / 225°, skin at hue 51–56° with chroma ~22. The first version had used the full measured mid warmth (b\* +4.5) and some desaturation, which turned skin yellow-grey (hue 61°, chroma 18) and skies grey-cyan (200°, chroma 7). Mid warmth varied with white balance across scenes (b\* −1 to +7), so v2 keeps it light (+3). Only the cream paper white and the upper-mid green held everywhere.
+
+**First DNG** (iPhone 17 Pro Max, ProRAW, ISO 64: a dim room looking out a window at daylight), compared with Apple's own rendering of the same file:
+
+| | Apple | **v2** | Chromagraph range |
+|---|---|---|---|
+| Median L\* (the room) | 26.9 | **19.7** | — (the view holds, the room falls: behavior ✓) |
+| p99 L\* | 96.2 | **86.6** | 86–91 |
+| Clipped | 0.39% | **0%** | 0% |
+| Highlight b\* | +0.2 | **+11.0** | +10.0 to +11.5 |
+| Upper-mid a\* | +0.9 | **−2.7** | −3.1 to −5.2 (slightly weak) |
+| p90 chroma | 26.5 | **25.2** | 14–24 (slightly high) |
+| High-pass energy | 7.4 | **5.2** | 4.5–5.4 |
+| Flat-area grain | 1.6 | **2.9** | 2.5–5.2 |
+
+**Not validated yet:** there's no Chromagraph twin of a RAW file, so the scores are against the fingerprint ranges and the behavior table only. Night, tungsten, mixed light, halation against black and real skin from RAW are all untested. The skin and sky fits used display-referred stock colors as stand-ins for scene light. Running v2 on an already-processed HEIC isn't meaningful: it renders the portrait far too bright (cheek at L\* 75), because Apple has already compressed the scene's range.
+
 ## Reproduce
 
 Requires Python ≥ 3.10 with numpy and Pillow, plus macOS `sips`. Run from the repo root.
@@ -283,6 +316,10 @@ for n in toronto hongkong; do sips -s format png --matchTo "/System/Library/Colo
 python3 score.py /tmp/x_stock_toronto.png ../refs/x_chromagraph_toronto.jpg /tmp/x_stock_hongkong.png ../refs/x_chromagraph_hongkong.jpg
 python3 measure.py /tmp/cg_street.png        # stats for any single image (any size ≥ ~70 px)
 python3 look.py /tmp/stock_street.png /tmp/look_street.png   # apply the look to any sRGB image
+
+# v2 needs rawpy: one-time setup of a local venv (git-ignored) from the repo root
+python3 -m venv ../.venv && ../.venv/bin/pip install rawpy numpy pillow
+../.venv/bin/python raw_look.py ~/Downloads/IMG_2725.DNG /tmp/IMG_2725_film.jpg   # any Apple ProRAW DNG
 ```
 
 The resize to 2160×2880 is for the portrait pairs. Measure the landscape living-room shot (2880×2160) as-is: convert it with `sips` and skip the Python step.
