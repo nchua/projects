@@ -39,19 +39,30 @@ public struct FilmResult: Sendable {
 public struct FilmModel: Sendable {
     public let params: FilmParams
     public let lut: PrintLUT
+    /// The print timing's fixed matrices (`raw_look.print_timing`): linear sRGB -> Bradford cones and back,
+    /// and daylight's cone responses. Computed once here so a corrupt params file fails at load, not per photo.
+    let toLMS: [[Double]]
+    let fromLMS: [[Double]]
+    let daylightLMS: [Double]
 
-    public init(params: FilmParams, lut: PrintLUT) {
+    public init(params: FilmParams, lut: PrintLUT) throws {
         self.params = params
         self.lut = lut
+        guard let srgbToXYZ = Matrix3.inverse(params.xyzToSrgb) else { throw FilmCoreError.invalidParams("xyz_to_srgb is singular") }
+        toLMS = Matrix3.multiply(params.bradford, srgbToXYZ)
+        guard let fromLMS = Matrix3.inverse(toLMS) else { throw FilmCoreError.invalidParams("bradford · xyz_to_srgb⁻¹ is singular") }
+        self.fromLMS = fromLMS
+        daylightLMS = Matrix3.apply(toLMS, [1, 1, 1])
     }
 
     public static func bundled() throws -> FilmModel {
         let (params, lut) = try FilmParams.bundled()
-        return FilmModel(params: params, lut: lut)
+        return try FilmModel(params: params, lut: lut)
     }
 
     /// Consumes `input` so its planes are reused as the working buffers (no 72 MB copy at 6 MP).
-    public func render(_ input: consuming PlanarImage, noise: Noise, captureStages: Bool = false) throws -> FilmResult {
+    public func render(_ input: consuming PlanarImage, noise: Noise, white: [Double]?,
+                       captureStages: Bool = false) throws -> FilmResult {
         let p = params
         let (w, h, n) = (input.width, input.height, input.width * input.height)
         let d = p.halationDownsample
@@ -71,21 +82,24 @@ public struct FilmModel: Sendable {
         let floor = Float(p.meterFloor)
         let logSum = lum.withUnsafeBufferPointer { l in
             var s = 0.0
-            for v in l { s += Double(log(max(v, floor))) }
+            for v in l { s += log(Double(max(v, floor))) }
             return s
         }
-        // numpy keeps these in float32 (lum is float32; Python floats are "weak"), so k is formed in Float
-        // too: a 1-ulp difference in k moves near-black pixels, where the crosstalk nearly cancels, visibly.
+        // k must match numpy bit for bit: a 1-ulp difference moves near-black pixels, where the crosstalk
+        // nearly cancels, visibly. k_highlight is formed in Float like numpy's float32 percentile. k_average's
+        // log-average is accumulated and exponentiated in Double on both sides (numpy sums pairwise, this loop
+        // sequentially: they agree to ~1e-13, far inside float32's 6e-8 step) and rounded to float32 once.
         let pct = Float(Self.percentile(&lum, p.highlightPercentile))   // reorders lum; it's reused below
         let kHighlight = Float(p.midGrey * pow(2, p.highlightStops)) / max(pct, Float(p.meterFloor))
-        let kAverage = Float(p.midGrey * pow(2, p.averageStops)) / exp(Float(logSum / Double(n)))
+        let kAverage = Float(p.midGrey * pow(2, p.averageStops) / exp(logSum / Double(n)))
         let k = min(kHighlight, kAverage)
 
-        // 2. Dye crosstalk on the exposed light, floored so log2 stays finite (in Double: the matrix's
-        //    negative terms cancel almost all of a deep shadow's light, and Float32 loses it there)
+        // 2. Print timing, then dye crosstalk, on the exposed light as one 3×3, floored so log2 stays finite
+        //    (in Double: the matrix's negative terms cancel almost all of a deep shadow's light, and Float32
+        //    loses it there)
         // 3. Vignette: 2^(−stops · smoothstep(r, start, end)^power), r the corner-normalised radius of
         //    integer pixel indices (np.ogrid, not pixel centres)
-        let m = p.crosstalk
+        let m = Matrix3.multiply(p.crosstalk, printTiming(white))
         let lumaD = p.luma
         let clampFloor = p.clampFloor
         let (cx, cy) = (Double(w) / 2, Double(h) / 2)
@@ -162,6 +176,21 @@ public struct FilmModel: Sendable {
         return FilmResult(image: PlanarImage(width: w, height: h, planes: [r, g, b]),
                           kHighlight: Double(kHighlight), kAverage: Double(kAverage), percentile: Double(pct),
                           glow: captureStages ? glow : nil, stopsPregrain: captureStages ? stages.map(Array.init) : nil)
+    }
+
+    /// `raw_look.print_timing`: a 3×3 on linear sRGB that adapts the light's colour `white` (G = 1)
+    /// `whiteBalance` of the way to daylight in Bradford cone space, keeping the white's luminance. Identity
+    /// without a white (a DNG with no AsShotNeutral prints with the daylight balance alone) or for a white
+    /// whose cone responses aren't all positive and finite.
+    public func printTiming(_ white: [Double]?) -> [[Double]] {
+        guard let w = white else { return Matrix3.identity }
+        let light = Matrix3.apply(toLMS, w)
+        guard light.allSatisfy({ $0.isFinite && $0 > 0 }) else { return Matrix3.identity }
+        let gain = (0..<3).map { pow(daylightLMS[$0] / light[$0], params.whiteBalance) }
+        // numpy's association: (inv(to_lms) @ diag(gain)) @ to_lms
+        let a = Matrix3.multiply(Matrix3.multiply(fromLMS, Matrix3.diagonal(gain)), toLMS)
+        let scale = Matrix3.dot(params.luma, w) / Matrix3.dot(params.luma, Matrix3.apply(a, w))
+        return a.map { row in row.map { $0 * scale } }
     }
 
     /// `raw_look.wide_blur`: Pillow BOX down by the halation factor, Gaussian at σ/factor, Pillow BILINEAR back up.

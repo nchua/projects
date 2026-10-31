@@ -26,6 +26,11 @@ final class DecodeTests: XCTestCase {
             XCTAssertTrue(DNGProbe.isLinearRaw(dng), dng.lastPathComponent)
             XCTAssertTrue(Decoder.isProRAW(dng), dng.lastPathComponent)
             XCTAssertFalse(Decoder.isProRAW(fixture.appendingPathComponent("out.png")))
+            let tags = try XCTUnwrap(DNGProbe.colorTags(dng), dng.lastPathComponent)
+            XCTAssertEqual(tags.colorMatrix2.map(\.count), [3, 3, 3])
+            XCTAssertEqual(tags.analogBalance.count, 3)
+            XCTAssertEqual(tags.asShotNeutral?.count, 3)
+            XCTAssertNil(DNGProbe.colorTags(fixture.appendingPathComponent("out.png")))
         }
     }
 
@@ -36,11 +41,18 @@ final class DecodeTests: XCTestCase {
             let start = Date()
             let photo = try decoder.decode(dng)
             let seconds = Date().timeIntervalSince(start)
-            let film = try model.render(photo.linear, noise: .none)
-            print(String(format: "%@: decode %.2f s  %d×%d  k %.6f (%@)  notes: %@", dng.lastPathComponent, seconds,
-                         photo.linear.width, photo.linear.height, film.k, film.metering,
+            let film = try model.render(photo.linear, noise: .none, white: photo.white)
+            print(String(format: "%@: decode %.2f s  %d×%d  k %.6f (%@)  white %@  notes: %@", dng.lastPathComponent,
+                         seconds, photo.linear.width, photo.linear.height, film.k, film.metering,
+                         photo.white.map { "\($0)" } ?? "none",
                          photo.notes.isEmpty ? "none" : photo.notes.joined(separator: "; ")))
             XCTAssertNotNil(photo.preview)
+            // The as-shot white from the file's own tags vs Python's (meta.json): the same tags, the same math
+            let expected = try Fixtures.meta(fixture)["white"] as? [Double]
+            XCTAssertEqual(photo.white == nil, expected == nil, "\(dng.lastPathComponent): white present")
+            for (swift, python) in zip(photo.white ?? [], expected ?? []) {
+                XCTAssertEqual(swift, python, accuracy: 1e-9, "\(dng.lastPathComponent): as-shot white")
+            }
             let out = fixture.appendingPathComponent("swift")
             try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
             try Fixtures.writePlanar(photo.linear, to: out.appendingPathComponent("decoded6mp.f32"))
@@ -65,7 +77,7 @@ final class EncodeTests: XCTestCase {
         for (dng, fixture) in pairs {
             let photo = try decoder.decode(dng)
             let seed = Grain.seed(fileName: dng.lastPathComponent, dateTimeOriginal: Encoder.dateTimeOriginal(photo.properties))
-            let film = try model.render(photo.linear, noise: .seeded(seed))
+            let film = try model.render(photo.linear, noise: .seeded(seed), white: photo.white)
             let jpeg = try Encoder.jpeg(XCTUnwrap(Encoder.cgImage(film.image)), source: photo.properties, software: "Print test")
             try FileManager.default.createDirectory(at: fixture.appendingPathComponent("swift"), withIntermediateDirectories: true)
             try jpeg.write(to: fixture.appendingPathComponent("swift/app.jpg"))

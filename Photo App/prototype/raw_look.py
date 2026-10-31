@@ -1,11 +1,13 @@
 """The look, v2: a fixed negative -> print rendering of an iPhone ProRAW DNG (see LOOK.md, "The soul").
 
-Nothing here adapts to the scene except exposure, which is metered for the highlights the way a
-cinematographer would spot-meter the brightest thing that matters, but never set brighter than a
-normal average exposure. Everything else is one fixed rendering applied to scene-linear light:
+Two things adapt to the scene. Exposure is metered for the highlights the way a cinematographer would
+spot-meter the brightest thing that matters, but never set brighter than a normal average exposure. The
+print is timed the way a lab times a print: a fixed share of the light's colour comes out (WHITE_BALANCE).
+Everything else is one fixed rendering applied to scene-linear light:
 
-  DNG camera RGB -> XYZ at a fixed daylight white (Apple's auto white balance is ignored)
-  -> linear sRGB -> dye crosstalk -> vignette + halation (in light, before the film)
+  DNG camera RGB -> XYZ at a fixed daylight white -> linear sRGB (a daylight negative; Apple's own white
+  balance and brightening are ignored, only the as-shot white is read)
+  -> exposure -> print timing x dye crosstalk -> vignette + halation (in light, before the film)
   -> grain (in the negative, in stops) -> per-channel print curve -> sRGB, 6 MP
 
 The print curve is one curve applied to each channel separately, so color shifts with density the
@@ -16,6 +18,7 @@ Usage: python raw_look.py in.dng out.jpg
 """
 
 import sys
+from collections.abc import Mapping
 
 import numpy as np
 import rawpy
@@ -26,10 +29,10 @@ from numpy.lib.stride_tricks import sliding_window_view
 from PIL import Image
 
 # DNG tags read from IFD0 (rawpy doesn't expose the color matrices of linear DNGs)
-TAG_COLOR_MATRIX_2, TAG_ANALOG_BALANCE, TAG_ORIENTATION = 50722, 50727, 274
+TAG_COLOR_MATRIX_2, TAG_ANALOG_BALANCE, TAG_AS_SHOT_NEUTRAL, TAG_ORIENTATION = 50722, 50727, 50728, 274
 
 _XYZ_D65 = np.array([0.95047, 1.0, 1.08883])
-_XYZ_TO_SRGB = np.linalg.inv(np.array([[0.4124, 0.3576, 0.1805], [0.2126, 0.7152, 0.0722], [0.0193, 0.1192, 0.9505]]))
+XYZ_TO_SRGB = np.linalg.inv(np.array([[0.4124, 0.3576, 0.1805], [0.2126, 0.7152, 0.0722], [0.0193, 0.1192, 0.9505]]))
 
 # Exposure: the highlight that matters (99.5th percentile of luminance) is placed this many stops above
 # mid grey (0.18). That's on the print's shoulder, so it holds just under paper white.
@@ -40,6 +43,12 @@ HIGHLIGHT_STOPS = 5.0
 # overexpose everything by ~2.5 stops. So exposure is capped where the scene's log-average luminance
 # lands this many stops from mid grey ("normal" exposure)
 AVERAGE_STOPS = 0.0
+
+# Print timing: the lab takes this share of the light's colour out when it prints, as a Bradford
+# (cone-space) adaptation from the camera's as-shot white toward daylight. Daylight scenes barely move;
+# tungsten keeps half its warmth instead of turning the whole frame lemon-yellow. 0 = a pure daylight print
+WHITE_BALANCE = 0.5
+BRADFORD = np.array([[0.8951, 0.2664, -0.1614], [-0.7502, 1.7135, 0.0367], [0.0389, -0.0685, 1.0296]])
 
 # Print curve: stops from mid grey -> L*. Dmax toe near L* 1, dense mids (grey at 42), paper white ~92
 TONE_STOPS = [-12.0, -7.0, -5.0, -3.5, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 12.0]
@@ -90,12 +99,47 @@ def read_dng(path: str) -> tuple[np.ndarray, int]:
         cam = raw.raw_image_visible[..., :3].astype(np.float32)
         black = float(np.mean(raw.black_level_per_channel[:3]))
         cam = (cam - black) / (raw.white_level - black)
-    xyz_to_cam = np.diag(np.array(tags[TAG_ANALOG_BALANCE], float)) @ np.array(tags[TAG_COLOR_MATRIX_2], float).reshape(3, 3)
+    xyz_to_cam = _xyz_to_cam(tags)
     # Fixed daylight balance: a D65 white in the scene becomes display white, whatever the light was
     cam_to_xyz = np.linalg.inv(xyz_to_cam)
     cam_to_xyz *= (_XYZ_D65[1] / (cam_to_xyz @ (xyz_to_cam @ _XYZ_D65))[1])
-    rgb = cam @ (_XYZ_TO_SRGB @ cam_to_xyz).T.astype(np.float32)
+    rgb = cam @ (XYZ_TO_SRGB @ cam_to_xyz).T.astype(np.float32)
     return rgb, int(tags.get(TAG_ORIENTATION, 1))
+
+
+def _xyz_to_cam(tags: Mapping) -> np.ndarray:
+    """XYZ (D65) -> camera RGB: AnalogBalance (identity if absent, per the DNG spec) times ColorMatrix2."""
+    balance = np.array(tags.get(TAG_ANALOG_BALANCE, (1.0, 1.0, 1.0)), float)
+    return np.diag(balance) @ np.array(tags[TAG_COLOR_MATRIX_2], float).reshape(3, 3)
+
+
+def as_shot_white(path: str) -> np.ndarray | None:
+    """The light's colour: the camera's as-shot white in read_dng's linear sRGB, G = 1 (None if untagged, or
+    if the tags give no finite white with light in green)."""
+    tags = Image.open(path).tag_v2
+    if TAG_AS_SHOT_NEUTRAL not in tags:
+        return None
+    white = XYZ_TO_SRGB @ np.linalg.solve(_xyz_to_cam(tags), np.array(tags[TAG_AS_SHOT_NEUTRAL], float))
+    if not (np.all(np.isfinite(white)) and white[1] > 0):
+        return None
+    return white / white[1]
+
+
+def print_timing(white: np.ndarray | None) -> np.ndarray:
+    """Print timing as a 3×3 on linear sRGB: adapt the light's colour WHITE_BALANCE of the way to daylight
+    in Bradford cone space, keeping the white's luminance. Identity without a white (the print is then a
+    daylight print) or for a white whose cone responses aren't all positive and finite."""
+    if white is None:
+        return np.eye(3)
+    w = np.asarray(white, float)
+    to_lms = BRADFORD @ np.linalg.inv(XYZ_TO_SRGB)
+    light = to_lms @ w
+    if not np.all(np.isfinite(light) & (light > 0)):
+        return np.eye(3)
+    gain = ((to_lms @ np.ones(3)) / light) ** WHITE_BALANCE
+    a = np.linalg.inv(to_lms) @ np.diag(gain) @ to_lms
+    luma = LUMA.astype(float)
+    return a * ((luma @ w) / (luma @ (a @ w)))
 
 
 def orient(img: np.ndarray, orientation: int) -> np.ndarray:
@@ -150,10 +194,15 @@ def prepare(rgb: np.ndarray) -> np.ndarray:
 
 
 def meter(rgb: np.ndarray) -> tuple[float, float]:
-    """(k_highlight, k_average): exposure metered for the highlights, and the cap at a normal exposure."""
+    """(k_highlight, k_average): exposure metered for the highlights, and the cap at a normal exposure.
+
+    Both are float32 like the image; the log-average is accumulated and exponentiated in float64 and rounded
+    once, so the app can reproduce k bit for bit (APP_SPEC.md §5.2 step 1, §11 rev 4).
+    """
     lum = rgb @ LUMA
     k_highlight = MID_GREY * 2**HIGHLIGHT_STOPS / max(np.percentile(lum, HIGHLIGHT_PERCENTILE), METER_FLOOR)
-    k_average = MID_GREY * 2**AVERAGE_STOPS / np.exp(np.mean(np.log(np.maximum(lum, METER_FLOOR))))
+    log_mean = np.mean(np.log(np.maximum(lum, METER_FLOOR), dtype=np.float64))
+    k_average = np.float32(MID_GREY * 2**AVERAGE_STOPS / np.exp(log_mean))
     return k_highlight, k_average
 
 
@@ -162,17 +211,20 @@ def grain_field(h: int, w: int, seed: int = 0) -> np.ndarray:
     return blur(np.random.default_rng(seed).standard_normal((h, w)), GRAIN_SIGMA)
 
 
-def film(rgb: np.ndarray, noise: np.ndarray | None, stages: dict | None = None) -> np.ndarray:
+def film(rgb: np.ndarray, noise: np.ndarray | None, stages: dict | None = None, *,
+         white: np.ndarray | None = None) -> np.ndarray:
     """6 MP scene-linear sRGB -> display sRGB in [0, 1]. noise=None renders without grain.
 
-    If given, `stages` is filled with the intermediate results the app's parity tests compare against.
+    `white` is the light's colour (as_shot_white) for print_timing. If given, `stages` is filled with the
+    intermediate results the app's parity tests compare against.
     """
     h, w = rgb.shape[:2]
 
     # Exposure, metered for the highlights, never brighter than normal
     k_highlight, k_average = meter(rgb)
     rgb = rgb * min(k_highlight, k_average)
-    rgb = np.clip(rgb @ CROSSTALK.T, CLAMP_FLOOR, None)
+    # ...then the print is timed (the lab times the print, not the exposure), folded into the dye crosstalk
+    rgb = np.clip(rgb @ (CROSSTALK @ print_timing(white)).T, CLAMP_FLOOR, None)
 
     # Lens and film, in light
     y, x = np.ogrid[0:h, 0:w]
@@ -196,10 +248,10 @@ def film(rgb: np.ndarray, noise: np.ndarray | None, stages: dict | None = None) 
     return np.where(lin <= 0.0031308, lin * 12.92, 1.055 * np.clip(lin, 0, 1) ** (1 / 2.4) - 0.055)
 
 
-def render(rgb: np.ndarray, seed: int = 0) -> np.ndarray:
+def render(rgb: np.ndarray, seed: int = 0, white: np.ndarray | None = None) -> np.ndarray:
     """Scene-linear sRGB (H×W×3, upright) -> display sRGB in [0, 1] at 6 MP."""
     rgb = prepare(rgb)
-    return film(rgb, grain_field(*rgb.shape[:2], seed))
+    return film(rgb, grain_field(*rgb.shape[:2], seed), white=white)
 
 
 def to_8bit(img: np.ndarray) -> np.ndarray:
@@ -210,7 +262,7 @@ def to_8bit(img: np.ndarray) -> np.ndarray:
 def develop(path: str, seed: int = 0) -> Image.Image:
     """DNG path -> the rendered 6 MP image."""
     rgb, orientation = read_dng(path)
-    out = render(orient(rgb, orientation).copy(), seed)
+    out = render(orient(rgb, orientation).copy(), seed, as_shot_white(path))
     return Image.fromarray(to_8bit(out))
 
 

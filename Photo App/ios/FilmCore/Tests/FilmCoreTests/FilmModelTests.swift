@@ -46,6 +46,33 @@ final class FilmModelTests: XCTestCase {
                           Grain.field(seed: 42, width: 8, height: 8, params: params))
     }
 
+    func testMatrix3Inverse() throws {
+        let m = try FilmModel.bundled().params.xyzToSrgb
+        let product = Matrix3.multiply(m, try XCTUnwrap(Matrix3.inverse(m)))
+        for i in 0..<3 { for j in 0..<3 { XCTAssertEqual(product[i][j], Matrix3.identity[i][j], accuracy: 1e-14) } }
+        XCTAssertNil(Matrix3.inverse([[1, 2, 3], [2, 4, 6], [0, 0, 1]]))
+    }
+
+    /// `raw_look.print_timing`'s properties: identity without a white or at D65; otherwise the white keeps its
+    /// luminance and its cone ratios move white_balance of the way (in log) to daylight's.
+    func testPrintTiming() throws {
+        let model = try FilmModel.bundled()
+        let p = model.params
+        XCTAssertEqual(model.printTiming(nil), Matrix3.identity, "no white: a daylight print")
+        let daylight = model.printTiming([1, 1, 1])
+        for i in 0..<3 { for j in 0..<3 { XCTAssertEqual(daylight[i][j], Matrix3.identity[i][j], accuracy: 1e-12, "D65") } }
+
+        let w: [Double] = [2.2871, 1.0, 0.2003]   // IMG_2732's tungsten white
+        let timed = Matrix3.apply(model.printTiming(w), w)
+        XCTAssertEqual(Matrix3.dot(p.luma, timed), Matrix3.dot(p.luma, w), accuracy: 1e-12, "luminance kept")
+        let toLMS = Matrix3.multiply(p.bradford, try XCTUnwrap(Matrix3.inverse(p.xyzToSrgb)))
+        let (light, d65, after) = (Matrix3.apply(toLMS, w), Matrix3.apply(toLMS, [1, 1, 1]), Matrix3.apply(toLMS, timed))
+        for c in [0, 2] {
+            let expected = (1 - p.whiteBalance) * log(light[c] / light[1]) + p.whiteBalance * log(d65[c] / d65[1])
+            XCTAssertEqual(log(after[c] / after[1]), expected, accuracy: 1e-9, "cone ratio \(c)")
+        }
+    }
+
     /// Tests A and B plus the app-grain render, for every fixture directory present.
     func testFixtureParity() throws {
         let stems = try Fixtures.stems()
@@ -56,13 +83,14 @@ final class FilmModelTests: XCTestCase {
             let (w, h) = (meta["W"] as! Int, meta["H"] as! Int)
             let linear = try Fixtures.readPlanar(dir.appendingPathComponent("linear6mp.f32"), width: w, height: h)
             let noise = try Fixtures.readF32(dir.appendingPathComponent("noise.f32"))
+            let white = meta["white"] as? [Double]   // JSON null -> nil: a daylight print
 
             let start = Date()
-            let a = try model.render(linear, noise: .injected(noise), captureStages: true)
+            let a = try model.render(linear, noise: .injected(noise), white: white, captureStages: true)
             let seconds = Date().timeIntervalSince(start)
             let k = meta["k"] as! Double
-            print(String(format: "%@: film model %.2f s  k %.6f vs %.6f (%@)  p %.6g", stem, seconds, a.k, k,
-                         a.metering, a.percentile))
+            print(String(format: "%@: film model %.2f s  k %.6f vs %.6f (%@)  p %.6g  white %@", stem, seconds, a.k, k,
+                         a.metering, a.percentile, white.map { "\($0)" } ?? "none"))
             XCTAssertEqual(a.metering, meta["metering"] as? String, stem)
             XCTAssertLessThanOrEqual(abs(a.k / k - 1), 1e-6, "\(stem): k")
             try Fixtures.assertClose(a.glow!, dir.appendingPathComponent("glow.f32"), stem: stem, name: "glow")
@@ -73,9 +101,10 @@ final class FilmModelTests: XCTestCase {
             try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
             try Fixtures.writeMeta(out, width: w, height: h, result: a)
             try Fixtures.writePlanar(a.image, to: out.appendingPathComponent("out.f32"))
-            try Fixtures.writePlanar(model.render(linear, noise: .none).image, to: out.appendingPathComponent("out_nograin.f32"))
+            try Fixtures.writePlanar(model.render(linear, noise: .none, white: white).image,
+                                     to: out.appendingPathComponent("out_nograin.f32"))
             let seed = Grain.seed(fileName: meta["dng"] as! String, dateTimeOriginal: nil)
-            try Fixtures.writePlanar(model.render(linear, noise: .seeded(seed)).image,
+            try Fixtures.writePlanar(model.render(linear, noise: .seeded(seed), white: white).image,
                                      to: out.appendingPathComponent("out_appgrain.f32"))
         }
     }

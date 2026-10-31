@@ -10,6 +10,9 @@ public struct DecodedPhoto: @unchecked Sendable {
     /// The DNG's embedded preview (Apple's SDR JPEG), upright and scaled to the same long side.
     public var preview: CGImage?
     public var properties: [String: Any]
+    /// The light's colour for the print timing: the camera's as-shot white in this linear sRGB, G = 1
+    /// (`Decoder.asShotWhite`; nil -> see `FilmModel.printTiming`).
+    public var white: [Double]?
 
     /// Hands over the linear image, leaving this photo without it, so the film model owns its buffers.
     public mutating func takeLinear() -> PlanarImage {
@@ -43,11 +46,13 @@ public final class Decoder: @unchecked Sendable {
     ])
     let longSide: Int
     let multiple: Int
+    let xyzToSrgb: [[Double]]
 
-    /// Output size and divisibility come from FilmParams (out_long_side, halation_downsample).
+    /// Output size, divisibility and the XYZ -> sRGB matrix come from FilmParams.
     public init(params: FilmParams) {
         longSide = params.outLongSide
         multiple = params.halationDownsample
+        xyzToSrgb = params.xyzToSrgb
     }
 
     /// `extent` scaled so its long side is `longSide`, rounded.
@@ -71,6 +76,18 @@ public final class Decoder: @unchecked Sendable {
     public static func nativePixelCount(_ url: URL) -> Int? {
         guard let size = CIRAWFilter(imageURL: url)?.nativeSize, size.width > 0 else { return nil }
         return Int(size.width * size.height)
+    }
+
+    /// `raw_look.as_shot_white`: the as-shot neutral through the decode's own D65 matrix (the inverse of
+    /// AnalogBalance · ColorMatrix2) into linear sRGB, normalised to G = 1; nil without an AsShotNeutral or
+    /// when the tags give no finite white with light in green.
+    func asShotWhite(_ tags: DNGProbe.ColorTags) -> [Double]? {
+        guard let neutral = tags.asShotNeutral,
+              let camToXYZ = Matrix3.inverse(Matrix3.multiply(Matrix3.diagonal(tags.analogBalance), tags.colorMatrix2))
+        else { return nil }
+        let white = Matrix3.apply(xyzToSrgb, Matrix3.apply(camToXYZ, neutral))
+        guard white.allSatisfy(\.isFinite), white[1] > 0 else { return nil }
+        return white.map { $0 / white[1] }
     }
 
     /// Gates on ProRAW itself (§5.1.1), so callers don't need to.
@@ -98,7 +115,8 @@ public final class Decoder: @unchecked Sendable {
         }
         let source = CGImageSourceCreateWithURL(url as CFURL, nil)
         let properties = source.flatMap { CGImageSourceCopyPropertiesAtIndex($0, 0, nil) as? [String: Any] } ?? [:]
-        return DecodedPhoto(linear: linear, preview: preview, properties: properties, notes: notes)
+        let white = DNGProbe.colorTags(url).flatMap(asShotWhite)
+        return DecodedPhoto(linear: linear, preview: preview, properties: properties, white: white, notes: notes)
     }
 
     /// Every setting explicit (§5.1.2); returns notes on read-back mismatches and unsupported controls.

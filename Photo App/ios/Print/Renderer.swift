@@ -55,7 +55,7 @@ actor Renderer {
             var photo = try decoder.decode(dng, strips: strips)   // gates on ProRAW
             let t1 = Date()
             let seed = Grain.seed(fileName: dng.lastPathComponent, dateTimeOriginal: Encoder.dateTimeOriginal(photo.properties))
-            let film = try model.render(photo.takeLinear(), noise: .seeded(seed))
+            let film = try model.render(photo.takeLinear(), noise: .seeded(seed), white: photo.white)
             let t2 = Date()
 
             let stem = dng.deletingPathExtension().lastPathComponent

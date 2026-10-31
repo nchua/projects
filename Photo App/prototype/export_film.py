@@ -24,7 +24,7 @@ APP_DIR = Path(__file__).resolve().parent.parent
 RESOURCES = APP_DIR / "ios/FilmCore/Sources/FilmCore/Resources"
 FIXTURES = APP_DIR / "fixtures"
 REFERENCE_SEED = 0
-PARAMS_VERSION = 1
+PARAMS_VERSION = 2
 
 
 def lut_bytes() -> bytes:
@@ -45,6 +45,9 @@ def params(lut_sha256: str) -> dict:
         "average_stops": R.AVERAGE_STOPS,
         "meter_floor": R.METER_FLOOR,
         "crosstalk": R.CROSSTALK.tolist(),
+        "white_balance": R.WHITE_BALANCE,
+        "bradford": R.BRADFORD.tolist(),
+        "xyz_to_srgb": R.XYZ_TO_SRGB.tolist(),
         "clamp_floor": R.CLAMP_FLOOR,
         "vignette_stops": R.VIGNETTE_STOPS,
         "vignette_start": R.VIGNETTE_START,
@@ -86,12 +89,13 @@ def export_reference(dng: Path, lut_sha256: str) -> Path:
     out = FIXTURES / dng.stem
     out.mkdir(parents=True, exist_ok=True)
     rgb, orientation = R.read_dng(str(dng))
+    white = R.as_shot_white(str(dng))
     linear = R.prepare(R.orient(rgb, orientation).copy())
     h, w = linear.shape[:2]
     noise = R.grain_field(h, w, REFERENCE_SEED)
     stages: dict = {}
-    img = R.film(linear, noise, stages)
-    nograin = R.film(linear, None)
+    img = R.film(linear, noise, stages, white=white)
+    nograin = R.film(linear, None, white=white)
 
     write_f32(out / "linear6mp.f32", linear)
     write_f32(out / "noise.f32", noise / noise.std())
@@ -110,6 +114,7 @@ def export_reference(dng: Path, lut_sha256: str) -> Path:
         "p": float(np.percentile(lum, R.HIGHLIGHT_PERCENTILE)),
         "k_highlight": k_h, "k_average": k_a, "k": min(k_h, k_a),
         "metering": "highlight" if k_h <= k_a else "average",
+        "white": None if white is None else white.tolist(),
         "numpy": np.__version__, "pillow": PIL.__version__, "rawpy": rawpy.__version__,
         "lut_sha256": lut_sha256,
     }

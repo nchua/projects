@@ -13,6 +13,11 @@ public struct FilmParams: Codable, Sendable {
     public let averageStops: Double
     public let meterFloor: Double
     public let crosstalk: [[Double]]
+    /// Print timing (`raw_look.print_timing`): the share of the light's colour the lab takes out, Bradford's
+    /// XYZ -> cone matrix, and XYZ -> linear sRGB (the as-shot white uses it too)
+    public let whiteBalance: Double
+    public let bradford: [[Double]]
+    public let xyzToSrgb: [[Double]]
     public let clampFloor: Double
     public let vignetteStops: Double
     public let vignetteStart: Double
@@ -32,8 +37,9 @@ public struct FilmParams: Codable, Sendable {
     public let lutSha256: String
 
     enum CodingKeys: String, CodingKey, CaseIterable {
-        case version, luma, crosstalk
+        case version, luma, crosstalk, bradford
         case outLongSide = "out_long_side", midGrey = "mid_grey"
+        case whiteBalance = "white_balance", xyzToSrgb = "xyz_to_srgb"
         case highlightPercentile = "highlight_percentile", highlightStops = "highlight_stops"
         case averageStops = "average_stops", meterFloor = "meter_floor", clampFloor = "clamp_floor"
         case vignetteStops = "vignette_stops", vignetteStart = "vignette_start"
@@ -58,6 +64,7 @@ public enum FilmCoreError: Error, CustomStringConvertible {
     case missingResource(String)
     case lutMismatch(expected: String, actual: String)
     case badSize(String)
+    case invalidParams(String)
     case nonFinite
     case encodeFailed(String)
 
@@ -66,6 +73,7 @@ public enum FilmCoreError: Error, CustomStringConvertible {
         case .missingResource(let name): "FilmCore resource \(name) not found"
         case .lutMismatch(let e, let a): "print_lut.bin sha256 \(a) does not match film_params.json (\(e))"
         case .badSize(let s): s
+        case .invalidParams(let s): "film_params.json is invalid: \(s)"
         case .nonFinite: "The decoded photo has non-finite pixels"
         case .encodeFailed(let s): "Encoding failed: \(s)"
         }
