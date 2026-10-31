@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		27B12EED51DD7C3EC98E2BD9 /* ViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDEDD785E358D6B49426B752 /* ViewerView.swift */; };
 		29A70771E308B3F872C61105 /* Diagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BEEEF999433FBDC9BAD7BC4 /* Diagnostics.swift */; };
+		2E864D1C838F93B40590C61D /* Camera.swift in Sources */ = {isa = PBXBuildFile; fileRef = CADFC0D70DC1EA2C5A37AF87 /* Camera.swift */; };
 		5BAC8A2AEECEECB30D43FE70 /* PhotoPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B367C58B917CE16AA200DD33 /* PhotoPicker.swift */; };
 		608399E550452AA259C8F967 /* FilmCore in Frameworks */ = {isa = PBXBuildFile; productRef = BBE3D8AC1DDC819CE026E31E /* FilmCore */; };
 		67B6BB22EB3680E50F85084E /* PickerFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0572B21A1ED52C117F8DEF92 /* PickerFlowTests.swift */; };
@@ -16,7 +17,9 @@
 		8F6A04E265B438644BAE8C17 /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27C33DBA016556649C3ED74 /* Session.swift */; };
 		A41BDEA9F598DACCA04E593D /* PrintApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C9699DD2E092F66F90F895 /* PrintApp.swift */; };
 		A7C10625B6FDC4F00437E224 /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DCC61E7F001C31A7420777B /* Renderer.swift */; };
+		CF700EAE66EE8DD4B59DBC0F /* CameraFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C38C27CFB17D72EE7EAF3369 /* CameraFlowTests.swift */; };
 		D80D0930C95FCFAC1996D17F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FAFE9CF1D85FFE105548A4B /* ContentView.swift */; };
+		FCDD1B44652439187BC3FD43 /* CameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 082327378F1CE29835EDB77C /* CameraView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -32,6 +35,7 @@
 /* Begin PBXFileReference section */
 		0572B21A1ED52C117F8DEF92 /* PickerFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickerFlowTests.swift; sourceTree = "<group>"; };
 		06C9699DD2E092F66F90F895 /* PrintApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrintApp.swift; sourceTree = "<group>"; };
+		082327378F1CE29835EDB77C /* CameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraView.swift; sourceTree = "<group>"; };
 		0DCC61E7F001C31A7420777B /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
 		0FAFE9CF1D85FFE105548A4B /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		69013B1FB4D2BDAA65A99128 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -41,6 +45,8 @@
 		B04E7EE08146F4083E613655 /* PrintUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PrintUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B27C33DBA016556649C3ED74 /* Session.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Session.swift; sourceTree = "<group>"; };
 		B367C58B917CE16AA200DD33 /* PhotoPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPicker.swift; sourceTree = "<group>"; };
+		C38C27CFB17D72EE7EAF3369 /* CameraFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraFlowTests.swift; sourceTree = "<group>"; };
+		CADFC0D70DC1EA2C5A37AF87 /* Camera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Camera.swift; sourceTree = "<group>"; };
 		DDEDD785E358D6B49426B752 /* ViewerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -60,6 +66,8 @@
 			isa = PBXGroup;
 			children = (
 				69013B1FB4D2BDAA65A99128 /* Assets.xcassets */,
+				CADFC0D70DC1EA2C5A37AF87 /* Camera.swift */,
+				082327378F1CE29835EDB77C /* CameraView.swift */,
 				0FAFE9CF1D85FFE105548A4B /* ContentView.swift */,
 				7BEEEF999433FBDC9BAD7BC4 /* Diagnostics.swift */,
 				B367C58B917CE16AA200DD33 /* PhotoPicker.swift */,
@@ -101,6 +109,7 @@
 		F390356F042112A2F284BC9D /* PrintUITests */ = {
 			isa = PBXGroup;
 			children = (
+				C38C27CFB17D72EE7EAF3369 /* CameraFlowTests.swift */,
 				0572B21A1ED52C117F8DEF92 /* PickerFlowTests.swift */,
 			);
 			path = PrintUITests;
@@ -206,6 +215,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CF700EAE66EE8DD4B59DBC0F /* CameraFlowTests.swift in Sources */,
 				67B6BB22EB3680E50F85084E /* PickerFlowTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -214,6 +224,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2E864D1C838F93B40590C61D /* Camera.swift in Sources */,
+				FCDD1B44652439187BC3FD43 /* CameraView.swift in Sources */,
 				D80D0930C95FCFAC1996D17F /* ContentView.swift in Sources */,
 				29A70771E308B3F872C61105 /* Diagnostics.swift in Sources */,
 				5BAC8A2AEECEECB30D43FE70 /* PhotoPicker.swift in Sources */,
@@ -335,6 +347,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Print;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Print takes ProRAW photos to develop them.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Print saves the photos you develop to your library.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
@@ -424,6 +437,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Print;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Print takes ProRAW photos to develop them.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Print saves the photos you develop to your library.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;

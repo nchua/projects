@@ -1,6 +1,6 @@
 # Print — iPhone app spec (v0)
 
-**Status:** M0–M4 built and on device · 2026-10-31 · rev 5 (rev 2 = adversarial review; rev 3 = metering cap; rev 4 = print timing; rev 5 = colour with density, §11) · working name "Print" (placeholder; renaming is a one-line change in `project.yml`)
+**Status:** M0–M4 built and on device, M6 (in-app capture) built · 2026-10-31 · rev 6 (rev 2 = adversarial review; rev 3 = metering cap; rev 4 = print timing; rev 5 = colour with density; rev 6 = in-app capture, §11) · working name "Print" (placeholder; renaming is a one-line change in `project.yml`)
 **Goal:** run the v3 film model (`prototype/raw_look.py`, documented in `LOOK.md` → "v3") on the phone, on ProRAW photos already in the library, with output that matches the Python reference. No server, no network, no Claude/API at runtime.
 
 **Before the execution session, the user shoots (ProRAW, 48 MP):** (1) daylight with blue sky, (2) indoor under warm lamps / tungsten — **done: `~/Downloads/IMG_2732.DNG`** (hallway under warm ceiling lights; the average-capped metering was added because of it), (3) a portrait. AirDrop the DNGs to `~/Downloads`. They are needed for M2's validation (§6) and never enter git.
@@ -10,14 +10,14 @@
 ## 1. What v0 is (and isn't)
 
 **v0 does:**
-1. Pick one or more photos from the library (system picker; no library permission needed to read).
-2. For each ProRAW DNG: decode → film model → 6 MP JPEG, on device.
+1. Take a ProRAW photo in the app (back camera, 12 MP ProRAW, DNG only; M6, §5.4) **or** pick one or more photos from the library (system picker; no library permission needed to read).
+2. For each ProRAW DNG, taken or picked: decode → film model → 6 MP JPEG, on device, through one pipeline.
 3. Show the results; tap one for full screen, press-and-hold to see Apple's own rendering (the DNG's embedded preview, SDR).
 4. "Save to Photos" writes the renders (add-only permission) with the original's capture date and location.
 
 **v0 does not (deliberately):**
 - **No sliders or presets.** LOOK.md principle 1 is "one fixed rendering"; exposure metering and the print timing (a fixed share of the as-shot white, §5.2 step 2) are the only scene-adaptive steps. A Debug-only grain on/off toggle is allowed.
-- **No camera capture** (v1). **No share extension** (v1 candidate). **No non-RAW input**: HEIC/JPEG items show "Not ProRAW (or edited in Photos) — skipped" (§9 D3). **No TestFlight, iPad, or App Store work.**
+- **No live preview of the look** in the viewfinder (the camera shows Apple's preview; the look appears when the capture has developed). **No share extension** (v1 candidate). **No non-RAW input**: HEIC/JPEG items show "Not ProRAW (or edited in Photos) — skipped" (§9 D3). **No TestFlight, iPad, or App Store work.**
 - **No network code and no analytics.** Nothing leaves the phone.
 
 ## 2. Ground truth and source of truth
@@ -56,7 +56,10 @@ Photo App/
   ios/
     project.yml                     xcodegen; app target "Print"; local package FilmCore
     scripts/parity.sh               runs `swift test`, then compare.py on what it wrote
-    Print/                          SwiftUI app (picker, list, viewer, save)
+    Print/                          SwiftUI app (camera, picker, list, viewer, save)
+      Camera.swift                  AVCaptureSession on the back camera, ProRAW DNG capture (M6)
+      CameraView.swift              viewfinder, shutter, developing badge
+    PrintUITests/                   picker flow (simulator) and camera screen (simulator / device)
     FilmCore/                       local Swift package, no UIKit
       Package.swift                 swift-tools-version 6.2; platforms .iOS(.v26), .macOS(.v26);
                                     swiftLanguageModes [.v5]; resources: .copy for both files below
@@ -120,6 +123,17 @@ Inputs: planar linear RGB (H×W), `FilmParams`, LUT, and a seed or an injected n
 - Copy from the source when present: `DateTimeOriginal`, `SubsecTimeOriginal`, `OffsetTimeOriginal` (present in IMG_2725 and IMG_2732: −07:00), the GPS dictionary including `DateStamp`/`TimeStamp`, Make/Model, lens model, ISO, exposure time, f-number, focal length. Set `Software = "Print <version>"`. Drop thumbnails, MakerNote, orientation and pixel-dimension tags.
 - **Also set `creationDate` and `location` on the `PHAssetCreationRequest`** (don't rely on Photos reading EXIF). Capture time = DateTimeOriginal + SubsecTimeOriginal in OffsetTimeOriginal; with no offset, the zone inferred from the GPS UTC stamp (rounded to 15 min), else the device time zone. Not the GPS stamp itself: it is whole seconds and can lag the shutter (IMG_2725: GPS 23:58:00 vs shutter 23:58:01.384). Verified in the simulator: the saved render lands at exactly the original's time and location with add-only access.
 
+### 5.4 Capture (`Camera.swift`, `CameraView.swift`) — M6
+
+- **Device and session.** `AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)` — the 24 mm main camera, the one Chromagraph's own exports come from (focal 6.765 mm on the 17 Pro) — with the `.photo` preset and one `AVCapturePhotoOutput`. Gate: `isAppleProRAWSupported`, else "This camera can't shoot ProRAW"; `isAppleProRAWEnabled = true`.
+- **Size.** The largest `activeFormat.supportedMaxPhotoDimensions` whose long side is ≤ `Camera.captureLongSide` = 4032 px: the sensor-binned 12 MP, the Camera app's ProRAW default (48 MP is its opt-in "ProRAW Max"). Set on the output and on each shot's settings.
+- **Each shot.** `AVCapturePhotoSettings(rawPixelFormatType:)` with the first `availableRawPhotoPixelFormatTypes` that `isAppleProRAWPixelFormat`: RAW only, no processed companion. `photoQualityPrioritization = Camera.qualityPrioritization` (`.balanced`; `.speed` turns Apple's multi-frame processing down, `.quality` adds Deep Fusion — a knob the picker path never had). Flash off. `videoRotationAngle` from `AVCaptureDevice.RotationCoordinator.videoRotationAngleForHorizonLevelCapture`, so the DNG's orientation tag follows how the phone is held although the UI is portrait-only.
+- **Delivery.** `photoOutput(_:didFinishProcessingPhoto:)` → `fileDataRepresentation()` (the DNG) → `tmp/Print/captures/Print-<yyyyMMdd-HHmmss-SSS>.dng` (Gregorian, local time, written off the main actor) → `Session.add(captured:)` → the same `Renderer.render(dng:)` as a picked file: same gate, decode, film model, encode, and the same grain seeding (file name + DateTimeOriginal, both unique per shot). `didFinishCaptureFor` is the request's last callback: a capture that delivered no photo fails there, so no continuation can leak and the shutter can't wedge.
+- **Leaving the viewfinder never loses a shot.** "Done" dismisses at once, but the engine only stops the session when nothing is in flight: a stop requested mid-capture is deferred to that capture's final callback. A `stop()` that lands during `start()`'s waits wins (the state machine returns to `.idle` and the session is left stopped).
+- **What is kept.** A taken photo's DNG stays in tmp until Save or Clear (D6). Save adds it to Photos as its own asset (`.photo` resource holding the DNG, like the Camera app's ProRAW) in the same change block as the render, then drops the tmp copy; both get the capture date from the DNG's metadata. A taken photo whose render was *skipped* (memory pre-check, decode failure) still offers Save, which stores the ProRAW alone, dated from the DNG: the capture is never lost to the pipeline. No location: the app doesn't geotag (D7).
+- **Viewfinder.** `AVCaptureVideoPreviewLayer` (resizeAspect, rotation 90), owned by the one `Camera` the app keeps and attached before the session first runs: Apple's preview, not the look. The controls exist only while the session runs, so the shutter is a readiness signal (the UI test relies on it); the shutter is disabled while a capture is in flight; "Done" returns to the list, where captures appear as rows like picks; a badge on the thumbnail counts photos still developing while the camera stays up. Permission: `NSCameraUsageDescription`; denied → "Camera access is off…" with Open Settings (not offered when access is restricted by policy); simulator → "No camera on this device". `Camera.captureLongSide` and `Camera.qualityPrioritization` are `nonisolated` so the engine's queue can read them without actor hops.
+- **Memory.** The capture session keeps running while renders happen (one at a time, as before); the §7 pre-check (`os_proc_available_memory` against the budget) is unchanged. The 12 MP peak with the session running is an M6 measurement.
+
 ## 6. Milestones (in order; each ends green before the next)
 
 ### M0 — Python prep (no behaviour change)
@@ -176,6 +190,10 @@ DNGs from env `PRINT_DNG_DIR` (default `~/Downloads`): IMG_2725 plus the three s
 - Timings and peak footprint (Debug overlay: `task_vm_info.phys_footprint` peak) for 12 MP and 48 MP; compare to §7.
 - Eyeball pass on the three new DNGs vs their Python renders.
 
+### M6 — In-app capture (rev 6)
+- `Camera` / `CameraView` per §5.4; `Session.Source` (picked provider or captured DNG); the home screen offers **Take Photo** and **Pick Photos**; `NSCameraUsageDescription`.
+- **Acceptance:** simulator UI test (`CameraFlowTests`): the camera screen shows "No camera on this device" and Done returns to the list. Device: the shutter produces a DNG that develops to a row with Debug timings; Save adds two assets (ProRAW + render) at the capture time; peak footprint with the session running recorded in §11.
+
 ### M5 — Quality gate and commit
 - `/ship` (evaluate → simplify → lint/build), `ruff` on the Python, `parity.sh`, Xcode build with no warnings.
 - Commit by pathspec: `Photo App/ios`, `Photo App/prototype/{raw_look,export_film,compare}.py`, `Photo App/.gitignore`, `Photo App/APP_SPEC.md`, `Photo App/LOOK.md` (one line pointing at the app). **Never** `fixtures/`, `refs/`, or any DNG/HEIC/JPEG.
@@ -215,6 +233,8 @@ Measured on the Mac (12 MP): a full-frame RGBAf render of the Lanczos'd graph pe
 - **D3 Non-RAW photos:** **skipped with a message**. A labelled "approximate (from JPEG)" mode with a fixed manual exposure is a v0.1 candidate — not the real look, so not the default.
 - **D4 Saving:** **explicit "Save to Photos"**, so test renders don't pile up.
 - **D5 Grain seed:** **per photo** (deterministic per file).
+- **D6 Taken photos:** **saved only on Save**, D4's rule for renders applied to the capture too: the DNG goes into Photos beside the render as its own asset (alone, if the render was skipped); until then it lives in tmp, which Clear deletes and the system may purge between launches, so a shot not saved before the app is killed can be lost. (Auto-saving every test shot's 25 MB DNG is the pile-up D4 avoids; the user can flip this.)
+- **D7 Location:** **the in-app camera doesn't geotag** (no location permission in v0); picked photos keep theirs.
 
 ## 10. Order of work for the execution session
 
@@ -312,3 +332,12 @@ Post-review fixes (independent /evaluate, B+, 0 errors / 2 warnings): the meteri
 | Contract | `film_params.json` version 3 adds `soften_sigma`, `density_stops`, `chroma_gain`, `shift_dense`, `shift_saturated`, `green_magenta`, `density_chroma_cap`; the LUT sha changes. Swift: `FilmModel.render` step 0 (three `Filters.gaussianBlur` planes), `FilmModel.density` (Double from Float32, numpy's operation order), `FilmModel.interp` (np.interp on a short axis), `init` validates the tables share an increasing axis; `testDensity` (neutrals fixed, dense warm loses green and chroma, light keeps hue and gains, `interp` at and between knots); the grain test derives its lag-1 autocorrelation from the kernel instead of a constant. `Renderer.swift` unchanged |
 | Parity (`parity.sh`: 16 tests, 3 fixtures re-exported) | **PASS.** k bit-identical on all three; glow bit-exact; `stops_pregrain` (now after the density stage) 1.1e-7 / 6.7e-8 / 9.6e-8 relative. A: exact 99.999 / 99.9992 / 99.999 %, max 1 level; B: max 0.0078/65535. C: exposure ≤ 0.0002 stop, colour medians ≤ 0.0022 stop, p95 ≤ 0.0046, tone slope ≤ 1.1e-4, registration ≤ 0.0003 px. D: ΔE mean 0.006 / 0.024 / 0.012, L\* p50 Δ ≤ 0.004, mean Δa\*/Δb\* ≤ 0.016. App path (decode + app grain + JPEG vs `out.png`): mean Δa\*/Δb\* ≤ 0.18 / 0.15, L\* p50 ≤ 0.07, grain bands ≤ 5.7 %. Mac film model 0.25 s at 6 MP (was 0.2 s; the softening blur) |
 | Open | Peak footprint and film time with the softening blur, to re-measure on the phone (§7); bright foliage and skies under the ×1.4–1.6 bright chroma gain on a sunlit daylight DNG; the 65 % timing question is closed (the lemon was hue, not amount) |
+
+**Rev 6 — in-app capture (2026-10-31):** the app offers two ways in, **Take Photo** and **Pick Photos**, both feeding the one pipeline (§5.4). Built after the model question was settled: capturing in-app changes nothing about the colour (a ProRAW is the same file whichever app's shutter made it, and Chromagraph's own exports show the stock camera's exposures: office ISO 200 1/83 s in both, street ISO 80 1/2445 vs 1/2299 s), so the capture path is a workflow milestone — no picker, no "Not ProRAW" skips, a `photoQualityPrioritization` knob — not a look change.
+
+| Item | Result |
+|---|---|
+| Code | `Print/Camera.swift` (`Camera`: state, access, capture, the preview layer; `Engine`: the AVFoundation objects on one serial queue, a continuation per capture resolved by the photo or the final callback, stop deferred while a capture is in flight), `Print/CameraView.swift` (preview host, shutter, developing badge, last-render thumbnail; controls only when ready), `Session.Source` / `add(captured:)` / `captureDirectory()` / `Item.original`, Save writes the DNG as its own asset (alone when the render was skipped) and drops the tmp copy, `ContentView` two options + toolbar camera button + one `Camera` for the app, `project.yml` `NSCameraUsageDescription`, `PrintUITests/CameraFlowTests.swift` |
+| Independent QA (first pass: FAIL, C) | Two errors found and fixed: (1) "Done" stopped the session behind an in-flight ProRAW capture (the shot was lost or its continuation never resumed) — the engine now defers the stop to the capture's final callback and implements `didFinishCaptureFor`; (2) a taken photo whose render was skipped had no Save path and Clear deleted the only copy — Save now stores the ProRAW alone, dated from the DNG. Also fixed: four actor-isolation warnings (constants `nonisolated`), the start/stop race (state re-checked after each wait), a `Camera` + preview layer allocated on every body evaluation (one per app), the UI test's readiness signal (controls exist only when ready; the test waits for the shutter to re-enable before Done), Open Settings offered for a policy restriction, Gregorian file stamps, the DNG write moved off the main actor, Clear blocked during a Save, the tmp DNG dropped after Save |
+| Simulator | `xcodebuild build` clean (generic simulator). UI test (`CameraFlowTests`, iPhone 17 Pro Max simulator): Take Photo opens the camera screen, it reads "No camera on this device", Done returns to the list; the test then skips the capture path (needs a device). TEST SUCCEEDED (14.6 s; 12.1 s on the re-run after the QA fixes) |
+| Device (iPhone 17 Pro Max, Debug build, `CameraFlowTests` driven by `xcodebuild test`) | **PASS, 11.4 s.** Camera access granted through the system alert, the viewfinder reported `ProRAW 4032×3024`, the shutter produced a DNG that developed to a row: `12 MP · highlight · decode 0.25 s · film 0.23 s · encode 0.04 s · peak 322 MB` — the peak with the capture session running, against the §7 budget of 600 MB (the picker path measured 590 MB in rev 4; the test launches the app fresh, so this peak is the capture pipeline plus one 12 MP develop). The v3 film stage is 0.23 s on the phone (0.19 s for v2: the softening blur). Not yet exercised on device: Save of a capture (two assets at the capture time) and a skipped capture's ProRAW-only Save |

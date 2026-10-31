@@ -32,6 +32,7 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UIUserInterfaceStyle: Dark
         INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: Print saves the photos you develop to your library.
+        INFOPLIST_KEY_NSCameraUsageDescription: Print takes ProRAW photos to develop them.
   PrintUITests:
     type: bundle.ui-testing
     platform: iOS

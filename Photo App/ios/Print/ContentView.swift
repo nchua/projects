@@ -2,7 +2,9 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var session = Session()
+    @State private var camera = Camera()
     @State private var showPicker = false
+    @State private var showCamera = false
     @State private var viewing: Item?
 
     var body: some View {
@@ -15,10 +17,12 @@ struct ContentView: View {
                     ContentUnavailableView {
                         Label("No photos", systemImage: "camera.aperture")
                     } description: {
-                        Text("Pick ProRAW photos to develop them.")
+                        Text("Take a ProRAW photo, or pick ones from your library, to develop them.")
                     } actions: {
-                        Button("Pick Photos") { showPicker = true }
+                        Button("Take Photo", systemImage: "camera") { showCamera = true }
                             .buttonStyle(.borderedProminent)
+                        Button("Pick Photos", systemImage: "photo.on.rectangle") { showPicker = true }
+                            .buttonStyle(.bordered)
                     }
                 } else {
                     List(session.items) { item in
@@ -43,12 +47,16 @@ struct ContentView: View {
                     if session.canSaveAll && !session.isRunning {
                         Button("Save All") { Task { await session.saveAll() } }
                     }
+                    Button("Take Photo", systemImage: "camera") { showCamera = true }
                     Button("Pick", systemImage: "plus") { showPicker = true }
                 }
             }
             .sheet(isPresented: $showPicker) {
                 PhotoPicker { session.pick($0) }
                     .ignoresSafeArea()
+            }
+            .fullScreenCover(isPresented: $showCamera) {
+                CameraView(session: session, camera: camera)
             }
             .fullScreenCover(item: $viewing) { item in
                 if let r = item.rendered { ViewerView(rendered: r) }
@@ -100,7 +108,8 @@ struct ItemRow: View {
         switch item.status {
         case .waiting: Text("Waiting")
         case .rendering: Text("Developing…")
-        case .skipped(let reason): Text(reason)
+        case .skipped(let reason):
+            Text(item.original == nil ? reason : "\(reason) — the ProRAW can still be saved")
         case .done(let r):
             #if DEBUG
             Text(String(format: "%.0f MP · %@ · decode %.2f s · film %.2f s · encode %.2f s · peak %d MB",
@@ -113,7 +122,7 @@ struct ItemRow: View {
     }
 
     @ViewBuilder private var saveButton: some View {
-        if item.rendered != nil {
+        if item.isSavable || item.isSaved {
             switch item.save {
             case .unsaved: Button("Save", action: onSave).buttonStyle(.bordered)
             case .saving: ProgressView()
