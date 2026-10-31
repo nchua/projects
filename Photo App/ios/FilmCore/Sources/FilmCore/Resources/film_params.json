@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "out_long_side": 2880,
   "luma": [
     0.2125999927520752,
@@ -8,7 +8,7 @@
   ],
   "mid_grey": 0.18,
   "highlight_percentile": 99.5,
-  "highlight_stops": 5.0,
+  "highlight_stops": 6.0,
   "average_stops": 0.0,
   "meter_floor": 1e-06,
   "crosstalk": [
@@ -64,12 +64,13 @@
     ]
   ],
   "clamp_floor": 1e-07,
-  "vignette_stops": 0.35,
+  "soften_sigma": 0.55,
+  "vignette_stops": 0.12,
   "vignette_start": 0.45,
   "vignette_end": 1.0,
   "vignette_power": 1.5,
   "halation_stops": 3.0,
-  "halation_sigma": 0.006,
+  "halation_sigma": 0.003,
   "halation_strength": 0.12,
   "halation_tint": [
     1.0,
@@ -79,9 +80,55 @@
   "halation_downsample": 4,
   "blur_truncation": 3,
   "grain_stops": 0.2,
-  "grain_sigma": 0.4,
+  "grain_sigma": 0.55,
+  "density_stops": [
+    -8.0,
+    -3.0,
+    -1.5,
+    0.0,
+    1.5,
+    3.0,
+    4.5,
+    8.0
+  ],
+  "chroma_gain": [
+    0.42,
+    0.42,
+    0.5,
+    0.8,
+    1.0,
+    1.4,
+    1.6,
+    1.6
+  ],
+  "shift_dense": [
+    0.26,
+    0.26,
+    0.18,
+    0.02,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "shift_saturated": [
+    0.0,
+    0.0,
+    0.02,
+    0.035,
+    0.03,
+    0.015,
+    0.0,
+    0.0
+  ],
+  "green_magenta": [
+    -0.4082482904638631,
+    0.8164965809277261,
+    -0.4082482904638631
+  ],
+  "density_chroma_cap": 4.0,
   "lut_min": -12.0,
   "lut_max": 12.0,
   "lut_size": 4096,
-  "lut_sha256": "9b173099b26fe39e4aab108c755f25fe1d4e113a93b233e1ff1f04c44aeb888a"
+  "lut_sha256": "c10976ee008a9253e955a82e89dc6a1a3021ed0ecaae46821b25a5dff38bba58"
 }

@@ -39,9 +39,13 @@ final class FilmModelTests: XCTestCase {
         let autocorrelation = lag / Double(h * (w - 1)) / variance
         print(String(format: "grain field: mean %.5f  std %.5f  lag-1 %.5f  (analytic std %.5f)",
                      mean, variance.squareRoot(), autocorrelation, Grain.analyticStd(params)))
+        // Lag-1 autocorrelation of white noise through the separable kernel k: Σ k_i k_{i+1} / Σ k_i² (the 1-D Σ k_i²
+        // is numerically what `Grain.analyticStd` returns)
+        let k = Filters.gaussianKernel(sigma: params.grainSigma, truncation: params.blurTruncation)
+        let expected = zip(k, k.dropFirst()).map(*).reduce(0, +) / Grain.analyticStd(params)
         XCTAssertLessThan(abs(mean), 0.01)
         XCTAssertEqual(variance.squareRoot(), 1, accuracy: 0.01)
-        XCTAssertEqual(autocorrelation, 0.0875, accuracy: 0.005)
+        XCTAssertEqual(autocorrelation, expected, accuracy: 0.005)
         XCTAssertNotEqual(Grain.field(seed: 43, width: 8, height: 8, params: params),
                           Grain.field(seed: 42, width: 8, height: 8, params: params))
     }
@@ -71,6 +75,49 @@ final class FilmModelTests: XCTestCase {
             let expected = (1 - p.whiteBalance) * log(light[c] / light[1]) + p.whiteBalance * log(d65[c] / d65[1])
             XCTAssertEqual(log(after[c] / after[1]), expected, accuracy: 1e-9, "cone ratio \(c)")
         }
+    }
+
+    /// `raw_look.density`'s properties: neutrals never move; a dense warm colour loses green and chroma; a light
+    /// one keeps its hue and gains chroma; `interp` is np.interp (clamped, exact at the knots, linear between).
+    func testDensity() throws {
+        let model = try FilmModel.bundled()
+        let p = model.params
+        for stops: Float in [-6, -2, 0, 3, 7] {
+            let out = model.density(stops, stops, stops, luminance: Double(stops))
+            XCTAssertEqual(out.0, stops); XCTAssertEqual(out.1, stops); XCTAssertEqual(out.2, stops)
+        }
+        let v = p.greenMagenta
+        XCTAssertEqual(Matrix3.dot(v, [1, 1, 1]), 0, accuracy: 1e-12, "the magenta axis is orthogonal to neutral")
+        XCTAssertEqual(Matrix3.dot(v, v), 1, accuracy: 1e-12)
+
+        // A warm colour (R +0.6, G −0.1, B −1.2 stops about its luminance) deep in the shadows and up in the light.
+        // These pin the v3 tables' signs (a shift in the dark, none at +4.5 stops); a retune may move them
+        func chroma(_ s: (Float, Float, Float), _ lum: Double) -> Double {
+            let d = [Double(s.0) - lum, Double(s.1) - lum, Double(s.2) - lum]
+            return Matrix3.dot(d, d).squareRoot()
+        }
+        let dark = -3.0, light = 4.5
+        let before = chroma((0.6, -0.1, -1.2), 0)
+        let dense = model.density(Float(dark + 0.6), Float(dark - 0.1), Float(dark - 1.2), luminance: dark)
+        XCTAssertLessThan(Double(dense.1) - dark, -0.1, "dense: green falls below where it was")
+        XCTAssertLessThan(chroma(dense, dark), before, "dense: chroma shrinks")
+        // A channel at the clamp floor: the departure is huge, the shift is bounded by the cap, the gain still scales all of it
+        let crushed = model.density(Float(dark + 0.5), Float(dark - 0.2), Float(dark - 20), luminance: dark)
+        XCTAssertGreaterThan((0.5 * 0.5 + 0.2 * 0.2 + 20.0 * 20.0).squareRoot(), p.densityChromaCap)
+        let cap = p.densityChromaCap
+        let cappedShift = cap * (FilmModel.interp(dark, p.densityStops, p.shiftDense) + FilmModel.interp(dark, p.densityStops, p.shiftSaturated) * cap)
+        let darkGain = FilmModel.interp(dark, p.densityStops, p.chromaGain)
+        XCTAssertEqual(Double(crushed.1) - dark, darkGain * (-0.2 - cappedShift * v[1]), accuracy: 1e-4, "cap bounds the shift, not the gain")
+        XCTAssertEqual(Double(crushed.2) - dark, darkGain * (-20 - cappedShift * v[2]), accuracy: 1e-4)
+        let bright = model.density(Float(light + 0.6), Float(light - 0.1), Float(light - 1.2), luminance: light)
+        let gain = FilmModel.interp(light, p.densityStops, p.chromaGain)
+        XCTAssertEqual(Double(bright.0) - light, 0.6 * gain, accuracy: 1e-5, "light: no shift, only gain")
+        XCTAssertEqual(Double(bright.2) - light, -1.2 * gain, accuracy: 1e-5)
+
+        let xs: [Double] = [-1, 0, 2], ys: [Double] = [10, 20, 0]
+        XCTAssertEqual(FilmModel.interp(-5, xs, ys), 10); XCTAssertEqual(FilmModel.interp(9, xs, ys), 0)
+        XCTAssertEqual(FilmModel.interp(0, xs, ys), 20); XCTAssertEqual(FilmModel.interp(2, xs, ys), 0)
+        XCTAssertEqual(FilmModel.interp(-0.5, xs, ys), 15, accuracy: 1e-12); XCTAssertEqual(FilmModel.interp(1, xs, ys), 10, accuracy: 1e-12)
     }
 
     /// Tests A and B plus the app-grain render, for every fixture directory present.

@@ -24,7 +24,7 @@ APP_DIR = Path(__file__).resolve().parent.parent
 RESOURCES = APP_DIR / "ios/FilmCore/Sources/FilmCore/Resources"
 FIXTURES = APP_DIR / "fixtures"
 REFERENCE_SEED = 0
-PARAMS_VERSION = 2
+PARAMS_VERSION = 3
 
 
 def lut_bytes() -> bytes:
@@ -49,6 +49,7 @@ def params(lut_sha256: str) -> dict:
         "bradford": R.BRADFORD.tolist(),
         "xyz_to_srgb": R.XYZ_TO_SRGB.tolist(),
         "clamp_floor": R.CLAMP_FLOOR,
+        "soften_sigma": R.SOFTEN_SIGMA,
         "vignette_stops": R.VIGNETTE_STOPS,
         "vignette_start": R.VIGNETTE_START,
         "vignette_end": R.VIGNETTE_END,
@@ -61,6 +62,12 @@ def params(lut_sha256: str) -> dict:
         "blur_truncation": R.BLUR_TRUNCATION,
         "grain_stops": R.GRAIN_STOPS,
         "grain_sigma": R.GRAIN_SIGMA,
+        "density_stops": R.DENSITY_STOPS,
+        "chroma_gain": R.CHROMA_GAIN,
+        "shift_dense": R.SHIFT_DENSE,
+        "shift_saturated": R.SHIFT_SATURATED,
+        "green_magenta": R.GREEN_MAGENTA.tolist(),
+        "density_chroma_cap": R.DENSITY_CHROMA_CAP,
         "lut_min": R.TONE_STOPS[0],
         "lut_max": R.TONE_STOPS[-1],
         "lut_size": R.LUT_SIZE,
@@ -105,7 +112,7 @@ def export_reference(dng: Path, lut_sha256: str) -> Path:
     write_f32(out / "out.f32", img)
     Image.fromarray(R.to_8bit(img)).save(out / "out.png")
 
-    lum = linear @ R.LUMA
+    lum = R.soften(linear) @ R.LUMA   # what film() meters
     n = lum.size
     k_h, k_a = stages["k_highlight"], stages["k_average"]
     meta = {

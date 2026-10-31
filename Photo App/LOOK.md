@@ -309,11 +309,42 @@ Dense colours lose ~40 % of their chroma in daylight and bright ones gain ~10 %;
 - **Vignette** ~0.1 stop at the corners and **halation** amber and tight: see "Texture" and "Night".
 - **Skin** (shopkeeper, the only sample): face in shade L\* 17, hue 47°, chroma 16.5; hand L\* 42, hue 49°, chroma 35.
 
-**What this changes for v2** (targets, not yet applied; the user judges each on real photos first): the warm-hue-by-L\* profile (shadows toward 55–60°, nothing past ~90° in the brights), chroma falling with density, unmasked cream (+12 to +15 at L\* 85–92), the top of the curve (ceiling L\* 93.5 / b\* +9, p99.5 nearer +6 stops), halation σ about half, vignette about a third, grain σ 0.4 → ~0.55 px, and a touch of softening at 6 MP.
+**What this changed:** all of it went into v3 (next section) once the variant B sheet had been judged on our own photos: the warm-hue-by-L\* profile (shadows toward 55–60°, nothing past ~90° in the brights), chroma falling with density, unmasked cream (+12 to +15 at L\* 85–92), the top of the curve (ceiling L\* 93.5 / b\* +9, p99.5 nearer +6 stops), halation σ about half, vignette about a third, grain σ 0.4 → 0.55 px, and a touch of softening at 6 MP.
+
+## v3: colour moves with density (2026-10-31)
+
+On the phone: the iPhone app "Print" (`ios/`, spec `APP_SPEC.md`) runs this model, with its constants exported from `raw_look.py` by `export_film.py`. v3 is v2 with the "Density" targets applied; every stage not listed here is v2's.
+
+| Stage | v3 change | Measured against |
+|---|---|---|
+| Exposure | The 99.5th-percentile highlight goes **6** stops above mid grey (was 5): v2's highlight-metered window room sat a stop dark (p95 L\* 72.6 against the exports' 79–83) | p95 / p99 / p99.5 / max now 81.9 / 89.6 / 90.0 / 91.7 (exports 79–83 / 88–91 / 89.5–91.3 / 93.1–93.6). Average-metered scenes (every tungsten room here) are unchanged |
+| Print curve | Shoulder reshaped: +6 stops at L\* 90, +8 at 92.5, the ceiling at **93.5** (was 92). Cream measured on every near-white pixel, not just the near-neutral ones: b\* +13 at L\* 88 (was +10.7 at 92), a\* +0.3; paper white at the ceiling b\* +10 | exports' b\* at L\* 85–92: +12.4 / +14.2 / +13.9 / +12.0 / +11.6 (the window room lands at +16.6, its sunlit wood included) |
+| Colour with density (new, in the negative's stops) | A pixel's colour is its stops' departure from its luminance in stops. Part of the departure's size moves from green to the magenta axis: in dense colour every departure (`SHIFT_DENSE`: 0.26 per stop of size below L\* 13, 0.18 at L\* 26, 0.02 at mid grey, gone by L\* 59), and at any density a saturated colour by its size squared (`SHIFT_SATURATED`: 0.035 at mid grey, 0.015 at L\* 74, gone by L\* 85). The departure is then scaled by `CHROMA_GAIN` (0.42 below L\* 13, 0.5 at 26, 0.8 at mid grey, 1.0 at 59, 1.4 at 74, 1.6 from 85). Neutrals never move. The shift's size law saturates at 4 stops of colour: a channel with no light (the clamp floor, 21 stops down) and a saturated light source both swing as a 4-stop colour | the warm-hue and chroma tables below |
+| Softness | A σ 0.55 px Gaussian on the linear 6 MP image before metering (lens and scan) | exports' edge rise 2.2–2.9 px against v2's 1.72 |
+| Halation | σ 0.003 of the long side (was 0.006) | amber and tight ("Night") |
+| Vignette | 0.12 stop at the corner (was 0.35) | ~0.1 stop ("Texture") |
+| Grain | σ 0.55 px (was 0.4); 0.20 stops unchanged | the exports' 20 % of grain energy above 0.4 c/px against v2's 28–32 % |
+
+**Why the magenta axis, and why two terms.** The references say two different things about warm hue. In the darks (L\* 10–40) every warm pixel sits at 40–63° whatever its chroma (office 52 / 52 / 54 across chroma 8–15 / 15–25 / 25–40). In the mids (L\* 40–70) faint colours keep the cream hue (87°) and only saturated ones swing (office 82 → 65 → 65 from chroma 15–25 to 25–40 to 40+; shopkeeper 84 / 77 / 60 / 45; Pell 81 / 68 / 57 / 50). A rotation about the neutral axis can't do both, and any rotation toward red strong enough for the warm tones sends reds to magenta and greens to cyan. Moving a share of each colour's size from green to magenta does what the references do: warm goes redder, yellow goes orange, blue goes violet (the sky's 225 → 260° in the darks), reds and greens barely turn (green only loses chroma); the per-stop term carries the darks, the squared term the saturated mids. Colour sizes are larger than Lab chroma suggests — 1.5 stops for the window room's wood at chroma 17–22, 3–5 stops for tungsten-lit walls, and 20–25 % of the hallway's dark pixels have blue at the clamp floor — which is why the shift is bounded and why the stage pivots on luminance: pivoting on the channel mean let a crushed blue drag the pixel's density down and its chroma gain darken whole walls, with a hard edge at the clamp boundary (the first attempt: blotches all over IMG_2732).
+
+**Measured on our DNGs, v2 → v3** (warm pixels, hue 20–110°, chroma ≥ 8, chroma-weighted circular mean over 4× box blocks; L\* bands 10–25 / 25–40 / 40–55 / 55–70 / 70–85 / 85+; a stricter mask than the Density table's, so compare only within this table):
+
+| Scene | v2 | v3 | Nearest references, same method |
+|---|---|---|---|
+| IMG_2725 window room (daylight) | 77 / 80 / 93 / 101 / 102 / 96 | **67 / 74 / 82 / 95 / 93 / 91** | living room 72 / 79 / 83 / 89 / 90 / 87; office 52 / 63 / 83 / 92 / 86 / 88 |
+| IMG_2732 tungsten hallway | 54 / 74 / 80 / 85 / 87 / — | **54 / 67 / 71 / 75 / — / —** | alley 39 / 45 / 53 / 69 / 86 / 98; shopkeeper 43 / 45 / 52 / 55 / 88 / 96 |
+| IMG_2745 lamp-lit room, dog | 71 / 74 / 81 / 89 / 91 | **61 / 66 / 74 / 83 / 83** | — |
+| IMG_2746 lamp-lit room | 69 / 71 / 82 / 89 | **63 / 68 / 77 / 84** | — |
+
+Registered Apple → render transfer on IMG_2725 (chroma ratio by Apple's L\* band < 25 / 25–45 / 45–65 / 65–85 / > 85): v2 0.82 / 0.88 / 0.86 / 0.92 / 0.80 → v3 **0.59 / 0.70 / 0.83 / 1.06 / 0.99**, against the office's stock → Chromagraph 0.60 / 0.60 / 0.81 / 1.10 / 1.13. Warm hue, Apple → v3: −6 / −5 / +5 / +4 / −2° (Chromagraph against stock: −10 to −13° below L\* 40, +10 to +15° at 40–80). Deep shade (L\* 5–10) a\*/b\*: −1.0/+4.7 → −0.5/+1.1 (exports −0.6/−3.5 to −2.1/−4.5 by day; the living room 0.0/+1.5). The tungsten rooms' hue profiles now run between the alley's and the shopkeeper's; their chroma against Apple's neutralised render is unchanged in the mids (×1.4–1.6) and down in the darks (×0.7, from ×1.2–1.6). The 65 % timing question is closed: the lemon was the hue profile, not the amount of cast, and 50 % stays.
+
+**Rejected on the way:** an LCh palette step after the print (variant B: right by eye, but it moved every hue the same amount regardless of chroma and sat outside the negative → print chain); a shift linear in size at every density (sent the window room's shadows to 31–42° and barely moved the saturated tungsten mids, the opposite of the references); hue expansion about the cream axis (reds to magenta and greens to cyan at the strength the warm tones need); pivoting on the channel mean (the blotches above).
+
+**Open:** bright foliage and skies (L\* 65–85) now carry a ×1.4–1.6 chroma gain, right for the exports' warm brights and untested on a sunlit daylight DNG with sky; night, mixed light and skin from RAW are still untested; the +1 stop of highlight exposure rests on one highlight-metered scene.
 
 ## v2: the film model on RAW (`prototype/raw_look.py`)
 
-On the phone: the iPhone app "Print" (`ios/`, spec `APP_SPEC.md`) runs this exact model, with its constants exported from `raw_look.py` by `export_film.py`.
+The app now runs v3 (above); v2 stays here as the record of what each stage was fit to.
 
 The first version built to the principles instead of matched to colors. It renders an iPhone ProRAW DNG with one fixed chain. Only two things adapt to the scene: exposure, metered for the highlights, and the print timing, which takes a fixed share of the light's colour out:
 

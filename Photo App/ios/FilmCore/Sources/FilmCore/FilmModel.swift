@@ -44,15 +44,33 @@ public struct FilmModel: Sendable {
     let toLMS: [[Double]]
     let fromLMS: [[Double]]
     let daylightLMS: [Double]
+    /// The density stage's tables (`raw_look.density`), held here so the pixel loop reads plain arrays.
+    let densityStops: [Double]
+    let chromaGain: [Double]
+    let shiftDense: [Double]
+    let shiftSaturated: [Double]
+    let greenMagenta: [Double]
+    let densityChromaCap: Double
 
     public init(params: FilmParams, lut: PrintLUT) throws {
         self.params = params
         self.lut = lut
+        (densityStops, chromaGain, shiftDense, shiftSaturated) = (params.densityStops, params.chromaGain, params.shiftDense, params.shiftSaturated)
+        (greenMagenta, densityChromaCap) = (params.greenMagenta, params.densityChromaCap)
         guard let srgbToXYZ = Matrix3.inverse(params.xyzToSrgb) else { throw FilmCoreError.invalidParams("xyz_to_srgb is singular") }
         toLMS = Matrix3.multiply(params.bradford, srgbToXYZ)
         guard let fromLMS = Matrix3.inverse(toLMS) else { throw FilmCoreError.invalidParams("bradford · xyz_to_srgb⁻¹ is singular") }
         self.fromLMS = fromLMS
         daylightLMS = Matrix3.apply(toLMS, [1, 1, 1])
+        let n = params.densityStops.count
+        guard n >= 2, zip(params.densityStops, params.densityStops.dropFirst()).allSatisfy({ $0 < $1 }),
+              params.chromaGain.count == n, params.shiftDense.count == n, params.shiftSaturated.count == n else {
+            throw FilmCoreError.invalidParams("density tables must share an increasing density_stops axis")
+        }
+        guard params.greenMagenta.count == 3 else { throw FilmCoreError.invalidParams("green_magenta must have three entries") }
+        guard params.softenSigma > 0, params.densityChromaCap > 0, params.densityChromaCap.isFinite else {
+            throw FilmCoreError.invalidParams("soften_sigma and density_chroma_cap must be positive")
+        }
     }
 
     public static func bundled() throws -> FilmModel {
@@ -60,7 +78,8 @@ public struct FilmModel: Sendable {
         return try FilmModel(params: params, lut: lut)
     }
 
-    /// Consumes `input` so its planes are reused as the working buffers (no 72 MB copy at 6 MP).
+    /// Consumes `input` so each plane is released as its softened replacement is made and the rest of the
+    /// pipeline works in place (no second copy of the 6 MP image).
     public func render(_ input: consuming PlanarImage, noise: Noise, white: [Double]?,
                        captureStages: Bool = false) throws -> FilmResult {
         let p = params
@@ -74,6 +93,11 @@ public struct FilmModel: Sendable {
         input.planes = []
         var b = planes.removeLast(), g = planes.removeLast(), r = planes.removeLast()
         let luma = p.luma.map(Float.init)
+
+        // 0. Lens softness, in light, before anything is metered (`raw_look.soften`)
+        r = Filters.gaussianBlur(r, width: w, height: h, sigma: p.softenSigma, truncation: p.blurTruncation)
+        g = Filters.gaussianBlur(g, width: w, height: h, sigma: p.softenSigma, truncation: p.blurTruncation)
+        b = Filters.gaussianBlur(b, width: w, height: h, sigma: p.softenSigma, truncation: p.blurTruncation)
 
         // 1. Meter: highlights, capped at a normal average exposure
         var lum = [Float](repeating: 0, count: n)
@@ -138,7 +162,7 @@ public struct FilmModel: Sendable {
         let strength = Float(p.halationStrength)
         let midGrey = Float(p.midGrey)
 
-        // 5. Negative: stops from mid grey, plus monochrome grain
+        // 5. Negative: stops from mid grey, colour moving with density, plus monochrome grain
         let grain: [Float]? = switch noise {
         case .none: nil
         case .injected(let field): field
@@ -157,9 +181,10 @@ public struct FilmModel: Sendable {
                     parallelRows(h) { y in
                         for i in (y * w)..<(y * w + w) {
                             let gl = strength * glow[i]
-                            var s = (log2((r[i] + gl * tint[0]) / midGrey),
-                                     log2((g[i] + gl * tint[1]) / midGrey),
-                                     log2((b[i] + gl * tint[2]) / midGrey))
+                            let (r1, g1, b1) = (r[i] + gl * tint[0], g[i] + gl * tint[1], b[i] + gl * tint[2])
+                            let pixelLum = lumaD[0] * Double(r1) + lumaD[1] * Double(g1) + lumaD[2] * Double(b1)
+                            var s = density(log2(r1 / midGrey), log2(g1 / midGrey), log2(b1 / midGrey),
+                                            luminance: log2(pixelLum / p.midGrey))
                             if captureStages { (stages[0][i], stages[1][i], stages[2][i]) = s }
                             if let grain {
                                 let gs = grainStops * grain[i]
@@ -191,6 +216,46 @@ public struct FilmModel: Sendable {
         let a = Matrix3.multiply(Matrix3.multiply(fromLMS, Matrix3.diagonal(gain)), toLMS)
         let scale = Matrix3.dot(params.luma, w) / Matrix3.dot(params.luma, Matrix3.apply(a, w))
         return a.map { row in row.map { $0 * scale } }
+    }
+
+    /// `raw_look.density`: colour moves with density. A pixel's colour is its stops' departure from its luminance
+    /// in stops; a share of its size moves from green to the magenta axis (in dense colour every departure, in
+    /// the mids saturated colour by the size squared) and the departure is scaled by the chroma gain, all by the
+    /// luminance. Float32 in and out, Double between, in numpy's order, so the two agree to a float32 rounding.
+    @inline(__always)
+    func density(_ s0: Float, _ s1: Float, _ s2: Float, luminance pivot: Double) -> (Float, Float, Float) {
+        let p = pivot
+        let (d0, d1, d2) = (Double(s0) - p, Double(s1) - p, Double(s2) - p)
+        let size = min((d0 * d0 + d1 * d1 + d2 * d2).squareRoot(), densityChromaCap)
+        let at = Self.bracket(p, densityStops)   // one search on the shared axis for the three tables
+        let shift = size * (Self.interp(p, densityStops, shiftDense, at: at) + Self.interp(p, densityStops, shiftSaturated, at: at) * size)
+        let gain = Self.interp(p, densityStops, chromaGain, at: at)
+        let v = greenMagenta
+        return (Float(p + gain * (d0 - shift * v[0])), Float(p + gain * (d1 - shift * v[1])), Float(p + gain * (d2 - shift * v[2])))
+    }
+
+    /// `np.interp(x, xs, ys)` for a short increasing `xs`: clamped at both ends, exact at the knots, numpy's
+    /// `slope * (x - xs[j]) + ys[j]` between them.
+    @inline(__always)
+    static func interp(_ x: Double, _ xs: [Double], _ ys: [Double]) -> Double {
+        interp(x, xs, ys, at: bracket(x, xs))
+    }
+
+    /// Where `x` falls on `xs`: the knot `j` whose value is taken as is (clamped ends, or `x` exactly on it) or
+    /// the segment `j`..`j + 1` to interpolate.
+    @inline(__always)
+    static func bracket(_ x: Double, _ xs: [Double]) -> (j: Int, exact: Bool) {
+        let last = xs.count - 1
+        if x <= xs[0] { return (0, true) }
+        if x >= xs[last] { return (last, true) }
+        var j = 0
+        while j < last - 1 && xs[j + 1] <= x { j += 1 }
+        return (j, x == xs[j])
+    }
+
+    @inline(__always)
+    static func interp(_ x: Double, _ xs: [Double], _ ys: [Double], at b: (j: Int, exact: Bool)) -> Double {
+        b.exact ? ys[b.j] : (ys[b.j + 1] - ys[b.j]) / (xs[b.j + 1] - xs[b.j]) * (x - xs[b.j]) + ys[b.j]
     }
 
     /// `raw_look.wide_blur`: Pillow BOX down by the halation factor, Gaussian at σ/factor, Pillow BILINEAR back up.

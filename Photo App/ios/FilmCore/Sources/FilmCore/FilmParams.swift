@@ -19,6 +19,8 @@ public struct FilmParams: Codable, Sendable {
     public let bradford: [[Double]]
     public let xyzToSrgb: [[Double]]
     public let clampFloor: Double
+    /// Lens softness before metering (`raw_look.soften`), in output px
+    public let softenSigma: Double
     public let vignetteStops: Double
     public let vignetteStart: Double
     public let vignetteEnd: Double
@@ -31,6 +33,14 @@ public struct FilmParams: Codable, Sendable {
     public let blurTruncation: Int
     public let grainStops: Double
     public let grainSigma: Double
+    /// Colour moves with density (`raw_look.density`): tables by luminance in stops from mid grey, the unit
+    /// vector from magenta to green in stops, and the cap on a colour's size
+    public let densityStops: [Double]
+    public let chromaGain: [Double]
+    public let shiftDense: [Double]
+    public let shiftSaturated: [Double]
+    public let greenMagenta: [Double]
+    public let densityChromaCap: Double
     public let lutMin: Double
     public let lutMax: Double
     public let lutSize: Int
@@ -42,12 +52,15 @@ public struct FilmParams: Codable, Sendable {
         case whiteBalance = "white_balance", xyzToSrgb = "xyz_to_srgb"
         case highlightPercentile = "highlight_percentile", highlightStops = "highlight_stops"
         case averageStops = "average_stops", meterFloor = "meter_floor", clampFloor = "clamp_floor"
+        case softenSigma = "soften_sigma"
         case vignetteStops = "vignette_stops", vignetteStart = "vignette_start"
         case vignetteEnd = "vignette_end", vignettePower = "vignette_power"
         case halationStops = "halation_stops", halationSigma = "halation_sigma"
         case halationStrength = "halation_strength", halationTint = "halation_tint"
         case halationDownsample = "halation_downsample", blurTruncation = "blur_truncation"
         case grainStops = "grain_stops", grainSigma = "grain_sigma"
+        case densityStops = "density_stops", chromaGain = "chroma_gain", shiftDense = "shift_dense"
+        case shiftSaturated = "shift_saturated", greenMagenta = "green_magenta", densityChromaCap = "density_chroma_cap"
         case lutMin = "lut_min", lutMax = "lut_max", lutSize = "lut_size", lutSha256 = "lut_sha256"
     }
 
