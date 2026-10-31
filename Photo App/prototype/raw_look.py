@@ -21,6 +21,7 @@ move. Needs rawpy: see LOOK.md, "Reproduce".
 Usage: python raw_look.py in.dng out.jpg
 """
 
+import struct
 import sys
 from collections.abc import Mapping
 
@@ -32,7 +33,7 @@ from look import pchip, smoothstep
 from numpy.lib.stride_tricks import sliding_window_view
 from PIL import Image
 
-# DNG tags read from IFD0 (rawpy doesn't expose the color matrices of linear DNGs)
+# DNG tags read from IFD0 by dng_tags() (rawpy doesn't expose the color matrices of linear DNGs)
 TAG_COLOR_MATRIX_2, TAG_ANALOG_BALANCE, TAG_AS_SHOT_NEUTRAL, TAG_ORIENTATION = 50722, 50727, 50728, 274
 
 _XYZ_D65 = np.array([0.95047, 1.0, 1.08883])
@@ -116,10 +117,39 @@ LUT_SIZE = 4096              # print LUT samples over TONE_STOPS[0]..TONE_STOPS[
 GREEN_MAGENTA = np.array([-1.0, 2.0, -1.0]) / np.sqrt(6)   # unit vector in stops from magenta to green, orthogonal to neutral
 
 
+def dng_tags(path: str) -> dict[int, object]:
+    """The DNG's IFD0 tags that the model reads, straight from the TIFF directory (the app's `DNGProbe` reads the
+    same bytes). A SHORT/LONG tag becomes an int or a tuple of ints, a RATIONAL/SRATIONAL a float or a tuple of
+    floats (numerator / denominator in double, as Pillow gives them). Pillow itself can't open the DNGs
+    AVFoundation writes (no preview image in IFD0), so the reader is ours."""
+    wanted = {TAG_COLOR_MATRIX_2, TAG_ANALOG_BALANCE, TAG_AS_SHOT_NEUTRAL, TAG_ORIENTATION}
+    with open(path, "rb") as f:
+        data = f.read()
+    order = {b"II": "<", b"MM": ">"}[data[:2]]
+    (ifd0,) = struct.unpack_from(order + "I", data, 4)
+    (count,) = struct.unpack_from(order + "H", data, ifd0)
+    sizes = {3: 2, 4: 4, 5: 8, 10: 8}
+    tags: dict[int, object] = {}
+    for i in range(count):
+        tag, kind, n, field = struct.unpack_from(order + "HHI4s", data, ifd0 + 2 + 12 * i)
+        if tag not in wanted or kind not in sizes:
+            continue
+        size = sizes[kind] * n
+        offset = struct.unpack_from(order + "I", field)[0] if size > 4 else ifd0 + 2 + 12 * i + 8
+        if kind == 3:
+            values = struct.unpack_from(order + f"{n}H", data, offset)
+        elif kind == 4:
+            values = struct.unpack_from(order + f"{n}I", data, offset)
+        else:
+            parts = struct.unpack_from(order + f"{2 * n}{'I' if kind == 5 else 'i'}", data, offset)
+            values = tuple(num / den for num, den in zip(parts[0::2], parts[1::2]))
+        tags[tag] = values[0] if n == 1 else values
+    return tags
+
+
 def read_dng(path: str) -> tuple[np.ndarray, int]:
     """Linear camera RGB in [0, 1] (unrotated) and the EXIF orientation."""
-    Image.MAX_IMAGE_PIXELS = None
-    tags = Image.open(path).tag_v2
+    tags = dng_tags(path)
     with rawpy.imread(path) as raw:
         if raw.raw_type != rawpy.RawType.Stack:
             raise ValueError("expected a linear (demosaiced) DNG such as Apple ProRAW")
@@ -143,7 +173,7 @@ def _xyz_to_cam(tags: Mapping) -> np.ndarray:
 def as_shot_white(path: str) -> np.ndarray | None:
     """The light's colour: the camera's as-shot white in read_dng's linear sRGB, G = 1 (None if untagged, or
     if the tags give no finite white with light in green)."""
-    tags = Image.open(path).tag_v2
+    tags = dng_tags(path)
     if TAG_AS_SHOT_NEUTRAL not in tags:
         return None
     white = XYZ_TO_SRGB @ np.linalg.solve(_xyz_to_cam(tags), np.array(tags[TAG_AS_SHOT_NEUTRAL], float))
