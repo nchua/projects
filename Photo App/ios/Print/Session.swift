@@ -87,9 +87,18 @@ final class Session {
                 item.thumbnail = Self.thumbnail(rendered.renderURL)
                 item.status = .done(rendered)
             } catch {
-                item.status = .skipped("\(error)")
+                item.status = .skipped(Self.describe(error, provider))
             }
         }
+    }
+
+    /// The skip reason; Debug builds add the types the picker offered, to diagnose skips on device.
+    nonisolated static func describe(_ error: Error, _ provider: NSItemProvider) -> String {
+        #if DEBUG
+        "\(error) [\(provider.registeredTypeIdentifiers.joined(separator: ", "))]"
+        #else
+        "\(error)"
+        #endif
     }
 
     /// ImageIO's subsampled decode, so the list never holds full-size bitmaps.
