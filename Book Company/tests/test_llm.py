@@ -31,19 +31,14 @@ class Answer(BaseModel):
 
 
 class _Raw:
-    """Mimics the SDK's raw response: ``json()`` now, lazy validating ``parse()``."""
+    """Mimics the SDK's raw response: the body via ``json()``."""
 
-    def __init__(self, body: dict[str, Any], schema: type[BaseModel]) -> None:
-        self.body, self.schema = body, schema
+    def __init__(self, body: dict[str, Any]) -> None:
+        self.body = body
 
     def json(self) -> dict[str, Any]:
+        """The response body."""
         return self.body
-
-    def parse(self) -> SimpleNamespace:
-        text = next((b["text"] for b in self.body["content"] if b["type"] == "text"), None)
-        return SimpleNamespace(
-            parsed_output=self.schema.model_validate_json(text) if text else None
-        )
 
 
 class StubClient:
@@ -51,14 +46,14 @@ class StubClient:
 
     def __init__(self, bodies: list[dict[str, Any]]) -> None:
         self.bodies, self.requests = bodies, []
-        parse = self._parse
         self.beta = SimpleNamespace(
-            messages=SimpleNamespace(with_raw_response=SimpleNamespace(parse=parse))
+            messages=SimpleNamespace(with_raw_response=SimpleNamespace(create=self._create))
         )
 
-    def _parse(self, **kw: Any) -> _Raw:  # noqa: ANN401
+    def _create(self, **kw: Any) -> _Raw:  # noqa: ANN401
+        """Record the request, return the next body."""
         self.requests.append(kw)
-        return _Raw(self.bodies.pop(0), kw["output_format"])
+        return _Raw(self.bodies.pop(0))
 
 
 def _body(text: str | None, stop: str = "end_turn", model: str = "claude-opus-5-5") -> dict:
@@ -102,6 +97,7 @@ def test_request_shape_logging_and_cost(tmp_path: Path) -> None:
     assert all("cache_control" in b for b in req["system"][:2])
     assert "cache_control" not in req["system"][2]
     assert req["fallbacks"] == "default" and req["betas"] == [FALLBACK_BETA]
+    assert req["output_config"]["format"]["type"] == "json_schema"
     assert req["model"] == "claude-opus-5-5"
     [log] = list((tmp_path / "logs").glob("S4-plan-*.json"))
     record = json.loads(log.read_text())
@@ -142,3 +138,35 @@ def test_budget_reads_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert Budget().cap_usd == 5.0
     monkeypatch.setenv("BOOKGEN_MAX_COST_USD", "1.5")
     assert Budget().cap_usd == 1.5
+
+
+def test_fallback_response_uses_final_text_and_bills_every_attempt(tmp_path: Path) -> None:
+    """A mid-output decline: the partial text is ignored and both attempts are costed."""
+    body = _body(None, model="claude-opus-5")
+    body["content"] = [
+        {"type": "text", "text": '{"wo'},
+        {
+            "type": "fallback",
+            "from": {"model": "claude-opus-5-5"},
+            "to": {"model": "claude-opus-5"},
+        },
+        {"type": "text", "text": '{"word": "saved"}'},
+    ]
+    body["usage"]["iterations"] = [
+        {"type": "message", "input_tokens": 1000, "output_tokens": 100},
+        {"type": "fallback_message", "input_tokens": 1000, "output_tokens": 500},
+    ]
+    client = StubClient([body])
+    assert _call(client, tmp_path).word == "saved"
+    [log] = list((tmp_path / "logs").glob("*.json"))
+    expected = (1000 * 4 + 100 * 20) / 1e6 + (1000 * 5 + 500 * 25) / 1e6
+    assert json.loads(log.read_text())["cost_usd"] == pytest.approx(expected)
+
+
+def test_bad_cap_setting_is_a_config_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A malformed BOOKGEN_MAX_COST_USD is reported, not a bare ValueError traceback."""
+    from bookgen.providers.llm import ConfigError
+
+    monkeypatch.setenv("BOOKGEN_MAX_COST_USD", "five")
+    with pytest.raises(ConfigError, match="must be a number"):
+        Budget()

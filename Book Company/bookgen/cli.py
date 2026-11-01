@@ -3,22 +3,31 @@
 Every stage command dispatches through ``bookgen.stages.run_range``, which
 skips stages already done (``--force`` reruns them). Exit codes: 0 ok (flags
 are not errors; ``book flags`` lists them), 1 a stage is not built yet,
-2 bad inputs (``StageInputError``).
+2 bad inputs (``StageInputError``), 3 a model call failed or hit the cost cap.
+The failed stage is recorded FAILED in the manifest either way.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from pathlib import Path
 from typing import Annotated
 
+import anthropic
 import typer
 
 from bookgen.evals import report, run_suite
 from bookgen.manifest import read_manifest, resolve_flag
 from bookgen.models import Companion, StageId, Value
 from bookgen.paths import SeriesPaths
-from bookgen.providers.llm import AnthropicProvider, LLMProvider
+from bookgen.providers.llm import (
+    AnthropicProvider,
+    ConfigError,
+    CostCapExceeded,
+    LLMOutputError,
+    LLMProvider,
+    LLMRefusal,
+)
 from bookgen.stages import StageContext, StageReport, run_range, stage_range
 from bookgen.stages.base import StageInputError, not_built
 from bookgen.stages.s00_intake import DEFAULT_STYLE, with_series_id
@@ -35,7 +44,10 @@ EpisodeOpt = Annotated[int, typer.Option("--episode", min=1, help="Episode numbe
 SpreadOpt = Annotated[
     int | None, typer.Option("--spread", min=1, max=12, help="Only this spread (S7-S9).")
 ]
-ForceOpt = Annotated[bool, typer.Option("--force", help="Rerun stages that are already done.")]
+ForceOpt = Annotated[
+    bool,
+    typer.Option("--force", help="Rerun this command's per-episode stages even if done."),
+]
 
 
 def make_llm() -> LLMProvider:
@@ -53,6 +65,9 @@ def _report_errors(fn: Callable[[], object]) -> None:
     except StageInputError as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=2) from exc
+    except (CostCapExceeded, LLMRefusal, LLMOutputError, ConfigError, anthropic.APIError) as exc:
+        typer.echo(f"error: {type(exc).__name__}: {exc}", err=True)
+        raise typer.Exit(code=3) from exc
 
 
 def _echo_reports(reports: list[StageReport]) -> None:
@@ -63,7 +78,9 @@ def _echo_reports(reports: list[StageReport]) -> None:
         typer.echo(f"{r.stage}: {r.outcome}{extra}{cost}")
 
 
-def _dispatch(ctx: StageContext, stages: list[StageId], force: bool = False) -> None:
+def _dispatch(
+    ctx: StageContext, stages: list[StageId], force: bool | Collection[StageId] = False
+) -> None:
     """Run ``stages`` through the runner and report each one."""
     _report_errors(lambda: _echo_reports(run_range(ctx, stages, llm=make_llm(), force=force)))
 
@@ -113,7 +130,7 @@ def plan(
 ) -> None:
     """S3 (once per series) and S4: series bible and episode plan."""
     ctx = StageContext(series_id=series, episode=episode, value=value)
-    _dispatch(ctx, [StageId.S3, StageId.S4], force=force)
+    _dispatch(ctx, [StageId.S3, StageId.S4], force={StageId.S4} if force else ())
 
 
 @app.command()

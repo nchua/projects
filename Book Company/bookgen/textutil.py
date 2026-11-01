@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import re
 
-WORD_RE = re.compile(r"[A-Za-z0-9]+(?:['’\-][A-Za-z0-9]+)*")
-"""One word, apostrophes and inner hyphens included."""
+WORD_RE = re.compile(r"[^\W_]+(?:['’\-][^\W_]+)*")
+"""One word (any script: "Zoë", "Mamá"), apostrophes and inner hyphens included."""
 
 _SENTENCE_END_RE = re.compile(r"((?:[.!?]+|…)[\"'”’)\]]*)\s+(?=[\"'“‘(\[]*[A-Z0-9])")
 """A sentence boundary: terminal punctuation, optional closing quotes, space, capital."""

@@ -119,3 +119,41 @@ def test_failed_checks_become_flags_not_exceptions(tmp_path: Path) -> None:
     run_stage(_stage(tmp_path, run=flagged), ctx, force=True)
     m = read_manifest(ctx.paths.manifest(1), 1)
     assert [f.resolved for f in m.flags] == [True, False]  # old one superseded
+
+
+def test_changed_input_makes_a_done_stage_stale(tmp_path: Path) -> None:
+    """An input modified after the stage finished reruns it (a forced upstream, an edit)."""
+    import os
+    import time
+
+    ctx = _ctx(tmp_path)
+    src = ctx.paths.root / "in.txt"
+    src.parent.mkdir(parents=True, exist_ok=True)
+    src.write_text("v1")
+    stage = _stage(tmp_path, inputs=["in.txt"])
+    assert run_stage(stage, ctx).outcome is Outcome.DONE
+    assert run_stage(stage, ctx).outcome is Outcome.SKIPPED
+    later = time.time() + 5
+    os.utime(src, (later, later))
+    assert run_stage(stage, ctx).outcome is Outcome.DONE
+
+
+def test_force_can_name_stages_and_reruns_cascade(tmp_path: Path) -> None:
+    """``force={S4}`` leaves an earlier done stage alone; whatever reruns, later stages follow."""
+    from bookgen.stages import REGISTRY, run_range
+
+    ctx = _ctx(tmp_path)
+    first = _stage(tmp_path, cadence=Cadence.ONCE_PER_SERIES)
+    first = Stage(**{**first.__dict__, "id": StageId.S3, "outputs": lambda c: []})
+    second = _stage(tmp_path)
+    saved = dict(REGISTRY)
+    REGISTRY[StageId.S3], REGISTRY[StageId.S4] = first, second
+    try:
+        run_range(ctx, [StageId.S3, StageId.S4])
+        reports = run_range(ctx, [StageId.S3, StageId.S4], force={StageId.S4})
+        assert [r.outcome for r in reports] == [Outcome.SKIPPED, Outcome.DONE]
+        reports = run_range(ctx, [StageId.S3, StageId.S4], force={StageId.S3})
+        assert [r.outcome for r in reports] == [Outcome.DONE, Outcome.DONE]  # cascade
+    finally:
+        REGISTRY.clear()
+        REGISTRY.update(saved)

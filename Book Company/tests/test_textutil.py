@@ -51,3 +51,19 @@ def test_manuscript_spreads_must_be_in_order() -> None:
         Manuscript.model_validate({**payload, "spreads": [spreads[1], spreads[0], *spreads[2:]]})
     with pytest.raises(ValidationError):
         Manuscript.model_validate(_ms(["a"] * 11))
+
+
+def test_words_handle_accents() -> None:
+    """Accented names are single words (Zoë, Mamá), not split at the accent."""
+    from bookgen.textutil import words
+
+    assert words("Mamá and Zoë said naïve") == ["Mamá", "and", "Zoë", "said", "naïve"]
+
+
+def test_writer_draft_must_be_in_order() -> None:
+    """A misordered writer reply fails validation, so the corrective retry fires."""
+    from bookgen.models import ManuscriptDraft
+
+    spreads = [{"spread": i, "text": "a"} for i in range(1, 13)]
+    with pytest.raises(ValidationError, match="in order"):
+        ManuscriptDraft.model_validate({"spreads": [spreads[1], spreads[0], *spreads[2:]]})

@@ -9,8 +9,9 @@ caller of ``start_stage``/``finish_stage``. To implement a stage, edit its
 from __future__ import annotations
 
 import dataclasses
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 from types import ModuleType
@@ -126,13 +127,25 @@ def stage_range(start: StageId, end: StageId) -> list[StageId]:
 
 
 def is_satisfied(stage: Stage, ctx: StageContext) -> bool:
-    """True if ``stage`` already ran to DONE or FLAGGED and its outputs still exist."""
+    """True if ``stage`` ran to DONE or FLAGGED, its outputs exist, and no input changed since.
+
+    An input modified after the stage finished (a forced upstream rerun, or the editor's
+    hand edit) makes the stage stale, so it reruns instead of serving old output.
+    """
     if stage.cadence is Cadence.EVERY_RUN:
         return False
     ep = stage.manifest_episode(ctx)
     rec = read_manifest(ctx.paths.manifest(ep), ep).stages.get(stage.id)
-    finished = rec is not None and rec.status in (StageStatus.DONE, StageStatus.FLAGGED)
-    return finished and all(p.exists() for p in stage.outputs(ctx))
+    if rec is None or rec.status not in (StageStatus.DONE, StageStatus.FLAGGED):
+        return False
+    if rec.finished is None or not all(p.exists() for p in stage.outputs(ctx)):
+        return False
+    return all(_mtime(p) <= rec.finished for p in stage.inputs(ctx) if p.exists())
+
+
+def _mtime(path: Path) -> datetime:
+    """A file's modification time as an aware UTC datetime."""
+    return datetime.fromtimestamp(path.stat().st_mtime, UTC)
 
 
 def check_inputs(stage: Stage, ctx: StageContext) -> None:
@@ -182,10 +195,22 @@ def run_range(
     ctx: StageContext,
     stages: list[StageId],
     llm: LLMProvider | None = None,
-    force: bool = False,
+    force: bool | Collection[StageId] = False,
 ) -> list[StageReport]:
-    """Run ``stages`` in order under the contract; stops at the first exception."""
-    return [run_stage(REGISTRY[s], ctx, llm=llm, force=force) for s in stages]
+    """Run ``stages`` in order under the contract; stops at the first exception.
+
+    ``force`` is ``True`` (every stage in the range) or the stages to rerun. Once a
+    stage actually runs, every later stage in the range reruns too, since its inputs
+    just changed.
+    """
+    forced = set(stages) if force is True else set(force or ())
+    reports: list[StageReport] = []
+    for s in stages:
+        report = run_stage(REGISTRY[s], ctx, llm=llm, force=s in forced)
+        reports.append(report)
+        if report.outcome is not Outcome.SKIPPED:
+            forced |= set(stages[stages.index(s) + 1 :])
+    return reports
 
 
 __all__ = [

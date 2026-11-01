@@ -109,8 +109,9 @@ def _collect(ctx: StageContext, case: EvalCase) -> EvalCase:
                 case.judge_mean = c.value
             elif c.code == "judge_rounds":
                 case.judge_rounds = int(c.value or 0)
-            elif c.code.startswith("rubric_") and c.value is not None:
-                case.judge_scores[c.code.removeprefix("rubric_")] = c.value
+            elif c.code.startswith("rubric_"):
+                if c.value is not None:  # unscored items carry no value
+                    case.judge_scores[c.code.removeprefix("rubric_")] = c.value
             elif not c.passed:
                 case.mechanical_failures.append(c.code)
     return case
@@ -125,8 +126,11 @@ def run_suite(
     results_dir = suite_dir / "results"
     previous = latest_results(results_dir)
     base = suite_dir / "runs" / stamp
-    cases = []
+    cases: list[EvalCase] = []
+    capped = False
     for family_path in suite.families:
+        if capped:
+            break
         family_file = PROJECT_ROOT / family_path
         family_id = load_intake(StageContext(family_path=family_file)).id
         for value in suite.values:
@@ -140,6 +144,7 @@ def run_suite(
             except CostCapExceeded as exc:
                 case.error = str(exc)
                 cases.append(_collect(ctx, case))
+                capped = True
                 break
             except Exception as exc:  # noqa: BLE001 - record and carry on with the suite
                 case.error = f"{type(exc).__name__}: {exc}"
@@ -159,6 +164,7 @@ def report(run: EvalRun, previous: EvalRun | None) -> list[str]:
     """Human-readable lines: per-case scores, then totals with deltas vs ``previous``."""
 
     def delta(now: float | None, before: float | None, fmt: str) -> str:
+        """``now`` formatted, with the signed change from ``before`` when there is one."""
         if now is None:
             return "n/a"
         if before is None:

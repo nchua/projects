@@ -153,6 +153,46 @@ def price(model: str, usage: dict[str, Any]) -> float:
     return tokens / 1_000_000
 
 
+def output_format(schema: type[BaseModel]) -> dict[str, Any]:
+    """``output_config.format`` for ``schema``, via the SDK's schema transform.
+
+    Constraints the API doesn't enforce are moved out by the SDK; the reply is
+    re-validated against ``schema`` here, so they still hold.
+    """
+    return {"type": "json_schema", "schema": anthropic.transform_schema(schema.model_json_schema())}
+
+
+def response_cost(body: dict[str, Any], requested: str) -> float:
+    """Cost of a whole response, every attempt included.
+
+    With server-side fallback, ``usage.iterations`` is the per-attempt source of truth
+    (top-level ``usage`` covers only the attempt that produced the message). The first
+    attempt ran on ``requested``; fallback attempts on their own model, else the served one.
+    """
+    usage = body.get("usage") or {}
+    served = str(body.get("model") or requested)
+    iterations = usage.get("iterations") or []
+    if not iterations:
+        return price(served, usage)
+    total = 0.0
+    for entry in iterations:
+        default = served if entry.get("type") == "fallback_message" else requested
+        total += price(str(entry.get("model") or default), entry)
+    return total
+
+
+def final_text(body: dict[str, Any]) -> str | None:
+    """The answer's text, or ``None`` if there is none.
+
+    Only text blocks after the last ``fallback`` block count: a mid-output decline
+    leaves the declined model's partial text before it.
+    """
+    content = body.get("content") or []
+    last = max((i for i, b in enumerate(content) if b.get("type") == "fallback"), default=-1)
+    texts = [b.get("text", "") for b in content[last + 1 :] if b.get("type") == "text"]
+    return "".join(texts) if texts else None
+
+
 class CostCapExceeded(RuntimeError):
     """The next call could push this run past ``BOOKGEN_MAX_COST_USD``."""
 
@@ -165,13 +205,22 @@ class LLMOutputError(RuntimeError):
     """The response was truncated or still invalid after one corrective retry."""
 
 
+class ConfigError(ValueError):
+    """A ``BOOKGEN_*`` setting is malformed."""
+
+
 class Budget:
     """A hard per-run cost cap shared by every stage of one CLI invocation."""
 
     def __init__(self, cap_usd: float | None = None) -> None:
-        self.cap_usd = (
-            cap_usd if cap_usd is not None else float(os.environ.get("BOOKGEN_MAX_COST_USD", "5"))
-        )
+        """Cap at ``cap_usd``, else ``BOOKGEN_MAX_COST_USD`` (default $5)."""
+        if cap_usd is None:
+            raw = os.environ.get("BOOKGEN_MAX_COST_USD", "5")
+            try:
+                cap_usd = float(raw)
+            except ValueError as exc:
+                raise ConfigError(f"BOOKGEN_MAX_COST_USD must be a number, got {raw!r}") from exc
+        self.cap_usd = cap_usd
         self.spent_usd = 0.0
 
     def reserve(self, model: str, prompt_chars: int, max_tokens: int) -> None:
@@ -244,19 +293,18 @@ class AnthropicSession:
         effort = effort or DEFAULT_EFFORT[role]
         for attempt in (1, 2):
             self._budget.reserve(model, sum(len(b["text"]) for b in system) + len(user), MAX_TOKENS)
-            raw = self._client.beta.messages.with_raw_response.parse(
+            raw = self._client.beta.messages.with_raw_response.create(
                 model=model,
                 max_tokens=MAX_TOKENS,
                 system=system,  # type: ignore[arg-type]
                 messages=[{"role": "user", "content": user}],
-                output_format=schema,
-                output_config={"effort": effort},
+                output_config={"effort": effort, "format": output_format(schema)},
                 betas=[FALLBACK_BETA],
                 fallbacks="default",
             )
             body: dict[str, Any] = raw.json()  # type: ignore[assignment]
             served = str(body.get("model") or model)
-            cost = price(served, body.get("usage") or {})
+            cost = response_cost(body, model)
             self._cost += cost
             self._budget.spent_usd += cost
             if served not in self._models:
@@ -264,10 +312,12 @@ class AnthropicSession:
             error = _response_error(body)
             parsed: M | None = None
             if error is None:
+                text = final_text(body)
                 try:
-                    parsed = raw.parse().parsed_output
-                    if parsed is None:
+                    if text is None:
                         error = "no structured output in the response"
+                    else:
+                        parsed = schema.model_validate_json(text)
                 except ValidationError as exc:
                     error = str(exc)
             self._log(label, attempt, prompt, model, system, user, schema, body, cost, error)

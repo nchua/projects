@@ -188,7 +188,10 @@ def run(ctx: StageContext) -> StageResult:
         label="plan-judge",
         prompt=load_prompt("plan_judge"),
         context=context,
-        user=load_prompt("plan_judge").render(**shared, plan=as_json(plan, exclude={"recap"})),
+        user=load_prompt("plan_judge").render(
+            **{**shared, "ledger": as_json(ledger, exclude={"last_summary"})},
+            plan=as_json(plan, exclude={"recap"}),
+        ),
         schema=Judgement,
     )
     checks = [

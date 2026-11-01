@@ -1,6 +1,6 @@
 # Banned phrases — SPEC §6.3, enforced by code in S5 (mechanical checks).
 # One phrase per line, matched case-insensitively on word boundaries.
-# `...` matches any run of words in between. Lines starting with # are comments.
+# `...` matches up to eight words in between, within one sentence. Lines starting with # are comments.
 # Seed list from the spec:
 little did they know
 a world of

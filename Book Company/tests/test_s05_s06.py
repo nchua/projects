@@ -10,7 +10,7 @@ from typer.testing import CliRunner
 from bookgen import cli
 from bookgen.io import read_model, write_model
 from bookgen.manifest import read_manifest
-from bookgen.models import CritiqueLog, Manuscript, SpreadText, StageId, StageStatus, Value
+from bookgen.models import CritiqueLog, Ledger, Manuscript, SpreadText, StageId, StageStatus, Value
 from bookgen.providers.llm import Role
 from bookgen.stages import Outcome, run_range
 from bookgen.stages.base import StageContext
@@ -179,3 +179,46 @@ def test_acceptance_flow_with_fake_llm(
         assert stages[s].cost_usd > 0 and stages[s].checks, s
     flags = runner.invoke(cli.app, ["flags", "--series", "demo"], env=env).output
     assert "bible_human_read" in flags
+
+
+def test_s6_flags_each_failing_non_story_slot(ctx: StageContext) -> None:
+    """Cover and teaser both failing the no-text negative give two flags, not one."""
+    write_model(ctx.paths.manuscript(1), Manuscript(episode=1, spreads=good_spreads()))
+    briefs = demo_briefs()
+    b = [
+        x.model_copy(update={"negatives": []}) if x.spread in ("cover", "teaser") else x
+        for x in briefs.briefs
+    ]
+    llm = FakeLLM({"briefs": [briefs.model_copy(update={"briefs": b})]})
+    run_range(ctx, [StageId.S6], llm=llm)
+    assert _open_flags(ctx).count("negatives_rule_out_text") == 2
+
+
+def test_cli_reports_cost_cap_as_exit_3(
+    ctx: StageContext, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A model-call failure is a one-line error with exit 3; the stage is recorded FAILED."""
+    from bookgen.providers.llm import CostCapExceeded
+
+    class Capped(FakeLLM):
+        def session(self, stage: StageId, log_dir: Path) -> object:  # type: ignore[override]
+            raise CostCapExceeded("over the $5.00 cap")
+
+    monkeypatch.setattr(cli, "make_llm", lambda: Capped({}))
+    result = CliRunner().invoke(
+        cli.app, ["write", "--series", "demo"], env={"BOOKGEN_SERIES_DIR": str(tmp_path)}
+    )
+    assert result.exit_code == 3 and "CostCapExceeded" in result.output
+
+
+def test_plan_judge_ledger_has_no_recap_summary(ctx: StageContext) -> None:
+    """The standalone read gets the ledger without last_summary (it feeds the recap, §4.3)."""
+    ledger = read_model(ctx.paths.ledger, Ledger).model_copy(
+        update={"last_summary": "LAST TIME SUMMARY"}
+    )
+    write_model(ctx.paths.ledger, ledger)
+    ctx.paths.plan(1).unlink()
+    llm = FakeLLM({"plan": [demo_plan()], "plan-judge": [judgement(PLAN_CODES)]})
+    run_range(ctx, [StageId.S4], llm=llm)
+    planner, judge = llm.calls
+    assert "LAST TIME SUMMARY" in planner.user and "LAST TIME SUMMARY" not in judge.user

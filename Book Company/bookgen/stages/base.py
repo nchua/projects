@@ -42,7 +42,7 @@ class Cadence(StrEnum):
     """Done once per episode, recorded in that episode's manifest."""
 
     PER_CHARACTER = "per_character"
-    """Done once per person (S1, S2); skip test uses outputs only."""
+    """Done once per person (S1, S2); recorded in the run's episode manifest for now."""
 
 
 class StageInputError(ValueError):

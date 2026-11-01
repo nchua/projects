@@ -91,9 +91,12 @@ def lint(
         )
     )
     beats = {b.spread: b for b in plan.beats}
-    side_fail, cast_fail, text_fail, neg_fail = {}, {}, {}, {}
+    side_fail: dict[int | str, str] = {}
+    cast_fail: dict[int | str, str] = {}
+    text_fail: dict[int | str, str] = {}
+    neg_fail: dict[int | str, str] = {}
     for b in briefs:
-        key = b.spread if isinstance(b.spread, int) else 0
+        key = b.spread
         if isinstance(b.spread, int):
             beat = beats[b.spread]
             if b.text_side != beat.text_side:
@@ -115,7 +118,12 @@ def lint(
             checks.append(CheckResult(code=code, passed=True))
         for spread, detail in fails.items():
             checks.append(
-                CheckResult(code=code, passed=False, detail=detail, spread=spread or None)
+                CheckResult(
+                    code=code,
+                    passed=False,
+                    detail=detail,
+                    spread=spread if isinstance(spread, int) else None,
+                )
             )
     return checks
 

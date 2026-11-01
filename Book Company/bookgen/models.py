@@ -504,6 +504,13 @@ class ManuscriptDraft(Model):
         description="Spreads 1-12 in order: text and read-aloud notes.",
     )
 
+    @model_validator(mode="after")
+    def _spreads_in_order(self) -> Self:
+        """Spreads 1..12 in order, so a misordered reply gets the corrective retry."""
+        if [s.spread for s in self.spreads] != list(range(1, 13)):
+            raise ValueError("spreads must be 1..12 in order, one entry each")
+        return self
+
 
 class RubricScore(Model):
     """One rubric item as the S5 judge scored it (§6.1, §6.2)."""
