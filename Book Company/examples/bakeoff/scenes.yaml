@@ -1,0 +1,55 @@
+# Bake-off scenes — SPEC §8.3: three fixture character sheets x twenty scenes x two aspects x
+# three candidates. Varied pose, distance, lighting, and two- and three-character shots with
+# the companion. Briefs use the IllustrationBrief fields (S6) and render through S7's
+# render_prompt, so the bake-off tests exactly what production will send.
+# Characters are the demo family's: maya (hero, card in family_demo.json), toast (companion),
+# pickles (pet cameo). `cast` gives the names/descriptions the prompt uses for anyone without a card.
+style: gouache-warm
+family: examples/family_demo.json
+aspects: ["2:1", "1:1"]      # a story spread and a single page
+candidates: 3
+cast:
+  - {id: maya, name: Maya, role: hero, pronouns: she/her, description: "Five, asks why, tests everything; round red glasses."}
+  - {id: toast, name: Toast, role: companion, pronouns: he/him, description: "Knee-high teal dragon, round belly, stubby wings too small to fly far, curled tail."}
+  - {id: pickles, name: Pickles, role: cameo, pronouns: he/him, description: "Small scruffy sandy-brown terrier mix with one white ear that never stands up."}
+scenes:
+  - id: s01_kite_morning
+    brief: {spread: 1, shot: wide, text_side: left, scene: "Maya on the creaky back step of a yellow brick house, holding a fish-shaped kite with red ribbon tail, garden behind her", characters: [{id: maya, pose: "sitting on the step, kite across her knees", expression: "hopeful"}], text_safe_area: "pale morning sky on the left", palette_notes: "early morning, soft cool light", negatives: ["no lettering or readable text"]}
+  - id: s02_toast_announces
+    brief: {spread: 2, shot: medium, text_side: right, scene: "Kitchen table with two pears and a ball of string; Toast stands on a chair announcing a plan", characters: [{id: toast, pose: "standing on a chair, one wing raised like a speech", expression: "grandly dramatic"}, {id: maya, pose: "packing pears into a canvas bag", expression: "amused"}], text_safe_area: "plain kitchen wall on the right", palette_notes: "warm morning window light", negatives: ["no lettering or readable text"]}
+  - id: s03_puddle_lane
+    brief: {spread: 3, shot: wide, text_side: left, scene: "A sloping lane of puddles under a grey sky; Maya jumps a puddle while Toast hops after her", characters: [{id: maya, pose: "mid-jump over a puddle, red wellies", expression: "gleeful"}, {id: toast, pose: "hopping, wings flapping", expression: "determined"}], text_safe_area: "overcast sky on the left", palette_notes: "overcast midday, wet reflections", negatives: ["no lettering or readable text"]}
+  - id: s04_splash_close
+    brief: {spread: 4, shot: close, text_side: right, scene: "Toast sitting in a muddy puddle after a failed flight, droplets in the air", characters: [{id: toast, pose: "sitting in the puddle, wings drooping", expression: "embarrassed"}], text_safe_area: "blurred lane on the right", palette_notes: "grey daylight", negatives: ["no lettering or readable text"]}
+  - id: s05_allotment_idea
+    brief: {spread: 5, shot: medium, text_side: left, scene: "Allotment with tall bean poles; Maya ties kite string to a pole, Toast watches", characters: [{id: maya, pose: "kneeling, tying a knot", expression: "concentrating, tongue out"}, {id: toast, pose: "peering over her shoulder", expression: "curious"}], text_safe_area: "open sky above the bean poles on the left", palette_notes: "bright noon sun", negatives: ["no lettering or readable text"]}
+  - id: s06_pole_crash
+    brief: {spread: 6, shot: wide, text_side: right, scene: "A bean pole toppling, beans rolling across a dirt path, Toast tumbling with the kite", characters: [{id: toast, pose: "tumbling mid-air", expression: "startled"}, {id: maya, pose: "hands over mouth", expression: "trying not to laugh"}], text_safe_area: "quiet hedge on the right", palette_notes: "noon, crisp shadows", negatives: ["no lettering or readable text"]}
+  - id: s07_bench_sad
+    brief: {spread: 7, shot: medium, text_side: left, scene: "A wobbly wooden bench at the foot of a grassy hill; Toast sits slumped", characters: [{id: toast, pose: "slumped on the bench, chin on fists", expression: "glum"}], text_safe_area: "long grass on the left", palette_notes: "late afternoon, wind in the grass", negatives: ["no lettering or readable text"]}
+  - id: s08_comfort
+    brief: {spread: 8, shot: close, text_side: right, scene: "Maya sits beside Toast on the bench, one hand on his back, grass bending in the wind", characters: [{id: maya, pose: "sitting, hand on Toast's back", expression: "thoughtful"}, {id: toast, pose: "leaning into her", expression: "sad but listening"}], text_safe_area: "soft blurred hillside on the right", palette_notes: "golden hour", negatives: ["no lettering or readable text"]}
+  - id: s09_wings_open
+    brief: {spread: 9, shot: medium, text_side: left, scene: "Toast standing on the hill with wings spread wide for the first time, Maya pointing at the wind in the grass", characters: [{id: toast, pose: "wings fully open, eyes closed", expression: "brave and nervous"}, {id: maya, pose: "pointing at the grass", expression: "encouraging"}], text_safe_area: "sky on the left", palette_notes: "golden hour, strong wind", negatives: ["no lettering or readable text"]}
+  - id: s10_lift_off
+    brief: {spread: 10, shot: wide, text_side: right, scene: "Maya running up the hill holding the kite string while Toast rises on the wind holding the fish kite", characters: [{id: maya, pose: "running uphill, string in both hands", expression: "joyful"}, {id: toast, pose: "lifting off, wings wide", expression: "astonished delight"}], text_safe_area: "open sky on the right", palette_notes: "golden hour backlight", negatives: ["no lettering or readable text"]}
+  - id: s11_hilltop_view
+    brief: {spread: 11, shot: wide, text_side: left, scene: "View from the hilltop: the yellow house small in the distance, Maya and Toast seen from behind", characters: [{id: maya, pose: "standing, seen from behind", expression: "n/a, back view"}, {id: toast, pose: "standing beside her, tail curled", expression: "n/a, back view"}], text_safe_area: "sky on the left", palette_notes: "sunset", negatives: ["no lettering or readable text"]}
+  - id: s12_home_quiet
+    brief: {spread: 12, shot: medium, text_side: right, scene: "Night bedroom lit by a small lamp; the fish kite tied to the bedpost; Toast asleep curled at the foot of the bed; Pickles sniffing the kite", characters: [{id: maya, pose: "lying in bed, eyes half closed", expression: "content"}, {id: toast, pose: "curled asleep", expression: "peaceful"}, {id: pickles, pose: "sniffing the kite tail", expression: "curious"}], text_safe_area: "dark wall on the right", palette_notes: "night, warm lamp glow", negatives: ["no lettering or readable text"]}
+  - id: s13_pickles_garden
+    brief: {spread: 1, shot: medium, text_side: left, scene: "Garden lawn; Maya throws a ball, Pickles leaps for it", characters: [{id: maya, pose: "mid-throw", expression: "laughing"}, {id: pickles, pose: "leaping, ears flying", expression: "ecstatic"}], text_safe_area: "lawn and sky on the left", palette_notes: "sunny afternoon", negatives: ["no lettering or readable text"]}
+  - id: s14_rain_window
+    brief: {spread: 2, shot: close, text_side: right, scene: "Maya with her nose against a rainy window, breath fogging the glass", characters: [{id: maya, pose: "face near the glass, hands flat on the sill", expression: "wistful"}], text_safe_area: "rain-streaked glass on the right", palette_notes: "rainy grey-blue daylight", negatives: ["no lettering or readable text", "no writing in the fogged glass"]}
+  - id: s15_three_picnic
+    brief: {spread: 3, shot: wide, text_side: left, scene: "A picnic blanket on Windy Hill; Maya shares a pear with Toast while Pickles naps", characters: [{id: maya, pose: "sitting cross-legged, offering a pear slice", expression: "kind"}, {id: toast, pose: "reaching for the pear", expression: "eager"}, {id: pickles, pose: "asleep on the blanket edge", expression: "asleep"}], text_safe_area: "sky on the left", palette_notes: "warm afternoon", negatives: ["no lettering or readable text"]}
+  - id: s16_toast_close_portrait
+    brief: {spread: 4, shot: close, text_side: left, scene: "Close portrait of Toast hiccuping a tiny shower of sparks", characters: [{id: toast, pose: "head and shoulders, sparks from his mouth", expression: "surprised"}], text_safe_area: "plain warm background on the left", palette_notes: "neutral daylight", negatives: ["no lettering or readable text", "no fire touching anyone"]}
+  - id: s17_maya_running_side
+    brief: {spread: 5, shot: medium, text_side: right, scene: "Maya running along a garden path in side view, raincoat flapping", characters: [{id: maya, pose: "running, side view", expression: "determined"}], text_safe_area: "hedge on the right", palette_notes: "morning", negatives: ["no lettering or readable text"]}
+  - id: s18_bakery_door
+    brief: {spread: 6, shot: medium, text_side: left, scene: "Outside a small bakery with a striped awning and a brass bell; Maya and Toast peer through the window at loaves", characters: [{id: maya, pose: "on tiptoe at the window", expression: "hungry, hopeful"}, {id: toast, pose: "standing on an upturned crate beside her", expression: "dreamy"}], text_safe_area: "street wall on the left", palette_notes: "early evening, warm window glow", negatives: ["no lettering or readable text", "no shop sign words"]}
+  - id: s19_storm_cupboard
+    brief: {spread: 7, shot: medium, text_side: right, scene: "A cupboard under the stairs during a thunderstorm, lit by a torch; Maya, Toast and Pickles huddle together", characters: [{id: maya, pose: "holding a torch", expression: "a little scared, brave"}, {id: toast, pose: "pressed against her side", expression: "nervous"}, {id: pickles, pose: "in Maya's lap", expression: "trembling"}], text_safe_area: "dark cupboard wall on the right", palette_notes: "night, torchlight, mild band-B scare only", negatives: ["no lettering or readable text", "nothing frightening in the shadows"]}
+  - id: s20_waving_teaser
+    brief: {spread: teaser, shot: wide, text_side: null, scene: "A paper envelope with no stamp lying on the doormat of the yellow house, morning light across the hall floor", characters: [], text_safe_area: "plain floorboards at the bottom", palette_notes: "morning", negatives: ["no lettering or readable text", "no writing on the envelope"]}

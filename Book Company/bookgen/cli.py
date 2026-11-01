@@ -16,10 +16,12 @@ from typing import Annotated
 import anthropic
 import typer
 
+from bookgen import bakeoff as bk
 from bookgen.evals import report, run_suite
 from bookgen.manifest import read_manifest, resolve_flag
 from bookgen.models import Companion, StageId, Value
 from bookgen.paths import SeriesPaths
+from bookgen.providers.images import ImageProviderError, get_provider
 from bookgen.providers.llm import (
     AnthropicProvider,
     ConfigError,
@@ -65,7 +67,15 @@ def _report_errors(fn: Callable[[], object]) -> None:
     except StageInputError as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=2) from exc
-    except (CostCapExceeded, LLMRefusal, LLMOutputError, ConfigError, anthropic.APIError) as exc:
+    except (
+        CostCapExceeded,
+        LLMRefusal,
+        LLMOutputError,
+        ConfigError,
+        anthropic.APIError,
+        ImageProviderError,
+        bk.BudgetExceeded,
+    ) as exc:
         typer.echo(f"error: {type(exc).__name__}: {exc}", err=True)
         raise typer.Exit(code=3) from exc
 
@@ -219,11 +229,69 @@ def flags(
 
 @app.command()
 def bakeoff(
-    providers: Annotated[str, typer.Option("--providers", help="Comma-separated providers.")],
-    sheets: Annotated[Path, typer.Option("--sheets", help="Fixture sheets directory.")],
+    providers: Annotated[
+        str | None, typer.Option("--providers", help="Comma-separated, e.g. gemini,flux,openai.")
+    ] = None,
+    sheets: Annotated[Path, typer.Option("--sheets", help="Fixture sheets directory.")] = Path(
+        "examples/sheets"
+    ),
+    scenes: Annotated[Path, typer.Option("--scenes", help="Scene file.")] = bk.DEFAULT_SCENES,
+    limit: Annotated[
+        int | None, typer.Option("--limit", min=1, help="First N scenes only.")
+    ] = None,
+    execute: Annotated[bool, typer.Option("--execute", help="Make the image calls.")] = False,
+    out: Annotated[
+        Path | None, typer.Option("--out", help="Run folder (default bakeoff/<stamp>).")
+    ] = None,
+    judge: Annotated[
+        Path | None, typer.Option("--judge", help="Score a run folder with the vision judge.")
+    ] = None,
+    report: Annotated[
+        Path | None, typer.Option("--report", help="Write docs/bakeoff-<date>.md for a run folder.")
+    ] = None,
+    pin: Annotated[
+        str | None, typer.Option("--pin", help="Pin this provider in --series' style.json.")
+    ] = None,
+    series: Annotated[str | None, typer.Option("--series", help="Series for --pin.")] = None,
 ) -> None:
-    """Image provider bake-off."""
-    _not_implemented("§8.3 bake-off")
+    """Image provider bake-off (§8.3): plan (default), --execute, --judge, --report, --pin."""
+
+    def _run() -> None:
+        if pin is not None:
+            if series is None:
+                raise typer.BadParameter("--pin needs --series")
+            style = bk.pin(SeriesPaths.for_series(series), get_provider(pin))
+            typer.echo(f"pinned {style.provider}/{style.model} for series {series}")
+            return
+        if report is not None:
+            typer.echo(f"wrote {bk.report(report)}")
+            return
+        config = bk.load_config(scenes)
+        if judge is not None:
+            judged = bk.judge(judge, config, sheets, make_llm())
+            typer.echo(f"judged {len(judged)} image(s) in {judge}")
+            return
+        if not providers:
+            raise typer.BadParameter("--providers is required to plan or execute")
+        built = {name: get_provider(name) for name in providers.split(",")}
+        jobs = bk.plan_jobs(built, config, limit)
+        costs = bk.estimate(jobs, built, config.candidates)
+        images = len(jobs) * config.candidates
+        typer.echo(f"{len(jobs)} jobs, {images} images; cap ${bk.image_cap_usd():.2f}")
+        for name, usd in costs.items():
+            typer.echo(f"  {name} ({built[name].model}): ~${usd:.2f} at list price [VERIFY-4]")
+        if not execute:
+            try:
+                bk.sheet_dirs(sheets, config)
+            except bk.BakeoffError as exc:
+                typer.echo(f"note: {exc}")
+            typer.echo("dry run: add --execute to make the calls")
+            return
+        run_dir = out or bk.DEFAULT_OUT / bk.stamp()
+        bk.execute(jobs, config, sheets, run_dir, built, log=typer.echo)
+        typer.echo(f"done: {run_dir} (next: --judge {run_dir}, then --report {run_dir})")
+
+    _report_errors(_run)
 
 
 @app.command("eval")

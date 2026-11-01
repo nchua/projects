@@ -17,6 +17,7 @@ server-side; a hard per-run cap from ``BOOKGEN_MAX_COST_USD`` (default $5).
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import os
@@ -83,6 +84,7 @@ class StageLLM(Protocol):
         user: str,
         schema: type[M],
         effort: Effort | None = None,
+        images: Sequence[Path] = (),
     ) -> M:
         """Run one call and return ``schema`` validated.
 
@@ -95,6 +97,7 @@ class StageLLM(Protocol):
             user: The per-call inputs, rendered as text.
             schema: The structured-output model.
             effort: ``output_config.effort``; ``None`` uses the role default.
+            images: Images sent ahead of ``user`` in the user turn, in order (vision judges).
         """
         ...
 
@@ -244,13 +247,47 @@ def system_blocks(context: Sequence[str], prompt: Prompt) -> list[dict[str, Any]
     return [*blocks, {"type": "text", "text": prompt.system}]
 
 
-def prompt_hash(model: str, system: list[dict[str, Any]], user: str, schema: type) -> str:
+def user_content(user: str, images: Sequence[Path]) -> str | list[dict[str, Any]]:
+    """The user turn: plain text, or base64 image blocks followed by the text."""
+    if not images:
+        return user
+    blocks: list[dict[str, Any]] = [
+        {
+            "type": "image",
+            "source": {"type": "base64", "media_type": _mime(p), "data": _b64(p)},
+        }
+        for p in images
+    ]
+    return [*blocks, {"type": "text", "text": user}]
+
+
+def _mime(path: Path) -> str:
+    """Image MIME type from the extension."""
+    ext = path.suffix.lower()
+    return {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}.get(
+        ext, "image/png"
+    )
+
+
+def _b64(path: Path) -> str:
+    """A file's bytes as base64 text."""
+    return base64.b64encode(path.read_bytes()).decode()
+
+
+def prompt_hash(
+    model: str,
+    system: list[dict[str, Any]],
+    user: str,
+    schema: type,
+    images: Sequence[Path] = (),
+) -> str:
     """SHA-256 of everything that determines the output (§3.1 replay key)."""
     payload = {
         "model": model,
         "system": [b["text"] for b in system],
         "user": user,
         "schema": schema.model_json_schema(),
+        "images": [hashlib.sha256(p.read_bytes()).hexdigest() for p in images],
     }
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
@@ -288,18 +325,22 @@ class AnthropicSession:
         user: str,
         schema: type[M],
         effort: Effort | None = None,
+        images: Sequence[Path] = (),
     ) -> M:
         """Run one structured-output call; one corrective retry on invalid output."""
         model = model_for(role)
         system = system_blocks(context, prompt)
         effort = effort or DEFAULT_EFFORT[role]
         for attempt in (1, 2):
-            self._budget.reserve(model, sum(len(b["text"]) for b in system) + len(user), MAX_TOKENS)
+            image_chars = 1600 * 3 * len(images)  # ~1,600 tokens per image, as chars
+            self._budget.reserve(
+                model, sum(len(b["text"]) for b in system) + len(user) + image_chars, MAX_TOKENS
+            )
             raw = self._client.beta.messages.with_raw_response.create(
                 model=model,
                 max_tokens=MAX_TOKENS,
                 system=system,  # type: ignore[arg-type]
-                messages=[{"role": "user", "content": user}],
+                messages=[{"role": "user", "content": user_content(user, images)}],
                 output_config={"effort": effort, "format": output_format(schema)},
                 betas=[FALLBACK_BETA],
                 fallbacks="default",
@@ -322,7 +363,9 @@ class AnthropicSession:
                         parsed = schema.model_validate_json(text)
                 except ValidationError as exc:
                     error = str(exc)
-            self._log(label, attempt, prompt, model, system, user, schema, body, cost, error)
+            self._log(
+                label, attempt, prompt, model, system, user, schema, body, cost, error, images
+            )
             if parsed is not None:
                 return parsed
             if body.get("stop_reason") == "refusal":
@@ -345,6 +388,7 @@ class AnthropicSession:
         body: dict[str, Any],
         cost: float,
         error: str | None,
+        images: Sequence[Path] = (),
     ) -> None:
         """Write one call to ``epNN/logs/`` with its prompt hash, response and cost (§3.1)."""
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%f")
@@ -353,7 +397,8 @@ class AnthropicSession:
             "label": label,
             "attempt": attempt,
             "prompt": {"name": prompt.name, "version": prompt.version, "sha": prompt.sha},
-            "prompt_hash": prompt_hash(model, system, user, schema),
+            "prompt_hash": prompt_hash(model, system, user, schema, images),
+            "images": [str(p) for p in images],
             "model_requested": model,
             "model_served": body.get("model"),
             "request_id": body.get("id"),
