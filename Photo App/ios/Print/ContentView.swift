@@ -15,14 +15,20 @@ struct ContentView: View {
                                            description: Text(error))
                 } else if session.items.isEmpty {
                     ContentUnavailableView {
-                        Label("No photos", systemImage: "camera.aperture")
+                        Label("No photos", image: .printMark)
+                            .symbolRenderingMode(.hierarchical)
                     } description: {
                         Text("Take a ProRAW photo, or pick ones from your library, to develop them.")
                     } actions: {
-                        Button("Take Photo", systemImage: "camera") { showCamera = true }
-                            .buttonStyle(.borderedProminent)
-                        Button("Pick Photos", systemImage: "photo.on.rectangle") { showPicker = true }
-                            .buttonStyle(.bordered)
+                        // Text only: the labels say it, and the print above is the one picture here. The size
+                        // goes inside: ContentUnavailableView sets its own control size for its actions.
+                        Group {
+                            Button("Take Photo") { showCamera = true }
+                                .buttonStyle(.borderedProminent)
+                            Button("Pick Photos") { showPicker = true }
+                                .buttonStyle(.bordered)
+                        }
+                        .controlSize(.large)
                     }
                 } else {
                     List(session.items) { item in
@@ -48,7 +54,7 @@ struct ContentView: View {
                         Button("Save All") { Task { await session.saveAll() } }
                     }
                     Button("Take Photo", systemImage: "camera") { showCamera = true }
-                    Button("Pick", systemImage: "plus") { showPicker = true }
+                    Button("Pick Photos", image: .printNegative) { showPicker = true }
                 }
             }
             .sheet(isPresented: $showPicker) {
@@ -91,6 +97,8 @@ struct ItemRow: View {
             }
             Spacer()
             saveButton
+                .buttonStyle(.bordered)
+                .controlSize(.large)
         }
         .padding(.vertical, 4)
     }
@@ -124,11 +132,11 @@ struct ItemRow: View {
     @ViewBuilder private var saveButton: some View {
         if item.isSavable || item.isSaved {
             switch item.save {
-            case .unsaved: Button("Save", action: onSave).buttonStyle(.bordered)
+            case .unsaved: Button("Save", action: onSave)
             case .saving: ProgressView()
-            case .saved: Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+            case .saved: Text("Saved").font(.subheadline).foregroundStyle(.secondary)
             case .failed:
-                Button("Retry", action: onSave).buttonStyle(.bordered)
+                Button("Retry", action: onSave)
             }
         }
     }

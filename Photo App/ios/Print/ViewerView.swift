@@ -20,7 +20,7 @@ struct ViewerView: View {
                 .font(.footnote).padding(8).background(.ultraThinMaterial, in: Capsule()).padding(.bottom, 24)
         }
         .overlay(alignment: .topTrailing) {
-            Button("Done") { dismiss() }.buttonStyle(.bordered).padding()
+            Button("Done") { dismiss() }.buttonStyle(.glass).controlSize(.large).padding()
         }
         .task {
             // Decode both once; pressing only swaps which one is shown

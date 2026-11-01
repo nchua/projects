@@ -23,7 +23,7 @@ struct CameraView: View {
                 CameraPreview(layer: camera.previewLayer).ignoresSafeArea()
             case .unavailable(let reason):
                 ContentUnavailableView {
-                    Label("Camera unavailable", systemImage: "camera.badge.ellipsis")
+                    Label("Camera unavailable", systemImage: "camera")
                 } description: {
                     Text(reason).accessibilityIdentifier("camera-unavailable-reason")
                 } actions: {
@@ -38,7 +38,7 @@ struct CameraView: View {
         }
         .overlay(alignment: .top) {
             HStack {
-                Button("Done") { dismiss() }.buttonStyle(.bordered)
+                Button("Done") { dismiss() }.buttonStyle(.glass).controlSize(.large)
                 Spacer()
                 Text(camera.formatLabel).font(.footnote).foregroundStyle(.secondary)
             }
