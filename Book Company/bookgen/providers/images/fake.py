@@ -12,6 +12,7 @@ from pathlib import Path
 from bookgen.providers.images.base import (
     ImageResult,
     ProviderCapabilities,
+    aspect_of,
     candidate_path,
     size_for,
 )
@@ -78,13 +79,14 @@ class FakeImageProvider:
                 model=self.model,
                 seed=seed,
                 cost_usd=self.usd_per_image,
+                aspect=aspect,
             )
             for k in range(1, n + 1)
         ]
 
     def edit(self, image: Path, prompt: str, references: list[Path], out: Path) -> ImageResult:
         """One fake edit."""
-        return self.generate(prompt, [image, *references], "1:1", 1, None, out)[0]
+        return self.generate(prompt, [image, *references], aspect_of(image), 1, None, out)[0]
 
     def upscale(self, image: Path, factor: int) -> Path:
         """Not supported."""

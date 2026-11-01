@@ -169,3 +169,84 @@ def test_fake_provider_writes_real_pngs(tmp_path: Path) -> None:
     [res] = fake.generate("a kite", [], "2:1", 1, 7, tmp_path / "s01")
     assert res.path is not None and png_size(res.path)[0] > png_size(res.path)[1]
     assert fake.generate("a scary kite", [], "1:1", 2, None, tmp_path / "s02")[0].refused
+
+
+def test_gemini_failed_status_raises_and_echoed_input_is_not_output(
+    tmp_path: Path, ref: Path
+) -> None:
+    """Status failed is a platform error, not a refusal; an image in ``input`` isn't output."""
+    failed = _client(lambda r: httpx2.Response(200, json={"status": "failed", "errors": ["x"]}))
+    with pytest.raises(ImageProviderError, match="failed"):
+        GeminiProvider(failed).generate("x", [], "1:1", 1, None, tmp_path / "s")
+    echoed = {"status": "completed", "input": [{"type": "image", "data": B64}], "steps": []}
+    [res] = GeminiProvider(_client(lambda r: httpx2.Response(200, json=echoed))).generate(
+        "x", [ref], "1:1", 1, None, tmp_path / "t"
+    )
+    assert res.refused and res.path is None
+
+
+def test_gemini_partial_failure_keeps_finished_candidates(tmp_path: Path) -> None:
+    """Candidate 2 fails: the error carries candidate 1 (already paid for)."""
+    replies = iter(
+        [
+            httpx2.Response(
+                200,
+                json={
+                    "steps": [{"type": "model_output", "content": [{"type": "image", "data": B64}]}]
+                },
+            ),
+            httpx2.Response(503, text="overloaded"),
+        ]
+    )
+    with pytest.raises(ImageProviderError) as err:
+        GeminiProvider(_client(lambda r: next(replies))).generate(
+            "x", [], "1:1", 3, None, tmp_path / "s"
+        )
+    assert len(err.value.partial) == 1 and err.value.partial[0].path is not None
+
+
+def test_flux_without_cost_field_bills_list_price_and_bad_download_raises(tmp_path: Path) -> None:
+    """No ``cost`` in the reply: list price, so the cap still sees spend. Expired URL: error."""
+    status = {"code": 200}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        if request.method == "POST":
+            return httpx2.Response(200, json={"id": "1", "polling_url": "https://poll/1"})
+        if str(request.url).startswith("https://poll"):
+            return httpx2.Response(
+                200, json={"status": "Ready", "result": {"sample": "https://cdn/x"}}
+            )
+        return httpx2.Response(status["code"], content=PNG)
+
+    flux = FluxProvider(_client(handler), sleep=lambda s: None)
+    [res] = flux.generate("x", [], "1:1", 1, None, tmp_path / "s")
+    assert res.cost_usd == pytest.approx(flux.capabilities().usd_per_image)
+    status["code"] = 403
+    with pytest.raises(ImageProviderError, match="download HTTP 403"):
+        flux.generate("x", [], "1:1", 1, None, tmp_path / "t")
+
+
+def test_transport_errors_become_provider_errors(tmp_path: Path) -> None:
+    """A timeout or connection error is an ImageProviderError the bake-off can record."""
+
+    def boom(request: httpx2.Request) -> httpx2.Response:
+        raise httpx2.ConnectTimeout("timed out", request=request)
+
+    with pytest.raises(ImageProviderError, match="ConnectTimeout"):
+        OpenAIProvider(_client(boom)).generate("x", [], "1:1", 1, None, tmp_path / "s")
+
+
+def test_openai_latency_is_per_image_and_short_reply_is_partial(tmp_path: Path) -> None:
+    """Latency divided by n; fewer images than asked raises with the ones received."""
+    one = _client(lambda r: httpx2.Response(200, json={"data": [{"b64_json": B64}]}))
+    with pytest.raises(ImageProviderError, match="1 of 2") as err:
+        OpenAIProvider(one).generate("x", [], "1:1", 2, None, tmp_path / "s")
+    assert len(err.value.partial) == 1
+
+
+def test_edit_keeps_the_input_aspect(tmp_path: Path) -> None:
+    """Editing a square page asks for a square, not a hard-coded 16:9."""
+    page = write_png(tmp_path / "page.png", 64, 64, (5, 5, 5))
+    fake = FakeImageProvider()
+    fake.edit(page, "fix the hand", [], tmp_path / "e")
+    assert fake.calls[-1]["aspect"] == "64:64"

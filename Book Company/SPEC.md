@@ -1,6 +1,6 @@
 # Serialized AI Children's Books — Book Generation Pipeline Spec
 
-**Status:** v0.1 draft, 2026-11-01. Phase 0 session 1 (scaffold, working S0) and session 2 (stage contract, Claude provider, S3–S6 text pipeline with judge loop and mechanical checks, `book flags`, minimal `book eval`) done 2026-11-01, tested against a fake LLM; the first real model runs are still to do (they need `ANTHROPIC_API_KEY`). Next is session 3 (§10.1).
+**Status:** v0.1 draft, 2026-11-01. Phase 0 session 1 (scaffold, working S0) and session 2 (stage contract, Claude provider, S3–S6 text pipeline with judge loop and mechanical checks, `book flags`, minimal `book eval`) done 2026-11-01, tested against a fake LLM; the first real model runs are still to do (they need `ANTHROPIC_API_KEY`). Session 3 code (image adapters for Gemini, FLUX.2 and OpenAI, S7 prompt rendering, `book bakeoff` plan/execute/judge/report/pin) is built and tested against fakes, 2026-11-01. The bake-off itself has not run: it needs fixture sheets, provider keys and the owner's budget sign-off. Next: run the bake-off, then session 4 (§10.1).
 **Scope:** how one personalized, serialized picture book gets made, from intake to a print-ready PDF.
 Printing, fulfillment, the web app, payments and marketing are framed (§1.4, §9, §10.5) but are out of scope for the pipeline build.
 
@@ -271,6 +271,8 @@ The parent fills the card by hand. S2 generates six candidates and the parent pi
 
 Each S7 call receives sheet crops (face front, three-quarter, full body) for every character present plus two or three style anchors. How many references a provider accepts, and how well it holds several characters at once, is a bake-off criterion (§8.3). Research as of 2026-11-01 puts Gemini image models at up to 14 references and FLUX.2 at 8–10 via API, but the figures were inconsistent between sources `[VERIFY-4]`.
 
+> Session 3 note (2026-11-01): `stages/s07_generate.select_references` picks one image per present character first (the front crop, else the whole sheet), then up to three style anchors, then further crops, capped at the provider's `max_references`. `render_prompt` (template `craft/prompts/image.md`) names each character with their role, and takes looks from the appearance card where there is one, otherwise from the bible description. It always appends the no-text negative (D4) and not-photoreal (D3).
+
 ### 5.5 Family and pet cameos (L3)
 
 Each person or pet gets a card and sheet. Cameos appear in at most three spreads per episode by default. Any adult can opt out of their own likeness and be written in by name only.
@@ -403,6 +405,8 @@ Candidates as of 2026-11-01. Versions, reference limits and prices move monthly,
 
 Bake-off protocol (`book bakeoff`): three fixture character sheets × twenty scenes (varied pose, distance, lighting, two-character shots with the companion) × two aspect ratios, three candidates each. Score with the vision judge and a human on identity hold, style hold, brief adherence, no-text, refusals, latency and cost. Write `docs/bakeoff-<date>.md` and pin the winner per series. Budget `[OPEN-11]`.
 
+> Session 3 note (2026-11-01): the adapters are `bookgen/providers/images/{gemini,flux,openai}.py` over REST, with request shapes read from the providers' docs on 2026-11-01. Default models (env-overridable): `gemini-3-pro-image` (Nano Banana Pro, via the Interactions API), `flux-2-pro`, and `gpt-image-2.5-sunburst` (the gpt-image-2 named above has been superseded). Keys come from `GEMINI_API_KEY`, `BFL_API_KEY` and `OPENAI_API_KEY`. The per-image prices in each adapter's `capabilities()` are list-price estimates `[VERIFY-4]`. Three behaviours are still `[VERIFY]` on the first live call: whether FLUX accepts base64 reference images (its docs show URLs), how Gemini reports a safety block (treated as a refusal when a 200 carries no image), and OpenAI's reference cap. `book bakeoff` runs in steps: a dry-run plan and estimate, then `--execute` (resumable, with a hard cap from `BOOKGEN_MAX_IMAGE_COST_USD`, default $150), then `--judge` (the Sonnet vision judge), then `--report` (writes `docs/bakeoff-<date>.md`), then `--pin PROVIDER --series ID --out RUN` (writes the model that run actually used into the series `style.json`). A job that errored is retried on resume. Any candidates it finished are kept and counted toward the cap. Judging bills as Claude calls under `BOOKGEN_MAX_COST_USD`, separately from the image cap. Images sent to the judge are downscaled to 1568 px. Scenes live in `examples/bakeoff/scenes.yaml`: 20 scenes × 2 aspects (2:1 spread, 1:1 page) × 3 candidates. Sheets go in `examples/sheets/<id>/`, which is not committed. A full three-provider run comes to about $47 at list price.
+
 ### 8.4 LLM roles
 
 | Role | Model | Notes |
@@ -448,6 +452,8 @@ capabilities() -> {max_references, aspects, max_px, supports_edit}
 Adapters never see craft text. The brief-to-prompt rendering lives in `stages/s07_generate.py` so a provider swap is one file.
 
 > Session 1 note (2026-11-01): images cross the protocol as file paths (artifacts live on disk, §3.1), and results carry `cost_usd` and `refused`.
+
+> Session 3 note (2026-11-01): `generate` and `edit` take an `out` path prefix, and candidate k is written to `<out>_c<k>.png`. `ImageResult` gains `refusal_reason` and `latency_s`, and `path` is `None` when the image was refused. `ProviderCapabilities` gains `usd_per_image`. A refusal is a result, never an exception. Exceeding `max_references` raises rather than silently dropping references.
 
 ### 8.7 CLI surface
 

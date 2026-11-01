@@ -250,7 +250,8 @@ def bakeoff(
         Path | None, typer.Option("--report", help="Write docs/bakeoff-<date>.md for a run folder.")
     ] = None,
     pin: Annotated[
-        str | None, typer.Option("--pin", help="Pin this provider in --series' style.json.")
+        str | None,
+        typer.Option("--pin", help="Pin this provider (model as used in --out) in --series."),
     ] = None,
     series: Annotated[str | None, typer.Option("--series", help="Series for --pin.")] = None,
 ) -> None:
@@ -258,9 +259,9 @@ def bakeoff(
 
     def _run() -> None:
         if pin is not None:
-            if series is None:
-                raise typer.BadParameter("--pin needs --series")
-            style = bk.pin(SeriesPaths.for_series(series), get_provider(pin))
+            if series is None or out is None:
+                raise typer.BadParameter("--pin needs --series and --out <bake-off run folder>")
+            style = bk.pin(SeriesPaths.for_series(series), pin, out)
             typer.echo(f"pinned {style.provider}/{style.model} for series {series}")
             return
         if report is not None:
@@ -288,6 +289,7 @@ def bakeoff(
             typer.echo("dry run: add --execute to make the calls")
             return
         run_dir = out or bk.DEFAULT_OUT / bk.stamp()
+        typer.echo(f"run folder: {run_dir} (resume with --out {run_dir})")
         bk.execute(jobs, config, sheets, run_dir, built, log=typer.echo)
         typer.echo(f"done: {run_dir} (next: --judge {run_dir}, then --report {run_dir})")
 

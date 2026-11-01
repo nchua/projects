@@ -9,7 +9,7 @@ examples/sheets/
   maya/sheet.png                     # required: the turnaround sheet (or provide crops below)
   maya/sheet_crops/front.png         # optional; preferred as references when present
   maya/sheet_crops/three_quarter.png # optional
-  maya/sheet_crops/side.png          # optional
+  maya/sheet_crops/full_body.png     # optional (§5.4: face front, three-quarter, full body)
   toast/sheet.png
   pickles/sheet.png
   anchors/*.png                      # optional: 2-3 style anchors in the locked style

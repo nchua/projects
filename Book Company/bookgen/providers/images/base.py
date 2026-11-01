@@ -19,6 +19,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
+import httpx2
+from PIL import Image
 from pydantic import Field
 
 from bookgen.models import Model
@@ -28,7 +30,16 @@ ASPECT_PIXELS = 1_572_864
 
 
 class ImageProviderError(RuntimeError):
-    """A provider call failed for a reason other than a policy refusal."""
+    """A provider call failed for a reason other than a policy refusal.
+
+    ``partial`` holds candidates that were made (and paid for) before the failure,
+    so a caller can keep them and count their cost.
+    """
+
+    def __init__(self, message: str, partial: list[ImageResult] | None = None) -> None:
+        """Message plus any candidates finished before the failure."""
+        super().__init__(message)
+        self.partial = partial or []
 
 
 class ImageResult(Model):
@@ -45,7 +56,8 @@ class ImageResult(Model):
     )
     refused: bool = Field(default=False, description="Provider declined the prompt (§7.5).")
     refusal_reason: str = Field(default="", description="What the provider said, if refused.")
-    latency_s: float = Field(default=0.0, ge=0, description="Wall time of the call that made it.")
+    latency_s: float = Field(default=0.0, ge=0, description="Wall time per image.")
+    aspect: str = Field(default="", description="Aspect actually requested from the provider.")
 
 
 class ProviderCapabilities(Model):
@@ -136,6 +148,40 @@ def mime_for(path: Path) -> str:
     """Image MIME type from the file extension."""
     ext = path.suffix.lower().lstrip(".")
     return {"jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}.get(ext, "image/png")
+
+
+def aspect_of(image: Path) -> str:
+    """An image's own aspect as ``'W:H'`` (for ``edit``, which keeps the input's shape)."""
+    with Image.open(image) as im:
+        return f"{im.width}:{im.height}"
+
+
+def guarded[T](provider: str, fn: Callable[[], T]) -> T:
+    """Call ``fn``; transport, timeout and malformed-response errors become ImageProviderError."""
+    try:
+        return fn()
+    except (httpx2.HTTPError, ValueError, KeyError, TypeError) as exc:
+        raise ImageProviderError(f"{provider}: {type(exc).__name__}: {exc}") from exc
+
+
+def each_candidate(n: int, make: Callable[[int], ImageResult]) -> list[ImageResult]:
+    """Run ``make(k)`` for k = 1..n; on failure, raise with the finished ones attached."""
+    done: list[ImageResult] = []
+    for k in range(1, n + 1):
+        try:
+            done.append(make(k))
+        except ImageProviderError as exc:
+            raise ImageProviderError(str(exc), partial=done) from exc
+    return done
+
+
+def check_reference_count(provider: ImageProvider, references: list[Path]) -> None:
+    """Too many references is an error, never a silent cut."""
+    cap = provider.capabilities().max_references
+    if len(references) > cap:
+        raise ImageProviderError(
+            f"{provider.name} takes at most {cap} references, got {len(references)}"
+        )
 
 
 def timed[T](fn: Callable[[], T]) -> tuple[T, float]:

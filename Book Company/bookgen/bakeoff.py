@@ -15,13 +15,19 @@ Flow (each step its own CLI call, so nothing expensive happens by accident):
    brief, no text, safe) against the sheets; scores go to ``<out>/judged.jsonl``.
 4. **Report** (``--report OUT``): ``docs/bakeoff-<date>.md`` with per-provider
    refusal rate, latency, cost, judge means and any human scores.
-5. **Pin** (``--pin PROVIDER --series ID``): writes provider and model into the
-   series' ``style.json`` (D5); refuses to change an existing pin.
+5. **Pin** (``--pin PROVIDER --series ID --out RUN``): writes the provider and the
+   model it used in that run into the series' ``style.json`` (D5); refuses to change
+   an existing pin.
+
+Judging is billed as Claude calls under ``BOOKGEN_MAX_COST_USD`` (per invocation,
+default $5), separate from the image cap; a full 360-image judge pass may take a few
+resumed ``--judge`` invocations (already-judged images are skipped).
 """
 
 from __future__ import annotations
 
 import csv
+import hashlib
 import os
 from collections import defaultdict
 from collections.abc import Callable, Iterable
@@ -49,7 +55,12 @@ from bookgen.providers.images import ImageProvider, ImageProviderError, ImageRes
 from bookgen.providers.llm import LLMProvider, Role
 from bookgen.stages.base import StageInputError
 from bookgen.stages.common import as_json
-from bookgen.stages.s07_generate import prompt_hash, render_prompt, select_references
+from bookgen.stages.s07_generate import (
+    prompt_hash,
+    render_prompt,
+    select_references,
+    style_text,
+)
 
 DEFAULT_SCENES = PROJECT_ROOT / "examples" / "bakeoff" / "scenes.yaml"
 DEFAULT_OUT = PROJECT_ROOT / "bakeoff"
@@ -178,11 +189,26 @@ def image_cap_usd() -> float:
 
 
 def read_records(out: Path) -> list[JobRecord]:
-    """Every record in ``<out>/results.jsonl`` (empty if none yet)."""
+    """Every record in ``<out>/results.jsonl``, retries included (empty if none yet)."""
     path = out / "results.jsonl"
     if not path.exists():
         return []
     return [JobRecord.model_validate_json(ln) for ln in path.read_text().splitlines() if ln.strip()]
+
+
+def latest_records(out: Path) -> list[JobRecord]:
+    """The last attempt per job: what the judge and report score."""
+    return list({r.job.key: r for r in read_records(out)}.values())
+
+
+def spent_usd(out: Path) -> float:
+    """Everything paid for so far, failed and superseded attempts included."""
+    return sum(i.cost_usd for r in read_records(out) for i in r.images)
+
+
+def job_seed(job: Job) -> int:
+    """A stable per-job seed, so seeded providers (FLUX) can replay a candidate."""
+    return int(hashlib.sha256(job.key.encode()).hexdigest()[:8], 16) % 2**31
 
 
 def execute(
@@ -194,9 +220,11 @@ def execute(
     cap_usd: float | None = None,
     log: Callable[[str], None] = lambda line: None,
 ) -> list[JobRecord]:
-    """Run the jobs not yet in ``results.jsonl``; returns this call's new records.
+    """Run every job without a successful record; returns this call's new records.
 
-    Raises ``BudgetExceeded`` before a job whose list-price worst case would pass the cap.
+    A job whose last attempt errored is retried. Candidates finished before an error are
+    kept on the record and counted as spend. Raises ``BudgetExceeded`` before a job whose
+    list-price worst case would pass the cap.
     """
     cap = image_cap_usd() if cap_usd is None else cap_usd
     dirs = sheet_dirs(sheets, config)
@@ -206,13 +234,12 @@ def execute(
     family = read_model(PROJECT_ROOT / config.family, FamilyProfile)
     cards: dict[str, AppearanceCard] = {c.person_id: c for c in family.appearance_cards}
     scenes = {s.id: s for s in config.scenes}
-    done = read_records(out)
-    seen = {r.job.key for r in done}
-    spent = sum(i.cost_usd for r in done for i in r.images)
+    done = {r.job.key for r in latest_records(out) if r.error is None}
+    spent = spent_usd(out)
     new: list[JobRecord] = []
     out.mkdir(parents=True, exist_ok=True)
     for job in jobs:
-        if job.key in seen:
+        if job.key in done:
             continue
         provider = providers[job.provider]
         worst = provider.capabilities().usd_per_image * config.candidates
@@ -229,15 +256,16 @@ def execute(
         )
         try:
             record.images = provider.generate(
-                prompt, refs, job.aspect, config.candidates, None, out / job.key
+                prompt, refs, job.aspect, config.candidates, job_seed(job), out / job.key
             )
         except ImageProviderError as exc:
-            record.error = str(exc)
+            record.images, record.error = exc.partial, str(exc)
         spent += sum(i.cost_usd for i in record.images)
         with (out / "results.jsonl").open("a", encoding="utf-8") as fh:
             fh.write(record.model_dump_json() + "\n")
         refused = sum(i.refused for i in record.images)
-        log(f"{job.key}: {len(record.images)} images, {refused} refused, ${spent:.2f} total")
+        err = f", ERROR {record.error}" if record.error else ""
+        log(f"{job.key}: {len(record.images)} images, {refused} refused, ${spent:.2f} total{err}")
         new.append(record)
     write_human_sheet(out)
     return new
@@ -249,7 +277,7 @@ def write_human_sheet(out: Path) -> Path:
     fields = ["path", "provider", "scene", "identity", "style", "brief", "no_text", "notes"]
     kept = {row["path"]: row for row in _read_csv(path)}
     rows = []
-    for r in read_records(out):
+    for r in latest_records(out):
         for img in r.images:
             if img.path is not None:
                 key = str(img.path)
@@ -285,7 +313,7 @@ def judge(out: Path, config: BakeoffConfig, sheets: Path, llm: LLMProvider) -> l
     prompt = load_prompt("image_judge")
     session = llm.session(StageId.S8, out / "logs")
     new = []
-    for record in read_records(out):
+    for record in latest_records(out):
         brief = scenes[record.job.scene].brief
         sheet_refs = select_references(brief, dirs, [], max_refs=len(brief.characters))
         for img in record.images:
@@ -297,7 +325,7 @@ def judge(out: Path, config: BakeoffConfig, sheets: Path, llm: LLMProvider) -> l
                 prompt=prompt,
                 context=[],
                 user=prompt.render(
-                    style="; ".join(style.attributes),
+                    style=style_text(style),
                     characters=", ".join(c.id for c in brief.characters) or "none",
                     brief=as_json(brief),
                 ),
@@ -318,7 +346,7 @@ def judge(out: Path, config: BakeoffConfig, sheets: Path, llm: LLMProvider) -> l
 
 def report(out: Path, docs: Path | None = None, today: str | None = None) -> Path:
     """Write ``docs/bakeoff-<date>.md`` from the results, judge scores and human sheet."""
-    records = read_records(out)
+    records = latest_records(out)
     if not records:
         raise BakeoffError(f"no results in {out}; run with --execute first")
     judged_path = out / "judged.jsonl"
@@ -327,7 +355,7 @@ def report(out: Path, docs: Path | None = None, today: str | None = None) -> Pat
         for ln in (judged_path.read_text().splitlines() if judged_path.exists() else [])
         if ln
     ]
-    human = [r for r in _read_csv(out / "human_scores.csv") if r.get("identity")]
+    human = _read_csv(out / "human_scores.csv")
     today = today or datetime.now(UTC).date().isoformat()
     lines = [
         f"# Image provider bake-off, {today}",
@@ -335,10 +363,14 @@ def report(out: Path, docs: Path | None = None, today: str | None = None) -> Pat
         f"Results: `{out}`. Protocol: SPEC §8.3. Generated by `book bakeoff --report`; "
         "the owner's pick and reasoning go at the end.",
         "",
-        "| Provider | Model | Jobs | Images | Refused | Errors | Mean latency (s) | Cost (USD) "
-        "| Identity | Style | Brief | No text | Safe | Human identity |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| Provider | Model | Aspects sent | Jobs | Images | Refused | Errors | Latency/image (s) "
+        "| Cost (USD) | Identity | Style | Brief | No text | Safe "
+        "| Human identity | Human style | Human brief | Human no text |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
+    paid: dict[str, float] = defaultdict(float)
+    for r in read_records(out):  # every attempt, so retried failures still count
+        paid[r.job.provider] += sum(i.cost_usd for i in r.images)
     by_provider: dict[str, list[JobRecord]] = defaultdict(list)
     for r in records:
         by_provider[r.job.provider].append(r)
@@ -346,23 +378,28 @@ def report(out: Path, docs: Path | None = None, today: str | None = None) -> Pat
         imgs = [i for r in recs for i in r.images]
         made = [i for i in imgs if not i.refused]
         scores = [j.score for j in judged if j.provider == name]
-        hum = [float(r["identity"]) for r in human if r["provider"] == name]
+        hum = [r for r in human if r["provider"] == name]
         model = imgs[0].model if imgs else "?"
+        aspects = ", ".join(sorted({i.aspect for i in imgs if i.aspect})) or "?"
         lines.append(
-            f"| {name} | {model} | {len(recs)} | {len(made)} | {len(imgs) - len(made)} "
+            f"| {name} | {model} | {aspects} | {len(recs)} | {len(made)} | {len(imgs) - len(made)} "
             f"| {sum(r.error is not None for r in recs)} "
-            f"| {_mean(i.latency_s for i in imgs):.1f} | {sum(i.cost_usd for i in imgs):.2f} "
+            f"| {_mean(i.latency_s for i in imgs):.1f} | {paid[name]:.2f} "
             f"| {_fmt(s.identity for s in scores)} | {_fmt(s.style for s in scores)} "
             f"| {_fmt(s.brief for s in scores)} | {_pct(s.no_text for s in scores)} "
-            f"| {_pct(s.safe for s in scores)} | {_fmt(hum)} |"
+            f"| {_pct(s.safe for s in scores)} | {_human(hum, 'identity')} "
+            f"| {_human(hum, 'style')} | {_human(hum, 'brief')} | {_human_bool(hum, 'no_text')} |"
         )
     refusals = [
         f"- {r.job.key}: {i.refusal_reason or 'refused'}"
         for r in records
         for i in r.images
         if i.refused
-    ][:50]
-    lines += ["", "## Refusals (child-hero policy test, §7.5)", "", *(refusals or ["- none"])]
+    ]
+    shown = refusals[:50]
+    if len(refusals) > len(shown):
+        shown.append(f"- … and {len(refusals) - len(shown)} more (see results.jsonl)")
+    lines += ["", "## Refusals (child-hero policy test, §7.5)", "", *(shown or ["- none"])]
     lines += ["", "## Decision", "", "_Owner: provider picked, why, and the pin command run._", ""]
     docs = docs or PROJECT_ROOT / "docs"
     docs.mkdir(parents=True, exist_ok=True)
@@ -383,24 +420,47 @@ def _fmt(values: Iterable[float]) -> str:
     return f"{_mean(vals):.2f}" if vals else "–"
 
 
+def _human(rows: list[dict[str, str]], column: str) -> str:
+    """Mean of a human 0-3 score column over the rows that filled it in."""
+    return _fmt(float(r[column]) for r in rows if r.get(column))
+
+
+def _human_bool(rows: list[dict[str, str]], column: str) -> str:
+    """Share of rows marking a yes/no column true (y, yes, true, 1)."""
+    marks = [r[column].strip().lower() in {"y", "yes", "true", "1"} for r in rows if r.get(column)]
+    return _pct(marks)
+
+
 def _pct(values: Iterable[bool]) -> str:
     """Share true as a percentage, or a dash."""
     vals = list(values)
     return f"{100 * sum(vals) / len(vals):.0f}%" if vals else "–"
 
 
-def pin(paths: SeriesPaths, provider: ImageProvider) -> StyleBible:
-    """Pin ``provider`` and its model in the series' ``style.json`` (D5); no silent re-pin."""
+def models_in_run(out: Path) -> dict[str, str]:
+    """Provider name to the model that actually made the images in a run."""
+    return {i.provider: i.model for r in read_records(out) for i in r.images}
+
+
+def pin(paths: SeriesPaths, provider: str, run: Path) -> StyleBible:
+    """Pin ``provider`` with the model it used in ``run`` (D5); never a silent re-pin.
+
+    The model comes from the run's records, not today's env default, so the pin is
+    exactly what the bake-off tested.
+    """
     if not paths.style.exists():
         raise BakeoffError(f"no style.json for series at {paths.root}; run init-series first")
+    model = models_in_run(run).get(provider)
+    if model is None:
+        raise BakeoffError(f"{provider} made no images in {run}; nothing tested to pin")
     style = read_model(paths.style, StyleBible)
-    if style.provider and (style.provider, style.model) != (provider.name, provider.model):
+    if style.provider and (style.provider, style.model) != (provider, model):
         raise BakeoffError(
             f"series is pinned to {style.provider}/{style.model} (D5); "
             "edit style.json by hand to change it"
         )
     pinned = style.model_copy(
-        update={"provider": provider.name, "model": provider.model, "pinned_at": datetime.now(UTC)}
+        update={"provider": provider, "model": model, "pinned_at": datetime.now(UTC)}
     )
     write_model(paths.style, pinned)
     return pinned

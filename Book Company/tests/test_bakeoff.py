@@ -107,20 +107,61 @@ def test_judge_sends_sheets_then_candidate_and_report(
     path = bk.report(out, docs=tmp_path / "docs", today="2026-11-02")
     text = path.read_text()
     assert path.name == "bakeoff-2026-11-02.md"
-    assert "| fake | fake-1 | 2 | 6 | 0 | 0 |" in text and "| 2.00 | 3.00 | 3.00 | 100% |" in text
+    assert "| fake | fake-1 | 1:1, 2:1 | 2 | 6 | 0 | 0 |" in text
+    assert "| 2.00 | 3.00 | 3.00 | 100% | 100% |" in text
 
 
-def test_pin_writes_style_and_refuses_a_silent_repin(demo_series: StageContext) -> None:
-    """Pin records provider/model/time once; a different provider later is refused (D5)."""
-    fake = FakeImageProvider()
-    style = bk.pin(demo_series.paths, fake)
+def test_pin_uses_the_model_from_the_run_and_refuses_a_silent_repin(
+    demo_series: StageContext, config: bk.BakeoffConfig, sheets: Path, tmp_path: Path
+) -> None:
+    """Pin takes the model the run actually used; a different provider later is refused (D5)."""
+    run = tmp_path / "run"
+    providers = {"fake": FakeImageProvider()}
+    bk.execute(bk.plan_jobs(providers, config, limit=1), config, sheets, run, providers)
+    style = bk.pin(demo_series.paths, "fake", run)
     assert (style.provider, style.model) == ("fake", "fake-1") and style.pinned_at
     saved = StyleBible.model_validate_json(demo_series.paths.style.read_text())
     assert saved.provider == "fake"
-    other = FakeImageProvider()
-    other.name = "other"
-    with pytest.raises(bk.BakeoffError, match="pinned"):
-        bk.pin(demo_series.paths, other)
+    with pytest.raises(bk.BakeoffError, match="made no images"):
+        bk.pin(demo_series.paths, "gemini", run)
+
+
+def test_failed_job_keeps_partials_counts_cost_and_retries_on_resume(
+    config: bk.BakeoffConfig, sheets: Path, tmp_path: Path
+) -> None:
+    """A provider error after one candidate keeps it and its cost; resume retries the job."""
+    from bookgen.providers.images import ImageProviderError, ImageResult
+
+    class Flaky(FakeImageProvider):
+        fail = True
+
+        def generate(
+            self,
+            prompt: str,
+            references: list[Path],
+            aspect: str,
+            n: int,
+            seed: int | None,
+            out: Path,
+        ) -> list[ImageResult]:
+            """Make the images, then fail after the first one while ``fail`` is set."""
+            made = super().generate(prompt, references, aspect, n, seed, out)
+            if self.fail:
+                raise ImageProviderError("HTTP 500", partial=made[:1])
+            return made
+
+    flaky = Flaky(usd_per_image=1.0)
+    out = tmp_path / "run"
+    job = bk.plan_jobs({"fake": flaky}, config, limit=1)[:1]
+    [first] = bk.execute(job, config, sheets, out, {"fake": flaky})
+    assert first.error and len(first.images) == 1 and bk.spent_usd(out) == 1.0
+    assert first.images[0].seed == bk.job_seed(job[0])  # stable seed per job
+    flaky.fail = False
+    [retry] = bk.execute(job, config, sheets, out, {"fake": flaky})
+    assert retry.error is None and len(retry.images) == 3
+    assert bk.spent_usd(out) == 4.0  # the failed attempt's candidate still counts
+    assert [len(r.images) for r in bk.latest_records(out)] == [3]
+    assert bk.execute(job, config, sheets, out, {"fake": flaky}) == []  # now done
 
 
 def test_cli_dry_run_and_execute_with_fake(sheets: Path, tmp_path: Path) -> None:

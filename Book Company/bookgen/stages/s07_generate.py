@@ -15,6 +15,7 @@ session 4. Template: ``craft/prompts/image.md``. The no-text negative (D4) and
 from __future__ import annotations
 
 import hashlib
+import re
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
@@ -32,13 +33,33 @@ STAGE_ID = StageId.S7
 CADENCE = Cadence.PER_EPISODE
 
 ALWAYS_NEGATIVE = [
-    "any text, letters, numbers, signs, labels or writing (text is typeset separately)",
+    "any text, letters, numbers, signs, labels or writing",
     "photorealism or 3D render",
 ]
-"""Appended to every prompt: D4 (no text in images) and D3 (illustrated, never photoreal)."""
+"""Appended to every prompt: D4 (no text in images) and D3 (illustrated, never photoreal).
+Phrased as things to leave out, because the template says "Do not include:"."""
 
-CROP_ORDER = ("front", "three_quarter", "side")
-"""Sheet crop file stems in ``characters/<id>/sheet_crops/``, most useful first (§5.4)."""
+CROP_ORDER = ("front", "three_quarter", "full_body")
+"""Sheet crop stems in ``characters/<id>/sheet_crops/`` per §5.4 (face front,
+three-quarter, full body), most useful first."""
+
+_LEADING_NEGATION = re.compile(r"^\s*(?:no|not|never|without|avoid)\s+", re.IGNORECASE)
+_SPEC_TAG = re.compile(r"\s*\((?:D|§)\d+[^)]*\)")
+
+
+def as_exclusion(negative: str) -> str:
+    """``'no lettering'`` -> ``'lettering'``: the template already says "Do not include"."""
+    return _LEADING_NEGATION.sub("", negative).strip()
+
+
+def style_text(style: StyleBible) -> str:
+    """The locked style in words: attributes, line, lighting; no hex codes or spec tags.
+
+    Hex codes and tags like ``(D4)`` are left out because image models sometimes paint
+    such strings into the picture; the palette reaches the model through the anchors.
+    """
+    parts = [*style.attributes, f"line: {style.line}", f"lighting: {style.lighting}"]
+    return "; ".join(_SPEC_TAG.sub("", p) for p in parts)
 
 
 def describe(member: CastMember, card: AppearanceCard | None) -> str:
@@ -73,18 +94,17 @@ def render_prompt(
         )
     side = f"{brief.text_side} half of the image" if brief.text_side else "area described here"
     text_area = f"{side} quiet ({brief.text_safe_area})"
-    style_text = "; ".join(
-        [*style.attributes, f"line: {style.line}", f"lighting: {style.lighting}"]
-    )
     return load_prompt("image").render(
-        style=style_text,
+        style=style_text(style),
         scene=brief.scene,
         shot=brief.shot,
         characters="\n".join(lines) or "- (no characters)",
         props=", ".join(brief.continuity_props) or "none",
-        palette=f"{brief.palette_notes}; palette {', '.join(style.palette)}",
+        palette=brief.palette_notes,
         text_area=text_area,
-        negatives="; ".join(dict.fromkeys([*brief.negatives, *ALWAYS_NEGATIVE])),
+        negatives="; ".join(
+            dict.fromkeys(as_exclusion(n) for n in [*brief.negatives, *ALWAYS_NEGATIVE])
+        ),
     )
 
 

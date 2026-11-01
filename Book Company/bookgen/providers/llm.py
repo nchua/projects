@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import io
 import json
 import os
 from collections.abc import Sequence
@@ -30,6 +31,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 import anthropic
+from PIL import Image
 from pydantic import BaseModel, ValidationError
 
 from bookgen.prompts import Prompt, load_prompt
@@ -247,31 +249,37 @@ def system_blocks(context: Sequence[str], prompt: Prompt) -> list[dict[str, Any]
     return [*blocks, {"type": "text", "text": prompt.system}]
 
 
+MAX_IMAGE_EDGE = 1568
+"""Long edge for images sent to Claude; larger ones are downscaled (cost, size limits)."""
+
+MAX_IMAGE_BYTES = 3_500_000
+"""Encoded size above which an image is re-encoded as JPEG (API per-image limit is 5 MB)."""
+
+
 def user_content(user: str, images: Sequence[Path]) -> str | list[dict[str, Any]]:
     """The user turn: plain text, or base64 image blocks followed by the text."""
     if not images:
         return user
-    blocks: list[dict[str, Any]] = [
-        {
-            "type": "image",
-            "source": {"type": "base64", "media_type": _mime(p), "data": _b64(p)},
-        }
-        for p in images
-    ]
+    blocks: list[dict[str, Any]] = []
+    for p in images:
+        media_type, data = encode_image(p)
+        blocks.append(
+            {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": data}}
+        )
     return [*blocks, {"type": "text", "text": user}]
 
 
-def _mime(path: Path) -> str:
-    """Image MIME type from the extension."""
-    ext = path.suffix.lower()
-    return {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}.get(
-        ext, "image/png"
-    )
-
-
-def _b64(path: Path) -> str:
-    """A file's bytes as base64 text."""
-    return base64.b64encode(path.read_bytes()).decode()
+def encode_image(path: Path) -> tuple[str, str]:
+    """``(media_type, base64)`` for one image, shrunk to ``MAX_IMAGE_EDGE`` if needed."""
+    raw = path.read_bytes()
+    with Image.open(io.BytesIO(raw)) as im:
+        small_enough = max(im.size) <= MAX_IMAGE_EDGE and len(raw) <= MAX_IMAGE_BYTES
+        if small_enough and im.format in ("PNG", "JPEG", "WEBP", "GIF"):
+            return f"image/{im.format.lower()}", base64.b64encode(raw).decode()
+        im.thumbnail((MAX_IMAGE_EDGE, MAX_IMAGE_EDGE))
+        buf = io.BytesIO()
+        im.convert("RGB").save(buf, format="JPEG", quality=90)
+    return "image/jpeg", base64.b64encode(buf.getvalue()).decode()
 
 
 def prompt_hash(

@@ -27,11 +27,13 @@ def test_prompt_has_style_cast_text_area_and_mandatory_negatives(
     style, cast, cards = _setup(demo_family_raw)
     brief = demo_briefs().briefs[0]  # spread 1, text left
     prompt = render_prompt(brief, style, cast, cards)
-    assert "opaque gouache" in prompt and "#E9A86B" in prompt
+    assert "opaque gouache" in prompt
+    assert "#" not in prompt and "(D4)" not in prompt  # nothing a model might paint as text
     assert "Maya (hero)" in prompt and "wears glasses" in prompt and "mustard raincoat" in prompt
     assert "Toast (companion): Teal dragon" in prompt
     assert "left half of the image quiet" in prompt
-    assert "no lettering or readable text" in prompt  # the brief's own negative
+    assert "Do not include: lettering or readable text;" in prompt  # no double negative
+    assert "Do not include: no" not in prompt
     assert "signs, labels or writing" in prompt and "photorealism" in prompt  # always added
     assert "$" not in prompt  # every placeholder filled
 

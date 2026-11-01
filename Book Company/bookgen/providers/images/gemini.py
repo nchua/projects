@@ -4,8 +4,12 @@ Request shape per ai.google.dev/gemini-api/docs/image-generation (read 2026-11-0
 POST ``/v1beta/interactions`` with ``x-goog-api-key``; ``input`` is a text item plus
 base64 image items; ``response_format`` sets ``aspect_ratio`` and ``image_size``.
 One image per call, so ``n`` candidates are ``n`` calls. No seed parameter.
-The docs don't say how a safety block is reported, so a 200 with no image is
-treated as a refusal and its body is kept as the reason ``[VERIFY-2]``.
+
+Outcome rules (the docs give no raw response schema, so ``[VERIFY-2]`` on the first
+live call): the image is looked for only in ``steps[]`` of type ``model_output`` (or
+a top-level ``output_image``), never anywhere else, so an echoed ``input`` can't be
+mistaken for output. ``status`` failed/incomplete or a non-empty ``errors`` is a
+platform failure (raised); a completed interaction with no image is a refusal.
 """
 
 from __future__ import annotations
@@ -21,7 +25,11 @@ from bookgen.providers.images.base import (
     ImageProviderError,
     ImageResult,
     ProviderCapabilities,
+    aspect_of,
     candidate_path,
+    check_reference_count,
+    each_candidate,
+    guarded,
     mime_for,
     nearest_aspect,
     require_key,
@@ -32,18 +40,21 @@ URL = "https://generativelanguage.googleapis.com/v1beta/interactions"
 ASPECTS = ["1:1", "3:2", "2:3", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"]
 """Listed on the docs page; per-model support isn't broken down there [VERIFY-4]."""
 
+FAILED_STATUSES = {"failed", "incomplete", "cancelled"}
 
-def find_image(node: Any) -> dict[str, Any] | None:  # noqa: ANN401 - untyped JSON
-    """The last ``{"type": "image", "data": ...}`` block anywhere in the response."""
+
+def output_image(body: dict[str, Any]) -> dict[str, Any] | None:
+    """The last image block the model produced, or ``None``."""
     found = None
-    if isinstance(node, dict):
-        if node.get("type") == "image" and node.get("data"):
-            found = node
-        for value in node.values():
-            found = find_image(value) or found
-    elif isinstance(node, list):
-        for value in node:
-            found = find_image(value) or found
+    for step in body.get("steps") or []:
+        if step.get("type") != "model_output":
+            continue
+        for block in step.get("content") or []:
+            if block.get("type") == "image" and block.get("data"):
+                found = block
+    top = body.get("output_image")
+    if found is None and isinstance(top, dict) and top.get("data"):
+        found = top
     return found
 
 
@@ -60,6 +71,7 @@ class GeminiProvider:
 
     def _one(self, prompt: str, references: list[Path], aspect: str, path: Path) -> ImageResult:
         """One call, one image (or a refusal)."""
+        sent_aspect = nearest_aspect(aspect, ASPECTS)
         images = [
             {
                 "type": "image",
@@ -74,19 +86,31 @@ class GeminiProvider:
             "response_format": {
                 "type": "image",
                 "mime_type": "image/png",
-                "aspect_ratio": nearest_aspect(aspect, ASPECTS),
+                "aspect_ratio": sent_aspect,
                 "image_size": self.image_size,
             },
         }
         headers = {"x-goog-api-key": require_key("GEMINI_API_KEY")}
-        resp, seconds = timed(lambda: self._client.post(URL, json=body, headers=headers))
+        resp, seconds = timed(
+            lambda: guarded(self.name, lambda: self._client.post(URL, json=body, headers=headers))
+        )
         if resp.status_code >= 400:
             raise ImageProviderError(f"gemini HTTP {resp.status_code}: {resp.text[:300]}")
-        data = resp.json()
-        image = find_image(data)
-        base = {"provider": self.name, "model": self.model, "latency_s": seconds}
+        data: dict[str, Any] = guarded(self.name, resp.json)
+        if data.get("status") in FAILED_STATUSES or data.get("errors"):
+            raise ImageProviderError(
+                f"gemini {data.get('status')}: {str(data.get('errors'))[:300]}"
+            )
+        base = {
+            "provider": self.name,
+            "model": self.model,
+            "latency_s": seconds,
+            "aspect": sent_aspect,
+        }
+        image = output_image(data)
         if image is None:
-            return ImageResult(**base, refused=True, refusal_reason=str(data)[:300])
+            reason = f"status {data.get('status')!r}, no image in model output"
+            return ImageResult(**base, refused=True, refusal_reason=reason)
         path.write_bytes(base64.b64decode(image["data"]))
         return ImageResult(**base, path=path, cost_usd=self.capabilities().usd_per_image)
 
@@ -99,16 +123,15 @@ class GeminiProvider:
         seed: int | None,
         out: Path,
     ) -> list[ImageResult]:
-        """``n`` calls; references beyond ``max_references`` are an error, not a silent cut."""
-        if len(references) > self.capabilities().max_references:
-            raise ImageProviderError(f"gemini takes at most 14 references, got {len(references)}")
-        return [
-            self._one(prompt, references, aspect, candidate_path(out, k)) for k in range(1, n + 1)
-        ]
+        """``n`` calls; a failure part-way raises with the finished candidates attached."""
+        check_reference_count(self, references)
+        return each_candidate(
+            n, lambda k: self._one(prompt, references, aspect, candidate_path(out, k))
+        )
 
     def edit(self, image: Path, prompt: str, references: list[Path], out: Path) -> ImageResult:
-        """Edit by sending the image first among the references."""
-        return self._one(prompt, [image, *references], "16:9", candidate_path(out, 1))
+        """Edit by sending the image first among the references, keeping its aspect."""
+        return self._one(prompt, [image, *references], aspect_of(image), candidate_path(out, 1))
 
     def upscale(self, image: Path, factor: int) -> Path:
         """Not offered; S9 upscales locally."""

@@ -170,3 +170,24 @@ def test_bad_cap_setting_is_a_config_error(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setenv("BOOKGEN_MAX_COST_USD", "five")
     with pytest.raises(ConfigError, match="must be a number"):
         Budget()
+
+
+def test_images_go_before_the_text_and_large_ones_are_shrunk(tmp_path: Path) -> None:
+    """Vision calls: base64 image blocks then the text; a big PNG becomes a <=1568px JPEG."""
+    import base64 as b64
+    import io
+
+    from PIL import Image
+
+    from bookgen.providers.images.fake import write_png
+    from bookgen.providers.llm import MAX_IMAGE_EDGE, encode_image, user_content
+
+    small = write_png(tmp_path / "small.png", 10, 10, (1, 2, 3))
+    big = write_png(tmp_path / "big.png", 3000, 1500, (1, 2, 3))
+    content = user_content("score it", [small, big])
+    assert isinstance(content, list) and [b["type"] for b in content] == ["image", "image", "text"]
+    assert content[0]["source"]["media_type"] == "image/png"
+    media, data = encode_image(big)
+    assert media == "image/jpeg"
+    with Image.open(io.BytesIO(b64.b64decode(data))) as im:
+        assert max(im.size) == MAX_IMAGE_EDGE
