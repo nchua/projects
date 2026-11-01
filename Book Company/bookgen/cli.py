@@ -14,6 +14,7 @@ from typing import Annotated
 
 import typer
 
+from bookgen.evals import report, run_suite
 from bookgen.manifest import read_manifest, resolve_flag
 from bookgen.models import Companion, StageId, Value
 from bookgen.paths import SeriesPaths
@@ -212,10 +213,18 @@ def bakeoff(
 
 @app.command("eval")
 def eval_cmd(
-    suite: Annotated[Path, typer.Option("--suite", help="Eval suite directory.")],
+    suite: Annotated[
+        Path, typer.Option("--suite", exists=True, file_okay=False, help="Eval suite directory.")
+    ],
 ) -> None:
-    """Run the eval set."""
-    _not_implemented("§6.7 eval set")
+    """Run the eval set (§6.7): S3-S5 per case, scores and deltas vs the last run."""
+
+    def _eval() -> None:
+        run, previous = run_suite(suite, make_llm())
+        for line in report(run, previous):
+            typer.echo(line)
+
+    _report_errors(_eval)
 
 
 if __name__ == "__main__":

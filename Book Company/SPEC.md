@@ -1,6 +1,6 @@
 # Serialized AI Children's Books — Book Generation Pipeline Spec
 
-**Status:** v0.1 draft, 2026-11-01. Phase 0 session 1 (scaffold: package, models, manifest, CLI skeleton, `craft/` v0, fixture family, working S0) done 2026-11-01; next is session 2 (§10.1).
+**Status:** v0.1 draft, 2026-11-01. Phase 0 session 1 (scaffold, working S0) and session 2 (stage contract, Claude provider, S3–S6 text pipeline with judge loop and mechanical checks, `book flags`, minimal `book eval`) done 2026-11-01, tested against a fake LLM; the first real model runs are still to do (they need `ANTHROPIC_API_KEY`). Next is session 3 (§10.1).
 **Scope:** how one personalized, serialized picture book gets made, from intake to a print-ready PDF.
 Printing, fulfillment, the web app, payments and marketing are framed (§1.4, §9, §10.5) but are out of scope for the pipeline build.
 
@@ -113,6 +113,8 @@ Legacy personalized books (Wonderbly, Hooray Heroes) are templated: fixed storie
 
 > Session 1 note (2026-11-01): "appends" is read as upsert by stage: a re-run replaces that stage's record, increments `attempts` and sums `cost_usd` (`bookgen/manifest.py`). S0's §3.2 gate (schema valid, consent set) is checked before anything is written and raises, since there is no series yet to flag against.
 
+> Session 2 note (2026-11-01): stages follow one contract (`bookgen/stages/base.py`): each declares `CADENCE` and optional `inputs`/`check`/`outputs`, and `run` returns its gate checks. The runner owns the skip test (DONE or FLAGGED with outputs present; `--force` reruns), the input gate before any write (`StageInputError`, exit 2), start/finish, FAILED on an exception, flags from failed checks, and per-stage cost. Every check, passed or failed, is kept in `StageRecord.checks`. A flagged stage does not block later stages; flags block at S12. Rerunning a stage resolves its earlier open flags. `book flags --resolve N` is the editor's clear.
+
 ### 3.2 Stage map
 
 | Stage | Name | Runs | Model | Gate |
@@ -145,11 +147,19 @@ Legacy personalized books (Wonderbly, Hooray Heroes) are templated: fixed storie
 
 **S3 Series bible.** Episode 1 only. In: profile, cards, companion, value priorities, parent notes. Out: `series/bible.json`: world (name, 5–8 locations with one-line descriptions), cast (hero, companion, 2–3 recurring side characters, family cameos), tone and humor register, naming conventions, the season (goal, six episode loglines, finale shape), forbidden list from parent exclusions, style id. Also `series/style_anchors/*.png`: 3–5 images of key locations in the chosen style, which become style references for every later image.
 
+> Session 2 note (2026-11-01): S3 writes `bible.json` only; style anchors are images and wait for session 3. Code checks exact names, pronouns, cameo consent and exactly one home location. The Sonnet coherence judge checks the rest. The human read is always raised as the flag `bible_human_read`. Parent exclusions are merged into `forbidden` by code. `CastMember.pronouns` and `Location.is_home` were added. S3 creates `characters/<id>/` for side cast. There is no parent-notes input in Phase 0.
+
 **S4 Episode plan.** In: bible, ledger, this episode's value, life-event note, band. Out: `epNN/plan.json`: title, logline, value and pattern (from the catalog), structure template (§4.4), 12 beats (spread, setting, characters present, action, emotional beat, page-turn hook, text-safe side), the beat where the value lands (9–11), recap text, teaser text, three grown-up questions. Gate: the plan judge checks 12 beats, pattern present, continuity against the ledger, no setting repeated from the previous episode, scare level within band, and that the story reads without the recap (§4.5).
+
+> Session 2 note (2026-11-01): code checks the countable rules: pattern copied from the catalog, value at 9–11, value not repeated this season, recap ≤ 60, ledger summary ≤ 120, cast and settings from the bible, template rotation. "No setting repeated" exempts the hero's home (`is_home`). The judge reads the plan with the recap removed (§4.5). With no `--value`, the first parent priority not yet covered is used. There is no life-event input in Phase 0.
 
 **S5 Manuscript.** In: plan, Craft Guide, band rules, ledger (names, voices). Out: `epNN/manuscript.json`: text per spread plus read-aloud notes (emphasis, sound words). Loop: writer drafts → judge critiques against the rubric in a separate call → writer revises → at most two rounds → mechanical checks (word counts per band, banned phrases, readability, exact name spellings, pronouns). Gate: judge ≥ bar and mechanical checks pass, else flag.
 
+> Session 2 note (2026-11-01): "at most two rounds" is read as draft → critique, then (revise → critique) at most twice, so the final text always has a score to gate on. The loop stops early when the rubric bar and every mechanical check pass. Failed mechanical checks go into each revise with the judge's notes. The judge sees only the finished text. All rounds are kept in `epNN/critique.json`. `Manuscript.word_count` is derived, and spreads must be 1..12 in order.
+
 **S6 Illustration briefs.** In: manuscript, plan, bible, sheets, style bible. Out: `epNN/briefs.json`, one per spread plus cover, recap and teaser: scene in concrete nouns, characters present with pose and expression, shot (wide, medium, close), text-safe area, palette and time of day, continuity props (the lantern from episode 2), negatives. Gate: lint, every present character has a sheet, text-safe side matches the plan.
+
+> Session 2 note (2026-11-01): until sheets exist (session 3), "has a sheet" means `characters/<id>/sheet.png` or at least the folder. `IllustrationBrief.text_side` was added so "matches the plan" is an equality test. Lint also checks that all 15 slots appear exactly once, that each story spread's characters match the plan, that no scene asks for readable text, and that the negatives rule text out (D4).
 
 **S7 Image generation.** In: brief, sheet crops for every present character, 2–3 style anchors. Out: `epNN/images/sNN_cK.png`, three candidates per spread, seed and prompt hash logged. Runs through the `ImageProvider` adapter (§8.3).
 
@@ -211,6 +221,8 @@ next_hook          one line, feeds the teaser and the next plan
 child_age_at_last  drives band and sheet refresh
 ```
 
+> Session 2 note (2026-11-01): the ≤ 120 limit is a QA flag (`bookgen/qa/limits.py`), not a model validator, so an over-long ledger can still be loaded and flagged.
+
 ### 4.4 Continuity rules the plan judge enforces
 
 - Names and appearance are immutable. Companion voice tics are stable.
@@ -222,6 +234,8 @@ child_age_at_last  drives band and sheet refresh
 ### 4.5 Standalone rule
 
 The recap spread is ≤ 60 words. The plan judge reads the plan with the recap removed and must still follow it. Callbacks are rewards, never prerequisites.
+
+> Session 2 note (2026-11-01): the recap limit is likewise a flag raised in S4, not a validator.
 
 ### 4.6 Aging up
 
@@ -299,9 +313,13 @@ Generator and evaluator are separated. The critique call uses a different model 
 - Adjective density ≤ 1 per 8 words. Exclamation marks ≤ 1 per spread. Sentence length caps per band.
 - Names spelled exactly as in the profile. Pronouns consistent. Parent terms as the family set them.
 
+> Session 2 note (2026-11-01): the checks live in `bookgen/qa/mechanical.py`. Adjective density uses the lexicon in `craft/adjectives.txt` (no POS tagger). `...` in a banned phrase matches at most eight words, within one sentence. Parent terms are checked against a fixed list of generic words. A pronoun check passes only when someone present in the beat uses that pronoun. The seed phrase "and so" also catches "and so did"; the editor overrides those.
+
 ### 6.4 Readability
 
 Per band: Flesch-Kincaid grade range (band B ≤ 2.5), mean sentence length, and the share of words on a band-appropriate frequency list `[VERIFY-6]`. Proper nouns are excluded from the statistics.
+
+> Session 2 note (2026-11-01): Flesch-Kincaid uses a vowel-group syllable estimate and excludes cast and family names. `max_fk_grade` per band was added to `band_rules.yaml` (B = 2.5 from here; A and C are proposals). The frequency-list share isn't measured yet `[VERIFY-6]`.
 
 ### 6.5 Metrics per book
 
@@ -314,6 +332,8 @@ The vision judge compares every chosen spread to the sheet and scores identity 0
 ### 6.7 Eval set
 
 `evals/core/`: ten fixture families × three values. Runs on every change to a craft file, prompt or model and reports deltas in judge mean, mechanical failures and cost. No craft change ships without the eval.
+
+> Session 2 note (2026-11-01): the minimal runner (`book eval --suite evals/core`, `bookgen/evals.py`) runs S0 and S3–S5 per family × value and writes `evals/core/results/<stamp>.json` (committed). It reports judge mean, mechanical failures, plan flags, cost and changed prompt versions against the previous results file. Phase 0 has one family × three values; generated artifacts go to the gitignored `evals/core/runs/`.
 
 ---
 
@@ -393,6 +413,8 @@ Bake-off protocol (`book bakeoff`): three fixture character sheets × twenty sce
 
 Published rates at the time of writing: Opus 5.5 $4 in / $20 out per million tokens, Sonnet 5.5 $2 / $10, Haiku 5.5 $0.10 / $0.50. Keep the Craft Guide and bible first in every prompt so prompt caching covers them. Use the server-side refusal fallback the SDK offers so a safety-classifier refusal on an innocent children's prompt retries rather than fails.
 
+> Session 2 note (2026-11-01): the client is `bookgen/providers/llm.py`. It calls `beta.messages.parse` with a structured output per artifact, `fallbacks="default"` (beta `server-side-fallback-2026-07-01`), and the Craft Guide and bible as cached system blocks ahead of the role prompt (`craft/prompts/`, versioned). Effort is `medium` for the writer, `high` for draft and revise, and `high` for the judge. Invalid output gets one corrective retry. Each call is logged to `epNN/logs/`. A hard per-run cap comes from `BOOKGEN_MAX_COST_USD` (default $5), checked against each call's worst case before it is sent.
+
 ### 8.5 Data model (Pydantic)
 
 ```
@@ -444,7 +466,7 @@ book bakeoff    --providers gemini,flux,openai --sheets examples/sheets/
 book eval       --suite evals/core
 ```
 
-> Session 1 note (2026-11-01): `init-series` also takes an optional `--series` (defaults to the family id). `run --from S0` is refused, since S0 needs intake inputs. `--character` and `--value` reach stages as `StageContext.character` / `.value`. Unbuilt stages print `not implemented (SPEC §3.3 S#)` and exit 1.
+> Session 1 note (2026-11-01): `init-series` also takes an optional `--series` (defaults to the family id). `run --from S0` is refused, since S0 needs intake inputs (session 2: now via S0's input gate, exit 2). `--character` and `--value` reach stages as `StageContext.character` / `.value`. Unbuilt stages print `not implemented (SPEC §3.3 S#)` and exit 1.
 
 ### 8.8 Craft assets
 

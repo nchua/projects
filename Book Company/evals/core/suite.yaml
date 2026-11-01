@@ -1,0 +1,11 @@
+# Core eval suite — SPEC §6.7. Runs S3-S5 (bible, plan, manuscript) per case.
+# Phase 0 has one fixture family; the spec's target is ten families x three values.
+# A full run of this file is ~3 cases x ~$1 at current rates; BOOKGEN_MAX_COST_USD
+# caps the whole run (default $5). Results land in results/, artifacts in runs/.
+name: core
+families:
+  - examples/family_demo.json
+values:
+  - perseverance
+  - curiosity
+  - big_feelings
