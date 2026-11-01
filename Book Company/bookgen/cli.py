@@ -1,8 +1,9 @@
 """The ``book`` command line (SPEC §8.7).
 
-Every command dispatches to stages through ``bookgen.stages.run_range``; a
-stage that is not built yet prints ``not implemented (SPEC §3.3 S#)`` and exits 1.
-Only ``init-series`` (S0) works in Phase 0 session 1.
+Every stage command dispatches through ``bookgen.stages.run_range``, which
+skips stages already done (``--force`` reruns them). Exit codes: 0 ok (flags
+are not errors; ``book flags`` lists them), 1 a stage is not built yet,
+2 bad inputs (``StageInputError``).
 """
 
 from __future__ import annotations
@@ -13,11 +14,13 @@ from typing import Annotated
 
 import typer
 
+from bookgen.manifest import read_manifest, resolve_flag
 from bookgen.models import Companion, StageId, Value
-from bookgen.stages import StageContext, run_range, stage_range
-from bookgen.stages.base import not_built
-from bookgen.stages.s00_intake import DEFAULT_STYLE, IntakeError
-from bookgen.stages.s00_intake import run as run_intake
+from bookgen.paths import SeriesPaths
+from bookgen.providers.llm import LLMProvider
+from bookgen.stages import StageContext, StageReport, run_range, stage_range
+from bookgen.stages.base import StageInputError, not_built
+from bookgen.stages.s00_intake import DEFAULT_STYLE, with_series_id
 
 app = typer.Typer(
     name="book",
@@ -31,25 +34,42 @@ EpisodeOpt = Annotated[int, typer.Option("--episode", min=1, help="Episode numbe
 SpreadOpt = Annotated[
     int | None, typer.Option("--spread", min=1, max=12, help="Only this spread (S7-S9).")
 ]
+ForceOpt = Annotated[bool, typer.Option("--force", help="Rerun stages that are already done.")]
 
 
-def _report_unbuilt(fn: Callable[[], object]) -> None:
-    """Call ``fn``; turn a NotImplementedError into its one-line message and exit 1."""
+def make_llm() -> LLMProvider | None:
+    """The LLM provider for stage commands (patched in tests)."""
+    return None
+
+
+def _report_errors(fn: Callable[[], object]) -> None:
+    """Call ``fn``; unbuilt -> one line and exit 1, bad inputs -> ``error:`` and exit 2."""
     try:
         fn()
     except NotImplementedError as exc:
         typer.echo(str(exc))
         raise typer.Exit(code=1) from exc
+    except StageInputError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
 
 
-def _dispatch(ctx: StageContext, stages: list[StageId]) -> None:
-    """Run ``stages``; report the first unbuilt stage instead of a traceback."""
-    _report_unbuilt(lambda: run_range(ctx, stages))
+def _echo_reports(reports: list[StageReport]) -> None:
+    """Print one line per stage: outcome, flag count, cost."""
+    for r in reports:
+        extra = f", {r.flags} flag(s); see `book flags`" if r.flags else ""
+        cost = f" ${r.cost_usd:.4f}" if r.cost_usd else ""
+        typer.echo(f"{r.stage}: {r.outcome}{extra}{cost}")
+
+
+def _dispatch(ctx: StageContext, stages: list[StageId], force: bool = False) -> None:
+    """Run ``stages`` through the runner and report each one."""
+    _report_errors(lambda: _echo_reports(run_range(ctx, stages, llm=make_llm(), force=force)))
 
 
 def _not_implemented(ref: str) -> None:
     """Report a non-stage command that is not built yet."""
-    _report_unbuilt(lambda: not_built(ref))
+    _report_errors(lambda: not_built(ref))
 
 
 @app.command("init-series")
@@ -65,12 +85,13 @@ def init_series(
 ) -> None:
     """S0: validate the family and create the series layout and manifest."""
     ctx = StageContext(series_id=series, family_path=family, style_id=style, companion=companion)
-    try:
-        paths = run_intake(ctx)
-    except IntakeError as exc:
-        typer.echo(f"error: {exc}", err=True)
-        raise typer.Exit(code=2) from exc
-    typer.echo(f"series ready: {paths.root}")
+
+    def _init() -> None:
+        full = with_series_id(ctx)
+        run_range(full, [StageId.S0])
+        typer.echo(f"series ready: {full.paths.root}")
+
+    _report_errors(_init)
 
 
 @app.command()
@@ -87,17 +108,18 @@ def plan(
     series: SeriesOpt,
     episode: EpisodeOpt = 1,
     value: Annotated[Value | None, typer.Option("--value", help="Value for this episode.")] = None,
+    force: ForceOpt = False,
 ) -> None:
-    """S3 on the first run, then S4: series bible and episode plan."""
+    """S3 (once per series) and S4: series bible and episode plan."""
     ctx = StageContext(series_id=series, episode=episode, value=value)
-    first = not ctx.paths.bible.exists()
-    _dispatch(ctx, [StageId.S3, StageId.S4] if first else [StageId.S4])
+    _dispatch(ctx, [StageId.S3, StageId.S4], force=force)
 
 
 @app.command()
-def write(series: SeriesOpt, episode: EpisodeOpt = 1) -> None:
+def write(series: SeriesOpt, episode: EpisodeOpt = 1, force: ForceOpt = False) -> None:
     """S5-S6: manuscript with judge loop, then illustration briefs."""
-    _dispatch(StageContext(series_id=series, episode=episode), [StageId.S5, StageId.S6])
+    ctx = StageContext(series_id=series, episode=episode)
+    _dispatch(ctx, [StageId.S5, StageId.S6], force=force)
 
 
 @app.command()
@@ -132,22 +154,51 @@ def run_cmd(
     to: Annotated[StageId, typer.Option("--to", help="Last stage.")],
     episode: EpisodeOpt = 1,
     spread: SpreadOpt = None,
+    force: ForceOpt = False,
 ) -> None:
-    """Run stages FROM..TO inclusive (S0 needs init-series instead)."""
-    if from_ is StageId.S0:
-        typer.echo("error: S0 takes intake inputs; use `book init-series`", err=True)
-        raise typer.Exit(code=2)
+    """Run stages FROM..TO inclusive (S0 takes intake inputs: use init-series)."""
     try:
         stages = stage_range(from_, to)
     except ValueError as exc:
         raise typer.BadParameter(str(exc)) from exc
-    _dispatch(StageContext(series_id=series, episode=episode, spread=spread), stages)
+    ctx = StageContext(series_id=series, episode=episode, spread=spread)
+    _dispatch(ctx, stages, force=force)
 
 
 @app.command()
-def flags(series: SeriesOpt, episode: EpisodeOpt = 1) -> None:
-    """List open gate flags for an episode."""
-    _not_implemented("§3.1 flags")
+def flags(
+    series: SeriesOpt,
+    episode: Annotated[
+        int | None, typer.Option("--episode", min=1, help="One episode; default all.")
+    ] = None,
+    resolve: Annotated[
+        int | None,
+        typer.Option("--resolve", min=0, help="Mark flag #N resolved; needs --episode."),
+    ] = None,
+    show_all: Annotated[bool, typer.Option("--all", help="Include resolved flags.")] = False,
+) -> None:
+    """List open gate flags (§3.1), or clear one with --resolve."""
+    paths = SeriesPaths.for_series(series)
+    if resolve is not None:
+        if episode is None:
+            raise typer.BadParameter("--resolve needs --episode")
+        try:
+            flag = resolve_flag(paths.manifest(episode), episode, resolve)
+        except IndexError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        typer.echo(f"resolved ep{episode:02d} #{resolve} [{flag.stage}] {flag.code}")
+        return
+    shown = 0
+    for ep in [episode] if episode else paths.episodes():
+        for i, f in enumerate(read_manifest(paths.manifest(ep), ep).flags):
+            if f.resolved and not show_all:
+                continue
+            where = f" spread {f.spread}" if f.spread else ""
+            done = " (resolved)" if f.resolved else ""
+            typer.echo(f"ep{ep:02d} #{i} [{f.stage}{where}] {f.code}{done}: {f.message}")
+            shown += 1
+    if not shown:
+        typer.echo("no open flags")
 
 
 @app.command()

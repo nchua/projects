@@ -16,29 +16,31 @@ at the S1 gate) are never overwritten, and changing a series' locked style is re
 
 from __future__ import annotations
 
+import dataclasses
+
 from pydantic import ValidationError
 
 from bookgen.craft import load_band_rules, load_style_bible_raw
 from bookgen.io import read_model, write_model
-from bookgen.manifest import finish_stage, start_stage
-from bookgen.models import FamilyProfile, Ledger, StageId, StageStatus, StyleBible
+from bookgen.models import FamilyProfile, Ledger, StageId, StyleBible
 from bookgen.paths import SeriesPaths
-from bookgen.stages.base import StageContext
+from bookgen.stages.base import Cadence, StageContext, StageInputError, StageResult
 
 STAGE_ID = StageId.S0
+CADENCE = Cadence.EVERY_RUN
 
 DEFAULT_STYLE = "gouache-warm"
 """Phase 0's only launch style [OPEN-12]."""
 
 
-class IntakeError(ValueError):
+class IntakeError(StageInputError):
     """The intake form is invalid or conflicts with an existing series."""
 
 
 def load_intake(ctx: StageContext) -> FamilyProfile:
     """Read and validate the intake JSON, applying the ``--companion`` override."""
     if ctx.family_path is None:
-        raise IntakeError("S0 needs a family file (--family)")
+        raise IntakeError("S0 needs a family file (--family); use `book init-series`")
     try:
         profile = read_model(ctx.family_path, FamilyProfile)
     except (OSError, ValidationError) as exc:
@@ -47,6 +49,13 @@ def load_intake(ctx: StageContext) -> FamilyProfile:
         choice = profile.companion_choice.model_copy(update={"archetype": ctx.companion})
         profile = profile.model_copy(update={"companion_choice": choice})
     return profile
+
+
+def with_series_id(ctx: StageContext) -> StageContext:
+    """Default ``series_id`` to the family id (``--series`` overrides it)."""
+    if ctx.series_id is not None:
+        return ctx
+    return dataclasses.replace(ctx, series_id=load_intake(ctx).id)
 
 
 def check_intake(profile: FamilyProfile) -> None:
@@ -75,16 +84,17 @@ def resolve_style(paths: SeriesPaths, style_id: str) -> StyleBible | None:
         raise IntakeError(str(exc)) from exc
 
 
-def run(ctx: StageContext) -> SeriesPaths:
-    """Validate the intake and lay out ``series/<series_id>/``; returns its paths."""
-    profile = load_intake(ctx)
-    check_intake(profile)
-    series_id = ctx.series_id or profile.id
-    paths = SeriesPaths.for_series(series_id, ctx.base_dir)
-    style = resolve_style(paths, ctx.style_id or DEFAULT_STYLE)  # validate before writing
-    manifest = paths.manifest(1)
+def check(ctx: StageContext) -> None:
+    """Validate the intake, the consent gate and the style lock; writes nothing."""
+    check_intake(load_intake(ctx))
+    resolve_style(ctx.paths, ctx.style_id or DEFAULT_STYLE)
 
-    start_stage(manifest, 1, STAGE_ID)
+
+def run(ctx: StageContext) -> StageResult:
+    """Lay out ``series/<series_id>/`` and write the S0 artifacts (``check`` has passed)."""
+    profile = load_intake(ctx)
+    paths = ctx.paths
+    style = resolve_style(paths, ctx.style_id or DEFAULT_STYLE)
     for d in paths.dirs(profile.character_ids, episode=1):
         d.mkdir(parents=True, exist_ok=True)
     if style is not None:
@@ -95,5 +105,4 @@ def run(ctx: StageContext) -> SeriesPaths:
             write_model(paths.appearance(card.person_id), card)
     if not paths.ledger.exists():
         write_model(paths.ledger, Ledger())
-    finish_stage(manifest, 1, STAGE_ID, StageStatus.DONE)
-    return paths
+    return StageResult()

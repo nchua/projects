@@ -97,12 +97,12 @@ def test_plan_requires_twelve_ordered_beats() -> None:
         EpisodePlan.model_validate(_plan(beats[:11]))
     with pytest.raises(ValidationError, match="in order"):
         EpisodePlan.model_validate(_plan([beats[1], beats[0], *beats[2:]]))
-    with pytest.raises(ValidationError, match="60 words"):
-        EpisodePlan.model_validate({**_plan(beats), "recap": "word " * 61})
+    long_recap = EpisodePlan.model_validate({**_plan(beats), "recap": "word " * 61})
+    assert len(long_recap.recap.split()) == 61  # loads, so S4's QA can flag it (§4.5)
 
 
-def test_ledger_round_trip_and_summary_cap() -> None:
-    """Ledger round-trips; last_summary is capped at 120 words (§4.3)."""
+def test_ledger_round_trip() -> None:
+    """Ledger round-trips; an over-long summary still loads (QA flags it, §4.3)."""
     ledger = Ledger.model_validate(
         {
             "facts": [{"text": "Toast cannot fly yet.", "episode": 1}],
@@ -114,8 +114,7 @@ def test_ledger_round_trip_and_summary_cap() -> None:
         }
     )
     assert Ledger.model_validate_json(ledger.model_dump_json()) == ledger
-    with pytest.raises(ValidationError, match="120 words"):
-        Ledger(last_summary="word " * 121)
+    assert Ledger(last_summary="word " * 121).last_summary
 
 
 def test_manifest_round_trip() -> None:

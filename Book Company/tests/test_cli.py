@@ -69,3 +69,35 @@ def test_run_rejects_backwards_range() -> None:
     """``--from`` after ``--to`` is a usage error."""
     result = runner.invoke(app, ["run", "--series", "demo", "--from", "S9", "--to", "S5"])
     assert result.exit_code == 2
+
+
+def test_run_from_s0_needs_intake(tmp_path: Path) -> None:
+    """``run --from S0`` goes through the contract and fails S0's input gate (exit 2)."""
+    args = ["run", "--series", "demo", "--from", "S0", "--to", "S0"]
+    result = runner.invoke(app, args, env={"BOOKGEN_SERIES_DIR": str(tmp_path)})
+    assert result.exit_code == 2
+    assert "--family" in result.output
+
+
+def test_flags_lists_and_resolves(tmp_path: Path) -> None:
+    """``book flags`` lists open flags across episodes; ``--resolve`` clears one."""
+    from bookgen.manifest import add_flag
+    from bookgen.models import StageId
+    from bookgen.paths import SeriesPaths
+
+    env = {"BOOKGEN_SERIES_DIR": str(tmp_path)}
+    paths = SeriesPaths.for_series("demo", tmp_path)
+    assert "no open flags" in runner.invoke(app, ["flags", "--series", "demo"], env=env).output
+    add_flag(paths.manifest(1), 1, StageId.S3, "bible_human_read", "Read the bible.")
+    add_flag(paths.manifest(2), 2, StageId.S5, "word_count_high", "812 > 750", spread=None)
+    out = runner.invoke(app, ["flags", "--series", "demo"], env=env).output
+    assert "ep01 #0 [S3] bible_human_read" in out and "ep02 #0 [S5] word_count_high" in out
+
+    res = runner.invoke(
+        app, ["flags", "--series", "demo", "--episode", "1", "--resolve", "0"], env=env
+    )
+    assert res.exit_code == 0, res.output
+    out = runner.invoke(app, ["flags", "--series", "demo"], env=env).output
+    assert "bible_human_read" not in out and "word_count_high" in out
+    bad = runner.invoke(app, ["flags", "--series", "demo", "--resolve", "0"], env=env)
+    assert bad.exit_code == 2

@@ -1,9 +1,11 @@
 """Read and append stage records in ``epNN/manifest.json`` (SPEC §3.1).
 
-Seam: a stage calls ``start_stage`` before work and ``finish_stage`` after it.
-"Append" means upsert by stage id: re-running a stage replaces its record,
-increments ``attempts`` and accumulates ``cost_usd``. Gate failures go through
-``add_flag`` (a flag, not an exception).
+Seam: only the runner (``bookgen.stages.run_range``) calls ``start_stage`` and
+``finish_stage``; stages return their checks instead. "Append" means upsert by
+stage id: re-running a stage replaces its record, increments ``attempts`` and
+accumulates ``cost_usd``. Gate failures become flags via ``add_flag``. Starting
+a stage again resolves its earlier open flags (they described output that is
+about to be replaced).
 """
 
 from __future__ import annotations
@@ -12,7 +14,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from bookgen.io import read_model, write_model
-from bookgen.models import Flag, Manifest, StageId, StageRecord, StageStatus
+from bookgen.models import CheckResult, Flag, Manifest, StageId, StageRecord, StageStatus
 
 
 def now() -> datetime:
@@ -33,8 +35,11 @@ def write_manifest(path: Path, manifest: Manifest) -> None:
 
 
 def start_stage(path: Path, episode: int, stage: StageId) -> Manifest:
-    """Record that ``stage`` has started; returns the updated manifest."""
+    """Record that ``stage`` has started and supersede its open flags; returns the manifest."""
     manifest = read_manifest(path, episode)
+    for flag in manifest.flags:
+        if flag.stage is stage and not flag.resolved:
+            flag.resolved = True
     prev = manifest.stages.get(stage)
     manifest.stages[stage] = StageRecord(
         status=StageStatus.STARTED,
@@ -55,8 +60,9 @@ def finish_stage(
     model: str | None = None,
     provider: str | None = None,
     cost_usd: float = 0.0,
+    checks: list[CheckResult] | None = None,
 ) -> Manifest:
-    """Close the current run of ``stage`` with ``status`` and add its cost."""
+    """Close the current run of ``stage`` with ``status``, its checks, and add its cost."""
     manifest = read_manifest(path, episode)
     rec = manifest.stages.get(stage) or StageRecord(status=StageStatus.STARTED, started=now())
     manifest.stages[stage] = rec.model_copy(
@@ -66,6 +72,7 @@ def finish_stage(
             "provider": provider,
             "cost_usd": rec.cost_usd + cost_usd,
             "finished": now(),
+            "checks": checks or [],
         }
     )
     write_manifest(path, manifest)
@@ -82,3 +89,13 @@ def add_flag(
     )
     write_manifest(path, manifest)
     return manifest
+
+
+def resolve_flag(path: Path, episode: int, index: int) -> Flag:
+    """Mark flag ``index`` (0-based, as ``book flags`` numbers them) resolved; returns it."""
+    manifest = read_manifest(path, episode)
+    if not 0 <= index < len(manifest.flags):
+        raise IndexError(f"episode {episode} has no flag #{index}")
+    manifest.flags[index].resolved = True
+    write_manifest(path, manifest)
+    return manifest.flags[index]

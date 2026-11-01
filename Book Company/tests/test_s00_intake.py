@@ -19,8 +19,9 @@ from bookgen.models import (
     StageStatus,
     StyleBible,
 )
-from bookgen.stages import StageContext
-from bookgen.stages.s00_intake import IntakeError, run
+from bookgen.paths import SeriesPaths
+from bookgen.stages import StageContext, run_range
+from bookgen.stages.s00_intake import IntakeError, with_series_id
 
 WriteFamily = Callable[[dict[str, Any]], Path]
 
@@ -41,6 +42,13 @@ def _ctx(
         style_id=style_id,
         companion=companion,
     )
+
+
+def run(ctx: StageContext) -> SeriesPaths:
+    """Run S0 through the runner, as ``book init-series`` does."""
+    full = with_series_id(ctx)
+    run_range(full, [StageId.S0])
+    return full.paths
 
 
 def test_init_creates_layout_and_manifest(tmp_path: Path, demo_family_path: Path) -> None:

@@ -68,6 +68,27 @@ class SeriesPaths:
         """``epNN/`` for an episode number."""
         return self.root / f"ep{episode:02d}"
 
+    def logs(self, episode: int) -> Path:
+        """``epNN/logs/``: one JSON file per model call (§3.1)."""
+        return self.episode_dir(episode) / "logs"
+
+    def plan(self, episode: int) -> Path:
+        """``epNN/plan.json`` (S4)."""
+        return self.episode_dir(episode) / "plan.json"
+
+    def manuscript(self, episode: int) -> Path:
+        """``epNN/manuscript.json`` (S5)."""
+        return self.episode_dir(episode) / "manuscript.json"
+
+    def briefs(self, episode: int) -> Path:
+        """``epNN/briefs.json`` (S6)."""
+        return self.episode_dir(episode) / "briefs.json"
+
+    def episodes(self) -> list[int]:
+        """Episode numbers that have a folder, ascending."""
+        found = (p.name[2:] for p in self.root.glob("ep[0-9][0-9]") if p.is_dir())
+        return sorted(int(n) for n in found)
+
     def manifest(self, episode: int) -> Path:
         """``epNN/manifest.json`` (§3.1)."""
         return self.episode_dir(episode) / "manifest.json"

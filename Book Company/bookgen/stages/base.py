@@ -1,19 +1,52 @@
-"""What every stage receives (SPEC §3.1).
+"""The stage contract (SPEC §3.1, §3.2).
 
-A stage is ``run(ctx: StageContext)``: artifacts on disk in, artifacts on disk
-out, idempotent, re-runnable. Resolve paths via ``ctx.paths``; record progress
-with ``bookgen.manifest``; report a failed gate with ``manifest.add_flag`` and
-``StageStatus.FLAGGED`` rather than raising.
+A stage module declares::
+
+    STAGE_ID = StageId.S4
+    CADENCE = Cadence.PER_EPISODE
+    def inputs(ctx) -> list[Path]      # optional: artifacts that must exist (§3.2 input gate)
+    def check(ctx) -> None             # optional: pure input checks; raise StageInputError
+    def outputs(ctx) -> list[Path]     # optional: artifacts that mark the stage satisfied
+    def run(ctx) -> StageResult        # the work; gate results come back as CheckResults
+
+The runner (``bookgen.stages.run_range``) owns everything else: the skip test,
+calling ``check`` before any write, ``start_stage``/``finish_stage``, recording
+FAILED on an exception, turning failed checks into flags, and per-stage cost.
+Stages never touch the manifest themselves.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from enum import StrEnum
 from pathlib import Path
-from typing import NoReturn
+from typing import TYPE_CHECKING, NoReturn
 
-from bookgen.models import Companion, StageId, Value
+from bookgen.models import CheckResult, Companion, StageId, Value
 from bookgen.paths import SeriesPaths
+
+if TYPE_CHECKING:
+    from bookgen.providers.llm import StageLLM
+
+
+class Cadence(StrEnum):
+    """How often a stage runs (§3.2 "Runs" column); drives the skip test and manifest."""
+
+    EVERY_RUN = "every_run"
+    """Never skipped; idempotent by construction (S0). Recorded in ep01."""
+
+    ONCE_PER_SERIES = "once_per_series"
+    """Done once, recorded in ep01's manifest (S3)."""
+
+    PER_EPISODE = "per_episode"
+    """Done once per episode, recorded in that episode's manifest."""
+
+    PER_CHARACTER = "per_character"
+    """Done once per person (S1, S2); skip test uses outputs only."""
+
+
+class StageInputError(ValueError):
+    """A stage's inputs are missing or invalid (§3.2 input gate). Exit code 2, never a flag."""
 
 
 @dataclass(frozen=True)
@@ -21,7 +54,7 @@ class StageContext:
     """Inputs for one stage run. Only S0 uses the intake fields."""
 
     series_id: str | None = None
-    """Series id; ``None`` only for S0, which defaults it to the family id."""
+    """Series id; required for every stage (the CLI resolves S0's default)."""
 
     episode: int = 1
     """Episode number the run belongs to."""
@@ -47,12 +80,32 @@ class StageContext:
     companion: Companion | None = None
     """S0 only: overrides the profile's companion archetype (``--companion``)."""
 
+    llm: StageLLM | None = None
+    """Set by the runner for each stage: the metered, logging LLM session."""
+
     @property
     def paths(self) -> SeriesPaths:
         """The §3.4 layout for this series."""
         if self.series_id is None:
-            raise ValueError("series_id is required for every stage after S0")
+            raise StageInputError("a series id is required (--series)")
         return SeriesPaths.for_series(self.series_id, self.base_dir)
+
+    def need_llm(self) -> StageLLM:
+        """Return the LLM session, or fail loudly if the runner gave none."""
+        if self.llm is None:
+            raise StageInputError("this stage needs an LLM provider")
+        return self.llm
+
+
+@dataclass
+class StageResult:
+    """What a stage's ``run`` returns: its gate checks (§3.1). Failed checks become flags."""
+
+    checks: list[CheckResult] = field(default_factory=list)
+    """Every gate check, passed or failed; all of them land in the manifest."""
+
+    model: str | None = None
+    """Primary model id used, for the manifest record."""
 
 
 def not_built(ref: StageId | str) -> NoReturn:

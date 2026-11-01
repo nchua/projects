@@ -10,11 +10,17 @@ Gate: none stated in §3.3 (QA is S8).
 from __future__ import annotations
 
 from bookgen.models import StageId
-from bookgen.stages.base import StageContext, not_built
+from bookgen.stages.base import Cadence, StageContext, StageResult, not_built
 
 STAGE_ID = StageId.S7
+CADENCE = Cadence.PER_EPISODE
 
 
-def run(ctx: StageContext) -> None:
+def check(ctx: StageContext) -> None:
+    """Refuse before anything is written: this stage is not built yet."""
+    not_built(STAGE_ID)
+
+
+def run(ctx: StageContext) -> StageResult:
     """Run S7. Not implemented yet (Phase 0 session plan, SPEC §10.1)."""
     not_built(STAGE_ID)

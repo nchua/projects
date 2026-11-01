@@ -12,7 +12,7 @@ import re
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -21,6 +21,7 @@ from bookgen.craft import Companion as Companion
 from bookgen.craft import Template as Template
 from bookgen.craft import Value as Value
 from bookgen.craft import load_rubric
+from bookgen.textutil import count_words
 
 Score = Annotated[int, Field(ge=0, le=3)]
 """A 0-3 score, as used by the rubric (§6.1) and image QA identity (S8)."""
@@ -75,6 +76,16 @@ class StageStatus(StrEnum):
     FAILED = "failed"
 
 
+class CheckResult(Model):
+    """One gate check's outcome, recorded whether it passed or not (§3.1, §3.2)."""
+
+    code: str = Field(description="Short machine code, e.g. 'recap_length'.")
+    passed: bool = Field(description="Whether the check passed.")
+    detail: str = Field(default="", description="What was measured, or what failed and why.")
+    spread: int | None = Field(default=None, description="Spread concerned, if specific.")
+    value: float | None = Field(default=None, description="Measured number, if any.")
+
+
 class StageRecord(Model):
     """The latest record of one stage in an episode manifest (§3.1)."""
 
@@ -85,6 +96,9 @@ class StageRecord(Model):
     attempts: int = Field(default=1, ge=1, description="How many times the stage has run.")
     started: datetime = Field(description="UTC start of the most recent run.")
     finished: datetime | None = Field(default=None, description="UTC end of the most recent run.")
+    checks: list[CheckResult] = Field(
+        default_factory=list, description="Gate checks from the most recent run."
+    )
 
 
 class Flag(Model):
@@ -294,6 +308,9 @@ class Location(Model):
 
     name: str = Field(description="Location name.")
     description: str = Field(description="One-line description with a sensory signature.")
+    is_home: bool = Field(
+        default=False, description="The hero's home ground; exempt from the no-repeat rule (§4.4)."
+    )
 
 
 class World(Model):
@@ -309,6 +326,7 @@ class CastMember(Model):
     id: str = Field(description="Character id; matches a person id for family members.")
     name: str = Field(description="Name, spelled exactly.")
     role: Literal["hero", "companion", "side", "cameo"] = Field(description="Role in the series.")
+    pronouns: str = Field(description="Pronouns, e.g. 'she/her', 'he/him', 'they/them', 'it/its'.")
     description: str = Field(description="Personality, voice and one visual anchor.")
 
 
@@ -398,13 +416,6 @@ class Ledger(Model):
         default=None, ge=0, description="Child's age at the last episode; drives band refresh."
     )
 
-    @model_validator(mode="after")
-    def _summary_length(self) -> Self:
-        """``last_summary`` is at most 120 words (§4.3)."""
-        if len(self.last_summary.split()) > 120:
-            raise ValueError("last_summary must be 120 words or fewer")
-        return self
-
 
 # --- Episode text (S4-S5) ----------------------------------------------------------------
 
@@ -431,8 +442,8 @@ class EpisodePlan(Model):
     pattern: list[str] = Field(min_length=2, description="The value's pattern from the catalog.")
     template: Template = Field(description="Structure template (§4.4).")
     beats: list[Beat] = Field(min_length=12, max_length=12, description="12 beats, spreads 1-12.")
-    value_lands_at: int = Field(ge=9, le=11, description="Spread where the value lands (9-11).")
-    recap: str = Field(description="Recap spread text, <= 60 words (§4.5); outside the 12.")
+    value_lands_at: SpreadNo = Field(description="Spread where the value lands (9-11; QA flag).")
+    recap: str = Field(description="Recap text, <= 60 words (§4.5, QA flag); outside the 12.")
     teaser: str = Field(description="Teaser spread text.")
     grownup_questions: list[str] = Field(
         min_length=3, max_length=3, description="Three questions for the grown-up reader."
@@ -440,11 +451,9 @@ class EpisodePlan(Model):
 
     @model_validator(mode="after")
     def _beats_in_order(self) -> Self:
-        """Beats cover spreads 1-12 exactly once, in order; the recap fits its spread."""
+        """Beats cover spreads 1-12 exactly once, in order (word limits are QA flags)."""
         if [b.spread for b in self.beats] != list(range(1, 13)):
             raise ValueError("beats must be spreads 1..12 in order")
-        if len(self.recap.split()) > 60:
-            raise ValueError("recap must be 60 words or fewer (§4.5)")
         return self
 
 
@@ -460,11 +469,30 @@ class Manuscript(Model):
     """``epNN/manuscript.json`` (S5); the editor edits ``text`` here in S12."""
 
     episode: int = Field(ge=1, description="Episode number.")
-    spreads: list[SpreadText] = Field(min_length=1, max_length=12, description="Text per spread.")
-    word_count: int = Field(ge=0, description="Total body words.")
+    spreads: list[SpreadText] = Field(
+        min_length=12, max_length=12, description="Text per spread, spreads 1-12 in order."
+    )
+    word_count: int = Field(default=0, ge=0, description="Total body words; derived on load.")
     stats: dict[str, float] = Field(
         default_factory=dict, description="Mechanical-check measurements (§6.3, §6.4)."
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _derive_word_count(cls, data: Any) -> Any:  # noqa: ANN401 - raw input before validation
+        """``word_count`` is always recomputed from the spreads, never trusted from disk."""
+        if isinstance(data, dict) and isinstance(data.get("spreads"), list):
+            spreads = data["spreads"]
+            texts = (s.text if isinstance(s, SpreadText) else s.get("text", "") for s in spreads)
+            data = {**data, "word_count": sum(count_words(t) for t in texts)}
+        return data
+
+    @model_validator(mode="after")
+    def _spreads_in_order(self) -> Self:
+        """Spreads are 1..12 in order, so the editor can't reorder text by accident."""
+        if [s.spread for s in self.spreads] != list(range(1, 13)):
+            raise ValueError("manuscript spreads must be 1..12 in order")
+        return self
 
 
 # --- Illustration (S6-S8) ----------------------------------------------------------------
@@ -485,7 +513,10 @@ class IllustrationBrief(Model):
     scene: str = Field(description="Scene in concrete nouns.")
     characters: list[BriefCharacter] = Field(default_factory=list, description="Who is in it.")
     shot: Literal["wide", "medium", "close"] = Field(description="Shot distance.")
-    text_safe_area: str = Field(description="Where text sits; matches the plan's text side.")
+    text_side: TextSide | None = Field(
+        default=None, description="Story spreads: the plan's text side (S6 gate). None otherwise."
+    )
+    text_safe_area: str = Field(description="Where text sits, described for the illustrator.")
     palette_notes: str = Field(description="Palette and time of day.")
     continuity_props: list[str] = Field(default_factory=list, description="Props from the ledger.")
     negatives: list[str] = Field(default_factory=list, description="Things that must not appear.")
