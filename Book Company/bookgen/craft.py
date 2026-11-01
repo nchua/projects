@@ -176,6 +176,12 @@ def load_banned_phrases() -> tuple[str, ...]:
     return tuple(ln for ln in lines if ln and not ln.startswith("#"))
 
 
+@cache
+def load_craft_guide() -> str:
+    """Return the Craft Guide; it goes first in every writer and judge prompt (§8.4)."""
+    return (CRAFT_DIR / "craft_guide.md").read_text(encoding="utf-8")
+
+
 def load_style_bible_raw(style_id: str) -> dict[str, Any]:
     """Return a style bible's raw mapping; validate with ``models.StyleBible``."""
     relative = f"style_bibles/{style_id}.yaml"

@@ -323,7 +323,7 @@ class World(Model):
 class CastMember(Model):
     """A recurring character in the series bible (S3)."""
 
-    id: str = Field(description="Character id; matches a person id for family members.")
+    id: PersonId = Field(description="Character id; matches a person id for family members.")
     name: str = Field(description="Name, spelled exactly.")
     role: Literal["hero", "companion", "side", "cameo"] = Field(description="Role in the series.")
     pronouns: str = Field(description="Pronouns, e.g. 'she/her', 'he/him', 'they/them', 'it/its'.")
@@ -547,6 +547,23 @@ class ImageCandidate(Model):
     seed: int | None = Field(default=None, description="Seed, if exposed.")
     prompt_hash: str = Field(description="Hash of the rendered prompt (§3.1).")
     qa: QAResult | None = Field(default=None, description="Filled by S8.")
+
+
+# --- Judge outputs (S3-S5) ---------------------------------------------------------------
+
+
+class JudgeCheck(Model):
+    """One named check from a model judge; the stage turns it into a ``CheckResult``."""
+
+    code: str = Field(description="The check code named in the judge prompt.")
+    passed: bool = Field(description="Whether the artifact passes this check.")
+    note: str = Field(description="Specific evidence; for a failure, what to change.")
+
+
+class Judgement(Model):
+    """A judge call's verdict: one entry per check code the prompt lists."""
+
+    checks: list[JudgeCheck] = Field(description="One entry per requested check code.")
 
 
 # --- Review (S12) ------------------------------------------------------------------------

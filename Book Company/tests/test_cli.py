@@ -49,13 +49,11 @@ def test_init_series(tmp_path: Path, demo_family_path: Path) -> None:
     ("args", "stage"),
     [
         (["sheet", "--series", "demo", "--character", "maya"], "S1"),
-        (["plan", "--series", "demo", "--episode", "1", "--value", "perseverance"], "S3"),
-        (["write", "--series", "demo", "--episode", "1"], "S5"),
         (["illustrate", "--series", "demo", "--episode", "1", "--spread", "7"], "S7"),
         (["layout", "--series", "demo", "--episode", "1"], "S10"),
         (["review", "--series", "demo", "--episode", "1"], "S12"),
         (["approve", "--series", "demo", "--episode", "1"], "S12"),
-        (["run", "--series", "demo", "--episode", "1", "--from", "S5", "--to", "S11"], "S5"),
+        (["run", "--series", "demo", "--episode", "1", "--from", "S7", "--to", "S11"], "S7"),
     ],
 )
 def test_unbuilt_stages_say_not_implemented(tmp_path: Path, args: list[str], stage: str) -> None:

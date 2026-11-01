@@ -17,7 +17,7 @@ import typer
 from bookgen.manifest import read_manifest, resolve_flag
 from bookgen.models import Companion, StageId, Value
 from bookgen.paths import SeriesPaths
-from bookgen.providers.llm import LLMProvider
+from bookgen.providers.llm import AnthropicProvider, LLMProvider
 from bookgen.stages import StageContext, StageReport, run_range, stage_range
 from bookgen.stages.base import StageInputError, not_built
 from bookgen.stages.s00_intake import DEFAULT_STYLE, with_series_id
@@ -37,9 +37,9 @@ SpreadOpt = Annotated[
 ForceOpt = Annotated[bool, typer.Option("--force", help="Rerun stages that are already done.")]
 
 
-def make_llm() -> LLMProvider | None:
-    """The LLM provider for stage commands (patched in tests)."""
-    return None
+def make_llm() -> LLMProvider:
+    """The LLM provider for stage commands: one cost budget per invocation (patched in tests)."""
+    return AnthropicProvider()
 
 
 def _report_errors(fn: Callable[[], object]) -> None:

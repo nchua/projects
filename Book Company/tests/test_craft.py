@@ -74,3 +74,16 @@ def test_craft_guide_is_short() -> None:
     """The Craft Guide stays within about two pages."""
     words = len((craft.CRAFT_DIR / "craft_guide.md").read_text().split())
     assert 400 < words <= 1100
+
+
+def test_every_prompt_file_loads_with_version() -> None:
+    """Each craft/prompts/*.md has front matter, a version, and a user section (§3.1)."""
+    from bookgen.craft import CRAFT_DIR
+    from bookgen.prompts import load_prompt
+
+    names = sorted(p.stem for p in (CRAFT_DIR / "prompts").glob("*.md") if p.stem != "README")
+    assert {"bible", "bible_judge", "plan", "plan_judge", "validation_retry"} <= set(names)
+    for name in names:
+        prompt = load_prompt(name)
+        assert prompt.version >= 1 and prompt.system and prompt.user_template, name
+        assert len(prompt.sha) == 12
