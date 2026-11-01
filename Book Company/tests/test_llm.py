@@ -187,6 +187,12 @@ def test_images_go_before_the_text_and_large_ones_are_shrunk(tmp_path: Path) -> 
     content = user_content("score it", [small, big])
     assert isinstance(content, list) and [b["type"] for b in content] == ["image", "image", "text"]
     assert content[0]["source"]["media_type"] == "image/png"
+    cached = user_content("score it", [small, big], cached_images=1)
+    assert (
+        isinstance(cached, list)
+        and "cache_control" in cached[0]
+        and "cache_control" not in cached[1]
+    )
     media, data = encode_image(big)
     assert media == "image/jpeg"
     with Image.open(io.BytesIO(b64.b64decode(data))) as im:

@@ -29,16 +29,18 @@ from __future__ import annotations
 import csv
 import hashlib
 import os
+import threading
 from collections import defaultdict
 from collections.abc import Callable, Iterable
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
 from pydantic import Field
 
-from bookgen.craft import PROJECT_ROOT, load_style_bible_raw
-from bookgen.io import read_model, write_model
+from bookgen.craft import PROJECT_ROOT, load_style_bible
+from bookgen.io import append_jsonl, read_jsonl, read_model, write_model
 from bookgen.models import (
     AppearanceCard,
     CastMember,
@@ -56,7 +58,7 @@ from bookgen.providers.llm import LLMProvider, Role
 from bookgen.stages.base import StageInputError
 from bookgen.stages.common import as_json
 from bookgen.stages.s07_generate import (
-    prompt_hash,
+    image_prompt_hash,
     render_prompt,
     select_references,
     style_text,
@@ -160,7 +162,7 @@ def plan_jobs(
     providers: Iterable[str], config: BakeoffConfig, limit: int | None = None
 ) -> list[Job]:
     """Every provider × scene × aspect, optionally only the first ``limit`` scenes."""
-    scenes = config.scenes[:limit] if limit else config.scenes
+    scenes = config.scenes[:limit]
     return [
         Job(provider=p, scene=s.id, aspect=a)
         for p in providers
@@ -190,25 +192,57 @@ def image_cap_usd() -> float:
 
 def read_records(out: Path) -> list[JobRecord]:
     """Every record in ``<out>/results.jsonl``, retries included (empty if none yet)."""
-    path = out / "results.jsonl"
-    if not path.exists():
-        return []
-    return [JobRecord.model_validate_json(ln) for ln in path.read_text().splitlines() if ln.strip()]
+    return read_jsonl(out / "results.jsonl", JobRecord)
+
+
+def latest(records: list[JobRecord]) -> list[JobRecord]:
+    """The last attempt per job: what the judge and report score."""
+    return list({r.job.key: r for r in records}.values())
 
 
 def latest_records(out: Path) -> list[JobRecord]:
-    """The last attempt per job: what the judge and report score."""
-    return list({r.job.key: r for r in read_records(out)}.values())
+    """``latest(read_records(out))``."""
+    return latest(read_records(out))
+
+
+def spent(records: list[JobRecord]) -> float:
+    """Everything paid for, failed and superseded attempts included."""
+    return sum(i.cost_usd for r in records for i in r.images)
 
 
 def spent_usd(out: Path) -> float:
-    """Everything paid for so far, failed and superseded attempts included."""
-    return sum(i.cost_usd for r in read_records(out) for i in r.images)
+    """``spent(read_records(out))``."""
+    return spent(read_records(out))
 
 
 def job_seed(job: Job) -> int:
     """A stable per-job seed, so seeded providers (FLUX) can replay a candidate."""
     return int(hashlib.sha256(job.key.encode()).hexdigest()[:8], 16) % 2**31
+
+
+class _Ledger:
+    """Shared spend for parallel provider workers: reserve worst case, then settle."""
+
+    def __init__(self, spent_usd: float, cap_usd: float) -> None:
+        """Start from what earlier runs already spent."""
+        self.spent, self.reserved, self.cap = spent_usd, 0.0, cap_usd
+        self.lock = threading.Lock()
+
+    def reserve(self, worst: float) -> None:
+        """Hold ``worst`` against the cap, or raise ``BudgetExceeded``."""
+        with self.lock:
+            if self.spent + self.reserved + worst > self.cap:
+                raise BudgetExceeded(
+                    f"spent ${self.spent:.2f}; next job up to ${worst:.2f}; cap ${self.cap:.2f}"
+                )
+            self.reserved += worst
+
+    def settle(self, worst: float, actual: float) -> float:
+        """Release the hold, book the actual cost; returns the running total."""
+        with self.lock:
+            self.reserved -= worst
+            self.spent += actual
+            return self.spent
 
 
 def execute(
@@ -222,35 +256,33 @@ def execute(
 ) -> list[JobRecord]:
     """Run every job without a successful record; returns this call's new records.
 
+    Providers run in parallel (one worker each; jobs within a provider stay in order).
     A job whose last attempt errored is retried. Candidates finished before an error are
-    kept on the record and counted as spend. Raises ``BudgetExceeded`` before a job whose
-    list-price worst case would pass the cap.
+    kept on the record and counted as spend. Raises ``BudgetExceeded`` (after the other
+    workers finish their current job) once a job's list-price worst case would pass the cap.
     """
-    cap = image_cap_usd() if cap_usd is None else cap_usd
     dirs = sheet_dirs(sheets, config)
     anchors = sorted((sheets / "anchors").glob("*.png"))
-    style = StyleBible.model_validate(load_style_bible_raw(config.style))
+    style = load_style_bible(config.style)
     cast = {c.id: c for c in config.cast}
     family = read_model(PROJECT_ROOT / config.family, FamilyProfile)
     cards: dict[str, AppearanceCard] = {c.person_id: c for c in family.appearance_cards}
     scenes = {s.id: s for s in config.scenes}
-    done = {r.job.key for r in latest_records(out) if r.error is None}
-    spent = spent_usd(out)
+    records = read_records(out)
+    done = {r.job.key for r in latest(records) if r.error is None}
+    ledger = _Ledger(spent(records), image_cap_usd() if cap_usd is None else cap_usd)
     new: list[JobRecord] = []
-    out.mkdir(parents=True, exist_ok=True)
-    for job in jobs:
-        if job.key in done:
-            continue
+
+    def run_one(job: Job) -> None:
         provider = providers[job.provider]
         worst = provider.capabilities().usd_per_image * config.candidates
-        if spent + worst > cap:
-            raise BudgetExceeded(f"spent ${spent:.2f}; next job up to ${worst:.2f}; cap ${cap:.2f}")
+        ledger.reserve(worst)
         brief = scenes[job.scene].brief
         prompt = render_prompt(brief, style, cast, cards)
         refs = select_references(brief, dirs, anchors, provider.capabilities().max_references)
         record = JobRecord(
             job=job,
-            prompt_hash=prompt_hash(prompt, refs),
+            prompt_hash=image_prompt_hash(prompt, refs),
             references=[str(r) for r in refs],
             images=[],
         )
@@ -260,14 +292,31 @@ def execute(
             )
         except ImageProviderError as exc:
             record.images, record.error = exc.partial, str(exc)
-        spent += sum(i.cost_usd for i in record.images)
-        with (out / "results.jsonl").open("a", encoding="utf-8") as fh:
-            fh.write(record.model_dump_json() + "\n")
+        total = ledger.settle(worst, sum(i.cost_usd for i in record.images))
+        with ledger.lock:
+            append_jsonl(out / "results.jsonl", record)
+            new.append(record)
         refused = sum(i.refused for i in record.images)
         err = f", ERROR {record.error}" if record.error else ""
-        log(f"{job.key}: {len(record.images)} images, {refused} refused, ${spent:.2f} total{err}")
-        new.append(record)
+        log(f"{job.key}: {len(record.images)} images, {refused} refused, ${total:.2f} total{err}")
+
+    def worker(queue: list[Job]) -> None:
+        for job in queue:
+            run_one(job)
+
+    queues: dict[str, list[Job]] = defaultdict(list)
+    for job in jobs:
+        if job.key not in done:
+            queues[job.provider].append(job)
+    out.mkdir(parents=True, exist_ok=True)
+    errors: list[BaseException] = []
+    if queues:
+        with ThreadPoolExecutor(max_workers=len(queues)) as pool:
+            futures = [pool.submit(worker, q) for q in queues.values()]
+        errors = [e for f in futures if (e := f.exception()) is not None]
     write_human_sheet(out)
+    if errors:
+        raise errors[0]
     return new
 
 
@@ -300,22 +349,27 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
 
 
 def judge(out: Path, config: BakeoffConfig, sheets: Path, llm: LLMProvider) -> list[JudgedImage]:
-    """Score every unjudged image with the vision judge; appends to ``judged.jsonl``."""
+    """Score every unjudged image with the vision judge; appends to ``judged.jsonl``.
+
+    Images go scene by scene, with the scene's character sheets as a cached image prefix,
+    so the sheets are paid in full once per scene rather than once per candidate.
+    """
     path = out / "judged.jsonl"
-    already = {
-        JudgedImage.model_validate_json(ln).path
-        for ln in (path.read_text().splitlines() if path.exists() else [])
-        if ln
-    }
+    already = {j.path for j in read_jsonl(path, JudgedImage)}
     dirs = sheet_dirs(sheets, config)
-    style = StyleBible.model_validate(load_style_bible_raw(config.style))
+    style = style_text(load_style_bible(config.style))
     scenes = {s.id: s for s in config.scenes}
     prompt = load_prompt("image_judge")
     session = llm.session(StageId.S8, out / "logs")
     new = []
-    for record in latest_records(out):
+    for record in sorted(latest_records(out), key=lambda r: (r.job.scene, r.job.key)):
         brief = scenes[record.job.scene].brief
         sheet_refs = select_references(brief, dirs, [], max_refs=len(brief.characters))
+        user = prompt.render(
+            style=style,
+            characters=", ".join(c.id for c in brief.characters) or "none",
+            brief=as_json(brief),
+        )
         for img in record.images:
             if img.path is None or str(img.path) in already:
                 continue
@@ -324,13 +378,10 @@ def judge(out: Path, config: BakeoffConfig, sheets: Path, llm: LLMProvider) -> l
                 label=f"judge-{record.job.scene}",
                 prompt=prompt,
                 context=[],
-                user=prompt.render(
-                    style=style_text(style),
-                    characters=", ".join(c.id for c in brief.characters) or "none",
-                    brief=as_json(brief),
-                ),
+                user=user,
                 schema=ImageScore,
                 images=[*sheet_refs, img.path],
+                cached_images=len(sheet_refs),
             )
             judged = JudgedImage(
                 path=str(img.path),
@@ -338,23 +389,18 @@ def judge(out: Path, config: BakeoffConfig, sheets: Path, llm: LLMProvider) -> l
                 scene=record.job.scene,
                 score=score,
             )
-            with path.open("a", encoding="utf-8") as fh:
-                fh.write(judged.model_dump_json() + "\n")
+            append_jsonl(path, judged)
             new.append(judged)
     return new
 
 
 def report(out: Path, docs: Path | None = None, today: str | None = None) -> Path:
     """Write ``docs/bakeoff-<date>.md`` from the results, judge scores and human sheet."""
-    records = latest_records(out)
+    every = read_records(out)
+    records = latest(every)
     if not records:
         raise BakeoffError(f"no results in {out}; run with --execute first")
-    judged_path = out / "judged.jsonl"
-    judged = [
-        JudgedImage.model_validate_json(ln)
-        for ln in (judged_path.read_text().splitlines() if judged_path.exists() else [])
-        if ln
-    ]
+    judged = read_jsonl(out / "judged.jsonl", JudgedImage)
     human = _read_csv(out / "human_scores.csv")
     today = today or datetime.now(UTC).date().isoformat()
     lines = [
@@ -369,7 +415,7 @@ def report(out: Path, docs: Path | None = None, today: str | None = None) -> Pat
         "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     paid: dict[str, float] = defaultdict(float)
-    for r in read_records(out):  # every attempt, so retried failures still count
+    for r in every:  # every attempt, so retried failures still count
         paid[r.job.provider] += sum(i.cost_usd for i in r.images)
     by_provider: dict[str, list[JobRecord]] = defaultdict(list)
     for r in records:
@@ -469,20 +515,3 @@ def pin(paths: SeriesPaths, provider: str, run: Path) -> StyleBible:
 def stamp() -> str:
     """A UTC timestamp for a new run folder."""
     return datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-
-
-__all__ = [
-    "BakeoffConfig",
-    "BakeoffError",
-    "BudgetExceeded",
-    "DEFAULT_OUT",
-    "DEFAULT_SCENES",
-    "estimate",
-    "execute",
-    "judge",
-    "load_config",
-    "pin",
-    "plan_jobs",
-    "report",
-    "stamp",
-]

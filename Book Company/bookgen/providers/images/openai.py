@@ -26,9 +26,10 @@ from bookgen.providers.images.base import (
     check_reference_count,
     guarded,
     mime_for,
+    raise_for_status,
     require_key,
     size_for,
-    timed,
+    timed_call,
 )
 
 BASE = "https://api.openai.com/v1/images"
@@ -44,6 +45,13 @@ class OpenAIProvider:
         self.model = model or os.environ.get("BOOKGEN_OPENAI_IMAGE_MODEL", "gpt-image-2.5-sunburst")
         self.quality = os.environ.get("BOOKGEN_OPENAI_IMAGE_QUALITY", "high")
         self._client = client or httpx2.Client(timeout=300)
+        self._caps = ProviderCapabilities(
+            max_references=16,  # not documented [VERIFY-4]
+            aspects=["1:1", "4:3", "3:2", "16:9", "2:1", "21:9"],
+            max_px=3840,
+            supports_edit=True,
+            usd_per_image=float(os.environ.get("BOOKGEN_OPENAI_USD_PER_IMAGE", "0.20")),
+        )
 
     def generate(
         self,
@@ -75,7 +83,7 @@ class OpenAIProvider:
                 f"{BASE}/edits", data=fields | {"n": str(n)}, files=files, headers=headers
             )
 
-        resp, seconds = timed(lambda: guarded(self.name, call))
+        resp, seconds = timed_call(self.name, call)
         base = {
             "provider": self.name,
             "model": self.model,
@@ -85,16 +93,13 @@ class OpenAIProvider:
         if resp.status_code == 400 and _code(resp) == "moderation_blocked":
             reason = resp.text[:300]
             return [ImageResult(**base, refused=True, refusal_reason=reason) for _ in range(n)]
-        if resp.status_code >= 400:
-            raise ImageProviderError(f"openai HTTP {resp.status_code}: {resp.text[:300]}")
+        raise_for_status(self.name, resp)
         data = guarded(self.name, lambda: resp.json()["data"])
         results = []
         for k, item in enumerate(data, start=1):
             path = candidate_path(out, k)
             path.write_bytes(base64.b64decode(item["b64_json"]))
-            results.append(
-                ImageResult(**base, path=path, cost_usd=self.capabilities().usd_per_image)
-            )
+            results.append(ImageResult(**base, path=path, cost_usd=self._caps.usd_per_image))
         if len(results) != n:
             raise ImageProviderError(
                 f"openai returned {len(results)} of {n} images", partial=results
@@ -110,14 +115,8 @@ class OpenAIProvider:
         raise NotImplementedError("openai adapter does not upscale (S9 does)")
 
     def capabilities(self) -> ProviderCapabilities:
-        """Any WxH within the documented limits; reference cap not documented [VERIFY-4]."""
-        return ProviderCapabilities(
-            max_references=16,
-            aspects=["1:1", "4:3", "3:2", "16:9", "2:1", "21:9"],
-            max_px=3840,
-            supports_edit=True,
-            usd_per_image=float(os.environ.get("BOOKGEN_OPENAI_USD_PER_IMAGE", "0.20")),
-        )
+        """Reference cap, aspects, size and list price (built once)."""
+        return self._caps
 
 
 def _code(resp: httpx2.Response) -> str | None:

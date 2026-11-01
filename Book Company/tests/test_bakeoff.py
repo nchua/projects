@@ -10,6 +10,7 @@ from typer.testing import CliRunner
 from bookgen import bakeoff as bk
 from bookgen import cli
 from bookgen.models import StyleBible
+from bookgen.providers.images import ImageResult
 from bookgen.providers.images.fake import FakeImageProvider, write_png
 from bookgen.stages.base import StageContext
 from tests.fakes import FakeLLM
@@ -101,7 +102,9 @@ def test_judge_sends_sheets_then_candidate_and_report(
     judged = bk.judge(out, config, sheets, llm)
     assert len(judged) == 6
     call = llm.calls[0]
-    assert [p.name for p in call.images] == ["sheet.png", "s01_kite_morning_2x1_c1.png"]
+    names = [p.name for p in call.images]
+    assert names[0] == "sheet.png" and names[1].startswith("s01_kite_morning_")
+    assert call.cached_images == 1  # the sheet prefix is cached across the scene's candidates
     assert bk.judge(out, config, sheets, llm) == []  # already judged
 
     path = bk.report(out, docs=tmp_path / "docs", today="2026-11-02")
@@ -130,7 +133,7 @@ def test_failed_job_keeps_partials_counts_cost_and_retries_on_resume(
     config: bk.BakeoffConfig, sheets: Path, tmp_path: Path
 ) -> None:
     """A provider error after one candidate keeps it and its cost; resume retries the job."""
-    from bookgen.providers.images import ImageProviderError, ImageResult
+    from bookgen.providers.images import ImageProviderError
 
     class Flaky(FakeImageProvider):
         fail = True
@@ -179,3 +182,48 @@ def test_cli_dry_run_and_execute_with_fake(sheets: Path, tmp_path: Path) -> None
         cli.app, ["bakeoff", "--providers", "fake", "--sheets", str(tmp_path / "none"), "--execute"]
     )
     assert missing.exit_code == 2 and "no sheet" in missing.output
+
+
+def test_providers_run_in_parallel_under_one_cap(
+    config: bk.BakeoffConfig, sheets: Path, tmp_path: Path
+) -> None:
+    """Two providers each get their jobs; the shared ledger caps their combined spend."""
+    import threading
+
+    seen: set[str] = set()
+
+    class Named(FakeImageProvider):
+        def __init__(self, name: str) -> None:
+            super().__init__(usd_per_image=1.0)
+            self.name = name
+
+        def generate(
+            self,
+            prompt: str,
+            references: list[Path],
+            aspect: str,
+            n: int,
+            seed: int | None,
+            out: Path,
+        ) -> list[ImageResult]:
+            """Note which thread ran this provider."""
+            seen.add(threading.current_thread().name)
+            return super().generate(prompt, references, aspect, n, seed, out)
+
+    providers = {"a": Named("a"), "b": Named("b")}
+    jobs = bk.plan_jobs(providers, config, limit=1)  # 2 jobs each
+    bk.execute(jobs, config, sheets, tmp_path / "run", providers)
+    records = bk.read_records(tmp_path / "run")
+    assert sorted(r.job.provider for r in records) == ["a", "a", "b", "b"]
+    assert len(seen) == 2  # one worker thread per provider
+
+    with pytest.raises(bk.BudgetExceeded):
+        bk.execute(
+            bk.plan_jobs(providers, config, limit=3),
+            config,
+            sheets,
+            tmp_path / "capped",
+            providers,
+            cap_usd=9.0,
+        )
+    assert bk.spent_usd(tmp_path / "capped") <= 9.0

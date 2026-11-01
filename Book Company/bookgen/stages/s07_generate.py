@@ -7,7 +7,7 @@ Out:  `epNN/images/sNN_cK.png`, three candidates per spread, seed and prompt has
 Gate: none stated in §3.3 (QA is S8).
 
 Session 3 builds the rendering half (``render_prompt``, ``select_references``,
-``prompt_hash``) so the bake-off uses exactly what S7 will; ``run`` comes in
+``image_prompt_hash``) so the bake-off uses exactly what S7 will; ``run`` comes in
 session 4. Template: ``craft/prompts/image.md``. The no-text negative (D4) and
 "not photorealistic" (D3) are always appended, whatever the brief says.
 """
@@ -136,7 +136,7 @@ def select_references(
     return ordered[:max_refs]
 
 
-def prompt_hash(prompt: str, references: Sequence[Path]) -> str:
+def image_prompt_hash(prompt: str, references: Sequence[Path]) -> str:
     """SHA-256 over the prompt and every reference's bytes (§3.1 replay key, S7 naming)."""
     h = hashlib.sha256(prompt.encode())
     for ref in references:

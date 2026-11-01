@@ -87,6 +87,7 @@ class StageLLM(Protocol):
         schema: type[M],
         effort: Effort | None = None,
         images: Sequence[Path] = (),
+        cached_images: int = 0,
     ) -> M:
         """Run one call and return ``schema`` validated.
 
@@ -100,6 +101,8 @@ class StageLLM(Protocol):
             schema: The structured-output model.
             effort: ``output_config.effort``; ``None`` uses the role default.
             images: Images sent ahead of ``user`` in the user turn, in order (vision judges).
+            cached_images: How many leading images are a stable prefix worth caching (e.g. the
+                reference sheets a judge sees on every call for a scene).
         """
         ...
 
@@ -256,8 +259,13 @@ MAX_IMAGE_BYTES = 3_500_000
 """Encoded size above which an image is re-encoded as JPEG (API per-image limit is 5 MB)."""
 
 
-def user_content(user: str, images: Sequence[Path]) -> str | list[dict[str, Any]]:
-    """The user turn: plain text, or base64 image blocks followed by the text."""
+def user_content(
+    user: str, images: Sequence[Path], cached_images: int = 0
+) -> str | list[dict[str, Any]]:
+    """The user turn: plain text, or base64 image blocks followed by the text.
+
+    With ``cached_images``, a cache breakpoint goes on the last of those leading images.
+    """
     if not images:
         return user
     blocks: list[dict[str, Any]] = []
@@ -266,6 +274,8 @@ def user_content(user: str, images: Sequence[Path]) -> str | list[dict[str, Any]
         blocks.append(
             {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": data}}
         )
+    if 0 < cached_images <= len(blocks):
+        blocks[cached_images - 1]["cache_control"] = {"type": "ephemeral"}
     return [*blocks, {"type": "text", "text": user}]
 
 
@@ -334,6 +344,7 @@ class AnthropicSession:
         schema: type[M],
         effort: Effort | None = None,
         images: Sequence[Path] = (),
+        cached_images: int = 0,
     ) -> M:
         """Run one structured-output call; one corrective retry on invalid output."""
         model = model_for(role)
@@ -348,7 +359,7 @@ class AnthropicSession:
                 model=model,
                 max_tokens=MAX_TOKENS,
                 system=system,  # type: ignore[arg-type]
-                messages=[{"role": "user", "content": user_content(user, images)}],
+                messages=[{"role": "user", "content": user_content(user, images, cached_images)}],
                 output_config={"effort": effort, "format": output_format(schema)},
                 betas=[FALLBACK_BETA],
                 fallbacks="default",

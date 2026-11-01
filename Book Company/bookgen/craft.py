@@ -15,10 +15,13 @@ import os
 from enum import StrEnum
 from functools import cache
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
+
+if TYPE_CHECKING:
+    from bookgen.models import StyleBible as StyleBibleModel
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[1]
 """Repository root for the Book Company project (the folder holding SPEC.md)."""
@@ -195,6 +198,13 @@ def load_adjectives() -> frozenset[str]:
 def load_craft_guide() -> str:
     """Return the Craft Guide; it goes first in every writer and judge prompt (§8.4)."""
     return (CRAFT_DIR / "craft_guide.md").read_text(encoding="utf-8")
+
+
+def load_style_bible(style_id: str) -> StyleBibleModel:
+    """The style bible ``style_id`` validated as ``models.StyleBible``."""
+    from bookgen.models import StyleBible  # local: models imports this module
+
+    return StyleBible.model_validate(load_style_bible_raw(style_id))
 
 
 def load_style_bible_raw(style_id: str) -> dict[str, Any]:

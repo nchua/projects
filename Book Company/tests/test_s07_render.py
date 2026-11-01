@@ -8,7 +8,7 @@ from typing import Any
 from bookgen.craft import load_style_bible_raw
 from bookgen.models import AppearanceCard, FamilyProfile, StyleBible
 from bookgen.providers.images.fake import write_png
-from bookgen.stages.s07_generate import prompt_hash, render_prompt, select_references
+from bookgen.stages.s07_generate import image_prompt_hash, render_prompt, select_references
 from tests.canned import demo_bible, demo_briefs
 
 
@@ -74,6 +74,6 @@ def test_reference_falls_back_to_whole_sheet_and_skips_missing(tmp_path: Path) -
 def test_prompt_hash_covers_reference_bytes(tmp_path: Path) -> None:
     """Same prompt, different reference pixels: different hash."""
     a = write_png(tmp_path / "a.png", 2, 2, (1, 1, 1))
-    h1 = prompt_hash("p", [a])
+    h1 = image_prompt_hash("p", [a])
     write_png(a, 2, 2, (9, 9, 9))
-    assert prompt_hash("p", [a]) != h1 and len(h1) == 64
+    assert image_prompt_hash("p", [a]) != h1 and len(h1) == 64

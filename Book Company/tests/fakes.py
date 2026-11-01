@@ -30,6 +30,7 @@ class Call:
     context: list[str]
     user: str
     images: list[Path] = field(default_factory=list)
+    cached_images: int = 0
 
 
 @dataclass
@@ -52,10 +53,20 @@ class FakeSession:
         schema: type[M],
         effort: Effort | None = None,
         images: Sequence[Path] = (),
+        cached_images: int = 0,
     ) -> M:
         """Return the next canned response for ``label`` (validated as ``schema``)."""
         self.llm.calls.append(
-            Call(self.stage, label, role, prompt.name, list(context), user, list(images))
+            Call(
+                self.stage,
+                label,
+                role,
+                prompt.name,
+                list(context),
+                user,
+                list(images),
+                cached_images,
+            )
         )
         queue = self.llm.responses.get(label)
         if not queue:

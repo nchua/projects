@@ -23,3 +23,21 @@ def write_model(path: Path, model: BaseModel, exclude: set[str] | None = None) -
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(text, encoding="utf-8")
     tmp.replace(path)
+
+
+def read_jsonl[M: BaseModel](path: Path, cls: type[M]) -> list[M]:
+    """Every line of a JSON-lines file validated as ``cls``; empty if the file is missing."""
+    if not path.exists():
+        return []
+    return [
+        cls.model_validate_json(ln)
+        for ln in path.read_text(encoding="utf-8").splitlines()
+        if ln.strip()
+    ]
+
+
+def append_jsonl(path: Path, model: BaseModel) -> None:
+    """Append ``model`` as one JSON line (results logs that must survive a crash mid-run)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(model.model_dump_json() + "\n")

@@ -20,7 +20,7 @@ import dataclasses
 
 from pydantic import ValidationError
 
-from bookgen.craft import load_band_rules, load_style_bible_raw
+from bookgen.craft import load_band_rules, load_style_bible
 from bookgen.io import read_model, write_model
 from bookgen.models import FamilyProfile, Ledger, StageId, StyleBible
 from bookgen.paths import SeriesPaths
@@ -79,7 +79,7 @@ def resolve_style(paths: SeriesPaths, style_id: str) -> StyleBible | None:
             raise IntakeError(f"series style is locked to {current.id!r} (D5); got {style_id!r}")
         return None
     try:
-        return StyleBible.model_validate(load_style_bible_raw(style_id))
+        return load_style_bible(style_id)
     except FileNotFoundError as exc:
         raise IntakeError(str(exc)) from exc
 

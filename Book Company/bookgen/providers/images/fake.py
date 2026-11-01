@@ -1,13 +1,13 @@
-"""A no-network ImageProvider for tests and dry runs: writes tiny valid PNGs.
+"""A no-network ImageProvider for tests and dry runs: writes small solid PNGs.
 
 ``refuse_when`` lets a test simulate a policy refusal for prompts containing a word.
 """
 
 from __future__ import annotations
 
-import struct
-import zlib
 from pathlib import Path
+
+from PIL import Image
 
 from bookgen.providers.images.base import (
     ImageResult,
@@ -19,26 +19,15 @@ from bookgen.providers.images.base import (
 
 
 def write_png(path: Path, width: int, height: int, rgb: tuple[int, int, int]) -> Path:
-    """Write a solid-colour PNG (no imaging dependency); returns ``path``."""
-
-    def chunk(kind: bytes, data: bytes) -> bytes:
-        """One length-prefixed, CRC-suffixed PNG chunk."""
-        body = kind + data
-        return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body))
-
-    row = b"\x00" + bytes(rgb) * width
-    pixels = zlib.compress(row * height)
-    header = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
-    path.write_bytes(
-        b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", pixels) + chunk(b"IEND", b"")
-    )
+    """Write a solid-colour PNG; returns ``path``."""
+    Image.new("RGB", (width, height), rgb).save(path, format="PNG")
     return path
 
 
 def png_size(path: Path) -> tuple[int, int]:
-    """Width and height from a PNG header."""
-    width, height = struct.unpack(">II", path.read_bytes()[16:24])
-    return width, height
+    """Width and height of an image file."""
+    with Image.open(path) as im:
+        return im.size
 
 
 class FakeImageProvider:

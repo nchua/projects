@@ -13,6 +13,7 @@ Seam: an adapter is one module with a class that has ``name``, ``model``,
 
 from __future__ import annotations
 
+import base64
 import os
 import time
 from collections.abc import Callable
@@ -184,8 +185,19 @@ def check_reference_count(provider: ImageProvider, references: list[Path]) -> No
         )
 
 
-def timed[T](fn: Callable[[], T]) -> tuple[T, float]:
-    """Call ``fn``; return its result and the wall time in seconds."""
+def timed_call[T](provider: str, fn: Callable[[], T]) -> tuple[T, float]:
+    """``guarded(provider, fn)`` plus its wall time in seconds."""
     start = time.monotonic()
-    out = fn()
+    out = guarded(provider, fn)
     return out, time.monotonic() - start
+
+
+def raise_for_status(provider: str, resp: httpx2.Response, what: str = "HTTP") -> None:
+    """Raise ImageProviderError for a 4xx/5xx, quoting the start of the body."""
+    if resp.status_code >= 400:
+        raise ImageProviderError(f"{provider} {what} {resp.status_code}: {resp.text[:300]}")
+
+
+def b64_file(path: Path) -> str:
+    """A file's bytes as base64 text (references are encoded once per ``generate``)."""
+    return base64.b64encode(path.read_bytes()).decode()
