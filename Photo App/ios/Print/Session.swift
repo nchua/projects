@@ -65,7 +65,9 @@ final class Session {
 
     /// A DNG the camera just wrote (into `captureDirectory()`).
     func add(captured url: URL) {
-        enqueue([(Item(name: url.deletingPathExtension().lastPathComponent), .captured(url))])
+        let item = Item(name: url.deletingPathExtension().lastPathComponent)
+        item.original = url   // from the start, so a capture skipped or cancelled before it renders can still be saved
+        enqueue([(item, .captured(url))])
     }
 
     /// The camera writes its DNGs here; `clear()` removes them with everything else.
@@ -110,8 +112,7 @@ final class Session {
                     let dng = try await Self.loadRaw(provider, into: dir)
                     defer { try? FileManager.default.removeItem(at: dng) }   // the library has the original
                     rendered = try await renderer.render(dng: dng, into: dir)
-                case .captured(let dng):
-                    item.original = dng   // kept until Save or Clear: the library has nothing yet
+                case .captured(let dng):   // `original` keeps it until Save or Clear: the library has nothing yet
                     rendered = try await renderer.render(dng: dng, into: dir)
                 }
                 item.thumbnail = Self.thumbnail(rendered.renderURL)
@@ -223,6 +224,14 @@ extension Item {
         if case .saving = save { true } else { false }
     }
 
-    /// A render, or a taken photo's ProRAW, that isn't in the library yet.
-    var isSavable: Bool { (rendered != nil || original != nil) && !isSaved }
+    /// A finished render, or a taken photo's ProRAW whose render was skipped, that isn't in the library yet.
+    /// Never while waiting or rendering: a Save then would store the ProRAW alone and drop the render.
+    var isSavable: Bool {
+        guard !isSaved else { return false }
+        switch status {
+        case .done: return true
+        case .skipped: return original != nil
+        case .waiting, .rendering: return false
+        }
+    }
 }
