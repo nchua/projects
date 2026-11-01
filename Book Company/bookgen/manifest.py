@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
+from bookgen.io import read_model, write_model
 from bookgen.models import Flag, Manifest, StageId, StageRecord, StageStatus
 
 
@@ -23,15 +24,12 @@ def read_manifest(path: Path, episode: int) -> Manifest:
     """Load the manifest at ``path``, or return an empty one for ``episode``."""
     if not path.exists():
         return Manifest(episode=episode)
-    return Manifest.model_validate_json(path.read_text(encoding="utf-8"))
+    return read_model(path, Manifest)
 
 
 def write_manifest(path: Path, manifest: Manifest) -> None:
-    """Write ``manifest`` atomically (temp file, then rename)."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".json.tmp")
-    tmp.write_text(manifest.model_dump_json(indent=2) + "\n", encoding="utf-8")
-    tmp.replace(path)
+    """Write ``manifest`` atomically."""
+    write_model(path, manifest)
 
 
 def start_stage(path: Path, episode: int, stage: StageId) -> Manifest:

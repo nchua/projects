@@ -10,10 +10,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from bookgen.models import Model
 
 
-class ImageResult(BaseModel):
+class ImageResult(Model):
     """One image an adapter produced."""
 
     path: Path = Field(description="Where the adapter wrote the image.")
@@ -24,7 +26,7 @@ class ImageResult(BaseModel):
     refused: bool = Field(default=False, description="Provider declined the prompt (§7.5).")
 
 
-class ProviderCapabilities(BaseModel):
+class ProviderCapabilities(Model):
     """What a provider supports; the bake-off (§8.3) and S7 read this."""
 
     max_references: int = Field(ge=0, description="Max reference images per call.")

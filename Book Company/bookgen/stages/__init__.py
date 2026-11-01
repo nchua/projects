@@ -31,22 +31,28 @@ from bookgen.stages.base import StageContext
 StageFn = Callable[[StageContext], object]
 """A stage entry point: ``run(ctx)``."""
 
-REGISTRY: dict[StageId, StageFn] = {
-    StageId.S0: s00_intake.run,
-    StageId.S1: s01_appearance.run,
-    StageId.S2: s02_sheet.run,
-    StageId.S3: s03_bible.run,
-    StageId.S4: s04_plan.run,
-    StageId.S5: s05_manuscript.run,
-    StageId.S6: s06_briefs.run,
-    StageId.S7: s07_generate.run,
-    StageId.S8: s08_image_qa.run,
-    StageId.S9: s09_upscale.run,
-    StageId.S10: s10_layout.run,
-    StageId.S11: s11_preflight.run,
-    StageId.S12: s12_review.run,
-    StageId.S13: s13_ledger.run,
-}
+_MODULES = (
+    s00_intake,
+    s01_appearance,
+    s02_sheet,
+    s03_bible,
+    s04_plan,
+    s05_manuscript,
+    s06_briefs,
+    s07_generate,
+    s08_image_qa,
+    s09_upscale,
+    s10_layout,
+    s11_preflight,
+    s12_review,
+    s13_ledger,
+)
+
+REGISTRY: dict[StageId, StageFn] = {m.STAGE_ID: m.run for m in _MODULES}
+"""Stage id to entry point, keyed by each module's own ``STAGE_ID``."""
+
+if list(REGISTRY) != list(StageId):
+    raise ImportError("every StageId needs exactly one stage module, in pipeline order")
 
 
 def stage_range(start: StageId, end: StageId) -> list[StageId]:

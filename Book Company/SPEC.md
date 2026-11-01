@@ -1,6 +1,6 @@
 # Serialized AI Children's Books — Book Generation Pipeline Spec
 
-**Status:** v0.1 draft, 2026-11-01. First cut, written to be iterated section by section in later sessions.
+**Status:** v0.1 draft, 2026-11-01. Phase 0 session 1 (scaffold: package, models, manifest, CLI skeleton, `craft/` v0, fixture family, working S0) done 2026-11-01; next is session 2 (§10.1).
 **Scope:** how one personalized, serialized picture book gets made, from intake to a print-ready PDF.
 Printing, fulfillment, the web app, payments and marketing are framed (§1.4, §9, §10.5) but are out of scope for the pipeline build.
 
@@ -44,6 +44,8 @@ Cover: front (hero and companion, episode title), spine (series name, episode nu
 | C | 6–8 | 750–1,300 | 4–7 sentences, light dialogue | subplots, mild mystery, wordplay |
 
 Phase 0 builds band B only. A and C are template variants added once B passes its gates (§10).
+
+> Session 1 note (2026-11-01): sentence-length caps per band and the band A/C body sizes in `craft/band_rules.yaml` are v0 proposals (marked there), not spec numbers; tune them with §6.3.
 
 ### 1.3 Personalization levels
 
@@ -109,6 +111,8 @@ Legacy personalized books (Wonderbly, Hooray Heroes) are templated: fixed storie
 - Prompts are versioned files in `craft/`, never inline strings. Every model call logs prompt hash and response under `logs/` so a run can be replayed and used in evals (§6.7).
 - A failed gate writes a flag, not an exception. `book flags` lists them; the editor fixes with a manual control (edit the card, edit the text, pick a candidate, regenerate one spread) instead of rerunning everything.
 
+> Session 1 note (2026-11-01): "appends" is read as upsert by stage: a re-run replaces that stage's record, increments `attempts` and sums `cost_usd` (`bookgen/manifest.py`). S0's §3.2 gate (schema valid, consent set) is checked before anything is written and raises, since there is no series yet to flag against.
+
 ### 3.2 Stage map
 
 | Stage | Name | Runs | Model | Gate |
@@ -132,6 +136,8 @@ Legacy personalized books (Wonderbly, Hooray Heroes) are templated: fixed storie
 ### 3.3 Stage details
 
 **S0 Intake.** In: parent form (Phase 0: a hand-written `family/profile.json`). Out: `FamilyProfile` with children, parents, pets, companion choice, value priorities, exclusions, locale, consent flags.
+
+> Session 1 note (2026-11-01): Phase 0 L1 appearance cards are hand-written in the intake JSON (`appearance_cards`); S0 moves each to `characters/<id>/appearance.json` and S1 should skip people who already have one. S0 also writes `series/style.json` (and refuses to change it, D5) and an empty `series/ledger.json`, and creates `characters/` folders for the children, the companion (id = its given name, slugged) and, only with `consent.family_cameos`, parents and pets. It refuses a profile whose hero is outside the Phase 0 band (siblings are cameos `[OPEN-4]`, so their band doesn't gate). Re-runs never overwrite an existing `appearance.json`, which may hold the parent's S1 edits.
 
 **S1 Appearance card.** In: 3–5 photos per person, or a written description for L1. Out: `characters/<id>/appearance.json`. Claude vision with structured output fills the card: hair (colour, texture, length, style), skin tone as an id from a fixed 10-swatch reference palette (never free text), eyes, glasses or assistive devices, distinctive features, height class relative to the companion, and three suggested signature outfits. Gate: the parent reviews and edits the card and picks the signature outfit. This is the manual control that makes the rest of the identity pipeline trustworthy.
 
@@ -175,6 +181,8 @@ series/<series_id>/
     preflight.json  review.md  manifest.json  metrics.json  flags.json
     logs/
 ```
+
+> Session 1 note (2026-11-01): the nested `series/<series_id>/series/` folder is kept as written. S0's manifest record goes in `ep01/manifest.json`, since §8.5's Manifest covers S0..S13 per episode. Flags live in `Manifest.flags`; `flags.json` is left for `book flags` to export.
 
 ---
 
@@ -339,6 +347,8 @@ Research found that image providers filter photorealistic depictions of children
 
 Python 3.12, Pydantic v2 models, Typer CLI, Jinja2 + WeasyPrint for PDF, Pillow, Real-ESRGAN (local) or a provider upscaler, pytest. Claude via the `anthropic` SDK for all text and vision work. Image generation behind an `ImageProvider` protocol. Phase 0 storage is the filesystem layout in §3.4; SQLite or Postgres arrives with the web app in Phase 3.
 
+> Session 1 note (2026-11-01): `requires-python >=3.12` and ruff targets 3.12, but this Mac has no 3.12, so the local venv runs 3.13. It lives in `venv/`, not `.venv/`: dot-folders on this Desktop get the macOS hidden flag, and Python 3.13 skips hidden `.pth` files, which breaks the editable install. Craft enums are built from `craft/` at import (`bookgen/craft.py`).
+
 ### 8.2 Repo layout
 
 ```
@@ -402,6 +412,8 @@ Review            episode, scores{item: 0–3}, edits[], approved_by, approved_a
 Manifest          episode, stages{S0..S13: {status,model,provider,cost_usd,attempts,started,finished}}, flags[]
 ```
 
+> Session 1 note (2026-11-01): small additions in `bookgen/models.py`: `FamilyProfile.appearance_cards` (L1 only, not kept in profile.json), `AppearanceCard.outfit_suggestions` (S1's three), `skin_tone_id` as an int 1–10, `IllustrationBrief.spread` may be `cover`/`recap`/`teaser`, `Flag.resolved`, `Season.finale` (from S3). `CompanionChoice` is {archetype, name, colour} per S2. `ConsentFlags` is a v0 shape for counsel to review `[OPEN-9]`.
+
 ### 8.6 ImageProvider protocol
 
 ```
@@ -412,6 +424,8 @@ capabilities() -> {max_references, aspects, max_px, supports_edit}
 ```
 
 Adapters never see craft text. The brief-to-prompt rendering lives in `stages/s07_generate.py` so a provider swap is one file.
+
+> Session 1 note (2026-11-01): images cross the protocol as file paths (artifacts live on disk, §3.1), and results carry `cost_usd` and `refused`.
 
 ### 8.7 CLI surface
 
@@ -429,6 +443,8 @@ book flags      --series demo --episode 1
 book bakeoff    --providers gemini,flux,openai --sheets examples/sheets/
 book eval       --suite evals/core
 ```
+
+> Session 1 note (2026-11-01): `init-series` also takes an optional `--series` (defaults to the family id). `run --from S0` is refused, since S0 needs intake inputs. `--character` and `--value` reach stages as `StageContext.character` / `.value`. Unbuilt stages print `not implemented (SPEC §3.3 S#)` and exit 1.
 
 ### 8.8 Craft assets
 
@@ -508,6 +524,8 @@ Web intake and sheet-approval UI, payments and subscription scheduling, print AP
 - `[OPEN-10]` Who is the Phase 0–2 human editor? Assumed to be the owner.
 - `[OPEN-11]` Bake-off API budget. Assumed ≤ $150.
 - `[OPEN-12]` The three to five launch illustration styles.
+
+> Session 1 note (2026-11-01): the recommended default was taken for every OPEN item. The package is `bookgen` (OPEN-8), and the one launch style is `gouache-warm` (OPEN-12).
 
 ## 12. Verify before relying on it
 

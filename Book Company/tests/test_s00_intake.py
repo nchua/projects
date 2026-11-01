@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -20,11 +22,25 @@ from bookgen.models import (
 from bookgen.stages import StageContext
 from bookgen.stages.s00_intake import IntakeError, run
 
+WriteFamily = Callable[[dict[str, Any]], Path]
 
-def _ctx(tmp_path: Path, family: Path, **kw: object) -> StageContext:
+
+def _ctx(
+    tmp_path: Path,
+    family: Path,
+    *,
+    series_id: str | None = None,
+    style_id: str | None = None,
+    companion: Companion | None = None,
+) -> StageContext:
     """An S0 context writing under ``tmp_path``."""
-    kw.setdefault("series_id", None)
-    return StageContext(base_dir=tmp_path, family_path=family, **kw)  # type: ignore[arg-type]
+    return StageContext(
+        series_id=series_id,
+        base_dir=tmp_path,
+        family_path=family,
+        style_id=style_id,
+        companion=companion,
+    )
 
 
 def test_init_creates_layout_and_manifest(tmp_path: Path, demo_family_path: Path) -> None:
@@ -83,14 +99,12 @@ def test_companion_override_and_series_id(tmp_path: Path, demo_family_path: Path
     assert profile.companion_choice.archetype is Companion.ROBOT
 
 
-def test_intake_rules(tmp_path: Path, demo_family_path: Path) -> None:
-    """Consent, Phase 0 band and cameo consent are enforced."""
-    raw = json.loads(demo_family_path.read_text())
-
-    def write(data: dict[str, object]) -> Path:
-        path = tmp_path / "f.json"
-        path.write_text(json.dumps(data))
-        return path
+def test_intake_rules(
+    tmp_path: Path, demo_family_raw: dict[str, Any], write_family: WriteFamily
+) -> None:
+    """Consent, Phase 0 band, companion clashes and cameo consent are enforced."""
+    raw = demo_family_raw
+    write = write_family
 
     no_consent = {**raw, "consent": {**raw["consent"], "personalized_story": False}}
     with pytest.raises(IntakeError, match="consent"):
@@ -105,5 +119,39 @@ def test_intake_rules(tmp_path: Path, demo_family_path: Path) -> None:
     assert not paths.character_dir("dana").exists()
     assert not paths.character_dir("pickles").exists()
 
+    clash = {**raw, "companion_choice": {**raw["companion_choice"], "name": "Pickles"}}
+    with pytest.raises(IntakeError, match="clashes"):
+        run(_ctx(tmp_path, write(clash)))
+
     with pytest.raises(IntakeError, match="invalid family"):
         run(_ctx(tmp_path, write({"id": "x"})))
+
+
+def test_failed_intake_writes_nothing(tmp_path: Path, demo_family_path: Path) -> None:
+    """A rejected style leaves no series folder and no stale STARTED record."""
+    with pytest.raises(IntakeError):
+        run(_ctx(tmp_path, demo_family_path, style_id="nope"))
+    assert not (tmp_path / "demo").exists()
+
+
+def test_sibling_band_does_not_gate(
+    tmp_path: Path, demo_family_raw: dict[str, Any], write_family: WriteFamily
+) -> None:
+    """Only the hero's band must be a Phase 0 band; a band-A sibling is a cameo."""
+    raw = demo_family_raw
+    sib = {"id": "leo", "name": "Leo", "pronouns": "he/him", "birth_month": "2024-01", "band": "A"}
+    path = write_family({**raw, "children": [*raw["children"], sib]})
+    assert run(_ctx(tmp_path, path)).character_dir("leo").is_dir()
+
+
+def test_rerun_keeps_edited_appearance_card(tmp_path: Path, demo_family_path: Path) -> None:
+    """A card edited after S0 (the S1 gate) survives a re-run."""
+    paths = run(_ctx(tmp_path, demo_family_path))
+    card = AppearanceCard.model_validate_json(paths.appearance("maya").read_text())
+    paths.appearance("maya").write_text(
+        card.model_copy(update={"skin_tone_id": 5}).model_dump_json()
+    )
+    run(_ctx(tmp_path, demo_family_path))
+    assert (
+        AppearanceCard.model_validate_json(paths.appearance("maya").read_text()).skin_tone_id == 5
+    )

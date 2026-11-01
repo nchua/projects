@@ -10,11 +10,11 @@ Gate: lint, every present character has a sheet, text-safe side matches the plan
 from __future__ import annotations
 
 from bookgen.models import StageId
-from bookgen.stages.base import StageContext
+from bookgen.stages.base import StageContext, not_built
 
 STAGE_ID = StageId.S6
 
 
 def run(ctx: StageContext) -> None:
     """Run S6. Not implemented yet (Phase 0 session plan, SPEC §10.1)."""
-    raise NotImplementedError(f"not implemented (SPEC §3.3 {STAGE_ID})")
+    not_built(STAGE_ID)

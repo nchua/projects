@@ -25,10 +25,8 @@ class Role(StrEnum):
     JUDGE = "judge"
 
 
-ROLE_MODELS: dict[Role, str] = {Role.WRITER: WRITER_MODEL, Role.JUDGE: JUDGE_MODEL}
-"""Role to model id."""
-
-
 def model_for(role: Role) -> str:
-    """Return the model id for ``role``."""
-    return ROLE_MODELS[role]
+    """Return the model id for ``role``; refuses a judge that is the writer (§6.2)."""
+    if JUDGE_MODEL == WRITER_MODEL:
+        raise RuntimeError(f"judge and writer must be different models (§6.2): {WRITER_MODEL}")
+    return WRITER_MODEL if role is Role.WRITER else JUDGE_MODEL

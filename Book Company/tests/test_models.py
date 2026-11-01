@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from pathlib import Path
+from typing import Any
 
 import pytest
 from pydantic import ValidationError
@@ -26,9 +26,9 @@ from bookgen.models import (
 )
 
 
-def test_family_fixture_round_trips(demo_family_path: Path) -> None:
+def test_family_fixture_round_trips(demo_family_raw: dict[str, Any]) -> None:
     """The fixture validates, and dump -> load is lossless."""
-    raw = json.loads(demo_family_path.read_text())
+    raw = demo_family_raw
     family = FamilyProfile.model_validate(raw)
     assert family.hero.name == "Maya"
     assert family.hero.band is Band.B
@@ -39,9 +39,9 @@ def test_family_fixture_round_trips(demo_family_path: Path) -> None:
     assert json.loads(family.model_dump_json()) == raw
 
 
-def test_family_rejects_unknown_value_and_companion(demo_family_path: Path) -> None:
+def test_family_rejects_unknown_value_and_companion(demo_family_raw: dict[str, Any]) -> None:
     """Values and companions must exist in the craft files."""
-    raw = json.loads(demo_family_path.read_text())
+    raw = demo_family_raw
     with pytest.raises(ValidationError):
         FamilyProfile.model_validate({**raw, "value_priorities": ["punctuality"]})
     bad_companion = {**raw["companion_choice"], "archetype": "unicorn"}
@@ -49,9 +49,9 @@ def test_family_rejects_unknown_value_and_companion(demo_family_path: Path) -> N
         FamilyProfile.model_validate({**raw, "companion_choice": bad_companion})
 
 
-def test_family_rejects_card_for_unknown_person(demo_family_path: Path) -> None:
+def test_family_rejects_card_for_unknown_person(demo_family_raw: dict[str, Any]) -> None:
     """Appearance cards must refer to someone in the family."""
-    raw = json.loads(demo_family_path.read_text())
+    raw = demo_family_raw
     card = {**raw["appearance_cards"][0], "person_id": "nobody"}
     with pytest.raises(ValidationError, match="unknown people"):
         FamilyProfile.model_validate({**raw, "appearance_cards": [card]})
@@ -97,6 +97,8 @@ def test_plan_requires_twelve_ordered_beats() -> None:
         EpisodePlan.model_validate(_plan(beats[:11]))
     with pytest.raises(ValidationError, match="in order"):
         EpisodePlan.model_validate(_plan([beats[1], beats[0], *beats[2:]]))
+    with pytest.raises(ValidationError, match="60 words"):
+        EpisodePlan.model_validate({**_plan(beats), "recap": "word " * 61})
 
 
 def test_ledger_round_trip_and_summary_cap() -> None:

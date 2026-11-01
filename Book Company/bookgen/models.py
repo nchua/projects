@@ -8,6 +8,7 @@ serialised as JSON. Stages read and write artifacts only through these models.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
@@ -15,57 +16,23 @@ from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from bookgen.craft import Band, Companion, Template, Value, load_rubric
-
-__all__ = [
-    "AppearanceCard",
-    "Band",
-    "Beat",
-    "BriefCharacter",
-    "CastMember",
-    "CastState",
-    "CharacterSheet",
-    "ChildProfile",
-    "Companion",
-    "CompanionChoice",
-    "ConsentFlags",
-    "EpisodePlan",
-    "FamilyProfile",
-    "Flag",
-    "Hair",
-    "IllustrationBrief",
-    "ImageCandidate",
-    "Ledger",
-    "LedgerFact",
-    "LedgerObject",
-    "LessonCovered",
-    "Location",
-    "Manifest",
-    "Manuscript",
-    "OpenThread",
-    "ParentProfile",
-    "PetProfile",
-    "QAResult",
-    "Review",
-    "RunningGag",
-    "Season",
-    "SeriesBible",
-    "SheetPaths",
-    "SpreadText",
-    "StageId",
-    "StageRecord",
-    "StageStatus",
-    "StyleBible",
-    "Template",
-    "Value",
-    "World",
-]
+from bookgen.craft import Band as Band
+from bookgen.craft import Companion as Companion
+from bookgen.craft import Template as Template
+from bookgen.craft import Value as Value
+from bookgen.craft import load_rubric
 
 Score = Annotated[int, Field(ge=0, le=3)]
 """A 0-3 score, as used by the rubric (§6.1) and image QA identity (S8)."""
 
 SpreadNo = Annotated[int, Field(ge=1, le=12)]
 """A story spread number, 1-12 (§3.3 S4)."""
+
+ImageSlot = SpreadNo | Literal["cover", "recap", "teaser"]
+"""Which image: a story spread 1-12, or the cover, recap or teaser (§3.3 S6)."""
+
+PersonId = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]*$")]
+"""A stable lower-case id for a person or pet; also used as a folder name."""
 
 TextSide = Literal["left", "right"]
 """Which side of a wide spread is reserved for text (D7)."""
@@ -147,7 +114,7 @@ class Manifest(Model):
 class ParentProfile(Model):
     """A parent or carer who may appear as a cameo (§5.5)."""
 
-    id: str = Field(pattern=r"^[a-z][a-z0-9_]*$", description="Stable person id.")
+    id: PersonId = Field(description="Stable person id.")
     name: str = Field(description="Given name, spelled exactly as the family writes it.")
     term: str = Field(description="What the child calls them ('Mama', 'Appa'); used verbatim.")
     pronouns: str = Field(description="Pronouns, e.g. 'she/her'.")
@@ -156,7 +123,7 @@ class ParentProfile(Model):
 class ChildProfile(Model):
     """A child reader and hero (§8.5)."""
 
-    id: str = Field(pattern=r"^[a-z][a-z0-9_]*$", description="Stable person id.")
+    id: PersonId = Field(description="Stable person id.")
     name: str = Field(description="Given name, spelled exactly as the family writes it (§6.3).")
     pronouns: str = Field(description="Pronouns, e.g. 'she/her'; checked for consistency.")
     birth_month: str = Field(
@@ -168,7 +135,7 @@ class ChildProfile(Model):
 class PetProfile(Model):
     """A family pet that may appear as a cameo (§5.5)."""
 
-    id: str = Field(pattern=r"^[a-z][a-z0-9_]*$", description="Stable id.")
+    id: PersonId = Field(description="Stable id.")
     name: str = Field(description="Pet's name.")
     species: str = Field(description="Species, e.g. 'dog'.")
     description: str = Field(description="Breed, colouring and one distinctive trait.")
@@ -245,11 +212,13 @@ class FamilyProfile(Model):
 
     @model_validator(mode="after")
     def _check_ids(self) -> Self:
-        """Ids are unique, priorities don't repeat, and cards refer to known people."""
-        ids = [p.id for p in (*self.parents, *self.children, *self.pets)]
+        """Ids are unique (companion included), priorities don't repeat, cards are known."""
+        ids = self.person_ids
         dupes = {i for i in ids if ids.count(i) > 1}
         if dupes:
             raise ValueError(f"duplicate person ids: {sorted(dupes)}")
+        if not self.companion_id or self.companion_id in ids:
+            raise ValueError(f"companion name {self.companion_choice.name!r} clashes or is empty")
         if len(set(self.value_priorities)) != len(self.value_priorities):
             raise ValueError("value_priorities must not repeat")
         unknown = {c.person_id for c in self.appearance_cards} - set(ids)
@@ -261,6 +230,24 @@ class FamilyProfile(Model):
     def hero(self) -> ChildProfile:
         """The series hero: the first child (one series per child, [OPEN-4])."""
         return self.children[0]
+
+    @property
+    def person_ids(self) -> list[str]:
+        """Ids of every parent, child and pet, in that order."""
+        return [p.id for p in (*self.parents, *self.children, *self.pets)]
+
+    @property
+    def companion_id(self) -> str:
+        """Character id for the companion: its given name, slugged ('Toast' -> 'toast')."""
+        return re.sub(r"[^a-z0-9]+", "_", self.companion_choice.name.lower()).strip("_")
+
+    @property
+    def character_ids(self) -> list[str]:
+        """Who gets a ``characters/<id>/`` folder: children, companion, consented cameos."""
+        ids = [c.id for c in self.children] + [self.companion_id]
+        if self.consent.family_cameos:
+            ids += [p.id for p in (*self.parents, *self.pets)]
+        return ids
 
 
 # --- Characters and style (S1-S3) -------------------------------------------------------
@@ -445,7 +432,7 @@ class EpisodePlan(Model):
     template: Template = Field(description="Structure template (§4.4).")
     beats: list[Beat] = Field(min_length=12, max_length=12, description="12 beats, spreads 1-12.")
     value_lands_at: int = Field(ge=9, le=11, description="Spread where the value lands (9-11).")
-    recap: str = Field(description="Recap spread text (outside the 12 story spreads).")
+    recap: str = Field(description="Recap spread text, <= 60 words (§4.5); outside the 12.")
     teaser: str = Field(description="Teaser spread text.")
     grownup_questions: list[str] = Field(
         min_length=3, max_length=3, description="Three questions for the grown-up reader."
@@ -453,9 +440,11 @@ class EpisodePlan(Model):
 
     @model_validator(mode="after")
     def _beats_in_order(self) -> Self:
-        """Beats cover spreads 1-12 exactly once, in order."""
+        """Beats cover spreads 1-12 exactly once, in order; the recap fits its spread."""
         if [b.spread for b in self.beats] != list(range(1, 13)):
             raise ValueError("beats must be spreads 1..12 in order")
+        if len(self.recap.split()) > 60:
+            raise ValueError("recap must be 60 words or fewer (§4.5)")
         return self
 
 
@@ -492,9 +481,7 @@ class BriefCharacter(Model):
 class IllustrationBrief(Model):
     """One entry of ``epNN/briefs.json`` (S6)."""
 
-    spread: SpreadNo | Literal["cover", "recap", "teaser"] = Field(
-        description="Story spread 1-12, or a cover/recap/teaser image."
-    )
+    spread: ImageSlot = Field(description="Story spread 1-12, or a cover/recap/teaser image.")
     scene: str = Field(description="Scene in concrete nouns.")
     characters: list[BriefCharacter] = Field(default_factory=list, description="Who is in it.")
     shot: Literal["wide", "medium", "close"] = Field(description="Shot distance.")
@@ -521,7 +508,7 @@ class QAResult(Model):
 class ImageCandidate(Model):
     """One generated image candidate, ``epNN/images/sNN_cK.png`` (S7)."""
 
-    spread: SpreadNo | Literal["cover", "recap", "teaser"] = Field(description="Which image.")
+    spread: ImageSlot = Field(description="Which image.")
     k: int = Field(ge=1, description="Candidate index.")
     path: Path = Field(description="Image file path.")
     provider: str = Field(description="Image provider.")

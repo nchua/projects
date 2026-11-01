@@ -7,6 +7,7 @@ Only ``init-series`` (S0) works in Phase 0 session 1.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated
 
@@ -14,6 +15,7 @@ import typer
 
 from bookgen.models import Companion, StageId, Value
 from bookgen.stages import StageContext, run_range, stage_range
+from bookgen.stages.base import not_built
 from bookgen.stages.s00_intake import DEFAULT_STYLE, IntakeError
 from bookgen.stages.s00_intake import run as run_intake
 
@@ -31,19 +33,23 @@ SpreadOpt = Annotated[
 ]
 
 
-def _not_implemented(ref: str) -> None:
-    """Print the standard not-implemented line and exit 1."""
-    typer.echo(f"not implemented (SPEC {ref})")
-    raise typer.Exit(code=1)
+def _report_unbuilt(fn: Callable[[], object]) -> None:
+    """Call ``fn``; turn a NotImplementedError into its one-line message and exit 1."""
+    try:
+        fn()
+    except NotImplementedError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(code=1) from exc
 
 
 def _dispatch(ctx: StageContext, stages: list[StageId]) -> None:
     """Run ``stages``; report the first unbuilt stage instead of a traceback."""
-    try:
-        run_range(ctx, stages)
-    except NotImplementedError as exc:
-        typer.echo(str(exc))
-        raise typer.Exit(code=1) from exc
+    _report_unbuilt(lambda: run_range(ctx, stages))
+
+
+def _not_implemented(ref: str) -> None:
+    """Report a non-stage command that is not built yet."""
+    _report_unbuilt(lambda: not_built(ref))
 
 
 @app.command("init-series")
@@ -73,7 +79,7 @@ def sheet(
     character: Annotated[str, typer.Option("--character", help="Person or companion id.")],
 ) -> None:
     """S1-S2: appearance card and character sheet for one character."""
-    _dispatch(StageContext(series_id=series), [StageId.S1, StageId.S2])
+    _dispatch(StageContext(series_id=series, character=character), [StageId.S1, StageId.S2])
 
 
 @app.command()
@@ -83,7 +89,7 @@ def plan(
     value: Annotated[Value | None, typer.Option("--value", help="Value for this episode.")] = None,
 ) -> None:
     """S3 on the first run, then S4: series bible and episode plan."""
-    ctx = StageContext(series_id=series, episode=episode)
+    ctx = StageContext(series_id=series, episode=episode, value=value)
     first = not ctx.paths.bible.exists()
     _dispatch(ctx, [StageId.S3, StageId.S4] if first else [StageId.S4])
 

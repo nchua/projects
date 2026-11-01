@@ -12,11 +12,11 @@ Gate: vision judge checks each candidate against the card before the parent sees
 from __future__ import annotations
 
 from bookgen.models import StageId
-from bookgen.stages.base import StageContext
+from bookgen.stages.base import StageContext, not_built
 
 STAGE_ID = StageId.S2
 
 
 def run(ctx: StageContext) -> None:
     """Run S2. Not implemented yet (Phase 0 session plan, SPEC §10.1)."""
-    raise NotImplementedError(f"not implemented (SPEC §3.3 {STAGE_ID})")
+    not_built(STAGE_ID)

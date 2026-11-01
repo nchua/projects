@@ -127,10 +127,14 @@ class JudgeRubric(_CraftModel):
     items: list[RubricItem] = Field(description="Rubric items in §6.1 order.")
 
 
+_YAML_LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+"""libyaml's safe loader when available (several times faster), else the pure-Python one."""
+
+
 def _load_yaml(relative: str) -> Any:  # noqa: ANN401 - YAML is untyped until validated
     """Read one YAML file under ``CRAFT_DIR``."""
     with (CRAFT_DIR / relative).open(encoding="utf-8") as fh:
-        return yaml.safe_load(fh)
+        return yaml.load(fh, Loader=_YAML_LOADER)  # a SafeLoader variant
 
 
 @cache
@@ -164,25 +168,21 @@ def load_rubric() -> JudgeRubric:
     return JudgeRubric.model_validate(_load_yaml("judge_rubric.yaml"))
 
 
-def load_banned_phrases() -> list[str]:
+@cache
+def load_banned_phrases() -> tuple[str, ...]:
     """Return banned phrases (§6.3), lower-cased, comments and blanks dropped."""
     text = (CRAFT_DIR / "banned_phrases.txt").read_text(encoding="utf-8")
-    return [ln.strip().lower() for ln in text.splitlines() if ln.strip() and not ln.startswith("#")]
-
-
-def style_bible_path(style_id: str) -> Path:
-    """Return the path of a style bible by id (``craft/style_bibles/<id>.yaml``)."""
-    return CRAFT_DIR / "style_bibles" / f"{style_id}.yaml"
+    lines = (ln.strip().lower() for ln in text.splitlines())
+    return tuple(ln for ln in lines if ln and not ln.startswith("#"))
 
 
 def load_style_bible_raw(style_id: str) -> dict[str, Any]:
     """Return a style bible's raw mapping; validate with ``models.StyleBible``."""
-    path = style_bible_path(style_id)
-    if not path.exists():
-        available = sorted(p.stem for p in path.parent.glob("*.yaml"))
+    relative = f"style_bibles/{style_id}.yaml"
+    if not (CRAFT_DIR / relative).exists():
+        available = sorted(p.stem for p in (CRAFT_DIR / "style_bibles").glob("*.yaml"))
         raise FileNotFoundError(f"unknown style {style_id!r}; available: {available}")
-    with path.open(encoding="utf-8") as fh:
-        return yaml.safe_load(fh)
+    return _load_yaml(relative)
 
 
 def _enum(name: str, ids: list[str]) -> type[StrEnum]:

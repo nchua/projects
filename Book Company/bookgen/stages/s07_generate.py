@@ -10,11 +10,11 @@ Gate: none stated in §3.3 (QA is S8).
 from __future__ import annotations
 
 from bookgen.models import StageId
-from bookgen.stages.base import StageContext
+from bookgen.stages.base import StageContext, not_built
 
 STAGE_ID = StageId.S7
 
 
 def run(ctx: StageContext) -> None:
     """Run S7. Not implemented yet (Phase 0 session plan, SPEC §10.1)."""
-    raise NotImplementedError(f"not implemented (SPEC §3.3 {STAGE_ID})")
+    not_built(STAGE_ID)
