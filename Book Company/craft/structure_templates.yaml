@@ -1,0 +1,59 @@
+# Structure templates — SPEC §4.4. Ids feed the Template enum (bookgen.craft).
+# The planner (S4) maps beats onto the 12 story spreads; `spreads` is the
+# suggested range. The template rotates: never the same one twice in a row.
+version: 0
+templates:
+  - id: quest
+    name: Quest
+    summary: The hero sets out to get or reach one specific thing.
+    beats:
+      - {name: the want, spreads: [1, 2], note: "Name the thing and why it matters today, in one concrete image."}
+      - {name: setting out, spreads: [3, 4], note: "Leave home ground; the companion tags along with an opinion."}
+      - {name: three obstacles, spreads: [5, 9], note: "Rule of three, each harder; the third looks impossible."}
+      - {name: the hero's move, spreads: [10, 11], note: "The hero solves it with something set up earlier."}
+      - {name: home again, spreads: [12, 12], note: "The thing is used or shared; a quiet last image."}
+  - id: mystery
+    name: Mystery
+    summary: Something is missing, changed or strange, and the hero finds out why.
+    beats:
+      - {name: the oddity, spreads: [1, 2], note: "A concrete strange thing: footprints, a missing spoon, a hum."}
+      - {name: three clues, spreads: [3, 7], note: "Each clue is something the reader can see in the picture."}
+      - {name: wrong guess, spreads: [8, 9], note: "The obvious suspect is innocent; a laugh, not shame."}
+      - {name: the reveal, spreads: [10, 11], note: "The answer is gentle and a little funny; it was there all along."}
+      - {name: settle, spreads: [12, 12], note: "The mystery's object back in place, changed by what was learned."}
+  - id: mishap_and_fix
+    name: Mishap and fix
+    summary: The hero causes a small disaster and has to put it right.
+    beats:
+      - {name: ordinary day, spreads: [1, 2], note: "Show the thing that is about to go wrong, in plain sight."}
+      - {name: the mishap, spreads: [3, 4], note: "One action, an outsized and funny consequence."}
+      - {name: it gets worse, spreads: [5, 8], note: "Attempts to hide or fix it multiply the mess."}
+      - {name: making it right, spreads: [9, 11], note: "The hero owns it and does the fix with their own hands."}
+      - {name: after, spreads: [12, 12], note: "Things are better than before, and one trace of the mess remains as a joke."}
+  - id: big_day
+    name: Big day
+    summary: A special event approaches (first day, birthday, show) and the hero meets it.
+    beats:
+      - {name: the countdown, spreads: [1, 3], note: "The day is coming; one specific worry or wish."}
+      - {name: getting ready, spreads: [4, 6], note: "Preparations go sideways in small comic ways."}
+      - {name: the day itself, spreads: [7, 10], note: "The moment arrives and is not what was expected."}
+      - {name: the moment, spreads: [11, 11], note: "The hero's choice makes the day theirs."}
+      - {name: bedtime, spreads: [12, 12], note: "A quiet echo of the countdown image."}
+  - id: visitor
+    name: Visitor
+    summary: Someone or something new arrives and upsets the hero's world.
+    beats:
+      - {name: arrival, spreads: [1, 2], note: "A knock, a crate, a creature at the window."}
+      - {name: friction, spreads: [3, 6], note: "The visitor does everything wrong, by the hero's rules."}
+      - {name: understanding, spreads: [7, 9], note: "The hero sees the world through the visitor's eyes once."}
+      - {name: departure or staying, spreads: [10, 11], note: "A choice that shows what changed."}
+      - {name: trace, spreads: [12, 12], note: "Something the visitor left behind."}
+  - id: journey
+    name: Journey
+    summary: The hero travels through a sequence of places and comes home changed.
+    beats:
+      - {name: the call, spreads: [1, 2], note: "A reason to go that a child would accept: a map, a lost balloon, a letter."}
+      - {name: places, spreads: [3, 8], note: "Three distinct places, each with one sensory signature and one small test."}
+      - {name: lowest point, spreads: [9, 9], note: "Lost or stuck; the companion is worried too."}
+      - {name: the way back, spreads: [10, 11], note: "Something from each place helps them home."}
+      - {name: home, spreads: [12, 12], note: "Home looks the same and feels different; show it, do not say it."}

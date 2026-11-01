@@ -1,0 +1,40 @@
+# Banned phrases — SPEC §6.3, enforced by code in S5 (mechanical checks).
+# One phrase per line, matched case-insensitively on word boundaries.
+# `...` matches any run of words in between. Lines starting with # are comments.
+# Seed list from the spec:
+little did they know
+a world of
+heart filled with
+that's when ... realized
+learned that
+the importance of
+magical adventure
+filled with wonder
+beamed with pride
+twinkled
+and so
+# Additions v0 (moral paragraphs, stock AI phrasing, empty intensifiers):
+learned a valuable lesson
+the true meaning of
+the most important thing
+it's okay to
+always remember
+never give up
+believe in yourself
+from that day on
+and they all lived happily ever after
+a sense of
+couldn't help but
+in that moment
+a newfound
+the power of
+deep down
+eyes sparkled
+giggled with glee
+nestled
+tapestry
+embark
+whispered softly
+with all their might
+an unforgettable
+it was a day to remember

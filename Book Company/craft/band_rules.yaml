@@ -1,0 +1,39 @@
+# Reader bands — SPEC §1.2. Keys feed the Band enum (bookgen.craft).
+# Numbers marked `# §n` are from the spec; the rest are v0 proposals the
+# mechanical checks (§6.3) will use, to be tuned after ten books.
+version: 0
+global:
+  spreads_per_book: 12              # §3.3 S4: 12 beats, one per story spread
+  max_adjectives_per_word: 0.125    # §6.3: adjective density <= 1 per 8 words
+  max_exclamations_per_spread: 1    # §6.3
+bands:
+  A:
+    age: [2, 4]                     # §1.2
+    words_per_book: [150, 350]      # §1.2
+    sentences_per_spread: [1, 2]    # §1.2
+    max_words_per_sentence: 8       # proposal (§6.3 "caps per band")
+    dialogue: none
+    scare_level: none               # nothing darker than a lost sock
+    body_pt: [24, 28]               # proposal; §3.3 S10 gives band B only
+    traits: [refrain, naming, simple cause and effect]
+    phase0: false
+  B:
+    age: [4, 6]
+    words_per_book: [400, 750]
+    sentences_per_spread: [2, 4]
+    max_words_per_sentence: 14      # proposal
+    dialogue: light
+    scare_level: mild               # a storm, a dark cupboard; resolved within two spreads
+    body_pt: [20, 24]               # §3.3 S10
+    traits: [rule of three, try-fail-try, value shown in action]
+    phase0: true                    # §1.2: Phase 0 builds band B only
+  C:
+    age: [6, 8]
+    words_per_book: [750, 1300]
+    sentences_per_spread: [4, 7]
+    max_words_per_sentence: 20      # proposal
+    dialogue: light
+    scare_level: moderate           # mild mystery and peril; never injury, loss of a parent, or death
+    body_pt: [16, 20]               # proposal
+    traits: [subplots, mild mystery, wordplay]
+    phase0: false

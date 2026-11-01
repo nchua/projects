@@ -1,0 +1,108 @@
+# Judge rubric — SPEC §6.1. Used by the S5 critique call (Sonnet judge, §6.2)
+# and by the human editor in S12. Scores are 0-3 per item.
+# `applies_to: manuscript` items are scored on text (S5); `illustration`
+# items are scored on the finished book (S8 vision judge, S12 editor).
+version: 0
+pass_rule:
+  min_item_score: 1        # no item scores 0
+  min_mean: 2.3            # Phase 0; tune after ten books
+items:
+  - id: 1
+    key: page_turn_hooks
+    name: Page-turn hooks
+    applies_to: manuscript
+    anchors:
+      0: Spreads end flat; nothing pulls the reader to the next page.
+      1: An occasional hook, mostly on the obvious spreads.
+      2: Most spreads end with a question, a gap or a surprise waiting.
+      3: Every spread ends with a reason to turn.
+  - id: 2
+    key: specificity
+    name: Specificity
+    applies_to: manuscript
+    anchors:
+      0: Generic throughout ("a magical forest", "lots of toys").
+      1: A few concrete nouns among generic description.
+      2: Mostly concrete; one or two generic patches.
+      3: Concrete nouns and sensory detail; no "magical forest" without a particular tree.
+  - id: 3
+    key: read_aloud_rhythm
+    name: Read-aloud rhythm
+    applies_to: manuscript
+    anchors:
+      0: Clunky aloud; the reader stumbles or runs out of breath.
+      1: Readable but flat; no sound words or refrain.
+      2: Mostly lands when spoken; a refrain or sound words present.
+      3: Sentences land when spoken; sound words and refrain used on purpose.
+  - id: 4
+    key: hero_agency
+    name: Hero agency
+    applies_to: manuscript
+    anchors:
+      0: An adult, magic or the companion solves the problem.
+      1: The hero helps but the decisive act is someone else's.
+      2: The hero solves it with substantial help at the key moment.
+      3: The child solves it; not an adult, not magic, not the companion alone.
+  - id: 5
+    key: value_shown
+    name: Value shown, not told
+    applies_to: manuscript
+    anchors:
+      0: A moral paragraph or a character states the lesson.
+      1: The value is acted out but also named or summarised.
+      2: Shown in action; one line edges toward telling.
+      3: Passes the catalog's shown-not-told test; no moral paragraph.
+  - id: 6
+    key: delight
+    name: Delight
+    applies_to: manuscript
+    anchors:
+      0: No humour or surprise.
+      1: One mild joke or surprise.
+      2: Two funny or surprising beats, one of them predictable.
+      3: At least two genuinely funny or surprising beats.
+  - id: 7
+    key: ending_lands
+    name: Ending lands
+    applies_to: manuscript
+    anchors:
+      0: Stops abruptly or ends on a lesson.
+      1: Resolves the plot but does not echo the setup.
+      2: Echoes the setup; the final spread is still busy or loud.
+      3: The resolution echoes the setup; the final spread is quiet.
+  - id: 8
+    key: band_fit
+    name: Band fit
+    applies_to: manuscript
+    anchors:
+      0: Vocabulary, length or scare level clearly wrong for the band.
+      1: Several words or moments out of band.
+      2: One or two lapses in vocabulary or sentence length.
+      3: Vocabulary, sentence length and scare level within band.
+  - id: 9
+    key: continuity
+    name: Continuity
+    applies_to: manuscript
+    anchors:
+      0: Contradicts the ledger (a name, an object, a fact).
+      1: A minor contradiction or a wrong callback.
+      2: Consistent, but callbacks are missing where the ledger invites one.
+      3: No contradiction with the ledger; callbacks are correct.
+  - id: 10
+    key: illustration_identity
+    name: Illustration identity
+    applies_to: illustration
+    anchors:
+      0: A character is unrecognisable on one or more spreads.
+      1: Noticeable drift (hair, skin tone, outfit) on several spreads.
+      2: Recognisable throughout with minor drift on one or two spreads.
+      3: Every character matches its sheet across all spreads.
+  - id: 11
+    key: illustration_composition
+    name: Illustration composition
+    applies_to: illustration
+    anchors:
+      0: Text sits on busy art or a face crosses the gutter.
+      1: Several spreads crowd the text area or the gutter.
+      2: One spread is crowded; the rest hold.
+      3: Text-safe area holds; nothing important in the gutter.

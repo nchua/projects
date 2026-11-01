@@ -1,0 +1,46 @@
+# Values catalog v0 — SPEC §1.5. Data, not prose: adding a value is one entry.
+# `id` feeds the Value enum (bookgen.craft) and the CLI `--value` flag.
+# `pattern` is the story shape the planner (S4) must hit, in order.
+# `shown_not_told` is the test the judge applies to rubric item 5 (§6.1).
+version: 0
+values:
+  - id: perseverance
+    name: Perseverance
+    pattern: [try, fail, change approach, try again (three attempts in all)]
+    shown_not_told: The hero changes their method between attempts; nobody says "never give up".
+  - id: friendship_kindness
+    name: Friendship & kindness
+    pattern: [rupture, costly kind act, repair]
+    shown_not_told: The friend's reaction carries the meaning, not the narrator.
+  - id: courage
+    name: Courage / trying new things
+    pattern: [fear, one small step, surprise]
+    shown_not_told: Fear is described in the body (tight tummy, wobbly knees), never labelled "brave".
+  - id: honesty
+    name: Honesty
+    pattern: [tempting shortcut, confession, trust restored]
+    shown_not_told: The confession costs something small and real.
+  - id: sharing_generosity
+    name: Sharing & generosity
+    pattern: [scarcity, choice, shared joy]
+    shown_not_told: The hero gives up something they wanted.
+  - id: patience
+    name: Patience
+    pattern: [waiting, noticing, payoff]
+    shown_not_told: The waiting itself reveals something the hero would have missed.
+  - id: curiosity
+    name: Curiosity
+    pattern: [question, investigation, discovery]
+    shown_not_told: The hero asks, looks and tests; the answer is found, not handed over.
+  - id: big_feelings
+    name: Big feelings
+    pattern: [storm, naming, tool, calm]
+    shown_not_told: A concrete calming tool a child can copy (breathing, squeezing, counting).
+  - id: teamwork
+    name: Teamwork
+    pattern: [solo failure, combined strengths]
+    shown_not_told: The companion's skill and the hero's skill are both required to succeed.
+  - id: responsibility
+    name: Responsibility
+    pattern: [job neglected, consequence, making it right]
+    shown_not_told: The fix is the hero's own work, not an adult's.

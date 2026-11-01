@@ -1,0 +1,25 @@
+# Style bible — SPEC D5, §8.5 StyleBible. One launch style for Phase 0 [OPEN-12].
+# Loaded by S0 into series/style.json. provider/model/pinned_at stay null until
+# the bake-off (§8.3) pins them; anchor_images are filled by S3.
+id: gouache-warm
+name: Warm gouache
+attributes:
+  - opaque gouache with visible brush texture and slightly chalky flats
+  - soft, rounded character shapes; big heads, small hands with clear fingers
+  - simple backgrounds that fade toward the text-safe side
+  - storybook staging, eye level with the child, never top-down drama
+  - no lettering, signage or text of any kind in the image (D4)
+  - illustrated, never photorealistic (D3)
+palette:
+  - "#E9A86B"   # apricot
+  - "#C8553D"   # brick red
+  - "#F2D7A6"   # warm cream (paper)
+  - "#5B8E7D"   # sage green
+  - "#2F4858"   # deep teal-navy, for shadows and night
+  - "#F4C95D"   # mustard light
+line: no outlines; shapes defined by colour edges, with occasional dry-brush accents in deep teal-navy
+lighting: late-afternoon warm key light, cool bounce in the shadows, gentle rim light on characters
+anchor_images: []
+provider: null
+model: null
+pinned_at: null

@@ -1,0 +1,71 @@
+# Companion archetypes — SPEC D13. Ids feed the Companion enum (bookgen.craft).
+# The child picks one at intake and names it. Each archetype supplies humor,
+# a second voice, and an illustration anchor that does not depend on photos.
+# `skill` is what the companion brings to teamwork stories (§1.5); `flaw` is
+# what keeps it from solving the story alone (rubric item 4, hero agency).
+version: 0
+companions:
+  - id: dragon
+    name: Small dragon
+    silhouette: round-bellied, stubby wings too small to fly far, curled tail
+    scale: knee-high to the hero
+    voice: dramatic, announces everything as a grand adventure
+    skill: warms things up (cold hands, soup, a frozen lock)
+    flaw: hiccups sparks when nervous
+    running_gag_seed: tries to fly, manages a hop
+  - id: robot
+    name: Helper robot
+    silhouette: boxy body, one wheel, telescoping arms, a single round screen face
+    scale: waist-high to the hero
+    voice: literal and precise, takes idioms at face value
+    skill: measures, counts and remembers everything
+    flaw: cannot tell a joke on purpose
+    running_gag_seed: "\"Calculating...\" before every tiny decision"
+  - id: fox
+    name: Fox
+    silhouette: long bushy tail, oversized ears, slim legs
+    scale: shoulder-high when sitting
+    voice: quick, sly, loves a plan with too many steps
+    skill: notices tracks, sounds and hiding places
+    flaw: overcomplicates simple things
+    running_gag_seed: every plan has a "phase seven"
+  - id: cloud
+    name: Little cloud
+    silhouette: soft lumpy puff with two dot eyes, changes shape with mood
+    scale: fits in the hero's arms
+    voice: dreamy, speaks in weather ("I feel drizzly today")
+    skill: makes shade, mist or a small rain exactly where needed
+    flaw: rains when sad, which is inconvenient indoors
+    running_gag_seed: accidentally makes a tiny rainbow at the wrong moment
+  - id: owl
+    name: Owl
+    silhouette: round body, huge eyes, ear tufts, feathered feet
+    scale: perches on the hero's shoulder
+    voice: bookish and a bit pompous, gets facts slightly wrong
+    skill: sees in the dark, spots things from above
+    flaw: falls asleep in the daytime
+    running_gag_seed: "\"Actually...\" followed by a wrong fact"
+  - id: otter
+    name: River otter
+    silhouette: long sleek body, round head, whiskers, webbed paws
+    scale: hip-high when standing up
+    voice: bubbly and excitable, everything is the best thing ever
+    skill: swims, dives, finds lost things underwater
+    flaw: cannot sit still or wait
+    running_gag_seed: keeps a favourite pebble and loses it every episode
+  - id: tortoise
+    name: Old tortoise
+    silhouette: domed patterned shell, wrinkled neck, tiny hat
+    scale: shin-high
+    voice: slow, warm, tells very short stories that turn out to matter
+    skill: patient, remembers how things used to be
+    flaw: very slow, often arrives after the exciting part
+    running_gag_seed: "\"Did I miss it?\""
+  - id: yeti
+    name: Snow yeti
+    silhouette: tall and shaggy, big flat feet, small round eyes, mitten hands
+    scale: twice the hero's height, but gentle and stooping
+    voice: shy, whispers, surprisingly funny
+    skill: strong, warm hugs, carries things and people
+    flaw: frightened of tiny things (mice, buttons, bees)
+    running_gag_seed: hides behind objects much smaller than itself
