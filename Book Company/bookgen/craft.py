@@ -169,6 +169,11 @@ def load_rubric() -> JudgeRubric:
     return JudgeRubric.model_validate(_load_yaml("judge_rubric.yaml"))
 
 
+def manuscript_rubric_items() -> list[RubricItem]:
+    """The rubric items the S5 judge scores on text (§6.1 items 1-9)."""
+    return [i for i in load_rubric().items if i.applies_to == "manuscript"]
+
+
 @cache
 def load_banned_phrases() -> tuple[str, ...]:
     """Return banned phrases (§6.3), lower-cased, comments and blanks dropped."""

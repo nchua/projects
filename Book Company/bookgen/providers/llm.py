@@ -24,6 +24,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
+from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
@@ -153,6 +154,7 @@ def price(model: str, usage: dict[str, Any]) -> float:
     return tokens / 1_000_000
 
 
+@cache
 def output_format(schema: type[BaseModel]) -> dict[str, Any]:
     """``output_config.format`` for ``schema``, via the SDK's schema transform.
 

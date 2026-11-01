@@ -10,11 +10,10 @@ from typer.testing import CliRunner
 from bookgen import cli
 from bookgen.io import read_model, write_model
 from bookgen.manifest import read_manifest
-from bookgen.models import CritiqueLog, Ledger, Manuscript, SpreadText, StageId, StageStatus, Value
+from bookgen.models import CritiqueLog, Ledger, Manuscript, SpreadText, StageId, StageStatus
 from bookgen.providers.llm import Role
 from bookgen.stages import Outcome, run_range
 from bookgen.stages.base import StageContext
-from bookgen.stages.s00_intake import with_series_id
 from bookgen.stages.s03_bible import JUDGE_CHECKS as BIBLE_CODES
 from bookgen.stages.s04_plan import JUDGE_CHECKS as PLAN_CODES
 from bookgen.stages.s05_manuscript import MAX_REVISIONS
@@ -27,19 +26,17 @@ from tests.canned import (
     good_spreads,
     judgement,
 )
+from tests.conftest import open_flags
 from tests.fakes import COST_PER_CALL, FakeLLM
 
 
 @pytest.fixture
-def ctx(tmp_path: Path, demo_family_path: Path) -> StageContext:
-    """A demo series with bible and plan in place (S0, then canned S3 and S4 artifacts)."""
-    init = with_series_id(StageContext(base_dir=tmp_path, family_path=demo_family_path))
-    run_range(init, [StageId.S0])
-    ctx = StageContext(series_id=init.series_id, base_dir=tmp_path, value=Value.PERSEVERANCE)
-    write_model(ctx.paths.bible, demo_bible(series_id="demo"))
-    ctx.paths.character_dir("mr_ferreira").mkdir(parents=True, exist_ok=True)
-    write_model(ctx.paths.plan(1), demo_plan())
-    return ctx
+def ctx(demo_series: StageContext) -> StageContext:
+    """The demo series with canned S3 and S4 artifacts (bible, side-cast folder, plan)."""
+    write_model(demo_series.paths.bible, demo_bible(series_id="demo"))
+    demo_series.paths.character_dir("mr_ferreira").mkdir(parents=True, exist_ok=True)
+    write_model(demo_series.paths.plan(1), demo_plan())
+    return demo_series
 
 
 def _status(ctx: StageContext, stage: StageId) -> StageStatus:
@@ -47,16 +44,11 @@ def _status(ctx: StageContext, stage: StageId) -> StageStatus:
     return read_manifest(ctx.paths.manifest(1), 1).stages[stage].status
 
 
-def _open_flags(ctx: StageContext) -> list[str]:
-    """Open flag codes in ep01."""
-    return [f.code for f in read_manifest(ctx.paths.manifest(1), 1).flags if not f.resolved]
-
-
 def test_s5_stops_after_first_critique_when_everything_passes(ctx: StageContext) -> None:
     """Good draft, judge at the bar: no revise; manuscript and one critique round saved."""
     llm = FakeLLM({"draft": [draft()], "critique-0": [critique(3)]})
     [report] = run_range(ctx, [StageId.S5], llm=llm)
-    assert report.outcome is Outcome.DONE, _open_flags(ctx)
+    assert report.outcome is Outcome.DONE, open_flags(ctx)
     assert llm.labels() == ["draft", "critique-0"]
     ms = read_model(ctx.paths.manuscript(1), Manuscript)
     assert ms.word_count == 401 and ms.stats["fk_grade"] <= 2.5
@@ -86,7 +78,7 @@ def test_s5_round_limit_then_flag(ctx: StageContext) -> None:
         "critique-2",
     ]
     assert report.outcome is Outcome.FLAGGED
-    assert "rubric_mean" in _open_flags(ctx)
+    assert "rubric_mean" in open_flags(ctx)
     assert len(read_model(ctx.paths.critique(1), CritiqueLog).rounds) == 3
     rec = read_manifest(ctx.paths.manifest(1), 1).stages[StageId.S5]
     assert rec.cost_usd == pytest.approx(6 * COST_PER_CALL)
@@ -116,7 +108,7 @@ def test_s6_briefs_pass_lint(ctx: StageContext) -> None:
     write_model(ctx.paths.manuscript(1), Manuscript(episode=1, spreads=good_spreads()))
     llm = FakeLLM({"briefs": [demo_briefs()]})
     [report] = run_range(ctx, [StageId.S6], llm=llm)
-    assert report.outcome is Outcome.DONE, _open_flags(ctx)
+    assert report.outcome is Outcome.DONE, open_flags(ctx)
     assert ctx.paths.briefs(1).exists()
 
 
@@ -136,7 +128,7 @@ def test_s6_lint_flags_plan_mismatches(ctx: StageContext) -> None:
     llm = FakeLLM({"briefs": [briefs]})
     [report] = run_range(ctx, [StageId.S6], llm=llm)
     assert report.outcome is Outcome.FLAGGED
-    assert set(_open_flags(ctx)) == {
+    assert set(open_flags(ctx)) == {
         "briefs_complete",
         "characters_have_sheets",
         "text_side_matches_plan",
@@ -191,7 +183,7 @@ def test_s6_flags_each_failing_non_story_slot(ctx: StageContext) -> None:
     ]
     llm = FakeLLM({"briefs": [briefs.model_copy(update={"briefs": b})]})
     run_range(ctx, [StageId.S6], llm=llm)
-    assert _open_flags(ctx).count("negatives_rule_out_text") == 2
+    assert open_flags(ctx).count("negatives_rule_out_text") == 2
 
 
 def test_cli_reports_cost_cap_as_exit_3(

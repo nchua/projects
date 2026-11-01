@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from bookgen.craft import load_rubric
+from bookgen.craft import load_rubric, manuscript_rubric_items
 from bookgen.io import write_model
 from bookgen.models import (
     CheckResult,
@@ -34,7 +34,7 @@ from bookgen.models import (
     StageId,
 )
 from bookgen.prompts import load_prompt
-from bookgen.providers.llm import Role, StageLLM
+from bookgen.providers.llm import Role
 from bookgen.qa.mechanical import check_manuscript, failed
 from bookgen.stages.base import Cadence, StageContext, StageResult
 from bookgen.stages.common import (
@@ -81,61 +81,57 @@ def names_sheet(profile: FamilyProfile, bible: SeriesBible) -> str:
 
 def rubric_gate(critique: Critique) -> list[CheckResult]:
     """One check per manuscript rubric item, plus the mean, under the §6.1 pass rule."""
-    rubric = load_rubric()
+    rule = load_rubric().pass_rule
     got = {s.key: s for s in critique.scores}
     checks, scores = [], []
-    for item in (i for i in rubric.items if i.applies_to == "manuscript"):
+    for item in manuscript_rubric_items():
         s = got.get(item.key)
-        if s is None:
-            checks.append(CheckResult(code=f"rubric_{item.key}", passed=False, detail="unscored"))
-            scores.append(0)
-            continue
-        scores.append(s.score)
+        scores.append(s.score if s else 0)
         checks.append(
             CheckResult(
                 code=f"rubric_{item.key}",
-                passed=s.score >= rubric.pass_rule.min_item_score,
-                detail=s.fix_notes,
-                value=s.score,
+                passed=s is not None and s.score >= rule.min_item_score,
+                detail=s.fix_notes if s else "unscored",
+                value=s.score if s else None,
+                kind="rubric",
             )
         )
     mean = sum(scores) / len(scores)
     checks.append(
         CheckResult(
             code="rubric_mean",
-            passed=mean >= rubric.pass_rule.min_mean,
-            detail=f"judge mean {mean:.2f} (bar {rubric.pass_rule.min_mean})",
+            passed=mean >= rule.min_mean,
+            detail=f"judge mean {mean:.2f} (bar {rule.min_mean})",
             value=round(mean, 3),
+            kind="rubric",
         )
     )
     return checks
 
 
-def _rubric_items() -> str:
-    """The manuscript rubric items, for the judge."""
-    items = [i for i in load_rubric().items if i.applies_to == "manuscript"]
-    return as_json([i.model_dump(exclude={"applies_to"}) for i in items])
-
-
 def run(ctx: StageContext) -> StageResult:
     """Draft, critique and revise (at most twice), then gate on judge and mechanical checks."""
-    llm: StageLLM = ctx.need_llm()
+    llm = ctx.need_llm()
     paths = ctx.paths
     profile, bible, ledger = load_profile(paths), load_bible(paths), load_ledger(paths)
     plan = load_plan(paths, ctx.episode)
-    context = writer_context(paths)
-    shared = {
+    context = writer_context(bible)
+    writer, judge, reviser = load_prompt("writer"), load_prompt("critique"), load_prompt("revise")
+    rubric_items = [i.model_dump(exclude={"applies_to"}) for i in manuscript_rubric_items()]
+    shared = {  # every template takes what it needs; extra keys are ignored
         "names": names_sheet(profile, bible),
         "band": as_json(band_rule(profile)),
         "value": as_json(value_entry(plan.value)),
         "plan": as_json(plan),
+        "ledger": as_json(ledger),
+        "rubric": as_json(rubric_items),
     }
     draft = llm.structured(
         role=Role.WRITER,
         label="draft",
-        prompt=load_prompt("writer"),
+        prompt=writer,
         context=context,
-        user=load_prompt("writer").render(**shared, ledger=as_json(ledger)),
+        user=writer.render(**shared),
         schema=ManuscriptDraft,
         effort="high",
     )
@@ -145,16 +141,9 @@ def run(ctx: StageContext) -> StageResult:
         critique = llm.structured(
             role=Role.JUDGE,
             label=f"critique-{rnd}",
-            prompt=load_prompt("critique"),
+            prompt=judge,
             context=context,
-            user=load_prompt("critique").render(
-                rubric=_rubric_items(),
-                value=shared["value"],
-                band=shared["band"],
-                ledger=as_json(ledger),
-                plan=shared["plan"],
-                manuscript=as_json(draft),
-            ),
+            user=judge.render(**shared, manuscript=as_json(draft)),
             schema=Critique,
         )
         log.rounds.append(
@@ -166,9 +155,9 @@ def run(ctx: StageContext) -> StageResult:
         draft = llm.structured(
             role=Role.WRITER,
             label=f"revise-{rnd + 1}",
-            prompt=load_prompt("revise"),
+            prompt=reviser,
             context=context,
-            user=load_prompt("revise").render(
+            user=reviser.render(
                 **shared,
                 manuscript=as_json(draft),
                 critique=as_json(critique),
@@ -185,5 +174,6 @@ def run(ctx: StageContext) -> StageResult:
         passed=True,
         detail=f"{len(log.rounds)} judge round(s)",
         value=len(log.rounds),
+        kind="metric",
     )
     return StageResult(checks=[*rubric, *mech, rounds])

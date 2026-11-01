@@ -9,7 +9,7 @@ The failed stage is recorded FAILED in the manifest either way.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Collection
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated
 
@@ -46,7 +46,7 @@ SpreadOpt = Annotated[
 ]
 ForceOpt = Annotated[
     bool,
-    typer.Option("--force", help="Rerun this command's per-episode stages even if done."),
+    typer.Option("--force", help="Rerun stages even if done (never the series bible)."),
 ]
 
 
@@ -78,9 +78,7 @@ def _echo_reports(reports: list[StageReport]) -> None:
         typer.echo(f"{r.stage}: {r.outcome}{extra}{cost}")
 
 
-def _dispatch(
-    ctx: StageContext, stages: list[StageId], force: bool | Collection[StageId] = False
-) -> None:
+def _dispatch(ctx: StageContext, stages: list[StageId], force: bool = False) -> None:
     """Run ``stages`` through the runner and report each one."""
     _report_errors(lambda: _echo_reports(run_range(ctx, stages, llm=make_llm(), force=force)))
 
@@ -130,7 +128,7 @@ def plan(
 ) -> None:
     """S3 (once per series) and S4: series bible and episode plan."""
     ctx = StageContext(series_id=series, episode=episode, value=value)
-    _dispatch(ctx, [StageId.S3, StageId.S4], force={StageId.S4} if force else ())
+    _dispatch(ctx, [StageId.S3, StageId.S4], force=force)
 
 
 @app.command()

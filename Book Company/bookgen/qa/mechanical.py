@@ -17,10 +17,21 @@ import difflib
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
+from functools import cache
 
 from bookgen.craft import BandRule, load_adjectives, load_band_rules, load_banned_phrases
 from bookgen.models import CheckResult, EpisodePlan, FamilyProfile, SeriesBible, SpreadText
-from bookgen.textutil import sentences, words
+from bookgen.qa import per_spread
+from bookgen.textutil import count_words, sentences, words
+
+_POSSESSIVE_RE = re.compile(r"['’]s$")
+"""A trailing possessive, stripped before a token is compared with names."""
+
+
+def _base(word: str) -> str:
+    """``word`` without a trailing possessive (``Maya's`` -> ``Maya``)."""
+    return _POSSESSIVE_RE.sub("", word)
+
 
 PRONOUN_SETS: dict[str, frozenset[str]] = {
     "she/her": frozenset({"she", "her", "hers", "herself"}),
@@ -70,13 +81,7 @@ def _norm(text: str) -> str:
     return text.lower().replace("’", "'").replace("‘", "'")
 
 
-def _per_spread(code: str, failures: dict[int, str], ok: str = "") -> list[CheckResult]:
-    """One failing result per spread in ``failures``, or one passing result."""
-    if not failures:
-        return [CheckResult(code=code, passed=True, detail=ok)]
-    return [CheckResult(code=code, passed=False, detail=d, spread=n) for n, d in failures.items()]
-
-
+@cache
 def banned_phrase_patterns() -> list[tuple[str, re.Pattern[str]]]:
     """Compile ``craft/banned_phrases.txt``; ``...`` matches up to eight words in one sentence."""
     out = []
@@ -95,12 +100,12 @@ def check_banned(spreads: list[SpreadText]) -> list[CheckResult]:
         hits = [phrase for phrase, rx in patterns if rx.search(_norm(s.text))]
         if hits:
             failures[s.spread] = f"banned phrase(s): {hits}"
-    return _per_spread("banned_phrases", failures)
+    return per_spread("banned_phrases", failures)
 
 
 def check_word_count(spreads: list[SpreadText], band: BandRule) -> CheckResult:
     """Total words within the band's range (§1.2)."""
-    n = sum(len(words(s.text)) for s in spreads)
+    n = sum(count_words(s.text) for s in spreads)
     lo, hi = band.words_per_book
     return CheckResult(
         code="word_count_band",
@@ -118,12 +123,12 @@ def check_sentences(spreads: list[SpreadText], band: BandRule) -> list[CheckResu
         sents = sentences(s.text)
         if not lo <= len(sents) <= hi:
             count_fail[s.spread] = f"{len(sents)} sentences; band range {lo}-{hi}"
-        long = [x for x in sents if len(words(x)) > band.max_words_per_sentence]
+        long = [x for x in sents if count_words(x) > band.max_words_per_sentence]
         if long:
             cap_fail[s.spread] = f"over {band.max_words_per_sentence} words: " + " | ".join(long)
     return [
-        *_per_spread("sentences_per_spread", count_fail),
-        *_per_spread("sentence_length", cap_fail),
+        *per_spread("sentences_per_spread", count_fail),
+        *per_spread("sentence_length", cap_fail),
     ]
 
 
@@ -134,7 +139,7 @@ def check_exclamations(spreads: list[SpreadText], cap: int) -> list[CheckResult]
         for s in spreads
         if s.text.count("!") > cap
     }
-    return _per_spread("exclamations", failures)
+    return per_spread("exclamations", failures)
 
 
 def adjective_density(spreads: list[SpreadText], names: Names) -> float:
@@ -151,7 +156,7 @@ def check_names(spreads: list[SpreadText], names: Names) -> list[CheckResult]:
     for s in spreads:
         problems = []
         for w in words(s.text):
-            base = re.sub(r"['’]s$", "", w)
+            base = _base(w)
             if base in names.exact:
                 continue
             if base.lower() in exact_lower and base != exact_lower[base.lower()]:
@@ -164,7 +169,7 @@ def check_names(spreads: list[SpreadText], names: Names) -> list[CheckResult]:
                     problems.append(f"{w!r} looks like a misspelling of {close[0]!r}")
         if problems:
             failures[s.spread] = "; ".join(problems)
-    return _per_spread("names_exact", failures)
+    return per_spread("names_exact", failures)
 
 
 def check_pronouns(spreads: list[SpreadText], plan: EpisodePlan, names: Names) -> list[CheckResult]:
@@ -177,7 +182,7 @@ def check_pronouns(spreads: list[SpreadText], plan: EpisodePlan, names: Names) -
         stray = sorted(used - allowed)
         if stray:
             failures[s.spread] = f"{stray} but nobody present ({beat.characters}) uses them"
-    return _per_spread("pronouns", failures)
+    return per_spread("pronouns", failures)
 
 
 def syllables(word: str) -> int:
@@ -192,7 +197,7 @@ def syllables(word: str) -> int:
 def readability(spreads: list[SpreadText], names: Names) -> dict[str, float]:
     """Flesch-Kincaid grade and mean sentence length, proper nouns excluded (§6.4)."""
     sents = [x for s in spreads for x in sentences(s.text)]
-    ws = [w for x in sents for w in words(x) if re.sub(r"['’]s$", "", w) not in names.exact]
+    ws = [w for x in sents for w in words(x) if _base(w) not in names.exact]
     if not ws or not sents:
         return {"fk_grade": 0.0, "mean_sentence_words": 0.0}
     syl = sum(syllables(w) for w in ws)
@@ -211,10 +216,8 @@ def check_manuscript(
     rules = load_band_rules()
     band = rules.bands[profile.hero.band]
     names = Names.build(profile, bible)
-    density = adjective_density(spreads, names)
-    stats = readability(spreads, names)
-    stats["adjective_density"] = round(density, 3)
-    stats["words"] = float(sum(len(words(s.text)) for s in spreads))
+    density = round(adjective_density(spreads, names), 3)
+    stats = {**readability(spreads, names), "adjective_density": density}
     cap = rules.global_.max_adjectives_per_word
     checks = [
         check_word_count(spreads, band),
@@ -224,7 +227,7 @@ def check_manuscript(
             code="adjective_density",
             passed=density <= cap,
             detail=f"{density:.3f} adjectives per word (max {cap})",
-            value=round(density, 3),
+            value=density,
         ),
         *check_exclamations(spreads, rules.global_.max_exclamations_per_spread),
         *check_names(spreads, names),

@@ -14,11 +14,11 @@ from pydantic import BaseModel
 
 from bookgen.craft import (
     BandRule,
-    TemplateEntry,
+    CompanionEntry,
     ValueEntry,
     load_band_rules,
+    load_companions,
     load_craft_guide,
-    load_templates,
     load_values,
 )
 from bookgen.io import read_model
@@ -29,27 +29,36 @@ from bookgen.models import (
     Judgement,
     Ledger,
     SeriesBible,
+    StyleBible,
     Value,
 )
 from bookgen.paths import SeriesPaths
 
 
 def as_json(data: BaseModel | Any, **dump: Any) -> str:  # noqa: ANN401 - any JSON-able value
-    """Render a model or plain data as stable, indented JSON for a prompt."""
+    """Render a model or plain data as compact, deterministic JSON for a prompt.
+
+    Compact because indentation is pure input-token cost; deterministic (model field
+    order, no sets) so a cached prefix stays byte-identical across calls.
+    """
     if isinstance(data, BaseModel):
         data = data.model_dump(mode="json", **dump)
-    return json.dumps(data, indent=2, ensure_ascii=False)
+    return json.dumps(data, ensure_ascii=False, separators=(",", ":"))
 
 
-def writer_context(paths: SeriesPaths) -> list[str]:
+def writer_context(bible: SeriesBible) -> list[str]:
     """Craft Guide, then the bible: the cached prefix of every post-S3 call (§8.4)."""
-    bible = load_bible(paths).model_dump(mode="json")
-    return [load_craft_guide(), as_json({"series_bible": bible})]
+    return [load_craft_guide(), as_json({"series_bible": bible.model_dump(mode="json")})]
 
 
 def load_profile(paths: SeriesPaths) -> FamilyProfile:
     """``family/profile.json``."""
     return read_model(paths.profile, FamilyProfile)
+
+
+def load_style(paths: SeriesPaths) -> StyleBible:
+    """``series/style.json``: the locked style (D5)."""
+    return read_model(paths.style, StyleBible)
 
 
 def load_bible(paths: SeriesPaths) -> SeriesBible:
@@ -83,27 +92,23 @@ def value_entry(value: Value) -> ValueEntry:
     return next(v for v in load_values() if v.id == value)
 
 
-def template_entries() -> list[TemplateEntry]:
-    """Every structure template (§4.4)."""
-    return load_templates()
+def companion_entry(profile: FamilyProfile) -> CompanionEntry:
+    """The catalog row for the family's companion archetype (D13)."""
+    return next(c for c in load_companions() if c.id == profile.companion_choice.archetype)
 
 
-def judge_checks(
-    judgement: Judgement, expected: dict[str, str], prefix: str = ""
-) -> list[CheckResult]:
-    """Map a judge's verdict onto ``CheckResult``s; a check the judge skipped fails.
+def judge_checks(judgement: Judgement, codes: tuple[str, ...]) -> list[CheckResult]:
+    """Map a judge's verdict onto ``judge_<code>`` checks; a code the judge skipped fails.
 
-    Args:
-        judgement: The judge's structured output.
-        expected: Check code to a short description, as listed in the judge prompt.
-        prefix: Prepended to each code in the manifest, e.g. ``"judge_"``.
+    ``codes`` mirrors the list in the judge's prompt file.
     """
     got = {c.code: c for c in judgement.checks}
-    out = []
-    for code in expected:
-        c = got.get(code)
-        if c is None:
-            out.append(CheckResult(code=prefix + code, passed=False, detail="judge skipped this"))
-        else:
-            out.append(CheckResult(code=prefix + code, passed=c.passed, detail=c.note))
-    return out
+    return [
+        CheckResult(
+            code=f"judge_{code}",
+            passed=code in got and got[code].passed,
+            detail=got[code].note if code in got else "judge skipped this",
+            kind="judge",
+        )
+        for code in codes
+    ]

@@ -62,7 +62,8 @@ class FakeSession:
         model = model_for(role)
         if model not in self.models_used:
             self.models_used.append(model)
-        return schema.model_validate(out.model_dump())
+        # a canned full artifact may stand in for its draft: keep the draft's fields only
+        return schema.model_validate(out.model_dump(include=set(schema.model_fields)))
 
 
 @dataclass

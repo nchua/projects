@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from bookgen.craft import load_rubric
+from bookgen.craft import manuscript_rubric_items
 from bookgen.models import (
     Beat,
     BriefCharacter,
@@ -23,6 +23,7 @@ from bookgen.models import (
     SpreadText,
     World,
 )
+from bookgen.stages.s06_briefs import SLOTS
 
 HOME = "the yellow house"
 LOCATIONS = [
@@ -177,7 +178,7 @@ def good_spreads() -> list[SpreadText]:
 def critique(score: int = 3, low: dict[str, int] | None = None) -> Critique:
     """A judge critique scoring every manuscript item ``score``, with ``low`` overrides."""
     low = low or {}
-    items = [i for i in load_rubric().items if i.applies_to == "manuscript"]
+    items = manuscript_rubric_items()
     return Critique(
         scores=[
             RubricScore(
@@ -200,7 +201,7 @@ def demo_briefs(**overrides: object) -> Briefs:
     """Fifteen briefs that agree with ``demo_plan`` and the demo character folders."""
     plan = demo_plan()
     out = []
-    for slot in [*range(1, 13), "cover", "recap", "teaser"]:
+    for slot in SLOTS:
         beat = plan.beats[slot - 1] if isinstance(slot, int) else None
         chars = beat.characters if beat else ["maya", "toast"]
         where = beat.setting if beat else "the back step"

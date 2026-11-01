@@ -55,7 +55,8 @@ def test_good_manuscript_passes_everything(profile: FamilyProfile) -> None:
     """The canned manuscript is a clean band-B book: every check passes."""
     checks, stats = check_manuscript(good_spreads(), demo_plan(), profile, demo_bible())
     assert _failed(checks) == []
-    assert 400 <= stats["words"] <= 750 and stats["fk_grade"] <= 2.5
+    words = next(c for c in checks if c.code == "word_count_band").value
+    assert words is not None and 400 <= words <= 750 and stats["fk_grade"] <= 2.5
 
 
 def test_word_count_band() -> None:

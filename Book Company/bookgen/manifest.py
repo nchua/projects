@@ -3,7 +3,8 @@
 Seam: only the runner (``bookgen.stages.run_range``) calls ``start_stage`` and
 ``finish_stage``; stages return their checks instead. "Append" means upsert by
 stage id: re-running a stage replaces its record, increments ``attempts`` and
-accumulates ``cost_usd``. Gate failures become flags via ``add_flag``. Starting
+accumulates ``cost_usd``. Failed checks passed to ``finish_stage`` become flags
+in the same write; ``add_flag`` adds one by hand. Starting
 a stage again resolves its earlier open flags (they described output that is
 about to be replaced).
 """
@@ -61,9 +62,18 @@ def finish_stage(
     provider: str | None = None,
     cost_usd: float = 0.0,
     checks: list[CheckResult] | None = None,
+    input_hashes: dict[str, str] | None = None,
 ) -> Manifest:
-    """Close the current run of ``stage`` with ``status``, its checks, and add its cost."""
+    """Close the current run of ``stage``: status, checks, input hashes, cost.
+
+    Every failed check becomes a flag in the same write (§3.1).
+    """
     manifest = read_manifest(path, episode)
+    manifest.flags += [
+        Flag(stage=stage, code=c.code, message=c.detail, spread=c.spread, created=now())
+        for c in checks or []
+        if not c.passed
+    ]
     rec = manifest.stages.get(stage) or StageRecord(status=StageStatus.STARTED, started=now())
     manifest.stages[stage] = rec.model_copy(
         update={
@@ -73,6 +83,7 @@ def finish_stage(
             "cost_usd": rec.cost_usd + cost_usd,
             "finished": now(),
             "checks": checks or [],
+            "input_hashes": input_hashes or {},
         }
     )
     write_manifest(path, manifest)

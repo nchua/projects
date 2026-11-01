@@ -122,24 +122,21 @@ def test_failed_checks_become_flags_not_exceptions(tmp_path: Path) -> None:
 
 
 def test_changed_input_makes_a_done_stage_stale(tmp_path: Path) -> None:
-    """An input modified after the stage finished reruns it (a forced upstream, an edit)."""
-    import os
-    import time
-
+    """An input whose content changed reruns the stage; an identical rewrite does not."""
     ctx = _ctx(tmp_path)
     src = ctx.paths.root / "in.txt"
     src.parent.mkdir(parents=True, exist_ok=True)
     src.write_text("v1")
     stage = _stage(tmp_path, inputs=["in.txt"])
     assert run_stage(stage, ctx).outcome is Outcome.DONE
+    src.write_text("v1")  # same bytes: still satisfied
     assert run_stage(stage, ctx).outcome is Outcome.SKIPPED
-    later = time.time() + 5
-    os.utime(src, (later, later))
+    src.write_text("v2")
     assert run_stage(stage, ctx).outcome is Outcome.DONE
 
 
-def test_force_can_name_stages_and_reruns_cascade(tmp_path: Path) -> None:
-    """``force={S4}`` leaves an earlier done stage alone; whatever reruns, later stages follow."""
+def test_force_true_spares_once_per_series_stages(tmp_path: Path) -> None:
+    """``force=True`` reruns per-episode stages but not the bible; naming S3 reruns it."""
     from bookgen.stages import REGISTRY, run_range
 
     ctx = _ctx(tmp_path)
@@ -150,10 +147,10 @@ def test_force_can_name_stages_and_reruns_cascade(tmp_path: Path) -> None:
     REGISTRY[StageId.S3], REGISTRY[StageId.S4] = first, second
     try:
         run_range(ctx, [StageId.S3, StageId.S4])
-        reports = run_range(ctx, [StageId.S3, StageId.S4], force={StageId.S4})
+        reports = run_range(ctx, [StageId.S3, StageId.S4], force=True)
         assert [r.outcome for r in reports] == [Outcome.SKIPPED, Outcome.DONE]
         reports = run_range(ctx, [StageId.S3, StageId.S4], force={StageId.S3})
-        assert [r.outcome for r in reports] == [Outcome.DONE, Outcome.DONE]  # cascade
+        assert [r.outcome for r in reports] == [Outcome.DONE, Outcome.SKIPPED]
     finally:
         REGISTRY.clear()
         REGISTRY.update(saved)

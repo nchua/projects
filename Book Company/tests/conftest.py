@@ -10,6 +10,11 @@ from typing import Any
 import pytest
 
 from bookgen.craft import PROJECT_ROOT
+from bookgen.manifest import read_manifest
+from bookgen.models import StageId, Value
+from bookgen.stages import run_range
+from bookgen.stages.base import StageContext
+from bookgen.stages.s00_intake import with_series_id
 
 
 @pytest.fixture
@@ -34,3 +39,16 @@ def write_family(tmp_path: Path) -> Callable[[dict[str, Any]], Path]:
         return path
 
     return _write
+
+
+@pytest.fixture
+def demo_series(tmp_path: Path, demo_family_path: Path) -> StageContext:
+    """A freshly initialised demo series (S0) under ``tmp_path``, value perseverance."""
+    init = with_series_id(StageContext(base_dir=tmp_path, family_path=demo_family_path))
+    run_range(init, [StageId.S0])
+    return StageContext(series_id=init.series_id, base_dir=tmp_path, value=Value.PERSEVERANCE)
+
+
+def open_flags(ctx: StageContext, ep: int = 1) -> list[str]:
+    """Open flag codes in an episode's manifest."""
+    return [f.code for f in read_manifest(ctx.paths.manifest(ep), ep).flags if not f.resolved]

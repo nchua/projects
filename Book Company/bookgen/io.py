@@ -17,14 +17,8 @@ def read_model[M: BaseModel](path: Path, cls: type[M]) -> M:
 
 
 def write_model(path: Path, model: BaseModel, exclude: set[str] | None = None) -> None:
-    """Write ``model`` as indented JSON atomically (temp file, then rename).
-
-    Identical content is not rewritten, so mtimes only move when an artifact really
-    changes; the runner's staleness test relies on that.
-    """
+    """Write ``model`` as indented JSON atomically (temp file, then rename)."""
     text = model.model_dump_json(indent=2, exclude=exclude) + "\n"
-    if path.exists() and path.read_text(encoding="utf-8") == text:
-        return
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(text, encoding="utf-8")

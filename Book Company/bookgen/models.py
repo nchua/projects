@@ -84,6 +84,11 @@ class CheckResult(Model):
     detail: str = Field(default="", description="What was measured, or what failed and why.")
     spread: int | None = Field(default=None, description="Spread concerned, if specific.")
     value: float | None = Field(default=None, description="Measured number, if any.")
+    kind: Literal["check", "judge", "rubric", "metric"] = Field(
+        default="check",
+        description="check: code rule; judge: model verdict; rubric: a §6.1 score; "
+        "metric: a measurement that always passes.",
+    )
 
 
 class StageRecord(Model):
@@ -98,6 +103,10 @@ class StageRecord(Model):
     finished: datetime | None = Field(default=None, description="UTC end of the most recent run.")
     checks: list[CheckResult] = Field(
         default_factory=list, description="Gate checks from the most recent run."
+    )
+    input_hashes: dict[str, str] = Field(
+        default_factory=dict,
+        description="SHA-256 of each declared input when the run finished; a change = stale.",
     )
 
 
@@ -338,16 +347,21 @@ class Season(Model):
     finale: str = Field(description="Shape of the finale.")
 
 
-class SeriesBible(Model):
-    """``series/bible.json`` (S3)."""
+class SeriesBibleDraft(Model):
+    """What the S3 writer returns: the bible minus the fields code owns."""
 
-    series_id: str = Field(description="Series id.")
     world: World = Field(description="World name and locations.")
     cast: list[CastMember] = Field(min_length=2, description="Hero, companion, side cast, cameos.")
     tone: str = Field(description="Tone and humour register.")
     naming: str = Field(description="Naming conventions for new characters and places.")
     season: Season = Field(description="Season goal, loglines and finale.")
     forbidden: list[str] = Field(default_factory=list, description="From parent exclusions.")
+
+
+class SeriesBible(SeriesBibleDraft):
+    """``series/bible.json`` (S3): the draft plus code-owned ids."""
+
+    series_id: str = Field(description="Series id.")
     style_id: str = Field(description="Locked style id (D5).")
 
 
@@ -432,13 +446,11 @@ class Beat(Model):
     text_side: TextSide = Field(description="Side reserved for text (D7).")
 
 
-class EpisodePlan(Model):
-    """``epNN/plan.json`` (S4)."""
+class EpisodePlanDraft(Model):
+    """What the S4 planner returns: the plan minus the episode number and value code owns."""
 
-    episode: int = Field(ge=1, description="Episode number.")
     title: str = Field(description="Episode title.")
     logline: str = Field(description="One-sentence logline.")
-    value: Value = Field(description="Value for this episode.")
     pattern: list[str] = Field(min_length=2, description="The value's pattern from the catalog.")
     template: Template = Field(description="Structure template (§4.4).")
     beats: list[Beat] = Field(min_length=12, max_length=12, description="12 beats, spreads 1-12.")
@@ -457,6 +469,13 @@ class EpisodePlan(Model):
         return self
 
 
+class EpisodePlan(EpisodePlanDraft):
+    """``epNN/plan.json`` (S4): the draft plus the episode and value code chose."""
+
+    episode: int = Field(ge=1, description="Episode number.")
+    value: Value = Field(description="Value for this episode.")
+
+
 class SpreadText(Model):
     """Text for one spread (S5)."""
 
@@ -465,13 +484,27 @@ class SpreadText(Model):
     read_aloud_notes: str = Field(default="", description="Emphasis and sound-word notes.")
 
 
-class Manuscript(Model):
+class ManuscriptDraft(Model):
+    """What the writer returns (S5): just the twelve spreads, nothing about its reasoning."""
+
+    spreads: list[SpreadText] = Field(
+        min_length=12,
+        max_length=12,
+        description="Spreads 1-12 in order: text and read-aloud notes.",
+    )
+
+    @model_validator(mode="after")
+    def _spreads_in_order(self) -> Self:
+        """Spreads 1..12 in order (a bad reply gets the retry; edits can't reorder)."""
+        if [s.spread for s in self.spreads] != list(range(1, 13)):
+            raise ValueError("spreads must be 1..12 in order, one entry each")
+        return self
+
+
+class Manuscript(ManuscriptDraft):
     """``epNN/manuscript.json`` (S5); the editor edits ``text`` here in S12."""
 
     episode: int = Field(ge=1, description="Episode number.")
-    spreads: list[SpreadText] = Field(
-        min_length=12, max_length=12, description="Text per spread, spreads 1-12 in order."
-    )
     word_count: int = Field(default=0, ge=0, description="Total body words; derived on load.")
     stats: dict[str, float] = Field(
         default_factory=dict, description="Mechanical-check measurements (§6.3, §6.4)."
@@ -486,30 +519,6 @@ class Manuscript(Model):
             texts = (s.text if isinstance(s, SpreadText) else s.get("text", "") for s in spreads)
             data = {**data, "word_count": sum(count_words(t) for t in texts)}
         return data
-
-    @model_validator(mode="after")
-    def _spreads_in_order(self) -> Self:
-        """Spreads are 1..12 in order, so the editor can't reorder text by accident."""
-        if [s.spread for s in self.spreads] != list(range(1, 13)):
-            raise ValueError("manuscript spreads must be 1..12 in order")
-        return self
-
-
-class ManuscriptDraft(Model):
-    """What the writer returns (S5): just the twelve spreads, nothing about its reasoning."""
-
-    spreads: list[SpreadText] = Field(
-        min_length=12,
-        max_length=12,
-        description="Spreads 1-12 in order: text and read-aloud notes.",
-    )
-
-    @model_validator(mode="after")
-    def _spreads_in_order(self) -> Self:
-        """Spreads 1..12 in order, so a misordered reply gets the corrective retry."""
-        if [s.spread for s in self.spreads] != list(range(1, 13)):
-            raise ValueError("spreads must be 1..12 in order, one entry each")
-        return self
 
 
 class RubricScore(Model):
@@ -571,11 +580,16 @@ class IllustrationBrief(Model):
     negatives: list[str] = Field(default_factory=list, description="Things that must not appear.")
 
 
-class Briefs(Model):
+class BriefsDraft(Model):
+    """What the S6 writer returns: one brief per image slot."""
+
+    briefs: list[IllustrationBrief] = Field(min_length=1, description="One brief per image slot.")
+
+
+class Briefs(BriefsDraft):
     """``epNN/briefs.json`` (S6): spreads 1-12 plus cover, recap and teaser."""
 
-    episode: int = Field(default=1, ge=1, description="Episode number (set by code).")
-    briefs: list[IllustrationBrief] = Field(min_length=1, description="One brief per image slot.")
+    episode: int = Field(ge=1, description="Episode number.")
 
 
 class QAResult(Model):

@@ -20,10 +20,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from bookgen.craft import load_templates
 from bookgen.io import write_model
 from bookgen.models import (
     CheckResult,
     EpisodePlan,
+    EpisodePlanDraft,
     FamilyProfile,
     Judgement,
     Ledger,
@@ -33,6 +35,7 @@ from bookgen.models import (
 )
 from bookgen.prompts import load_prompt
 from bookgen.providers.llm import Role
+from bookgen.qa import none_of
 from bookgen.qa.limits import LEDGER_SUMMARY_MAX_WORDS, RECAP_MAX_WORDS, max_words
 from bookgen.stages.base import Cadence, StageContext, StageInputError, StageResult
 from bookgen.stages.common import (
@@ -43,7 +46,6 @@ from bookgen.stages.common import (
     load_ledger,
     load_profile,
     previous_plan,
-    template_entries,
     value_entry,
     writer_context,
 )
@@ -51,13 +53,7 @@ from bookgen.stages.common import (
 STAGE_ID = StageId.S4
 CADENCE = Cadence.PER_EPISODE
 
-JUDGE_CHECKS = {
-    "continuity": "no contradiction with ledger or bible",
-    "scare_level": "within band; mild scares resolve in two spreads",
-    "standalone": "followable without the recap",
-    "pattern_enacted": "beats enact the value pattern, shown not told",
-    "value_lands": "the turn is the hero's costly choice at the claimed spread",
-}
+JUDGE_CHECKS = ("continuity", "scare_level", "standalone", "pattern_enacted", "value_lands")
 """Codes the plan judge must answer (mirrors ``craft/prompts/plan_judge.md``)."""
 
 
@@ -99,7 +95,7 @@ def code_checks(
     unknown_places = sorted({b.setting for b in plan.beats} - places)
     away = {b.setting for b in plan.beats} - homes
     repeated = sorted(away & ({b.setting for b in prev.beats} - homes)) if prev else []
-    covered = {lc.value for lc in ledger.lessons_covered}
+    covered = {lc.value for lc in ledger.lessons_covered if lc.episode != plan.episode}
     return [
         CheckResult(code="beats_12", passed=len(plan.beats) == 12, value=len(plan.beats)),
         CheckResult(
@@ -113,30 +109,14 @@ def code_checks(
             detail=f"value lands at spread {plan.value_lands_at}",
             value=plan.value_lands_at,
         ),
-        CheckResult(
-            code="value_not_repeated",
-            passed=plan.value not in covered,
-            detail=f"{plan.value} already covered this season" if plan.value in covered else "",
-        ),
+        none_of("value_not_repeated", [plan.value] if plan.value in covered else [], "covered"),
         max_words("recap_length", plan.recap, RECAP_MAX_WORDS, "recap"),
         max_words(
             "ledger_summary_length", ledger.last_summary, LEDGER_SUMMARY_MAX_WORDS, "ledger summary"
         ),
-        CheckResult(
-            code="cast_known",
-            passed=not unknown_chars,
-            detail=f"not in the bible cast: {unknown_chars}" if unknown_chars else "",
-        ),
-        CheckResult(
-            code="settings_known",
-            passed=not unknown_places,
-            detail=f"not bible locations: {unknown_places}" if unknown_places else "",
-        ),
-        CheckResult(
-            code="setting_not_repeated",
-            passed=not repeated,
-            detail=f"repeated from the previous episode: {repeated}" if repeated else "",
-        ),
+        none_of("cast_known", unknown_chars, "not in the bible cast"),
+        none_of("settings_known", unknown_places, "not bible locations"),
+        none_of("setting_not_repeated", repeated, "repeated from the previous episode"),
         CheckResult(
             code="template_rotates",
             passed=prev is None or plan.template != prev.template,
@@ -160,35 +140,36 @@ def run(ctx: StageContext) -> StageResult:
     profile, bible, ledger = load_profile(paths), load_bible(paths), load_ledger(paths)
     prev = previous_plan(paths, ctx.episode)
     value = choose_value(ctx, profile, ledger)
-    templates = [t.model_dump() for t in template_entries() if not prev or t.id != prev.template]
+    templates = [t.model_dump() for t in load_templates() if not prev or t.id != prev.template]
     shared = {
         "value": as_json(value_entry(value)),
         "band": as_json(band_rule(profile)),
         "ledger": as_json(ledger),
     }
-    context = writer_context(paths)
+    context = writer_context(bible)
+    prompt, judge_prompt = load_prompt("plan"), load_prompt("plan_judge")
     draft = llm.structured(
         role=Role.WRITER,
         label="plan",
-        prompt=load_prompt("plan"),
+        prompt=prompt,
         context=context,
-        user=load_prompt("plan").render(
+        user=prompt.render(
             **shared,
             episode=str(ctx.episode),
             templates=as_json(templates),
             previous=_previous_summary(prev),
         ),
-        schema=EpisodePlan,
+        schema=EpisodePlanDraft,
     )
-    plan = draft.model_copy(update={"episode": ctx.episode, "value": value})
+    plan = EpisodePlan(**draft.model_dump(), episode=ctx.episode, value=value)
     write_model(paths.plan(ctx.episode), plan)
 
     verdict = llm.structured(
         role=Role.JUDGE,
         label="plan-judge",
-        prompt=load_prompt("plan_judge"),
+        prompt=judge_prompt,
         context=context,
-        user=load_prompt("plan_judge").render(
+        user=judge_prompt.render(
             **{**shared, "ledger": as_json(ledger, exclude={"last_summary"})},
             plan=as_json(plan, exclude={"recap"}),
         ),
@@ -196,6 +177,6 @@ def run(ctx: StageContext) -> StageResult:
     )
     checks = [
         *code_checks(plan, bible, ledger, prev),
-        *judge_checks(verdict, JUDGE_CHECKS, prefix="judge_"),
+        *judge_checks(verdict, JUDGE_CHECKS),
     ]
     return StageResult(checks=checks)

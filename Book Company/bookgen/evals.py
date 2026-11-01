@@ -1,7 +1,9 @@
 """Minimal eval runner (SPEC §6.7): plan and manuscript stages over fixture families.
 
-``book eval --suite evals/core`` reads ``suite.yaml`` (families × values), runs
-S0, S3, S4 and S5 for each case into ``<suite>/runs/<stamp>/`` (gitignored),
+``book eval --suite evals/core`` reads ``suite.yaml`` (families × values). Per
+family it runs S0 and S3 once (the bible doesn't depend on the value), copies
+that series once per value and runs S4 and S5 there, all under
+``<suite>/runs/<stamp>/`` (gitignored),
 and writes ``<suite>/results/<stamp>.json`` (committed, so history is diffable).
 It then prints deltas against the previous results file: judge mean, mechanical
 failures, plan flags and cost. One provider is shared across the whole run, so
@@ -12,6 +14,7 @@ with its error and the run continues, except on the cost cap, which stops it.
 from __future__ import annotations
 
 import dataclasses
+import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -28,8 +31,8 @@ from bookgen.stages import run_range
 from bookgen.stages.base import StageContext
 from bookgen.stages.s00_intake import load_intake
 
-EVAL_STAGES = [StageId.S3, StageId.S4, StageId.S5]
-"""The plan and manuscript stages (§6.7, session 2)."""
+CASE_STAGES = [StageId.S4, StageId.S5]
+"""The plan and manuscript stages, run per family × value (§6.7)."""
 
 
 class Suite(BaseModel):
@@ -62,6 +65,9 @@ class EvalRun(BaseModel):
     suite: str
     stamp: str
     prompts: dict[str, str] = Field(description="Prompt name to 'v<version>-<sha>'.")
+    bible_cost_usd: dict[str, float] = Field(
+        default_factory=dict, description="Family id to its one S3 run's cost."
+    )
     cases: list[EvalCase]
 
     @property
@@ -82,8 +88,8 @@ class EvalRun(BaseModel):
 
     @property
     def cost_usd(self) -> float:
-        """Total cost."""
-        return sum(c.cost_usd for c in self.cases)
+        """Total cost: every case plus each family's bible."""
+        return sum(c.cost_usd for c in self.cases) + sum(self.bible_cost_usd.values())
 
 
 def load_suite(suite_dir: Path) -> Suite:
@@ -98,21 +104,20 @@ def prompt_versions() -> dict[str, str]:
 
 
 def _collect(ctx: StageContext, case: EvalCase) -> EvalCase:
-    """Read one case's scores, failures, flags and cost from its manifest."""
+    """Read one case's S4/S5 scores, failures, flags and cost from its manifest."""
     m = read_manifest(ctx.paths.manifest(1), 1)
-    case.cost_usd = round(sum(r.cost_usd for r in m.stages.values()), 6)
+    case.cost_usd = round(sum(m.stages[s].cost_usd for s in CASE_STAGES if s in m.stages), 6)
     if (s4 := m.stages.get(StageId.S4)) is not None:
         case.plan_flags = [c.code for c in s4.checks if not c.passed]
     if (s5 := m.stages.get(StageId.S5)) is not None:
         for c in s5.checks:
-            if c.code == "rubric_mean":
+            if c.kind == "rubric" and c.code == "rubric_mean":
                 case.judge_mean = c.value
-            elif c.code == "judge_rounds":
+            elif c.kind == "rubric" and c.value is not None:
+                case.judge_scores[c.code.removeprefix("rubric_")] = c.value
+            elif c.kind == "metric" and c.code == "judge_rounds":
                 case.judge_rounds = int(c.value or 0)
-            elif c.code.startswith("rubric_"):
-                if c.value is not None:  # unscored items carry no value
-                    case.judge_scores[c.code.removeprefix("rubric_")] = c.value
-            elif not c.passed:
+            elif c.kind == "check" and not c.passed:
                 case.mechanical_failures.append(c.code)
     return case
 
@@ -126,32 +131,52 @@ def run_suite(
     results_dir = suite_dir / "results"
     previous = latest_results(results_dir)
     base = suite_dir / "runs" / stamp
-    cases: list[EvalCase] = []
-    capped = False
-    for family_path in suite.families:
-        if capped:
-            break
-        family_file = PROJECT_ROOT / family_path
-        family_id = load_intake(StageContext(family_path=family_file)).id
-        for value in suite.values:
-            case = EvalCase(family=family_id, value=value)
-            ctx = StageContext(
-                series_id=f"{family_id}-{value}", base_dir=base, family_path=family_file
-            )
-            try:
-                run_range(ctx, [StageId.S0])
-                run_range(dataclasses.replace(ctx, value=value), EVAL_STAGES, llm=llm)
-            except CostCapExceeded as exc:
-                case.error = str(exc)
-                cases.append(_collect(ctx, case))
-                capped = True
-                break
-            except Exception as exc:  # noqa: BLE001 - record and carry on with the suite
-                case.error = f"{type(exc).__name__}: {exc}"
-            cases.append(_collect(ctx, case))
-    run = EvalRun(suite=suite.name, stamp=stamp, prompts=prompt_versions(), cases=cases)
+    run = EvalRun(suite=suite.name, stamp=stamp, prompts=prompt_versions(), cases=[])
+    try:
+        for family_path in suite.families:
+            _run_family(PROJECT_ROOT / family_path, suite.values, base, llm, run)
+    except CostCapExceeded:
+        pass  # recorded on the case that hit it; the cap stops the whole suite
     write_model(results_dir / f"{stamp}.json", run)
     return run, previous
+
+
+def _run_family(
+    family_file: Path, values: list[Value], base: Path, llm: LLMProvider, run: EvalRun
+) -> None:
+    """S0 and S3 once for the family, then S4-S5 per value in a copy of that series.
+
+    Appends one case per value to ``run``; ``CostCapExceeded`` propagates (after the
+    case that hit it is recorded) and stops the suite.
+    """
+    family = StageContext(family_path=family_file, base_dir=base)
+    family = dataclasses.replace(family, series_id=load_intake(family).id)
+    bible_error: str | None = None
+    try:
+        run_range(family, [StageId.S0])
+        run_range(family, [StageId.S3], llm=llm)
+    except CostCapExceeded:
+        raise
+    except Exception as exc:  # noqa: BLE001 - every case of this family records it
+        bible_error = f"S3 {type(exc).__name__}: {exc}"
+    s3 = read_manifest(family.paths.manifest(1), 1).stages.get(StageId.S3)
+    run.bible_cost_usd[str(family.series_id)] = round(s3.cost_usd, 6) if s3 else 0.0
+    for value in values:
+        case = EvalCase(family=str(family.series_id), value=value, error=bible_error)
+        if bible_error is not None:
+            run.cases.append(case)
+            continue
+        ctx = dataclasses.replace(family, series_id=f"{family.series_id}-{value}", value=value)
+        shutil.copytree(family.paths.root, ctx.paths.root)
+        try:
+            run_range(ctx, CASE_STAGES, llm=llm)
+        except CostCapExceeded as exc:
+            case.error = str(exc)
+            run.cases.append(_collect(ctx, case))
+            raise
+        except Exception as exc:  # noqa: BLE001 - record and carry on with the suite
+            case.error = f"{type(exc).__name__}: {exc}"
+        run.cases.append(_collect(ctx, case))
 
 
 def latest_results(results_dir: Path) -> EvalRun | None:

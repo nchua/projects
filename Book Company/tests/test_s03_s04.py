@@ -24,24 +24,17 @@ from bookgen.models import (
 )
 from bookgen.stages import Outcome, run_range
 from bookgen.stages.base import StageContext
-from bookgen.stages.s00_intake import with_series_id
 from bookgen.stages.s03_bible import JUDGE_CHECKS as BIBLE_CODES
 from bookgen.stages.s04_plan import JUDGE_CHECKS as PLAN_CODES
 from tests.canned import demo_bible, demo_plan, judgement
+from tests.conftest import open_flags
 from tests.fakes import COST_PER_CALL, FakeLLM
 
 
 @pytest.fixture
-def ctx(tmp_path: Path, demo_family_path: Path) -> StageContext:
-    """A freshly initialised demo series under ``tmp_path``."""
-    init = with_series_id(StageContext(base_dir=tmp_path, family_path=demo_family_path))
-    run_range(init, [StageId.S0])
-    return StageContext(series_id=init.series_id, base_dir=tmp_path, value=Value.PERSEVERANCE)
-
-
-def _flags(ctx: StageContext, ep: int = 1) -> list[str]:
-    """Open flag codes in an episode's manifest."""
-    return [f.code for f in read_manifest(ctx.paths.manifest(ep), ep).flags if not f.resolved]
+def ctx(demo_series: StageContext) -> StageContext:
+    """A freshly initialised demo series."""
+    return demo_series
 
 
 def test_s3_writes_bible_and_always_flags_human_read(ctx: StageContext) -> None:
@@ -53,7 +46,7 @@ def test_s3_writes_bible_and_always_flags_human_read(ctx: StageContext) -> None:
     assert bible.series_id == "demo" and bible.style_id == "gouache-warm"
     assert bible.forbidden[:3] == ["spiders", "getting lost from a parent", "hospitals"]
     assert ctx.paths.character_dir("mr_ferreira").is_dir()
-    assert _flags(ctx) == ["bible_human_read"]
+    assert open_flags(ctx) == ["bible_human_read"]
     rec = read_manifest(ctx.paths.manifest(1), 1).stages[StageId.S3]
     assert rec.cost_usd == pytest.approx(2 * COST_PER_CALL)
     assert rec.model == "claude-opus-5-5"
@@ -72,7 +65,11 @@ def test_s3_flags_wrong_names_and_judge_failures(ctx: StageContext) -> None:
         }
     )
     run_range(ctx, [StageId.S3], llm=llm)
-    assert set(_flags(ctx)) == {"cast_matches_profile", "judge_world_specific", "bible_human_read"}
+    assert set(open_flags(ctx)) == {
+        "cast_matches_profile",
+        "judge_world_specific",
+        "bible_human_read",
+    }
 
 
 def test_s3_flags_cameo_without_consent(ctx: StageContext, demo_family_raw: dict) -> None:
@@ -98,7 +95,7 @@ def test_s4_plan_passes_and_judge_never_sees_recap(ctx: StageContext) -> None:
     _with_bible(ctx)
     llm = FakeLLM({"plan": [demo_plan(episode=99)], "plan-judge": [judgement(PLAN_CODES)]})
     [report] = run_range(ctx, [StageId.S4], llm=llm)
-    assert report.outcome is Outcome.DONE, _flags(ctx)
+    assert report.outcome is Outcome.DONE, open_flags(ctx)
     plan = read_model(ctx.paths.plan(1), EpisodePlan)
     assert plan.episode == 1 and plan.value is Value.PERSEVERANCE
     judge = next(c for c in llm.calls if c.label == "plan-judge")
@@ -114,7 +111,7 @@ def test_s4_flags_countable_rule_breaks(ctx: StageContext) -> None:
     llm = FakeLLM({"plan": [bad], "plan-judge": [judgement(PLAN_CODES, failing=["standalone"])]})
     [report] = run_range(ctx, [StageId.S4], llm=llm)
     assert report.outcome is Outcome.FLAGGED
-    assert set(_flags(ctx)) >= {
+    assert set(open_flags(ctx)) >= {
         "value_lands_9_11",
         "recap_length",
         "settings_known",
@@ -136,9 +133,14 @@ def test_s4_rotation_repeats_and_season_values(ctx: StageContext) -> None:
     ep2 = dataclasses.replace(ctx, episode=2)
     llm = FakeLLM({"plan": [demo_plan()], "plan-judge": [judgement(PLAN_CODES)]})
     run_range(ep2, [StageId.S4], llm=llm)
-    assert set(_flags(ep2, 2)) == {"template_rotates", "setting_not_repeated", "value_not_repeated"}
+    assert set(open_flags(ep2, 2)) == {
+        "template_rotates",
+        "setting_not_repeated",
+        "value_not_repeated",
+    }
     templates_offered = next(c for c in llm.calls if c.label == "plan").user
-    assert '"id": "quest"' not in templates_offered  # previous template not offered
+    assert '"id":"quest"' not in templates_offered  # previous template not offered
+    assert '"id":"mystery"' in templates_offered
 
 
 def test_default_value_is_first_uncovered_priority(ctx: StageContext) -> None:

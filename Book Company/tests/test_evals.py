@@ -81,3 +81,29 @@ def test_book_eval_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     result = CliRunner().invoke(cli.app, ["eval", "--suite", str(suite)])
     assert result.exit_code == 0, result.output
     assert "demo/perseverance: judge 3.00" in result.output
+
+
+def test_eval_builds_one_bible_per_family(tmp_path: Path) -> None:
+    """Two values for one family: S3 runs once, its cost is counted once."""
+    suite = _suite(tmp_path)
+    (suite / "suite.yaml").write_text(
+        (suite / "suite.yaml")
+        .read_text()
+        .replace("  - perseverance\n", "  - perseverance\n  - curiosity\n")
+    )
+    llm = FakeLLM(
+        {
+            "bible": [demo_bible()],
+            "bible-judge": [judgement(BIBLE_CODES)],
+            "plan": [demo_plan(), demo_plan()],
+            "plan-judge": [judgement(PLAN_CODES), judgement(PLAN_CODES)],
+            "draft": [draft(), draft()],
+            "critique-0": [critique(3), critique(3)],
+        }
+    )
+    run, _ = run_suite(suite, llm, stamp="20261101T000000Z")
+    assert [c.value for c in run.cases] == ["perseverance", "curiosity"]
+    assert all(c.error is None for c in run.cases)
+    assert llm.labels().count("bible") == 1
+    assert run.bible_cost_usd == {"demo": pytest.approx(0.02)}
+    assert run.cost_usd == pytest.approx(0.02 + 2 * 0.04)

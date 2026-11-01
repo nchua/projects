@@ -19,26 +19,41 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from bookgen.craft import load_companions, load_craft_guide
-from bookgen.io import read_model, write_model
-from bookgen.models import CheckResult, FamilyProfile, Judgement, SeriesBible, StageId, StyleBible
+from bookgen.craft import load_craft_guide
+from bookgen.io import write_model
+from bookgen.models import (
+    CheckResult,
+    FamilyProfile,
+    Judgement,
+    SeriesBible,
+    SeriesBibleDraft,
+    StageId,
+)
 from bookgen.prompts import load_prompt
 from bookgen.providers.llm import Role
 from bookgen.stages.base import Cadence, StageContext, StageResult
-from bookgen.stages.common import as_json, band_rule, judge_checks, load_profile, value_entry
+from bookgen.stages.common import (
+    as_json,
+    band_rule,
+    companion_entry,
+    judge_checks,
+    load_profile,
+    load_style,
+    value_entry,
+)
 
 STAGE_ID = StageId.S3
 CADENCE = Cadence.ONCE_PER_SERIES
 
-JUDGE_CHECKS = {
-    "names_exact": "family and companion names exact",
-    "forbidden_respected": "no exclusions, scare within band",
-    "companion_true": "companion matches archetype, can't solve alone",
-    "world_specific": "concrete locations with sensory signatures",
-    "cast_distinct": "side cast distinct",
-    "season_coherent": "goal, loglines and finale fit; loglines standalone",
-    "tone_fits_band": "tone suits the band",
-}
+JUDGE_CHECKS = (
+    "names_exact",
+    "forbidden_respected",
+    "companion_true",
+    "world_specific",
+    "cast_distinct",
+    "season_coherent",
+    "tone_fits_band",
+)
 """Codes the coherence judge must answer (mirrors ``craft/prompts/bible_judge.md``)."""
 
 
@@ -55,10 +70,9 @@ def outputs(ctx: StageContext) -> list[Path]:
 def _companion_brief(profile: FamilyProfile) -> str:
     """The archetype entry plus the child's name and colour for it."""
     choice = profile.companion_choice
-    entry = next(c for c in load_companions() if c.id == choice.archetype)
     return as_json(
         {
-            **entry.model_dump(),
+            **companion_entry(profile).model_dump(),
             "id": profile.companion_id,
             "given_name": choice.name,
             "colour": choice.colour,
@@ -119,30 +133,33 @@ def run(ctx: StageContext) -> StageResult:
     llm = ctx.need_llm()
     paths = ctx.paths
     profile = load_profile(paths)
-    style = read_model(paths.style, StyleBible)
+    style = load_style(paths)
     values = [value_entry(v).model_dump() for v in profile.value_priorities]
     shared = {
         "profile": as_json(profile, exclude={"consent"}),
         "companion": _companion_brief(profile),
         "band": as_json(band_rule(profile)),
     }
+    prompt, judge_prompt = load_prompt("bible"), load_prompt("bible_judge")
     draft = llm.structured(
         role=Role.WRITER,
         label="bible",
-        prompt=load_prompt("bible"),
+        prompt=prompt,
         context=[load_craft_guide()],
-        user=load_prompt("bible").render(
+        user=prompt.render(
             **shared,
             values=as_json(values),
             cameos=", ".join(_cameo_ids(profile)) or "none",
             style=f"{style.id} ({style.name})",
             series_id=paths.root.name,
         ),
-        schema=SeriesBible,
+        schema=SeriesBibleDraft,
     )
     forbidden = list(dict.fromkeys([*profile.exclusions, *draft.forbidden]))
-    bible = draft.model_copy(
-        update={"series_id": paths.root.name, "style_id": style.id, "forbidden": forbidden}
+    bible = SeriesBible(
+        **{**draft.model_dump(), "forbidden": forbidden},
+        series_id=paths.root.name,
+        style_id=style.id,
     )
     write_model(paths.bible, bible)
     for member in bible.cast:
@@ -151,14 +168,14 @@ def run(ctx: StageContext) -> StageResult:
     verdict = llm.structured(
         role=Role.JUDGE,
         label="bible-judge",
-        prompt=load_prompt("bible_judge"),
+        prompt=judge_prompt,
         context=[load_craft_guide()],
-        user=load_prompt("bible_judge").render(**shared, bible=as_json(bible)),
+        user=judge_prompt.render(**shared, bible=as_json(bible)),
         schema=Judgement,
     )
     checks = [
         *code_checks(bible, profile),
-        *judge_checks(verdict, JUDGE_CHECKS, prefix="judge_"),
+        *judge_checks(verdict, JUDGE_CHECKS),
         CheckResult(
             code="bible_human_read",
             passed=False,

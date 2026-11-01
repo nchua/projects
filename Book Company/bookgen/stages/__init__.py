@@ -9,14 +9,14 @@ caller of ``start_stage``/``finish_stage``. To implement a stage, edit its
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 from collections.abc import Callable, Collection
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 from types import ModuleType
 
-from bookgen.manifest import add_flag, finish_stage, read_manifest, start_stage
+from bookgen.manifest import finish_stage, read_manifest, start_stage
 from bookgen.models import StageId, StageStatus
 from bookgen.providers.llm import LLMProvider
 from bookgen.stages import (
@@ -126,11 +126,21 @@ def stage_range(start: StageId, end: StageId) -> list[StageId]:
     return order[i : j + 1]
 
 
-def is_satisfied(stage: Stage, ctx: StageContext) -> bool:
-    """True if ``stage`` ran to DONE or FLAGGED, its outputs exist, and no input changed since.
+def input_hashes(stage: Stage, ctx: StageContext) -> dict[str, str]:
+    """SHA-256 of each declared input that exists, keyed by its path in the series."""
+    return {
+        str(p.relative_to(ctx.paths.root)): hashlib.sha256(p.read_bytes()).hexdigest()
+        for p in stage.inputs(ctx)
+        if p.exists()
+    }
 
-    An input modified after the stage finished (a forced upstream rerun, or the editor's
-    hand edit) makes the stage stale, so it reruns instead of serving old output.
+
+def is_satisfied(stage: Stage, ctx: StageContext) -> bool:
+    """True if ``stage`` ran to DONE or FLAGGED, its outputs exist, and its inputs are unchanged.
+
+    An input whose content changed since the run (an upstream rerun, the editor's hand
+    edit) makes the stage stale, so it reruns instead of serving old output. Identical
+    rewrites don't count, so an upstream rerun that changes nothing costs nothing here.
     """
     if stage.cadence is Cadence.EVERY_RUN:
         return False
@@ -138,14 +148,9 @@ def is_satisfied(stage: Stage, ctx: StageContext) -> bool:
     rec = read_manifest(ctx.paths.manifest(ep), ep).stages.get(stage.id)
     if rec is None or rec.status not in (StageStatus.DONE, StageStatus.FLAGGED):
         return False
-    if rec.finished is None or not all(p.exists() for p in stage.outputs(ctx)):
+    if not all(p.exists() for p in stage.outputs(ctx)):
         return False
-    return all(_mtime(p) <= rec.finished for p in stage.inputs(ctx) if p.exists())
-
-
-def _mtime(path: Path) -> datetime:
-    """A file's modification time as an aware UTC datetime."""
-    return datetime.fromtimestamp(path.stat().st_mtime, UTC)
+    return rec.input_hashes == input_hashes(stage, ctx)
 
 
 def check_inputs(stage: Stage, ctx: StageContext) -> None:
@@ -171,24 +176,29 @@ def run_stage(
     ep = stage.manifest_episode(ctx)
     manifest = ctx.paths.manifest(ep)
     session = llm.session(stage.id, ctx.paths.logs(ep)) if llm else None
+    consumed = input_hashes(stage, ctx)
     start_stage(manifest, ep, stage.id)
-
-    def cost() -> float:
-        return session.cost_usd if session else 0.0
-
     try:
         result = stage.run(dataclasses.replace(ctx, llm=session))
     except BaseException:
-        finish_stage(manifest, ep, stage.id, StageStatus.FAILED, cost_usd=cost())
+        cost = session.cost_usd if session else 0.0
+        finish_stage(manifest, ep, stage.id, StageStatus.FAILED, cost_usd=cost)
         raise
-    failed = [c for c in result.checks if not c.passed]
-    for c in failed:
-        add_flag(manifest, ep, stage.id, c.code, c.detail, spread=c.spread)
-    status = StageStatus.FLAGGED if failed else StageStatus.DONE
+    cost = session.cost_usd if session else 0.0
+    flags = sum(not c.passed for c in result.checks)
     model = result.model or (session.models_used[0] if session and session.models_used else None)
-    finish_stage(manifest, ep, stage.id, status, model=model, cost_usd=cost(), checks=result.checks)
-    outcome = Outcome.FLAGGED if failed else Outcome.DONE
-    return StageReport(stage.id, outcome, flags=len(failed), cost_usd=cost())
+    finish_stage(
+        manifest,
+        ep,
+        stage.id,
+        StageStatus.FLAGGED if flags else StageStatus.DONE,
+        model=model,
+        cost_usd=cost,
+        checks=result.checks,
+        input_hashes=consumed,
+    )
+    outcome = Outcome.FLAGGED if flags else Outcome.DONE
+    return StageReport(stage.id, outcome, flags=flags, cost_usd=cost)
 
 
 def run_range(
@@ -199,18 +209,15 @@ def run_range(
 ) -> list[StageReport]:
     """Run ``stages`` in order under the contract; stops at the first exception.
 
-    ``force`` is ``True`` (every stage in the range) or the stages to rerun. Once a
-    stage actually runs, every later stage in the range reruns too, since its inputs
-    just changed.
+    ``force=True`` reruns every stage in the range except once-per-series ones (the
+    bible is regenerated only when named, e.g. ``force={StageId.S3}``, or deleted).
+    Later stages need no forcing: a rerun that changes their inputs makes them stale.
     """
-    forced = set(stages) if force is True else set(force or ())
-    reports: list[StageReport] = []
-    for s in stages:
-        report = run_stage(REGISTRY[s], ctx, llm=llm, force=s in forced)
-        reports.append(report)
-        if report.outcome is not Outcome.SKIPPED:
-            forced |= set(stages[stages.index(s) + 1 :])
-    return reports
+    if force is True:
+        forced = {s for s in stages if REGISTRY[s].cadence is not Cadence.ONCE_PER_SERIES}
+    else:
+        forced = set(force or ())
+    return [run_stage(REGISTRY[s], ctx, llm=llm, force=s in forced) for s in stages]
 
 
 __all__ = [
