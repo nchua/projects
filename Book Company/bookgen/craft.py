@@ -66,6 +66,7 @@ class BandRule(_CraftModel):
     words_per_book: tuple[int, int] = Field(description="Inclusive word-count range per book.")
     sentences_per_spread: tuple[int, int] = Field(description="Inclusive sentences per spread.")
     max_words_per_sentence: int = Field(gt=0, description="Sentence length cap (§6.3).")
+    max_fk_grade: float = Field(description="Flesch-Kincaid grade ceiling (§6.4).")
     dialogue: Literal["none", "light"] = Field(description="How much dialogue the band allows.")
     scare_level: Literal["none", "mild", "moderate"] = Field(description="Maximum scare level.")
     body_pt: tuple[int, int] = Field(description="Body text size range in points (S10).")
@@ -174,6 +175,15 @@ def load_banned_phrases() -> tuple[str, ...]:
     text = (CRAFT_DIR / "banned_phrases.txt").read_text(encoding="utf-8")
     lines = (ln.strip().lower() for ln in text.splitlines())
     return tuple(ln for ln in lines if ln and not ln.startswith("#"))
+
+
+@cache
+def load_adjectives() -> frozenset[str]:
+    """Return the adjective lexicon for the density check (§6.3), lower-cased."""
+    text = (CRAFT_DIR / "adjectives.txt").read_text(encoding="utf-8")
+    return frozenset(
+        w for ln in text.splitlines() for w in ln.lower().split() if not ln.startswith("#")
+    )
 
 
 @cache

@@ -12,6 +12,7 @@ bands:
     words_per_book: [150, 350]      # §1.2
     sentences_per_spread: [1, 2]    # §1.2
     max_words_per_sentence: 8       # proposal (§6.3 "caps per band")
+    max_fk_grade: 1.5               # proposal (§6.4 gives band B only)
     dialogue: none
     scare_level: none               # nothing darker than a lost sock
     body_pt: [24, 28]               # proposal; §3.3 S10 gives band B only
@@ -22,6 +23,7 @@ bands:
     words_per_book: [400, 750]
     sentences_per_spread: [2, 4]
     max_words_per_sentence: 14      # proposal
+    max_fk_grade: 2.5               # §6.4
     dialogue: light
     scare_level: mild               # a storm, a dark cupboard; resolved within two spreads
     body_pt: [20, 24]               # §3.3 S10
@@ -32,6 +34,7 @@ bands:
     words_per_book: [750, 1300]
     sentences_per_spread: [4, 7]
     max_words_per_sentence: 20      # proposal
+    max_fk_grade: 4.0               # proposal
     dialogue: light
     scare_level: moderate           # mild mystery and peril; never injury, loss of a parent, or death
     body_pt: [16, 20]               # proposal

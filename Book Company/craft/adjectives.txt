@@ -1,0 +1,26 @@
+# Adjective lexicon — SPEC §6.3 adjective density (<= 1 per 8 words).
+# A heuristic, not a tagger: words here count as adjectives wherever they appear,
+# so "the cold" counts and an unlisted adjective doesn't. Tune after ten books.
+# Several words per line is fine; lines starting with # are comments.
+big small little tiny huge giant enormous large long short tall wide narrow
+thick thin fat round flat square sharp soft hard smooth rough bumpy fluffy fuzzy
+furry scruffy sticky slimy slippery wobbly crooked straight
+hot cold warm cool icy chilly frosty snowy rainy windy sunny cloudy foggy stormy
+wet dry damp soggy muddy dusty dirty clean shiny sparkly glittery glowing bright
+dark dim gloomy shadowy pale
+red orange yellow green blue purple pink brown black white grey gray golden silver
+teal mustard
+loud quiet noisy silent soft gentle fierce wild calm still busy lazy sleepy
+happy sad glad angry cross grumpy cheerful jolly merry upset scared frightened
+afraid brave bold shy proud lonely worried nervous excited curious surprised
+hungry thirsty tired sore sick
+good bad great wonderful lovely beautiful pretty ugly nice kind mean cruel clever
+smart silly funny strange odd weird peculiar magical mysterious secret special
+perfect terrible horrible awful fantastic amazing marvellous marvelous splendid
+new old young ancient fresh rotten ripe sweet sour bitter salty spicy tasty yummy
+delicious crunchy crispy creamy juicy
+heavy light empty full broken whole open closed hidden lost
+fast quick slow sudden careful careless gentle
+deep shallow high low near far
+cosy cozy snug comfy safe dangerous
+colourful colorful lumpy tangled

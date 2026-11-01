@@ -80,6 +80,10 @@ class SeriesPaths:
         """``epNN/manuscript.json`` (S5)."""
         return self.episode_dir(episode) / "manuscript.json"
 
+    def critique(self, episode: int) -> Path:
+        """``epNN/critique.json``: S5's judge rounds."""
+        return self.episode_dir(episode) / "critique.json"
+
     def briefs(self, episode: int) -> Path:
         """``epNN/briefs.json`` (S6)."""
         return self.episode_dir(episode) / "briefs.json"

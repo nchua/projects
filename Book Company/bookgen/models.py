@@ -495,6 +495,48 @@ class Manuscript(Model):
         return self
 
 
+class ManuscriptDraft(Model):
+    """What the writer returns (S5): just the twelve spreads, nothing about its reasoning."""
+
+    spreads: list[SpreadText] = Field(
+        min_length=12,
+        max_length=12,
+        description="Spreads 1-12 in order: text and read-aloud notes.",
+    )
+
+
+class RubricScore(Model):
+    """One rubric item as the S5 judge scored it (§6.1, §6.2)."""
+
+    key: str = Field(description="Rubric item key from craft/judge_rubric.yaml.")
+    score: Score = Field(description="0-3 against the item's anchors.")
+    fix_notes: str = Field(description="Specific, actionable notes naming spreads; '' if 3.")
+
+
+class Critique(Model):
+    """The S5 judge's verdict on one draft."""
+
+    scores: list[RubricScore] = Field(description="One entry per manuscript rubric item.")
+    summary: str = Field(description="The two or three changes that matter most.")
+
+
+class CritiqueRound(Model):
+    """One judge pass in the S5 loop, with the mechanical failures it was paired with."""
+
+    round: int = Field(ge=0, description="0 scores the first draft; n scores revision n.")
+    critique: Critique = Field(description="The judge's scores and notes.")
+    mechanical_failures: list[CheckResult] = Field(
+        default_factory=list, description="Mechanical checks that failed on this draft."
+    )
+
+
+class CritiqueLog(Model):
+    """``epNN/critique.json``: every judge round of S5, for the editor and evals."""
+
+    episode: int = Field(ge=1, description="Episode number.")
+    rounds: list[CritiqueRound] = Field(default_factory=list, description="In order.")
+
+
 # --- Illustration (S6-S8) ----------------------------------------------------------------
 
 
@@ -520,6 +562,13 @@ class IllustrationBrief(Model):
     palette_notes: str = Field(description="Palette and time of day.")
     continuity_props: list[str] = Field(default_factory=list, description="Props from the ledger.")
     negatives: list[str] = Field(default_factory=list, description="Things that must not appear.")
+
+
+class Briefs(Model):
+    """``epNN/briefs.json`` (S6): spreads 1-12 plus cover, recap and teaser."""
+
+    episode: int = Field(default=1, ge=1, description="Episode number (set by code).")
+    briefs: list[IllustrationBrief] = Field(min_length=1, description="One brief per image slot.")
 
 
 class QAResult(Model):
