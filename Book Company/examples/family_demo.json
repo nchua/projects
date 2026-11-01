@@ -1,0 +1,46 @@
+{
+  "id": "demo",
+  "parents": [
+    {"id": "dana", "name": "Dana", "term": "Mama", "pronouns": "she/her"},
+    {"id": "jun", "name": "Jun", "term": "Appa", "pronouns": "he/him"}
+  ],
+  "children": [
+    {"id": "maya", "name": "Maya", "pronouns": "she/her", "birth_month": "2021-06", "band": "B"}
+  ],
+  "pets": [
+    {
+      "id": "pickles",
+      "name": "Pickles",
+      "species": "dog",
+      "description": "small scruffy terrier mix, sandy brown with one white ear that never stands up"
+    }
+  ],
+  "companion_choice": {"archetype": "dragon", "name": "Toast", "colour": "teal"},
+  "value_priorities": ["perseverance", "curiosity", "big_feelings"],
+  "exclusions": ["spiders", "getting lost from a parent", "hospitals"],
+  "locale": "en-US",
+  "consent": {
+    "personalized_story": true,
+    "likeness_from_photos": false,
+    "retain_photos": false,
+    "family_cameos": true
+  },
+  "appearance_cards": [
+    {
+      "person_id": "maya",
+      "hair": {"colour": "black", "texture": "thick, slightly wavy", "length": "chin-length", "style": "bob with a short fringe, one yellow clip on the left"},
+      "skin_tone_id": 4,
+      "eyes": "dark brown, round",
+      "glasses": true,
+      "assistive_devices": [],
+      "features": ["round red glasses", "gap where a front tooth is coming in", "small mole under right eye"],
+      "signature_outfit": "mustard raincoat over a striped navy-and-white top, green leggings, red wellies",
+      "outfit_suggestions": [
+        "mustard raincoat over a striped navy-and-white top, green leggings, red wellies",
+        "denim pinafore over a red long-sleeve top, white sneakers",
+        "dinosaur-print hoodie, grey joggers, purple sneakers"
+      ],
+      "height_class": "taller"
+    }
+  ]
+}
