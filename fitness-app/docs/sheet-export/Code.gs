@@ -14,6 +14,8 @@
  *      Fitness → "Refresh hourly".
  *
  * The token lives in Script Properties, never in a cell.
+ *
+ * @OnlyCurrentDoc  Limits this script's Google access to this one Sheet.
  */
 
 const BASE_URL = 'https://backend-production-e316.up.railway.app';

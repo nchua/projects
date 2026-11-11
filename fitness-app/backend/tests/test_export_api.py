@@ -161,15 +161,25 @@ class TestExportContent:
             local_date=today, activity_type="Outdoor Run", distance_meters=1609.344 * 3,
         ))
         db.add(BodyweightEntry(user_id=owner.id, date=today, weight_lb=160.4, source="manual"))
+        # Watch imports attach a set-less placeholder exercise; still cardio.
+        walk = WorkoutSession(
+            user_id=owner.id, date=datetime.combine(today, datetime.min.time()),
+            local_date=today, activity_type="walking", distance_meters=1609.344,
+        )
+        db.add(walk)
+        db.flush()
+        placeholder = _exercise(db, "Export Walking", "Cardio")
+        db.add(WorkoutExercise(session_id=walk.id, exercise_id=placeholder.id, order_index=0))
         db.commit()
 
         body = client.get("/export/workouts", headers=configured).json()
 
-        run = body["sessions"][0]
-        assert run["kind"] == "cardio"
+        assert [s["kind"] for s in body["sessions"]] == ["cardio", "cardio"]
+        run = next(s for s in body["sessions"] if s["activity_type"] == "Outdoor Run")
         assert run["distance_miles"] == 3.0
-        assert body["weekly_volume"][0]["cardio_sessions"] == 1
-        assert body["weekly_volume"][0]["cardio_miles"] == 3.0
+        assert body["weekly_volume"][0]["strength_sessions"] == 0
+        assert body["weekly_volume"][0]["cardio_sessions"] == 2
+        assert body["weekly_volume"][0]["cardio_miles"] == 4.0
         assert body["bodyweight"] == [
             {"day": today.isoformat(), "weight_lb": 160.4, "source": "manual"}
         ]

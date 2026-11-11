@@ -170,7 +170,9 @@ async def export_workouts(
                 bucket["total_reps"] += s.reps
                 bucket["tonnage_lb"] += volume
 
-        is_strength = bool(session.workout_exercises)
+        # Watch cardio imports carry a placeholder exercise with no sets, so
+        # logged sets (not exercises) are what make a session strength.
+        is_strength = any(we.sets for we in session.workout_exercises)
         miles = (
             session.distance_meters / METERS_PER_MILE
             if session.distance_meters else None
