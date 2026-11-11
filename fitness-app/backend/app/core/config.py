@@ -88,6 +88,14 @@ class Settings(BaseSettings):
     # Deploy-time purge sweep (§8.3). Off by default; enable after a clean dry-run.
     PURGE_SWEEP_ENABLED: bool = Field(default=False)
 
+    # ── Read-only owner export (api/export.py) ──
+    # Static bearer token for the Sheet mirror's unattended pull. Empty (or
+    # shorter than 32 chars) → the endpoint 503s. Generate with
+    # `python -c "import secrets; print(secrets.token_urlsafe(48))"`.
+    EXPORT_TOKEN: str = Field(default="")
+    # Account the export serves; falls back to ADMIN_BOOTSTRAP_EMAIL.
+    EXPORT_USER_EMAIL: str = Field(default="")
+
     # APNs push notifications
     APNS_KEY_ID: str = Field(default="")
     APNS_TEAM_ID: str = Field(default="")
