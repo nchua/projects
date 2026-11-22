@@ -45,8 +45,10 @@ class TestUserUsage:
         # Soft-deleted → ignored everywhere.
         gone = add_lift(db, user.id, FRIDAY, [(bench, [(225, 1, None)])], name="Push")
         gone.deleted_at = datetime.now(timezone.utc)
-        db.add(ScreenshotUsage(user_id=user.id, screenshots_count=2))
-        db.add(ScreenshotUsage(user_id=user.id, screenshots_count=1))
+        # Stamped on TODAY: the column's default is the UTC instant, which can fall in another ISO week.
+        scanned_at = datetime.combine(TODAY, time(12))
+        db.add(ScreenshotUsage(user_id=user.id, screenshots_count=2, created_at=scanned_at))
+        db.add(ScreenshotUsage(user_id=user.id, screenshots_count=1, created_at=scanned_at))
         db.add(DailyActivity(user_id=user.id, date=TODAY - timedelta(days=1), source="whoop",
                              recovery_score=70, hrv=60, sleep_hours=7.5))
         db.add(DailyActivity(user_id=user.id, date=TODAY - timedelta(days=1), source="apple_fitness",

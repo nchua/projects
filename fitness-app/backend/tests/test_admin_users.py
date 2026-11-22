@@ -38,6 +38,13 @@ from tests.helpers_w1 import MONDAY, add_lift, import_plan
 TODAY = date.today()
 SESSION_ROUTE = ("POST", "/admin/session")
 
+
+class _CollectionDate(date):
+    @classmethod
+    def today(cls) -> date:
+        return TODAY
+
+
 def _admin_routes() -> List[Tuple[str, str]]:
     """Every (method, path) under /admin except the public session mint."""
     out: List[Tuple[str, str]] = []
@@ -471,7 +478,9 @@ class TestUserDetail:
         "plan", "account", "scans", "activity",  # console v2 §6.3
     }
 
-    def test_fresh_user_renders_every_block(self, client, admin_headers, create_test_user):
+    def test_fresh_user_renders_every_block(self, client, admin_headers, create_test_user, monkeypatch) -> None:
+        # TODAY is read at collection; hold the route to it in case the suite runs past midnight.
+        monkeypatch.setattr(admin_read_service, "date", _CollectionDate)
         headers, _ = admin_headers(email="owner-fresh@example.com")
         fresh, _ = create_test_user(email="fresh-detail@example.com")
         response = client.get(f"/admin/users/{fresh.id}", headers=headers)
@@ -608,7 +617,7 @@ class TestUserDetail:
         user, _ = create_test_user(email="campaign-detail@example.com")
         campaign, warnings = import_plan(db, user.id, start=MONDAY)
         assert warnings == []
-        start = max(MONDAY, TODAY)
+        start = MONDAY  # not the real today: the plan runs out after 24 weeks
         hunts = materialize_range(db, user.id, start, start + timedelta(days=6), today=start)
         db.commit()
         planned = next(h for h in hunts if h.status == "planned")

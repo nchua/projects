@@ -6,11 +6,13 @@ arc ramp, the preview math + AMBITIOUS, `extend_goal_deadline` bounds,
 """
 import uuid
 from datetime import date, datetime, timedelta, timezone
+from typing import Optional
 
 import pytest
 
 from app.models.goal import Goal, GoalProgressSnapshot
 from app.schemas.goal import GoalCreate
+from app.services import goal_service
 from app.services.goal_service import (
     MAX_DEADLINE_EXTENSION_DAYS,
     active_strength_goal_families,
@@ -24,8 +26,10 @@ from app.services.goal_service import (
 from tests.helpers_w1 import MONDAY, add_lift, family_exercise, import_plan, make_user
 
 
-def _seed_improving_bench(db, user_id, bench, weeks=7, start=200, step=5):
-    today = date.today()
+def _seed_improving_bench(
+    db, user_id, bench, weeks=7, start=200, step=5, today: Optional[date] = None,
+) -> None:
+    today = today or date.today()
     for i in range(weeks):
         day = today - timedelta(days=2 + 7 * (weeks - 1 - i))
         add_lift(db, user_id, day, [(bench, [(start + step * i, 5)])])
@@ -71,7 +75,7 @@ class TestCreate:
         headers, _ = auth_headers(email=unique_email("g-bad"))
         assert client.post("/goals", json={"kind": "run", "target_miles": 12}, headers=headers).status_code == 422
         assert client.post("/goals", json={"exercise_id": bench.id, "deadline": "2030-01-01"}, headers=headers).status_code == 422
-        assert client.post("/goals", json={"exercise_id": "nope", "target_weight": 100, "deadline": "2030-01-01"}, headers=headers).status_code == 400
+        assert client.post("/goals", json={"exercise_id": "nope", "target_weight": 100, "deadline": (date.today() + timedelta(weeks=8)).isoformat()}, headers=headers).status_code == 400
 
     def test_active_strength_goal_families(self, db, create_test_user, bench):
         user = make_user(create_test_user, "g-fam")
@@ -102,10 +106,12 @@ class TestRunPace:
 
 
 class TestPreview:
-    def test_preview_math_and_ambitious(self, db, create_test_user, bench):
+    def test_preview_math_and_ambitious(self, db, create_test_user, bench, monkeypatch) -> None:
+        today = MONDAY
+        monkeypatch.setattr(goal_service, "get_today_utc", lambda: today)
         user = make_user(create_test_user, "g-prev")
-        _seed_improving_bench(db, user.id, bench)           # 200 → 230 × 5, weekly; e1RM 233.3 → 268.3
-        modest = GoalCreate(exercise_id=bench.id, target_weight=285, target_reps=1, deadline=date.today() + timedelta(weeks=8))
+        _seed_improving_bench(db, user.id, bench, today=today)         # 200 → 230 × 5, weekly; e1RM 233.3 → 268.3
+        modest = GoalCreate(exercise_id=bench.id, target_weight=285, target_reps=1, deadline=today + timedelta(weeks=8))
         out = preview_goal(db, user.id, modest)
         assert out["current_e1rm"] == pytest.approx(230 * (1 + 5 / 30), abs=0.1)
         assert out["target_e1rm"] == 285
@@ -114,7 +120,7 @@ class TestPreview:
         assert out["slope_6wk_lb"] == pytest.approx(5 * (1 + 5 / 30), abs=0.05)
         assert out["ambitious"] is False and out["pace_status"] == "ahead"
 
-        wild = GoalCreate(exercise_id=bench.id, target_weight=405, target_reps=1, deadline=date.today() + timedelta(weeks=8))
+        wild = GoalCreate(exercise_id=bench.id, target_weight=405, target_reps=1, deadline=today + timedelta(weeks=8))
         out = preview_goal(db, user.id, wild)
         assert out["required_weekly_gain_lb"] > 2 * out["slope_6wk_lb"]
         assert out["ambitious"] is True and out["pace_status"] == "behind"

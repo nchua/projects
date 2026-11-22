@@ -222,8 +222,10 @@ class TestSingle:
         assert _plan(client, headers, user.id, target="topup").status_code == 422
         assert _plan(client, headers, user.id, target="topup", credits=0).status_code == 422
         assert _plan(client, headers, user.id, target="unlimited", credits=5).status_code == 422
+        # Must stay in the future, or the past-expiry rule answers 422 in place of the topup rule.
+        future = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
         assert _plan(client, headers, user.id, target="topup", credits=5,
-                     expires_at="2026-12-01T00:00:00Z").status_code == 422
+                     expires_at=future).status_code == 422
         assert _plan(client, headers, user.id, target="downgrade").status_code == 422
         assert client.post(f"/admin/users/{user.id}/plan", json={"target": "unlimited"}, headers=headers).status_code == 422
         assert _plan(client, headers, "nope", target="unlimited").status_code == 404
