@@ -39,4 +39,4 @@ Each spec tracks its lifecycle in YAML front matter. Move forward in this order.
 
 | Spec | Title | Status | Created | Owner | Target repo |
 | --- | --- | --- | --- | --- | --- |
-| [2026-11-21-field-notes-learning-module.md](2026-11-21-field-notes-learning-module.md) | Field Notes learning module | reviewed | 2026-11-21 | Nick | nchua/field-notes |
+| [2026-11-21-field-notes-learning-module.md](2026-11-21-field-notes-learning-module.md) | Field Notes learning module | in-progress | 2026-11-21 | Nick | nchua/field-notes |
