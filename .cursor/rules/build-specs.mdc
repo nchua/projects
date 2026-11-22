@@ -1,0 +1,19 @@
+---
+description: How Cursor agents handle implementation specs in build-specs/
+globs: build-specs/**
+alwaysApply: false
+---
+
+# Build specs
+
+- Read build-specs/README.md before writing or changing a spec.
+- A new spec is a copy of build-specs/TEMPLATE.md named YYYY-MM-DD-short-kebab-name.md.
+  Never edit TEMPLATE.md.
+- Cursor writes specs and leaves them at `status: draft`. Cursor never sets `reviewed`,
+  `in-progress`, or `built`. Claude does the review by following build-specs/REVIEW.md.
+- Never edit a spec whose status is `reviewed`, `in-progress`, or `built`. If it needs to
+  change, tell Nick and let the review loop handle it, or write a new spec.
+- Always pull main before touching build-specs/. Work on a new branch, never on a branch
+  that has already been merged.
+- When a spec is added, add its row to the index in build-specs/README.md.
+- No secrets, real email addresses, or tokens in a spec.
