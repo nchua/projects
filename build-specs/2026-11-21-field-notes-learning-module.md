@@ -1,6 +1,6 @@
 ---
 title: "Field Notes learning module"
-status: in-progress
+status: built
 created: 2026-11-21
 owner: Nick
 target_repo: "nchua/field-notes"
@@ -1023,3 +1023,4 @@ Also added: sign-in rate limit, sliding session, `set-password`, minimum import-
 | 2026-11-22 | reviewed | Added the UI design section and its acceptance checks. The build runs on Opus. |
 | 2026-11-22 | reviewed | Added the local ingest loop: a Claude Code skill on Nick's subscription writes and pushes the JSON. |
 | 2026-11-22 | in-progress | Milestone 1 build started on `nchua/field-notes`, branch `milestone-1`. |
+| 2026-11-22 | built | Milestone 1 acceptance criteria pass (https://github.com/nchua/field-notes/pull/1, open for Nick to merge). Not deployed. Milestones 2 and 3 not started. |
