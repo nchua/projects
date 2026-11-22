@@ -309,7 +309,7 @@ class TestListUsers:
 
     def test_search_escapes_like_wildcards(self, client, db, admin_headers, create_test_user):
         headers, _ = admin_headers(email="owner-like@example.com")
-        tag = uuid.uuid4().hex[:6]
+        tag = f"t{uuid.uuid4().hex[:6]}"  # non-hex first: httpx would send "%3a" as an escape, not a literal "%"
         literal, _ = create_test_user(email=f"pct-{tag}@example.com")
         literal.username = f"a_b{tag}"
         create_test_user(email=f"plain-{tag}@example.com")
