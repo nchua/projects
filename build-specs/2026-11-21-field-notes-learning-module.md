@@ -471,6 +471,8 @@ Rules:
   the answer must use the excerpt's own words where it can. Do not add outside facts.
 - Use straight double quotes and escape any double quote inside a string as \". No comments, no
   trailing commas. (The // comment above is explanation; do not output it.)
+- If you can write files, also save the same JSON, with one more top-level key "source_markdown"
+  holding the full digest text, as ~/field-notes/inbox/fn-YYYY-MM-DD.json.
 
 Names I track. When an item is about the same real-world person, company, or topic, use exactly
 this spelling:
@@ -598,7 +600,7 @@ Cookie session unless noted. JSON in and out. Errors: `{ "error": "short_code" }
 | `POST /api/entities/:slug/caught-up` | session | Sets `caught_up_at = now()`. |
 | `POST /api/cards` | session | Manual card `{ item_id, front, back }` (FR-16). 422 when the item is not accepted. |
 | `PATCH /api/cards/:id` | session | `{ status?: "active" \| "suspended", front?, back? }`. |
-| `GET /api/review/queue` | session | `{ cards: [{ id, front, back, type, item: { url, source_name, digest_title } }], remaining_due }`. `back` is included so milestone 2 can cache one payload; the client hides it until Show answer. |
+| `GET /api/review/queue` | session | `{ cards: [{ id, front, back, type, preview: { forgot, struggled, got_it, easy }, item: { url, source_name, digest_title } }], remaining_due }`. `preview` is the interval in days each rating would give. `back` is included so milestone 2 can cache one payload; the client hides it until Show answer. |
 | `POST /api/reviews` | session | `{ card_id, rating, elapsed_ms? }` plus optional header `Idempotency-Key` (the client sends a fresh UUID per card shown). Returns `{ next_review_at, interval_days }`. 409 when the card is not reviewable. |
 | `GET /api/inbox` | session | Pending items and pending cards. |
 | `GET /api/watchlist` | bearer or session | `[{ name, kind }]` for watched, unmerged entities. |
@@ -652,8 +654,94 @@ Bearer comparison hashes both sides with SHA-256 and compares the digests with `
 | `app/web/templates/inbox.html` | Pending items and cards. |
 | `app/web/templates/settings.html` | Watchlist add and remove, caps, link to bot prompt, sign out. |
 | `app/web/static/manifest.webmanifest` | PWA manifest. |
+| `app/web/templates/base.html`, `partials/`, `app/web/static/app.js` | Shell, shared components, progressive enhancement for triage. |
 
-UI is a single column under 768px. Body text at least 16px. The rating bar is sticky to the bottom with `env(safe-area-inset-bottom)`. Desktop may show the digest list beside the detail. No component library and no Holocron or speed-reader visual system: system font, near-black background `#111111`, light text, one accent for the primary button. One CSS file. This is a utility for a five-minute session.
+The interface is specified in UI design below. It is part of the contract, not a suggestion.
+
+### UI design
+
+The goal is a clean, quiet reading and review tool: content first, one obvious action per screen, nothing decorative. No component library, no CSS framework, no web fonts, no CDN. One stylesheet (`app.css`) built on custom properties, and two small scripts (`review.js`, `app.js`). No Holocron or speed-reader visual system.
+
+#### Tokens
+
+Define these as custom properties on `:root`. Dark is the default; the light values apply under `@media (prefers-color-scheme: light)`. Nothing else in the stylesheet uses a raw color, font size, radius, or duration.
+
+| Token | Dark | Light | Use |
+| --- | --- | --- | --- |
+| `--bg` | `#0E0F11` | `#FAFAF9` | page |
+| `--surface` | `#17191C` | `#FFFFFF` | cards, sheets, inputs |
+| `--surface-2` | `#1F2226` | `#F1F1EF` | pressed, selected, code |
+| `--border` | `#2A2E33` | `#E4E4E1` | hairlines |
+| `--text` | `#ECEDEE` | `#18191B` | body |
+| `--muted` | `#9BA1A6` | `#5F6368` | secondary text |
+| `--accent` | `#7C9CFF` | `#3451D1` | primary button, links, focus ring |
+| `--on-accent` | `#0E0F11` | `#FFFFFF` | text on accent |
+| `--danger` | `#FF6B6B` | `#C62828` | destructive, Again |
+| `--warn` | `#F5B454` | `#9A5B00` | "not found in digest text", Hard |
+| `--ok` | `#5BD68A` | `#1B7F43` | Good, accepted |
+
+- Type: `--font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`; `--font-quote: ui-serif, Georgia, serif`. Sizes `--t-xs: 13px`, `--t-sm: 15px`, `--t-base: 17px`, `--t-lg: 20px`, `--t-xl: 24px`, `--t-2xl: 30px`. Body is `--t-base` at line-height 1.5. Headings weight 600 with line-height 1.25. Numbers that change (counts, intervals) use `font-variant-numeric: tabular-nums`.
+- Space: a 4px scale, `--s-1: 4px` through `--s-8: 48px` (4, 8, 12, 16, 24, 32, 40, 48). Radius `--r-sm: 8px`, `--r-md: 12px`, `--r-pill: 999px`. Motion `--fast: 120ms`, `--base: 180ms`, easing `cubic-bezier(.2, .8, .2, 1)`.
+- Depth comes from `--surface` against `--bg` and a 1px `--border`. No drop shadows, no gradients.
+- Every text and background pair used in the UI meets WCAG AA: 4.5:1 for text, 3:1 for large text, icons, and control borders. `tests/test_contrast.py` parses the token values out of `app.css` and asserts the pairs listed in that test (text, muted, accent, danger, warn, ok on `--bg` and `--surface`; `--on-accent` on `--accent`) for both schemes. If a value above fails, adjust that value and keep the test.
+
+#### Layout
+
+- Content column: `max-width: 680px`, centered, 16px side padding, more vertical space than feels necessary (24px between groups). Reading text never runs wider than 65ch.
+- Under 900px: a bottom tab bar with four destinations, Today, Browse, Inbox, Add (the import page), each an icon over a 13px label, 56px tall plus `env(safe-area-inset-bottom)`. Inbox shows a small count when it is not empty. Settings is a gear in the page header.
+- 900px and up: the same four destinations as a 220px left sidebar; the content column stays 680px.
+- Review hides all navigation. It shows a close control, a thin progress bar, the card, and the rating bar.
+- A page has one `h1`, set in the header at `--t-xl`. No hero areas, no banners.
+- Inline SVG icons, 20px, `stroke="currentColor"`, 1.5px stroke, committed in one sprite or as template partials. No icon font and no emoji as icons.
+
+#### Components
+
+Build each once as a class and a Jinja partial or macro, and reuse it.
+
+- **Button.** 44px minimum height, `--r-md`, 15px/600 label. Variants: primary (accent fill, one per screen), secondary (surface fill, border), ghost (text only), danger. Pressed state is `--surface-2` or 8% darker; disabled is 50% opacity and not focusable.
+- **Item card.** Surface, border, `--r-md`, 16px padding. Order: a row of kind label (13px, muted, uppercase with letter spacing) and date; headline (`--t-lg`, 600); body; the quote, when present, in `--font-quote` at `--t-lg` with a 2px accent rule on the left and the speaker beneath in muted text; entity chips; source link with an external-link icon. Actions sit in a footer row. A card "not found in digest text" shows a warn-colored icon and that label, not only a color.
+- **Entity chip.** Pill, `--surface-2`, 13px, with a 6px dot colored by kind; the whole chip is a link to the entity page. Chips wrap.
+- **Segmented control** for the Browse kind tabs: horizontally scrollable on a phone, selected segment on `--surface-2`.
+- **List row** for digests and entities: title, a muted meta line, a count at the right, a chevron. The whole row is the link, at least 56px tall.
+- **Field.** A visible label above every input, 16px or larger input text (so iOS does not zoom), `--surface` fill, 1px border, accent border on focus. Errors appear under the field in danger color with an icon, and the field gets `aria-invalid` and `aria-describedby`. The import page's error list is a monospace block with a Copy button.
+- **Confirm dialog.** A native `<dialog>` for delete digest and merge, with the destructive action named ("Delete digest", not "OK").
+- **Toast.** One line at the bottom above the tab bar after an action (for example "Accepted 12 items"), `role="status"`, gone after 4 seconds, never the only place an error appears.
+- **Empty state.** One muted sentence and at most one button. Today with nothing due says "Nothing due." and links to the latest digest. An empty Browse kind says what will appear there.
+
+#### Screens
+
+- **Today.** The header, then the Review button full width with its count ("Review 12"), then "New this week" as up to five compact item rows with "and N more", then a link to the latest digest. Nothing else.
+- **Review.** The question is centered vertically in the space above the rating bar, at `--t-xl`, left-aligned text. "Show answer" is the single primary button in the bar. After reveal the bar becomes four equal buttons, Again, Hard, Good, Easy, each with its next interval beneath in muted 13px text ("8h", "2d"), and the answer appears under the question with the source link and digest title in muted text. The end screen says "That's the session." with a Done button. The next intervals come from a `preview` object the queue returns per card (`{ forgot, struggled, got_it, easy }` in days, computed by the scheduler without saving).
+- **Digest.** Header with title and date, a summary line ("12 items, 3 pending"), Accept all as the primary button while anything is pending, then item cards with their cards listed beneath each (front in normal weight, back in muted text). The digest text sits in a collapsed `<details>` on a phone and in a second column at 900px and up.
+- **Entity.** Name, kind, aliases in muted text, Watch toggle, Caught up button. Then "New since you caught up" when it applies, then the timeline, then related entities as chips. Merge is in an overflow menu.
+- **Import.** Two labeled text areas and one primary button. The JSON area is monospace. Errors render above the form and keep the pasted text.
+- **Sign in.** Email, password, one button, centered, no navigation.
+
+#### Interaction and motion
+
+- Every control is at least 44×44px with 8px between neighbors.
+- Triage is progressive enhancement. Accept, Known, Dismiss, and Watch are real forms that work with scripts off. `app.js` intercepts them, posts with `fetch`, updates the card in place, and shows a toast; on failure it restores the card and shows the error inline.
+- Transitions use only `opacity` and `transform`, at `--fast` or `--base`. The answer reveal is a 180ms fade and 4px rise. Under `prefers-reduced-motion: reduce` all transitions and animations are off.
+- Hover styles are inside `@media (hover: hover)`. Focus uses `:focus-visible` with a 2px accent outline offset 2px, on every interactive element, never removed.
+- No layout shift when content loads or an answer is revealed below the question: reserve the rating bar height from first paint.
+- Buttons that post are disabled while the request is in flight, so a double tap cannot submit twice.
+
+#### Accessibility and page hygiene
+
+- Semantic HTML first: `header`, `nav`, `main`, `h1` to `h3` in order, `button` for actions, `a` for navigation, lists for lists. A "Skip to content" link is the first focusable element. `lang="en"` on `html`.
+- The current tab has `aria-current="page"`. Icon-only controls have an `aria-label`. The review card region is `aria-live="polite"` so a new question and a revealed answer are announced. Review progress is a `progress` element with a text alternative ("Card 3 of 12").
+- State is never shown by color alone: accepted, known, dismissed, pending, and unverified each have a word or an icon.
+- Zoom is allowed (`user-scalable=no` is never set). The layout holds at 200% text size and at 320px width with no horizontal scroll.
+- `<meta name="theme-color">` is set for both color schemes, and the manifest's `background_color` and `theme_color` are `#0E0F11`. The icons are a `#0E0F11` square with `#ECEDEE` "FN" lettering.
+- Copy is sentence case, short, and plain: verbs on buttons ("Accept all", "Write a card"), no exclamation marks, no jargon ("Not found in digest text", not "excerpt_verified = false").
+
+#### Front-end engineering rules
+
+- No inline scripts and no inline event handlers. Templates load `app.css` and the scripts with `defer`, with a content-hash query string for cache busting.
+- Every response carries `Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`, `X-Content-Type-Options: nosniff`, and `Referrer-Policy: no-referrer`. HTML responses are `Cache-Control: no-store`; `/static/` is `public, max-age=31536000, immutable`.
+- One base template (`base.html`) owns the shell, navigation, and meta tags. Pages extend it. Shared pieces live in `templates/partials/`.
+- The scripts are plain ES modules with no build step and no dependencies, each under about 200 lines.
+- `tests/test_pages.py` asserts, for every HTML route: exactly one `h1`, a `main` landmark, every `input`, `textarea`, and `select` has a label, every `img` has `alt`, no `style=` or `on*=` attribute, and the security headers are present.
 
 ### Files to create or change
 
@@ -671,8 +759,9 @@ Create them in `nchua/field-notes`. Nothing in `nchua/projects` changes.
 | `.gitignore` | Includes `.env`, `.env.local`. |
 | `alembic.ini`, `alembic/` | One migration for the milestone 1 tables. |
 | `app/core/`, `app/models/`, `app/services/`, `app/api/`, `app/cli.py` | As in Key components. |
-| `app/web/templates/`, `app/web/static/app.css`, `review.js` | Screens in Key components. |
-| `app/web/static/manifest.webmanifest`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png` | A `#111111` square with light "FN" lettering is enough. Generate the PNGs once with any tool and commit them; do not add an image library to `requirements.txt`. |
+| `app/web/templates/`, `app/web/static/app.css`, `review.js`, `app.js` | Screens in Key components, built to UI design. |
+| `docs/screenshots/` | The screenshots from the visual check. |
+| `app/web/static/manifest.webmanifest`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png` | A `#0E0F11` square with `#ECEDEE` "FN" lettering. Generate the PNGs once with any tool and commit them; do not add an image library to `requirements.txt`. |
 | `tests/` | `conftest.py`, `test_fsrs.py`, `test_text.py`, `test_import.py`, `test_entities.py`, `test_queue.py`, `test_auth.py`, `test_pages.py`, `fixtures/digest.json`, `fixtures/digest.md`. |
 
 ### Constraints
@@ -705,7 +794,7 @@ Create them in `nchua/field-notes`. Nothing in `nchua/projects` changes.
 
 | Layer | Choice |
 | --- | --- |
-| App | FastAPI, Jinja2 templates, one CSS file, one small `review.js` |
+| App | FastAPI, Jinja2 templates, one CSS file, two small scripts, no front-end build |
 | Data | Railway Postgres, SQLAlchemy 2, Alembic |
 | Auth | Email and password, bcrypt, JWT in an httpOnly cookie (`python-jose`) |
 | AI | None |
@@ -772,8 +861,9 @@ Build milestone 1 to completion and stop. It is useful with no later milestone. 
 6. Implement the contract models, entity resolution, the grounding check, and `ingest.py`, with tests for idempotency, 409, dedupe, the source check, quote demotion, and url rules.
 7. Add the import routes (form, session JSON, bearer JSON, markdown archive), manual items, manual cards, and digest delete.
 8. Implement the queue, rating submission with idempotency, and `entity_memory`.
-9. Build the pages: Today, Import, digest list and detail, Browse, entity page with `?with=` and merge, Review, Inbox, Settings, bot prompt.
-10. Add the manifest, icons, iOS meta tags, safe-area padding, and 44px rating targets.
+9. Build `app.css` from the tokens, `base.html`, and the shared components first. Then build the pages on them: Today, Import, digest list and detail, Browse, entity page with `?with=` and merge, Review, Inbox, Settings, bot prompt.
+10. Add the manifest, icons, iOS meta tags, security headers, and `app.js`.
+10a. Visual check. With fixture data loaded, capture every screen at 390×844 and 1280×800 in both color schemes with a headless browser (Playwright if it is installed; do not install a browser to do this, and say so if none is available). Look at each image against UI design, fix what is off (alignment, spacing rhythm, overflow, contrast, a second primary button), and commit the final set to `docs/screenshots/`.
 11. Write `scripts/fn_push.py`, the `field-notes-ingest` skill, and `GET /api/watchlist`. Run the skill once yourself against the local server with `tests/fixtures/digest.md` in a temporary inbox.
 12. Write the README (run, test, deploy runbook, local loop setup) and `docs/bot-prompt.md`.
 13. Run the test plan below, including the manual pass in a 390×844 browser viewport against a locally running server.
@@ -792,7 +882,12 @@ Commit after each step. Push to the branch the session was given.
 - [ ] Two different quotes with the same url in one payload are two items.
 - [ ] A first review rated Good on a JSON card yields interval 1.97 days (fixture A). The card is not in the queue again until that interval elapses.
 - [ ] With `new_card_cap = 5` and 12 new cards, reviewing 5 and reloading the queue returns no new cards for the rest of the local day.
-- [ ] The review flow works at a 390px viewport: Show answer, then a rating, then the next card, without horizontal scroll.
+- [ ] The review flow works at a 390px viewport: Show answer, then a rating, then the next card, without horizontal scroll. Each rating button shows its next interval.
+- [ ] No page scrolls horizontally at 320px. Every screen renders correctly in dark and light schemes, and `tests/test_contrast.py` passes for both.
+- [ ] With scripts disabled, sign-in, import, accept, and dismiss still work through plain form posts.
+- [ ] `app.css` contains no color, font-size, or radius literal outside the `:root` token blocks.
+- [ ] Every response carries the security headers in UI design, and no template has an inline script, inline style, or `on*` attribute.
+- [ ] `docs/screenshots/` holds the screens at both sizes and both schemes, or the hand-off note says why they could not be captured.
 - [ ] `python scripts/fn_push.py push tests/fixtures/digest.json` against a local server imports the fixture and exits 0; run again it prints `deduped: true` and exits 0; with a quote item's `speaker` removed it exits 2 and prints the field path.
 - [ ] With `tests/fixtures/digest.md` in a temporary inbox, running the skill leaves the file in `processed/`, a digest in the app with `source_markdown` set, and at least one active card.
 - [ ] The manifest, icons, and `/static/app.css` load without a session cookie.
@@ -844,7 +939,9 @@ Commit after each step. Push to the branch the session was given.
   - FR-27 / FR-28 — queue caps across a UTC day boundary in America/Los_Angeles; new-card cap after reload; idempotent replay; the seven scheduler fixtures.
   - FR-1 through FR-4 — sign-in rejects a second email and creates no user; sixth failed attempt is 429; a token older than 24 hours is re-issued; bearer route returns 401 on a bad token and when `IMPORT_TOKEN` is short; `/static/` is public; an HTML page redirects to `/signin`.
   - `fn_push.py` — exit codes for 200, deduped, 422, 409, and 401 against the test app; the token never appears in its output.
-  - Pages — each HTML route returns 200 for a signed-in user with fixture data, and a headline containing `<script>` is escaped.
+  - Pages — each HTML route returns 200 for a signed-in user with fixture data, a headline containing `<script>` is escaped, and the structure and header checks in UI design hold.
+  - Contrast — token pairs meet AA in both schemes.
+  - Queue preview — `preview` matches what submitting each rating then returns.
 - **Manual:** Run the server locally. At a 390×844 viewport, paste the fixture, accept two items, finish a three-card session, reload, and confirm the next due time moved. Open a person×company cross-link. Merge two entities. Confirm server logs for that session contain no digest sentence and no token. Home-screen install on a real phone is Nick's check after deploy.
 
 ## Risks
@@ -912,7 +1009,9 @@ Defects fixed:
 - The manifest and icons sat behind the session cookie, which breaks home-screen install. `/static/` is public.
 - `provisional` entities had no defined behavior. Removed.
 
-Added: sign-in rate limit, sliding session, `set-password`, minimum import-token length, digest delete, card editing, output escaping and url-scheme rules, an explicit dependency list (including the `bcrypt` and `tzdata` pins), Postgres for tests, `railway.toml`, and iOS home-screen tags.
+Added on Nick's request: a full UI design section (tokens for dark and light, layout, components, per-screen layouts, interaction, accessibility, security headers) with checks that enforce it, and next-interval previews on the rating buttons.
+
+Also added: sign-in rate limit, sliding session, `set-password`, minimum import-token length, digest delete, card editing, output escaping and url-scheme rules, an explicit dependency list (including the `bcrypt` and `tzdata` pins), Postgres for tests, `railway.toml`, and iOS home-screen tags.
 
 ## Status log
 
@@ -921,4 +1020,5 @@ Added: sign-in rate limit, sliding session, `set-password`, minimum import-token
 | 2026-11-21 | draft | Spec created. |
 | 2026-11-21 | draft | Stack corrected: Nick uses the fitness app, not speed-reader-v2. Backend follows FastAPI, SQLAlchemy, Alembic, Railway Postgres, and JWT. speed-reader-v2 contributes concepts only. |
 | 2026-11-22 | reviewed | Review complete. No model in the app; Nick creates the repo and deploys. See Review notes. |
+| 2026-11-22 | reviewed | Added the UI design section and its acceptance checks. The build runs on Opus. |
 | 2026-11-22 | reviewed | Added the local ingest loop: a Claude Code skill on Nick's subscription writes and pushes the JSON. |
