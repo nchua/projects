@@ -10,7 +10,7 @@ This folder is separate from `plans/`, which holds council summaries. New implem
 
 1. **Describe.** Nick describes an idea.
 2. **Specify.** A Cursor agent turns that description into the most complete implementation plan it can, saved as one markdown file in this folder. Copy `TEMPLATE.md`. Do not edit the template.
-3. **Review.** Claude reviews the spec with fable, using only the file. The reviewer works through the checklist, resolves or sets a default for every open question, and sets `status` to `reviewed` when the spec is ready to build as written.
+3. **Review.** Claude reviews the spec with fable, following [REVIEW.md](REVIEW.md), using only the file. The reviewer works through the checklist, resolves or sets a default for every open question, and sets `status` to `reviewed` when the spec is ready to build as written.
 4. **Build.** Claude implements the spec with Opus. Set `status` to `in-progress` when implementation starts and to `built` when the work has landed. Implementation starts from a `reviewed` spec.
 
 When a spec is added or its status changes, update the index below.

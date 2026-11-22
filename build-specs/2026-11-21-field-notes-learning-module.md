@@ -12,7 +12,7 @@ target_repo: "nchua/field-notes"
 
 Build a new single-user web app, `nchua/field-notes`, that turns Field Notes digests into a durable, browsable memory. Digests land as structured items (a development, a quote, a link, a paper) with provenance. Items are grouped under resolved entities — people, companies, topics, themes, technologies, and claims — and carry cited recall cards on a spaced-repetition queue Nick can finish on his phone in a few minutes.
 
-The app makes no AI calls. The Field Notes bot (Grok) writes the structured JSON, including the cards; the app validates it, stores it, groups it, and schedules reviews.
+The app makes no AI calls. A Claude Code skill running on Nick's own machine, on his Claude subscription, reads each digest, writes the structured JSON (including the cards), and pushes it to the app. The app validates it, stores it, groups it, and schedules reviews.
 
 ## Goal
 
@@ -25,6 +25,7 @@ Nick stays current, then keeps what he learned. After each Friday digest he can 
 - [ ] He can open a person, a company, and the cross-link of the two, on a phone, and see the underlying items with their links.
 - [ ] He can run a capped review session of cited recall cards. Ratings change the next due time. Reloading the next day shows the new schedule.
 - [ ] When the digest markdown is supplied, an item whose excerpt does not appear in it is never auto-accepted and its cards never enter the queue until Nick accepts the item himself.
+- [ ] Running the `field-notes-ingest` skill locally on a new digest file gets it into the app with no paste.
 - [ ] The deployed app holds no model API key and makes no outbound AI call.
 
 ## Background and user problem
@@ -33,7 +34,9 @@ Field Notes is one of Nick's Grok Bot assistants. It keeps him current on topics
 
 Its output today is a chat message in markdown. There is no Field Notes API, no database, and no card system. This spec must not assume one.
 
-**Decision (Nick, 2026-11-22): no model in the app.** A deployed server cannot use a Claude subscription, and Nick does not want a per-token API key for this. All language work is done by the Grok bot that already writes the digest. The bot is asked (by a prompt this spec provides, which Nick pastes into the bot) to follow each digest with one JSON block in the contract below. Nick copies that block into the app. A bearer endpoint accepts the same JSON so the bot can push it later with no schema change. When the bot has not produced JSON, Nick can still archive the markdown and add items and cards by hand.
+**Decision (Nick, 2026-11-22): no model in the app; a local loop does the language work.** A deployed server cannot use a Claude subscription, and Nick does not want a per-token API key for this. Instead, Claude Code runs on his own machine under his subscription. A skill in this repo, `field-notes-ingest`, looks at the digest files the Grok bot has produced (JSON or markdown, in a local folder), turns each new one into the contract below with cards, and POSTs it to the app with the bearer token. Building the app is the heavy work (Opus). Each weekly add after that is a small, mechanical job the skill is written for Haiku to do.
+
+The app does not depend on the loop. The same JSON can be pasted into `/import`, the Grok bot can be asked to emit it directly (the app serves a prompt for that), and a digest can be archived as markdown with hand-added items.
 
 Two related repos exist. Read them for reuse if they are available to you. Leave their code alone. Everything needed from them is restated in this file.
 
@@ -62,7 +65,8 @@ Two related repos exist. Read them for reuse if they are available to you. Leave
 
 - A new mobile-first web app with real sign-in for one allowlisted email.
 - Ingestion of a digest as JSON (pasted in the app, or POSTed with a bearer token), with the digest's markdown optionally attached as the source text. A markdown-only archive path with hand-added items.
-- A ready-to-paste instruction block for the Field Notes bot that makes it emit the JSON contract, served by the app with the current watchlist filled in.
+- A Claude Code skill, `field-notes-ingest`, with a small push script, and the documented local loop that runs it on Haiku.
+- A ready-to-paste instruction block for the Field Notes bot that makes it emit the JSON contract, served by the app with the current watchlist filled in (the no-Claude alternative).
 - A knowledge store: digests, items, sightings, entities, aliases, cards, reviews, per-entity memory.
 - Entity resolution by normalized name and alias, manual merge, and suggested merges later. Faceted browse and person×company (or any pair) cross-links.
 - Recall cards with citations, an FSRS queue, a daily cap, and a record of what Nick has accepted, marked known, reviewed, and caught up on.
@@ -71,7 +75,8 @@ Two related repos exist. Read them for reuse if they are available to you. Leave
 
 **Non-goals:**
 
-- Any AI or model call from the app: no Anthropic, OpenAI, or xAI SDK, no API key, no extraction of items from freeform markdown.
+- Any AI or model call from the deployed app: no Anthropic, OpenAI, or xAI SDK, no API key, no extraction of items from freeform markdown.
+- Scheduling the loop on Nick's machine. The implementer writes the skill, the script, and the instructions; Nick sets up the schedule.
 - Editing the Grok bot. The implementer writes the bot instructions as text; Nick pastes them into the bot. Wiring the bot to POST by itself is a follow-up.
 - Deploying. The implementer does not create Railway projects, databases, or variables. Nick deploys from the runbook.
 - Embedding this product inside the fitness iOS app, Holocron, or speed-reader-v2, or sharing any of their databases.
@@ -98,7 +103,15 @@ Reuse these parts, by porting behavior into the new repo rather than calling ano
 - As Nick, I want a few minutes of review on my phone, so that I actually remember the developments.
 - As Nick, I want the app to show what changed since I last looked at a topic, so that old digests stay useful as the story moves.
 
-### Flow: one-time bot setup
+### Flow: the local loop (the normal Friday path)
+
+1. The Grok bot's digest lands as a file in the inbox folder on Nick's machine (`FIELD_NOTES_INBOX`).
+2. On a schedule, or when Nick runs it, Claude Code starts in the `field-notes` checkout on Haiku and runs `/field-notes-ingest`.
+3. For each file in the inbox, the skill fetches the watchlist, writes contract JSON with cards and the digest text as `source_markdown`, and runs the push script. The script POSTs it and prints the import response.
+4. On 422 the skill reads the field errors, fixes the JSON, and tries again, at most twice. On success or `deduped` the file moves to `processed/`. A file that still fails moves to `failed/` with the error beside it.
+5. Nick opens the app. Verified items are already accepted and their cards are in the queue. Anything the source check could not find is waiting in the Inbox.
+
+### Flow: one-time bot setup (alternative to the loop)
 
 1. Nick opens Settings and adds the people, companies, and topics he tracks to the watchlist (optional).
 2. He opens `/bot-prompt`, taps Copy, and pastes the text into the Field Notes bot's instructions. From then on the bot ends each digest with one fenced `json` block.
@@ -163,6 +176,8 @@ Reuse these parts, by porting behavior into the new repo rather than calling ano
 - **FR-15.** A digest page can add an item by hand (kind, headline, excerpt, optional body, url, quote, speaker, and entity name plus kind). When the digest has `source_markdown`, the excerpt must pass the FR-9 check or the request is 422. Hand-added items are stored `accepted`, `source = manual`.
 - **FR-16.** Nick can write a recall card on an accepted item by hand. Hand-written cards are `active`, `ai_generated = false`, and skip the grounding check. They still cite that item.
 - **FR-17.** Nick can delete a digest after a confirmation. Its sightings go. An item with no remaining sighting is deleted with its cards and their reviews. An item with another sighting survives and its `digest_id` moves to its earliest remaining sighting. The body hash is free to be imported again.
+- **FR-18a.** `GET /api/watchlist` returns the watched entities as `[{ name, kind }]`, for a session or a valid bearer token.
+- **FR-18b.** The repo ships the `field-notes-ingest` skill and `scripts/fn_push.py` as specified under Local ingest loop.
 - **FR-18.** `/bot-prompt` renders the bot instructions in this spec as plain text with a Copy button, with the current watched entities appended as a name list.
 
 **Entities and browse**
@@ -203,10 +218,10 @@ Reuse these parts, by porting behavior into the new repo rather than calling ano
 One FastAPI process owns the HTML UI and the JSON routes. Railway Postgres is the only store. There are no outbound network calls. The browser never receives `IMPORT_TOKEN`.
 
 ```
-phone / desktop browser
-        │  JWT in an httpOnly cookie
-        ▼
-FastAPI (Railway)  ── bearer ──  POST /api/imports   (bot or curl)
+phone / desktop browser                 Nick's machine: Claude Code (Haiku, subscription)
+        │  JWT in an httpOnly cookie           │  field-notes-ingest skill + scripts/fn_push.py
+        ▼                                      ▼
+FastAPI (Railway)  ◄──────── bearer ──── POST /api/imports
         │
         └── SQLAlchemy ── Railway Postgres
 ```
@@ -462,6 +477,36 @@ this spelling:
 <one "name (kind)" per line, from the watchlist; omit this paragraph when the watchlist is empty>
 ```
 
+#### Local ingest loop
+
+This runs on Nick's machine, never on the server. It is the only place a model touches a digest.
+
+**`scripts/fn_push.py`** — Python standard library only (`urllib`, `json`, `argparse`), so it runs without the app's virtualenv.
+
+- `fn_push.py watchlist` prints the JSON from `GET /api/watchlist`.
+- `fn_push.py push <file.json>` POSTs the file to `/api/imports` and prints the response body. Exit 0 on 200 (including `deduped: true`), 2 on 422 (prints `details`), 3 on 409, 1 on anything else.
+- Reads `FIELD_NOTES_URL` and `FIELD_NOTES_IMPORT_TOKEN` from the environment, falling back to a git-ignored `.env.local` in the repo root. Never prints the token.
+
+**`.claude/skills/field-notes-ingest/SKILL.md`** — a project skill with `name` and `description` front matter, written as short numbered steps a small model can follow without judgment calls:
+
+1. Inbox is `$FIELD_NOTES_INBOX`, default `~/field-notes/inbox`. Take every `.json`, `.md`, and `.txt` file directly in it, oldest first. If there are none, say so and stop.
+2. Run `python scripts/fn_push.py watchlist` once.
+3. For each file: read it. If it is JSON, the digest is whatever text fields it holds; if it already has `schema_version` and `items`, keep its items and only fill what is missing. Otherwise treat the file's text as the digest.
+4. Write `<name>.contract.json` in a scratch folder, following the contract and the item, entity, and card rules from the bot instructions (the skill restates them in full; it does not point at another file). Set `source_markdown` to the digest text exactly as read. Set `external_id` to `fn-` plus the digest date, taken from the digest or else the file's date. Do not set `trust`.
+5. Run `python scripts/fn_push.py push <name>.contract.json`.
+6. Exit 0: move the original to `inbox/processed/`. Exit 2: fix exactly the fields named in `details` and push again, at most twice more. Exit 3, or still failing: move the original to `inbox/failed/` and write the last error to `<name>.error.txt` beside it.
+7. Finish with one line per file: name, outcome, items created, items unverified.
+
+The skill never edits the app's code or database and never calls any URL other than through `fn_push.py`.
+
+**Running it.** The README documents, and the implementer checks each command against the installed Claude Code's own help before writing it down:
+
+- By hand: open Claude Code in the checkout with Haiku selected and run `/field-notes-ingest`.
+- Unattended: a scheduled job (launchd or cron) that runs Claude Code non-interactively in the checkout with the Haiku model and the prompt `/field-notes-ingest`, with the two tools it needs (file read/write in the inbox and scratch folder, and running `scripts/fn_push.py`) pre-allowed in `.claude/settings.json`.
+- In an open session: `/loop 1h /field-notes-ingest`.
+
+All three use Nick's signed-in Claude Code, so the work is covered by his subscription. No `ANTHROPIC_API_KEY` is set anywhere.
+
 #### Card grounding check
 
 Deterministic, no model. Words are `[a-z0-9]+` runs of length ≥ 4 after lowercasing. Let `S` be the word set of the item's `headline + " " + excerpt + " " + (quote_text or "")`, and `B` the list of words in the card's `back`. The card passes when `B` is non-empty, at least one word of `B` is in `S`, and at least 40% of the words in `B` are in `S`. Pass and `excerpt_verified` is not false → `active`. Otherwise → `pending`.
@@ -556,6 +601,7 @@ Cookie session unless noted. JSON in and out. Errors: `{ "error": "short_code" }
 | `GET /api/review/queue` | session | `{ cards: [{ id, front, back, type, item: { url, source_name, digest_title } }], remaining_due }`. `back` is included so milestone 2 can cache one payload; the client hides it until Show answer. |
 | `POST /api/reviews` | session | `{ card_id, rating, elapsed_ms? }` plus optional header `Idempotency-Key` (the client sends a fresh UUID per card shown). Returns `{ next_review_at, interval_days }`. 409 when the card is not reviewable. |
 | `GET /api/inbox` | session | Pending items and pending cards. |
+| `GET /api/watchlist` | bearer or session | `[{ name, kind }]` for watched, unmerged entities. |
 | `POST /api/seen` | session | Sets `last_seen_at = now()` ("Got it"). |
 | `PATCH /api/settings` | session | `{ daily_cap?, new_card_cap? }`, each 1–50, else 422. |
 
@@ -620,6 +666,9 @@ Create them in `nchua/field-notes`. Nothing in `nchua/projects` changes.
 | `.env.example` | Names only, empty values. |
 | `README.md` | Run, test, migrate, and the deploy runbook. |
 | `docs/bot-prompt.md` | The bot instructions. |
+| `.claude/skills/field-notes-ingest/SKILL.md`, `.claude/settings.json` | The ingest skill and its pre-allowed tools. |
+| `scripts/fn_push.py` | Push script, standard library only. |
+| `.gitignore` | Includes `.env`, `.env.local`. |
 | `alembic.ini`, `alembic/` | One migration for the milestone 1 tables. |
 | `app/core/`, `app/models/`, `app/services/`, `app/api/`, `app/cli.py` | As in Key components. |
 | `app/web/templates/`, `app/web/static/app.css`, `review.js` | Screens in Key components. |
@@ -725,14 +774,15 @@ Build milestone 1 to completion and stop. It is useful with no later milestone. 
 8. Implement the queue, rating submission with idempotency, and `entity_memory`.
 9. Build the pages: Today, Import, digest list and detail, Browse, entity page with `?with=` and merge, Review, Inbox, Settings, bot prompt.
 10. Add the manifest, icons, iOS meta tags, safe-area padding, and 44px rating targets.
-11. Write the README (run, test, deploy runbook) and `docs/bot-prompt.md`.
-12. Run the test plan below, including the manual pass in a 390×844 browser viewport against a locally running server.
+11. Write `scripts/fn_push.py`, the `field-notes-ingest` skill, and `GET /api/watchlist`. Run the skill once yourself against the local server with `tests/fixtures/digest.md` in a temporary inbox.
+12. Write the README (run, test, deploy runbook, local loop setup) and `docs/bot-prompt.md`.
+13. Run the test plan below, including the manual pass in a 390×844 browser viewport against a locally running server.
 
 Commit after each step. Push to the branch the session was given.
 
 **Acceptance criteria:**
 
-- [ ] FR-1 through FR-32 pass.
+- [ ] FR-1 through FR-32 pass, including FR-18a and FR-18b.
 - [ ] `tests/fixtures/digest.json` round-trips through `POST /api/imports` twice: the second response has `deduped: true` and the item count is unchanged. Re-serializing the fixture with different whitespace and key order also returns `deduped: true`.
 - [ ] Importing the JSON fixture together with `tests/fixtures/digest.md`, where one item's excerpt is not in the markdown, with `trust: true`: that item is `pending` with `excerpt_verified = false`, its cards are `pending`, and every other item is `accepted`.
 - [ ] The form path accepts the fixture wrapped in a fenced block with prose before and after.
@@ -743,6 +793,8 @@ Commit after each step. Push to the branch the session was given.
 - [ ] A first review rated Good on a JSON card yields interval 1.97 days (fixture A). The card is not in the queue again until that interval elapses.
 - [ ] With `new_card_cap = 5` and 12 new cards, reviewing 5 and reloading the queue returns no new cards for the rest of the local day.
 - [ ] The review flow works at a 390px viewport: Show answer, then a rating, then the next card, without horizontal scroll.
+- [ ] `python scripts/fn_push.py push tests/fixtures/digest.json` against a local server imports the fixture and exits 0; run again it prints `deduped: true` and exits 0; with a quote item's `speaker` removed it exits 2 and prints the field path.
+- [ ] With `tests/fixtures/digest.md` in a temporary inbox, running the skill leaves the file in `processed/`, a digest in the app with `source_markdown` set, and at least one active card.
 - [ ] The manifest, icons, and `/static/app.css` load without a session cookie.
 - [ ] `grep -ri "anthropic\|openai\|xai" requirements.txt app/` finds nothing.
 - [ ] `pytest -q` passes against Postgres. The app boots with `uvicorn app.main:app`.
@@ -791,13 +843,15 @@ Commit after each step. Push to the branch the session was given.
   - FR-24 / FR-30 — caught-up split after a later sighting; Today does not advance `last_seen_at` on load.
   - FR-27 / FR-28 — queue caps across a UTC day boundary in America/Los_Angeles; new-card cap after reload; idempotent replay; the seven scheduler fixtures.
   - FR-1 through FR-4 — sign-in rejects a second email and creates no user; sixth failed attempt is 429; a token older than 24 hours is re-issued; bearer route returns 401 on a bad token and when `IMPORT_TOKEN` is short; `/static/` is public; an HTML page redirects to `/signin`.
+  - `fn_push.py` — exit codes for 200, deduped, 422, 409, and 401 against the test app; the token never appears in its output.
   - Pages — each HTML route returns 200 for a signed-in user with fixture data, and a headline containing `<script>` is escaped.
 - **Manual:** Run the server locally. At a 390×844 viewport, paste the fixture, accept two items, finish a three-card session, reload, and confirm the next due time moved. Open a person×company cross-link. Merge two entities. Confirm server logs for that session contain no digest sentence and no token. Home-screen install on a real phone is Nick's check after deploy.
 
 ## Risks
 
-- **The bot's JSON drifts or is invalid.** Grok is asked for JSON in a chat reply; it may add commentary, break escaping, or omit fields. **Mitigation:** lenient paste extraction, whole-payload validation with field-path errors Nick can paste back to the bot, unknown keys ignored, and the markdown archive plus manual items as a fallback that needs no JSON.
-- **The bot invents an excerpt, a link, or a card fact.** **Mitigation:** when the digest text is supplied, unverified items are held pending and absent urls are dropped; the grounding check holds cards that share too few words with the excerpt; the source link is always on the answer side. Without the digest text there is no check, and the UI says "not checked against digest text" on those digests.
+- **The loop does not run, or Haiku writes poor JSON.** The machine is asleep, Claude Code is signed out, or the small model drops a field. **Mitigation:** the app never depends on the loop (paste and manual paths remain); the skill is short numbered steps with a bounded fix-and-retry on field errors; failures land in `failed/` with the error; Nick can rerun the same file on a larger model.
+- **Pasted JSON drifts or is invalid.** A chat reply may add commentary, break escaping, or omit fields. **Mitigation:** lenient paste extraction, whole-payload validation with field-path errors Nick can paste back to the bot, unknown keys ignored, and the markdown archive plus manual items as a fallback that needs no JSON.
+- **The model invents an excerpt, a link, or a card fact.** **Mitigation:** the skill always sends the digest text, and when it is supplied, unverified items are held pending and absent urls are dropped; the grounding check holds cards that share too few words with the excerpt; the source link is always on the answer side. Without the digest text there is no check, and the UI says "not checked against digest text" on those digests.
 - **Entity spellings vary week to week.** **Mitigation:** the bot prompt carries the watchlist spellings; exact-match only, so a variation creates a second entity rather than a wrong merge; manual merge fixes it permanently through the alias.
 - **Two people share a normalized name.** **Mitigation:** no fuzzy auto-merge; kind-scoped exact match.
 - **First-sign-in account claim.** Before Nick signs in, anyone who knows the allowlisted address could set the password. **Mitigation:** the runbook says to sign in immediately after the first deploy; `set-password` recovers the account.
@@ -810,8 +864,9 @@ All resolved on 2026-11-22. Build as written.
 
 - **Q1.** Repo and hosting? **Resolved (Nick):** Nick creates the empty private repo `nchua/field-notes` and starts the build session on it. Railway app plus a new Railway Postgres, not the fitness database.
 - **Q2.** Which email is allowlisted? **Resolved:** whatever Nick puts in `ALLOWED_EMAIL`. No address in the source.
-- **Q3.** Does the app call a model? **Resolved (Nick):** no. The Grok bot writes the JSON and the cards. The app has no model key.
-- **Q4.** Who changes the bot? **Resolved:** the spec supplies the instruction text; Nick pastes it into the bot. Until he does, the markdown archive and manual items work.
+- **Q3.** Does the app call a model? **Resolved (Nick):** no. A local Claude Code loop on his subscription runs the `field-notes-ingest` skill, on Haiku once the app exists, and pushes JSON to the app. The app has no model key.
+- **Q4.** Where do digest files come from? **Resolved:** a local inbox folder, `FIELD_NOTES_INBOX` (default `~/field-notes/inbox`), holding whatever the Grok bot wrote, JSON or markdown. Nick points the variable at the real folder.
+- **Q4a.** Does the Grok bot change? **Resolved:** not required. The bot prompt stays as an optional path for getting JSON without Claude.
 - **Q5.** Card voice? **Resolved:** recall questions answerable from the excerpt. Templated connection cards in milestone 3.
 - **Q6.** Should a bearer import auto-accept items? **Resolved:** yes (`trust` defaults to true for bearer, false for a paste). Unverified items stay pending either way.
 - **Q7.** Daily cap and timezone? **Resolved:** 15 reviews, 5 of them new, America/Los_Angeles, both caps editable within 1–50.
@@ -841,7 +896,8 @@ Reviewed 2026-11-22. Requirements were renumbered; the draft's FR numbers no lon
 
 Decisions from Nick:
 
-- No model in the app. Removed markdown extraction, card generation, `agent_runs`, the per-hour model limit, the Anthropic SDK, and `ANTHROPIC_API_KEY`. The bot's JSON now carries the cards, and the spec supplies the bot instructions.
+- No model in the app. Removed markdown extraction, card generation, `agent_runs`, the per-hour model limit, the Anthropic SDK, and `ANTHROPIC_API_KEY`. The import JSON now carries the cards.
+- The JSON is written by a local Claude Code loop on Nick's subscription, through a skill in the repo meant for Haiku. Added the skill, the push script, the watchlist endpoint, and the loop instructions. The Grok bot prompt remains as an alternative.
 - Nick creates the repo; a build session cannot. Nick deploys; the build stops at tested code and a runbook.
 
 Defects fixed:
@@ -864,4 +920,5 @@ Added: sign-in rate limit, sliding session, `set-password`, minimum import-token
 | --- | --- | --- |
 | 2026-11-21 | draft | Spec created. |
 | 2026-11-21 | draft | Stack corrected: Nick uses the fitness app, not speed-reader-v2. Backend follows FastAPI, SQLAlchemy, Alembic, Railway Postgres, and JWT. speed-reader-v2 contributes concepts only. |
-| 2026-11-22 | reviewed | Review complete. No model in the app (the bot writes JSON and cards); Nick creates the repo and deploys. See Review notes. |
+| 2026-11-22 | reviewed | Review complete. No model in the app; Nick creates the repo and deploys. See Review notes. |
+| 2026-11-22 | reviewed | Added the local ingest loop: a Claude Code skill on Nick's subscription writes and pushes the JSON. |
