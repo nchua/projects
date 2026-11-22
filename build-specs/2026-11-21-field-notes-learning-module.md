@@ -32,9 +32,11 @@ Its output today is a chat message in markdown. There is no Field Notes API, no 
 
 Two related repos exist. Read them for reuse. Leave their code alone.
 
-**Holocron** (`https://github.com/nchua/holocron`, also checked out in this monorepo at `holocron/`) is a Python/FastAPI spaced-repetition system. Its model is topic → concept → learning unit, plus an inbox and a source row. The scheduler in `holocron/backend/app/core/fsrs.py` is FSRS-4.5 with four ratings (`forgot`, `struggled`, `got_it`, `easy`), a 0.9 retention target, and an 0.82 stability multiplier on the first schedule of an AI-written card. Cards at or above 0.85 confidence auto-accept; the rest wait in an inbox (`holocron/backend/app/models/inbox.py`). The product spec (`holocron/SPEC.md`) calls for a separate Next.js frontend and a Railway Postgres. That repo does not have people, companies, digest provenance, or a phone review loop as first-class objects.
+**The fitness app** (`fitness-app/` in this monorepo) is the only app Nick uses constantly. SwiftUI on the phone, FastAPI on Railway, SQLAlchemy 2, Alembic, Postgres, JWT via `python-jose` (`fitness-app/backend/app/core/security.py`, `app/core/dependencies.py`), pytest, and the Anthropic Python SDK (`fitness-app/backend/requirements.txt`). Field Notes follows that backend. It does not become a screen in the fitness iOS app: workouts and weekly digests are different jobs, and this product is a web page he can open for a few minutes.
 
-**speed-reader-v2** (`https://github.com/nchua/speed-reader-v2`, private, branded Holocron) is the app Nick actually ships. Next.js 15 App Router, TypeScript, Tailwind, Drizzle, Neon Postgres, Auth.js v5, Resend, `@anthropic-ai/sdk` pinned to the model alias `claude-sonnet-4-6` in `lib/llm/anthropic.ts`, Vitest, deployed on Railway as `holocron-web`. Domain objects are sources he has read, concepts (label + aliases), and verbatim quotes. AI tags are constrained to a fixed 19-tag vocabulary in `lib/vocabulary.ts`. There is no spaced repetition. `DESIGN.md` and the surfaces (`/read`, `/library`, atlas, `/write`) are locked. `CAPTURE_MOBILE_PWA_PLAN.md` chooses an installable PWA with no service worker in the first slice, and bearer tokens stored as SHA-256 hashes (`capture_tokens`).
+**Holocron** (`https://github.com/nchua/holocron`, also at `holocron/`) is a Python/FastAPI spaced-repetition system he does not open as a daily app. Its model is topic → concept → learning unit, plus an inbox and a source row. The scheduler in `holocron/backend/app/core/fsrs.py` is FSRS-4.5 with four ratings (`forgot`, `struggled`, `got_it`, `easy`), a 0.9 retention target, and an 0.82 stability multiplier on the first schedule of an AI-written card. Cards at or above 0.85 confidence auto-accept; the rest wait in an inbox (`holocron/backend/app/models/inbox.py`). That repo does not have people, companies, digest provenance, or a phone review loop as first-class objects.
+
+**speed-reader-v2** (`https://github.com/nchua/speed-reader-v2`, private, branded Holocron) is a Next.js reading instrument. Nick does not use it day to day. Concepts from it still matter: verbatim quotes, entity aliases, an installable PWA, and bearer tokens stored as SHA-256 hashes. Its stack does not. Next.js, Drizzle, Neon, and Auth.js are not how the fitness app is built, and this spec does not adopt them. The repo also has a locked visual system and a closed 19-tag vocabulary (`lib/vocabulary.ts`). There is no spaced repetition.
 
 **Assumptions:**
 
@@ -42,7 +44,7 @@ Two related repos exist. Read them for reuse. Leave their code alone.
 - A single person uses the app. Tables still carry `user_id` so a later second user is a migration, not a rewrite.
 - Quotes and links in the digest are public. Sending a digest to Anthropic for extraction is an accepted cost of the markdown path. JSON import does not call the model.
 - "Today" and the daily review cap use America/Los_Angeles. Timestamps are stored as `timestamptz` in UTC.
-- The implementer creates a new private repo `nchua/field-notes` and a new Neon database. Do not write Field Notes tables into the Holocron database, and do not add this app to `nchua/projects`, `nchua/holocron`, or `nchua/speed-reader-v2`.
+- The implementer creates a new private repo `nchua/field-notes` and a new Railway Postgres database. Do not write Field Notes tables into the fitness database or the Holocron database, and do not add this app to `nchua/projects`, `fitness-app/`, `nchua/holocron`, or `nchua/speed-reader-v2`.
 
 ## Scope
 
@@ -58,23 +60,24 @@ Two related repos exist. Read them for reuse. Leave their code alone.
 **Non-goals:**
 
 - Changing the Field Notes Grok bot to emit JSON. The app defines the contract; a follow-up can teach the bot to POST it. Until then Nick pastes markdown.
-- Embedding this product inside Holocron or speed-reader-v2, sharing their database, or importing their 19-tag vocabulary as a closed set.
-- RSVP reading, a knowledge-graph visualization, embeddings, multi-user sharing, native iOS, streaks, and push notifications.
+- Embedding this product inside the fitness iOS app, Holocron, or speed-reader-v2, or sharing any of their databases.
+- Adopting the speed-reader-v2 stack (Next.js, Drizzle, Neon, Auth.js) or its 19-tag vocabulary as a closed set.
+- RSVP reading, a knowledge-graph visualization, embeddings, multi-user sharing, a native iOS client, streaks, and push notifications.
 - Auto-merging two entities because the strings are similar. Similarity may suggest a merge. Only exact normalized match, alias match, and Nick's explicit merge join records.
 
 ## Where this app lives
 
-This is a new app in a new repo. Holocron and speed-reader-v2 stay as they are.
+This is a new app in a new repo. The fitness app, Holocron, and speed-reader-v2 stay as they are.
 
-Holocron already schedules concept cards, and speed-reader-v2 already stores things Nick has read in full. Field Notes is a third loop: a short weekly current-events digest, grouped by who said what about which company, reviewed for a few minutes on a phone. Holocron's topic → concept → card model has nowhere to put a speaker, a company, and a second digest that mentions the same quote. speed-reader-v2's schema, locked visual system, and closed tag list are built for long-form reading; a digest inbox and an entity browser would fight both.
+Field Notes is its own loop: a short weekly current-events digest, grouped by who said what about which company, reviewed for a few minutes on a phone. The fitness app is the stack Nick already operates, so the backend matches it. Holocron's topic → concept → card model has nowhere to put a speaker, a company, and a second digest that mentions the same quote. speed-reader-v2's schema and closed tag list are built for long-form reading, and Nick does not use that app day to day.
 
-Reuse these parts, by porting behavior into the new repo rather than calling either service at runtime:
+Reuse these parts, by porting behavior into the new repo rather than calling another service at runtime:
 
-- The stack shape of speed-reader-v2: one Next.js app, Drizzle, Neon, Auth.js magic link, Anthropic tool use, Vitest, Railway. One process, so a phone session does not depend on a second API.
-- The verbatim-substring gate from `speed-reader-v2/lib/llm/anthropic.ts`: model output that claims to be a quote is kept only when the source text contains it.
-- The FSRS-4.5 scheduler from `holocron/backend/app/core/fsrs.py`, ported to TypeScript. The formulas in this spec are the contract.
+- The fitness backend shape: one FastAPI process, SQLAlchemy, Alembic, Railway Postgres, JWT, pytest, Anthropic from Python. The phone UI is server-rendered HTML in that same process, so a review does not depend on a second app.
+- The verbatim-substring rule, as a concept: model output that claims to be a quote is kept only when the source text contains it.
+- The FSRS-4.5 scheduler from `holocron/backend/app/core/fsrs.py`, copied into this repo as Python. The formulas in this spec are the contract. Do not call the Holocron API.
 - The inbox idea: model output Nick has not confirmed stays pending. The threshold and the objects differ, and are defined below.
-- The PWA slice from `CAPTURE_MOBILE_PWA_PLAN.md`: a manifest and home-screen install first, a service worker only when offline review is built, and that worker never caches raw digest bodies.
+- An installable PWA: a manifest and home-screen install first, a service worker only when offline review is built, and that worker never caches raw digest bodies. Hashed bearer tokens (SHA-256, plaintext shown once) are the milestone 2 way to revoke an import token.
 
 ## User stories and flows
 
@@ -116,8 +119,8 @@ Reuse these parts, by porting behavior into the new repo rather than calling eit
 
 ## Functional requirements
 
-- **FR-1.** Sign-in succeeds only for the email in `ALLOWED_EMAIL` (case-insensitive). Any other address is rejected on the Auth.js `signIn` callback. The address is never hardcoded.
-- **FR-2.** Every data route and page requires a session, except `GET /api/health` and `POST /api/imports` when the bearer token matches. Middleware checks only that a session cookie exists. Server code calls `requireUser()` and is the real gate.
+- **FR-1.** Sign-in is email plus password. It succeeds only for the email in `ALLOWED_EMAIL` (case-insensitive). Any other address is a 401 and creates no user. The address is never hardcoded. When zero users exist, the first successful sign-in with that email and a password of at least 12 characters creates the only account (passlib bcrypt, same approach as `fitness-app/backend`). Later sign-ins check the hash.
+- **FR-2.** Every HTML page and `/api` route requires the JWT cookie, except `GET /api/health`, `GET /signin`, `POST /signin`, and `POST /api/imports` when the import bearer token matches. `get_current_user` reads the `fieldnotes` httpOnly cookie, verifies the JWT, and is the real gate.
 - **FR-3.** Pasting markdown creates a digest row whose `raw_body` is the exact submitted string, then runs extraction.
 - **FR-4.** A JSON import creates the digest and items and does not call Anthropic.
 - **FR-5.** Import idempotency, in order: same `external_id` and same body hash returns the existing digest (`deduped: true`) and does not call the model; same `external_id` and a different hash returns 409 and does not overwrite; no `external_id` (or a new one) whose body hash already exists returns that existing digest, `deduped: true`, and does not call the model. Identical content is one digest.
@@ -147,27 +150,27 @@ Reuse these parts, by porting behavior into the new repo rather than calling eit
 
 ### Architecture
 
-One Next.js 15 App Router process owns the UI, the route handlers, and the model calls. Neon Postgres is the only store. The browser never receives `IMPORT_TOKEN` or the Anthropic key.
+One FastAPI process owns the HTML UI, the JSON routes, and the model calls. Railway Postgres is the only store. The browser never receives `IMPORT_TOKEN` or the Anthropic key.
 
 ```
 phone / desktop browser
-        │  session cookie
+        │  JWT in an httpOnly cookie
         ▼
-Next.js (Railway)  ── bearer ──  POST /api/imports   (bot or curl)
+FastAPI (Railway)  ── bearer ──  POST /api/imports   (bot or curl)
         │
-        ├── Drizzle ── Neon Postgres
+        ├── SQLAlchemy ── Railway Postgres
         └── Anthropic messages.create (markdown extraction and card generation only)
 ```
 
-Markdown paste and JSON import share `lib/import/ingest.ts`. The markdown path runs the extractor first and then feeds the validated items into the same inserter the JSON path uses. Webhook and email, when built, call that same function.
+Markdown paste and JSON import share `app/services/ingest.py`. The markdown path runs the extractor first and then feeds the validated items into the same inserter the JSON path uses. Webhook and email, when built, call that same function.
 
 Extraction and card generation are synchronous in milestone 1. A weekly digest is one short call. The request returns when the digest row and items are committed. Card generation runs when items are accepted, in the accept request, batched per digest.
 
 ### Data model
 
-UUIDs for every id. `timestamptz` for instants. `date` for `occurred_on` and digest period bounds. Drizzle schema in `lib/schema.ts`, migrations via `drizzle-kit`. Postgres `CHECK` constraints mirror the unions below.
+UUIDs for every id. `timestamptz` for instants. `date` for `occurred_on` and digest period bounds. SQLAlchemy models under `app/models/`, migrations via Alembic. Postgres `CHECK` constraints mirror the unions below.
 
-**users, accounts, sessions, verification_tokens** — Auth.js v5 Drizzle adapter tables. `users.email` is unique on `lower(email)`.
+**users** — `id` uuid pk, `email` text unique on `lower(email)`, `password_hash` text, `created_at`. No OAuth account tables and no server-side session table. The cookie holds a JWT.
 
 **user_settings** — `user_id` pk, `daily_cap int not null default 15`, `new_card_cap int not null default 5`, `timezone text not null default 'America/Los_Angeles'`, `last_seen_at timestamptz null`.
 
@@ -352,7 +355,7 @@ Source: [Publication](https://example.com)
 
 #### Extraction tool
 
-One Anthropic tool, `emit_digest_items`, `tool_choice` forced. Model id `claude-sonnet-4-6` (the same alias speed-reader-v2 uses). `max_tokens` 4096.
+One Anthropic tool, `emit_digest_items`, `tool_choice` forced, via the Anthropic Python SDK. Model id `claude-sonnet-4-6`, kept in one `MODEL_ID` constant. `max_tokens` 4096.
 
 Input: the raw markdown, plus the watched-entity list. System instructions: copy `excerpt`, `quote_text`, and `url` from the digest; invent nothing; fewer items is the correct outcome when unsure; prefer a watched name for the same real-world thing; at most 40 items; a quote item includes a speaker.
 
@@ -467,31 +470,33 @@ Import response:
 }
 ```
 
-Bearer comparison builds equal-length buffers (hash both sides with sha256, then `timingSafeEqual`) so the token's length is not leaked. Never log the header.
+Bearer comparison hashes both sides with SHA-256 and compares the digests with `hmac.compare_digest`, so the token's length is not leaked. Never log the header. The session cookie is named `fieldnotes`, `httponly`, `samesite=lax`, `secure` in production, and holds a JWT signed with `JWT_SECRET_KEY` (`python-jose`, same library as the fitness backend). Access tokens last 30 days. There is no refresh-token flow in milestone 1.
 
 ### Key components
 
 | Piece | Responsibility |
 | --- | --- |
-| `lib/auth.ts`, `lib/auth-guard.ts` | Auth.js Resend provider. `signIn` callback rejects non-allowlisted emails. `requireUser()` for pages and handlers. |
-| `lib/schema.ts` | Drizzle tables and check constraints. |
-| `lib/fsrs.ts` | Pure scheduler. No I/O. |
-| `lib/import/normalize.ts`, `hash.ts`, `verbatim.ts` | String rules, content hash, substring gates. |
-| `lib/import/resolve-entity.ts` | Exact resolution and merge. |
-| `lib/import/ingest.ts` | Shared insert path for JSON, markdown, manual, and later webhook. Transaction per digest. |
-| `lib/llm/extract.ts`, `lib/llm/cards.ts` | Tool calls, usage capture, no body logging. |
-| `lib/review/queue.ts` | Cap math and due ordering. |
-| `app/page.tsx` | Today: Review button, five new items, link to the latest digest. |
-| `app/review/page.tsx` | One card, show-answer, four ratings. Keys 1–4 map to Again/Hard/Good/Easy on a keyboard. |
-| `app/import/page.tsx` | Markdown textarea. A second tab pastes JSON and POSTs it through the session path. |
-| `app/digests/[id]/page.tsx` | Raw text and items, accept / known / dismiss, add item. |
-| `app/browse/page.tsx` | Kind tabs: People, Companies, Topics, Themes, Tech, Claims. |
-| `app/e/[slug]/page.tsx` | Timeline, related entities, `?with=`, Caught up, Merge into (search by name, same kind, limit 8). |
-| `app/inbox/page.tsx` | Pending items and cards. |
-| `app/settings/page.tsx` | Watchlist add, caps, sign out. |
-| `app/manifest.ts` | PWA manifest. |
+| `app/core/security.py`, `app/api/auth.py` | Password hashing and JWT. Sign-in rejects any email other than `ALLOWED_EMAIL`. `get_current_user` reads the cookie. |
+| `app/models/` | SQLAlchemy tables and check constraints. |
+| `app/services/fsrs.py` | Pure scheduler. No I/O. |
+| `app/services/normalize.py`, `hash.py`, `verbatim.py` | String rules, content hash, substring gates. |
+| `app/services/resolve_entity.py` | Exact resolution and merge. |
+| `app/services/ingest.py` | Shared insert path for JSON, markdown, manual, and later webhook. Transaction per digest. |
+| `app/services/extract.py`, `app/services/cards.py` | Tool calls, usage capture, no body logging. |
+| `app/services/queue.py` | Cap math and due ordering. |
+| `app/web/templates/today.html` | Today: Review button, five new items, link to the latest digest. |
+| `app/web/templates/review.html`, `app/web/static/review.js` | One card, show-answer, four ratings. The page fetches the JSON queue and posts ratings so the next card does not reload the app. Keys 1–4 map to Again/Hard/Good/Easy on a keyboard. |
+| `app/web/templates/import.html` | Markdown textarea. A second control pastes JSON and POSTs it through the session path. |
+| `app/web/templates/digest.html` | Raw text and items, accept / known / dismiss, add item. |
+| `app/web/templates/browse.html` | Kind tabs: People, Companies, Topics, Themes, Tech, Claims. |
+| `app/web/templates/entity.html` | Timeline, related entities, `?with=`, Caught up, Merge into (search by name, same kind, limit 8). |
+| `app/web/templates/inbox.html` | Pending items and cards. |
+| `app/web/templates/settings.html` | Watchlist add, caps, sign out. |
+| `app/web/static/manifest.webmanifest` | PWA manifest. |
 
-UI is a single column under 768px. Body text at least 16px. Rating bar is sticky to the bottom with `env(safe-area-inset-bottom)`. Desktop may show the digest list beside the detail. No component library and no Holocron visual system: system font, near-black background `#111111`, light text, one accent for the primary button. This is a utility for a five-minute session.
+HTML pages are Jinja2 templates rendered by FastAPI. Forms post to the routes in the API table, or to thin form handlers that call the same service functions. The review screen is the one page that uses `fetch`.
+
+UI is a single column under 768px. Body text at least 16px. Rating bar is sticky to the bottom with `env(safe-area-inset-bottom)`. Desktop may show the digest list beside the detail. No component library and no Holocron or speed-reader visual system: system font, near-black background `#111111`, light text, one accent for the primary button. One CSS file. This is a utility for a five-minute session.
 
 ### Files to create or change
 
@@ -499,24 +504,24 @@ Create them in the new repo `nchua/field-notes`. No files in `nchua/projects` ch
 
 | Path | Change |
 | --- | --- |
-| `package.json`, `tsconfig.json`, `next.config.ts`, `drizzle.config.ts`, `vitest.config.ts` | App scaffold. Node ≥ 22. |
+| `requirements.txt`, `app/main.py` | FastAPI app. Python 3.12. Libraries aligned with `fitness-app/backend/requirements.txt`, plus Jinja2. |
 | `.env.example` | Names only, empty values. |
 | `README.md` | How to run, migrate, and deploy. Point at this spec for product behavior. |
-| `lib/schema.ts` and `drizzle/` | Tables in this spec. |
-| `lib/fsrs.ts`, `lib/fsrs.test.ts` | Scheduler and the six fixtures. |
-| `lib/import/*`, `lib/import/*.test.ts` | Normalize, hash, verbatim, ingest idempotency. |
-| `lib/llm/extract.ts`, `lib/llm/cards.ts` | Model calls. |
-| `lib/auth.ts`, `lib/auth-guard.ts`, `middleware.ts` | Allowlisted magic link. Middleware is cookie-presence only. |
-| `app/api/**/route.ts` | Handlers in the table above, except the webhook route (milestone 2). |
-| `app/**/page.tsx` | Screens in Key components. |
-| `app/manifest.ts`, `public/icon-192.png`, `public/icon-512.png` | Installable PWA. A `#111111` square with light "FN" lettering is enough. |
-| `app/api/ingest/webhook/route.ts` | Milestone 2 only. |
+| `app/models/`, `alembic/` | Tables in this spec. |
+| `app/services/fsrs.py`, `tests/test_fsrs.py` | Scheduler and the six fixtures. |
+| `app/services/{normalize,hash,verbatim,ingest,resolve_entity}.py`, `tests/test_import.py` | Normalize, hash, verbatim, ingest idempotency. |
+| `app/services/extract.py`, `app/services/cards.py` | Model calls. |
+| `app/core/security.py`, `app/api/auth.py` | Allowlisted password sign-in and JWT cookie. |
+| `app/api/` | Handlers in the table above, except the webhook route (milestone 2). |
+| `app/web/templates/`, `app/web/static/app.css` | Screens in Key components. |
+| `app/web/static/manifest.webmanifest`, `icon-192.png`, `icon-512.png` | Installable PWA. A `#111111` square with light "FN" lettering is enough. |
+| `app/api/ingest.py` webhook route | Milestone 2 only. |
 
 ### Constraints
 
-- Environment variables: `DATABASE_URL`, `AUTH_SECRET`, `AUTH_RESEND_KEY`, `AUTH_EMAIL_FROM`, `ALLOWED_EMAIL`, `IMPORT_TOKEN`, `ANTHROPIC_API_KEY`, `NEXT_PUBLIC_APP_URL`. Milestone 2 adds `RESEND_WEBHOOK_SECRET` if inbound email signature checks need it. Never commit values. `.env.example` lists the names.
-- New Neon project and new Railway service. Do not reuse Holocron's `DATABASE_URL`.
-- Match speed-reader-v2's generation: Next.js ~15.4, React 19, TypeScript strict, Tailwind, Drizzle, `@neondatabase/serverless`, `next-auth` 5, `@auth/drizzle-adapter`, `resend`, `@anthropic-ai/sdk`, Vitest. Add no further dependencies in milestone 1. Validate JSON by hand in `lib/import/schema.ts`.
+- Environment variables: `DATABASE_URL`, `JWT_SECRET_KEY`, `ALLOWED_EMAIL`, `IMPORT_TOKEN`, `ANTHROPIC_API_KEY`, `APP_URL`. Never commit values. `.env.example` lists the names. No Resend, Auth.js, or Neon variables.
+- New Railway service and a new Railway Postgres. Do not reuse the fitness app's `DATABASE_URL` or Holocron's.
+- Match the fitness backend's libraries: FastAPI, Uvicorn, SQLAlchemy 2, Alembic, Pydantic v2, psycopg2, `python-jose`, passlib bcrypt, pytest, httpx, Anthropic Python SDK. Add Jinja2 for HTML. Milestone 1 adds nothing else. Validate JSON in `app/services/ingest.py` with Pydantic models. Pin versions in `requirements.txt`, using the fitness pins where that file already pins the library.
 - Full digest text is allowed in the database (it is the product) and in the single-digest GET for the signed-in user. It stays out of list endpoints, logs, and `agent_runs`.
 - Ratings on screen are Again / Hard / Good / Easy and map to `forgot` / `struggled` / `got_it` / `easy`.
 - No streaks. The home screen does not lead with an overdue count. The queue button shows how many cards this session includes.
@@ -538,16 +543,16 @@ Create them in the new repo `nchua/field-notes`. No files in `nchua/projects` ch
 
 | Layer | Choice |
 | --- | --- |
-| App | Next.js 15 App Router, React 19, TypeScript strict, Tailwind |
-| Data | Neon Postgres, Drizzle ORM, drizzle-kit migrations |
-| Auth | Auth.js v5, Resend magic link, database sessions, httpOnly cookie |
-| Model | `@anthropic-ai/sdk`, model `claude-sonnet-4-6`, forced tool use |
-| Tests | Vitest |
-| Host | Railway for the app, Neon for Postgres |
+| App | FastAPI, Jinja2 templates, one CSS file, one small `review.js` |
+| Data | Railway Postgres, SQLAlchemy 2, Alembic |
+| Auth | Email and password, bcrypt, JWT in an httpOnly cookie (`python-jose`) |
+| Model | Anthropic Python SDK, model `claude-sonnet-4-6`, forced tool use |
+| Tests | pytest |
+| Host | Railway for the app and for Postgres |
 
 `pg_trgm` is created in the milestone 2 migration (`CREATE EXTENSION IF NOT EXISTS pg_trgm`). Milestone 1 does not need it. No pgvector.
 
-Deploy is a normal Next.js service on Railway. Document the env vars in the new repo's README. Production cookies are `secure` and `sameSite=lax`.
+Deploy the FastAPI app on Railway the way the fitness backend is deployed (`uvicorn app.main:app`). Document the env vars in the new repo's README. Production cookies are `secure` and `samesite=lax`.
 
 ## Implementation plan
 
@@ -559,12 +564,12 @@ Build milestone 1 to completion and stop. It is useful with no later milestone. 
 
 **Steps:**
 
-1. Create the private repo `nchua/field-notes`, the Next.js scaffold, Neon, and Drizzle. Commit `.env.example` and a README that states the env vars and "do not log raw digests".
-2. Add Auth.js magic link and the allowlist. Seed `user_settings` on first sign-in.
-3. Add the schema through `agent_runs` (no `merge_suggestions` yet) and the first migration.
-4. Port `lib/fsrs.ts` and land the six fixtures.
-5. Implement normalize, hash, verbatim checks, entity resolution, and `ingest.ts`, with tests for idempotency, 409, dedupe, and the substring gates.
-6. Implement the JSON route and the markdown route. Markdown calls `lib/llm/extract.ts`.
+1. Create the private repo `nchua/field-notes` and a FastAPI scaffold patterned on `fitness-app/backend` (app package, Alembic, pytest, Railway Postgres). Commit `.env.example` and a README that states the env vars and "do not log raw digests".
+2. Add password sign-in, the allowlist, and the JWT cookie. Seed `user_settings` on first sign-in.
+3. Add the schema through `agent_runs` (no `merge_suggestions` yet) and the first Alembic migration.
+4. Port `app/services/fsrs.py` from the formulas in this spec and land the six fixtures.
+5. Implement normalize, hash, verbatim checks, entity resolution, and `ingest.py`, with tests for idempotency, 409, dedupe, and the substring gates.
+6. Implement the JSON route and the markdown route. Markdown calls `app/services/extract.py`.
 7. Build Today, Import, digest detail (accept / known / dismiss / add item), Browse, entity page with `?with=` and merge, Inbox, and Settings watchlist.
 8. On accept, generate recall cards and run the grounding check. Build the review screen and `POST /api/reviews` with idempotency.
 9. Add the manifest, icons, safe-area padding, and 44px rating targets.
@@ -580,7 +585,7 @@ Build milestone 1 to completion and stop. It is useful with no later milestone. 
 - [ ] Scheduling a card with rating Good as the first AI review yields interval 1.97 days (fixture A). A second review is not due until that interval elapses.
 - [ ] The review flow works at a 390px viewport: Show answer, then a rating, then the next card, without horizontal scroll.
 - [ ] The app installs to a phone home screen and opens standalone at `/`.
-- [ ] `npm test`, `npm run typecheck`, and `npm run build` pass.
+- [ ] `pytest -q` passes. The app boots with `uvicorn app.main:app`.
 
 ### Milestone 2 — Webhook, suggestions, offline
 
@@ -589,10 +594,10 @@ Build milestone 1 to completion and stop. It is useful with no later milestone. 
 **Steps:**
 
 1. Add `POST /api/ingest/webhook` using the import token header and the shared ingest function. Support markdown and JSON bodies.
-2. Point inbound email at that route. Read Resend's current inbound webhook docs at implementation time, pin the field that carries the plain-text body in a comment with the doc URL, and verify `RESEND_WEBHOOK_SECRET` when it is set. Reject a bad signature with 401.
+2. Leave inbound email as an adapter in front of that webhook. Do not pick Resend. When an email provider is added, verify its signature and pass the plain-text body into `ingest.py`. Milestone 2 is done when the webhook works, even if email is still unwired.
 3. Add `pg_trgm` and `merge_suggestions`. Scores ≥ 0.72 and < 1.0 become open suggestions. Accept runs FR-10.
 4. Add a service worker that caches the shell and the queue JSON, stores review posts in IndexedDB with the idempotency key, and replays when online. Exclude any URL that can return `raw_body`.
-5. Optional: replace the single env token with hashed rows (sha256, plaintext shown once) following `capture_tokens` in speed-reader-v2, so a token can be revoked without a redeploy. Keep the env token working as a bootstrap.
+5. Optional: replace the single env token with hashed rows (SHA-256, plaintext shown once) so a token can be revoked without a redeploy. Keep the env token working as a bootstrap.
 
 **Acceptance criteria:**
 
@@ -619,15 +624,15 @@ Build milestone 1 to completion and stop. It is useful with no later milestone. 
 
 ## Testing plan
 
-- **Automated:** `npm test` (Vitest), `npm run typecheck`, `npm run build`.
+- **Automated:** `pytest -q`.
 - **Cases:**
   - FR-6 / FR-7 — verbatim gates: excerpt missing, quote not inside excerpt, url not inside raw body, quote-kind demoted to development.
   - FR-5 / FR-8 — same `external_id` and hash returns `deduped`; different hash returns 409; same quote URL in two digests yields one item and two sightings.
   - FR-9 / FR-10 — normalization table (case, `Inc.`, curly quotes) and merge repoints links.
   - FR-14 — grounding pass and fail, including a back that cites an unknown item id.
   - FR-15 / FR-16 — queue cap in America/Los_Angeles across a UTC day boundary, and the six scheduler fixtures.
-  - FR-1 — sign-in callback rejects a second email. Bearer route returns 401 on a bad token.
-  - Model tests mock `@anthropic-ai/sdk`. No live API call in `npm test`.
+  - FR-1 — sign-in rejects a second email and creates no user. Bearer route returns 401 on a bad token.
+  - Model tests mock the Anthropic client. No live API call in `pytest`.
 - **Manual:** At a 390×844 viewport, paste a digest, accept two items, finish a three-card session, reload, and confirm the next due time moved. Open a person×company cross-link. Add the app to the home screen and confirm it opens without browser chrome. Confirm server logs for that session contain no digest sentence and no `IMPORT_TOKEN`.
 
 ## Risks
@@ -635,7 +640,7 @@ Build milestone 1 to completion and stop. It is useful with no later milestone. 
 - **Freeform markdown extracts poorly.** Field Notes is chat prose, not a schema. **Mitigation:** verbatim gates, pending status, raw text beside items, manual add-item. The library is useful even when zero cards activate.
 - **Two people share a normalized name** ("Chris" at two companies). **Mitigation:** no fuzzy auto-merge; kind-scoped exact match; manual merge is the only join. Watchlist preferred names reduce accidental new rows for people Nick already tracks.
 - **A card back adds a fact that happens to share common words** and passes the 40% check. **Mitigation:** pending is available, the source link is always on screen, and milestone 3 connection cards fail closed on unknown names. Do not add a second model to police the first in milestone 1.
-- **Anthropic alias `claude-sonnet-4-6` moves over time.** speed-reader-v2 already accepts that and keeps the id in one constant. **Mitigation:** one `MODEL_ID` constant, stored on each `agent_runs` row.
+- **Anthropic alias `claude-sonnet-4-6` moves over time.** **Mitigation:** one `MODEL_ID` constant, stored on each `agent_runs` row.
 - **Offline cache leaks a digest.** **Mitigation:** milestone 2's worker excludes raw-body routes. Milestone 1 has no worker, so the risk is not present yet.
 - **Import token in a chat log or shortcut.** **Mitigation:** compare hashes, support revocation in milestone 2, never log the header.
 
@@ -643,16 +648,16 @@ Build milestone 1 to completion and stop. It is useful with no later milestone. 
 
 Each one has a default. The implementer follows the default. A `reviewed` spec can replace a default with Nick's answer.
 
-- **Q1.** Repo name and hosting? **Default:** private repo `nchua/field-notes`, Railway for the app, a new Neon project for Postgres.
+- **Q1.** Repo name and hosting? **Default:** private repo `nchua/field-notes`, Railway for the FastAPI app, a new Railway Postgres. Not the fitness database.
 - **Q2.** Which email is allowlisted? **Default:** whatever Nick puts in `ALLOWED_EMAIL`. The code reads the env var and ships with no address in the source.
 - **Q3.** Change the Field Notes bot to POST JSON in this same effort? **Default:** no. Ship the app. Pasting markdown is the Friday path until a follow-up spec updates the bot.
 - **Q4.** Card voice? **Default:** recall questions whose answers are grounded in the excerpt, not cloze deletions, in milestone 1.
 - **Q5.** Should a bearer JSON import auto-accept items? **Default:** yes (`trust: true`). Cards still pass the grounding check before they become active.
 - **Q6.** Daily cap and timezone? **Default:** 15 reviews, 5 of them new, America/Los_Angeles, both caps editable in Settings within 1–50.
 - **Q7.** Fuzzy auto-merge? **Default:** never. Milestone 2 may suggest. Nick confirms.
-- **Q8.** Google sign-in as well as magic link? **Default:** magic link only, to keep the secret list smaller.
+- **Q8.** Sign-in method? **Default:** email and password with a JWT cookie, matching the fitness app. No Google sign-in and no magic link.
 - **Q9.** Initial watchlist? **Default:** empty. Nick adds people and topics in Settings. Imports work before any watchlist exists.
-- **Q10.** Resend inbound payload shape? **Default:** milestone 2 reads the current Resend docs and pins the plain-text field. Milestone 1 does not block on email.
+- **Q10.** Inbound email provider? **Default:** none in milestone 1 or for the webhook slice of milestone 2. The webhook is the contract. Wire email only after Nick names a provider.
 
 ## Reviewer checklist
 
@@ -676,3 +681,4 @@ Each one has a default. The implementer follows the default. A `reviewed` spec c
 | Date | Status | Note |
 | --- | --- | --- |
 | 2026-11-21 | draft | Spec created. |
+| 2026-11-21 | draft | Stack corrected: Nick uses the fitness app, not speed-reader-v2. Backend follows FastAPI, SQLAlchemy, Alembic, Railway Postgres, and JWT. speed-reader-v2 contributes concepts only. |
