@@ -9,7 +9,7 @@ import pytest
 from app.models.admin import AdminAuditLog
 from app.models.campaign import Campaign, CampaignStatus, PlannedHunt, PlannedHuntStatus
 from app.models.goal import Goal
-from app.services import campaign_service
+from app.services import campaign_service, goal_service
 from app.services.campaign_service import materialize_range
 from tests.helpers_w1 import MONDAY, import_plan, load_phases
 
@@ -121,7 +121,8 @@ class TestImport:
         db.expire_all()
         assert db.query(Campaign).filter(Campaign.id == old.id).one().status == "active"
 
-    def test_objectives_are_created_under_the_campaign(self, client, db, setup):
+    def test_objectives_are_created_under_the_campaign(self, client, db, setup, monkeypatch) -> None:
+        monkeypatch.setattr(goal_service, "get_today_utc", lambda: MONDAY)  # arc_end needs a running campaign
         headers, _, target = setup
         objective = {"kind": "run", "target_miles": 5, "run_scope": "long_run", "by": "arc_end"}
         response = _import(client, headers, target.id, objectives=[objective])

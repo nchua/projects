@@ -4,16 +4,34 @@ Tests for GET /calendar/weekly — the training-calendar PWA aggregation.
 Covers: auth requirement, lift vs run classification, distance/mileage
 totals, local-timezone day bucketing, and window edges.
 """
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
+from typing import Optional
 
 import pytest
 
+from app.api import calendar as calendar_api
 from app.models.exercise import Exercise
 from app.models.workout import Set, WorkoutExercise, WorkoutSession
 
+# A Wednesday noon: hours from a week boundary in UTC and at the offsets used below.
+FIXED_NOW = datetime(2026, 8, 19, 12, 0, tzinfo=timezone.utc)
 
-def _utc_naive_now():
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+class _FrozenDateTime(datetime):
+    instant = FIXED_NOW
+
+    @classmethod
+    def now(cls, tz: Optional[tzinfo] = None) -> datetime:
+        return cls.instant.astimezone(tz) if tz else cls.instant.replace(tzinfo=None)
+
+
+@pytest.fixture(autouse=True)
+def fixed_now(monkeypatch) -> None:
+    monkeypatch.setattr(calendar_api, "datetime", _FrozenDateTime)
+
+
+def _utc_naive_now() -> datetime:
+    return FIXED_NOW.replace(tzinfo=None)
 
 
 def _monday_of(dt):
@@ -110,6 +128,18 @@ class TestCalendarWeekly:
         assert ride["activity_type"] == "Outdoor Cycle"
         # Weekly mileage counts runs only.
         assert this_week["run_miles"] == 2.0
+
+    @pytest.mark.parametrize("offset,week_start", [
+        (0, "2026-08-17"),     # already Monday in UTC
+        (420, "2026-08-10"),   # still Sunday evening at UTC-7
+    ])
+    def test_current_week_follows_the_client_offset(
+        self, client, calendar_user, monkeypatch, offset: int, week_start: str,
+    ) -> None:
+        monkeypatch.setattr(_FrozenDateTime, "instant", datetime(2026, 8, 17, 3, 0, tzinfo=timezone.utc))
+        headers, _ = calendar_user
+        resp = client.get(f"/calendar/weekly?weeks=1&tz_offset_minutes={offset}", headers=headers)
+        assert resp.json()["weeks"][0]["week_start"] == week_start
 
     def test_old_sessions_fall_outside_window(self, client, db, calendar_user, squat):
         headers, user = calendar_user

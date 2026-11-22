@@ -9,7 +9,7 @@ import pytest
 
 from app.models.campaign import Campaign, CampaignStatus, HuntTemplate, PlannedHunt
 from app.models.goal import Goal
-from app.services import campaign_service
+from app.services import campaign_service, goal_service
 from app.services.campaign_service import (
     arc_weeks_from_label,
     parse_item,
@@ -237,13 +237,22 @@ class TestImportApi:
         headers, _ = auth_headers(email=unique_email("imp-none"))
         assert client.get("/campaign/current", headers=headers).status_code == 404
 
-    def test_objectives_seeded_under_campaign(self, client, db, auth_headers, unique_email):
+    @pytest.mark.parametrize("today,arc_end", [
+        (date(2026, 8, 24), date(2026, 10, 25)),    # before the campaign starts: arc 1
+        (MONDAY, date(2026, 10, 25)),               # first day of arc 1
+        (date(2026, 10, 25), date(2026, 10, 25)),   # last day of arc 1
+        (date(2026, 10, 26), date(2026, 12, 20)),   # first day of arc 2
+    ])
+    def test_objectives_seeded_under_campaign(
+        self, client, db, auth_headers, unique_email, monkeypatch, today: date, arc_end: date,
+    ) -> None:
+        monkeypatch.setattr(goal_service, "get_today_utc", lambda: today)
         headers, user = auth_headers(email=unique_email("imp-obj"))
         bench = family_exercise(db, "Barbell Bench Press")
         body = self._body(objectives=[
             {"exercise_id": bench.id, "target_weight": 225, "target_reps": 1, "weight_unit": "lb", "by": "arc_end"},
             {"kind": "run", "target_miles": 12, "run_scope": "weekly", "by": "arc_end"},
-            {"exercise_id": "nope", "target_weight": 100, "deadline": (date.today() + timedelta(days=30)).isoformat()},
+            {"exercise_id": "nope", "target_weight": 100, "deadline": (today + timedelta(days=30)).isoformat()},
         ])
         resp = client.post("/campaign/import", json=body, headers=headers)
         assert resp.status_code == 201, resp.text
@@ -253,8 +262,8 @@ class TestImportApi:
         goals = db.query(Goal).filter(Goal.user_id == user.id).all()
         assert {g.kind for g in goals} == {"strength", "run"}
         assert all(g.campaign_id == payload["id"] for g in goals)
-        # by=arc_end → the last day of arc 1
-        assert all(g.deadline == MONDAY + timedelta(weeks=8) - timedelta(days=1) for g in goals)
+        # by=arc_end → the last day of the arc that is current on `today`
+        assert all(g.deadline == arc_end for g in goals)
 
     def test_manual_create_and_update(self, client, auth_headers, unique_email):
         headers, _ = auth_headers(email=unique_email("imp-manual"))

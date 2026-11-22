@@ -5,6 +5,7 @@ real ingest path rather than inserting them.
 """
 import re
 from datetime import date, timedelta
+from types import ModuleType
 
 import pytest
 
@@ -27,6 +28,20 @@ from tests.helpers_migrations import BACKEND
 EMAIL = "review-seed@example.com"
 PASSWORD = "ReviewPass123!"
 SCRIPT = BACKEND / "scripts" / "seed_review_account.py"
+TODAY = date.today()
+
+
+class _CollectionDate(date):
+    @classmethod
+    def today(cls) -> date:
+        return TODAY
+
+
+def _load_seed(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
+    """The script with its "today" held still: seeding takes long enough to cross midnight."""
+    module = load_script("seed_review_account")
+    monkeypatch.setattr(module, "date", _CollectionDate)
+    return module
 
 
 def _snapshot(db, user_id: str) -> dict:
@@ -53,12 +68,12 @@ def _snapshot(db, user_id: str) -> dict:
 
 
 class TestSeedReviewAccount:
-    def test_seeds_through_the_real_paths_and_derives_state(self, db, seeded_exercises):
-        module = load_script("seed_review_account")
+    def test_seeds_through_the_real_paths_and_derives_state(self, db, seeded_exercises, monkeypatch) -> None:
+        module = _load_seed(monkeypatch)
         # Shared symbols, no drift: the script lands data the way the app does.
         assert module._create_workout_impl is workouts_api._create_workout_impl
         assert module.entitlement_service.grant is es.grant
-        assert module.default_anchor() == date.today() - timedelta(days=1)
+        assert module.default_anchor() == TODAY - timedelta(days=1)
 
         report = module.seed_review_account(db, EMAIL, PASSWORD)
         assert report["account"] == "created" and report["changed"] is True
@@ -74,7 +89,7 @@ class TestSeedReviewAccount:
             .order_by(WorkoutSession.local_date)
             .all()
         )
-        yesterday = date.today() - timedelta(days=1)
+        yesterday = TODAY - timedelta(days=1)
         assert len(sessions) == 30
         assert all(s.deleted_at is None and s.client_id.startswith("review-seed:") for s in sessions)
         assert sessions[-1].local_date == yesterday
@@ -137,8 +152,8 @@ class TestSeedReviewAccount:
         )
         assert audit_row.actor_user_id is None and audit_row.reason == module.REASON
 
-    def test_second_run_changes_nothing(self, db, seeded_exercises):
-        module = load_script("seed_review_account")
+    def test_second_run_changes_nothing(self, db, seeded_exercises, monkeypatch) -> None:
+        module = _load_seed(monkeypatch)
         first = module.seed_review_account(db, EMAIL, PASSWORD)
         before = _snapshot(db, first["user_id"])
 
@@ -159,12 +174,12 @@ class TestSeedReviewAccount:
         db.expire_all()
         assert verify_password(PASSWORD, db.query(User).filter(User.id == user.id).one().password_hash)
 
-    def test_refuses_a_deleted_account_and_a_future_anchor(self, db, seeded_exercises, deleted_user):
-        module = load_script("seed_review_account")
+    def test_refuses_a_deleted_account_and_a_future_anchor(self, db, seeded_exercises, deleted_user, monkeypatch) -> None:
+        module = _load_seed(monkeypatch)
         with pytest.raises(LookupError):
             module.seed_review_account(db, deleted_user.email, PASSWORD)
         with pytest.raises(ValueError):
-            module.seed_review_account(db, EMAIL, PASSWORD, anchor=date.today())
+            module.seed_review_account(db, EMAIL, PASSWORD, anchor=TODAY)
 
     def test_refuses_to_run_without_credentials(self, monkeypatch, capsys):
         # Load first: the module's load_dotenv would otherwise refill the vars.
