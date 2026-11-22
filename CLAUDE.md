@@ -83,6 +83,10 @@ coach lift squat                            # Check lift progress
 coach prs                                   # View personal records
 ```
 
+## Build specs
+
+Implementation handoff specs live in `build-specs/`. When asked to review, clarify, or finalize a spec, follow `build-specs/REVIEW.md` before anything else.
+
 ## Deployment
 
 - **Backend**: Railway (https://backend-production-e316.up.railway.app)
