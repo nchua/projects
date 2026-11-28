@@ -310,7 +310,8 @@ class TestListUsers:
         # "_" is a LIKE single-char wildcard; escaped, it only matches the literal underscore.
         ids, total = self._ids(client, headers, q=f"a_b{tag}")
         assert ids == [literal.id] and total == 1
-        ids, _ = self._ids(client, headers, q=f"%{tag}")
+        # "%-", not a bare "%": httpx 0.26 sends "%XX" unencoded, so a hex tag like "35ab12" would decode to "5ab12".
+        ids, _ = self._ids(client, headers, q=f"%-{tag}")
         assert ids == []
 
     def test_invalid_params_422(self, client, admin_headers):

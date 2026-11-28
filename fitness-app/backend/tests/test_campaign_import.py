@@ -9,7 +9,7 @@ import pytest
 
 from app.models.campaign import Campaign, CampaignStatus, HuntTemplate, PlannedHunt
 from app.models.goal import Goal
-from app.services import campaign_service
+from app.services import campaign_service, goal_service
 from app.services.campaign_service import (
     arc_weeks_from_label,
     parse_item,
@@ -237,7 +237,9 @@ class TestImportApi:
         headers, _ = auth_headers(email=unique_email("imp-none"))
         assert client.get("/campaign/current", headers=headers).status_code == 404
 
-    def test_objectives_seeded_under_campaign(self, client, db, auth_headers, unique_email):
+    def test_objectives_seeded_under_campaign(self, client, db, auth_headers, unique_email, monkeypatch):
+        # Pin "today" inside arc 1: MONDAY is a fixed date, and by=arc_end resolves against the current arc.
+        monkeypatch.setattr(goal_service, "get_today_utc", lambda: MONDAY)
         headers, user = auth_headers(email=unique_email("imp-obj"))
         bench = family_exercise(db, "Barbell Bench Press")
         body = self._body(objectives=[
