@@ -38,14 +38,23 @@ Verified by inspection on the audit date, not assumed:
 | Support URL | ✅ *(deployed 2026-09-06)* | `GET /support` → 200 in production; preflight checks it |
 | Anthropic spend ceiling | ✅ *(added 2026-09-06, set 2026-09-07)* | `ANTHROPIC_DAILY_CALL_CEILING` = **100/day on Railway** (code default 500; owner warned at 80%). Sonnet 5 costs ≈ $0.017/scan, so 100/day ≈ $1.70/day worst-typical. Over it scans 503 and debit nothing |
 | Auth rate limits | ✅ *(password-reset added 2026-09-06)* | login 5/10min, register 20/10min, password-reset request 10/10min — all per client IP |
-| Final app name | ❌ | Phase 0 — deferred by decision, but blocks the ASC record |
+| Final app name | ✅ *(locked 2026-11-27)* | **S-Rank: Gym Tracker** (home screen "S-Rank"). Applied in code; still to reserve in ASC |
 | iPad scope | ✅ *(decided 2026-09-06)* | iPhone only — one screenshot set, no iPad layout risk |
 
 ---
 
 ## Phase 0 — Decisions to lock
 
-### 0.1 App name  *(deferred — revisit before Phase 1)*
+### 0.1 App name — DECIDED 2026-11-27: "S-Rank: Gym Tracker" ✅
+
+Store name `S-Rank: Gym Tracker`, subtitle `Hunter RPG: Level Up Lifts`, home-screen
+name `S-Rank`. "Arise" was ruled out: "Arise: Level Up Workout Game" (~21k ratings),
+Netmarble's "Solo Leveling:Arise" (~59k) and several clones already own it in search.
+Fallback if ASC refuses the name: `Gatelift: Level Up Workouts`. Applied everywhere
+below on 2026-11-27; the in-app "[ SYSTEM ]" voice and the internal ARISE code names
+(fonts, spec titles) are unaffected.
+
+*Original notes, kept for context:*
 
 The project is internally inconsistent: `CFBundleDisplayName` is **"Fitness Tracker"**
 while every string, the privacy policy, and the design system say **"ARISE"**.

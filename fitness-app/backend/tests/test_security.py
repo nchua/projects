@@ -53,8 +53,8 @@ class TestPrivacyEndpoint:
     """Tests for GET /privacy."""
 
     def test_privacy_endpoint_returns_html(self, client):
-        """Privacy page returns 200 with HTML containing 'ARISE'."""
+        """Privacy page returns 200 with HTML containing 'S-Rank'."""
         response = client.get("/privacy")
         assert response.status_code == 200
         assert "text/html" in response.headers["content-type"]
-        assert "ARISE" in response.text
+        assert "S-Rank" in response.text

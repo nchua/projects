@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
 
     # App settings
-    APP_NAME: str = Field(default="Fitness Tracker API")
+    APP_NAME: str = Field(default="S-Rank API")
     # Default to False — prod must opt-in to debug explicitly. Previously
     # defaulted to True, which leaked stack traces and exposed debug endpoints
     # any time the env var was unset on Railway.

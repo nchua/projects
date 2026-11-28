@@ -1,5 +1,5 @@
 """
-Fitness Tracker API - Main application entry point
+S-Rank API - Main application entry point
 """
 import logging
 import os
@@ -282,7 +282,7 @@ if settings.DEBUG:
 async def root():
     """Root endpoint - API information"""
     return {
-        "message": "Fitness Tracker API",
+        "message": "S-Rank API",
         "version": "0.3.0-multi-goal",
         "status": "running",
         "docs": "/docs",
@@ -387,9 +387,9 @@ def _legal_page(title: str, body: str) -> HTMLResponse:
 async def privacy_policy():
     """Serve the privacy policy page."""
     return _legal_page(
-        "ARISE - Privacy Policy",
-        """<h1>ARISE Privacy Policy</h1>
-<p>ARISE ("we", "our", "the app") is a fitness tracking application. This policy describes how we collect, use, and protect your data.</p>
+        "S-Rank - Privacy Policy",
+        """<h1>S-Rank Privacy Policy</h1>
+<p>S-Rank ("we", "our", "the app") is a fitness tracking application. This policy describes how we collect, use, and protect your data.</p>
 
 <h2>Data We Collect</h2>
 <ul>
@@ -428,7 +428,7 @@ async def privacy_policy():
 <p>Passwords are hashed using bcrypt. All communication uses HTTPS/TLS encryption. Authentication uses JWT tokens.</p>
 
 <h2>Children</h2>
-<p>ARISE is not intended for users under 13. We do not knowingly collect data from children.</p>
+<p>S-Rank is not intended for users under 13. We do not knowingly collect data from children.</p>
 
 <h2>Contact</h2>
 <p>For privacy inquiries, contact us at <a href="mailto:shadowgainsapp@gmail.com">shadowgainsapp@gmail.com</a>.</p>
@@ -445,17 +445,17 @@ async def terms_of_service():
     terms cover the hosted service around it (accounts, data, purchases).
     """
     return _legal_page(
-        "ARISE - Terms of Service",
-        """<h1>ARISE Terms of Service</h1>
-<p>By creating an account or using ARISE ("the app", "the service"), you agree to these terms.</p>
+        "S-Rank - Terms of Service",
+        """<h1>S-Rank Terms of Service</h1>
+<p>By creating an account or using S-Rank ("the app", "the service"), you agree to these terms.</p>
 
 <h2>The Service</h2>
-<p>ARISE is a fitness tracking application. It records the training data you enter, derives
+<p>S-Rank is a fitness tracking application. It records the training data you enter, derives
 analytics from it, and optionally syncs with Apple Health and WHOOP. It is provided as-is,
 without warranty of any kind.</p>
 
 <h2>Not Medical Advice</h2>
-<p>ARISE is not a medical device and does not provide medical advice. Estimated one-rep maxes,
+<p>S-Rank is not a medical device and does not provide medical advice. Estimated one-rep maxes,
 readiness scores, recovery indicators, and training suggestions are informational only and are
 derived from data you and your connected devices provide. Consult a qualified professional
 before beginning or changing any exercise program. You train at your own risk.</p>
@@ -514,8 +514,8 @@ async def support_page():
     App Store Connect requires a reachable Support URL for every submission.
     """
     return _legal_page(
-        "ARISE - Support",
-        """<h1>ARISE Support</h1>
+        "S-Rank - Support",
+        """<h1>S-Rank Support</h1>
 <p>Need help, found a bug, or want a feature? Get in touch and we'll get back to you.</p>
 
 <h2>Contact</h2>
@@ -531,7 +531,7 @@ async def support_page():
   <li><strong>I bought credits but don't see them.</strong> Open the scan paywall and tap
       <em>Restore Purchases</em>. If they still don't appear, email us with the date of purchase.</li>
   <li><strong>Apple Health isn't syncing.</strong> Check iOS Settings &rarr; Privacy &amp; Security &rarr;
-      Health &rarr; ARISE and confirm the categories are enabled. The app works fully without it.</li>
+      Health &rarr; S-Rank and confirm the categories are enabled. The app works fully without it.</li>
   <li><strong>How do I delete my account?</strong> Profile &rarr; Delete Account. It requires your
       password. Access ends immediately and all data is permanently purged after 30 days.</li>
   <li><strong>How do I export my data?</strong> Email us and we'll send you a copy.</li>

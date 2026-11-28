@@ -3,9 +3,11 @@
 Working drafts for every ASC text field, plus the privacy nutrition-label answer
 sheet and the App Review notes. Companion to [`app-store-launch.md`](./app-store-launch.md).
 
-> **`{APP_NAME}` is a placeholder.** The final name is deferred (launch checklist
-> Phase 0.1). Search-and-replace it here, in `ios/project.yml`, and in the
-> `/privacy` page in `backend/main.py` once it is locked.
+> **Name locked 2026-11-27: "S-Rank".** Store name `S-Rank: Gym Tracker`, home-screen
+> name `S-Rank`. Applied in `ios/project.yml`, the `/privacy` `/terms` `/support` pages,
+> the password-reset email, the launch splash, and `config.APP_NAME` (spec §G5). Keep
+> "Arise", "Solo Leveling" and series names out of every field here, keywords included
+> (Guideline 2.3.7).
 
 ---
 
@@ -15,15 +17,18 @@ Character limits are hard caps enforced by ASC.
 
 ### Name — max 30
 ```
-{APP_NAME}
+S-Rank: Gym Tracker
 ```
+(19 chars.) Reserve it in ASC first; if it is taken, fall back to
+`Gatelift: Level Up Workouts` (name research 2026-11-27).
 
 ### Subtitle — max 30
 Appears under the name in search results. Carries real keyword weight.
 ```
-Strength Training RPG
+Hunter RPG: Level Up Lifts
 ```
-Alternatives: `Level Up Your Lifting` (21) · `Gamified Strength Tracker` (25)
+(26 chars — at the ~26-char search-results truncation point, so nothing is cut.)
+Alternatives: `Level Up Your Lifting` (21) · `Hunter RPG Lift Log & XP` (24)
 
 ### Promotional text — max 170
 Editable **without** submitting a new build — the one field you can change any time.
@@ -35,21 +40,22 @@ break PRs, and climb from E-rank to the top. Your training, as a progression sys
 
 ### Keywords — max 100 chars, comma-separated, NO spaces after commas
 Do not repeat words already in the name or subtitle — Apple indexes those
-separately, so repeats waste characters.
+separately, so repeats waste characters. (`gym`, `tracker`, `hunter`, `rpg`, `level`,
+`up`, `lifts` are covered by the name + subtitle.)
 ```
-gym,workout,lifting,strength,tracker,log,barbell,squat,bench,deadlift,pr,1rm,progress,rpg,level
+workout,lifting,strength,log,barbell,squat,bench,deadlift,pr,1rm,progress,xp,anime,quest,rank
 ```
-(97 chars. Recount after any edit.)
+(93 chars. Recount after any edit.)
 
 ### Description — max 4000
 ```
-{APP_NAME} turns strength training into a progression system.
+S-Rank turns strength training into a progression system.
 
 Every set you log is XP. Every PR moves your rank. Instead of a spreadsheet that
 forgets you, you get a record that visibly levels up — from E-rank to the top.
 
 SCAN INSTEAD OF TYPING
-Point your camera roll at a screenshot from whatever app you already use. {APP_NAME}
+Point your camera roll at a screenshot from whatever app you already use. S-Rank
 reads the exercises, sets, reps, and weights and logs the whole session for you.
 No re-entry, no lost workouts.
 
@@ -60,7 +66,7 @@ REAL STRENGTH MATH
 - Per-muscle-group breakdowns so you can see what you're actually training
 
 KNOW WHEN TO PUSH
-Connect Apple Health or WHOOP and {APP_NAME} factors recovery, HRV, resting heart
+Connect Apple Health or WHOOP and S-Rank factors recovery, HRV, resting heart
 rate, and sleep into a readiness read — so you know when to go heavy and when the
 smart move is to back off.
 

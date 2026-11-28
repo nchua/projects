@@ -32,8 +32,8 @@ preflight script, and iPhone-only device family — are **not** repeated here.
   account, owner alert on every unlimited grant, all under the balance row lock)
   bound the damage. Revisit once real money is moving.
 - **Redis-backed rate limiting.** See §G4.3 — flagged, not scheduled.
-- The final app name. ("Shadow Monarch" → "Sovereign" shipped 2026-11-27.) Both
-  deferred by decision; §G5 makes the rename a single mechanical sweep when ready.
+- ~~The app name and the "Shadow Monarch" title~~ — both done 2026-11-27: "S-Rank: Gym
+  Tracker" swept per §G5, and the S-rank title is now "Sovereign".
 - iPad support. Decided against for v1.0.
 
 ### Decisions locked

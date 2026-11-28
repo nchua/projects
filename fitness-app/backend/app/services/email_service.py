@@ -43,7 +43,7 @@ def send_password_reset_email(to_email: str, code: str) -> bool:
             <!-- Header -->
             <div style="text-align: center; margin-bottom: 40px;">
                 <p style="margin: 0 0 8px 0; font-size: 12px; color: #00e5ff; letter-spacing: 2px; font-family: monospace;">[ SYSTEM ]</p>
-                <h1 style="margin: 0; font-size: 36px; color: #ffffff; letter-spacing: 6px; text-shadow: 0 0 20px rgba(0, 229, 255, 0.5);">ARISE</h1>
+                <h1 style="margin: 0; font-size: 36px; color: #ffffff; letter-spacing: 6px; text-shadow: 0 0 20px rgba(0, 229, 255, 0.5);">S-RANK</h1>
             </div>
 
             <!-- Main Content -->
@@ -51,7 +51,7 @@ def send_password_reset_email(to_email: str, code: str) -> bool:
                 <h2 style="margin: 0 0 16px 0; font-size: 18px; color: #ffffff; font-weight: 600;">Password Reset Request</h2>
 
                 <p style="margin: 0 0 24px 0; font-size: 14px; color: #a0a0b0; line-height: 1.6;">
-                    A password reset was requested for your ARISE account. Use the code below to reset your password.
+                    A password reset was requested for your S-Rank account. Use the code below to reset your password.
                 </p>
 
                 <!-- Code Box -->
@@ -72,7 +72,7 @@ def send_password_reset_email(to_email: str, code: str) -> bool:
             <!-- Footer -->
             <div style="text-align: center; margin-top: 32px;">
                 <p style="margin: 0; font-size: 12px; color: #505060;">
-                    ARISE Fitness - Become the Hunter
+                    S-Rank - Become the Hunter
                 </p>
             </div>
         </div>
@@ -81,7 +81,7 @@ def send_password_reset_email(to_email: str, code: str) -> bool:
     """
 
     plain_text = f"""
-    ARISE - Password Reset
+    S-Rank - Password Reset
 
     A password reset was requested for your account.
 
@@ -91,13 +91,13 @@ def send_password_reset_email(to_email: str, code: str) -> bool:
 
     If you didn't request this reset, you can safely ignore this email.
 
-    ARISE Fitness - Become the Hunter
+    S-Rank - Become the Hunter
     """
 
     message = Mail(
-        from_email=Email(SENDGRID_FROM_EMAIL, "ARISE Fitness"),
+        from_email=Email(SENDGRID_FROM_EMAIL, "S-Rank"),
         to_emails=To(to_email),
-        subject="[ARISE] Password Reset Code",
+        subject="[S-Rank] Password Reset Code",
         plain_text_content=Content("text/plain", plain_text),
         html_content=Content("text/html", html_content)
     )

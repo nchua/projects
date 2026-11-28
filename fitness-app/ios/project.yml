@@ -33,7 +33,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nickchua.fitnessapp
         PRODUCT_NAME: FitnessApp
-        INFOPLIST_KEY_CFBundleDisplayName: "Fitness Tracker"
+        INFOPLIST_KEY_CFBundleDisplayName: "S-Rank"
         # iPhone only (1). iPad (2) would require its own screenshot set and a
         # layout that holds up on a 13" canvas; this is a portrait-locked phone UI.
         TARGETED_DEVICE_FAMILY: "1"
@@ -61,16 +61,16 @@ targets:
       path: FitnessApp/Info.plist
       properties:
         CFBundleName: FitnessApp
-        CFBundleDisplayName: Fitness Tracker
+        CFBundleDisplayName: S-Rank
         CFBundleShortVersionString: "1.0"
         CFBundleVersion: "1"
         # Only standard HTTPS/TLS + bcrypt-over-TLS. Exempt under CCATS;
         # declaring it here skips the export-compliance prompt on every upload.
         ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
-        NSHealthShareUsageDescription: "Arise syncs your steps, calories, and activity data to track your overall fitness progress alongside your workouts."
-        NSHealthUpdateUsageDescription: "Arise can log your strength workouts to Apple Health."
-        NSPhotoLibraryUsageDescription: "Arise needs access to your photo library to import workout screenshots from your fitness apps."
+        NSHealthShareUsageDescription: "S-Rank syncs your steps, calories, and activity data to track your overall fitness progress alongside your workouts."
+        NSHealthUpdateUsageDescription: "S-Rank can log your strength workouts to Apple Health."
+        NSPhotoLibraryUsageDescription: "S-Rank needs access to your photo library to import workout screenshots from your fitness apps."
         UIBackgroundModes:
           - fetch
           - processing

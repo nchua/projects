@@ -111,7 +111,7 @@ struct AuthView: View {
                             .opacity(showTitle ? 1 : 0)
 
                         // ARISE title with glow
-                        Text("ARISE")
+                        Text("S-RANK")
                             .font(.ariseDisplay(size: 48, weight: .bold))
                             .foregroundColor(.textPrimary)
                             .tracking(8)
@@ -387,7 +387,7 @@ struct SessionValidationView: View {
             VoidBackground(glowIntensity: 0.05)
 
             VStack(spacing: 24) {
-                Text("ARISE")
+                Text("S-RANK")
                     .font(.ariseDisplay(size: 48, weight: .bold))
                     .foregroundColor(.textPrimary)
                     .tracking(8)
