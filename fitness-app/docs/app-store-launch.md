@@ -65,8 +65,10 @@ Constraints worth knowing before picking:
 
 The app is Solo Leveling–*inspired*, which is fine. Two specifics are not:
 
-- **`Colors.swift:254` — S-rank titled "Shadow Monarch".** This is a distinctive
-  proper noun from the series and it is user-facing. Rename it.
+- ~~**`Colors.swift:254` — S-rank titled "Shadow Monarch".**~~ ✅ *(2026-11-27)*
+  Renamed to **"Sovereign"**. A sweep for other named entities (Jin-Woo, Igris,
+  Beru, Monarch, …) found none in app or backend code; the fantasy exercise names
+  are generic.
 - Grep for other direct lifts before submitting. Generic RPG vocabulary
   (rank, level, XP, gate, hunt) is not a problem; named entities are.
 
@@ -188,15 +190,16 @@ Draft copy, keywords, and the privacy nutrition-label answers live in
 
 1. **Guideline 2.1 — no demo account.** Highest-probability rejection. See above.
 2. **Guideline 3.1.1 — IAP.** Restore Purchases exists ✅ and terms/privacy are
-   linked ✅. Verify prices render from StoreKit (never hardcode a price string)
-   and that the paywall degrades gracefully if `loadProducts()` returns empty.
+   linked ✅. Prices render from StoreKit ✅ *(2026-11-27 — `ScanPaywallView` used
+   hardcoded `$1.99/$3.99/$9.99`; now `Product.displayPrice`, per-scan math from
+   `Product.price`)*, and an empty `loadProducts()` shows "Store unavailable" ✅.
 3. **Guideline 5.1.1 — HealthKit.** HealthKit data must not be used for advertising
    or sold, and the usage strings must be specific. Current strings are good.
    HealthKit apps also **must** have a privacy policy — ✅.
 4. **Guideline 5.1.1(v) — account deletion.** ✅ implemented. Confirm it is easy to
    find (Profile → it's there) and actually completes.
 5. **Guideline 4.2 — minimum functionality.** Not a concern; the app is substantial.
-6. **IP / Guideline 5.2.** See Phase 0.2 — "Shadow Monarch".
+6. **IP / Guideline 5.2.** See Phase 0.2 — "Shadow Monarch" fixed; the app name is still open.
 7. **Guideline 1.1.6 / 2.3 — accurate metadata.** Screenshots must be real app UI.
 
 ## Phase 6 — Backend production readiness

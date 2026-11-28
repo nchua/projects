@@ -16,6 +16,8 @@ class StoreKitManager: ObservableObject {
     @Published var isPurchasing = false
     @Published var purchaseError: String?
     @Published var lastPurchaseResult: PurchaseVerifyResponse?
+    /// True once a `loadProducts()` attempt has finished, whether or not it returned anything.
+    @Published var productsLoaded = false
 
     private var transactionListener: Task<Void, Never>?
 
@@ -60,6 +62,7 @@ class StoreKitManager: ObservableObject {
         } catch {
             print("Failed to load products: \(error)")
         }
+        productsLoaded = true
     }
 
     // MARK: - Fetch Balance

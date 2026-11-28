@@ -18,7 +18,27 @@ struct ScanPaywallView: View {
     @State private var purchasedProduct: Product?
 
     private var selectedProduct: Product? {
-        storeKitManager.products.first { $0.id == selectedTier.rawValue }
+        product(for: selectedTier)
+    }
+
+    private func product(for tier: SelectedTier) -> Product? {
+        storeKitManager.products.first { $0.id == tier.rawValue }
+    }
+
+    /// Localized price from StoreKit — never a hardcoded string (Guideline 3.1.1,
+    /// and the only way non-US storefronts show the right currency).
+    private func priceText(for tier: SelectedTier) -> String {
+        product(for: tier)?.displayPrice ?? "—"
+    }
+
+    private func perScanText(for tier: SelectedTier, scans: Int) -> String? {
+        guard let product = product(for: tier) else { return nil }
+        let each = (product.price / Decimal(scans)).formatted(product.priceFormatStyle)
+        return "~\(each) / scan"
+    }
+
+    private var storeUnavailable: Bool {
+        storeKitManager.productsLoaded && storeKitManager.products.isEmpty
     }
 
     var body: some View {
@@ -130,6 +150,15 @@ struct ScanPaywallView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
 
+                if storeUnavailable {
+                    Text("Purchases couldn't load. Check your connection and reopen this screen.")
+                        .font(.ariseMono(size: 10))
+                        .foregroundColor(.textMuted)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                        .padding(.top, 10)
+                }
+
                 // Bottom links
                 HStack(spacing: 16) {
                     Button("Restore Purchases") {
@@ -220,8 +249,8 @@ struct ScanPaywallView: View {
             iconBorderColor: Color(hex: "A0A0B0").opacity(0.1),
             name: "QUICK PACK",
             detail: "20 scans",
-            perScan: "~$0.10 / scan",
-            price: "$1.99",
+            perScan: perScanText(for: .quick, scans: 20),
+            price: priceText(for: .quick),
             priceUnit: "one-time",
             badge: nil,
             isPremium: false
@@ -237,8 +266,8 @@ struct ScanPaywallView: View {
             iconBorderColor: Color.systemPrimary.opacity(0.12),
             name: "POWER PACK",
             detail: "50 scans",
-            perScan: "~$0.08 / scan",
-            price: "$3.99",
+            perScan: perScanText(for: .power, scans: 50),
+            price: priceText(for: .power),
             priceUnit: "one-time",
             badge: "BEST VALUE",
             isPremium: false
@@ -255,7 +284,7 @@ struct ScanPaywallView: View {
             name: "S-RANK SCANNER",
             detail: "Unlimited scans forever",
             perScan: nil,
-            price: "$9.99",
+            price: priceText(for: .srank),
             priceUnit: "lifetime",
             badge: "ONE-TIME PURCHASE",
             isPremium: true
@@ -438,13 +467,12 @@ struct ScanPaywallView: View {
         let isPremium = selectedTier == .srank
         let buttonText: String
 
-        switch selectedTier {
-        case .quick:
-            buttonText = "PURCHASE — $1.99"
-        case .power:
-            buttonText = "PURCHASE — $3.99"
-        case .srank:
-            buttonText = "UNLOCK S-RANK — $9.99"
+        if let product = selectedProduct {
+            buttonText = isPremium
+                ? "UNLOCK S-RANK — \(product.displayPrice)"
+                : "PURCHASE — \(product.displayPrice)"
+        } else {
+            buttonText = storeUnavailable ? "STORE UNAVAILABLE" : "LOADING…"
         }
 
         return Button {
@@ -495,6 +523,10 @@ struct ScanPaywallView: View {
 
     // MARK: - Success View
 
+    private var purchasedPackTitle: String {
+        purchasedProduct?.id == StoreKitManager.scan20 ? "Quick Pack Activated" : "Power Pack Activated"
+    }
+
     private var successView: some View {
         let isPremium = purchasedProduct?.id == StoreKitManager.scanUnlimited
         let balance = storeKitManager.scanBalance
@@ -537,7 +569,7 @@ struct ScanPaywallView: View {
                     .foregroundColor(isPremium ? .gold : .systemPrimary)
                     .tracking(2)
 
-                Text(isPremium ? "Unlimited Scanner" : "Power Pack Activated")
+                Text(isPremium ? "Unlimited Scanner" : purchasedPackTitle)
                     .font(.ariseHeader(size: 22, weight: .bold))
                     .foregroundColor(.textPrimary)
 

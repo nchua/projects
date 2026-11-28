@@ -251,7 +251,7 @@ enum HunterRank: String, CaseIterable, Codable {
         case .c: return "Warrior"
         case .b: return "Elite"
         case .a: return "Commander"
-        case .s: return "Shadow Monarch"
+        case .s: return "Sovereign"
         }
     }
 

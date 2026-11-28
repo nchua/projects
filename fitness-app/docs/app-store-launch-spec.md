@@ -32,7 +32,7 @@ preflight script, and iPhone-only device family — are **not** repeated here.
   account, owner alert on every unlimited grant, all under the balance row lock)
   bound the damage. Revisit once real money is moving.
 - **Redis-backed rate limiting.** See §G4.3 — flagged, not scheduled.
-- Renaming the "Shadow Monarch" S-rank title, and the final app name itself. Both
+- The final app name. ("Shadow Monarch" → "Sovereign" shipped 2026-11-27.) Both
   deferred by decision; §G5 makes the rename a single mechanical sweep when ready.
 - iPad support. Decided against for v1.0.
 
