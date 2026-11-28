@@ -560,6 +560,7 @@ from app.api import (
     directive,
     exercises,
     exertion_analytics,
+    export,
     friends,
     gates,
     goals,
@@ -605,6 +606,8 @@ app.include_router(coach.router, prefix="/coach", tags=["Coach"])
 app.include_router(campaign.router, prefix="/campaign", tags=["Campaign"])
 app.include_router(hunts.router, prefix="/hunts", tags=["Hunts"])
 app.include_router(load.router, prefix="/load", tags=["Training Load"])
+# Read-only owner export behind a static token; unlisted like the console.
+app.include_router(export.router, prefix="/export", include_in_schema=False)
 
 # Owner console (control-plane spec §13): hidden from OpenAPI; the session
 # router has no admin dependency (it mints the token), the rest requires it.
